@@ -182,7 +182,9 @@
       "teamAi": "Takım yapay zekâ anahtarları",
       "teamAiSub": "Tüm takım için tek anahtar, ve üyeler kendi anahtarını getirebilir mi",
       "teamIdentity": "Kimlik kaynakları",
-      "teamIdentitySub": "Şirketin kendi dizini ve çoklu oturum açma ile giriş"
+      "teamIdentitySub": "Şirketin kendi dizini ve çoklu oturum açma ile giriş",
+      "absences": "Devamsızlıklar",
+      "absencesSub": "İzin günleriniz ve nöbette kim var"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -615,7 +617,11 @@
     "TICKET_APPROVAL_PENDING": "Bu talep bir onay bekliyor; karar verilene kadar yalnız iptal edilebilir.",
     "TICKET_WAITING_REASON_REQUIRED": "Beklemeye almak için bir neden seç.",
     "SLA_ALREADY_PAUSED": "Durdurulacak işleyen bir SLA saati yok.",
-    "SLA_NOT_PAUSED": "Durdurulmuş bir SLA saati yok."
+    "SLA_NOT_PAUSED": "Durdurulmuş bir SLA saati yok.",
+    "ABSENCE_OVERLAP": "Bu kişinin bu günlerin bazılarında zaten bir devamsızlığı var.",
+    "ABSENCE_TOO_LONG": "Bir devamsızlık en çok 366 gün olabilir.",
+    "ABSENCE_RANGE_INVALID": "Bitiş günü başlangıçtan önce olamaz.",
+    "ABSENCE_DATE_INVALID": "Gerçek bir gün seçin."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1636,6 +1642,9 @@
       },
       "announcements": {
         "manage": "Herkesin gördüğü duyuruları yaz ve ne zaman görüneceklerini belirle"
+      },
+      "absences": {
+        "manage": "Başkasının devamsızlığını yaz ya da kaldır"
       }
     },
     "permDomain": {
@@ -1661,7 +1670,8 @@
       "suppliers": "Tedarikçiler",
       "oncall": "Nöbet",
       "customers": "Firmalar",
-      "announcements": "Duyurular"
+      "announcements": "Duyurular",
+      "absences": "Devamsızlık"
     },
     "admin": {
       "title": "Instance konsolu",
@@ -2780,6 +2790,28 @@
       "remove": "Geri çek",
       "removeTitle": "Bu kayıt geri çekilsin mi?",
       "removeBody": "Kayıtlar düzenlenmez, geri çekilir — doğru süreyi yeniden yazmanız gerekecek. İki adım da geçmişte kalır."
+    },
+    "absences": {
+      "title": "Devamsızlıklar",
+      "onCallTitle": "Nöbet",
+      "onCallNow": "Nöbette: {name} · bitiş {until}",
+      "onCallCovering": "Nöbette: {name} · {for} izinde · bitiş {until}",
+      "onCallCoveringYou": "Nöbette: {name} · sizin yerinize · bitiş {until}",
+      "onCallNobody": "Nöbet listesindeki herkes bugün izinde",
+      "listTitle": "Önümüzdeki 90 gün",
+      "empty": "Bu dönemde kayıtlı devamsızlık yok.",
+      "truncated": "Liste kısaltıldı — gösterilenden fazla devamsızlık kayıtlı.",
+      "limits": "Devamsızlık tam gündür; onay istemez, neden yazılmaz. O günlerde nöbet sırası ve dengeli atama kişiyi atlar.",
+      "you": "Siz",
+      "add": "Devamsızlık ekle",
+      "person": "Kim",
+      "save": "Kaydet",
+      "remove": "Kaldır",
+      "removeTitle": "Devamsızlık kaldırılsın mı?",
+      "removeBody": "O günler için kişi yeniden nöbete ve atamaya dahil olur.",
+      "offlineTitle": "Devamsızlıklar bağlantı ister",
+      "offlineBody": "Devamsızlıklar sunucuda tutulur; nöbet sırası onları oradan okur.",
+      "saveOffline": "Bağlantı yokken kaydedilemez."
     }
   },
   "perm": {

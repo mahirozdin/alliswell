@@ -183,7 +183,9 @@
       "teamAi": "Team AI keys",
       "teamAiSub": "One key for the whole team, and whether members may bring their own",
       "teamIdentity": "Identity sources",
-      "teamIdentitySub": "Sign in with the company's own directory, and single sign-on"
+      "teamIdentitySub": "Sign in with the company's own directory, and single sign-on",
+      "absences": "Absences",
+      "absencesSub": "Your days away, and who is on call"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -616,7 +618,11 @@
     "TICKET_APPROVAL_PENDING": "This request is waiting on an approval; until someone decides, it can only be cancelled.",
     "TICKET_WAITING_REASON_REQUIRED": "Pick a reason to set it to waiting.",
     "SLA_ALREADY_PAUSED": "There is no running SLA clock to stop.",
-    "SLA_NOT_PAUSED": "No SLA clock is stopped."
+    "SLA_NOT_PAUSED": "No SLA clock is stopped.",
+    "ABSENCE_OVERLAP": "This person already has an absence on some of these days.",
+    "ABSENCE_TOO_LONG": "An absence can be at most 366 days.",
+    "ABSENCE_RANGE_INVALID": "The last day can’t be before the first.",
+    "ABSENCE_DATE_INVALID": "Pick a real day."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1637,6 +1643,9 @@
       },
       "announcements": {
         "manage": "Write the notices everybody sees, and say when they run"
+      },
+      "absences": {
+        "manage": "Record or remove somebody else’s absence"
       }
     },
     "permDomain": {
@@ -1662,7 +1671,8 @@
       "suppliers": "Suppliers",
       "oncall": "On-call",
       "customers": "Companies",
-      "announcements": "Announcements"
+      "announcements": "Announcements",
+      "absences": "Absences"
     },
     "admin": {
       "title": "Instance console",
@@ -2781,6 +2791,28 @@
       "remove": "Withdraw",
       "removeTitle": "Withdraw this entry?",
       "removeBody": "Entries are withdrawn rather than edited, so you will need to log the corrected time again. Both steps stay in the history."
+    },
+    "absences": {
+      "title": "Absences",
+      "onCallTitle": "On call",
+      "onCallNow": "On call: {name} · until {until}",
+      "onCallCovering": "On call: {name} · covering for {for} · until {until}",
+      "onCallCoveringYou": "On call: {name} · covering for you · until {until}",
+      "onCallNobody": "Everyone on the rota is away today",
+      "listTitle": "The next 90 days",
+      "empty": "No absences recorded for this period.",
+      "truncated": "The list was cut short — more absences are recorded than it shows.",
+      "limits": "Absences are whole days, need no approval and carry no reason. On those days the on-call rota and balanced assignment skip the person.",
+      "you": "You",
+      "add": "Add absence",
+      "person": "Who",
+      "save": "Save",
+      "remove": "Remove",
+      "removeTitle": "Remove this absence?",
+      "removeBody": "For those days the person goes back into the on-call rota and assignment.",
+      "offlineTitle": "Absences need a connection",
+      "offlineBody": "Absences are kept on the server, where the on-call rota reads them.",
+      "saveOffline": "Can’t be saved without a connection."
     }
   },
   "perm": {

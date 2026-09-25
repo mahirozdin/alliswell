@@ -164,6 +164,17 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.myTicketsSub',
                   path: '/settings/team/my-tickets',
                 ),
+              // EE-236: absences, and who is on call because of them. The
+              // same door as "my requests" and for the same reason: saying
+              // "I am away" is anybody's act, and the rota must hear it.
+              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+                _GroupRow(
+                  keyName: 'settings-group-absences',
+                  icon: Icons.event_busy_outlined,
+                  titleKey: 'settings.group.absences',
+                  subtitleKey: 'settings.group.absencesSub',
+                  path: '/settings/team/absences',
+                ),
               // EE-082: the service catalogue. `services.manage` is a plain
               // role verb, so `canProvider` is honest here — unlike the units
               // row above, which had to ask the server because a delegated

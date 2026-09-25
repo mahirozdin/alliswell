@@ -52,6 +52,7 @@ import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/team_mail_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
+import 'features/ee/ui/absences_screen.dart';
 import 'features/ee/ui/new_ticket_screen.dart';
 import 'features/ee/ui/ticket_detail_screen.dart';
 import 'features/ee/ui/tickets_home.dart';
@@ -694,6 +695,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/team/my-tickets',
         builder: (context, state) => _page(const EeMyTicketsScreen()),
+      ),
+      // EE-236: absences and the on-call cover they cause. Reachable by
+      // anyone in a team — saying "I am away next week" needs no verb.
+      GoRoute(
+        path: '/settings/team/absences',
+        builder: (context, state) => _page(const EeAbsencesScreen()),
       ),
       // EE-057: units. The one team route a NON-admin can legitimately reach
       // — a delegated unit manager is an ordinary member everywhere else, so

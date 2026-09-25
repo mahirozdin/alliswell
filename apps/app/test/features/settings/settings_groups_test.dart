@@ -1,15 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
+import 'package:alliswell/src/features/ee/assignments_providers.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/ui/absences_screen.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 
 import 'package:alliswell/src/notifications/gateway.dart';
+import 'package:alliswell/src/sync/db/database.dart';
 
 import 'settings_nav.dart';
 import '../auth/test_support.dart';
@@ -24,7 +29,7 @@ import '../../support/sync_overrides.dart';
 /// that existed before is found on exactly one of the new pages, by the key it
 /// already had. §22 in its plainest form — a setting nobody can reach is not a
 /// setting.
-Future<Widget> app(FakeApi api) async {
+Future<Widget> app(FakeApi api, {List<Override> extra = const []}) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
@@ -36,6 +41,7 @@ Future<Widget> app(FakeApi api) async {
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
       ),
+      ...extra,
     ],
     child: const AllisWellApp(),
   );
@@ -203,6 +209,38 @@ void main() {
 
   // Round 19 (OPH-277): the rehearsal. A report about a silent alarm never had
   // a way to make the failure happen on purpose, with the log watching.
+  testWidgets('EE-236: somebody in a team finds Absences on the root, and it '
+      'opens', (tester) async {
+    wide(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(
+      await app(
+        api,
+        extra: [
+          workspaceRosterProvider.overrideWith(
+            (ref) => Stream.value(const [
+              MemberProfile(
+                id: 'MP1',
+                workspaceId: 'W1',
+                userId: 'U1',
+                displayName: 'Ayşe',
+                colorRgb: '#2563EB',
+                revision: 1,
+              ),
+            ]),
+          ),
+          // The screen itself asks the server only with the entitlement; the
+          // door is what this test is about.
+          eeFeatureProvider.overrideWith((ref, name) => false),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    await openGroup(tester, 'settings-group-absences');
+    expect(find.byType(EeAbsencesScreen), findsOneWidget);
+  });
+
   testWidgets('the test alarm goes through the real lane', (tester) async {
     final gateway = FakeNotificationsGateway();
     SharedPreferences.setMockInitialValues({});
