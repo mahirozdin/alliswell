@@ -12,6 +12,7 @@ import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
 import '../providers.dart';
 import '../ticket_bulk_providers.dart';
+import '../ticket_tags_providers.dart';
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
 import 'my_units_screen.dart';
@@ -487,6 +488,38 @@ class _FilterBar extends ConsumerWidget {
             const SizedBox(width: AwSpace.x2),
           ],
           const SizedBox(width: AwSpace.x2),
+          // EE-235: one of the desk's words. Its choices are the words on this
+          // desk's own rows (the replica's `tag_names`, OPH-350), so it works
+          // with no signal; shown only once there is a word to pick — a chip
+          // that opens an empty list is a question with no answers.
+          if (filter.tag != null ||
+              ref.watch(queueTagNamesProvider).isNotEmpty) ...[
+            FilterChip(
+              key: const Key('ticket-filter-tag'),
+              label: Text(
+                filter.tag == null
+                    ? 'ee.tickets.filter.tag'.tr()
+                    : 'ee.tickets.filter.tagSet'.tr(args: {'tag': filter.tag!}),
+              ),
+              selected: filter.tag != null,
+              onSelected: (_) async {
+                if (filter.tag != null) {
+                  notifier.setTag(null);
+                  return;
+                }
+                final picked = await showModalBottomSheet<String>(
+                  context: context,
+                  showDragHandle: true,
+                  builder: (_) => _TagPicker(
+                    tags: ref.read(queueTagNamesProvider),
+                  ),
+                );
+                if (picked != null) notifier.setTag(picked);
+              },
+            ),
+            const SizedBox(width: AwSpace.x2),
+          ],
+          const SizedBox(width: AwSpace.x2),
           // EE-171: filed between two days. A chip rather than two fields,
           // because the question is always a RANGE — "this week", "since the
           // shutdown" — and a half-applied one would empty the list under the
@@ -696,4 +729,41 @@ void _openArchive(BuildContext context, String query) {
       builder: (_) => EeTicketArchiveSearchScreen(initialQuery: query),
     ),
   );
+}
+
+/// EE-235 — the desk's words, one to filter by.
+class _TagPicker extends StatelessWidget {
+  const _TagPicker({required this.tags});
+
+  final List<String> tags;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              0,
+              AwSpace.x4,
+              AwSpace.x2,
+            ),
+            child: Text(
+              'ee.tickets.filter.tagPickTitle'.tr(),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+          for (final name in tags)
+            ListTile(
+              key: Key('ticket-filter-tag-option-$name'),
+              leading: const Icon(Icons.sell_outlined),
+              title: Text(name),
+              onTap: () => Navigator.of(context).pop(name),
+            ),
+        ],
+      ),
+    );
+  }
 }

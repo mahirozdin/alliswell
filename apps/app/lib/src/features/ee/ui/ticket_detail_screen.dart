@@ -31,6 +31,7 @@ import 'ticket_archive_screen.dart';
 import 'sla_chip.dart';
 import 'ticket_actions.dart';
 import 'ticket_composer.dart';
+import 'ticket_tags_section.dart';
 import 'ticket_worklog_section.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
@@ -231,6 +232,9 @@ class _Thread extends ConsumerWidget {
         // before anything else below: an agent asks "is somebody already
         // here" before reading forty replies.
         EeTicketAssigneeSection(ticket: ticket),
+        // EE-235: the desk's words — beside who is on it, both being what the
+        // desk says ABOUT the request rather than what the request says.
+        EeTicketTagsSection(ticket: ticket),
         // EE-097: the countdown, under the chips and above the request itself.
         // An agent deciding what to pick up next reads it before the body.
         AwSlaCountdown(ticket: ticket),

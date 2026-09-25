@@ -2038,7 +2038,10 @@
         "processType": {
           "incident": "Incidents",
           "request": "Service requests"
-        }
+        },
+        "tag": "Tag",
+        "tagSet": "Tag: {tag}",
+        "tagPickTitle": "Pick a tag"
       },
       "bulk": {
         "selected": "{count} selected",
@@ -2319,6 +2322,16 @@
         "mineEmptyBody": "A request moves here some time after it closes, and stays readable.",
         "mineMore": "Show older requests",
         "yourRating": "Your rating: {score}/5"
+      },
+      "tags": {
+        "title": "Tags",
+        "add": "Add a tag",
+        "addTitle": "Add a tag",
+        "field": "Tag",
+        "hint": "One of the team's words, or a new one",
+        "save": "Add",
+        "remove": "Remove the tag",
+        "offline": "Adding and removing tags needs a connection."
       }
     },
     "sla": {

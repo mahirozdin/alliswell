@@ -190,6 +190,13 @@ class DemoCorpus {
         ? null
         : DateTime.parse(t['terminalAt'] as String),
     slaStatus: t['slaStatus'] as String?,
+    // EE-235: the desk's words, in the reader's language, as the replica
+    // column holds them (a JSON list).
+    tagNames: t['tags'] == null
+        ? null
+        : jsonEncode(
+            ((t['tags'] as Map<String, dynamic>)[lang] as List).cast<String>(),
+          ),
     // Relative, not absolute — see the ticket's own note in the JSON. An
     // absolute due date drifts into the past and turns a warned row into a
     // state the server cannot produce.

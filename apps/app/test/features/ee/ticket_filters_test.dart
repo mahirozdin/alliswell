@@ -32,6 +32,7 @@ TicketRecord _ticket(
   String source = 'internal',
   String? slaStatus,
   String? processType,
+  String? tagNames,
 }) => TicketRecord(
   id: id,
   workspaceId: 'W1',
@@ -41,6 +42,7 @@ TicketRecord _ticket(
   source: source,
   slaStatus: slaStatus,
   processType: processType,
+  tagNames: tagNames,
   revision: 1,
   createdAt: DateTime.utc(2026, 8, 10),
 );
@@ -57,12 +59,14 @@ void main() {
       subject: 'İhlal edilmiş',
       slaStatus: 'breached',
       processType: 'incident',
+      tagNames: '["Garanti","Hidrolik"]',
     ),
     _ticket(
       'T2',
       subject: 'Portaldan gelen',
       source: 'public',
       processType: 'request',
+      tagNames: '["Garanti"]',
     ),
     // Pulled before the replica had the column: no kind yet.
     _ticket('T3', subject: 'Kimsede olmayan'),
@@ -161,6 +165,30 @@ void main() {
     await tapChip(tester, 'ticket-filter-type-incident');
     await tapChip(tester, 'ticket-filter-type-request');
     expect(visible(tester), ['T1', 'T2', 'T3']);
+  });
+
+  testWidgets('EE-235: a tag narrows the queue with no signal — its choices '
+      'are the words on the desk\'s own rows, and tapping it again clears it', (
+    tester,
+  ) async {
+    await pumpQueue(tester);
+    await tapChip(tester, 'ticket-filter-tag');
+    // Each word once, from the rows this device holds.
+    expect(find.byKey(const Key('ticket-filter-tag-option-Garanti')), findsOneWidget);
+    expect(find.byKey(const Key('ticket-filter-tag-option-Hidrolik')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('ticket-filter-tag-option-Hidrolik')));
+    await tester.pumpAndSettle();
+    expect(visible(tester), ['T1']);
+    expect(find.text('Etiket: Hidrolik'), findsOneWidget);
+
+    await tapChip(tester, 'ticket-filter-tag');
+    expect(visible(tester), ['T1', 'T2', 'T3']);
+
+    // A word on two rows keeps both, and a row with no words stays out.
+    await tapChip(tester, 'ticket-filter-tag');
+    await tester.tap(find.byKey(const Key('ticket-filter-tag-option-Garanti')));
+    await tester.pumpAndSettle();
+    expect(visible(tester), ['T1', 'T2']);
   });
 
   testWidgets(

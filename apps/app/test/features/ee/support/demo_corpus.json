@@ -168,6 +168,10 @@
       "subject": {
         "tr": "Kompresör basınç düşüşü, boyahane durdu",
         "en": "Compressor pressure has dropped, the paint shop has stopped"
+      },
+      "tags": {
+        "tr": ["Tekrar eden", "Hava hattı"],
+        "en": ["Recurring", "Air line"]
       }
     },
     {

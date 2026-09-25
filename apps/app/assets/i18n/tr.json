@@ -2037,7 +2037,10 @@
         "processType": {
           "incident": "Olaylar",
           "request": "Hizmet istekleri"
-        }
+        },
+        "tag": "Etiket",
+        "tagSet": "Etiket: {tag}",
+        "tagPickTitle": "Bir etiket seçin"
       },
       "bulk": {
         "selected": "{count} seçili",
@@ -2318,6 +2321,16 @@
         "mineEmptyBody": "Bir talep kapandıktan bir süre sonra buraya taşınır ve okunabilir kalır.",
         "mineMore": "Daha eski talepleri göster",
         "yourRating": "Puanınız: {score}/5"
+      },
+      "tags": {
+        "title": "Etiketler",
+        "add": "Etiket ekle",
+        "addTitle": "Etiket ekle",
+        "field": "Etiket",
+        "hint": "Takımın bir kelimesi ya da yeni bir kelime",
+        "save": "Ekle",
+        "remove": "Etiketi kaldır",
+        "offline": "Etiket eklemek ve kaldırmak bağlantı ister."
       }
     },
     "sla": {

@@ -11,6 +11,7 @@ import '../../sync/db/database.dart';
 import '../../sync/providers.dart';
 import '../workspaces/workspaces.dart';
 import 'assignments_providers.dart' show Assignee;
+import 'ticket_tag_names.dart';
 
 /// The unit's queue, read from the REPLICA (EE-084, D5).
 ///
@@ -44,6 +45,7 @@ class TicketFilter {
     this.slaStatuses = const {},
     this.sources = const {},
     this.processTypes = const {},
+    this.tag,
     this.from,
     this.to,
   });
@@ -72,6 +74,12 @@ class TicketFilter {
   /// filter that quietly keeps unknown rows answers another question.
   final Set<String> processTypes;
 
+  /// EE-235: one of the desk's words, as the device holds it on the row
+  /// (`tickets.tag_names`, OPH-350). One at a time — "warranty cases" is the
+  /// question; a row pulled before v36 carries none until it is sent again,
+  /// and is excluded while this is on, the rule the two filters above keep.
+  final String? tag;
+
   /// Filed within this window. Inclusive at both ends, day-resolution: the
   /// person picking "last week" means the whole of both days.
   final DateTime? from;
@@ -85,6 +93,7 @@ class TicketFilter {
       slaStatuses.isEmpty &&
       sources.isEmpty &&
       processTypes.isEmpty &&
+      tag == null &&
       from == null &&
       to == null;
 
@@ -98,6 +107,8 @@ class TicketFilter {
     Set<String>? slaStatuses,
     Set<String>? sources,
     Set<String>? processTypes,
+    String? tag,
+    bool clearTag = false,
     DateTime? from,
     DateTime? to,
     bool clearDates = false,
@@ -116,6 +127,7 @@ class TicketFilter {
       slaStatuses: slaStatuses ?? this.slaStatuses,
       sources: sources ?? this.sources,
       processTypes: processTypes ?? this.processTypes,
+      tag: clearTag ? null : (tag ?? this.tag),
       from: clearDates ? null : (from ?? this.from),
       to: clearDates ? null : (to ?? this.to),
     );
@@ -158,6 +170,10 @@ class TicketFilterController extends Notifier<TicketFilter> {
 
   void toggleProcessType(String type) =>
       state = state.copyWith(processTypes: _toggled(state.processTypes, type));
+
+  /// EE-235. Null clears it.
+  void setTag(String? name) =>
+      state = state.copyWith(tag: name, clearTag: name == null);
 
   /// Both ends at once: a range with one end is a range the person is still
   /// typing, and applying it halfway would empty the list under their hands.
@@ -239,6 +255,14 @@ final filteredTicketsProvider = Provider<AsyncValue<List<TicketRecord>>>((ref) {
       }
       if (filter.processTypes.isNotEmpty &&
           !filter.processTypes.contains(t.processType)) {
+        return false;
+      }
+      // EE-235: by the server's fold, so the word picked from one row matches
+      // the same word on every other.
+      if (filter.tag != null &&
+          !decodeTagNames(
+            t.tagNames,
+          ).any((name) => foldTag(name) == foldTag(filter.tag!))) {
         return false;
       }
       // Filed within the window. `createdAt` is nullable on the replica (a row
