@@ -12,6 +12,7 @@ import '../../../widgets/status_views.dart';
 import '../data/my_tickets_api.dart';
 import '../my_tickets_providers.dart';
 import '../providers.dart';
+import 'ticket_archive_screen.dart' show EeMyArchivedTicketsScreen;
 import 'ticket_detail_screen.dart';
 import 'ticket_drafts_section.dart';
 
@@ -142,8 +143,54 @@ class EeMyTicketsScreen extends ConsumerWidget {
                         ),
                     ],
             ),
+            const _ArchiveSection(),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// EE-266 (AW-E17): the requests the sweep moved. Its own section, below the
+/// live list and whatever state that list is in: a request archived ninety
+/// days after closing used to vanish from here, and the person who asked is
+/// the one most certain to come back looking for it. One door rather than a
+/// second list on this screen — the archive grows for as long as they keep
+/// asking, and it pages on its own screen.
+class _ArchiveSection extends StatelessWidget {
+  const _ArchiveSection();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x6),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            'ee.tickets.archive.mineSection'.tr(),
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: AwSpace.x2),
+          Card(
+            key: const Key('my-tickets-archive'),
+            child: ListTile(
+              leading: const Icon(Icons.inventory_2_outlined),
+              title: Text('ee.tickets.archive.mineTitle'.tr()),
+              subtitle: Text(
+                'ee.tickets.archive.mineTileBody'.tr(),
+                style: theme.textTheme.bodySmall,
+              ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => const EeMyArchivedTicketsScreen(),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

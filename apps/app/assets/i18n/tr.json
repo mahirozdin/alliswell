@@ -2268,7 +2268,14 @@
           "rejected": "{name} {date} tarihinde reddetti",
           "expired": "Onay cevapsız kalıp süresi doldu",
           "pending": "Kapandığında onay hâlâ bekliyordu"
-        }
+        },
+        "mineSection": "Arşiv",
+        "mineTitle": "Arşivdeki taleplerim",
+        "mineTileBody": "Kapanalı bir süre olan talepleriniz. Salt okunur, bağlantı ister.",
+        "mineEmptyTitle": "Arşivde henüz talebiniz yok",
+        "mineEmptyBody": "Bir talep kapandıktan bir süre sonra buraya taşınır ve okunabilir kalır.",
+        "mineMore": "Daha eski talepleri göster",
+        "yourRating": "Puanınız: {score}/5"
       }
     },
     "sla": {

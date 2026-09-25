@@ -2269,7 +2269,14 @@
           "rejected": "Rejected by {name} on {date}",
           "expired": "Approval expired unanswered",
           "pending": "Approval was still pending when it closed"
-        }
+        },
+        "mineSection": "Archive",
+        "mineTitle": "My archived requests",
+        "mineTileBody": "Requests that closed a while ago. Read-only, and they need a connection.",
+        "mineEmptyTitle": "Nothing in the archive yet",
+        "mineEmptyBody": "A request moves here some time after it closes, and stays readable.",
+        "mineMore": "Show older requests",
+        "yourRating": "Your rating: {score}/5"
       }
     },
     "sla": {

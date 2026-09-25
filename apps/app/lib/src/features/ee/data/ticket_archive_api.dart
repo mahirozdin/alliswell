@@ -17,6 +17,7 @@ class EeArchivedTicketSummary {
     required this.priority,
     this.number,
     this.requesterDisplayName,
+    this.serviceName,
     this.terminalAt,
     this.archivedAt,
   });
@@ -29,6 +30,7 @@ class EeArchivedTicketSummary {
         priority: (json['priority'] as String?) ?? 'normal',
         number: (json['number'] as num?)?.toInt(),
         requesterDisplayName: json['requesterDisplayName'] as String?,
+        serviceName: json['serviceName'] as String?,
         terminalAt: _date(json['terminalAt']),
         archivedAt: _date(json['archivedAt']),
       );
@@ -39,27 +41,36 @@ class EeArchivedTicketSummary {
   final String priority;
   final int? number;
   final String? requesterDisplayName;
+
+  /// The asker's own list names the SERVICE, as `/mine` does — never the
+  /// unit that answered them.
+  final String? serviceName;
   final DateTime? terminalAt;
   final DateTime? archivedAt;
 }
 
-/// One page of an archive search. [hasMore] means the server holds older
-/// matches than this page — the screen asks for a narrower search rather than
-/// pretending the page is the whole answer.
+/// One page of the archive. [nextCursor] is where the next, older page
+/// starts — null when this page is the last one.
 class EeArchivePage {
-  const EeArchivePage({this.tickets = const [], this.hasMore = false});
+  const EeArchivePage({this.tickets = const [], this.nextCursor});
 
   final List<EeArchivedTicketSummary> tickets;
-  final bool hasMore;
+  final String? nextCursor;
+
+  /// The server holds older rows than this page: a search asks to be
+  /// narrowed, the asker's own list offers the next page.
+  bool get hasMore => nextCursor != null;
 }
 
-/// One line of an archived conversation — the desk's view, internal notes
-/// included (ADR-0011 §3: the archive is a desk surface).
+/// One line of an archived conversation. The desk's view has internal notes
+/// and names (ADR-0011 §3); the asker's view has neither — the server builds
+/// it from an allow-list — and tells "you" from "the desk" by [authorId].
 class EeArchivedComment {
   const EeArchivedComment({
     required this.id,
     required this.body,
     required this.internal,
+    this.authorId,
     this.authorName,
     this.createdAt,
   });
@@ -69,6 +80,7 @@ class EeArchivedComment {
         id: json['id'] as String,
         body: (json['body'] as String?) ?? '',
         internal: json['internal'] == true,
+        authorId: json['authorId'] as String?,
         authorName: json['authorName'] as String?,
         createdAt: _date(json['createdAt']),
       );
@@ -76,6 +88,7 @@ class EeArchivedComment {
   final String id;
   final String body;
   final bool internal;
+  final String? authorId;
   final String? authorName;
   final DateTime? createdAt;
 }
@@ -108,6 +121,7 @@ class EeArchivedApproval {
 class EeArchivedTicket {
   const EeArchivedTicket({
     required this.summary,
+    this.viewer = 'desk',
     this.body,
     this.serviceName,
     this.comments = const [],
@@ -124,6 +138,7 @@ class EeArchivedTicket {
     final service = json['service'] as Map<String, dynamic>?;
     return EeArchivedTicket(
       summary: EeArchivedTicketSummary.fromJson(json),
+      viewer: (json['viewer'] as String?) ?? 'desk',
       body: json['body'] as String?,
       serviceName: service?['name'] as String?,
       comments: [
@@ -145,6 +160,10 @@ class EeArchivedTicket {
   }
 
   final EeArchivedTicketSummary summary;
+
+  /// `desk` or `requester` — the live detail's word (EE-252). The person who
+  /// asked gets their own view of their own archived request (EE-266).
+  final String viewer;
   final String? body;
   final String? serviceName;
   final List<EeArchivedComment> comments;
@@ -158,6 +177,8 @@ class EeArchivedTicket {
   /// 1–5, or null when the requester was never asked or never answered.
   final int? ratingScore;
   final int labourMinutes;
+
+  bool get isRequesterView => viewer == 'requester';
 }
 
 class EeTicketArchiveApi {
@@ -174,22 +195,38 @@ class EeTicketArchiveApi {
         _base,
         queryParameters: {'q': query.trim(), 'limit': limit},
       );
-      final data = res.data ?? const <String, dynamic>{};
-      return EeArchivePage(
-        tickets: [
-          for (final t in (data['tickets'] as List?) ?? const [])
-            EeArchivedTicketSummary.fromJson(t as Map<String, dynamic>),
-        ],
-        hasMore: data['nextCursor'] != null,
-      );
+      return _page(res.data);
     } on DioException catch (e) {
       throw asApiException(e);
     }
   }
 
+  /// EE-266 — the asker's own archived requests, newest ending first, a page
+  /// at a time from [before] (the previous page's `nextCursor`).
+  Future<EeArchivePage> mine({String? before, int limit = 50}) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/team/tickets/mine/archive',
+        queryParameters: {'limit': limit, 'before': ?before},
+      );
+      return _page(res.data);
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  static EeArchivePage _page(Map<String, dynamic>? data) => EeArchivePage(
+    tickets: [
+      for (final t in (data?['tickets'] as List?) ?? const [])
+        EeArchivedTicketSummary.fromJson(t as Map<String, dynamic>),
+    ],
+    nextCursor: data?['nextCursor'] as String?,
+  );
+
   /// One archived request, or null when there is none THIS caller may read —
   /// the server answers "not yours" and "never was" with the same 404, on
-  /// purpose (AGENTS §1.7), and so does this.
+  /// purpose (AGENTS §1.7), and so does this. The person who asked gets their
+  /// own view ([EeArchivedTicket.isRequesterView]); the desk gets the desk's.
   Future<EeArchivedTicket?> detail(String ticketId) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>('$_base/$ticketId');

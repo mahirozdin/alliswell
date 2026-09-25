@@ -43,6 +43,20 @@ final eeArchiveSearchProvider = FutureProvider.autoDispose
       return ref.watch(eeTicketArchiveApiProvider).search(q);
     });
 
+/// EE-266 — one page of the asker's own archive. The key is where the page
+/// starts: `''` for the newest, then each page's `nextCursor`, so a screen can
+/// stack pages without a notifier to hold them.
+final eeMyArchivePageProvider = FutureProvider.autoDispose
+    .family<EeArchivePage, String>((ref, before) async {
+      if (!ref.watch(eeFeatureProvider('teams'))) return const EeArchivePage();
+      if (ref.watch(serverReachabilityProvider.select((up) => up == false))) {
+        throw _unreachable;
+      }
+      return ref
+          .watch(eeTicketArchiveApiProvider)
+          .mine(before: before.isEmpty ? null : before);
+    });
+
 /// One archived request, or null when none this caller may read.
 final eeArchivedTicketProvider = FutureProvider.autoDispose
     .family<EeArchivedTicket?, String>((ref, ticketId) async {

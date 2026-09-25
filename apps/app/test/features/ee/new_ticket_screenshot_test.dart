@@ -243,8 +243,9 @@ void main() {
         tester,
         brightness: brightness,
         name: 'ee-my-tickets-drafts',
-        // Taller since EE-253's two waiting rows: every state in one picture.
-        size: const Size(900, 2150),
+        // Taller since EE-253's two waiting rows, and again for EE-266's
+        // archive section: every state in one picture.
+        size: const Size(900, 2350),
         overrides: <Override>[
           eeCatalogProvider.overrideWith((ref) async => _catalog(turkish)),
           canProvider.overrideWith(

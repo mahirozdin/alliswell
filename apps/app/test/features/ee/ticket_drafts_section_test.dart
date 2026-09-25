@@ -260,7 +260,10 @@ void main() {
         status(tester, 'D-PHONE'),
         'Telefonda — bağlantı gelince gönderilecek',
       );
-      expect(find.byType(Card), findsOneWidget);
+      // The draft, and the archive's door below the list (EE-266) — and no
+      // request row drawn from a list that failed.
+      expect(find.byType(Card), findsNWidgets(2));
+      expect(key('my-tickets-archive'), findsOneWidget);
       expect(find.textContaining('Tekrar'), findsWidgets);
     },
   );

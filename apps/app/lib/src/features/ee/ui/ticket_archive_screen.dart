@@ -179,6 +179,13 @@ class EeArchivedTicketScreen extends ConsumerWidget {
 }
 
 /// An archived request, read-only, and saying so before anything else.
+///
+/// Two readers, like the live request (EE-252): the desk sees its record —
+/// notes, names, approvals, hours — and the person who asked sees their own
+/// (EE-266): their words, the replies they could see as "you" and "the
+/// desk", their answers and their score. The server builds the second from an
+/// allow-list; this screen still draws no internal line for them, so a
+/// server that ever sent one would not have a screen that shows it.
 class EeArchivedTicketView extends ConsumerWidget {
   const EeArchivedTicketView({required this.ticket, super.key});
 
@@ -190,7 +197,13 @@ class EeArchivedTicketView extends ConsumerWidget {
     final dateFormat = ref.watch(dateFormatProvider);
     final muted = theme.colorScheme.onSurfaceVariant;
     final summary = ticket.summary;
-    final slaLabel = ticket.slaStatus == null
+    final asker = ticket.isRequesterView;
+    final me = asker ? ref.watch(currentUserIdProvider) : null;
+    final thread = [
+      for (final c in ticket.comments)
+        if (!asker || !c.internal) c,
+    ];
+    final slaLabel = asker || ticket.slaStatus == null
         ? null
         : AwI18n.instance.maybeTranslate('ee.sla.${ticket.slaStatus}');
     return Scaffold(
@@ -244,12 +257,14 @@ class EeArchivedTicketView extends ConsumerWidget {
             runSpacing: AwSpace.x2,
             children: [
               _Tag('ee.tickets.status.${summary.status}'.tr()),
-              _Tag('ee.tickets.priority.${summary.priority}'.tr()),
+              // The desk's triage, not the asker's business — their live
+              // view leaves it out too.
+              if (!asker) _Tag('ee.tickets.priority.${summary.priority}'.tr()),
               if (ticket.serviceName != null) _Tag(ticket.serviceName!),
               if (slaLabel != null) _Tag(slaLabel),
             ],
           ),
-          if (summary.requesterDisplayName != null) ...[
+          if (!asker && summary.requesterDisplayName != null) ...[
             const SizedBox(height: AwSpace.x3),
             Text(
               'ee.tickets.archive.askedBy'.tr(
@@ -267,11 +282,24 @@ class EeArchivedTicketView extends ConsumerWidget {
               answers: ticket.answers,
               dateFormat: dateFormat,
             ),
+          // Their own score, in their words — the one thing the request left
+          // behind that is theirs.
+          if (asker && ticket.ratingScore != null) ...[
+            const SizedBox(height: AwSpace.x4),
+            _Fact(
+              key: const Key('archive-your-rating'),
+              icon: Icons.sentiment_satisfied_alt_outlined,
+              text: 'ee.tickets.archive.yourRating'.tr(
+                args: {'score': '${ticket.ratingScore}'},
+              ),
+            ),
+          ],
           // What the request left behind (EE-265) — each line only when
           // there is something to say, the asset card's rule for labour.
-          if (ticket.approvals.isNotEmpty ||
-              ticket.ratingScore != null ||
-              ticket.labourMinutes > 0) ...[
+          if (!asker &&
+              (ticket.approvals.isNotEmpty ||
+                  ticket.ratingScore != null ||
+                  ticket.labourMinutes > 0)) ...[
             const SizedBox(height: AwSpace.x4),
             for (final approval in ticket.approvals)
               _Fact(
@@ -311,14 +339,24 @@ class EeArchivedTicketView extends ConsumerWidget {
             style: theme.textTheme.titleSmall,
           ),
           const SizedBox(height: AwSpace.x2),
-          if (ticket.comments.isEmpty)
+          if (thread.isEmpty)
             Text(
               'ee.tickets.archive.noComments'.tr(),
               style: theme.textTheme.bodySmall?.copyWith(color: muted),
             )
           else
-            for (final comment in ticket.comments)
-              _ArchivedComment(comment: comment, dateFormat: dateFormat),
+            for (final comment in thread)
+              _ArchivedComment(
+                comment: comment,
+                dateFormat: dateFormat,
+                // The asker's live thread says "you" and "the support desk",
+                // never who at the desk (EE-252) — and so does their archive.
+                author: !asker
+                    ? comment.authorName
+                    : comment.authorId != null && comment.authorId == me
+                    ? 'ee.tickets.requester.you'.tr()
+                    : 'ee.tickets.requester.desk'.tr(),
+              ),
         ],
       ),
     );
@@ -369,15 +407,20 @@ class _Fact extends StatelessWidget {
 /// thread's three signals — the set-apart surface, the lock and the word —
 /// because a note mistaken for a reply is the same mistake in the archive.
 class _ArchivedComment extends StatelessWidget {
-  const _ArchivedComment({required this.comment, required this.dateFormat});
+  const _ArchivedComment({
+    required this.comment,
+    required this.dateFormat,
+    this.author,
+  });
   final EeArchivedComment comment;
   final String dateFormat;
+  final String? author;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final meta = [
-      if (comment.authorName != null) comment.authorName!,
+      ?author,
       if (comment.createdAt != null)
         awFormatDateTime(comment.createdAt!, format: dateFormat),
     ].join(' · ');
@@ -557,6 +600,141 @@ class _EeTicketArchiveSearchScreenState
         ],
       ),
     );
+  }
+}
+
+/// EE-266 (AW-E17) — "my requests", the part the sweep moved.
+///
+/// "Taleplerim" reads the live table, so a request used to leave the asker's
+/// own list the day it was archived — ninety days after closing, for the one
+/// person certain to come back asking. This is that list's other half: online
+/// like "Taleplerim" itself (ADR-0011 §3), older pages on request, and each
+/// row opens the asker's own view of the record.
+class EeMyArchivedTicketsScreen extends ConsumerStatefulWidget {
+  const EeMyArchivedTicketsScreen({super.key});
+
+  @override
+  ConsumerState<EeMyArchivedTicketsScreen> createState() =>
+      _EeMyArchivedTicketsScreenState();
+}
+
+class _EeMyArchivedTicketsScreenState
+    extends ConsumerState<EeMyArchivedTicketsScreen> {
+  /// Where each loaded page starts: `''` is the newest, the rest are the
+  /// cursors the pages before them handed out.
+  final List<String> _cursors = [''];
+
+  void _again() => _retry(ref, () {
+    for (final cursor in _cursors) {
+      ref.invalidate(eeMyArchivePageProvider(cursor));
+    }
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final first = ref.watch(eeMyArchivePageProvider(''));
+    return Scaffold(
+      appBar: AppBar(title: Text('ee.tickets.archive.mineTitle'.tr())),
+      body: first.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => ticketNeedsConnection(error)
+            ? AwEmptyState(
+                key: const Key('my-archive-offline'),
+                icon: Icons.cloud_off_outlined,
+                title: 'ee.tickets.archive.offlineTitle'.tr(),
+                message: 'ee.tickets.archive.offlineBody'.tr(),
+                action: OutlinedButton.icon(
+                  onPressed: _again,
+                  icon: const Icon(Icons.refresh),
+                  label: Text('common.retry'.tr()),
+                ),
+              )
+            : AwErrorState(message: localizedError(error), onRetry: _again),
+        data: (page) => page.tickets.isEmpty
+            ? AwEmptyState(
+                key: const Key('my-archive-empty'),
+                icon: Icons.inventory_2_outlined,
+                title: 'ee.tickets.archive.mineEmptyTitle'.tr(),
+                message: 'ee.tickets.archive.mineEmptyBody'.tr(),
+              )
+            : ListView(
+                padding: awListPadding(context, top: AwSpace.x4),
+                children: [
+                  for (final (i, cursor) in _cursors.indexed)
+                    ..._page(context, cursor, last: i == _cursors.length - 1),
+                ],
+              ),
+      ),
+    );
+  }
+
+  List<Widget> _page(
+    BuildContext context,
+    String cursor, {
+    required bool last,
+  }) {
+    final dateFormat = ref.watch(dateFormatProvider);
+    return ref
+        .watch(eeMyArchivePageProvider(cursor))
+        .when(
+          loading: () => const [
+            Padding(
+              padding: EdgeInsets.all(AwSpace.x4),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ],
+          error: (error, _) => [
+            AwInlineError(message: localizedError(error)),
+            Center(
+              child: TextButton(
+                onPressed: _again,
+                child: Text('common.retry'.tr()),
+              ),
+            ),
+          ],
+          data: (page) => [
+            for (final t in page.tickets)
+              Card(
+                key: Key('my-archive-row-${t.id}'),
+                child: ListTile(
+                  leading: const Icon(Icons.inventory_2_outlined),
+                  title: Text(
+                    t.number == null
+                        ? t.subject
+                        : '#${t.number} · ${t.subject}',
+                  ),
+                  subtitle: Text(
+                    [
+                      // The service's name, never the unit (EE-087).
+                      if (t.serviceName != null) t.serviceName!,
+                      'ee.tickets.status.${t.status}'.tr(),
+                      if (t.terminalAt != null)
+                        awFormatDate(t.terminalAt!, format: dateFormat),
+                    ].join(' · '),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => EeArchivedTicketScreen(ticketId: t.id),
+                    ),
+                  ),
+                ),
+              ),
+            if (last && page.nextCursor != null)
+              Padding(
+                padding: const EdgeInsets.all(AwSpace.x2),
+                child: Center(
+                  child: OutlinedButton(
+                    key: const Key('my-archive-more'),
+                    onPressed: () =>
+                        setState(() => _cursors.add(page.nextCursor!)),
+                    child: Text('ee.tickets.archive.mineMore'.tr()),
+                  ),
+                ),
+              ),
+          ],
+        );
   }
 }
 
