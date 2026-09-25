@@ -33,6 +33,35 @@ export const CONSENT_VERSION = '2026-09';
 
 const LOCAL = /^(localhost|127\.0\.0\.1|\[::1\])$/;
 
+/**
+ * The challenge, when this build was given one (EE-232).
+ *
+ * Both halves at BUILD time — `VITE_SALES_CAPTCHA_PROVIDER` and
+ * `VITE_SALES_CAPTCHA_SITE_KEY` — and the server's half (its secret) where the
+ * API runs. They are switched on together: a server with a secret refuses an
+ * enquiry from a page that drew no box, and a page with a box posts an answer
+ * a server without a secret simply ignores. With no key this answers null and
+ * the form is exactly what it was: no script, no box, no field.
+ *
+ * The site key is public by design (it is embedded in every page that shows a
+ * widget); the secret never reaches this file.
+ */
+export const CAPTCHA_SCRIPTS = Object.freeze({
+  turnstile: 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit',
+  hcaptcha: 'https://js.hcaptcha.com/1/api.js?render=explicit',
+});
+
+export function captchaConfig(env = import.meta.env ?? {}) {
+  const provider = String(env.VITE_SALES_CAPTCHA_PROVIDER ?? '')
+    .trim()
+    .toLowerCase();
+  const siteKey = String(env.VITE_SALES_CAPTCHA_SITE_KEY ?? '').trim();
+  // `hasOwnProperty`, not `Object.hasOwn` (Safari < 15.4 lacks it, and Vite
+  // does not polyfill), and not `in` — `'toString' in CAPTCHA_SCRIPTS` is true.
+  if (!siteKey || !Object.prototype.hasOwnProperty.call(CAPTCHA_SCRIPTS, provider)) return null;
+  return Object.freeze({ provider, siteKey, script: CAPTCHA_SCRIPTS[provider] });
+}
+
 export function salesEndpoint(location = window.location) {
   const override = import.meta.env?.VITE_SALES_API;
   if (override) return `${String(override).replace(/\/+$/, '')}/api/v1/ee/sales/leads`;
@@ -56,6 +85,10 @@ export const OUTCOME = Object.freeze({
   invalid: 'invalid',
   offline: 'offline',
   failed: 'failed',
+  // EE-232: the box was not ticked, or its answer expired or did not verify.
+  // Transient like the others — the form stays filled in, the box is drawn
+  // again, and ticking it is the whole fix.
+  challenge: 'challenge',
 });
 
 /** Empty string → absent. A blank optional field was not answered. */
@@ -72,7 +105,7 @@ const counted = (value) => {
   return Number.isInteger(n) && n > 0 ? n : undefined;
 };
 
-export function payloadFrom(form, locale, honeypot = '') {
+export function payloadFrom(form, locale, honeypot = '', captchaToken = '') {
   return {
     fullName: String(form.name ?? '').trim(),
     companyName: String(form.company ?? '').trim(),
@@ -90,6 +123,9 @@ export function payloadFrom(form, locale, honeypot = '') {
     // undeclared field is silently STRIPPED rather than rejected — an
     // undeclared trap would be no trap at all.
     companyWebsite: honeypot,
+    // EE-232: only from a page that drew the box. Absent, not empty, when
+    // there is none — a server with no challenge ignores it either way.
+    ...(captchaToken ? { captchaToken } : {}),
   };
 }
 
@@ -121,7 +157,16 @@ export async function sendEnquiry(payload, { endpoint, fetchImpl = fetch } = {})
   // sales desk, which is a fact about it rather than a failure of the request.
   if (res.status === 404) return OUTCOME.noDesk;
   if (res.status === 429) return OUTCOME.busy;
-  if (res.status === 400) return OUTCOME.invalid;
+  if (res.status === 400) {
+    // One status, two meanings, told apart by the server's code: a field it
+    // refused, or the challenge (EE-232) — which the reader fixes by ticking
+    // the box again rather than by re-reading the fields.
+    const code = await res
+      .json()
+      .then((body) => body?.code)
+      .catch(() => null);
+    return code === 'SALES_CAPTCHA_FAILED' ? OUTCOME.challenge : OUTCOME.invalid;
+  }
   if (res.status === 409) {
     const code = await res
       .json()

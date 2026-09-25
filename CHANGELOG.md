@@ -7,6 +7,14 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
 
 ### Added
 
+- **The enterprise page's enquiry form can ask for a verification (EE-232).** Built with
+  `VITE_SALES_CAPTCHA_PROVIDER` (`turnstile` or `hcaptcha`) and `VITE_SALES_CAPTCHA_SITE_KEY`,
+  the form draws the provider's box, holds the send button until it is ticked, sends its
+  answer with the enquiry and draws a fresh box after every attempt; a box that cannot load
+  says so next to it, and the e-mail address below stays the way through. Built without
+  them — the default — nothing changes: no script, no box, no field. A refused verification
+  now reads as its own message rather than as a refused field.
+
 - **A file the server itself receives is stored through one guarded path.** An
   attachment on an arriving email has no app or browser that could upload it, so the
   server writes it — and it now meets exactly the checks an upload from the app meets:

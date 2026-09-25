@@ -1,7 +1,7 @@
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
-import { OUTCOME, payloadFrom, sendEnquiry } from './submit.js';
+import { OUTCOME, captchaConfig, payloadFrom, sendEnquiry } from './submit.js';
 
 /**
  * The conversation this page exists to start (EE-153, wired in EE-161).
@@ -65,6 +65,91 @@ const form = ref({
  */
 const companyWebsite = ref('');
 
+/**
+ * The challenge (EE-232) — drawn only when this build was given a site key.
+ *
+ * Without one, `challenge` is null and nothing below runs: no third-party
+ * script is fetched, no box is drawn and no field is sent, so the page is
+ * byte for byte the form it was. With one, the provider's script is loaded
+ * on mount and the box is rendered explicitly into `challengeBox`; its answer
+ * is single-use, so the box is reset after every attempt.
+ *
+ * A script that cannot load (a content blocker, a network that drops the
+ * provider) is said out loud next to the box. The "or write to us" address
+ * below the button still works — the one path that works unconditionally.
+ */
+const challenge = captchaConfig();
+const challengeBox = ref(null);
+const challengeToken = ref('');
+const challengeUnavailable = ref(false);
+let widget = null;
+
+/** One `<script>` per page, however many times the form mounts. */
+function loadChallengeScript(src) {
+  const known = document.querySelector('script[data-aw-challenge]');
+  if (known?.awLoaded) return known.awLoaded;
+  const el = document.createElement('script');
+  el.src = src;
+  el.async = true;
+  el.dataset.awChallenge = '';
+  el.awLoaded = new Promise((resolve, reject) => {
+    el.onload = resolve;
+    el.onerror = reject;
+  });
+  document.head.appendChild(el);
+  return el.awLoaded;
+}
+
+onMounted(async () => {
+  if (!challenge) return;
+  try {
+    await loadChallengeScript(challenge.script);
+    const api = challenge.provider === 'turnstile' ? window.turnstile : window.hcaptcha;
+    if (!api || !challengeBox.value) throw new Error('challenge unavailable');
+    const dark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
+    const id = api.render(challengeBox.value, {
+      sitekey: challenge.siteKey,
+      callback: (token) => {
+        challengeToken.value = token;
+      },
+      'expired-callback': () => {
+        challengeToken.value = '';
+      },
+      'error-callback': () => {
+        challengeToken.value = '';
+      },
+      // The two providers spell these differently; each ignores the other's.
+      theme: challenge.provider === 'turnstile' ? 'auto' : dark ? 'dark' : 'light',
+      language: props.lang,
+      hl: props.lang,
+    });
+    widget = { api, id };
+  } catch {
+    challengeUnavailable.value = true;
+  }
+});
+
+onBeforeUnmount(() => {
+  try {
+    widget?.api.remove?.(widget.id);
+  } catch {
+    // The page is going away; a widget that will not be removed goes with it.
+  }
+});
+
+/** The answer is single-use: after any attempt the reader ticks it again. */
+function resetChallenge() {
+  challengeToken.value = '';
+  try {
+    widget?.api.reset(widget.id);
+  } catch {
+    challengeUnavailable.value = true;
+  }
+}
+
+/** Waiting for the box to be ticked is the one extra thing that holds the button. */
+const waitingForChallenge = computed(() => Boolean(challenge) && !challengeToken.value);
+
 /** `null` until the first attempt; then one of `OUTCOME`. */
 const outcome = ref(null);
 const busy = ref(false);
@@ -111,7 +196,7 @@ const mailto = computed(() => {
 });
 
 async function submit() {
-  if (!form.value.consent || busy.value) return;
+  if (!form.value.consent || busy.value || waitingForChallenge.value) return;
   busy.value = true;
   outcome.value = null;
   try {
@@ -120,11 +205,12 @@ async function submit() {
     // next time; the server answers 201 and writes nothing, so a trapped
     // submission is indistinguishable from a real one on the wire.
     const result = await sendEnquiry(
-      payloadFrom(form.value, props.lang, companyWebsite.value),
+      payloadFrom(form.value, props.lang, companyWebsite.value, challengeToken.value),
     );
     outcome.value = result;
   } finally {
     busy.value = false;
+    if (challenge) resetChallenge();
   }
 }
 </script>
@@ -222,8 +308,20 @@ async function submit() {
           </span>
         </label>
 
+        <!-- EE-232: only on a build given a site key. See the script. -->
+        <div v-if="challenge" class="contact__challenge">
+          <div ref="challengeBox"></div>
+          <p v-if="challengeUnavailable" class="contact__problem" role="alert">
+            {{ contact.states.challengeUnavailable }}
+          </p>
+        </div>
+
         <div class="contact__actions">
-          <button class="aw-btn" type="submit" :disabled="!form.consent || busy">
+          <button
+            class="aw-btn"
+            type="submit"
+            :disabled="!form.consent || busy || waitingForChallenge"
+          >
             {{ busy ? contact.sending : contact.submit }}
           </button>
           <p class="contact__direct">
@@ -341,6 +439,12 @@ async function submit() {
   margin: 0;
   color: var(--aw-text-dim);
   font-size: 0.9rem;
+}
+
+.contact__challenge {
+  display: grid;
+  gap: 0.6rem;
+  min-height: 65px;
 }
 
 .contact__sent {

@@ -672,6 +672,13 @@ export default {
       failed:
         'Bizim tarafımızda bir sorun oluştu. Yazdıklarınız duruyor; tekrar deneyin ya da ' +
         'doğrudan bize yazın.',
+      // EE-232 — yalnız doğrulama kutusu olan bir derlemede görünür.
+      challenge:
+        'Doğrulama tamamlanmadı ya da süresi doldu. Kutuyu yeniden işaretleyip tekrar ' +
+        'gönderin; yazdıklarınız duruyor.',
+      challengeUnavailable:
+        'Doğrulama kutusu yüklenemedi; bir içerik engelleyici ya da bağlantı sorunu olabilir. ' +
+        'Form gönderilemiyorsa bize doğrudan yazın.',
     },
   },
 

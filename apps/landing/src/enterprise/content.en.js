@@ -685,6 +685,13 @@ export default {
       failed:
         'Something went wrong on our side. Your answers are still here — please try again, or ' +
         'write to us directly.',
+      // EE-232 — shown only on a build that draws the verification box.
+      challenge:
+        'The verification was not completed, or it expired. Tick the box again and send; ' +
+        'your answers are still here.',
+      challengeUnavailable:
+        'The verification box could not load; a content blocker or a connection problem may ' +
+        'be the cause. If the form will not send, write to us directly.',
     },
   },
 
