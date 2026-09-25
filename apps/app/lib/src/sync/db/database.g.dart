@@ -15756,6 +15756,17 @@ class $TicketsTable extends Tickets
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _processTypeMeta = const VerificationMeta(
+    'processType',
+  );
+  @override
+  late final GeneratedColumn<String> processType = GeneratedColumn<String>(
+    'process_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _terminalAtMeta = const VerificationMeta(
     'terminalAt',
   );
@@ -15867,6 +15878,7 @@ class $TicketsTable extends Tickets
     status,
     priority,
     source,
+    processType,
     terminalAt,
     slaDueAt,
     slaStatus,
@@ -15975,6 +15987,15 @@ class $TicketsTable extends Tickets
       );
     } else if (isInserting) {
       context.missing(_sourceMeta);
+    }
+    if (data.containsKey('process_type')) {
+      context.handle(
+        _processTypeMeta,
+        processType.isAcceptableOrUnknown(
+          data['process_type']!,
+          _processTypeMeta,
+        ),
+      );
     }
     if (data.containsKey('terminal_at')) {
       context.handle(
@@ -16086,6 +16107,10 @@ class $TicketsTable extends Tickets
         DriftSqlType.string,
         data['${effectivePrefix}source'],
       )!,
+      processType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}process_type'],
+      ),
       terminalAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}terminal_at'],
@@ -16160,6 +16185,15 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   final String priority;
   final String source;
 
+  /// v34 (OPH-346): the kind of work — `incident` (something broke) or
+  /// `request` (somebody needs something). The extension copies it from the
+  /// request's service when the request is opened, so a later change to the
+  /// service does not re-label work already done; the queue filters by it
+  /// with no signal. Server-owned like the SLA pair below: the push entity
+  /// does not list it. Null on a row pulled before v34 until the server
+  /// sends that row again.
+  final String? processType;
+
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   final DateTime? terminalAt;
@@ -16205,6 +16239,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     required this.status,
     required this.priority,
     required this.source,
+    this.processType,
     this.terminalAt,
     this.slaDueAt,
     this.slaStatus,
@@ -16239,6 +16274,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     map['status'] = Variable<String>(status);
     map['priority'] = Variable<String>(priority);
     map['source'] = Variable<String>(source);
+    if (!nullToAbsent || processType != null) {
+      map['process_type'] = Variable<String>(processType);
+    }
     if (!nullToAbsent || terminalAt != null) {
       map['terminal_at'] = Variable<DateTime>(terminalAt);
     }
@@ -16288,6 +16326,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       status: Value(status),
       priority: Value(priority),
       source: Value(source),
+      processType: processType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(processType),
       terminalAt: terminalAt == null && nullToAbsent
           ? const Value.absent()
           : Value(terminalAt),
@@ -16333,6 +16374,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       status: serializer.fromJson<String>(json['status']),
       priority: serializer.fromJson<String>(json['priority']),
       source: serializer.fromJson<String>(json['source']),
+      processType: serializer.fromJson<String?>(json['processType']),
       terminalAt: serializer.fromJson<DateTime?>(json['terminalAt']),
       slaDueAt: serializer.fromJson<DateTime?>(json['slaDueAt']),
       slaStatus: serializer.fromJson<String?>(json['slaStatus']),
@@ -16359,6 +16401,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       'status': serializer.toJson<String>(status),
       'priority': serializer.toJson<String>(priority),
       'source': serializer.toJson<String>(source),
+      'processType': serializer.toJson<String?>(processType),
       'terminalAt': serializer.toJson<DateTime?>(terminalAt),
       'slaDueAt': serializer.toJson<DateTime?>(slaDueAt),
       'slaStatus': serializer.toJson<String?>(slaStatus),
@@ -16383,6 +16426,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     String? status,
     String? priority,
     String? source,
+    Value<String?> processType = const Value.absent(),
     Value<DateTime?> terminalAt = const Value.absent(),
     Value<DateTime?> slaDueAt = const Value.absent(),
     Value<String?> slaStatus = const Value.absent(),
@@ -16408,6 +16452,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     status: status ?? this.status,
     priority: priority ?? this.priority,
     source: source ?? this.source,
+    processType: processType.present ? processType.value : this.processType,
     terminalAt: terminalAt.present ? terminalAt.value : this.terminalAt,
     slaDueAt: slaDueAt.present ? slaDueAt.value : this.slaDueAt,
     slaStatus: slaStatus.present ? slaStatus.value : this.slaStatus,
@@ -16439,6 +16484,9 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
       status: data.status.present ? data.status.value : this.status,
       priority: data.priority.present ? data.priority.value : this.priority,
       source: data.source.present ? data.source.value : this.source,
+      processType: data.processType.present
+          ? data.processType.value
+          : this.processType,
       terminalAt: data.terminalAt.present
           ? data.terminalAt.value
           : this.terminalAt,
@@ -16469,6 +16517,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           ..write('status: $status, ')
           ..write('priority: $priority, ')
           ..write('source: $source, ')
+          ..write('processType: $processType, ')
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
@@ -16483,7 +16532,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     workspaceId,
     serviceId,
@@ -16495,6 +16544,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     status,
     priority,
     source,
+    processType,
     terminalAt,
     slaDueAt,
     slaStatus,
@@ -16504,7 +16554,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
     createdAt,
     revision,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -16520,6 +16570,7 @@ class TicketRecord extends DataClass implements Insertable<TicketRecord> {
           other.status == this.status &&
           other.priority == this.priority &&
           other.source == this.source &&
+          other.processType == this.processType &&
           other.terminalAt == this.terminalAt &&
           other.slaDueAt == this.slaDueAt &&
           other.slaStatus == this.slaStatus &&
@@ -16543,6 +16594,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
   final Value<String> status;
   final Value<String> priority;
   final Value<String> source;
+  final Value<String?> processType;
   final Value<DateTime?> terminalAt;
   final Value<DateTime?> slaDueAt;
   final Value<String?> slaStatus;
@@ -16565,6 +16617,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     this.status = const Value.absent(),
     this.priority = const Value.absent(),
     this.source = const Value.absent(),
+    this.processType = const Value.absent(),
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
@@ -16588,6 +16641,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     required String status,
     required String priority,
     required String source,
+    this.processType = const Value.absent(),
     this.terminalAt = const Value.absent(),
     this.slaDueAt = const Value.absent(),
     this.slaStatus = const Value.absent(),
@@ -16616,6 +16670,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Expression<String>? status,
     Expression<String>? priority,
     Expression<String>? source,
+    Expression<String>? processType,
     Expression<DateTime>? terminalAt,
     Expression<DateTime>? slaDueAt,
     Expression<String>? slaStatus,
@@ -16639,6 +16694,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       if (status != null) 'status': status,
       if (priority != null) 'priority': priority,
       if (source != null) 'source': source,
+      if (processType != null) 'process_type': processType,
       if (terminalAt != null) 'terminal_at': terminalAt,
       if (slaDueAt != null) 'sla_due_at': slaDueAt,
       if (slaStatus != null) 'sla_status': slaStatus,
@@ -16664,6 +16720,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     Value<String>? status,
     Value<String>? priority,
     Value<String>? source,
+    Value<String?>? processType,
     Value<DateTime?>? terminalAt,
     Value<DateTime?>? slaDueAt,
     Value<String?>? slaStatus,
@@ -16687,6 +16744,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
       status: status ?? this.status,
       priority: priority ?? this.priority,
       source: source ?? this.source,
+      processType: processType ?? this.processType,
       terminalAt: terminalAt ?? this.terminalAt,
       slaDueAt: slaDueAt ?? this.slaDueAt,
       slaStatus: slaStatus ?? this.slaStatus,
@@ -16736,6 +16794,9 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
     if (source.present) {
       map['source'] = Variable<String>(source.value);
     }
+    if (processType.present) {
+      map['process_type'] = Variable<String>(processType.value);
+    }
     if (terminalAt.present) {
       map['terminal_at'] = Variable<DateTime>(terminalAt.value);
     }
@@ -16783,6 +16844,7 @@ class TicketsCompanion extends UpdateCompanion<TicketRecord> {
           ..write('status: $status, ')
           ..write('priority: $priority, ')
           ..write('source: $source, ')
+          ..write('processType: $processType, ')
           ..write('terminalAt: $terminalAt, ')
           ..write('slaDueAt: $slaDueAt, ')
           ..write('slaStatus: $slaStatus, ')
@@ -30019,6 +30081,7 @@ typedef $$TicketsTableCreateCompanionBuilder =
       required String status,
       required String priority,
       required String source,
+      Value<String?> processType,
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
@@ -30043,6 +30106,7 @@ typedef $$TicketsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<String> priority,
       Value<String> source,
+      Value<String?> processType,
       Value<DateTime?> terminalAt,
       Value<DateTime?> slaDueAt,
       Value<String?> slaStatus,
@@ -30116,6 +30180,11 @@ class $$TicketsTableFilterComposer
 
   ColumnFilters<String> get source => $composableBuilder(
     column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get processType => $composableBuilder(
+    column: $table.processType,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -30229,6 +30298,11 @@ class $$TicketsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get processType => $composableBuilder(
+    column: $table.processType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
     builder: (column) => ColumnOrderings(column),
@@ -30325,6 +30399,11 @@ class $$TicketsTableAnnotationComposer
   GeneratedColumn<String> get source =>
       $composableBuilder(column: $table.source, builder: (column) => column);
 
+  GeneratedColumn<String> get processType => $composableBuilder(
+    column: $table.processType,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<DateTime> get terminalAt => $composableBuilder(
     column: $table.terminalAt,
     builder: (column) => column,
@@ -30399,6 +30478,7 @@ class $$TicketsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String> priority = const Value.absent(),
                 Value<String> source = const Value.absent(),
+                Value<String?> processType = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
@@ -30421,6 +30501,7 @@ class $$TicketsTableTableManager
                 status: status,
                 priority: priority,
                 source: source,
+                processType: processType,
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,
@@ -30445,6 +30526,7 @@ class $$TicketsTableTableManager
                 required String status,
                 required String priority,
                 required String source,
+                Value<String?> processType = const Value.absent(),
                 Value<DateTime?> terminalAt = const Value.absent(),
                 Value<DateTime?> slaDueAt = const Value.absent(),
                 Value<String?> slaStatus = const Value.absent(),
@@ -30467,6 +30549,7 @@ class $$TicketsTableTableManager
                 status: status,
                 priority: priority,
                 source: source,
+                processType: processType,
                 terminalAt: terminalAt,
                 slaDueAt: slaDueAt,
                 slaStatus: slaStatus,

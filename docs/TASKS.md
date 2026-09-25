@@ -11839,13 +11839,18 @@ koruması planın izin vermediği bir ayar (403) — dağıtım son kapıdır.
 - ⚠️ **Çift kapanış:** ↔ `EE-263` (uzantı kaydı: kendi CI'ının adı ve branch korumasının
   belgesi).
 
-### OPH-346 — Replika: uzantının talep tablosuna süreç türü kolonu
+### OPH-346 — Replika: uzantının talep tablosuna süreç türü kolonu ✅ 2026-09-25
 
 **Bağlam:** uzantı talebe bir süreç türü ekliyor (olay / istek); kuyruk süzgeci replikadan
 okuduğu için kolon cihaza inmek zorunda.
 
-- [ ] Nullable kolon + `schemaVersion` artışı + migration adımı + applier.
-- [ ] Göç testinin fixture'ı büyür; adım kırmızıya düşürülerek kanıtlanır.
+- [x] Nullable kolon + `schemaVersion` artışı + migration adımı + applier. — `processType`;
+      v34; adım v33'ün `from >= 24` korumasıyla (v24'ten önce gelen cihaz tabloyu bugünkü
+      tanımla adım 24'te kuruyor); applier tek satır.
+- [x] Göç testinin fixture'ı büyür; adım kırmızıya düşürülerek kanıtlanır. — v24 fikstürü
+      `process_type`'ı da düşürüyor; test kolonun boş açıldığını ve applier'ın doldurduğunu
+      soruyor. **Kırmızı:** v34 adımı silinince bu test `no such column: process_type` ile
+      düşüyor, v1 testi ve öteki ikisi yeşil kalıyor (yorumunda yazdığı gibi).
 - **Kabul / Doğrulama:** OPH-344'ünkiler.
 - **Yüzey (kural 12):** yok (replika).
 - ⚠️ **Çift kapanış:** ↔ `EE-268` (uzantı kaydı: süzgeç ve raporlar).

@@ -741,6 +741,15 @@ class Tickets extends Table {
   TextColumn get priority => text()();
   TextColumn get source => text()();
 
+  /// v34 (OPH-346): the kind of work — `incident` (something broke) or
+  /// `request` (somebody needs something). The extension copies it from the
+  /// request's service when the request is opened, so a later change to the
+  /// service does not re-label work already done; the queue filters by it
+  /// with no signal. Server-owned like the SLA pair below: the push entity
+  /// does not list it. Null on a row pulled before v34 until the server
+  /// sends that row again.
+  TextColumn get processType => text().nullable()();
+
   /// When it stopped. Null while alive; the server stamps it on the move into
   /// a terminal state, and the archive sweep reads the pair.
   DateTimeColumn get terminalAt => dateTime().nullable()();
@@ -1158,8 +1167,10 @@ class AwDatabase extends _$AwDatabase {
   /// creates a table the replica AUTHORS into.
   /// v32 → v33 (OPH-344): tickets.requester_name + requester_email — who
   /// asked when they have no account, and where the answer goes.
+  /// v33 → v34 (OPH-346): tickets.process_type — incident or request, the
+  /// kind of work a request is.
   @override
-  int get schemaVersion => 33;
+  int get schemaVersion => 34;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1397,6 +1408,13 @@ class AwDatabase extends _$AwDatabase {
       if (from >= 24 && from < 33) {
         await m.addColumn(tickets, tickets.requesterName);
         await m.addColumn(tickets, tickets.requesterEmail);
+      }
+      // v34 (OPH-346): the kind of work a request is. One ALTER on a table a
+      // device may already hold, under v33's `from >= 24` guard for v33's
+      // measured reason. Nothing to backfill, for v33's reason too: the value
+      // is the server's, and a request fills in when its row is next sent.
+      if (from >= 24 && from < 34) {
+        await m.addColumn(tickets, tickets.processType);
       }
     },
   );

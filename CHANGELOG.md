@@ -87,6 +87,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) • Versioning:
   two together — the old one is left exactly as it was, because a request that
   was finished stays finished.
 
+- **The device keeps what kind of work an extension's request is (OPH-346).**
+  The server sends it with the request, and the queue filters by it with no
+  signal, so the value lives in the local copy. Kept from local schema v34. A
+  request already on the device fills in the next time the server sends it.
+  The migration test's device-that-already-holds-requests fixture grew with it,
+  and deleting the new step turns that test red.
+
 - **The device keeps who asked for an extension's request, and where the
   answer goes (OPH-344).** The server always sent both; the local copy dropped
   them, so a screen with no signal could not show them. Kept from local schema

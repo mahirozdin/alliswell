@@ -368,9 +368,12 @@ void main() {
       await db
           .customSelect('SELECT requester_name, requester_email FROM tickets')
           .get();
+      // v34 (OPH-346): the kind of work a request is — the same shape as
+      // v33, proven by the same v24 test below.
+      await db.customSelect('SELECT process_type FROM tickets').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 33);
+      expect(version.data['user_version'], 34);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -402,6 +405,7 @@ void main() {
       'DROP TABLE problems', // v29
       'DROP TABLE changes', // v28
       'DROP TABLE ticket_assignments', // v25
+      'ALTER TABLE tickets DROP COLUMN process_type', // v34
       'ALTER TABLE tickets DROP COLUMN requester_email', // v33
       'ALTER TABLE tickets DROP COLUMN requester_name', // v33
       'ALTER TABLE tickets DROP COLUMN number', // v27
@@ -437,7 +441,8 @@ void main() {
       final row = await db
           .customSelect(
             'SELECT subject, sla_due_at, sla_status, number, subject_fold, '
-            'requester_name, requester_email FROM tickets WHERE id = ?',
+            'requester_name, requester_email, process_type FROM tickets '
+            'WHERE id = ?',
             variables: [Variable.withString('K1')],
           )
           .getSingle();
@@ -450,6 +455,8 @@ void main() {
       expect(row.data['number'], null);
       expect(row.data['requester_name'], null);
       expect(row.data['requester_email'], null);
+      // v34: the kind of work — the server's too, so empty until it is sent.
+      expect(row.data['process_type'], null);
       // v27's backfill ran over the rows the device already had: a request
       // that is on this device and never sent again is still searchable.
       expect(row.data['subject_fold'], isA<String>());
@@ -471,6 +478,7 @@ void main() {
               'source': 'email',
               'requesterName': 'Ada Lovelace',
               'requesterEmail': 'ada@musteri.example',
+              'processType': 'incident',
               'revision': 5,
             }),
           );
@@ -479,9 +487,10 @@ void main() {
       )..where((t) => t.id.equals('K1'))).getSingle();
       expect(filled.requesterName, 'Ada Lovelace');
       expect(filled.requesterEmail, 'ada@musteri.example');
+      expect(filled.processType, 'incident');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 33);
+      expect(version.data['user_version'], 34);
       await db.close();
     },
   );
@@ -518,7 +527,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 33);
+      expect(version.data['user_version'], 34);
       await db.close();
     },
   );
@@ -565,7 +574,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 33);
+      expect(version.data['user_version'], 34);
       await db.close();
     },
   );

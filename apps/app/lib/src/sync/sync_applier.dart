@@ -628,6 +628,9 @@ TicketsCompanion ticketCompanion(Map<String, dynamic> data) => TicketsCompanion(
   // Sent all along; kept from v33.
   requesterName: Value(data['requesterName'] as String?),
   requesterEmail: Value(data['requesterEmail'] as String?),
+  // OPH-346: incident or request, copied from the service at opening. Kept
+  // from v34.
+  processType: Value(data['processType'] as String?),
   subject: Value(data['subject'] as String),
   body: Value(data['body'] as String?),
   // EE-167: server-owned, like the SLA pair below. A device that wrote its own
