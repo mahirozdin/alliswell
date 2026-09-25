@@ -257,7 +257,10 @@ void main() {
           find.textContaining('kendiliğinden gönderilmez'),
           findsOneWidget,
         );
-        expect(find.textContaining('bağlantı gelene kadar bekler'), findsNothing);
+        expect(
+          find.textContaining('bağlantı gelene kadar bekler'),
+          findsNothing,
+        );
       },
     );
 

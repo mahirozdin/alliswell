@@ -510,9 +510,8 @@ class _FilterBar extends ConsumerWidget {
                 final picked = await showModalBottomSheet<String>(
                   context: context,
                   showDragHandle: true,
-                  builder: (_) => _TagPicker(
-                    tags: ref.read(queueTagNamesProvider),
-                  ),
+                  builder: (_) =>
+                      _TagPicker(tags: ref.read(queueTagNamesProvider)),
                 );
                 if (picked != null) notifier.setTag(picked);
               },

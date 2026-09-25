@@ -575,10 +575,16 @@ void main() {
             (ref) async => const [
               EeAssetUnit(workspaceId: stock, name: 'Genel', stock: true),
               EeAssetUnit(workspaceId: bakim, name: 'Bakım', unitName: 'Bakım'),
-              EeAssetUnit(workspaceId: kalite, name: 'Kalite', unitName: 'Kalite'),
+              EeAssetUnit(
+                workspaceId: kalite,
+                name: 'Kalite',
+                unitName: 'Kalite',
+              ),
             ],
           ),
-          eeAssetTypesProvider.overrideWith((ref) async => const EeAssetTypes()),
+          eeAssetTypesProvider.overrideWith(
+            (ref) async => const EeAssetTypes(),
+          ),
           canProvider.overrideWith((ref, id) => false),
         ],
         child: const MaterialApp(home: EeAssetsScreen()),
@@ -594,7 +600,9 @@ void main() {
     await tester.pumpAndSettle();
     // The picker names the places, the shelf as the team's stock.
     expect(find.text('ee.assets.filter.unitStock'.tr()), findsOneWidget);
-    await tester.tap(find.byKey(const Key('asset-filter-unit-option-WS-KALITE')));
+    await tester.tap(
+      find.byKey(const Key('asset-filter-unit-option-WS-KALITE')),
+    );
     await tester.pumpAndSettle();
 
     // Kalite's machine only — the device's Bakım row is not Kalite's, the
@@ -627,7 +635,9 @@ void main() {
             [asset],
             units: const [EeAssetUnit(workspaceId: 'WS-1', name: 'Bakım')],
           ),
-          eeAssetTypesProvider.overrideWith((ref) async => const EeAssetTypes()),
+          eeAssetTypesProvider.overrideWith(
+            (ref) async => const EeAssetTypes(),
+          ),
           canProvider.overrideWith((ref, id) => false),
         ],
         child: const MaterialApp(home: EeAssetsScreen()),
@@ -733,9 +743,11 @@ void main() {
         ['T'],
       );
       expect(
-        filterAssets(const [here, there], const EeAssetFilter(), now: now)
-            .map((a) => a.id)
-            .toSet(),
+        filterAssets(
+          const [here, there],
+          const EeAssetFilter(),
+          now: now,
+        ).map((a) => a.id).toSet(),
         {'H', 'T'},
       );
     });

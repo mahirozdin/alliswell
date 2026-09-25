@@ -18,20 +18,24 @@ import 'package:alliswell/src/theme/theme.dart';
 /// Three tasks with three different answers — by date, by priority, by title —
 /// so a list that ignored the choice, or kept its query's order, cannot pass
 /// by accident. The fourth task is somebody else's and must never show.
-Task _task(String id, String title, {required String priority, DateTime? due}) =>
-    Task(
-      id: id,
-      workspaceId: 'W1',
-      title: title,
-      status: 'open',
-      priority: priority,
-      timezone: 'Europe/Istanbul',
-      isUrgent: false,
-      requiresAcknowledgement: false,
-      sortOrder: 0,
-      revision: 1,
-      dueAt: due,
-    );
+Task _task(
+  String id,
+  String title, {
+  required String priority,
+  DateTime? due,
+}) => Task(
+  id: id,
+  workspaceId: 'W1',
+  title: title,
+  status: 'open',
+  priority: priority,
+  timezone: 'Europe/Istanbul',
+  isUrgent: false,
+  requiresAcknowledgement: false,
+  sortOrder: 0,
+  revision: 1,
+  dueAt: due,
+);
 
 void main() {
   // The choice lives in `localKv`, which keeps ONE SharedPreferences instance
@@ -50,8 +54,18 @@ void main() {
     final tasks = [
       _task('B', 'Beta', priority: 'urgent'),
       _task('X', 'Başkasının işi', priority: 'urgent'),
-      _task('A', 'Alfa', priority: 'low', due: now.add(const Duration(days: 3))),
-      _task('Z', 'Zeta', priority: 'high', due: now.add(const Duration(days: 1))),
+      _task(
+        'A',
+        'Alfa',
+        priority: 'low',
+        due: now.add(const Duration(days: 3)),
+      ),
+      _task(
+        'Z',
+        'Zeta',
+        priority: 'high',
+        due: now.add(const Duration(days: 1)),
+      ),
     ];
     await tester.pumpWidget(
       ProviderScope(

@@ -174,9 +174,17 @@ void main() {
     await pumpQueue(tester);
     await tapChip(tester, 'ticket-filter-tag');
     // Each word once, from the rows this device holds.
-    expect(find.byKey(const Key('ticket-filter-tag-option-Garanti')), findsOneWidget);
-    expect(find.byKey(const Key('ticket-filter-tag-option-Hidrolik')), findsOneWidget);
-    await tester.tap(find.byKey(const Key('ticket-filter-tag-option-Hidrolik')));
+    expect(
+      find.byKey(const Key('ticket-filter-tag-option-Garanti')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('ticket-filter-tag-option-Hidrolik')),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(const Key('ticket-filter-tag-option-Hidrolik')),
+    );
     await tester.pumpAndSettle();
     expect(visible(tester), ['T1']);
     expect(find.text('Etiket: Hidrolik'), findsOneWidget);

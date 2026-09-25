@@ -46,7 +46,8 @@ class _Api implements EeTicketTagsApi {
   }
 
   @override
-  Future<void> untag(String ticketId, String tagId) async => untagged.add(tagId);
+  Future<void> untag(String ticketId, String tagId) async =>
+      untagged.add(tagId);
 }
 
 class _Online extends ServerReachability {
@@ -104,7 +105,10 @@ void main() {
 
     await tester.tap(find.byKey(const Key('ticket-tag-add')));
     await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key('ticket-tag-field')), 'Hidrolik');
+    await tester.enterText(
+      find.byKey(const Key('ticket-tag-field')),
+      'Hidrolik',
+    );
     await tester.pump();
     await tester.tap(find.byKey(const Key('ticket-tag-save')));
     await tester.pumpAndSettle();
@@ -145,15 +149,22 @@ void main() {
     await pump(tester, tagNames: '["Garanti"]', online: false);
     expect(find.byKey(const Key('ticket-tag-Garanti')), findsOneWidget);
     expect(
-      tester.widget<InputChip>(find.byKey(const Key('ticket-tag-Garanti'))).onDeleted,
+      tester
+          .widget<InputChip>(find.byKey(const Key('ticket-tag-Garanti')))
+          .onDeleted,
       isNull,
     );
     expect(
-      tester.widget<ActionChip>(find.byKey(const Key('ticket-tag-add'))).onPressed,
+      tester
+          .widget<ActionChip>(find.byKey(const Key('ticket-tag-add')))
+          .onPressed,
       isNull,
     );
     expect(find.byKey(const Key('ticket-tags-offline')), findsOneWidget);
-    expect(find.text('Etiket eklemek ve kaldırmak bağlantı ister.'), findsOneWidget);
+    expect(
+      find.text('Etiket eklemek ve kaldırmak bağlantı ister.'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('somebody who may not tag reads the words and gets no doors — '

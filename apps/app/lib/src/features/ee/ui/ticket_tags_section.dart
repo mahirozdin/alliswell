@@ -46,7 +46,8 @@ class _State extends ConsumerState<EeTicketTagsSection> {
     if (old.ticket.tagNames != widget.ticket.tagNames) _answered = null;
   }
 
-  List<String> get _shown => _answered ?? decodeTagNames(widget.ticket.tagNames);
+  List<String> get _shown =>
+      _answered ?? decodeTagNames(widget.ticket.tagNames);
 
   Future<void> _write(Future<List<String>> Function() action) async {
     if (_busy) return;
@@ -131,7 +132,8 @@ class _State extends ConsumerState<EeTicketTagsSection> {
                         key: Key('ticket-tag-$name'),
                         avatar: const Icon(Icons.sell_outlined, size: 18),
                         label: Text(name),
-                        deleteButtonTooltipMessage: 'ee.tickets.tags.remove'.tr(),
+                        deleteButtonTooltipMessage: 'ee.tickets.tags.remove'
+                            .tr(),
                         onDeleted: canWrite ? () => _remove(name) : null,
                       )
                     : Chip(

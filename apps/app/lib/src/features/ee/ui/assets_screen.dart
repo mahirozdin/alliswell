@@ -480,7 +480,9 @@ class _UnitPicker extends StatelessWidget {
             ListTile(
               key: Key('asset-filter-unit-option-${unit.workspaceId}'),
               leading: Icon(
-                unit.stock ? Icons.inventory_2_outlined : Icons.apartment_outlined,
+                unit.stock
+                    ? Icons.inventory_2_outlined
+                    : Icons.apartment_outlined,
               ),
               title: Text(unit.name),
               subtitle: unit.stock

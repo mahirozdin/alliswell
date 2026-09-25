@@ -1,6 +1,7 @@
 import 'labour_models.dart';
 
-export 'labour_models.dart' show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
+export 'labour_models.dart'
+    show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
 
 /// One person's record of their own labour on a request (EE-208).
 ///

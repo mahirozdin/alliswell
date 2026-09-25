@@ -213,6 +213,10 @@ final eeServiceGlancesProvider = Provider<Map<String, EeServiceGlance>>((ref) {
   final catalog = ref.watch(eeCatalogProvider).value;
   return {
     for (final s in catalog?.services ?? const <EeCatalogService>[])
-      s.id: EeServiceGlance(id: s.id, name: s.name, hasForm: s.fields.isNotEmpty),
+      s.id: EeServiceGlance(
+        id: s.id,
+        name: s.name,
+        hasForm: s.fields.isNotEmpty,
+      ),
   };
 });

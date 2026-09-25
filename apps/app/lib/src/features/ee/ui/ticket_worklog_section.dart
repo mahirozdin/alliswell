@@ -175,7 +175,9 @@ class _Totals extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'ee.worklogs.totalHours'.tr(args: {'hours': eeHoursText(totals.minutes)}),
+          'ee.worklogs.totalHours'.tr(
+            args: {'hours': eeHoursText(totals.minutes)},
+          ),
           key: const Key('worklog-total-hours'),
           style: theme.textTheme.bodyMedium,
         ),

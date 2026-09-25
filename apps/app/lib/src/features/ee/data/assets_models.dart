@@ -1,6 +1,7 @@
 import 'labour_models.dart';
 
-export 'labour_models.dart' show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
+export 'labour_models.dart'
+    show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
 
 /// The equipment register, as the screens read it (EE-191, EE-192, EE-194).
 class EeAsset {
