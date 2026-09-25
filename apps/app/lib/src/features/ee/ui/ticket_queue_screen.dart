@@ -113,7 +113,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // EE-220 adds `/assets` beside `/kb` for the same reason and by
                     // the same means: both are real ROUTES because both are things
                     // you link to (a QR code on a machine opens an asset).
-                    if (value == '/kb' || value == '/assets') {
+                    // EE-269 puts `/changes` on the same shelf, a real route for
+                    // the same reason: an approval notification and a request's
+                    // relations both link to one change.
+                    if (value == '/kb' ||
+                        value == '/assets' ||
+                        value == '/changes') {
                       context.push(value);
                       return;
                     }
@@ -171,6 +176,27 @@ class EeTicketQueueScreen extends ConsumerWidget {
                           Flexible(
                             child: Text(
                               'ee.assets.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    // EE-269 (AW-E09): planned work — the list is the device's
+                    // copy, the same shelf as the register because the same
+                    // person asks "is anything going out on Hat 3 tonight?".
+                    // No gate: every desk member reads changes (EE-186); what
+                    // the verbs guard is raising, signing and moving them.
+                    PopupMenuItem(
+                      key: const Key('ticket-changes'),
+                      value: '/changes',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.event_note_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Flexible(
+                            child: Text(
+                              'ee.changes.title'.tr(),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),

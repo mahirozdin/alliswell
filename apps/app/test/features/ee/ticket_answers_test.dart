@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
+import 'package:alliswell/src/features/ee/changes_providers.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
@@ -117,6 +118,11 @@ void main() {
           eeTicketRelationsProvider(
             _ticketId,
           ).overrideWith((ref) async => const EeTicketRelations()),
+          // EE-279's section, quiet: this test is about something else.
+          eeChangesRaisedFromProvider(
+            _ticketId,
+          ).overrideWith((ref) async => const []),
+          canProvider('changes.create').overrideWith((ref) => false),
           eeKbSuggestionsProvider(
             'Hat 3 sunucusu için yedek disk ve RAID kartı',
           ).overrideWith((ref) async => const []),

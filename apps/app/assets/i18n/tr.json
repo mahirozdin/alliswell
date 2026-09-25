@@ -2753,6 +2753,112 @@
         "notOnDeviceBody": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar cihazda tutulmaz. Bağlantı gelince açılır."
       }
     },
+    "changes": {
+      "title": "Değişiklikler",
+      "searchHint": "Değişikliklerde ara",
+      "new": "Yeni değişiklik",
+      "empty": "Bu birimde değişiklik yok",
+      "emptyBody": "Planlanan işler burada görünür: penceresi, imzalanıp imzalanmadığı ve geri dönüş yolu. Başka bir birimde açılan değişiklik o birimin listesindedir.",
+      "searchEmpty": "Eşleşen değişiklik yok",
+      "searchEmptyBody": "Arama değişikliğin başlığına ve etkisine bakar.",
+      "section": {
+        "ahead": "Yaklaşan ve süren",
+        "unscheduled": "Penceresi yok",
+        "past": "Geçmiş"
+      },
+      "type": {
+        "standard": "Standart",
+        "normal": "Normal",
+        "emergency": "Acil"
+      },
+      "risk": {
+        "low": "Düşük risk",
+        "medium": "Orta risk",
+        "high": "Yüksek risk"
+      },
+      "riskShort": {
+        "low": "Düşük",
+        "medium": "Orta",
+        "high": "Yüksek"
+      },
+      "status": {
+        "draft": "Taslak",
+        "assessing": "Değerlendiriliyor",
+        "awaiting_approval": "Onay bekliyor",
+        "scheduled": "Planlandı",
+        "implemented": "Uygulandı",
+        "reviewed": "Gözden geçirildi",
+        "failed": "Başarısız",
+        "rolled_back": "Geri alındı",
+        "cancelled": "İptal edildi"
+      },
+      "noWindow": "Pencere belirlenmedi",
+      "detailTitle": "Değişiklik",
+      "impact": "Etkisi",
+      "rollback": "Geri dönüş planı",
+      "description": "Açıklama",
+      "fromServer": "Sunucudan okundu — bu cihaz tutmuyor",
+      "notOnDevice": "Bu değişiklik bu cihazda yok",
+      "notOnDeviceBody": "Açmak için bağlantı gerekiyor.",
+      "gone": "Değişiklik bulunamadı",
+      "goneBody": "Silinmiş olabilir ya da çalışmadığınız bir masaya ait.",
+      "live": {
+        "offline": "İmzalar, takvim ve etkilediği şeyler bağlantı ister."
+      },
+      "approval": {
+        "title": "İmza",
+        "none": "Henüz imza istenmedi.",
+        "pending": "{who} onayı bekleniyor",
+        "approved": "{who} onayladı",
+        "rejected": "{who} reddetti",
+        "yours": "İmzanız bekleniyor.",
+        "approvedToast": "Onaylandı",
+        "rejectedToast": "Reddedildi"
+      },
+      "calendar": {
+        "title": "Takvim",
+        "clear": "Bu pencerede başka bir iş yok, dondurma da yok.",
+        "noWindow": "Pencere yok — bu değişiklik henüz takvimde değil.",
+        "freeze": "Bu pencere “{reason}” dondurmasıyla çakışıyor ({window}).",
+        "clash": "Aynı serviste aynı pencerede: “{title}” ({window})."
+      },
+      "source": {
+        "title": "Açıldığı talep",
+        "open": "Talebi aç"
+      },
+      "services": "Etkilediği servisler",
+      "serviceUnknown": "Katalogda olmayan bir servis",
+      "assets": "Etkilediği varlıklar",
+      "raisedFrom": "Bu talepten açılan değişiklikler",
+      "fromTicketAction": "Değişiklik aç",
+      "create": {
+        "title": "Yeni değişiklik",
+        "fromTicket": "{ticket} talebinden açılıyor",
+        "name": "Başlık",
+        "type": "Tür",
+        "typeHint": {
+          "standard": "Önceden onaylı, sıradan iş — imza gerekmez.",
+          "normal": "Planlanmadan önce imza bekleyen iş.",
+          "emergency": "Acil: hızlı imzalanır, sonra gözden geçirilir; dondurma onu durdurmaz."
+        },
+        "risk": "Risk",
+        "impact": "Etkisi",
+        "impactHelp": "Zorunlu. Ne durur, kim fark eder, ne kadar sürer.",
+        "rollback": "Geri dönüş planı",
+        "rollbackHelp": "Zorunlu. Geri dönüşü olmayan değişiklik, değişiklik değildir.",
+        "windowStart": "Pencere başlangıcı",
+        "windowEnd": "Pencere bitişi",
+        "windowNone": "Belirlenmedi",
+        "windowClear": "Temizle",
+        "windowBackwards": "Pencere başlamadan bitiyor.",
+        "services": "Etkilediği servisler",
+        "servicesHint": "Takvim, aynı pencerede aynı servise dokunan başka değişiklikleri söyler.",
+        "description": "Açıklama (isteğe bağlı)",
+        "save": "Değişikliği aç",
+        "offline": "Değişiklik açmak bağlantı ister.",
+        "done": "Değişiklik açıldı"
+      }
+    },
     "kb": {
       "title": "Bilgi bankası",
       "articleTitle": "Makale",

@@ -2754,6 +2754,112 @@
         "notOnDeviceBody": "Equipment outside this unit, and retired records untouched for 90 days, are not kept on devices. It opens once you are back online."
       }
     },
+    "changes": {
+      "title": "Changes",
+      "searchHint": "Search changes",
+      "new": "New change",
+      "empty": "No changes in this unit",
+      "emptyBody": "Planned work shows here: its window, whether it was signed for, and the way back. A change filed in another unit is in that unit's list.",
+      "searchEmpty": "No change matches",
+      "searchEmptyBody": "Search looks at a change's title and what it affects.",
+      "section": {
+        "ahead": "Coming up and under way",
+        "unscheduled": "No window yet",
+        "past": "Past"
+      },
+      "type": {
+        "standard": "Standard",
+        "normal": "Normal",
+        "emergency": "Emergency"
+      },
+      "risk": {
+        "low": "Low risk",
+        "medium": "Medium risk",
+        "high": "High risk"
+      },
+      "riskShort": {
+        "low": "Low",
+        "medium": "Medium",
+        "high": "High"
+      },
+      "status": {
+        "draft": "Draft",
+        "assessing": "Assessing",
+        "awaiting_approval": "Awaiting approval",
+        "scheduled": "Scheduled",
+        "implemented": "Implemented",
+        "reviewed": "Reviewed",
+        "failed": "Failed",
+        "rolled_back": "Rolled back",
+        "cancelled": "Cancelled"
+      },
+      "noWindow": "No window set",
+      "detailTitle": "Change",
+      "impact": "What it affects",
+      "rollback": "The way back",
+      "description": "Details",
+      "fromServer": "Read from the server — this device does not keep it",
+      "notOnDevice": "This change is not on this device",
+      "notOnDeviceBody": "Opening it needs a connection.",
+      "gone": "Change not found",
+      "goneBody": "It may have been removed, or it belongs to a desk you do not work in.",
+      "live": {
+        "offline": "Signatures, the calendar and what it touches need a connection."
+      },
+      "approval": {
+        "title": "Signature",
+        "none": "No signature has been asked for yet.",
+        "pending": "Waiting for {who}",
+        "approved": "Approved by {who}",
+        "rejected": "Rejected by {who}",
+        "yours": "Your signature is asked for.",
+        "approvedToast": "Approved",
+        "rejectedToast": "Rejected"
+      },
+      "calendar": {
+        "title": "Calendar",
+        "clear": "Nothing else stands in this window, and no freeze covers it.",
+        "noWindow": "No window yet — this change is not in the calendar.",
+        "freeze": "This window overlaps the freeze “{reason}” ({window}).",
+        "clash": "Same service, same window: “{title}” ({window})."
+      },
+      "source": {
+        "title": "Raised from",
+        "open": "Open the request"
+      },
+      "services": "Services it touches",
+      "serviceUnknown": "A service not in the catalogue",
+      "assets": "Machines it touches",
+      "raisedFrom": "Changes raised from this request",
+      "fromTicketAction": "Raise a change",
+      "create": {
+        "title": "New change",
+        "fromTicket": "Raised from the request {ticket}",
+        "name": "Title",
+        "type": "Type",
+        "typeHint": {
+          "standard": "Routine, pre-approved work — no signature.",
+          "normal": "Planned work that waits for a signature before it is scheduled.",
+          "emergency": "Urgent: signed quickly, reviewed afterwards, and a freeze does not stop it."
+        },
+        "risk": "Risk",
+        "impact": "What it affects",
+        "impactHelp": "Required. What stops, who notices, and for how long.",
+        "rollback": "The way back",
+        "rollbackHelp": "Required. A change with no way back is not a change.",
+        "windowStart": "Window starts",
+        "windowEnd": "Window ends",
+        "windowNone": "Not set",
+        "windowClear": "Clear",
+        "windowBackwards": "The window ends before it starts.",
+        "services": "Services it touches",
+        "servicesHint": "The calendar warns about other changes on the same service in the same window.",
+        "description": "Details (optional)",
+        "save": "Raise the change",
+        "offline": "Raising a change needs a connection.",
+        "done": "Change raised"
+      }
+    },
     "kb": {
       "title": "Knowledge base",
       "articleTitle": "Article",

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/changes_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
@@ -95,6 +96,11 @@ void main() {
           eeTicketRelationsProvider(
             _ticketId,
           ).overrideWith((ref) async => const EeTicketRelations()),
+          // EE-279's section, quiet: this test is about something else.
+          eeChangesRaisedFromProvider(
+            _ticketId,
+          ).overrideWith((ref) async => const []),
+          canProvider('changes.create').overrideWith((ref) => false),
           // Everything else this screen watches, overridden so the tree has no
           // live provider left to spin on: the comment thread and the
           // knowledge section otherwise reach the auth controller, whose

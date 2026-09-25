@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
+import 'package:alliswell/src/features/ee/changes_providers.dart';
 import 'package:alliswell/src/features/ee/data/approvals_models.dart';
+import 'package:alliswell/src/features/ee/ui/change_detail_screen.dart';
 import 'package:alliswell/src/features/ee/ui/team_approvals_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
@@ -55,7 +57,12 @@ EeApproval _approval({
 Future<void> _pump(WidgetTester tester, List<EeApproval> items) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [eeApprovalsProvider.overrideWith(() => _Fixed(items))],
+      overrides: [
+        eeApprovalsProvider.overrideWith(() => _Fixed(items)),
+        // The change a row may open: quiet, so the test is about the row.
+        eeChangeOnDeviceProvider.overrideWith((ref, id) => Stream.value(null)),
+        eeChangeLiveProvider.overrideWith((ref, id) async => null),
+      ],
       child: MaterialApp(
         theme: buildAwTheme(Brightness.light),
         home: const EeTeamApprovalsScreen(),
@@ -69,6 +76,32 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     AwI18n.instance.setActiveCached(const Locale('en'));
+  });
+
+  testWidgets('EE-269: a change opens from its row — the board reads the plan '
+      'before signing it; a request stays a summary', (tester) async {
+    await _pump(tester, [
+      EeApproval(
+        id: 'A2',
+        targetType: 'ee_change',
+        targetId: 'C1',
+        status: 'pending',
+        createdAt: DateTime(2026, 9, 20, 9),
+        approverRoleKey: 'admin',
+        requestReason: 'Hat 3 sunucu disk değişimi',
+        target: const EeApprovalTarget(
+          kind: 'ee_change',
+          title: 'Hat 3 sunucu disk değişimi',
+          status: 'awaiting_approval',
+        ),
+      ),
+      _approval(),
+    ]);
+
+    expect(find.byKey(const Key('ee-approval-open-A1')), findsNothing);
+    await tester.tap(find.byKey(const Key('ee-approval-open-A2')));
+    await tester.pumpAndSettle();
+    expect(find.byType(EeChangeDetailScreen), findsOneWidget);
   });
 
   testWidgets('an empty queue says nothing is waiting, not that it failed', (

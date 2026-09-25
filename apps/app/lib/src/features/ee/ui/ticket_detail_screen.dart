@@ -11,6 +11,8 @@ import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
+import '../changes_providers.dart';
+import '../data/changes_models.dart';
 import '../data/kb_models.dart';
 import '../data/ticket_links_models.dart';
 import '../data/ticket_write_api.dart';
@@ -20,6 +22,7 @@ import '../services_providers.dart';
 import '../ticket_links_providers.dart';
 import '../tickets_providers.dart';
 import '../ticket_write_providers.dart';
+import 'changes_screen.dart';
 import 'history_tab.dart';
 import 'ticket_archive_screen.dart';
 import 'sla_chip.dart';
@@ -243,6 +246,9 @@ class _Thread extends ConsumerWidget {
         // because an agent picking this up asks "is this the known one, and
         // has somebody already started" before reading forty replies.
         _Relations(ticketId: ticket.id),
+        // EE-279: what planned work came of this request, and the door to
+        // raise some — right under the work it caused (EE-189/190).
+        _Changes(ticket: ticket),
         _Knowledge(ticket: ticket),
         _Attachments(ticket: ticket),
         // EE-208: the hours, below the files and above the conversation.
@@ -479,6 +485,62 @@ class _Relations extends ConsumerWidget {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text('ee.tickets.relatedOpened'.tr())));
+  }
+}
+
+/// EE-279 — the changes raised from this request, and the button that raises
+/// one.
+///
+/// Read from the server (the device's copy of a change does not carry the
+/// request it came from) and quiet when it cannot be read, like the relations
+/// above it: this is an addition to a screen that already works. The button
+/// follows `changes.create`; the form it opens files the change in this
+/// request's desk.
+class _Changes extends ConsumerWidget {
+  const _Changes({required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final changes =
+        ref.watch(eeChangesRaisedFromProvider(ticket.id)).value ??
+        const <EeChange>[];
+    final canCreate = ref.watch(canProvider('changes.create'));
+    if (changes.isEmpty && !canCreate) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (changes.isNotEmpty) ...[
+          const SizedBox(height: AwSpace.x6),
+          Text(
+            'ee.changes.raisedFrom'.tr(),
+            key: const Key('ticket-changes'),
+            style: theme.textTheme.titleSmall,
+          ),
+          const SizedBox(height: AwSpace.x2),
+          for (final change in changes) EeChangeRow(change: change),
+        ],
+        if (canCreate)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const Key('ticket-raise-change'),
+              onPressed: () => awOpenNewChange(
+                context,
+                source: EeChangeSource(
+                  ticketId: ticket.id,
+                  subject: ticket.subject,
+                  number: ticket.number,
+                ),
+              ),
+              icon: const Icon(Icons.event_note_outlined),
+              label: Text('ee.changes.fromTicketAction'.tr()),
+            ),
+          ),
+      ],
+    );
   }
 }
 

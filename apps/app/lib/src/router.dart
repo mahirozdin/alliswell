@@ -38,6 +38,10 @@ import 'features/ee/ui/shared_with_me_screen.dart';
 import 'features/ee/ui/team_units_screen.dart';
 import 'features/ee/ui/asset_detail_screen.dart';
 import 'features/ee/ui/assets_screen.dart';
+import 'features/ee/data/changes_models.dart';
+import 'features/ee/ui/change_detail_screen.dart';
+import 'features/ee/ui/changes_screen.dart';
+import 'features/ee/ui/new_change_screen.dart';
 import 'features/ee/ui/kb_screen.dart';
 import 'features/ee/ui/kb_article_screen.dart';
 import 'features/ee/ui/team_settings_screen.dart';
@@ -126,6 +130,38 @@ List<RouteBase> eeAssetRoutes() => [
     path: '/assets/:assetId',
     builder: (context, state) => _page(
       EeAssetDetailScreen(assetId: state.pathParameters['assetId'] ?? ''),
+    ),
+  ),
+];
+
+/// Planned work (EE-269): the list, the form, and one change by its address.
+/// **The order is the contract**, as for requests: `/changes/new` before
+/// `/changes/:changeId`, or "new" would be read as an id. Real routes because
+/// a change is a thing you link to — the approver's queue, a request's
+/// relations and a clash on another change's calendar all open one — and a
+/// function so a test reads the very list the router uses.
+List<RouteBase> eeChangeRoutes() => [
+  GoRoute(
+    path: '/changes',
+    builder: (context, state) => _page(const EeChangesScreen()),
+  ),
+  GoRoute(
+    path: '/changes/new',
+    builder: (context, state) => _page(
+      EeNewChangeScreen(
+        // EE-279: the request it is raised from rides in-app, in `extra`;
+        // the address itself carries nothing (EE-252's rule).
+        source: switch (state.extra) {
+          final EeChangeSource source => source,
+          _ => null,
+        },
+      ),
+    ),
+  ),
+  GoRoute(
+    path: '/changes/:changeId',
+    builder: (context, state) => _page(
+      EeChangeDetailScreen(changeId: state.pathParameters['changeId'] ?? ''),
     ),
   ),
 ];
@@ -549,6 +585,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       // themselves exist, because a 404 on a link an admin was sent is worse
       // than a screen that says "not yours".
       ...eeAssetRoutes(),
+      ...eeChangeRoutes(),
       ...eeTicketRoutes(),
       // EE-196: the knowledge base. Reached from the request queue's bar —
       // where the person who wants it is already standing (EE-098's rule for

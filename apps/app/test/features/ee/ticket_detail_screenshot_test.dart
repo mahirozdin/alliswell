@@ -36,6 +36,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
+import 'package:alliswell/src/features/ee/changes_providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
@@ -125,6 +126,7 @@ List<Override> _overrides(
     eeTicketRelationsProvider.overrideWith(
       (ref, id) async => const EeTicketRelations(),
     ),
+    eeChangesRaisedFromProvider.overrideWith((ref, id) async => const []),
     eeKbSuggestionsProvider.overrideWith((ref, subject) async => const []),
     eeKbOfTicketProvider.overrideWith((ref, id) async => const []),
     // Only the verb a shot is about — the permission cache would otherwise

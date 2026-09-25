@@ -7,6 +7,8 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../approvals_providers.dart';
 import '../data/approvals_models.dart';
+import 'approval_reason_dialog.dart';
+import 'change_detail_screen.dart';
 
 /// EE-184 — one person's approvals, decided one at a time.
 ///
@@ -106,10 +108,7 @@ class EeTeamApprovalsScreen extends ConsumerWidget {
     EeApproval approval, {
     required bool approve,
   }) async {
-    final reason = await showDialog<String>(
-      context: context,
-      builder: (context) => _ReasonDialog(approve: approve),
-    );
+    final reason = await askApprovalReason(context, approve: approve);
     if (reason == null || !context.mounted) return;
     try {
       await ref
@@ -144,54 +143,66 @@ class _ApprovalCard extends StatelessWidget {
             target.title,
           ].join(' · ');
 
+    // EE-269: a change has a detail now, and the board should read the plan —
+    // its window, its way back, what it clashes with — before signing it.
+    // Requests and tasks keep the summary: their approver may hold no access
+    // to them at all (ADR-0007 §1), which is why the row carries a summary.
+    final opensChange = approval.targetType == 'ee_change' && target != null;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title, style: text.titleMedium),
-            if (approval.requestReason != null) ...[
-              const SizedBox(height: AwSpace.x2),
-              Text(approval.requestReason!, style: text.bodyMedium),
-            ],
-            if (approval.dueAt != null) ...[
-              const SizedBox(height: AwSpace.x2),
-              Text(
-                'ee.approvals.dueAt'.tr(
-                  args: {'date': _formatDate(approval.dueAt!)},
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        key: opensChange ? Key('ee-approval-open-${approval.id}') : null,
+        onTap: opensChange
+            ? () => awOpenChange(context, approval.targetId)
+            : null,
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: text.titleMedium),
+              if (approval.requestReason != null) ...[
+                const SizedBox(height: AwSpace.x2),
+                Text(approval.requestReason!, style: text.bodyMedium),
+              ],
+              if (approval.dueAt != null) ...[
+                const SizedBox(height: AwSpace.x2),
+                Text(
+                  'ee.approvals.dueAt'.tr(
+                    args: {'date': _formatDate(approval.dueAt!)},
+                  ),
+                  style: text.bodySmall,
                 ),
-                style: text.bodySmall,
-              ),
+              ],
+              if (approval.isPending) ...[
+                const SizedBox(height: AwSpace.x3),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    TextButton(
+                      key: Key('ee-approval-reject-${approval.id}'),
+                      onPressed: () => onDecide(false),
+                      child: Text('ee.approvals.reject'.tr()),
+                    ),
+                    const SizedBox(width: AwSpace.x2),
+                    FilledButton(
+                      key: Key('ee-approval-approve-${approval.id}'),
+                      onPressed: () => onDecide(true),
+                      child: Text('ee.approvals.approve'.tr()),
+                    ),
+                  ],
+                ),
+              ] else ...[
+                const SizedBox(height: AwSpace.x2),
+                Text(
+                  'ee.approvals.status.${approval.status}'.tr(),
+                  style: text.bodySmall,
+                ),
+                if (approval.decisionReason != null)
+                  Text(approval.decisionReason!, style: text.bodySmall),
+              ],
             ],
-            if (approval.isPending) ...[
-              const SizedBox(height: AwSpace.x3),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    key: Key('ee-approval-reject-${approval.id}'),
-                    onPressed: () => onDecide(false),
-                    child: Text('ee.approvals.reject'.tr()),
-                  ),
-                  const SizedBox(width: AwSpace.x2),
-                  FilledButton(
-                    key: Key('ee-approval-approve-${approval.id}'),
-                    onPressed: () => onDecide(true),
-                    child: Text('ee.approvals.approve'.tr()),
-                  ),
-                ],
-              ),
-            ] else ...[
-              const SizedBox(height: AwSpace.x2),
-              Text(
-                'ee.approvals.status.${approval.status}'.tr(),
-                style: text.bodySmall,
-              ),
-              if (approval.decisionReason != null)
-                Text(approval.decisionReason!, style: text.bodySmall),
-            ],
-          ],
+          ),
         ),
       ),
     );
@@ -199,60 +210,4 @@ class _ApprovalCard extends StatelessWidget {
 
   String _formatDate(DateTime value) =>
       '${value.year}-${value.month.toString().padLeft(2, '0')}-${value.day.toString().padLeft(2, '0')}';
-}
-
-/// Both answers ask for the same thing, and neither button works without it.
-class _ReasonDialog extends StatefulWidget {
-  const _ReasonDialog({required this.approve});
-  final bool approve;
-
-  @override
-  State<_ReasonDialog> createState() => _ReasonDialogState();
-}
-
-class _ReasonDialogState extends State<_ReasonDialog> {
-  final _controller = TextEditingController();
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final filled = _controller.text.trim().isNotEmpty;
-    return AlertDialog(
-      title: Text(
-        widget.approve
-            ? 'ee.approvals.approveTitle'.tr()
-            : 'ee.approvals.rejectTitle'.tr(),
-      ),
-      content: TextField(
-        key: const Key('ee-approval-reason'),
-        controller: _controller,
-        autofocus: true,
-        maxLength: 500,
-        maxLines: 3,
-        decoration: InputDecoration(
-          labelText: 'ee.approvals.reasonLabel'.tr(),
-          helperText: 'ee.approvals.reasonHelp'.tr(),
-        ),
-        onChanged: (_) => setState(() {}),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('common.cancel'.tr()),
-        ),
-        FilledButton(
-          key: const Key('ee-approval-confirm'),
-          onPressed: filled
-              ? () => Navigator.of(context).pop(_controller.text.trim())
-              : null,
-          child: Text('common.save'.tr()),
-        ),
-      ],
-    );
-  }
 }
