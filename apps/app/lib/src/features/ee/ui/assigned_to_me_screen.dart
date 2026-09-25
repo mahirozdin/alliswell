@@ -4,6 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/list_sort.dart';
+import '../../../core/persisted_prefs.dart';
+import '../../../widgets/sort_menu.dart';
+import '../../home/task_grouping.dart' show orderTasks;
+import '../../tasks/data/task_sort.dart';
 import '../../tasks/providers.dart';
 import '../../tasks/ui/task_tile.dart';
 import '../assignments_providers.dart';
@@ -18,6 +23,15 @@ import '../assignments_providers.dart';
 ///
 /// Read entirely from the replica, so it works with no connection — which is
 /// the point of having delivered assignments through sync at all.
+///
+/// ── ORDERED THE WAY EVERY OTHER TASK LIST IS (EE-241) ──────────────────
+///
+/// Home's choices (`kTaskSortChoices`), Home's comparator (`orderTasks` —
+/// finished work still sinks, DESIGN §20 C1) and Home's PREFERENCE
+/// (`tasksSortProvider`): the project Tasks tab already shares that one choice
+/// (OPH-338, §34 L6), and a third task list ordered a third way would be the
+/// thing to explain. Until now this list came in whatever order the workspace
+/// query happened to return, which nobody chose.
 class EeAssignedToMeScreen extends ConsumerWidget {
   const EeAssignedToMeScreen({super.key});
 
@@ -25,13 +39,31 @@ class EeAssignedToMeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final mine = ref.watch(myAssignedTaskIdsProvider).value ?? const <String>{};
     final tasks = ref.watch(openTasksProvider);
+    final sort = AwSortState.parse(
+      ref.watch(tasksSortProvider),
+      kTaskSortChoices,
+    );
     return Scaffold(
-      appBar: AppBar(title: Text('ee.assign.mineTitle'.tr())),
+      appBar: AppBar(
+        title: Text('ee.assign.mineTitle'.tr()),
+        actions: [
+          AwSortMenuButton(
+            key: const Key('assigned-to-me-sort'),
+            choices: kTaskSortChoices,
+            sort: sort,
+            onChanged: (next) =>
+                ref.read(tasksSortProvider.notifier).set(next.encode()),
+          ),
+        ],
+      ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),
         data: (all) {
-          final rows = all.where((task) => mine.contains(task.id)).toList();
+          final rows = orderTasks(
+            all.where((task) => mine.contains(task.id)),
+            sort,
+          );
           if (rows.isEmpty) {
             return AwEmptyState(
               icon: Icons.assignment_ind_outlined,
