@@ -14,6 +14,7 @@ import '../providers.dart';
 import '../ticket_bulk_providers.dart';
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
+import 'my_units_screen.dart';
 import 'ticket_bulk.dart';
 import 'sla_chip.dart';
 import 'performance_screen.dart';
@@ -121,11 +122,15 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // one to the dashboard, and inventing one for either now would
                     // be a second way to reach a screen — which is how two entry
                     // points end up disagreeing about what a person may see.
+                    // EE-267 puts "Birimlerim" on the same shelf, by the
+                    // same means: a pushed screen, no address of its own.
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => value == 'perf'
-                            ? const EePerformanceScreen()
-                            : const EeSlaDashboardScreen(),
+                        builder: (_) => switch (value) {
+                          'perf' => const EePerformanceScreen(),
+                          'units' => const EeMyUnitsScreen(),
+                          _ => const EeSlaDashboardScreen(),
+                        },
                       ),
                     );
                   },
@@ -137,7 +142,14 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         children: [
                           const Icon(Icons.menu_book_outlined),
                           const SizedBox(width: AwSpace.x2),
-                          Text('ee.kb.title'.tr()),
+                          // A label may be longer than the menu in another
+                          // language: it shortens, the row does not overflow.
+                          Flexible(
+                            child: Text(
+                              'ee.kb.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -156,7 +168,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         children: [
                           const Icon(Icons.precision_manufacturing_outlined),
                           const SizedBox(width: AwSpace.x2),
-                          Text('ee.assets.title'.tr()),
+                          Flexible(
+                            child: Text(
+                              'ee.assets.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -164,6 +181,26 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // (ADR-0007 §1), and the endpoint scopes itself to the caller's
                     // own desks, so everyone sees a true screen rather than a
                     // forbidden one.
+                    // EE-267 (AW-E19): a manager of several units sees them
+                    // all here — live, since the device holds one. No gate:
+                    // the list is the caller's own units, so everyone gets a
+                    // true screen (one unit is a short list, none an empty one).
+                    PopupMenuItem(
+                      key: const Key('ticket-my-units'),
+                      value: 'units',
+                      child: Row(
+                        children: [
+                          const Icon(Icons.hub_outlined),
+                          const SizedBox(width: AwSpace.x2),
+                          Flexible(
+                            child: Text(
+                              'ee.myUnits.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem(
                       key: const Key('ticket-sla-dashboard'),
                       value: 'sla',
@@ -171,7 +208,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         children: [
                           const Icon(Icons.query_stats_outlined),
                           const SizedBox(width: AwSpace.x2),
-                          Text('ee.slaDash.title'.tr()),
+                          Flexible(
+                            child: Text(
+                              'ee.slaDash.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -187,7 +229,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         children: [
                           const Icon(Icons.groups_outlined),
                           const SizedBox(width: AwSpace.x2),
-                          Text('ee.perfPanel.title'.tr()),
+                          Flexible(
+                            child: Text(
+                              'ee.perfPanel.title'.tr(),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -205,6 +252,10 @@ class EeTicketQueueScreen extends ConsumerWidget {
       body: Column(
         children: [
           if (selecting) const EeBulkBlockedNote(),
+          // EE-267 (AW-E19): the other units' SLA alerts, live — the one
+          // thing on this screen that is not the replica, and it says so by
+          // leading to "Birimlerim". Out of the way while a batch is open.
+          if (!selecting) const EeOtherUnitsAlertStrip(),
           const _FilterBar(),
           Expanded(
             child: tickets.when(

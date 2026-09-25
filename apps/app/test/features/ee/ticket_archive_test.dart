@@ -14,6 +14,7 @@ import 'package:alliswell/src/core/reachability.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ee/data/requester_ticket_api.dart';
 import 'package:alliswell/src/features/ee/data/ticket_archive_api.dart';
+import 'package:alliswell/src/features/ee/data/unit_tickets_api.dart';
 import 'package:alliswell/src/features/ee/my_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
@@ -21,6 +22,7 @@ import 'package:alliswell/src/features/ee/requester_ticket_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_archive_providers.dart';
 import 'package:alliswell/src/features/ee/ticket_drafts_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
+import 'package:alliswell/src/features/ee/unit_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/my_tickets_screen.dart';
 import 'package:alliswell/src/features/ee/ui/requester_ticket_screen.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_archive_screen.dart';
@@ -291,6 +293,10 @@ void main() {
       canProvider.overrideWith((ref, permission) => false),
       // Who is signed in, without a session (whose restore leaves a timer).
       currentUserIdProvider.overrideWithValue(_me),
+      // EE-267: the queue's live strip is its own suite's (my_units_test).
+      eeOtherUnitsAlertsProvider.overrideWith(
+        (ref) async => const EeUnitTicketsPage(),
+      ),
       workspacesProvider.overrideWith(
         (ref) async => const [
           WorkspaceSummary(
@@ -426,6 +432,30 @@ void main() {
     );
     // The archive was not asked: a live request answered first.
     expect(server.asked.where((o) => o.path.contains('/archive')), isEmpty);
+  });
+
+  testWidgets('EE-267: the unit it lives in is already the open one — a switch '
+      'just happened — so it says "opening", not "switch" again', (
+    tester,
+  ) async {
+    // Bakım (`_ws`) is the open unit: the first, nobody chose another.
+    server.live = (_) => _json(200, {
+      'id': _id,
+      'workspaceId': _ws,
+      'subject': 'Kalibrasyon sapması',
+      'status': 'in_progress',
+      'viewer': 'desk',
+    });
+    await pump(tester, const EeTicketDetailScreen(ticketId: _id));
+
+    expect(find.byKey(const Key('ticket-elsewhere-opening')), findsOneWidget);
+    expect(
+      find.text('ee.tickets.elsewhere.opening'.tr(args: {'unit': 'Bakım'})),
+      findsOneWidget,
+    );
+    // A button that switches to where you already are does nothing.
+    expect(find.byKey(const Key('ticket-elsewhere-switch')), findsNothing);
+    expect(find.byKey(const Key('ticket-elsewhere-unit')), findsNothing);
   });
 
   testWidgets('EE-266: in neither table for this person — "not found", not '

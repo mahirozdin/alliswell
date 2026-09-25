@@ -29,10 +29,12 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
+import 'package:alliswell/src/features/ee/data/unit_tickets_api.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
+import 'package:alliswell/src/features/ee/unit_tickets_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -47,6 +49,7 @@ List<Override> _overrides(
   DemoCorpus corpus,
   List<TicketRecord> rows, {
   TicketFilter? filter,
+  EeUnitTicketsPage otherUnits = const EeUnitTicketsPage(),
 }) => [
   ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
   ticketAssigneesProvider.overrideWith((ref) => Stream.value(corpus.assignees)),
@@ -55,6 +58,9 @@ List<Override> _overrides(
   // EE-225: an agent who may file one sees the way in, as on a real desk —
   // and the permission cache is not sent looking for a session.
   canProvider.overrideWith((ref, permission) => permission == 'tickets.create'),
+  // EE-267: the other units' strip is a server read; these pictures are the
+  // replica's queue, so it has nothing to say unless a shot gives it a page.
+  eeOtherUnitsAlertsProvider.overrideWith((ref) async => otherUnits),
   if (filter != null)
     ticketFilterProvider.overrideWith(() => _FixedFilter(filter)),
 ];
@@ -130,6 +136,42 @@ void main() {
         brightness: brightness,
         name: 'ee-ticket-queue',
         overrides: _overrides(corpus, corpus.queue),
+        screen: const EeTicketQueueScreen(),
+      );
+    });
+
+    // EE-267 (AW-E19): BT's own queue, and above it the one thing on this
+    // screen that is not the replica — Bakım broke a promise, one tap away.
+    testWidgets('another unit’s broken promise, over this unit’s queue — '
+        '${brightness.name}', (tester) async {
+      final tr = AwI18n.instance.locale.languageCode == 'tr';
+      await eeShoot(
+        tester,
+        brightness: brightness,
+        name: 'ee-ticket-queue-other-units',
+        overrides: _overrides(
+          corpus,
+          corpus.queue,
+          otherUnits: EeUnitTicketsPage(
+            breached: 1,
+            warned: 2,
+            tickets: [
+              EeUnitTicket(
+                id: '01TICKETCOMPRESSORAAAAAAAA',
+                number: 1042,
+                subject: tr
+                    ? 'Kompresör arızası — hat 3'
+                    : 'Compressor fault — line 3',
+                status: 'in_progress',
+                priority: 'urgent',
+                slaStatus: 'breached',
+                unitId: 'U1',
+                unitName: tr ? 'Bakım' : 'Maintenance',
+                workspaceId: '01WSBAKIMAAAAAAAAAAAAAAAAA',
+              ),
+            ],
+          ),
+        ),
         screen: const EeTicketQueueScreen(),
       );
     });

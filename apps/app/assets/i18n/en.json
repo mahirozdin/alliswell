@@ -2254,7 +2254,10 @@
         "unitTitle": "This request is in another unit",
         "unitBody": "It is live in {unit}, and this device is showing another unit right now.",
         "unitBodyUnnamed": "It is live in another of your units, and this device is showing a different one right now.",
-        "switch": "Switch to {unit}"
+        "switch": "Switch to {unit}",
+        "opening": "Opening {unit}…",
+        "openingUnnamed": "Opening the unit…",
+        "openingBody": "This unit's copy is arriving on the device; the request opens by itself."
       },
       "archive": {
         "title": "Archive",
@@ -2813,6 +2816,26 @@
       "offlineTitle": "Absences need a connection",
       "offlineBody": "Absences are kept on the server, where the on-call rota reads them.",
       "saveOffline": "Can’t be saved without a connection."
+    },
+    "myUnits": {
+      "title": "My units",
+      "live": "Live — needs a connection",
+      "scope": "Your units: {units}",
+      "counts": "{breached} SLA missed · {warned} due soon",
+      "alertsOnly": "SLA alerts only",
+      "more": "Show more",
+      "emptyTitle": "Nothing open",
+      "emptyBody": "None of your units has an open request.",
+      "noAlertsTitle": "No SLA alerts",
+      "noAlertsBody": "No request in your units has missed its SLA or is close to it.",
+      "noUnitsTitle": "You are not in a unit",
+      "noUnitsBody": "This list shows the open requests of the units you work in.",
+      "offlineTitle": "Needs a connection",
+      "offlineBody": "This list is read live from the server, so it is never shown from an old copy. The queue of the unit you are in still works offline.",
+      "stripBoth": "Your other units: {breached} SLA missed, {warned} due soon",
+      "stripBreached": "Your other units: {breached} SLA missed",
+      "stripWarned": "Your other units: {warned} SLA due soon",
+      "stripAll": "See all"
     }
   },
   "perm": {

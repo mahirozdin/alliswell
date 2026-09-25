@@ -2253,7 +2253,10 @@
         "unitTitle": "Bu talep başka bir birimde",
         "unitBody": "Talep {unit} biriminde açık; bu cihaz şu an başka bir birimi gösteriyor.",
         "unitBodyUnnamed": "Talep birimlerinizden başka birinde açık; bu cihaz şu an farklı bir birimi gösteriyor.",
-        "switch": "{unit} birimine geç"
+        "switch": "{unit} birimine geç",
+        "opening": "{unit} açılıyor…",
+        "openingUnnamed": "Birim açılıyor…",
+        "openingBody": "Bu birimin kopyası cihaza iniyor; talep kendiliğinden açılacak."
       },
       "archive": {
         "title": "Arşiv",
@@ -2812,6 +2815,26 @@
       "offlineTitle": "Devamsızlıklar bağlantı ister",
       "offlineBody": "Devamsızlıklar sunucuda tutulur; nöbet sırası onları oradan okur.",
       "saveOffline": "Bağlantı yokken kaydedilemez."
+    },
+    "myUnits": {
+      "title": "Birimlerim",
+      "live": "Canlı — bağlantı ister",
+      "scope": "Birimleriniz: {units}",
+      "counts": "{breached} SLA aşıldı · {warned} yaklaşıyor",
+      "alertsOnly": "Yalnız SLA uyarıları",
+      "more": "Daha fazlası",
+      "emptyTitle": "Açık talep yok",
+      "emptyBody": "Birimlerinizin hiçbirinde açık talep yok.",
+      "noAlertsTitle": "SLA uyarısı yok",
+      "noAlertsBody": "Birimlerinizde SLA'sı kaçan ya da yaklaşan talep yok.",
+      "noUnitsTitle": "Bir birimde değilsiniz",
+      "noUnitsBody": "Bu liste, çalıştığınız birimlerin açık taleplerini gösterir.",
+      "offlineTitle": "Bağlantı gerekiyor",
+      "offlineBody": "Bu liste sunucudan canlı okunur; eski bir kopyadan asla gösterilmez. Bulunduğunuz birimin kuyruğu çevrimdışı da çalışır.",
+      "stripBoth": "Diğer birimleriniz: {breached} SLA aşıldı, {warned} yaklaşıyor",
+      "stripBreached": "Diğer birimleriniz: {breached} SLA aşıldı",
+      "stripWarned": "Diğer birimleriniz: {warned} SLA yaklaşıyor",
+      "stripAll": "Tümünü gör"
     }
   },
   "perm": {

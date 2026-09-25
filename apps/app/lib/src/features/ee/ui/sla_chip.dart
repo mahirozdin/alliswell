@@ -77,14 +77,27 @@ String slaBadgeLabel(SlaBadgeState state, DateTime? dueAt, {DateTime? now}) {
 
 /// One compact badge. Draws nothing when the ticket carries no promise.
 class AwSlaChip extends StatelessWidget {
-  const AwSlaChip({
+  AwSlaChip({
     super.key,
-    required this.ticket,
+    required TicketRecord ticket,
+    this.now,
+    this.muted = false,
+  }) : slaStatus = ticket.slaStatus,
+       slaDueAt = ticket.slaDueAt;
+
+  /// EE-267: the same badge for a row read from the server — "Birimlerim"
+  /// has no replica record to hand over, and a second chip would be a second
+  /// opinion about what "breached" looks like.
+  const AwSlaChip.values({
+    super.key,
+    required this.slaStatus,
+    required this.slaDueAt,
     this.now,
     this.muted = false,
   });
 
-  final TicketRecord ticket;
+  final String? slaStatus;
+  final DateTime? slaDueAt;
 
   /// Injectable so a golden is a fixed picture rather than a photograph of the
   /// moment it was taken.
@@ -93,12 +106,12 @@ class AwSlaChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final state = slaBadgeStateOf(ticket.slaStatus);
+    final state = slaBadgeStateOf(slaStatus);
     if (state == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
     final tokens = context.awTokens;
-    final label = slaBadgeLabel(state, ticket.slaDueAt, now: now);
+    final label = slaBadgeLabel(state, slaDueAt, now: now);
 
     // The mark's colour, and separately whether the LABEL may take it.
     final (Color mark, bool labelTakesColour, IconData icon) = switch (state) {

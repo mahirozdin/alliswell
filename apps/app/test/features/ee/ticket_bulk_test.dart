@@ -8,9 +8,11 @@ import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/reachability.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
+import 'package:alliswell/src/features/ee/data/unit_tickets_api.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
+import 'package:alliswell/src/features/ee/unit_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -136,6 +138,12 @@ void main() {
         eeFeatureProvider.overrideWith((ref, feature) => true),
         eeTicketWriteApiProvider.overrideWithValue(api),
         syncEngineProvider.overrideWithValue(null),
+        // EE-267: the queue's strip of other units' SLA alerts is a SERVER
+        // read with its own suite (my_units_test); this one is about the
+        // replica's rows, so the strip has nothing to say here.
+        eeOtherUnitsAlertsProvider.overrideWith(
+          (ref) async => const EeUnitTicketsPage(),
+        ),
         workspaceRosterOfProvider.overrideWith(
           (ref, workspaceId) => Stream.value([
             for (final (id, name) in [(_me, 'Ayla Servis'), (_other, 'Barış')])

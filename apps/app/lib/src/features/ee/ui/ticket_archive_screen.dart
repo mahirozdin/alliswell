@@ -113,6 +113,21 @@ class _AnotherUnit extends ConsumerWidget {
     for (final w in workspaces) {
       if (w.id == workspaceId) name = w.name;
     }
+    // EE-267: the unit it lives in is ALREADY the one open — a switch just
+    // happened (here, or a tap in "Birimlerim") and its copy is arriving.
+    // Offering the same switch again would be a button that does nothing;
+    // the detail replaces this by itself when the row lands.
+    final here = ref.watch(currentWorkspaceProvider.select((w) => w.value?.id));
+    if (workspaceId != null && workspaceId == here) {
+      return AwEmptyState(
+        key: const Key('ticket-elsewhere-opening'),
+        icon: Icons.sync,
+        title: name == null
+            ? 'ee.tickets.elsewhere.openingUnnamed'.tr()
+            : 'ee.tickets.elsewhere.opening'.tr(args: {'unit': name}),
+        message: 'ee.tickets.elsewhere.openingBody'.tr(),
+      );
+    }
     return AwEmptyState(
       key: const Key('ticket-elsewhere-unit'),
       icon: Icons.swap_horiz,
