@@ -1,8 +1,9 @@
 /**
  * Seam test overlay (EE-002) — NOT the real overlay. One fake register()
  * exercising every hook the seam offers, so the contract has teeth: a route,
- * a sync entity (pull + push), an MCP tool, a permission def, and an onSend
- * hook proving overlay hooks reach core routes.
+ * a sync entity (pull + push), MCP tools (one offered to every connection,
+ * one to some — EE-291), a permission def, and an onSend hook proving overlay
+ * hooks reach core routes.
  */
 import { recordSyncWrite } from '../../../../src/db/sync.js';
 import { newId } from '../../../../src/lib/ids.js';
@@ -62,6 +63,31 @@ export async function register(app, seam) {
     // structuredContent itself (toolResult), same as every built-in tool.
     async handler() {
       return { ok: true };
+    },
+  });
+
+  // EE-291: a tool offered to SOME connections. The knob is the set of
+  // workspaces whose connections are offered it (empty: nobody), and every
+  // question is recorded so a test can read what the predicate was asked.
+  const offeredTo = new Set();
+  const offerAsks = [];
+  const offerFails = { on: false };
+  app.decorate('seamOfferedTo', offeredTo);
+  app.decorate('seamOfferAsks', offerAsks);
+  app.decorate('seamOfferFails', offerFails);
+  seam.registerMcpTool({
+    name: 'seam_offered_tool',
+    title: 'Seam offered probe',
+    description: 'Test-only tool offered to some connections only.',
+    annotations: { readOnlyHint: true },
+    inputSchema: { type: 'object', additionalProperties: false, properties: {} },
+    async available(ctx) {
+      offerAsks.push(ctx);
+      if (offerFails.on) throw new Error('the lookup failed');
+      return offeredTo.has(ctx.workspaceId);
+    },
+    async handler() {
+      return { ok: true, offered: true };
     },
   });
 

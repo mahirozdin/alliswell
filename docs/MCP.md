@@ -92,6 +92,10 @@ Deliberate limits, so nothing here surprises you:
   `/oauth/*` route answers 404). It is **independent of `AI_ENABLED`** — the
   MCP track spends no model money and stores no provider keys.
 - One connection maps to **one workspace**; connect twice to reach two.
+- An extension installed on the server may add tools of its own and say which
+  connections they are for. A connection is shown only the tools it is
+  offered, and one it is not offered answers exactly like a name that does not
+  exist.
 - Disconnect from Claude/ChatGPT, or revoke server-side, and the tokens die
   (opaque, hashed, family-revoked on reuse).
 - Data the AI reads flows into **your** Claude/ChatGPT account under *your*

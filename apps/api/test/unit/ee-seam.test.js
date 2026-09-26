@@ -2,7 +2,7 @@ import { describe, it, expect, afterEach } from 'vitest';
 import { fileURLToPath } from 'node:url';
 
 import { buildTestApp, registerUser } from '../helpers/authed.js';
-import { fullDance, callTool } from '../helpers/mcpdance.js';
+import { fullDance, callTool, rpc } from '../helpers/mcpdance.js';
 import { fakeStorage } from '../helpers/fakestorage.js';
 import { loadConfig } from '../../src/config.js';
 import { newId } from '../../src/lib/ids.js';
@@ -17,6 +17,7 @@ import { newId } from '../../src/lib/ids.js';
 
 const FIXTURE_DIR = fileURLToPath(new URL('../fixtures/ee-overlay', import.meta.url));
 const BROKEN_DIR = fileURLToPath(new URL('../fixtures/ee-overlay-broken', import.meta.url));
+const BAD_OFFER_DIR = fileURLToPath(new URL('../fixtures/ee-overlay-bad-offer', import.meta.url));
 
 const eeConfig = (dir) =>
   loadConfig({ NODE_ENV: 'test', RATE_LIMIT_AUTH_MAX: '1000', EE_ENABLED: '1', EE_DIR: dir });
@@ -300,6 +301,56 @@ describe('EE overlay seam (EE-002)', () => {
     const result = await callTool(app, tokens.access_token, 'seam_probe_tool', {});
     expect(result.isError).toBeFalsy();
     expect(result.structuredContent).toEqual({ ok: true });
+  });
+
+  it('offers an overlay MCP tool only to the connections it names (EE-291)', async () => {
+    ({ app } = await buildTestApp({ config: eeConfig(FIXTURE_DIR) }));
+    await registerUser(app, { email: 'seam-offer@example.com' });
+    const { tokens } = await fullDance(app, { email: 'seam-offer@example.com' });
+    const access = tokens.access_token;
+    const listed = async () =>
+      (await rpc(app, access, 'tools/list')).json().result.tools.map((t) => t.name);
+
+    // Offered to nobody yet: not listed, and a call reads exactly like a name
+    // that does not exist. A tool that names nobody is offered to everyone.
+    let names = await listed();
+    expect(names).toContain('seam_probe_tool');
+    expect(names).toContain('search');
+    expect(names).not.toContain('seam_offered_tool');
+    const call = async (name) =>
+      (await rpc(app, access, 'tools/call', { name, arguments: {} })).json().error;
+    const hidden = await call('seam_offered_tool');
+    const missing = await call('no_such_tool');
+    expect(hidden.code).toBe(missing.code);
+    expect(hidden.message).toBe('Unknown tool: seam_offered_tool');
+
+    // It was asked about THIS connection: its person and its workspace.
+    const asked = app.seamOfferAsks.at(-1);
+    const member = await app
+      .db('workspace_members')
+      .where({ workspace_id: asked.workspaceId })
+      .first('user_id');
+    expect(asked).toEqual({ userId: member.user_id, workspaceId: asked.workspaceId });
+
+    // Offered to that workspace's connections: listed, and it answers.
+    app.seamOfferedTo.add(asked.workspaceId);
+    names = await listed();
+    expect(names).toContain('seam_offered_tool');
+    const result = await callTool(app, access, 'seam_offered_tool', {});
+    expect(result.structuredContent).toEqual({ ok: true, offered: true });
+
+    // A question that cannot be answered withholds the tool: a list that
+    // might be wrong is shorter, never longer.
+    app.seamOfferFails.on = true;
+    expect(await listed()).not.toContain('seam_offered_tool');
+    expect((await call('seam_offered_tool')).message).toBe('Unknown tool: seam_offered_tool');
+  });
+
+  it('refuses a tool whose availability cannot be asked — and locks (EE-291)', async () => {
+    ({ app } = await buildTestApp({ config: eeConfig(BAD_OFFER_DIR) }));
+    expect(app.ee.loaded).toBe(false);
+    expect(app.ee.error).toMatch(/available must be a function/);
+    expect(app.ee.lock).toEqual({ code: 'EXTENSION_LOAD_FAILED' });
   });
 
   it('lets an overlay add a kind of thing files hang on — and CE keeps the four (OPH-325)', async () => {

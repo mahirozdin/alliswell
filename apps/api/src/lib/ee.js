@@ -268,10 +268,21 @@ function buildSeam(state) {
       state.attachmentTargets[type] = { check };
     },
 
-    /** MCP tool: the exact MCP_TOOLS entry shape; names are one namespace. */
+    /**
+     * MCP tool: the exact MCP_TOOLS entry shape; names are one namespace.
+     *
+     * EE-291: optionally `available(ctx)` — given the asking connection's
+     * `{ userId, workspaceId }`, whether that connection is OFFERED the tool.
+     * A tool a connection is not offered is neither listed nor callable: it
+     * reads exactly like a name that does not exist. Without it a tool is
+     * offered to every connection, which is all a built-in tool can be.
+     */
     registerMcpTool(tool) {
       if (!tool?.name || typeof tool.handler !== 'function' || !tool.inputSchema) {
         throw new Error('registerMcpTool: { name, inputSchema, handler } required');
+      }
+      if (tool.available !== undefined && typeof tool.available !== 'function') {
+        throw new Error(`registerMcpTool(${tool.name}): available must be a function`);
       }
       if (builtinTools.has(tool.name) || state.mcpTools.some((t) => t.name === tool.name)) {
         throw new Error(`registerMcpTool(${tool.name}): name already taken`);

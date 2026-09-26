@@ -166,6 +166,30 @@ export default async function mcpRoutes(app) {
     };
   }
 
+  /**
+   * EE-291: whether THIS connection is offered `tool`. A tool may carry
+   * `available(ctx)` — an extension's way of saying it serves some
+   * connections and not others (the seam validates it); no built-in tool
+   * does, so a plain build offers exactly what it always did. The caller
+   * builds ONE `ctx` per message, so a predicate that asks the database can
+   * answer a whole list from one query. A predicate that throws withholds its
+   * tool rather than offering it: a list that might be wrong is shorter,
+   * never longer.
+   */
+  async function isOffered(request, tool, ctx) {
+    if (!tool.available) return true;
+    try {
+      return Boolean(await tool.available(ctx));
+    } catch (err) {
+      request.log.warn({ err: err.message, tool: tool.name }, 'mcp tool availability failed');
+      return false;
+    }
+  }
+
+  function offerContext(request) {
+    return { userId: request.mcpAuth.userId, workspaceId: request.mcpAuth.workspaceId };
+  }
+
   async function dispatch(request, message) {
     const { id, method, params = {} } = message;
     switch (method) {
@@ -188,9 +212,14 @@ export default async function mcpRoutes(app) {
       }
       case 'ping':
         return rpcResult(id, {});
-      case 'tools/list':
+      case 'tools/list': {
+        const ctx = offerContext(request);
+        const offered = [];
+        for (const tool of allTools) {
+          if (await isOffered(request, tool, ctx)) offered.push(tool);
+        }
         return rpcResult(id, {
-          tools: allTools.map((tool) => ({
+          tools: offered.map((tool) => ({
             name: tool.name,
             title: tool.title,
             description: tool.description,
@@ -198,9 +227,14 @@ export default async function mcpRoutes(app) {
             annotations: tool.annotations,
           })),
         });
+      }
       case 'tools/call': {
         const tool = toolIndex.get(params.name);
-        if (!tool) return rpcError(id, RPC.INVALID_PARAMS, `Unknown tool: ${params.name}`);
+        // A tool this connection is not offered answers exactly like a name
+        // that does not exist — the list and the call never disagree.
+        if (!tool || !(await isOffered(request, tool, offerContext(request)))) {
+          return rpcError(id, RPC.INVALID_PARAMS, `Unknown tool: ${params.name}`);
+        }
         const args = params.arguments ?? {};
         if (typeof args !== 'object' || Array.isArray(args)) {
           return rpcError(id, RPC.INVALID_PARAMS, 'arguments must be an object');
