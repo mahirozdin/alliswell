@@ -27,7 +27,8 @@ cd apps/app && flutter pub get && flutter run
 
 ## Picking work
 
-1. Check [docs/TASKS.md](docs/TASKS.md) — tasks are ordered; unchecked boxes are open.
+1. `npm run next` prints the next open task from [docs/TASKS.md](docs/TASKS.md) (the file holds
+   open work only, in order; a task marked ⏸️ waits on the maintainer).
 2. Comment on / open an issue so work isn't duplicated.
 3. For anything architectural, propose an ADR first ([docs/adr/template.md](docs/adr/template.md)).
 
@@ -49,12 +50,13 @@ the key to the JSON files. CI enforces this (`npm run check:i18n`). See
 
 ## Pull request checklist
 
-- [ ] `npm run lint`, `npm run format:check`, `npm test` pass (API changes)
-- [ ] `npm run test:integration` passes locally with compose infra up (or rely on CI)
-- [ ] `flutter analyze` + `flutter test` pass (app changes)
-- [ ] No hardcoded UI strings — `npm run check:i18n` (app changes)
+- [ ] `npm run verify:batch` passes — lint, format, every policy gate, the API unit and
+      integration suites (with `docker compose up -d mysql redis minio` running) and, when the app
+      changed, `flutter analyze`, `flutter test` and the web build. `-- --list` shows what your
+      change selects; while you work, `npm run verify:task -- <test files>` is the quick check.
 - [ ] Tests added/updated for the change
-- [ ] Docs updated: `docs/TASKS.md` checkbox, `docs/STATE.md`, `CHANGELOG.md` (+ ADR if needed)
+- [ ] Docs updated: finished task deleted from `docs/TASKS.md`, `docs/STATE.md` updated in place,
+      `CHANGELOG.md` entry (+ ADR/`docs/LESSONS.md` if needed); `npm run check:docs` passes
 - [ ] Conventional commit message with task id
 
 ## Reporting bugs / requesting features

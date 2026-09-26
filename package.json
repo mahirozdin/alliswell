@@ -45,7 +45,10 @@
     "check:postman": "node scripts/api/postman.mjs --check",
     "gen:sync-fields": "node scripts/sync/fields.mjs",
     "check:sync-fields": "node scripts/sync/fields.mjs --check",
-    "check:search-reachable": "node scripts/search/check-reachable.mjs"
+    "check:search-reachable": "node scripts/search/check-reachable.mjs",
+    "next": "node scripts/tasks/next.mjs",
+    "verify:task": "node scripts/verify/verify.mjs task",
+    "verify:batch": "node scripts/verify/verify.mjs batch"
   },
   "repository": {
     "type": "git",

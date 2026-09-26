@@ -17,9 +17,13 @@
 // Escape hatch for a deliberately historical statement — e.g. "researched
 // against v1.4.0", which is provenance and not a claim about today: put
 // `docs-check-ignore` on the line.
-import { readdirSync, readFileSync } from 'node:fs';
+//
+// Since 2026-09-26 it also keeps the working docs small and STATE's pointer
+// honest — see `workingDocProblems()` below.
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
+import { budgetProblems, nextTaskId, parseTasks } from '../tasks/tasks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, '../..');
@@ -143,7 +147,106 @@ function docProblems() {
   return problems;
 }
 
+// ── The working docs stay small ───────────────────────────────────────────────
+//
+// STATE.md and TASKS.md are read at the start of every agent session. By
+// 2026-09-26 they had grown to 484 KB and 932 KB: every finished task kept its
+// whole narrative, and every Snapshot cell carried an "Önceki metin:" chain of
+// all its earlier values. Little of it was wrong and almost none of it was
+// needed, but all of it was paid for on every session. The cleanup cut them to
+// the pointer, the owner's decisions and the open work; durable lessons moved
+// to LESSONS.md, which is searched by area rather than read whole.
+//
+// A byte budget alone would let the files fill up again and fail on some random
+// later day, so the habits that grew them fail on the day they come back:
+//   1. A closed task is deleted, not ticked — git history and CHANGELOG are its
+//      record. A task whose boxes are all `[x]`/`[~]` (or a box-less heading
+//      with ✅) may not stay in TASKS.md.
+//   2. A Snapshot cell is overwritten, never chained: "Önceki metin" fails.
+//   3. STATE.md, TASKS.md and LESSONS.md have byte budgets, and STATE/TASKS a
+//      per-line one (scripts/tasks/tasks.mjs holds the numbers).
+//
+// And since `npm run next` picks the work, two copies of "what is next" exist —
+// STATE's pointer cell and the backlog itself — so the pointer must agree:
+//   4. "➡️ Next task" names the task `next` would print, or declares
+//      **BACKLOG BOŞ** when none is ready. A half-finished session close
+//      (task deleted, arrow not moved) fails here instead of misleading the
+//      next session.
+//   5. Every ⏸️ task is named somewhere in STATE: a task parked on the owner that
+//      the owner's list does not mention waits forever.
+// TASKS.md is read through the same module as `next`, so the gate and the
+// picker cannot disagree about which task is open.
+const DRAINED = '**BACKLOG BOŞ**';
+
+function workingDocProblems() {
+  const problems = [];
+  for (const p of budgetProblems(join(ROOT, 'docs'))) {
+    const file = `docs/${p.file}`;
+    if (p.kind === 'missing') problems.push(`${file}: missing`);
+    else if (p.kind === 'size') {
+      problems.push(`${file}: ${p.size} bytes, budget ${p.limit} — condense it; it is not a log`);
+    } else {
+      problems.push(
+        `${file}:${p.line}: a ${p.size}-byte line, budget ${p.limit} — a cell that grows every ` +
+          'session; overwrite it',
+      );
+    }
+  }
+  if (!existsSync(join(ROOT, 'docs/STATE.md')) || !existsSync(join(ROOT, 'docs/TASKS.md'))) {
+    return problems;
+  }
+
+  const state = read(join(ROOT, 'docs/STATE.md'));
+  state.split('\n').forEach((line, i) => {
+    if (line.includes('Önceki metin')) {
+      problems.push(
+        `docs/STATE.md:${i + 1}: an "Önceki metin" chain — overwrite the cell; git keeps the old value`,
+      );
+    }
+  });
+
+  const parsed = parseTasks(read(join(ROOT, 'docs/TASKS.md')));
+  for (const task of parsed.tasks) {
+    if (task.closed) {
+      problems.push(
+        `docs/TASKS.md: ${task.id} is closed but still listed — delete its block ` +
+          '(a lasting lesson goes to LESSONS.md, an owner decision to STATE.md)',
+      );
+    }
+  }
+
+  const next = nextTaskId(parsed);
+  const pointer = /Next task\*\*\s*\|\s*\*\*([A-Z]{2,5}-\d{3,})/.exec(state);
+  const drained = /Next task\*\*\s*\|\s*\*\*BACKLOG BOŞ\*\*/.test(state);
+  if (!pointer && !drained) {
+    problems.push(
+      `docs/STATE.md: no "➡️ **Next task** | **OPH-NNN" cell — write the id \`npm run next\` ` +
+        `prints, or ${DRAINED} when nothing is ready`,
+    );
+  } else if (next && drained) {
+    problems.push(`docs/STATE.md says ${DRAINED} but ${next} is ready — point the cell at it`);
+  } else if (!next && pointer) {
+    problems.push(
+      `docs/STATE.md points at ${pointer[1]} but no task is ready — write ${DRAINED} ` +
+        '(and why in "Current phase")',
+    );
+  } else if (next && pointer && pointer[1] !== next) {
+    problems.push(`docs/STATE.md points at ${pointer[1]}, but the next task is ${next}`);
+  }
+
+  for (const task of parsed.tasks.filter((t) => t.parked && !t.closed)) {
+    if (!state.includes(task.id)) {
+      problems.push(
+        `docs/STATE.md: ${task.id} is parked (⏸️) but STATE never names it — list the owner's ` +
+          'step under "Kullanıcıdan bekleyen"',
+      );
+    }
+  }
+  return problems;
+}
+
 const problems = [...manifestProblems(), ...docProblems()];
+const working = workingDocProblems();
 
 if (problems.length > 0) {
   console.error(`✗ docs: ${problems.length} stale version claim(s) — repo is ${VERSION}\n`);
@@ -151,7 +254,14 @@ if (problems.length > 0) {
   console.error(
     '\nUpdate the claim, or mark a deliberately historical line with `docs-check-ignore`.',
   );
-  process.exit(1);
 }
+if (working.length > 0) {
+  console.error(`✗ docs: ${working.length} working-doc problem(s)\n`);
+  for (const p of working) console.error(`  ${p}`);
+}
+if (problems.length > 0 || working.length > 0) process.exit(1);
 
-console.log(`✓ docs: version claims agree with package.json (${VERSION})`);
+console.log(
+  `✓ docs: version claims agree with package.json (${VERSION}); ` +
+    'STATE/TASKS/LESSONS within their rules, STATE points where `npm run next` does',
+);

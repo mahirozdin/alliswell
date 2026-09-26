@@ -42,8 +42,8 @@
 | ---------- | ---------------------------------------------- |
 | `apps/api` | Fastify backend, knex migrations, Vitest tests |
 | `apps/app` | Flutter app for all six platforms              |
-| `docs/`    | Blueprint, this file, TASKS/STATE, ADRs        |
-| `scripts/` | Repo tooling (policy checks)                   |
+| `docs/`    | Blueprint, this doc, TASKS/STATE/LESSONS, ADRs |
+| `scripts/` | Repo tooling: policy checks, `next`, `verify`  |
 | `.github/` | CI workflows, issue/PR templates               |
 
 npm workspaces manage the JS side (`npm install` at root). The Flutter app is managed by its own
@@ -162,7 +162,7 @@ No screen or route consults it yet.
   Capture is one function called from the note domain layer and, for the offline path, from the
   sync engine's own `afterCreate`/`afterUpdate` seam; the head coalesces inside a 10-minute
   window and identical bodies do not stack. A daily sweep applies the retention tiers.
-- Migrations: knex, append-only, ESM `up`/`down`. Full table list in [TASKS.md](TASKS.md) Epic 02.
+- Migrations: knex, append-only, ESM `up`/`down`. Full table list: the migrations themselves (`apps/api/migrations/`).
 
 ## 5. Sync engine (live end to end)
 
@@ -337,4 +337,7 @@ share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/a
 - CI (GitHub Actions): ESLint + Prettier check, TypeScript-ban guard, Vitest unit tests,
   knex migrations against a real MySQL 8.4 service, integration tests (real MySQL+Redis),
   `flutter analyze` + `flutter test`.
+- Before a push the same set runs through `npm run verify:batch` — the API suites on a remote
+  sandbox, Flutter locally — and each task closes on its narrow part, `verify:task`
+  ([ADR-0042](adr/0042-layered-verification-and-the-loop-contract.md)).
 - Definition of Done: [../AGENTS.md](../AGENTS.md) §3.

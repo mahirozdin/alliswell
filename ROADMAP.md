@@ -6,9 +6,9 @@ Where AllisWell is and where it's going. Generated from the phase plan in
 
 **Legend:** ✅ shipped · 🟡 partial (rest deferred) · ⏳ planned · 💤 v2 parking lot
 
-> This file is a summary. The authoritative, task-by-task status is
-> [docs/TASKS.md](docs/TASKS.md) (epics OPH-001…OPH-346); the live pointer to
-> "what's next" is [docs/STATE.md](docs/STATE.md). When they disagree, they win.
+> This file is a summary. The open work, task by task, is [docs/TASKS.md](docs/TASKS.md)
+> (a finished task leaves it — git history and [CHANGELOG.md](CHANGELOG.md) keep it); the
+> live pointer to "what's next" is [docs/STATE.md](docs/STATE.md). When they disagree, they win.
 
 ---
 
@@ -559,7 +559,7 @@ on its own; together they answer whether an extension is a first-class citizen.
 **CE behaviour does not change in any item**, and that is the epic's only hard
 acceptance: all three land an *empty* registry. What fills it is not in the core.
 
-### Phase 19 — The planned remainders (Epic 32) 🟡 (in progress, 2026-09-23)
+### Phase 19 — The planned remainders (Epic 32) ✅ (code complete 2026-09-25 — ships in v1.14.0)
 
 What was planned and left open when the widget epic and the sorting work closed,
 done in one pass (OPH-333…OPH-341):
@@ -577,10 +577,10 @@ done in one pass (OPH-333…OPH-341):
   now, and a test reads the manifest.
 - **Documents that say what the code does** (OPH-339): WIDGETS.md, a Widgets section
   in the README, BLUEPRINT §12.8/§15.6, this file.
-- **Remaining:** OPH-340 — the API writing a file it received itself (inbound mail
-  attachments), landed together with its enterprise twin.
+- **A file the API receives itself** (OPH-340) — inbound mail attachments — goes through
+  the same guarded path as an upload; landed together with its enterprise twin.
 
-### Phase 20 — An outside review's core half (Epic 33) ⏳ (planned 2026-09-24)
+### Phase 20 — An outside review's core half (Epic 33) ✅ (code complete 2026-09-25 — ships in v1.14.0)
 
 An outside review read the whole product ahead of a customer presentation. The core's share
 is four seams, each the twin of an extension task and landed in that task's turn
@@ -617,7 +617,8 @@ Deliberately out of scope for v1 — schema-ready or designed, not built:
 Day-to-day status lives in the repo, not a separate tool:
 
 - **[docs/STATE.md](docs/STATE.md)** — the live "what's done / what's next" pointer.
-- **[docs/TASKS.md](docs/TASKS.md)** — the full backlog, every OPH-xxx task with acceptance notes.
+- **[docs/TASKS.md](docs/TASKS.md)** — the open backlog: every unfinished OPH-xxx task with its
+  acceptance notes (a finished one leaves; git history and the CHANGELOG keep it).
 - **[CHANGELOG.md](CHANGELOG.md)** — what changed, per release.
 
 A GitHub Projects board can be layered on top of these if the project grows a

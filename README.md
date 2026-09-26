@@ -392,6 +392,9 @@ and AI (`AI_*` — off by default; see [docs/AI.md](docs/AI.md)).
 | `npm run db:migrate` / `db:rollback` | Knex migrations                                 |
 | `npm run check:no-ts`                | Enforce the JavaScript-only policy              |
 | `npm run check:i18n`                 | Enforce no hardcoded UI strings (localisation)  |
+| `npm run next`                       | Print the next task from docs/TASKS.md          |
+| `npm run verify:task -- <tests>`     | The narrow check for the change in hand (K1)    |
+| `npm run verify:batch`               | Everything CI checks, once, before a push (K2)  |
 
 </details>
 
@@ -414,7 +417,7 @@ and AI (`AI_*` — off by default; see [docs/AI.md](docs/AI.md)).
 | [docs/SCREENSHOTS.md](docs/SCREENSHOTS.md)                                               | How every image in this repo is produced                                                  |
 | [docs/STORE-LISTING.md](docs/STORE-LISTING.md)                                           | App Store &amp; Play copy, asset sizes, claim guardrails                                  |
 | [ROADMAP.md](ROADMAP.md)                                                                 | Phase-by-phase roadmap: shipped, next, and v2 parking lot                                 |
-| [docs/TASKS.md](docs/TASKS.md) · [docs/STATE.md](docs/STATE.md)                          | Every OPH-xxx task · live development state                                               |
+| [docs/TASKS.md](docs/TASKS.md) · [docs/STATE.md](docs/STATE.md)                          | Open OPH-xxx tasks · live development state                                               |
 | [CHANGELOG.md](CHANGELOG.md)                                                             | What changed, per release                                                                 |
 | [docs/adr/](docs/adr/)                                                                   | Architecture Decision Records (0001–0026)                                                 |
 | [AGENTS.md](AGENTS.md) · [CONTRIBUTING.md](CONTRIBUTING.md) · [SECURITY.md](SECURITY.md) | Workflow, contributing &amp; security policy                                              |
@@ -426,9 +429,10 @@ and AI (`AI_*` — off by default; see [docs/AI.md](docs/AI.md)).
 
 This repository is designed for continuous development by AI coding agents:
 
-1. Open [docs/STATE.md](docs/STATE.md) → see the current epic and the **next task**.
+1. `npm run next` prints the **next task** ([docs/STATE.md](docs/STATE.md) names it too).
 2. Say **"do the next task"** (Turkish: _"sıradaki işi yap"_).
-3. The agent follows [AGENTS.md](AGENTS.md): implement → test → update docs → check the box in [docs/TASKS.md](docs/TASKS.md) → update STATE → commit.
+3. The agent follows [AGENTS.md](AGENTS.md): implement → its own tests (`verify:task`) → update docs → remove the finished task from [docs/TASKS.md](docs/TASKS.md) → update STATE → commit; the full set (`verify:batch`) runs once before a push.
+4. For a run of many tasks, a loop follows [LOOP.md](LOOP.md): one turn = one batch, stopping on its own when `next` has nothing left.
 
 The markdown files (STATE / TASKS / CHANGELOG) are the single source of truth — no external board required.
 
