@@ -376,3 +376,42 @@ class AdminLeadPage {
     nextCursor: json['nextCursor'] as String?,
   );
 }
+
+/// Whether the enquiry form's mail is leaving — the Leads screen's card
+/// (GitHub #18).
+///
+/// [missing] is printed as it arrives: the setting names belong to the
+/// server, and this public app knows none of them.
+class SalesDeliveryHealth {
+  const SalesDeliveryHealth({
+    required this.missing,
+    required this.stalled,
+    required this.dead,
+    this.lastError,
+  });
+
+  final List<String> missing;
+
+  /// Queued well past due — stuck, not merely waiting for the next pass.
+  final int stalled;
+
+  /// Given up on after the last attempt.
+  final int dead;
+
+  final String? lastError;
+
+  /// Something the operator should hear about. A message that is simply
+  /// waiting for the next pass is not: that is every enquiry's first minutes.
+  bool get hasProblem => missing.isNotEmpty || stalled > 0 || dead > 0;
+
+  factory SalesDeliveryHealth.fromJson(Map<String, dynamic> json) =>
+      SalesDeliveryHealth(
+        missing: [
+          for (final name in (json['missing'] as List<dynamic>? ?? const []))
+            name as String,
+        ],
+        stalled: (json['stalled'] as num?)?.toInt() ?? 0,
+        dead: (json['dead'] as num?)?.toInt() ?? 0,
+        lastError: json['lastError'] as String?,
+      );
+}

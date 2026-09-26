@@ -1839,7 +1839,14 @@
           "cancel": "Vazgeç",
           "done": "Gönderenin bilgileri silindi."
         },
-        "emptyHelp": "Kurumsal sayfadan gelen talepler burada görünür."
+        "emptyHelp": "Kurumsal sayfadan gelen talepler burada görünür.",
+        "delivery": {
+          "title": "Talep formunun e-postalarında sorun var",
+          "missing": "Sunucuda tanımlı değil: {names}",
+          "stalled": "Gönderilmeyi fazla uzun bekleyen: {count}",
+          "dead": "Gönderilemeyen: {count}",
+          "lastError": "Son hata: {error}"
+        }
       }
     },
     "invite": {

@@ -1840,7 +1840,14 @@
           "cancel": "Cancel",
           "done": "The sender's details were erased."
         },
-        "emptyHelp": "Enquiries from the enterprise page appear here."
+        "emptyHelp": "Enquiries from the enterprise page appear here.",
+        "delivery": {
+          "title": "The enquiry form’s e-mail needs attention",
+          "missing": "Not set on the server: {names}",
+          "stalled": "Waiting too long to be sent: {count}",
+          "dead": "Could not be sent: {count}",
+          "lastError": "Last error: {error}"
+        }
       }
     },
     "invite": {

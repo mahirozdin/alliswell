@@ -254,6 +254,21 @@ class AdminApi {
     }
   }
 
+  /// Whether the enquiry form's mail is leaving (GitHub #18). Null from a
+  /// server older than the question: the Leads screen then draws no card.
+  Future<SalesDeliveryHealth?> salesDelivery(String token) async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/admin/sales/delivery',
+        options: _auth(token),
+      );
+      return SalesDeliveryHealth.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) return null;
+      throw asApiException(e);
+    }
+  }
+
   Future<AdminLead> lead(String token, String id) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(

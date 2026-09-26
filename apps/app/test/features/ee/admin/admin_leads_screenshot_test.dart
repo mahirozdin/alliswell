@@ -151,6 +151,8 @@ void main() {
             overrides: [
               adminLeadsProvider.overrideWith(_StubLeads.new),
               adminSessionProvider.overrideWith(AdminSessionController.new),
+              // The clean shot: mail is leaving, so no card (GitHub #18).
+              adminSalesDeliveryProvider.overrideWith((ref) async => null),
             ],
             child: MaterialApp(
               debugShowCheckedModeBanner: false,
@@ -173,6 +175,60 @@ void main() {
           find.byType(AdminShell),
           matchesGoldenFile(
             '../../../goldens/ee-admin-leads-${brightness.name}.png',
+          ),
+        );
+      } finally {
+        debugDisableShadows = true;
+      }
+    });
+
+    // GitHub #18 — the card is a band on top of the inbox; LOOK at it in both
+    // themes: its every line is in the error container's own ink.
+    testWidgets('mail not going out — ${brightness.name}', (tester) async {
+      await loadRealFontsForStore();
+      tester.view.physicalSize = const Size(1100, 800);
+      tester.view.devicePixelRatio = 2.0;
+      addTearDown(() {
+        tester.view.resetPhysicalSize();
+        tester.view.resetDevicePixelRatio();
+      });
+
+      debugDisableShadows = false;
+      try {
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              adminLeadsProvider.overrideWith(_StubLeads.new),
+              adminSessionProvider.overrideWith(AdminSessionController.new),
+              adminSalesDeliveryProvider.overrideWith(
+                (ref) async => const SalesDeliveryHealth(
+                  missing: ['EE_SMTP_HOST', 'EE_SMTP_FROM'],
+                  stalled: 2,
+                  dead: 0,
+                ),
+              ),
+            ],
+            child: MaterialApp(
+              debugShowCheckedModeBanner: false,
+              theme: buildAwTheme(
+                brightness,
+                fontFamilyOverride: _screenshotFamily,
+              ),
+              home: AwPageBackground(
+                child: AdminShell(
+                  location: '/admin/leads',
+                  child: const AdminLeadsScreen(),
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await expectLater(
+          find.byType(AdminShell),
+          matchesGoldenFile(
+            '../../../goldens/ee-admin-leads-delivery-${brightness.name}.png',
           ),
         );
       } finally {

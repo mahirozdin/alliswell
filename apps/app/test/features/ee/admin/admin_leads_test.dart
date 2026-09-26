@@ -65,10 +65,17 @@ AdminLead lead({
   'createdAt': '2026-09-08T10:00:00.000Z',
 });
 
-List<Override> listOf(List<AdminLead> items, {String? nextCursor}) => [
+List<Override> listOf(
+  List<AdminLead> items, {
+  String? nextCursor,
+  SalesDeliveryHealth? delivery,
+}) => [
   adminLeadsProvider.overrideWith(
     () => _StubLeads(AdminLeadPage(items: items, nextCursor: nextCursor)),
   ),
+  // GitHub #18: the delivery card's own question, answered here so no test
+  // reaches a server. Null — an older server — draws nothing.
+  adminSalesDeliveryProvider.overrideWith((ref) async => delivery),
 ];
 
 class _StubLeads extends AdminLeadsController {
@@ -162,6 +169,97 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("Erased at the sender's request"), findsOneWidget);
       expect(find.text('Aydın Metal A.Ş.'), findsNothing);
+    });
+  });
+
+  // GitHub #18 — the form never fails where a visitor can see it, so mail
+  // that never leaves had no symptom but its absence. The card says so, in
+  // the server's own words for what is missing: this public app knows none
+  // of those names, so the ones below are made up on purpose.
+  group('the delivery card (GitHub #18)', () {
+    const problem = SalesDeliveryHealth(
+      missing: ['EXAMPLE_RELAY_HOST', 'EXAMPLE_RELAY_FROM'],
+      stalled: 2,
+      dead: 1,
+      lastError: '535 5.7.8 authentication failed',
+    );
+    final card = find.byKey(const Key('admin-leads-delivery'));
+
+    testWidgets('says what is missing, what waits and what failed', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        harness(
+          const AdminLeadsScreen(),
+          overrides: listOf([lead()], delivery: problem),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(card, findsOneWidget);
+      expect(
+        find.text(
+          'Not set on the server: EXAMPLE_RELAY_HOST, EXAMPLE_RELAY_FROM',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Waiting too long to be sent: 2'), findsOneWidget);
+      expect(find.text('Could not be sent: 1'), findsOneWidget);
+      expect(
+        find.text('Last error: 535 5.7.8 authentication failed'),
+        findsOneWidget,
+      );
+      // Advice beside the inbox, never instead of it.
+      expect(find.text('Aydın Metal A.Ş.'), findsOneWidget);
+    });
+
+    testWidgets('and says it in Turkish', (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      await tester.pumpWidget(
+        harness(
+          const AdminLeadsScreen(),
+          overrides: listOf([lead()], delivery: problem),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Talep formunun e-postalarında sorun var'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Sunucuda tanımlı değil: EXAMPLE_RELAY_HOST, EXAMPLE_RELAY_FROM',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('ee.admin.leads.delivery.'), findsNothing);
+    });
+
+    testWidgets('draws nothing when the mail is leaving', (tester) async {
+      await tester.pumpWidget(
+        harness(
+          const AdminLeadsScreen(),
+          overrides: listOf(
+            [lead()],
+            delivery: const SalesDeliveryHealth(
+              missing: [],
+              stalled: 0,
+              dead: 0,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+    });
+
+    testWidgets('draws nothing for a server that cannot say', (tester) async {
+      await tester.pumpWidget(
+        harness(const AdminLeadsScreen(), overrides: listOf([lead()])),
+      );
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
     });
   });
 

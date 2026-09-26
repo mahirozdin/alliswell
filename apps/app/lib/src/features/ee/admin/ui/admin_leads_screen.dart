@@ -25,6 +25,7 @@ class AdminLeadsScreen extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        const _DeliveryWarning(),
         _StatusFilter(
           selected: controller.status,
           onSelected: controller.filter,
@@ -64,6 +65,84 @@ class AdminLeadsScreen extends ConsumerWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+/// Says so when the enquiry form's mail is not going out (GitHub #18).
+///
+/// The form never fails where a visitor can see it — the lead is stored and
+/// the page thanks them — so an e-mail that never leaves had no symptom but
+/// its absence. Drawn only on a problem the server reports; loading, an
+/// error and an older server all draw nothing, because this is advice beside
+/// the inbox and must never stand between the operator and the leads.
+class _DeliveryWarning extends ConsumerWidget {
+  const _DeliveryWarning();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(adminSalesDeliveryProvider).value;
+    if (health == null || !health.hasProblem) return const SizedBox.shrink();
+
+    final theme = Theme.of(context);
+    // Every line on the band in its own ink — the pair the alarm banner
+    // already uses, contrast-checked in both themes.
+    final ink = theme.colorScheme.onErrorContainer;
+    final title = 'ee.admin.leads.delivery.title'.tr();
+    final lines = [
+      if (health.missing.isNotEmpty)
+        'ee.admin.leads.delivery.missing'.tr(
+          args: {'names': health.missing.join(', ')},
+        ),
+      if (health.stalled > 0)
+        'ee.admin.leads.delivery.stalled'.tr(
+          args: {'count': '${health.stalled}'},
+        ),
+      if (health.dead > 0)
+        'ee.admin.leads.delivery.dead'.tr(args: {'count': '${health.dead}'}),
+      if (health.lastError != null)
+        'ee.admin.leads.delivery.lastError'.tr(
+          args: {'error': health.lastError!},
+        ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x2, AwSpace.x4, 0),
+      child: Material(
+        key: const Key('admin-leads-delivery'),
+        color: theme.colorScheme.errorContainer,
+        borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x3),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.mark_email_unread_outlined, size: 20, color: ink),
+              const SizedBox(width: AwSpace.x2),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: theme.textTheme.titleSmall?.copyWith(color: ink),
+                    ),
+                    for (final line in lines)
+                      Padding(
+                        padding: const EdgeInsets.only(top: AwSpace.x1),
+                        child: Text(
+                          line,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: ink,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

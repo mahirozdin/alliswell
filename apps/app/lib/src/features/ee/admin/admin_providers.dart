@@ -159,6 +159,15 @@ final adminLimitKeysProvider = FutureProvider.autoDispose<List<LimitKeyInfo>>((
   return ref.watch(adminApiProvider).limitKeys(token);
 });
 
+/// The Leads screen's delivery card (GitHub #18) — advice beside the inbox,
+/// so whatever this cannot answer simply draws nothing.
+final adminSalesDeliveryProvider =
+    FutureProvider.autoDispose<SalesDeliveryHealth?>((ref) async {
+      final token = _token(ref);
+      if (token == null) throw StateError('no admin session');
+      return ref.watch(adminApiProvider).salesDelivery(token);
+    });
+
 /// The sales inbox (EE-160), and the one list in this console that pages.
 ///
 /// An `AsyncNotifier` rather than a `FutureProvider` because the list has a
