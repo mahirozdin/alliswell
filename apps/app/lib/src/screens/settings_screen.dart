@@ -48,15 +48,22 @@ class SettingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(authControllerProvider).value;
     final scheme = Theme.of(context).colorScheme;
-    // EE-282: a permission row is drawn only where the capability EXISTS.
-    // `canProvider` answers true for an ungoverned workspace — the right
-    // default for a button inside a team screen, and the wrong one for a door
-    // on the settings root: on a plain instance it drew eight admin rows onto
-    // screens whose every endpoint answers 404. The entitlement comes first
-    // (false until known, so nothing flickers in); the verb then decides among
-    // the people on an instance that has the feature.
-    final teams = ref.watch(eeFeatureProvider('teams'));
-    bool may(String permission) => teams && ref.watch(canProvider(permission));
+    // EE-290: a team-administration row is drawn only for the team's OWNER or
+    // ADMIN, on the team's own address — the owner's call, and the same door
+    // the Team group above uses. The rows behind it answer only on that host.
+    //
+    // EE-282 asked for the entitlement first, which fixed the plain instance
+    // and left the licensed one open: `canProvider` answers true for a
+    // workspace nothing governs — the right default for a button INSIDE a team
+    // screen, and the wrong one for a door on the root. Somebody with only a
+    // personal workspace on a licensed instance (and a member whose personal
+    // workspace happens to be the first one asked about) saw every one of
+    // these rows, over screens that could only answer 404. The role now
+    // decides whether the row exists; the verb only narrows it, so an admin
+    // whose role was trimmed meets no door they cannot open.
+    final teamAdmin = ref.watch(eeTeamAdminProvider);
+    bool may(String permission) =>
+        teamAdmin && ref.watch(canProvider(permission));
     // Anyone whose workspace has a roster — the replica's own data, so it is
     // right offline and simply absent on a plain build (EE-068's gate).
     final inTeam =
@@ -102,6 +109,9 @@ class SettingsScreen extends ConsumerWidget {
                     : 'settings.group.generalSub',
                 path: '/settings/general',
               ),
+              // EE-290: the map names what the page holds. It promised a
+              // "centre" to everyone — the team's notification centre, which
+              // lives in its own row below and only in a team.
               _GroupRow(
                 keyName: 'settings-group-notifications',
                 icon: Icons.notifications_active_outlined,
@@ -193,13 +203,13 @@ class SettingsScreen extends ConsumerWidget {
               // row above, which had to ask the server because a delegated
               // manager holds no role that says so.
               //
-              // On the root and NOT behind the Team group, and that is now a
-              // reason rather than a stopgap (EE-271 corrected the comment
-              // that called it provisional): the group's hub does link onward
-              // since EE-042 — members, invites, roles, units, shared — but it
-              // opens only for a team ADMIN, and this verb (like every row
-              // below it) is granted by role to people who are not one. Moved
-              // behind the group, the catalogue's owner would lose the door.
+              // EE-290: this row and every one below it through the audit log
+              // are the team's ADMINISTRATION, and the owner decided they
+              // belong to its owner and admins alone (`may` above). A custom
+              // role that is granted one of these verbs keeps it on the server
+              // and gets no door here. They stay on the root rather than
+              // inside the Team group so that each keeps its own key and its
+              // own address (S2: a re-home is its own task).
               if (may('services.manage'))
                 _GroupRow(
                   keyName: 'settings-group-services',
@@ -246,7 +256,11 @@ class SettingsScreen extends ConsumerWidget {
               // OPH-287: the team's identity sources. Same gate shape as the
               // rows above — a permission, not an entitlement, so the door is
               // absent rather than forbidden for somebody who cannot use it.
-              if (may('team.manage_identity'))
+              // EE-290: and only where the directory is licensed — the screen's
+              // own providers ask for it, and without it every endpoint behind
+              // this row answers 404.
+              if (may('team.manage_identity') &&
+                  ref.watch(eeFeatureProvider('directory')))
                 _GroupRow(
                   keyName: 'settings-group-team-identity',
                   icon: Icons.account_tree_outlined,

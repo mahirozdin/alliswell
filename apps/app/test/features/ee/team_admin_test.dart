@@ -383,13 +383,21 @@ void main() {
     /// is awaited FIRST on purpose: on a cold start the team read runs before
     /// the status arrives and answers null, then re-runs when it does — so a
     /// test that skips the wait would pass for the wrong reason.
-    Future<bool> gate({required bool entitled, required String? role}) async {
+    Future<bool> gate({
+      required bool entitled,
+      required String? role,
+      String overlay = 'loaded',
+    }) async {
       final container = ProviderContainer(
         overrides: [
           eeStatusProvider.overrideWith(
             () => _FixedStatus(
               entitled
-                  ? const EeStatus(state: 'active', features: ['teams'])
+                  ? EeStatus(
+                      state: 'active',
+                      features: const ['teams'],
+                      overlay: overlay,
+                    )
                   : EeStatus.none,
             ),
           ),
@@ -421,6 +429,16 @@ void main() {
     test('entitled and an admin: the group exists', () async {
       expect(await gate(entitled: true, role: 'admin'), isTrue);
       expect(await gate(entitled: true, role: 'owner'), isTrue);
+    });
+
+    test('a license on a server with no extension: no group', () async {
+      // EE-290: the core server reads the license itself, so a plain install
+      // that was left one names features nothing there can serve — the team
+      // is not even asked for.
+      expect(
+        await gate(entitled: true, role: 'owner', overlay: 'absent'),
+        isFalse,
+      );
     });
   });
 }

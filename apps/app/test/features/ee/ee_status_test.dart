@@ -71,6 +71,45 @@ void main() {
     expect(container.read(eeFeatureProvider('sla')), isFalse);
   });
 
+  // EE-290: the core server reads the license by itself, so a plain install
+  // that was left a license file (or EE_DEV_ENTITLEMENTS) answers `active`
+  // with every feature listed — and says there is no extension to serve them.
+  // The client believes the second half.
+  for (final overlay in ['absent', 'disabled', 'error']) {
+    test('a license with the extension $overlay turns nothing on', () async {
+      final api = FakeApi()
+        ..eeState = 'active'
+        ..eeFeatures = ['teams', 'itsm']
+        ..eeOverlay = overlay;
+      final container = await signedInContainer(api);
+
+      final status = await container.read(eeStatusProvider.future);
+
+      expect(status.state, 'active');
+      expect(status.features, ['teams', 'itsm']);
+      expect(container.read(eeFeatureProvider('teams')), isFalse);
+      expect(container.read(eeFeatureProvider('itsm')), isFalse);
+    });
+  }
+
+  test('the overlay rides through the offline cache', () async {
+    // A cached answer is the same answer: a plain install that was left a
+    // license must not come back "on" the first time the network drops.
+    final api = FakeApi()
+      ..eeState = 'active'
+      ..eeFeatures = ['teams']
+      ..eeOverlay = 'absent';
+    final online = await signedInContainer(api);
+    await online.read(eeStatusProvider.future);
+
+    api.offline = true;
+    final offline = await signedInContainer(api);
+    final status = await offline.read(eeStatusProvider.future);
+
+    expect(status.overlay, 'absent');
+    expect(offline.read(eeFeatureProvider('teams')), isFalse);
+  });
+
   test('readonly keeps names listed but gates every feature off', () async {
     final api = FakeApi()
       ..eeState = 'readonly'

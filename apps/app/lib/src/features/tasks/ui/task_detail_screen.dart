@@ -148,7 +148,15 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
           // EE-069 / item 10: the task's own history. Present only where there
           // is a team to have made it — on a personal workspace nothing has
           // ever been recorded and the button would open an empty room.
-          if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+          // EE-290: the TASK's workspace decides, not the one on screen. It
+          // read the selected workspace's roster, so with a team's workspace
+          // selected a personal task opened from Home (or from a link) wore
+          // the team's history button too.
+          if (ref
+                  .watch(workspaceRosterOfProvider(task.workspaceId))
+                  .value
+                  ?.isNotEmpty ??
+              false)
             IconButton(
               key: const Key('task-history'),
               tooltip: 'ee.history.taskTitle'.tr(),
@@ -488,8 +496,13 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               const SizedBox(height: AwSpace.x3),
               // EE-068 / item 9: who is on this task. The section is present
               // only where there IS a roster, so a personal workspace and a
-              // plain build never see a card they cannot use.
-              if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ??
+              // plain build never see a card they cannot use. EE-290: the
+              // roster of the task's OWN workspace, for the reason the
+              // history button above gives.
+              if (ref
+                      .watch(workspaceRosterOfProvider(task.workspaceId))
+                      .value
+                      ?.isNotEmpty ??
                   false) ...[
                 _SectionCard(
                   title: 'ee.assign.section'.tr(),

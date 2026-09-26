@@ -35,8 +35,18 @@ class EeStatus {
   /// Mirrors the server's `has()`: a feature is on only while the license
   /// breathes (active or grace). `readonly` keeps names listed but answers
   /// false — surfaces decide their own read-only presentation later.
+  ///
+  /// EE-290: and only where the extension is actually LOADED. The core server
+  /// reads the license itself, so a plain install with a license file or
+  /// `EE_DEV_ENTITLEMENTS` left in its environment answers `active` with every
+  /// feature named — beside `overlay: 'absent'`, because nothing is there to
+  /// serve them. A license names what MAY run; the overlay is what does. The
+  /// field has been in every `/ee/status` answer since the endpoint was born
+  /// (EE-003), so no server leaves it out.
   bool has(String feature) =>
-      (state == 'active' || state == 'grace') && features.contains(feature);
+      overlay == 'loaded' &&
+      (state == 'active' || state == 'grace') &&
+      features.contains(feature);
 
   factory EeStatus.fromJson(Map<String, dynamic> json) => EeStatus(
     state: (json['state'] as String?) ?? 'none',

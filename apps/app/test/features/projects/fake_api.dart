@@ -449,6 +449,12 @@ class FakeApi {
   /// no host can be read as a team origin.
   String? eeBaseDomain;
 
+  /// What `/ee/status` says about the extension itself (EE-290). Null derives
+  /// it the way a real server would: a licensed instance has its overlay
+  /// loaded, a plain one has none. Set it to play a plain install that was
+  /// left a license (`'absent'`) — the case the client must not believe.
+  String? eeOverlay;
+
   // ── Per-user permissions (/ee/me/permissions, EE-052) ────────────────────
   /// `governed: false` is the plain-build answer and the default: nothing is
   /// asking, so every `can()` is true. Set [eePermissions] (and leave
@@ -858,7 +864,7 @@ class FakeApi {
         'state': eeState,
         'features': eeFeatures,
         'expiresAt': null,
-        'overlay': 'disabled',
+        'overlay': eeOverlay ?? (eeState == 'none' ? 'absent' : 'loaded'),
         'baseDomain': eeBaseDomain,
       });
     }

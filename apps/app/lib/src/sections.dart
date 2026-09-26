@@ -53,7 +53,9 @@ enum AppSection {
   /// It is also the first section that is not always DRAWN. Whether it appears
   /// is decided per install, so the shell distinguishes "which sections exist"
   /// (this enum, and the branches) from "which sections are on screen"
-  /// (`visibleSections`) — see [AppSection.hiddenWithoutEntitlement].
+  /// (`visibleSections`) — see [AppSection.hiddenWithoutEntitlement]. Since
+  /// EE-290 the license is not enough: the desk is a team's, so it is drawn
+  /// only in a team's window (the shell's `itsm` argument says both).
   tickets(
     titleKey: 'nav.tickets',
     descriptionKey: 'nav.ticketsDesc',
@@ -114,7 +116,9 @@ enum AppSection {
 // `sections_test.dart` pins that with a middle-hidden case rather than with
 // today's list.
 
-/// The sections this install draws, in enum order.
+/// The sections this install draws, in enum order. [itsm] is whether THIS
+/// window offers the service desk — the license and a team's address together
+/// (EE-290), not the license alone.
 List<AppSection> visibleAppSections({required bool itsm}) => [
   for (final section in AppSection.values)
     if (!section.hiddenWithoutEntitlement || itsm) section,

@@ -247,6 +247,17 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **An account of your own no longer shows a team's controls (EE-290).** On a server that
+  also serves teams, somebody with only a personal workspace met a "Requests" tab that could
+  list nothing and send nothing, and Settings rows for running a team — services, SLA
+  management, the team's AI keys, identity sources, the mail relay, public request links,
+  outgoing webhooks, approvals, the audit log — over screens that could not load. The tab now
+  appears only on a team's own address, those rows only for that team's owner or admins, and
+  a web address left on the tab moves to Home. Inside a team, a personal task no longer wears
+  the team's history button or people card. A server running without the enterprise
+  extension shows none of it, whatever license it was left, and the Notifications group's
+  subtitle names what the page holds.
+
 - **On the web, "Open settings" in the alarm fix sheet no longer opens a dead tab
   ([#19](https://github.com/mahirozdin/alliswell/issues/19)).** The sheet sent every browser to an
   iPhone settings address. It now tells the three cases apart: a browser that has not been asked

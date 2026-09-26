@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 
 import '../features/ee/new_ticket_providers.dart';
 import '../features/ee/providers.dart';
+import '../features/ee/team_origin.dart';
 import '../features/ee/ticket_drafts_providers.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
@@ -207,10 +208,32 @@ class HomeShell extends ConsumerWidget {
     // A listener, not a watch: the shell has nothing to redraw when it does.
     ref.listen(sentDraftsProvider, (_, _) {});
     // EE-084: which sections are DRAWN. Not the same list as the branches —
-    // see `_visible` / `_selectedIn` above for why that distinction exists.
+    // `sections.dart` says why that distinction exists.
+    //
+    // EE-290: the service desk is drawn only in a TEAM's window. The license
+    // is the instance's, the desk is a team's, and every request endpoint
+    // answers only on the team's own address — which `teamOriginProvider`
+    // reads from the address this person signed in to and the cached status,
+    // so it is right offline. On the hosted service's own address somebody on
+    // their own has no desk, no catalogue and nobody to ask: the tab opened
+    // onto a list that could not load and a form that could not send.
     final visibleSections = visibleAppSections(
-      itsm: ref.watch(eeFeatureProvider('itsm')),
+      itsm:
+          ref.watch(eeFeatureProvider('itsm')) &&
+          ref.watch(teamOriginProvider) != null,
     );
+    // …and a shell sitting on a branch it does not draw (an address typed or
+    // restored on the web, a license that lapsed) moves to Home — once the
+    // answer is SETTLED. While the status is still loading, the tab is hidden
+    // only because nothing is known yet, and moving a desk agent off their
+    // queue for that would be a guess dressed as a fact.
+    if (ref.watch(eeStatusProvider).hasValue &&
+        destinationIndexFor(visibleSections, navigationShell.currentIndex) <
+            0) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) _goBranch(AppSection.home.index);
+      });
+    }
     ref.listen(syncConflictsProvider, (_, next) {
       final conflict = next.value;
       if (conflict == null) return;
