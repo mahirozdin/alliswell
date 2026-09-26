@@ -9,14 +9,15 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-09-26 — açık GitHub issue'larının kod turu (#17, #19; TASKS'a iş yazılmadan,
-id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te).
+**Last updated:** 2026-09-26 — açık GitHub issue'larının kod turu: #17 ve #19 düzeltilip kapandı, #11
+kod tamam diye kapandı (Play beyanı sahip adımı); TASKS'a iş yazılmadan, id'ler yalnız
+commit/CHANGELOG/DEVICE-CHECKS'te.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | Döngü kapandı (kontrol turu 2026-09-26, `a5d5a30`, CI yeşil). Epic 31–33 `main`'de, v1.14.0 adayı; canlıdaki son sürüm **v1.13.0** (2026-09-19). |
+| Current phase            | GitHub issue turu kapandı (2026-09-26, `3fcd67b`; CI bir sonraki turda okunur). Epic 31–33 ve OPH-351/352 `main`'de, v1.14.0 adayı; canlıdaki son sürüm **v1.13.0** (2026-09-19). |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki üç iş (OPH-142, OPH-273, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
 | Last completed           | OPH-352 — web'de alarm düzeltme sayfası ölü `app-settings:` sekmesi açmıyor; tarayıcının üç ret durumu ayrı (GitHub #19). |
@@ -35,8 +36,8 @@ id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te).
 5. **OPH-274** — `markdown_forge` public repo + `dart pub publish`.
 6. **OPH-142** — critical-alerts başvurusunun sonucu (onaylanırsa tek entitlement satırı).
 7. **OPH-304** — Play Console `USE_EXACT_ALARM` beyanı (form + video; malzeme
-   `docs/store/exact-alarm-declaration.md`; GitHub #11 açık) ve Galaxy A12 bildireninden Android
-   sürümü, alarm günlüğü görüntüsü, hatırlatıcının kurulduğu cihaz.
+   `docs/store/exact-alarm-declaration.md`). GitHub #11 kod tamam diye kapandı (2026-09-26);
+   Galaxy A12 bildireni Android sürümü, alarm günlüğü ve cihaz bilgisiyle dönerse yeni issue.
 8. **OPH-335** — macOS widget hedefi: `cd apps/app/macos && ruby scripts/add_widget_extension.rb`
    → Xcode'da AllisWellWidgetMac hedefine takımı seç → `flutter build macos` → pbxproj farkını
    commit'le (`macos/AllisWellWidgetMac/SETUP.md`).
