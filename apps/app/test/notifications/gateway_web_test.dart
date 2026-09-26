@@ -168,11 +168,33 @@ void main() {
   });
 
   group('what it admits about itself', () {
-    test('no permission reads as notifications off', () async {
-      final host = _FakeHost(granted: WebPushPermission.denied);
-      final support = await _gatewayFor(host).alarmSupport();
+    // #19 — each of these three used to read as `notificationsOff`, whose
+    // fix is a page on an iPhone: the web sheet opened `app-settings:` in a
+    // new tab, and no browser knows that address.
+    test(
+      'a refusal reads as BLOCKED — the browser will not ask again',
+      () async {
+        final host = _FakeHost(granted: WebPushPermission.denied);
+        final support = await _gatewayFor(host).alarmSupport();
+        expect(support.notificationsEnabled, isFalse);
+        expect(support.webPermission, WebPermissionState.denied);
+        expect(support.worstProblem, AlarmProblem.webPermissionBlocked);
+      },
+    );
+
+    test('an unanswered prompt is the one refusal asking can fix', () async {
+      final support = await _gatewayFor(_FakeHost()).alarmSupport();
       expect(support.notificationsEnabled, isFalse);
-      expect(support.worstProblem, AlarmProblem.notificationsOff);
+      expect(support.webPermission, WebPermissionState.prompt);
+      expect(support.worstProblem, AlarmProblem.webPermissionPrompt);
+    });
+
+    test('a browser with no web push says so rather than "off"', () async {
+      final host = _FakeHost(isSupported: false);
+      final support = await _gatewayFor(host).alarmSupport();
+      expect(support.webPushReady, isFalse);
+      expect(support.webPermission, WebPermissionState.unsupported);
+      expect(support.worstProblem, AlarmProblem.webUnsupported);
     });
 
     test('permission without a subscription is its OWN problem', () async {
@@ -204,6 +226,7 @@ void main() {
 
       final support = await gateway.alarmSupport();
       expect(support.worstProblem, isNull);
+      expect(support.webPermission, isNull);
       expect(support.criticalAlertsEnabled, isFalse);
       // Web cannot answer any of the Darwin questions, and guessing would put
       // a wrong sentence in the Settings row.

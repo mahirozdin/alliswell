@@ -1009,7 +1009,25 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
     } catch (_) {
       // Denials and missing platform surfaces both just re-probe below.
     }
-    if (mounted) setState(() => _support = _probe());
+    // A block body: `() => _support = _probe()` RETURNS the Future it assigns,
+    // and setState refuses a callback that returns one (#19 found it).
+    if (mounted) {
+      setState(() {
+        _support = _probe();
+      });
+    }
+  }
+
+  Future<void> _fix(AlarmProblem problem) async {
+    await showAlarmFixSheet(context, ref, problem);
+    // This row probes on its own rather than through the provider the sheet
+    // invalidates, so without a probe here it kept naming the problem the
+    // sheet had just fixed (#19).
+    if (mounted) {
+      setState(() {
+        _support = _probe();
+      });
+    }
   }
 
   @override
@@ -1046,9 +1064,7 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
               // A healthy row is not a dead affordance: re-running the request
               // is still how Android grants "Alarms & reminders", and a re-probe
               // is a reasonable thing to want.
-              onTap: problem == null
-                  ? _request
-                  : () => showAlarmFixSheet(context, ref, problem),
+              onTap: problem == null ? _request : () => _fix(problem),
             ),
             // OPH-277: the thing a report about a silent alarm never had — a way
             // to make it happen on purpose, right now, with the log watching.

@@ -163,8 +163,10 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 
-- **GitHub #19** — web'de alarm düzeltme sayfasının "Open settings"i ölü bir `app-settings:`
-  sekmesi açıyor (OPH-277'nin düzeltme sayfasının web yüzeyi).
+- **Web teslimatı Kapalı iken alarm bandı** — Kapalı düşürülen aboneliği `webPushOff` diye
+  raporluyor: bant dırdır ediyor ve "Tekrar kontrol et" kullanıcının Kapalı seçimine rağmen
+  yeniden abone ediyor (`gateway_web.alarmSupport`, OPH-316'nın modu okunmuyor). 2026-09-26'da
+  #19 turunda ölçüldü.
 - **Oturum kapanışı yerel replikayı silmiyor** — tek `alliswell.sqlite`; hesap değişince önceki
   hesabın satırları cihazda kalır (`logout()` replikaya dokunmuyor). Sertleştirme.
 - **OPH-337** — `LocalKv` okunamazsa "Gizli widget" (ve bildirim gizliliği) hata vermeden

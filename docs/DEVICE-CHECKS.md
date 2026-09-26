@@ -8,6 +8,7 @@
 ## GitHub issue'ları (2026-09-26)
 
 - OPH-351 (#17) — Android'de hızlı erişim balonunu hızlı ve uzun sürükle: parmağın altında kalıyor, bıraktığın yarının kenarına yapışıyor.
+- OPH-352 (#19) — Chrome'da siteye bildirim izni hiç verilmemişken bant → "Bildirimlere izin ver" tarayıcının istemini açıyor; izin engelliyken yeni sekme açılmıyor, adres çubuğu adımları görünüyor, izin verip "Tekrar kontrol et" bandı kaldırıyor; iPhone'da Safari sekmesinde (Ana Ekran'a eklenmemiş) buton yok, Ana Ekran yönlendirmesi var.
 
 ## Epic 32
 

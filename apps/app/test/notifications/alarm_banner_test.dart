@@ -168,6 +168,17 @@ void main() {
       expect(both.worstProblem, AlarmProblem.notificationsOff);
     });
 
+    test('off the web, "off" is still the native problem (#19)', () {
+      // Only the web gateway fills `webPermission`. A phone with notifications
+      // off must keep the sheet that opens its own Settings page.
+      const phone = AlarmSupport(
+        notificationsEnabled: false,
+        criticalAlertsEnabled: false,
+      );
+      expect(phone.webPermission, isNull);
+      expect(phone.worstProblem, AlarmProblem.notificationsOff);
+    });
+
     testWidgets('tapping it opens the sheet that says where the switch is', (
       tester,
     ) async {

@@ -158,6 +158,7 @@ class WebNotificationsGateway implements NotificationsGateway {
         notificationsEnabled: false,
         criticalAlertsEnabled: false,
         webPushReady: false,
+        webPermission: WebPermissionState.unsupported,
       );
     }
 
@@ -172,6 +173,13 @@ class WebNotificationsGateway implements NotificationsGateway {
       // Every Darwin question stays null: web cannot answer them, and a guess
       // would put a wrong sentence in the Settings row.
       webPushReady: subscribed,
+      // Which of the two refusals this is decides what the fix sheet can offer
+      // (#19): a prompt can still be shown, a block cannot.
+      webPermission: switch (permission) {
+        WebPushPermission.granted => null,
+        WebPushPermission.prompt => WebPermissionState.prompt,
+        WebPushPermission.denied => WebPermissionState.denied,
+      },
     );
   }
 

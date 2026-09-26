@@ -430,6 +430,17 @@ re-ran `requestPermissions()`, and iOS never shows that prompt twice — so once
 the user had answered, the "Fix" button was inert. It now opens a sheet that
 names the switch, writes the steps, and deep-links `app-settings:`.
 
+**On the web that link was a dead tab (#19).** No browser knows `app-settings:`,
+and `url_launcher` on the web opens a tab for an unknown scheme instead of
+failing, so the sheet's "best effort" fallback never ran. A browser's refusal is
+now three problems, each with the button that can actually do something: never
+asked (`webPermissionPrompt` — the button asks), blocked (`webPermissionBlocked`
+— the steps name the address bar's site-info icon and the button only checks
+again, because a browser never re-prompts), and no web push at all
+(`webUnsupported` — the Home Screen on an iPhone, a current browser elsewhere,
+and no button). Which action a problem gets is one exhaustive switch in the
+sheet, so a new problem cannot fall through to the iOS page.
+
 The cascade itself (`AlarmSupport.worstProblem` → `AlarmProblem`) lives on the
 model rather than in the two widgets that render it. The banner and the Settings
 row each carried their own two-branch `if`; the five conditions this round added

@@ -513,9 +513,11 @@ its text.
   declined. Both surfaces read one ordered list, because the banner and the
   Settings row each carried their own copy and five new conditions would have
   been five chances to disagree. The tap now opens a sheet that NAMES the switch
-  and deep-links to it (`app-settings:`) — it used to re-run the permission
-  request, which iOS ignores once the prompt has been answered, so the "Fix"
-  button could not fix anything.
+  and deep-links to it (`app-settings:`, native only) — it used to re-run the
+  permission request, which iOS ignores once the prompt has been answered, so the
+  "Fix" button could not fix anything. On the web the sheet never links anywhere
+  (#19): it asks the browser, or names the address bar's site-info icon and
+  offers "Check again", or — with no web push — shows no button at all.
 - **A5 — Silencing is a state, not a disappearance (round 9, OPH-178).** An
   alarm the user muted indefinitely ("Süresiz ertele") must keep saying so: the
   task row carries a `notifications_off` chip with a one-tap "Geri aç", the

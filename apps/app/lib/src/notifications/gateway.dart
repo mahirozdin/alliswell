@@ -71,6 +71,7 @@ class AlarmSupport {
     this.alarmKitAuthorized,
     this.pendingCount,
     this.webPushReady,
+    this.webPermission,
   });
 
   final bool notificationsEnabled;
@@ -128,6 +129,15 @@ class AlarmSupport {
   /// the question does not arise.
   final bool? webPushReady;
 
+  /// Web only (#19): why a browser that has not granted notifications has
+  /// not. Null off the web, and on the web once permission is granted.
+  ///
+  /// The three look identical from [notificationsEnabled] and need three
+  /// different answers: only an unanswered prompt is fixed by asking, a
+  /// refusal is undone in the browser's own site settings, and a browser with
+  /// no web push has no permission to give at all.
+  final WebPermissionState? webPermission;
+
   /// The worst thing wrong with delivery right now, or null when nothing is.
   ///
   /// One ordered cascade, in ONE place: the Home banner and the Settings row
@@ -135,7 +145,16 @@ class AlarmSupport {
   /// of them, and adding five more conditions to both would have guaranteed it.
   /// Ordered by how completely each one silences an alarm.
   AlarmProblem? get worstProblem {
-    if (!notificationsEnabled) return AlarmProblem.notificationsOff;
+    if (!notificationsEnabled) {
+      // On the web "off" is three problems, and naming the wrong one sent the
+      // user to an iOS settings page from inside a browser (#19).
+      return switch (webPermission) {
+        null => AlarmProblem.notificationsOff,
+        WebPermissionState.prompt => AlarmProblem.webPermissionPrompt,
+        WebPermissionState.denied => AlarmProblem.webPermissionBlocked,
+        WebPermissionState.unsupported => AlarmProblem.webUnsupported,
+      };
+    }
     // Second, because on the web it silences an alarm as completely as a
     // refused permission does — and unlike a refused permission it leaves the
     // browser looking healthy.
@@ -159,6 +178,18 @@ enum AlarmProblem {
   /// Nothing gets through at all.
   notificationsOff,
 
+  /// Web: nothing gets through, and the browser has not been asked yet — the
+  /// one web refusal a button can fix, because the prompt is still there.
+  webPermissionPrompt,
+
+  /// Web: the user blocked notifications for this site. The browser will not
+  /// ask again; only its own site settings can undo it.
+  webPermissionBlocked,
+
+  /// Web: this browser cannot receive a notification at all — Safari on an
+  /// iPhone outside the Home Screen, a private window, an insecure origin.
+  webUnsupported,
+
   /// Web: permission is granted and nothing can still reach this browser —
   /// no subscription, or an instance with no keys to send with (OPH-313).
   webPushOff,
@@ -181,6 +212,20 @@ enum AlarmProblem {
   /// iOS 26+ AlarmKit declined — urgent alarms drop back to a lane the mute
   /// switch can silence.
   alarmKitOff,
+}
+
+/// Where a browser's own notification permission stands when it is NOT
+/// granted (#19) — the web gateway's answer, in words the platform-neutral
+/// layer can hold. See [AlarmSupport.webPermission].
+enum WebPermissionState {
+  /// Never answered: asking shows the browser's prompt.
+  prompt,
+
+  /// Refused: asking returns at once and shows nothing.
+  denied,
+
+  /// No Notification API, service worker or push manager to ask with.
+  unsupported,
 }
 
 /// What the OS was actually asked for (OPH-176) — the loudness half of the

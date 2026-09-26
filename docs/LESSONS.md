@@ -172,6 +172,7 @@
 - **KARAR** `web/aw_push_sw.js` karar vermez (çeviri/gizlilik/`silent` uygulamanın yazdığı önbellekten), her yol bir bildirimle biter; web modu cihaz-yerel Kapalı/Sessiz (varsayılan)/Sesli, Kapalı aboneliği bırakır (ADR-0039).
 - **DERS** Web Push `userVisibleOnly`: bildirim göstermeyen işleyiciye Chrome jenerik kart basar → "sessiz" web push yok, susturmak = abonelikten çıkmak. Firefox `silent`'ı yok sayar ama true döner → UA kontrolü.
 - **DERS** Web'de izin ≠ ulaşılabilirlik (VAPID yok ya da abonelik iptal) → ayrı `AlarmProblem.webPushOff`; tarayıcı yerel bildirim zamanlayamaz; iOS web push yalnız Ana Ekran uygulamasında; SW `localStorage` göremez.
+- **DERS** `url_launcher` web'de bilinmeyen şemada (`app-settings:`) hata vermez, ölü sekme açar → "best effort + catch" web'de hiç düşmez; web'in reddi üç sorun (istenmemiş / engellenmiş / desteklenmiyor), düzeltme sayfasının aksiyonu `AlarmProblem` üzerinde exhaustive switch (#19).
 - **DERS** iOS'ta `notification` bloğu olmayan FCM mesajı teslim edilmez → görünür yedek `notification` + `aps.sound` taşır. Firebase'e APNs anahtarı yüklenmezse token üretilir, hiçbir şey gitmez, test görmez.
 - **DERS** FCM token bir aboneliktir: geri yüklemede döner → yenilemeyi dinle; çıkışta önce sunucu kaydını, sonra token'ı sil. VAPID anahtarı 65/32 bayt — yer değiştirmiş çift "dolu mu"dan geçer, uzunluğu ölç.
 - **DERS** Ertelenen hatırlatıcı `remind_at`'ini korur, yeni an `snoozed_until`'de → vadesi gelenler iki ayrı sorgu (OR indeksi kullanamaz); idempotenlik `uq_reminder_push`'a INSERT.

@@ -19,7 +19,7 @@ id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te).
 | Current phase            | Döngü kapandı (kontrol turu 2026-09-26, `a5d5a30`, CI yeşil). Epic 31–33 `main`'de, v1.14.0 adayı; canlıdaki son sürüm **v1.13.0** (2026-09-19). |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki üç iş (OPH-142, OPH-273, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
-| Last completed           | OPH-351 — hızlı erişim balonu sürüklerken parmağın altında kalıyor (GitHub #17).             |
+| Last completed           | OPH-352 — web'de alarm düzeltme sayfası ölü `app-settings:` sekmesi açmıyor; tarayıcının üç ret durumu ayrı (GitHub #19). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -247,6 +247,14 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **On the web, "Open settings" in the alarm fix sheet no longer opens a dead tab
+  ([#19](https://github.com/mahirozdin/alliswell/issues/19)).** The sheet sent every browser to an
+  iPhone settings address. It now tells the three cases apart: a browser that has not been asked
+  gets an "Allow notifications" button that asks; one that has blocked the site gets the address
+  bar steps to unblock it and a "Check again" button; and one that cannot receive notifications at
+  all (Safari on an iPhone outside the Home Screen) says how to get them, with no button. The
+  Settings row now updates after the sheet fixes something.
+
 - **The quick-access button stays under your finger while you drag it
   ([#17](https://github.com/mahirozdin/alliswell/issues/17)).** It used to fall behind — the
   faster the drag, the further — and a quick release could park it on the side you had just
