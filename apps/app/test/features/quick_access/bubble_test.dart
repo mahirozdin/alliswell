@@ -180,6 +180,78 @@ void main() {
     expect(parseBubblePosition(stored).edge, BubbleEdge.left);
   });
 
+  // #17 — the test above pumps a frame after every move, so each move met a
+  // freshly built button and nothing was ever lost. A touch panel does not
+  // wait for frames: several moves arrive between two builds. These send them
+  // that way.
+  group('it stays under the finger (#17)', () {
+    Future<void> pumpWithBubble(WidgetTester tester) async {
+      final api = FakeApi();
+      api.seedQuickLink(
+        kind: 'url',
+        url: 'https://alliswell.space',
+        title: 'Site',
+      );
+      phone(tester);
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('when several moves land in one frame', (tester) async {
+      await pumpWithBubble(tester);
+      final start = tester.getCenter(bubble);
+
+      final gesture = await tester.startGesture(start);
+      // No pump in between: three moves, one frame. The first one is also
+      // the one that makes it a drag, so it carries the slop.
+      await gesture.moveBy(const Offset(-60, 0));
+      await gesture.moveBy(const Offset(-30, 20));
+      await gesture.moveBy(const Offset(-20, 10));
+      await tester.pump();
+
+      final centre = tester.getCenter(bubble);
+      expect(centre.dx, moreOrLessEquals(start.dx - 110, epsilon: 0.01));
+      expect(centre.dy, moreOrLessEquals(start.dy + 30, epsilon: 0.01));
+
+      await gesture.up();
+      await tester.pumpAndSettle();
+    });
+
+    testWidgets('and a release in the same frame parks it where it let go', (
+      tester,
+    ) async {
+      await pumpWithBubble(tester);
+      final start = tester.getCenter(bubble);
+      expect(start.dx, greaterThan(195), reason: 'factory position is right');
+
+      final gesture = await tester.startGesture(start);
+      await gesture.moveBy(const Offset(-60, 0));
+      await tester.pump();
+      // Across the middle and straight up, before any frame shows it: the
+      // snap must use where the finger is, not where the last build drew it.
+      await gesture.moveBy(const Offset(-150, 0));
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(bubble).dx, kBubbleEdgeMargin);
+      final stored = await tester.runAsync(
+        () => localKv.get('alliswell_quick_bubble_pos'),
+      );
+      expect(parseBubblePosition(stored).edge, BubbleEdge.left);
+    });
+
+    testWidgets('while a wobble under the slop is still a tap', (tester) async {
+      await pumpWithBubble(tester);
+
+      final gesture = await tester.startGesture(tester.getCenter(bubble));
+      await gesture.moveBy(const Offset(6, 6));
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QuickAccessPanel), findsOneWidget);
+    });
+  });
+
   testWidgets('switched off, the Home app bar carries the entry instead', (
     tester,
   ) async {

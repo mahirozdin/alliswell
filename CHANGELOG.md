@@ -247,6 +247,12 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The quick-access button stays under your finger while you drag it
+  ([#17](https://github.com/mahirozdin/alliswell/issues/17)).** It used to fall behind — the
+  faster the drag, the further — and a quick release could park it on the side you had just
+  left. It now follows the finger exactly, from the first pixels of the drag, and lands on the
+  side you let go of.
+
 - **The enterprise page's list caught up with the app again.** Change management and
   problem records had moved into the app while the page still called them "API only";
   both are now listed as in the app, each naming the one part that still goes through the

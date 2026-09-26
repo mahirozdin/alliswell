@@ -99,6 +99,7 @@
 - **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da yeniden hesap, saat `nowProvider`'dan; gün aritmetiği `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
 - **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi yeni senkron varlığı push'ta uygulamazsa silinen satır sonraki pull'da geri döner.
 - **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; sürükleme `startGesture`+`moveBy`; gerçek async kurulum `tester.runAsync` içinde.
+- **DERS** Dokunmatik panel kare başına birden çok hareket olayı verir: gesture callback'i `build`'in yereline eklerse (`centre + d.delta`) sonuncusu dışındakiler düşer, `DragStartBehavior.start` da eşiği yutar → state alanına biriktir, `.down`; test aralarında `pump` olmayan art arda `moveBy` ile (#17).
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 
 ## design-ui — tokenlar, kontrast, yüzeyler

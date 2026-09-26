@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## GitHub issue'ları (2026-09-26)
+
+- OPH-351 (#17) — Android'de hızlı erişim balonunu hızlı ve uzun sürükle: parmağın altında kalıyor, bıraktığın yarının kenarına yapışıyor.
+
 ## Epic 32
 
 - OPH-333 — widget "+" (iPhone large/XL başlığı + medium sütunu, Android başlığı) → sheet açık, uygulama kapalıyken de.

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -103,16 +104,25 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
       top: topLeft.dy,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        // `.down`, not the default: `.start` swallows the movement before the
+        // drag is recognised, and the button trailed the finger by that slop
+        // for the whole drag (#17).
+        dragStartBehavior: DragStartBehavior.down,
         onPanStart: (_) => setState(() {
           _dragCentre =
               origin + const Offset(kBubbleDiameter / 2, kBubbleDiameter / 2);
           _restartIdleTimer();
         }),
-        onPanUpdate: (details) =>
-            setState(() => _dragCentre = centre + details.delta),
+        // Onto the FIELD, never onto `centre`: that local is fixed when this
+        // build ran, and a touch panel delivers several moves per frame. Each
+        // one started again from the same stale point, so all but the last
+        // were dropped and the button fell behind the finger (#17).
+        onPanUpdate: (details) => setState(
+          () => _dragCentre = (_dragCentre ?? centre) + details.delta,
+        ),
         onPanEnd: (_) {
           final snapped = snapToEdge(
-            centre,
+            _dragCentre ?? centre,
             widget.viewport,
             widget.safeArea,
             widget.keyboardInset,

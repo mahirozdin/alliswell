@@ -9,9 +9,8 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-09-26 — repo temizliği (STATE/TASKS yalnız işaretçi, sahip kararı ve açık
-iş; kalıcı dersler [LESSONS.md](LESSONS.md)'de) ve katmanlı doğrulama: `npm run next`,
-`verify:task`/`verify:batch`, [LOOP.md](../LOOP.md), ADR-0042. Ürün kodu değişmedi.
+**Last updated:** 2026-09-26 — açık GitHub issue'larının kod turu (#17, #19; TASKS'a iş yazılmadan,
+id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te).
 
 ## Snapshot
 
@@ -20,7 +19,7 @@ iş; kalıcı dersler [LESSONS.md](LESSONS.md)'de) ve katmanlı doğrulama: `npm
 | Current phase            | Döngü kapandı (kontrol turu 2026-09-26, `a5d5a30`, CI yeşil). Epic 31–33 `main`'de, v1.14.0 adayı; canlıdaki son sürüm **v1.13.0** (2026-09-19). |
 | Current epic             | Açık epic yok.                                                                               |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki üç iş (OPH-142, OPH-273, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
-| Last completed           | Kontrol turu 2026-09-26 (tam süitler, kapılar, CI biçim düzeltmesi); son kod işi OPH-350.     |
+| Last completed           | OPH-351 — hızlı erişim balonu sürüklerken parmağın altında kalıyor (GitHub #17).             |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
