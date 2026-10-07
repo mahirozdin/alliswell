@@ -52,7 +52,7 @@ class EeTeamRolesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(eeTeamRolesProvider),
         ),
         data: (list) => ListView(
-          padding: awPagePadding(context, AwSpace.x4),
+          padding: awPagePadding(context, AwSpace.x4, fab: true),
           children: [
             Text(
               'ee.team.roles.intro'.tr(),

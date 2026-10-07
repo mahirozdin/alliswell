@@ -59,7 +59,7 @@ class EeTeamInvitesScreen extends ConsumerWidget {
                 message: 'ee.team.invites.emptyBody'.tr(),
               )
             : ListView.builder(
-                padding: awPagePadding(context, AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4, fab: true),
                 itemCount: items.length,
                 itemBuilder: (context, i) => _InviteTile(invite: items[i]),
               ),

@@ -97,7 +97,7 @@ class _AbsenceList extends ConsumerWidget {
     final format = ref.watch(dateFormatProvider);
     final onCall = ref.watch(eeMyOnCallProvider).value ?? const [];
     return ListView(
-      padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+      padding: awListPadding(context, top: AwSpace.x4, fab: true),
       children: [
         if (onCall.isNotEmpty) ...[
           Text(

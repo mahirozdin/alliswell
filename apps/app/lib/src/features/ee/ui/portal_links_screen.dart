@@ -108,7 +108,9 @@ class _Body extends ConsumerWidget {
     }
 
     return ListView(
-      padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
+      padding: EdgeInsets.only(
+        bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+      ),
       children: [
         _QuotaCard(links: data.linkQuota, tickets: data.ticketQuota),
         if (!data.attachmentScanOn) const _ScanOffCard(),

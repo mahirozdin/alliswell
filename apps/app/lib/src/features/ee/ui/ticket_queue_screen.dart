@@ -411,11 +411,7 @@ class EeTicketQueueScreen extends ConsumerWidget {
                   }
                   return ListView.builder(
                     // Clears the "new request" button (EE-225).
-                    padding: awListPadding(
-                      context,
-                      top: AwSpace.x4,
-                      extraBottom: 72,
-                    ),
+                    padding: awListPadding(context, top: AwSpace.x4, fab: true),
                     // EE-266: a search that found live requests may still be
                     // missing the one somebody wants — it closed last spring.
                     // The last row asks the archive the same question.

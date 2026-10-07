@@ -108,7 +108,9 @@ Tabular figures for day numbers and timers.
 
 - **Lists** are inset grouped cards: each row is a `Card` (radius 20,
   hairline border, solid surface) with 6 px vertical rhythm inside
-  `awListPadding(context)` (clears glass bars + FAB). No full-width
+  `awListPadding(context)` (clears glass bars + the shell's FAB; a screen whose OWN Scaffold
+  carries a FAB passes `fab: true` to `awListPadding`/`awPagePadding`/`awScrollEndPadding` —
+  OPH-363, held by `page_fab_clearance_test.dart`). No full-width
   divider lists. The rhythm is ONE constant, `kAwListRowPadding` (3 px above
   and below each row, `widgets/status_views.dart`): a row wraps itself in it
   (or passes it as the card's `margin`), never a number of its own — the
@@ -948,7 +950,9 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   that lets go below the free band docks; anywhere above it is the person's choice, and then
   the page is not shortened: `awListPadding` / `awScrollEndPadding` / `awPagePadding` end every
   scrolling page above the button (`AwBubbleClearance`, OPH-361 — the FAB lane's rule applied to
-  the bubble). A keyboard covers the bar's row, and a docked button goes with it. History: 35 %
+  the bubble). A keyboard covers the bar's row, and a docked button goes with it. Its
+  accessibility node is the 56 px button with one action, tap — the drag is not announced
+  (OPH-363: the pan recognisers made it a screen-sized scroll region on the web). History: 35 %
   height until OPH-359 (on every row's ⋮, form switches and the count's own text); just above
   the FAB lane until OPH-362 — padding a list's END cannot uncover what a page draws at that
   height on first sight (a member's ⋮, the second approval's "Approve", the end of "Save";

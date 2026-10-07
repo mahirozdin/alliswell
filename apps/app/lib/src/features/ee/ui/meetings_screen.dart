@@ -115,7 +115,7 @@ class _List extends ConsumerWidget {
           onRefresh: () async => retry(),
           child: ListView(
             // Clears the upload button.
-            padding: awListPadding(context, extraBottom: 72),
+            padding: awListPadding(context, fab: true),
             children: [for (final m in meetings) EeMeetingRow(meeting: m)],
           ),
         );

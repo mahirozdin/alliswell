@@ -318,7 +318,7 @@ class _CatalogueTree extends StatelessWidget {
       );
     }
     return ListView(
-      padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+      padding: awListPadding(context, top: AwSpace.x4, fab: true),
       children: children,
     );
   }

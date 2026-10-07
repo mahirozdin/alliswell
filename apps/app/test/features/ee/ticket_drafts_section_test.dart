@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/features/ee/data/my_tickets_api.dart';
 import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
 import 'package:alliswell/src/features/ee/my_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
@@ -60,6 +61,17 @@ class _Statuses extends Notifier<List<EeDraftStatus>> {
   void set(List<EeDraftStatus> next) => state = next;
 }
 
+/// The session's conversions, so a dismissal can be watched.
+class _Sent extends SentDrafts {
+  final dismissed = <String>[];
+
+  @override
+  List<({String id, String subject})> build() => const [];
+
+  @override
+  void dismiss(String draftId) => dismissed.add(draftId);
+}
+
 final _statuses = NotifierProvider<_Statuses, List<EeDraftStatus>>(
   _Statuses.new,
 );
@@ -99,6 +111,7 @@ void main() {
     EeCatalog? catalog = _catalog,
     Object? listFails,
     Widget? screen,
+    List<EeMyTicket> Function()? mine,
   }) async {
     final container = ProviderContainer(
       overrides: <Override>[
@@ -108,9 +121,10 @@ void main() {
         eeMyTicketsProvider.overrideWith((ref) async {
           listBuilds += 1;
           if (listFails != null) throw listFails;
-          return const [];
+          return mine?.call() ?? const [];
         }),
         canProvider.overrideWith((ref, permission) => false),
+        sentDraftsProvider.overrideWith(_Sent.new),
       ],
     );
     addTearDown(container.dispose);
@@ -267,4 +281,66 @@ void main() {
       expect(find.textContaining('Tekrar'), findsWidgets);
     },
   );
+
+  // R3-3 (OPH-363): "Sent — your request is below" stood above the request
+  // it pointed at, the same subject twice, until a reload — with no way to
+  // put it away.
+  group('R3-3: a sent draft gives way to its request', () {
+    const sent = EeDraftStatus(
+      id: 'D-SENT',
+      state: EeDraftState.sent,
+      subject: 'Hat 2 durdu',
+    );
+    EeMyTicket ticket(String subject) => EeMyTicket(
+      id: 'T-1',
+      subject: subject,
+      status: 'new',
+      priority: 'normal',
+      createdAt: DateTime.utc(2026, 10, 8),
+    );
+
+    testWidgets('once the list below has it, the subject shows once', (
+      tester,
+    ) async {
+      var rows = <EeMyTicket>[];
+      final container = await pump(
+        tester,
+        const [_onDevice],
+        screen: const EeMyTicketsScreen(),
+        mine: () => rows,
+      );
+      // It converts: the stub appears and the list is asked again — and
+      // this time the request is in it.
+      rows = [ticket('Hat 2 durdu')];
+      container.read(_statuses.notifier).set(const [
+        EeDraftStatus(
+          id: 'D-PHONE',
+          state: EeDraftState.sent,
+          subject: 'Hat 2 durdu',
+        ),
+      ]);
+      await tester.pumpAndSettle();
+      expect(key('my-ticket-T-1'), findsOneWidget);
+      expect(key('ticket-draft-D-PHONE'), findsNothing);
+      expect(find.text('Hat 2 durdu'), findsOneWidget);
+      expect(key('ticket-drafts'), findsNothing);
+    });
+
+    testWidgets('until then it stays — and its person may put it away', (
+      tester,
+    ) async {
+      final container = await pump(
+        tester,
+        const [sent],
+        screen: const EeMyTicketsScreen(),
+        mine: () => [ticket('Başka bir talep')],
+      );
+      expect(key('ticket-draft-D-SENT'), findsOneWidget);
+      await tester.tap(key('ticket-draft-D-SENT-forget'));
+      await tester.pumpAndSettle();
+      expect((container.read(sentDraftsProvider.notifier) as _Sent).dismissed, [
+        'D-SENT',
+      ]);
+    });
+  });
 }

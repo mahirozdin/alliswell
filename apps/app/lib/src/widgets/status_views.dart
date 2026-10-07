@@ -265,12 +265,15 @@ const EdgeInsets kAwListRowPadding = EdgeInsets.symmetric(vertical: 3);
 ///
 /// The shell's own floating buttons are cleared without being asked
 /// ([AwFabClearance], OPH-359), and so is the Quick Access bubble
-/// ([AwBubbleClearance]): [extraBottom] is for a screen's OWN button.
+/// ([AwBubbleClearance]). A screen whose own Scaffold has a floating button
+/// says [fab] (R3-1, OPH-363) — the same lane as the shell's; [extraBottom]
+/// is for anything taller.
 EdgeInsets awListPadding(
   BuildContext context, {
   double horizontal = AwSpace.x4,
   double top = AwSpace.x2,
   double extraBottom = 0,
+  bool fab = false,
 }) {
   final bottomInset = MediaQuery.paddingOf(context).bottom;
   return EdgeInsets.fromLTRB(
@@ -283,7 +286,10 @@ EdgeInsets awListPadding(
       context,
       bottomInset +
           AwSpace.x6 +
-          math.max(extraBottom, AwFabClearance.of(context)),
+          math.max(
+            math.max(extraBottom, AwFabClearance.of(context)),
+            fab ? AwFabClearance.lane : 0,
+          ),
     ),
   );
 }

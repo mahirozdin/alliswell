@@ -58,7 +58,7 @@ class EeServiceCategoriesScreen extends ConsumerWidget {
           }
           final tree = shelfTree(list);
           return ListView(
-            padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+            padding: awListPadding(context, top: AwSpace.x4, fab: true),
             children: [
               Text(
                 'ee.team.services.shelves.intro'.tr(),

@@ -139,6 +139,13 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
       top: topLeft.dy,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
+        // R3-2 (OPH-363): the drag is a pointer gesture, not something to
+        // announce. Left in, the pan recognisers dressed the button as a
+        // SCROLL container (scrollUp/Down/Left/Right), and the web engine
+        // drew that node as a scrollable region the size of the screen — a
+        // focus ring around everything, "Quick access" under any touch. The
+        // button's one accessible action is the tap, declared below.
+        excludeFromSemantics: true,
         // `.down`, not the default: `.start` swallows the movement before the
         // drag is recognised, and the button trailed the finger by that slop
         // for the whole drag (#17).
@@ -174,7 +181,13 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
           widget.onTap();
         },
         child: Semantics(
+          container: true,
           button: true,
+          enabled: true,
+          onTap: () {
+            _restartIdleTimer();
+            widget.onTap();
+          },
           label: widget.badge > 0
               ? '${'quick.title'.tr()}, ${widget.badgeSemantics}'
               : 'quick.title'.tr(),

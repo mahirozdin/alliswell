@@ -74,7 +74,7 @@ class EeTeamUnitsScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: awPagePadding(context, AwSpace.x4),
+            padding: awPagePadding(context, AwSpace.x4, fab: mayShape),
             children: [
               Text(
                 mayShape
@@ -266,7 +266,7 @@ class EeUnitMembersScreen extends ConsumerWidget {
                 message: 'ee.team.units.noMembersBody'.tr(),
               )
             : ListView(
-                padding: const EdgeInsets.all(AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4, fab: true),
                 children: [
                   for (final member in list)
                     Padding(

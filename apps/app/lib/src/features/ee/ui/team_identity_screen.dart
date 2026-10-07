@@ -79,7 +79,9 @@ class EeTeamIdentityScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
+            padding: EdgeInsets.only(
+              bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+            ),
             children: [
               const _StatusCard(),
               for (final item in items) _ProviderTile(provider: item),

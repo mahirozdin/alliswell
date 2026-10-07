@@ -1,3 +1,4 @@
+import 'package:flutter/semantics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +13,7 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/features/quick_access/ui/bubble_physics.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_panel.dart';
@@ -388,6 +390,56 @@ void main() {
             .where((part) => !part.isEmpty && part.overlaps(button))
             .toList();
         expect(covered, isEmpty);
+      });
+    }
+
+    // R3-2 (OPH-363): a screen reader found the docked button as a node
+    // the size of the whole screen — its focus ring framed everything, and a
+    // touch-explore anywhere announced "Quick Access".
+    for (final atSettings in [false, true]) {
+      testWidgets('its accessibility node is the 56 px button, not the screen '
+          '(${atSettings ? 'a page outside the shell' : 'the shell'})', (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        await pumpPhone(tester);
+        if (atSettings) await openSettings(tester);
+        final node = tester.getSemantics(
+          find.bySemanticsLabel(RegExp('^${'quick.title'.tr()}')),
+        );
+        final rect = MatrixUtils.transformRect(
+          node.transform ?? Matrix4.identity(),
+          node.rect,
+        );
+        // The rect is in the parent node's frame — walk up to the screen.
+        var global = rect;
+        var parent = node.parent;
+        while (parent != null) {
+          if (parent.transform != null) {
+            global = MatrixUtils.transformRect(parent.transform!, global);
+          }
+          parent = parent.parent;
+        }
+        final button = tester.getRect(bubble);
+        expect(global.width, moreOrLessEquals(kBubbleDiameter));
+        expect(global.height, moreOrLessEquals(kBubbleDiameter));
+        expect(global.center.dx, moreOrLessEquals(button.center.dx));
+        expect(global.center.dy, moreOrLessEquals(button.center.dy));
+        // A button, tapped — not a scroll container: the drag's pan
+        // recognisers once advertised scrollUp/Down/Left/Right, which the
+        // web engine renders as a scrollable region.
+        final data = node.getSemanticsData();
+        expect(data.flagsCollection.isButton, isTrue);
+        expect(data.hasAction(SemanticsAction.tap), isTrue);
+        for (final scroll in const [
+          SemanticsAction.scrollUp,
+          SemanticsAction.scrollDown,
+          SemanticsAction.scrollLeft,
+          SemanticsAction.scrollRight,
+        ]) {
+          expect(data.hasAction(scroll), isFalse, reason: '$scroll');
+        }
+        semantics.dispose();
       });
     }
 

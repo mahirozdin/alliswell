@@ -89,7 +89,9 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
+      padding: EdgeInsets.only(
+        bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+      ),
       children: [
         _PolicyCard(
           allowed: data.personalKeysAllowed,

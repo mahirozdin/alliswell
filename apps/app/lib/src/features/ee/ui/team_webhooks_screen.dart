@@ -72,7 +72,9 @@ class EeTeamWebhooksScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
+            padding: EdgeInsets.only(
+              bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+            ),
             children: [
               for (final hook in value.items)
                 _EndpointCard(hook: hook, vocabulary: value.eventClasses),

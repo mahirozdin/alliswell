@@ -9,17 +9,17 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-08 — OPH-363 açıldı (UI denetiminin üçüncü yeniden testinden core'da
-kalanlar).
+**Last updated:** 2026-10-08 — OPH-363 kapandı (UI denetiminin üçüncü yeniden testinden core'da
+kalanlar); backlog boş.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-362 kapandı; açık iş OPH-363 (üçüncü yeniden testin kalanı). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
-| Current epic             | Epic 34 — üçüncü yeniden testin kalanı (OPH-363) |
-| ➡️ **Next task**         | **OPH-363** — sayfa FAB'ı liste sonunu açar, balonun erişilebilirlik düğümü, gönderilen taslak tek kez |
-| Last completed           | OPH-362 — telefonda Hızlı erişim balonu yuvada dinlenir (alt çubuğun satırı; kapsül kısalır, kabuk dışı her sayfa `AwBubbleDockInset` ile şeridin üstünde biter, klavyede gizlenir; DESIGN §23 Q4); push yanıtı aynı txn'de emekliye ayrılan satırı `rebase:{present:false}` ile söyler, istemci teslim edilen taslağı hemen düşürür; denetimde `ee.verbFor.<tür>.<fiil>` (davet/webhook/bağlantı/paylaşım/kanal/posta kutusu iptali kendi cümlesiyle) + `ee-vocabulary` kapısı; SLA hedef tablosunda başlık–etiket boşluğu. |
+| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
+| Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
+| ➡️ **Next task**         | **BACKLOG BOŞ** |
+| Last completed           | OPH-363 — sayfanın kendi FAB'ı olan her Scaffold liste sonu dolgusunda onu ister (`awListPadding`/`awPagePadding`/`awScrollEndPadding` `fab:`; Birimler, birim kadrosu, Webhook'lar, Herkese açık bağlantılar, Roller, Davetler, Firmalar, API anahtarları, SLA, yönetim Takımlar…; `page_fab_clearance_test` kaynak taraması); yuvadaki Hızlı erişim düğmesinin semantiği yalnız 56 px'lik düğme ve dokunma (sürükleme duyurulmaz); "İletildi — talebin aşağıda" satırı alttaki liste aynı konulu talebi gösterince çekilir, "Kapat" ile de kapanır. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

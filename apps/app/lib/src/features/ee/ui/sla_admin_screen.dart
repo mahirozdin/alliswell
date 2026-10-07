@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/sla_admin_models.dart';
@@ -137,6 +138,9 @@ class _PolicyList extends ConsumerWidget {
               child: const Icon(Icons.add),
             ),
       body: ListView(
+        padding: EdgeInsets.only(
+          bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+        ),
         children: [
           for (final p in data.policies)
             ListTile(
@@ -602,6 +606,9 @@ class _CalendarList extends ConsumerWidget {
               child: const Icon(Icons.add),
             ),
       body: ListView(
+        padding: EdgeInsets.only(
+          bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+        ),
         children: [
           for (final c in data.calendars)
             ExpansionTile(
@@ -863,6 +870,9 @@ class _MonitorList extends ConsumerWidget {
               child: const Icon(Icons.add),
             ),
       body: ListView(
+        padding: EdgeInsets.only(
+          bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+        ),
         children: [
           for (final c in data.checks)
             ListTile(

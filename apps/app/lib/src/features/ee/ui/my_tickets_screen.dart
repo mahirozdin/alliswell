@@ -75,7 +75,7 @@ class EeMyTicketsScreen extends ConsumerWidget {
         // The same clearance every FAB list here keeps: the last card must
         // not sit under "new request".
         child: ListView(
-          padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+          padding: awListPadding(context, top: AwSpace.x4, fab: true),
           children: [
             const EeTicketDraftsSection(),
             ...tickets.when(

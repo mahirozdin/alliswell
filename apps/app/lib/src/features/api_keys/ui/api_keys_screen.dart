@@ -102,7 +102,7 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
   Widget _list(List<ApiKey> list) {
     final dateFormat = ref.watch(dateFormatProvider);
     return ListView(
-      padding: awListPadding(context, top: AwSpace.x2),
+      padding: awListPadding(context, top: AwSpace.x2, fab: true),
       children: [
         Card(
           child: Padding(

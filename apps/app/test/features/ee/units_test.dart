@@ -18,6 +18,7 @@ import 'package:alliswell/src/features/ee/ui/team_units_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/widgets/fab_clearance.dart';
 import '../auth/test_support.dart';
 import 'support/permissions.dart';
 
@@ -245,6 +246,99 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(api.calls, contains('add:U1:O1'));
+    });
+  });
+
+  // R3-1 (OPH-363): with the Quick Access bubble docked in the bar's row
+  // (OPH-362) nothing above the page cleared the page's OWN floating button
+  // any more — a units list ended under "+ New unit", and a tap on the last
+  // row's ⋮ at the end of the scroll opened the new-unit dialog instead.
+  group('R3-1: the end of a list clears the page\'s own button', () {
+    Future<void> pumpDocked(WidgetTester tester, Widget child) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(bottom: 34);
+      addTearDown(tester.view.reset);
+      final api =
+          FakeUnitsApi(
+              units: [
+                for (var i = 1; i <= 14; i++)
+                  EeUnit(id: 'U$i', name: 'Birim $i', memberCount: 2),
+              ],
+            )
+            ..roster = [
+              for (var i = 1; i <= 14; i++)
+                EeUnitMember(
+                  userId: 'P$i',
+                  role: 'member',
+                  displayName: 'Kişi $i',
+                ),
+            ];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            eeUnitsApiProvider.overrideWithValue(api),
+            canProvider.overrideWith((ref, id) => true),
+            eeFeatureProvider.overrideWith((ref, feature) => true),
+            fixedPermissions(),
+          ],
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            // The bubble docked on the right of the bottom row, as on a phone.
+            builder: (context, child) => AwBubbleDock(
+              edge: AwDockEdge.right,
+              height: 80,
+              width: 72,
+              child: child!,
+            ),
+            home: child,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> expectLastMenuReachable(
+      WidgetTester tester, {
+      required Key fab,
+      required Key lastMenu,
+    }) async {
+      await tester.drag(find.byType(ListView), const Offset(0, -4000));
+      await tester.pumpAndSettle();
+      final menu = tester.getRect(find.byKey(lastMenu));
+      final button = tester.getRect(find.byKey(fab));
+      expect(
+        menu.bottom,
+        lessThanOrEqualTo(button.top),
+        reason: 'the last row ends above the page\'s button ($menu vs $button)',
+      );
+      // And the tap lands on the menu, not on the button.
+      await tester.tapAt(menu.center);
+      await tester.pumpAndSettle();
+      expect(find.byType(PopupMenuItem<String>), findsWidgets);
+    }
+
+    testWidgets('the unit list', (tester) async {
+      await pumpDocked(tester, const EeTeamUnitsScreen());
+      await expectLastMenuReachable(
+        tester,
+        fab: const Key('unit-new'),
+        lastMenu: const Key('unit-menu-U14'),
+      );
+    });
+
+    testWidgets('a unit\'s roster', (tester) async {
+      await pumpDocked(
+        tester,
+        const EeUnitMembersScreen(
+          unit: EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 14),
+        ),
+      );
+      await expectLastMenuReachable(
+        tester,
+        fab: const Key('unit-member-add'),
+        lastMenu: const Key('unit-member-menu-P14'),
+      );
     });
   });
 

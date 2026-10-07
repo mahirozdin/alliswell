@@ -79,7 +79,7 @@ class EeCustomersScreen extends ConsumerWidget {
             ...customers.where((c) => c.archived),
           ];
           return ListView(
-            padding: awListPadding(context),
+            padding: awListPadding(context, fab: true),
             children: [
               for (final customer in sorted)
                 _CustomerTile(customer: customer, may: may),
@@ -242,7 +242,7 @@ class EeCustomerContactsScreen extends ConsumerWidget {
                     ref.invalidate(eeCustomerContactsProvider(customer.id)),
               ),
         data: (data) => ListView(
-          padding: awListPadding(context),
+          padding: awListPadding(context, fab: true),
           children: [
             if (customer.archived)
               Padding(

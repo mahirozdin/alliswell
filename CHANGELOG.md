@@ -9,6 +9,12 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The "new" button no longer covers a list's last row (OPH-363).** On a phone, Units, a unit's
+  members, Webhooks, Public links, Roles, Invitations, Companies, API keys, SLA and the other
+  screens with their own round button now scroll their last row clear of it, so its ⋮ menu opens
+  instead of the "new" dialog. The Quick Access button reads to a screen reader as one button,
+  not a region the size of the screen. "Sent — your request is below" gives way as soon as the
+  request shows up in the list, and can be closed.
 - **The Quick Access button no longer sits on anything (OPH-362).** On a phone it rests in the
   bottom bar's row, beside a slightly shorter bar, and every page outside the main sections ends
   above it — a member's ⋮, the second approval's "Approve" or a "Save" button are reachable the

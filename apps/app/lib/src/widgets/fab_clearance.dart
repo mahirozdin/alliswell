@@ -68,13 +68,35 @@ class AwBubbleClearance extends InheritedWidget {
 
 /// The bottom padding a scrolling screen ends with: at least [base], and
 /// enough that its last line can scroll up past the Quick Access bubble.
-double awScrollEndPadding(BuildContext context, double base) =>
-    math.max(base, AwBubbleClearance.of(context));
+///
+/// [fab]: the screen's OWN Scaffold carries a floating action button (R3-1,
+/// OPH-363). Its last row must scroll up past that button too — [base] plus
+/// the [AwFabClearance.lane]. The bubble used to hide the omission: while it
+/// rested above the FAB lane its clearance was the larger number. Docked in
+/// the bar's row (OPH-362) it clears nothing above the page, and a units list
+/// ended under "+ New unit" with its last ⋮ unreachable. Both ask, always.
+double awScrollEndPadding(
+  BuildContext context,
+  double base, {
+  bool fab = false,
+}) => math.max(
+  base + (fab ? AwFabClearance.lane : 0),
+  AwBubbleClearance.of(context),
+);
 
 /// `EdgeInsets.all(all)` for a page's scrolling body, whose end clears the
-/// Quick Access bubble ([awScrollEndPadding]).
-EdgeInsets awPagePadding(BuildContext context, double all) =>
-    EdgeInsets.fromLTRB(all, all, all, awScrollEndPadding(context, all));
+/// Quick Access bubble and — with [fab] — the page's own floating button
+/// ([awScrollEndPadding]).
+EdgeInsets awPagePadding(
+  BuildContext context,
+  double all, {
+  bool fab = false,
+}) => EdgeInsets.fromLTRB(
+  all,
+  all,
+  all,
+  awScrollEndPadding(context, all, fab: fab),
+);
 
 /// Which side of the screen the docked Quick Access bubble sits on.
 enum AwDockEdge { left, right }
