@@ -297,8 +297,15 @@ void main() {
     tester,
   ) async {
     wide(tester);
-    // AI really is configured server-side, but this device has never asked.
-    final api = FakeApi()..aiEnabled = true;
+    // AI really is configured server-side, but this device has never asked —
+    // and the network is slower than the share router's budget (2 s). The
+    // workspace list is warmed at the app's root (OPH-361), so the status
+    // request is already in flight when the share is routed; without the
+    // delay this would test a fast network, not a cold start.
+    const slowNetwork = Duration(seconds: 5);
+    final api = FakeApi()
+      ..aiEnabled = true
+      ..aiStatusDelay = slowNetwork;
     api.seedAiConnection(provider: 'anthropic');
     final share = FakeShareIntentSource(
       initial: const SharedPayload(text: 'ilk kez'),
@@ -306,6 +313,9 @@ void main() {
     addTearDown(share.dispose);
 
     await tester.pumpWidget(await _app(api, share: share));
+    await tester.pumpAndSettle();
+    // Past the router's budget, short of the network's answer.
+    await tester.pump(const Duration(seconds: 3));
     await tester.pumpAndSettle();
 
     // Pinned deliberately: the cache is the only cold-start signal there is,
@@ -318,6 +328,7 @@ void main() {
       hasLength(1),
       reason: 'one-directional means cheap, not lossy',
     );
+    await tester.pump(slowNetwork);
   });
 
   // ── Round 21 (OPH-298): the callback ADR-0029 said could never arrive ─────

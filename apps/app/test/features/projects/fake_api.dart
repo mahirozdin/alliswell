@@ -506,6 +506,10 @@ class FakeApi {
   /// lands. Advance the fake clock past it with `tester.pump(delay)`.
   Duration? extractDelay;
 
+  /// Holds the `/ai/status` answer back: a cold start whose network has not
+  /// replied yet. Advance the fake clock past it with `tester.pump(delay)`.
+  Duration? aiStatusDelay;
+
   /// Round 15: force `/ai/extract` to fail with this HTTP status — the gate's
   /// degrade-to-chat path needs a provider that is down for extraction only.
   int? extractStatusCode;
@@ -625,13 +629,14 @@ class FakeApi {
     final wsPrefix = '/api/v1/workspaces/$workspaceId/ai';
 
     if (path == '$wsPrefix/status' && options.method == 'GET') {
-      return Future.value(
-        jsonBody(200, {
-          'configured': aiConnections.isNotEmpty,
-          'providers': aiConnections.map((c) => c['provider']).toList(),
-          'instanceProviders': const [],
-        }),
-      );
+      ResponseBody answer() => jsonBody(200, {
+        'configured': aiConnections.isNotEmpty,
+        'providers': aiConnections.map((c) => c['provider']).toList(),
+        'instanceProviders': const [],
+      });
+      final delay = aiStatusDelay;
+      if (delay == null) return Future.value(answer());
+      return Future.delayed(delay, answer);
     }
     if (path == '$wsPrefix/connections' && options.method == 'GET') {
       return Future.value(jsonBody(200, {'items': aiConnections}));

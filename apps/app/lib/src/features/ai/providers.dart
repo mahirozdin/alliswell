@@ -67,9 +67,19 @@ class AiStatusController extends AsyncNotifier<AiStatus> {
     state = await AsyncValue.guard(build);
   }
 
-  Future<AiStatus?> _readCache() async {
-    if (_cacheKey == null) return null;
-    final raw = await localKv.get(_cacheKey!);
+  /// The last-known answer from the device cache, without asking the network
+  /// and without touching [state]. For a caller that must decide NOW while
+  /// the first build is still waiting on `/ai/status` — a cold-start share.
+  Future<AiStatus?> lastKnown() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return null;
+    return _readCache('$kAiStatusCachePrefix$userId');
+  }
+
+  Future<AiStatus?> _readCache([String? key]) async {
+    final at = key ?? _cacheKey;
+    if (at == null) return null;
+    final raw = await localKv.get(at);
     if (raw == null) return null;
     try {
       return AiStatus.fromJson(jsonDecode(raw) as Map<String, dynamic>);

@@ -576,6 +576,13 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
     await ref.read(workspacesProvider.future).timeout(_shareStatusBudget);
     final resolved = ref.read(aiStatusProvider).value;
     if (resolved != null) return resolved;
+    // OPH-361 moved the workspace list's first load to the app's root (the
+    // draft courier), so on a cold start the provider's FIRST build usually
+    // has a workspace already and goes straight to the network — it no longer
+    // passes through the guard that answers from the cache. The cache is
+    // still the only cold-start signal there is: ask it before waiting.
+    final cached = await ref.read(aiStatusProvider.notifier).lastKnown();
+    if (cached != null) return cached;
     return await ref.read(aiStatusProvider.future).timeout(_shareStatusBudget);
   } on Object {
     return AiStatus.disabled;
