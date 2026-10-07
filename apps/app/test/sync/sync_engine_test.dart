@@ -240,6 +240,82 @@ void main() {
     );
   });
 
+  // OPH-362 — UI-AUDIT R2-1.
+  group('UI-AUDIT R2-1: a write the server retired on arrival', () {
+    Future<void> queueDraft(String draftId) async {
+      await db
+          .into(db.ticketDrafts)
+          .insert(
+            TicketDraftsCompanion.insert(
+              id: draftId,
+              workspaceId: ws,
+              subject: const Value('Kompresör durdu'),
+              serviceId: const Value('S1'),
+            ),
+          );
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'ee_ticket_draft',
+        entityId: draftId,
+        operation: 'create',
+        patch: {'subject': 'Kompresör durdu', 'serviceId': 'S1'},
+      );
+    }
+
+    List<SyncPushResult> retired(List<SyncMutation> mutations) => [
+      for (final m in mutations)
+        SyncPushResult(
+          clientMutationId: m.clientMutationId,
+          status: 'applied',
+          replayed: false,
+          revision: 2,
+          rebase: SyncRebase(
+            entityType: m.entityType,
+            entityId: m.entityId,
+            present: false,
+          ),
+        ),
+    ];
+
+    test('leaves the replica with the push answer — no pull needed', () async {
+      await queueDraft(id('D1'));
+      api.onPush = retired;
+      // The pull that used to carry the tombstone never comes.
+      await engine.syncNow();
+      expect(api.pushedBatches, hasLength(1));
+      expect(await db.select(db.ticketDrafts).get(), isEmpty);
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+      // Accepted, not refused: nothing is parked for the person to read.
+      expect(await db.select(db.rejectedMutations).get(), isEmpty);
+    });
+
+    test(
+      'a replayed answer says the same, for a device that lost the first',
+      () async {
+        await queueDraft(id('D2'));
+        api.onPush = (mutations) => [
+          for (final r in retired(mutations))
+            SyncPushResult(
+              clientMutationId: r.clientMutationId,
+              status: r.status,
+              replayed: true,
+              revision: r.revision,
+              rebase: r.rebase,
+            ),
+        ];
+        await engine.syncNow();
+        expect(await db.select(db.ticketDrafts).get(), isEmpty);
+      },
+    );
+
+    test('an ordinary applied write keeps its row', () async {
+      await queueDraft(id('D3'));
+      await engine.syncNow();
+      expect(await db.select(db.ticketDrafts).get(), hasLength(1));
+    });
+  });
+
   group('a refused write is kept, and the replica is rebased (EE-051)', () {
     /// The failure this group exists to end: a push the server refuses used to
     /// be DELETED from the outbox while the local row kept the edit nobody

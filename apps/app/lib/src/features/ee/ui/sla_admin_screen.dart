@@ -551,6 +551,11 @@ class _TargetRow extends StatelessWidget {
             'ee.tickets.priority.$priority'.tr(),
             style: Theme.of(context).textTheme.labelLarge,
           ),
+          // UI-AUDIT R2-4: an outlined field's label floats ON its top border,
+          // half of it above the box — with no gap the heading and "First
+          // reply" were drawn on top of each other. One spacing step clears
+          // the floated label with room to spare.
+          const SizedBox(height: AwSpace.x3),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

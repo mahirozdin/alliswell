@@ -38,12 +38,26 @@ const double kBubbleRecedeFraction = 0.5;
 /// the FAB it hid the screen's one primary action.
 const double kBubbleBottomReserve = 92 + 72;
 
-/// Factory position: right edge, at the BOTTOM of its band — just above the
-/// FAB lane, never in the FAB's corner (DESIGN §23 Q4c: the bubble is not a
-/// FAB). OPH-359 (UI-AUDIT #57) moved it down from 35 %: in the middle of the
-/// right edge it sat on every row's ⋮ menu, on form switches and on the text
-/// of the approval it was counting. The bottom of a list is padding that
-/// scrolls; the middle of a screen is where the controls are.
+/// The phone's bottom bar, as the shell draws it: a 64 px glass capsule
+/// (`navigationBarTheme.height`) floating 12 px above the safe area
+/// (`AwSpace.x3`, the shell's `SafeArea.minimum`). The dock is that row.
+const double kBubbleBarHeight = 64;
+const double kBubbleBarFloat = 12;
+
+/// Factory position: DOCKED (OPH-362, UI-AUDIT #57's rest) — right edge, in
+/// the bottom bar's row, beside the capsule.
+///
+/// Every earlier rest sat over content. In the middle of the right edge
+/// (35 %, until OPH-359) it covered every row's ⋮ menu and form switch; just
+/// above the FAB lane (OPH-359) it covered whatever a page drew at that
+/// height on first sight — a member's ⋮, the second approval's "Approve", the
+/// right end of a "Save" — and only scrolling uncovered them. Padding the end
+/// of a list cannot fix the top of a screen. So the bubble does not rest ON
+/// content at all: it rests in a lane of its own, which the layout keeps
+/// free — the shell shortens its bar to make room in the bar's row, and every
+/// page outside the shell ends above it (`AwBubbleDock`). A position the
+/// person drags elsewhere is theirs (and padded for, `bubbleClearance`); the
+/// bottom of the band is the dock again.
 const BubblePosition kBubbleFactoryPosition = BubblePosition(
   edge: BubbleEdge.right,
   heightFraction: 1,
@@ -60,6 +74,10 @@ class BubblePosition {
 
   final BubbleEdge edge;
   final double heightFraction;
+
+  /// At the bottom of its band = in the dock (OPH-362). The band's floor is
+  /// where a release below the free band lands too, so "drag it down" docks.
+  bool get docked => heightFraction >= 1;
 
   @override
   bool operator ==(Object other) =>
@@ -119,13 +137,22 @@ Offset bubbleOrigin(
   EdgeInsets safeArea,
   double keyboardInset,
 ) {
-  final band = bubbleBand(viewport, safeArea, keyboardInset);
-  final travel = math.max(0.0, band.height - kBubbleDiameter);
-  final dy = band.top + travel * position.heightFraction.clamp(0.0, 1.0);
   final left = safeArea.left + kBubbleEdgeMargin;
   final right =
       viewport.width - safeArea.right - kBubbleEdgeMargin - kBubbleDiameter;
   final dx = position.edge == BubbleEdge.left ? left : math.max(left, right);
+  // Docked and no keyboard: centred on the bottom bar's row. A keyboard
+  // covers that row (and the host hides a docked button under it), so the
+  // band's floor above the keyboard is where it would stand.
+  if (position.docked && keyboardInset <= 0) {
+    final barBottom =
+        viewport.height - math.max(safeArea.bottom, kBubbleBarFloat);
+    final dy = barBottom - (kBubbleBarHeight + kBubbleDiameter) / 2;
+    return Offset(dx, math.max(safeArea.top + kBubbleEdgeMargin, dy));
+  }
+  final band = bubbleBand(viewport, safeArea, keyboardInset);
+  final travel = math.max(0.0, band.height - kBubbleDiameter);
+  final dy = band.top + travel * position.heightFraction.clamp(0.0, 1.0);
   return Offset(dx, dy);
 }
 
@@ -138,6 +165,19 @@ double bubbleClearance(Offset origin, Size viewport) {
   if (origin.dy < viewport.height / 2) return 0;
   return viewport.height - origin.dy + kBubbleEdgeMargin;
 }
+
+/// The lane a DOCKED button keeps for itself (OPH-362): how much of the
+/// screen's bottom a page outside the shell gives up ([bubbleClearance] of
+/// the docked origin — the button plus a gap above it), and how much of the
+/// bar's row the shell's capsule gives up on that edge (the button, its edge
+/// margin and the same gap on the inner side).
+({double height, double width}) bubbleDockLane(Offset origin, Size viewport) =>
+    (
+      height: bubbleClearance(origin, viewport),
+      width: origin.dx < viewport.width / 2
+          ? origin.dx + kBubbleDiameter + kBubbleEdgeMargin
+          : viewport.width - origin.dx + kBubbleEdgeMargin,
+    );
 
 /// How far the PAINTED circle slides toward its edge when idle. The gesture
 /// box never moves — see [kBubbleDiameter].

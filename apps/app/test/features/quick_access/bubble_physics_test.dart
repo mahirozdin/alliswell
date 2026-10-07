@@ -65,17 +65,20 @@ void main() {
     });
 
     test('a keyboard pushes the button UP, never under it', () {
-      const bottomed = BubblePosition(
-        edge: BubbleEdge.right,
-        heightFraction: 1,
-      );
-      final resting = bubbleOrigin(bottomed, viewport, safeArea, 0);
-      final withKeyboard = bubbleOrigin(bottomed, viewport, safeArea, 320);
-      expect(withKeyboard.dy, lessThan(resting.dy));
-      expect(
-        withKeyboard.dy + kBubbleDiameter,
-        lessThanOrEqualTo(viewport.height - 320),
-      );
+      for (final bottomed in const [
+        BubblePosition(edge: BubbleEdge.right, heightFraction: 0.9),
+        // Docked: the host hides it under a keyboard, but its geometry
+        // still never puts it there.
+        BubblePosition(edge: BubbleEdge.right, heightFraction: 1),
+      ]) {
+        final resting = bubbleOrigin(bottomed, viewport, safeArea, 0);
+        final withKeyboard = bubbleOrigin(bottomed, viewport, safeArea, 320);
+        expect(withKeyboard.dy, lessThan(resting.dy));
+        expect(
+          withKeyboard.dy + kBubbleDiameter,
+          lessThanOrEqualTo(viewport.height - 320),
+        );
+      }
     });
 
     test('a rotation re-derives pixels from the fraction', () {
@@ -130,18 +133,22 @@ void main() {
 
     test('the factory position keeps clear of the quick-add FAB corner', () {
       expect(kBubbleFactoryPosition.edge, BubbleEdge.right);
+      expect(kBubbleFactoryPosition.docked, isTrue);
       final origin = bubbleOrigin(
         kBubbleFactoryPosition,
         viewport,
         safeArea,
         0,
       );
-      // Above the bar AND the FAB lane (DESIGN §23 Q4c): never in the FAB's
-      // corner, never over a tab.
+      // Below the FAB lane, in the bar's row (DESIGN §23 Q4c): never in the
+      // FAB's corner — the lane above it is the FAB's.
       expect(
-        origin.dy + kBubbleDiameter,
-        lessThanOrEqualTo(
-          viewport.height - safeArea.bottom - kBubbleBottomReserve,
+        origin.dy,
+        greaterThanOrEqualTo(
+          viewport.height -
+              safeArea.bottom -
+              kBubbleBarFloat -
+              kBubbleBarHeight,
         ),
       );
     });
@@ -158,18 +165,81 @@ void main() {
       expect(origin.dy, greaterThan(viewport.height * 0.6));
     });
 
-    test('UI-AUDIT #57: no stored position can park it over the bar or the '
-        'FAB lane — only a keyboard moves the floor', () {
-      const bottomed = BubblePosition(
+    test('UI-AUDIT #57: a position the person drags stays above the bar and '
+        'the FAB lane — only the dock lives in the bar\'s row', () {
+      const dragged = BubblePosition(
         edge: BubbleEdge.right,
-        heightFraction: 1,
+        heightFraction: 0.999,
       );
-      final origin = bubbleOrigin(bottomed, viewport, safeArea, 0);
+      expect(dragged.docked, isFalse);
+      final origin = bubbleOrigin(dragged, viewport, safeArea, 0);
       expect(
         origin.dy + kBubbleDiameter,
         lessThanOrEqualTo(
           viewport.height - safeArea.bottom - kBubbleBottomReserve,
         ),
+      );
+    });
+  });
+
+  // OPH-362 — UI-AUDIT #57: the rest that still covered controls.
+  group('UI-AUDIT #57: the dock', () {
+    test('docked, it is centred on the bottom bar\'s row, inside the safe '
+        'area', () {
+      for (final insets in const [
+        safeArea,
+        EdgeInsets.zero,
+        EdgeInsets.only(bottom: 4),
+      ]) {
+        final origin = bubbleOrigin(
+          kBubbleFactoryPosition,
+          viewport,
+          insets,
+          0,
+        );
+        final barBottom =
+            viewport.height - (insets.bottom > 12 ? insets.bottom : 12);
+        expect(
+          origin.dy + kBubbleDiameter / 2,
+          barBottom - kBubbleBarHeight / 2,
+          reason: '$insets',
+        );
+        expect(origin.dy + kBubbleDiameter, lessThan(barBottom));
+      }
+    });
+
+    test('the lane is the button plus a gap — as high as the content must '
+        'stop, as wide as the bar must give up, on either edge', () {
+      for (final edge in BubbleEdge.values) {
+        final origin = bubbleOrigin(
+          BubblePosition(edge: edge, heightFraction: 1),
+          viewport,
+          EdgeInsets.zero,
+          0,
+        );
+        final lane = bubbleDockLane(origin, viewport);
+        // Content above the lane ends a gap above the button.
+        expect(viewport.height - lane.height, origin.dy - kBubbleEdgeMargin);
+        // The bar beside it ends a gap before it.
+        final barEdge = edge == BubbleEdge.right
+            ? viewport.width - lane.width
+            : lane.width;
+        if (edge == BubbleEdge.right) {
+          expect(barEdge, origin.dx - kBubbleEdgeMargin);
+        } else {
+          expect(barEdge, origin.dx + kBubbleDiameter + kBubbleEdgeMargin);
+        }
+      }
+    });
+
+    test('a release below the free band docks; anywhere above it does not', () {
+      expect(
+        snapToEdge(const Offset(350, 820), viewport, safeArea, 0).docked,
+        isTrue,
+      );
+      expect(
+        snapToEdge(const Offset(350, 400), viewport, safeArea, 0).docked,
+        isFalse,
       );
     });
   });

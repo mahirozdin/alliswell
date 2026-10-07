@@ -331,6 +331,22 @@ class SyncEngine {
         ))
         .go();
 
+    // OPH-362 (UI-AUDIT R2-1): accepted, and retired by the server's own
+    // rules in the same transaction — a request draft that became a request
+    // on arrival. The answer says so itself, so the replica drops the row now
+    // instead of waiting for a pull that may never come (the courier that
+    // pushed it stands down the moment its outbox is empty). Replays too: a
+    // device that lost the first answer hears the same fact on its resend.
+    final settled = result.rebase;
+    if (result.applied && settled != null && !settled.present) {
+      await applyRebase(
+        db,
+        entityType: settled.entityType,
+        entityId: settled.entityId,
+        present: false,
+      );
+    }
+
     final lostSomething = !result.applied || result.discardedFields.isNotEmpty;
     if (lostSomething && !result.replayed) {
       _conflicts.add(

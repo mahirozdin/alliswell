@@ -373,6 +373,74 @@ void main() {
       },
     );
 
+    // OPH-362 — UI-AUDIT R2-4.
+    for (final size in const [Size(1440, 900), Size(390, 844)]) {
+      for (final brightness in Brightness.values) {
+        testWidgets('UI-AUDIT R2-4: each priority heading sits clear of its '
+            'fields\' floating labels (${size.width.toInt()} px, '
+            '${brightness.name})', (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          await _pump(
+            tester,
+            const EeSlaAdminData(
+              policies: [
+                EeSlaPolicy(
+                  id: 'P1',
+                  name: 'Standart',
+                  isDefault: true,
+                  targets: [
+                    EeSlaTarget(
+                      priority: 'urgent',
+                      firstResponseMinutes: 30,
+                      resolutionMinutes: 240,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            brightness: brightness,
+          );
+          await tester.tap(find.byKey(const Key('sla-policy-P1')));
+          await tester.pumpAndSettle();
+          const headings = {
+            'urgent': 'Urgent',
+            'high': 'High',
+            'normal': 'Normal',
+            'low': 'Low',
+          };
+          for (final MapEntry(key: p, value: heading) in headings.entries) {
+            await tester.ensureVisible(find.byKey(Key('sla-target-$p-first')));
+            await tester.pumpAndSettle();
+            final title = tester.getRect(find.text(heading).last);
+            for (final (which, label) in const [
+              ('first', 'First reply'),
+              ('resolve', 'Resolution'),
+            ]) {
+              final field = find.byKey(Key('sla-target-$p-$which'));
+              // The label floats on the field's top border, half of it above
+              // the box — it, not the box, is what the heading collided with.
+              final floating = tester.getRect(
+                find.descendant(of: field, matching: find.text(label)),
+              );
+              expect(
+                title.bottom,
+                lessThanOrEqualTo(floating.top),
+                reason: '$heading over "$label" at ${size.width}',
+              );
+              expect(
+                tester.getRect(field).top - title.bottom,
+                greaterThanOrEqualTo(AwSpace.x2),
+                reason: 'the heading needs room above the border',
+              );
+            }
+          }
+        });
+      }
+    }
+
     testWidgets('UI-AUDIT #46: a target that is not a number holds Save', (
       tester,
     ) async {

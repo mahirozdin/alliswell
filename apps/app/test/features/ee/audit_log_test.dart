@@ -19,6 +19,7 @@ import 'package:dio/dio.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
 import 'package:alliswell/src/features/ee/ui/audit_log_screen.dart';
+import 'package:alliswell/src/features/ee/ui/history_tab.dart' show eeAuditVerb;
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
@@ -203,6 +204,69 @@ void main() {
       // The verb dictionary is closed server-side precisely so every verb has
       // a sentence here; a raw key on screen means one slipped through.
       expect(find.textContaining('ee.verb.', findRichText: true), findsNothing);
+    });
+
+    // OPH-362 — UI-AUDIT R2-2.
+    testWidgets('UI-AUDIT R2-2: "revoked" says what was revoked — an '
+        'invitation is not a session', (tester) async {
+      await _pump(
+        tester,
+        page: EeHistoryPage(
+          items: [
+            _event(
+              id: 'E1',
+              verb: 'revoked',
+              actorName: 'Ayla Servis',
+              entityType: 'ee_invite',
+              diff: {'email': 'qa-davet@example.com'},
+            ),
+            _event(
+              id: 'E2',
+              verb: 'revoked',
+              actorName: 'Ayla Servis',
+              entityType: 'ee_team_member',
+            ),
+            _event(
+              id: 'E3',
+              verb: 'revoked',
+              actorName: 'Ayla Servis',
+              entityType: 'ee_webhook',
+            ),
+            // A kind with no sentence of its own reads neutrally.
+            _event(
+              id: 'E4',
+              verb: 'revoked',
+              actorName: 'Ayla Servis',
+              entityType: 'ee_role',
+            ),
+          ],
+        ),
+      );
+      String row(String id) => tester
+          .widget<Text>(
+            find
+                .descendant(
+                  of: find.byKey(Key('audit-row-$id')),
+                  matching: find.byType(Text),
+                )
+                .first,
+          )
+          .textSpan!
+          .toPlainText();
+      expect(row('E1'), 'Ayla Servis revoked an invitation');
+      expect(row('E2'), "Ayla Servis ended a member's sessions");
+      expect(row('E3'), 'Ayla Servis revoked a webhook');
+      expect(row('E4'), 'Ayla Servis revoked this');
+      expect(
+        find.textContaining('session', findRichText: true),
+        findsOneWidget,
+        reason: 'only the member row speaks of sessions',
+      );
+
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(eeAuditVerb('ee_invite', 'revoked'), 'bir daveti iptal etti');
+      expect(eeAuditVerb('ee_role', 'revoked'), 'bunu iptal etti');
+      expect(eeAuditVerb('ee_invite', 'created'), 'bunu oluşturdu');
     });
 
     testWidgets('a system actor is not blamed on the last human', (

@@ -937,14 +937,22 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   standard emphasized curve. Diameter 56 px (≥44 px target, §5). Position persists
   device-locally as edge + height fraction, clamped inside safe areas and above
   the keyboard inset — and, on a phone, above the glass bar and the FAB lane
-  (`kBubbleBottomReserve`, OPH-359). Factory position: right edge, at the bottom of
-  that band — just above the FAB lane, never in the FAB's corner. (It was 35 %
-  height until OPH-359: in the middle of the right edge it sat on every row's ⋮
-  menu, form switches and the text it was counting — UI-AUDIT #57.) Whatever a screen ends with
-  can always be scrolled up from under it: the bubble layer publishes how high it reaches
-  (`AwBubbleClearance`, OPH-361) and `awListPadding` / `awScrollEndPadding` / `awPagePadding` end
-  every scrolling page above it — the FAB lane's rule applied to the bubble, so a short list's last
-  ⋮ menu is never stuck beneath it. After 3 s idle it half-recedes into the edge and
+  (`kBubbleBottomReserve`, OPH-359). **Factory position: DOCKED (OPH-362)** — the bottom of
+  that band is the dock: the button rests in the glass bar's own row, centred on it, on its
+  edge (right by default), and **the layout keeps that lane free** rather than the button
+  covering whatever is there. The shell's capsule ends a gap short of it (`AwBubbleDock.width`,
+  72 px on a phone; past four sections only the selected tab is labelled), and every page
+  OUTSIDE the shell — a root-navigator page route, go_router's or a pushed one — ends a gap
+  above it (`AwBubbleDock.height`, 80 px with no bottom inset), applied once by the page
+  transitions (`AwBubbleDockInset`), painted with the page wash, so no screen knows. A drag
+  that lets go below the free band docks; anywhere above it is the person's choice, and then
+  the page is not shortened: `awListPadding` / `awScrollEndPadding` / `awPagePadding` end every
+  scrolling page above the button (`AwBubbleClearance`, OPH-361 — the FAB lane's rule applied to
+  the bubble). A keyboard covers the bar's row, and a docked button goes with it. History: 35 %
+  height until OPH-359 (on every row's ⋮, form switches and the count's own text); just above
+  the FAB lane until OPH-362 — padding a list's END cannot uncover what a page draws at that
+  height on first sight (a member's ⋮, the second approval's "Approve", the end of "Save";
+  UI-AUDIT #57 retest). After 3 s idle it half-recedes into the edge and
   dims to **40 % opacity — the platform's own default, not a taste call (OPH-196:
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on

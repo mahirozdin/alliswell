@@ -66,7 +66,7 @@
 - **DERS** LWW intent adı gerçekten yazılan kolon olmalı: emekli kolona bağlı intent hiç eşleşmez, kilit log'suz kilitlemeyi bırakır → kolon emekliye çıkınca intent'i taşı.
 - **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; yerelde de `userId` süz (ADR-0018) (ikinci duvar).
 - **KARAR** Replika tek kişinin (OPH-355): çıkış + başkasının girişi onu ve `kUserBoundKvPrefixes`'i siler, yerinde (`secure_delete`+VACUUM); kişiye ait yeni LocalKv anahtarı → o listeye.
-- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa hiçbir çekme onu görmez → satırı kaldıran iş aynı txn'de sync yazımı kaydeder; testi gerçek çekmeyle yap.
+- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa çekme onu görmez → kaldıran iş aynı txn'de sync yazımı kaydeder, gerçek çekmeyle test; push `present:false` döner (OPH-362).
 - **DERS** Genel push makinesi silmeyi `deleted_at` adıyla yazar ve onunla tombstone'lar → push'lanan her varlığın soft-delete kolonu `deleted_at` olmalı.
 - **DERS** `registerSyncEntity` tip başına tek kayıt, tek serileştirici → aynı tabloyu iki kitleye iki alan kümesiyle sunmak ayrı tip ya da server-only REST ister.
 - **DERS** Sunucu patch'teki ilk bilinmeyen alanda mutation'ın TAMAMINI reddeder (reddedilen create yerel satırı bırakır) → testte istemcinin gerçek gövdesini gönder; `enqueueMutation` assert'i yalnız koşulan yolu görür.

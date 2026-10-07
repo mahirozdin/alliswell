@@ -75,3 +75,98 @@ double awScrollEndPadding(BuildContext context, double base) =>
 /// Quick Access bubble ([awScrollEndPadding]).
 EdgeInsets awPagePadding(BuildContext context, double all) =>
     EdgeInsets.fromLTRB(all, all, all, awScrollEndPadding(context, all));
+
+/// Which side of the screen the docked Quick Access bubble sits on.
+enum AwDockEdge { left, right }
+
+/// The phone's Quick Access bubble at rest, in a lane of its own (OPH-362,
+/// UI-AUDIT #57 — the rest that still covered controls).
+///
+/// [AwBubbleClearance] lets the END of a page scroll out from under the
+/// bubble; it cannot uncover what a page draws at that height on first sight
+/// (a member's ⋮, the second approval's "Approve", the end of "Save"). So the
+/// bubble rests where no content is: in the bottom bar's row. The bubble
+/// layer publishes the lane here, above the Navigator, and two places give
+/// it up:
+///
+///  * the shell's glass bar ends [width] short of the [edge] it docks on;
+///  * every page OUTSIDE the shell (a root-navigator page route) ends
+///    [height] above the screen's bottom — [AwBubbleDockInset], applied once
+///    by the page transitions, so no screen has to know.
+///
+/// Absent (or zero) when nothing is docked: wide layouts, no bubble, a bubble
+/// the person parked elsewhere, or a keyboard covering the row.
+class AwBubbleDock extends InheritedWidget {
+  const AwBubbleDock({
+    super.key,
+    required this.edge,
+    required this.height,
+    required this.width,
+    required super.child,
+  });
+
+  final AwDockEdge edge;
+
+  /// From the screen's bottom edge to a gap above the docked button.
+  final double height;
+
+  /// From the screen's [edge] to a gap inside the docked button.
+  final double width;
+
+  static AwBubbleDock? maybeOf(BuildContext context) {
+    final dock = context.dependOnInheritedWidgetOfExactType<AwBubbleDock>();
+    return dock == null || dock.height <= 0 ? null : dock;
+  }
+
+  @override
+  bool updateShouldNotify(AwBubbleDock oldWidget) =>
+      oldWidget.edge != edge ||
+      oldWidget.height != height ||
+      oldWidget.width != width;
+}
+
+/// The name the shell's page carries, so the dock inset can leave it alone:
+/// the shell docks the bubble beside its own bar instead (see [AwBubbleDock]).
+const String kAwShellPageName = 'aw-shell';
+
+/// Ends a page outside the shell above the docked bubble's lane (OPH-362).
+///
+/// Applied to every page route by the theme's page transitions, and a no-op
+/// unless the route is on the ROOT navigator (a page inside a shell section
+/// has the bar under it, where the bubble already docks), is not the shell
+/// itself ([kAwShellPageName]), and a dock is published. The lane is painted
+/// with the page's own wash ([background]), and the page below it no longer
+/// touches the bottom edge, so its bottom safe-area inset is the lane's.
+class AwBubbleDockInset extends StatelessWidget {
+  const AwBubbleDockInset({
+    super.key,
+    required this.route,
+    required this.background,
+    required this.child,
+  });
+
+  final ModalRoute<dynamic>? route;
+  final Widget Function(Widget child) background;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final dock = AwBubbleDock.maybeOf(context);
+    final route = this.route;
+    if (dock == null || route == null) return child;
+    if (route.settings.name == kAwShellPageName) return child;
+    final root = Navigator.maybeOf(context, rootNavigator: true);
+    if (root == null || route.navigator != root) return child;
+    return background(
+      Padding(
+        padding: EdgeInsets.only(bottom: dock.height),
+        child: MediaQuery(
+          data: MediaQuery.of(context)
+              .removePadding(removeBottom: true)
+              .removeViewPadding(removeBottom: true),
+          child: child,
+        ),
+      ),
+    );
+  }
+}

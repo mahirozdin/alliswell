@@ -9,6 +9,19 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The Quick Access button no longer sits on anything (OPH-362).** On a phone it rests in the
+  bottom bar's row, beside a slightly shorter bar, and every page outside the main sections ends
+  above it — a member's ⋮, the second approval's "Approve" or a "Save" button are reachable the
+  moment the page opens, without scrolling. Drag it elsewhere and the page takes its full height
+  back; it steps aside while the keyboard is up.
+- **A request sent from an offline draft leaves the drafts at once (OPH-362).** It reads "Sent —
+  your request is below" as soon as the desk files it, instead of "waiting to become a request"
+  beside the request itself for the rest of the session.
+- **The audit log says what was revoked (OPH-362).** A withdrawn invitation, webhook, public link,
+  share, chat channel or mailbox is named as such instead of "ended a session"; ending a member's
+  sessions still says so. The SLA policy editor's priority headings no longer overlap their
+  fields' labels.
+
 - **A request drafted offline survives a reload and goes on its own (OPH-361).** In the browser
   the draft is written to disk the moment it is saved, and it is sent as soon as the connection
   is back — from "My requests" too — without pressing "Try again". The new-request form offers

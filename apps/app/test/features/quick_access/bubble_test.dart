@@ -15,6 +15,10 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/quick_access/ui/bubble_physics.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_panel.dart';
+import 'package:go_router/go_router.dart';
+import 'package:alliswell/src/screens/settings_screen.dart';
+import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/widgets/glass.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -301,6 +305,112 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(bubble, findsNothing);
+  });
+
+  // OPH-362 — UI-AUDIT #57: the rest that still covered controls.
+  group('UI-AUDIT #57: at rest it covers nothing', () {
+    Future<void> pumpPhone(
+      WidgetTester tester, {
+      String? storedPosition,
+      Brightness brightness = Brightness.light,
+    }) async {
+      final api = FakeApi();
+      api.seedQuickLink(
+        kind: 'url',
+        url: 'https://alliswell.space',
+        title: 'Site',
+      );
+      phone(tester);
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      final app = await signedInApp(api);
+      if (storedPosition != null) {
+        await localKv.set('alliswell_quick_bubble_pos', storedPosition);
+      }
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openSettings(WidgetTester tester) async {
+      GoRouter.of(tester.element(find.byType(NavigationBar))).push('/settings');
+      await tester.pumpAndSettle();
+    }
+
+    /// Every control the person could be after, as on-screen rectangles.
+    Iterable<Rect> controlsOf(WidgetTester tester, Finder page) => [
+      for (final type in const [InkWell, Switch, TextField])
+        for (final e
+            in find
+                .descendant(of: page, matching: find.byType(type))
+                .evaluate())
+          tester.getRect(find.byWidget(e.widget)),
+    ];
+
+    for (final brightness in Brightness.values) {
+      testWidgets('docked in the shell, beside the bar and below the FAB '
+          '(${brightness.name})', (tester) async {
+        await pumpPhone(tester, brightness: brightness);
+        final button = tester.getRect(bubble);
+        final bar = tester.getRect(find.byType(NavigationBar));
+        expect(
+          button.overlaps(bar),
+          isFalse,
+          reason: 'the bar ends short of the button',
+        );
+        expect(
+          button.center.dy,
+          moreOrLessEquals(bar.center.dy),
+          reason: 'it rests in the bar\'s own row',
+        );
+        for (final fab in find.byType(FloatingActionButton).evaluate()) {
+          expect(
+            button.overlaps(tester.getRect(find.byWidget(fab.widget))),
+            isFalse,
+          );
+        }
+      });
+
+      testWidgets('a page outside the shell ends above it, so nothing on it '
+          'starts under the button (${brightness.name})', (tester) async {
+        await pumpPhone(tester, brightness: brightness);
+        await openSettings(tester);
+        final button = tester.getRect(bubble);
+        final page = find.byType(SettingsScreen);
+        expect(
+          tester.getRect(page).bottom,
+          lessThanOrEqualTo(button.top - kBubbleEdgeMargin),
+        );
+        // What is VISIBLE of each control: a row the list clips at the
+        // page's bottom edge is only there as far as the page is.
+        final visible = tester.getRect(page);
+        final covered = controlsOf(tester, page)
+            .map((control) => control.intersect(visible))
+            .where((part) => !part.isEmpty && part.overlaps(button))
+            .toList();
+        expect(covered, isEmpty);
+      });
+    }
+
+    testWidgets('a keyboard covers the bar\'s row — the docked button goes '
+        'with it and the page gets its full height back', (tester) async {
+      await pumpPhone(tester);
+      await openSettings(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+      expect(bubble, findsNothing);
+      expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
+    });
+
+    testWidgets('a place the person chose is theirs: the page is not '
+        'shortened for a button that is not in the dock', (tester) async {
+      await pumpPhone(tester, storedPosition: 'right:0.300');
+      final bar = tester.getRect(find.byType(GlassSurface).first);
+      expect(bar.right, 390 - AwSpace.x3, reason: 'the bar is whole');
+      await openSettings(tester);
+      expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
+      expect(tester.getRect(bubble).top, lessThan(844 / 2));
+    });
   });
 
   // OPH-359 — UI-AUDIT #57.

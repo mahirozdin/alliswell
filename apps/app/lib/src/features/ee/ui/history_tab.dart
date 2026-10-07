@@ -114,7 +114,7 @@ class _HistoryRow extends ConsumerWidget {
                       TextSpan(
                         // The verb dictionary is closed server-side precisely
                         // so every verb has a sentence here (EE-023 rule 2).
-                        text: 'ee.verb.${event.verb}'.tr(),
+                        text: eeAuditVerb(event.entityType, event.verb),
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
@@ -338,3 +338,17 @@ class _TicketChangeLine extends ConsumerWidget {
     );
   }
 }
+
+/// The verb as a sentence about WHAT it was done to (OPH-362, UI-AUDIT R2-2).
+///
+/// One server verb covers several acts: `revoked` is an administrator ending
+/// somebody's sessions, an invitation withdrawn, a webhook, a public link, a
+/// share, a chat channel or a mailbox cut off. A single sentence for all of
+/// them ("ended a session") put a revoked invitation in the log as a session
+/// that ended. So a kind may have its own sentence (`ee.verbFor.<type>.<verb>`)
+/// and the verb's own (`ee.verb.<verb>`) is the neutral fallback for every
+/// kind that has none — never the wire name. `check:i18n` holds both
+/// dictionaries to the server's kinds and verbs (`ee-vocabulary.mjs`).
+String eeAuditVerb(String entityType, String verb) =>
+    AwI18n.instance.maybeTranslate('ee.verbFor.$entityType.$verb') ??
+    'ee.verb.$verb'.tr();

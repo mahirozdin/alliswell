@@ -200,6 +200,21 @@ export async function register(app, seam) {
     if (change.before?.title === 'keep me') throw syncRefusal('SEAM_KEPT');
   });
 
+  // OPH-362: a write the overlay RETIRES in its own transaction — creating a
+  // task titled "file me away" tombstones it at once, the way a request draft
+  // becomes a request on arrival. Inert for every other task.
+  seam.registerEntityWriteObserver(async (trx, change) => {
+    if (change.entityType !== 'task' || change.operation !== 'create') return;
+    if (change.after?.title !== 'file me away') return;
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: change.workspaceId,
+      entityType: 'task',
+      entityId: change.entityId,
+      operation: 'delete',
+    });
+    await trx('tasks').where({ id: change.entityId }).update({ deleted_at: new Date(), revision });
+  });
+
   // A reminder audience: a task titled "only the owner" rings for the
   // workspace's owner and for a user who is not even a member — core must
   // drop the second, because a resolver can narrow and never widen.

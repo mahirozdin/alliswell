@@ -1658,7 +1658,7 @@
       "authenticated": "oturum açtı",
       "sign_in_failed": "oturum açamadı",
       "locked": "kilitlendi",
-      "revoked": "bir oturumu sonlandırdı",
+      "revoked": "bunu iptal etti",
       "priority_overridden": "matris dışında bir öncelik verdi",
       "approval_requested": "onay istedi",
       "approved": "onayladı",
@@ -1684,6 +1684,29 @@
       "category_changed": "kataloglama yerini değiştirdi",
       "form_updated": "formu yeniledi",
       "migration_applied": "göçü uyguladı"
+    },
+    "verbFor": {
+      "ee_team_member": {
+        "revoked": "bir üyenin oturumlarını sonlandırdı"
+      },
+      "ee_invite": {
+        "revoked": "bir daveti iptal etti"
+      },
+      "ee_webhook": {
+        "revoked": "bir webhook'u iptal etti"
+      },
+      "ee_public_form": {
+        "revoked": "herkese açık bir bağlantıyı iptal etti"
+      },
+      "ee_item_share": {
+        "revoked": "bir paylaşımı geri aldı"
+      },
+      "ee_chat_channel": {
+        "revoked": "bir sohbet kanalının bağlantısını kesti"
+      },
+      "ee_mail_inbox": {
+        "revoked": "bir posta kutusunun bağlantısını kesti"
+      }
     },
     "perm": {
       "alarms": {

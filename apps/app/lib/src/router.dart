@@ -80,6 +80,7 @@ import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
 import 'sections.dart';
 import 'sync/keep_current.dart';
+import 'widgets/fab_clearance.dart';
 import 'widgets/glass.dart';
 import 'widgets/status_views.dart';
 import 'i18n/i18n.dart';
@@ -570,11 +571,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) =>
-            // One background for the whole shell: switching sections is an
-            // IndexedStack swap, not a route transition (OPH-108), so the five
-            // branches legitimately share one wash.
-            _page(HomeShell(navigationShell: navigationShell)),
+        // OPH-362: a named page, so the Quick Access dock inset leaves the
+        // shell alone — it docks the bubble beside its own bar instead.
+        pageBuilder: (context, state, navigationShell) => MaterialPage<void>(
+          key: state.pageKey,
+          name: kAwShellPageName,
+          // One background for the whole shell: switching sections is an
+          // IndexedStack swap, not a route transition (OPH-108), so the five
+          // branches legitimately share one wash.
+          child: _page(HomeShell(navigationShell: navigationShell)),
+        ),
         branches: [
           for (final section in AppSection.values)
             StatefulShellBranch(

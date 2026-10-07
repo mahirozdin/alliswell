@@ -388,7 +388,9 @@ class HomeShell extends ConsumerWidget {
               : FloatingActionButtonLocation.endFloat,
           body: _ShellBody(fabClearance: fabClearance, child: navigationShell),
           bottomNavigationBar: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
+            // OPH-362: the docked Quick Access bubble rests in this row, so
+            // the capsule ends short of it instead of sliding under it.
+            padding: _barPadding(AwBubbleDock.maybeOf(context)),
             child: SafeArea(
               top: false,
               minimum: const EdgeInsets.only(bottom: AwSpace.x3),
@@ -405,7 +407,11 @@ class HomeShell extends ConsumerWidget {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
                   child: NavigationBar(
-                    labelBehavior: visibleSections.length > 5
+                    // …and the docked Quick Access bubble (OPH-362) takes a
+                    // tab's width of the row, so past four the same applies.
+                    labelBehavior:
+                        visibleSections.length >
+                            (AwBubbleDock.maybeOf(context) == null ? 5 : 4)
                         ? NavigationDestinationLabelBehavior.onlyShowSelected
                         : NavigationDestinationLabelBehavior.alwaysShow,
                     selectedIndex: destinationIndexFor(
@@ -590,6 +596,17 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 }
 
 const _shareStatusBudget = Duration(seconds: 2);
+
+/// The phone bar's outer margins: [AwSpace.x3] each side, and on the side the
+/// Quick Access bubble docks, the bubble's lane instead (OPH-362).
+EdgeInsets _barPadding(AwBubbleDock? dock) {
+  const side = AwSpace.x3;
+  if (dock == null) return const EdgeInsets.symmetric(horizontal: side);
+  final lane = math.max(side, dock.width);
+  return dock.edge == AwDockEdge.left
+      ? EdgeInsets.only(left: lane, right: side)
+      : EdgeInsets.only(left: side, right: lane);
+}
 
 /// The phone shell's body (OPH-359, UI-AUDIT #10).
 ///

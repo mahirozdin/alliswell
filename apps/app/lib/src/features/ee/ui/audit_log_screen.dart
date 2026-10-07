@@ -10,6 +10,7 @@ import '../../../theme/tokens.dart';
 import '../data/history_models.dart';
 import '../history_providers.dart';
 import 'csv_download.dart';
+import 'history_tab.dart' show eeAuditVerb;
 import '../../../widgets/status_views.dart';
 import '../../../widgets/route_leading.dart';
 
@@ -330,8 +331,9 @@ class _AuditRow extends ConsumerWidget {
                 ),
                 const TextSpan(text: ' '),
                 // The verb dictionary is closed server-side precisely so every
-                // verb has a sentence here (EE-023 rule 2).
-                TextSpan(text: 'ee.verb.${event.verb}'.tr()),
+                // verb has a sentence here (EE-023 rule 2) — and the sentence
+                // depends on what it was done to (UI-AUDIT R2-2).
+                TextSpan(text: eeAuditVerb(event.entityType, event.verb)),
               ],
             ),
           ),

@@ -1659,7 +1659,7 @@
       "authenticated": "signed in",
       "sign_in_failed": "could not sign in",
       "locked": "was locked out",
-      "revoked": "ended a session",
+      "revoked": "revoked this",
       "priority_overridden": "set a priority outside the matrix",
       "approval_requested": "asked for an approval",
       "approved": "approved this",
@@ -1685,6 +1685,29 @@
       "category_changed": "moved it to another part of the catalogue",
       "form_updated": "published a new version of the form",
       "migration_applied": "brought a migration over"
+    },
+    "verbFor": {
+      "ee_team_member": {
+        "revoked": "ended a member's sessions"
+      },
+      "ee_invite": {
+        "revoked": "revoked an invitation"
+      },
+      "ee_webhook": {
+        "revoked": "revoked a webhook"
+      },
+      "ee_public_form": {
+        "revoked": "revoked a public link"
+      },
+      "ee_item_share": {
+        "revoked": "withdrew a share"
+      },
+      "ee_chat_channel": {
+        "revoked": "disconnected a chat channel"
+      },
+      "ee_mail_inbox": {
+        "revoked": "disconnected a mail inbox"
+      }
     },
     "perm": {
       "alarms": {
