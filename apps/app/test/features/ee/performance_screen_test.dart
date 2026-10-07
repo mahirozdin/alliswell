@@ -137,26 +137,14 @@ void main() {
       inRow('incident', 'ee.perfPanel.processType.incident'.tr()),
       findsOneWidget,
     );
-    expect(
-      inRow('incident', 'ee.perfPanel.minutes'.tr(args: {'minutes': '330.0'})),
-      findsOneWidget,
-    );
-    expect(
-      inRow('incident', 'ee.perfPanel.percent'.tr(args: {'value': '50.0'})),
-      findsOneWidget,
-    );
+    expect(inRow('incident', '5 sa 30 dk'), findsOneWidget);
+    expect(inRow('incident', '%50,0'), findsOneWidget);
     expect(
       inRow('request', 'ee.perfPanel.processType.request'.tr()),
       findsOneWidget,
     );
-    expect(
-      inRow('request', 'ee.perfPanel.minutes'.tr(args: {'minutes': '420.0'})),
-      findsOneWidget,
-    );
-    expect(
-      inRow('request', 'ee.perfPanel.percent'.tr(args: {'value': '100.0'})),
-      findsOneWidget,
-    );
+    expect(inRow('request', '7 sa'), findsOneWidget);
+    expect(inRow('request', '%100,0'), findsOneWidget);
     // Satisfaction is asked per unit and per person, never per kind of work:
     // a CSAT dash on these rows would read as "nobody answered".
     expect(inRow('incident', 'ee.perfPanel.csat'.tr()), findsNothing);
@@ -166,6 +154,20 @@ void main() {
       lessThan(tester.getTopLeft(find.text('ee.perfPanel.byUnit'.tr())).dy),
     );
   });
+
+  testWidgets(
+    'UI-AUDIT #88: figures are written in the reader\'s locale — "%40,3", "3 g 21 sa", never "5587.5 dk"',
+    (tester) async {
+      server.processTypes = [
+        _row('incident', resolved: 3, mttr: 5587.5, compliance: 40.3),
+      ];
+      await pump(tester);
+      expect(inRow('incident', '%40,3'), findsOneWidget);
+      expect(inRow('incident', '3 g 21 sa'), findsOneWidget);
+      expect(find.textContaining('5587'), findsNothing);
+      expect(find.textContaining('40.3'), findsNothing);
+    },
+  );
 
   testWidgets('work counted with no kind is named, not dropped', (
     tester,

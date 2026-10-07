@@ -279,6 +279,16 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.portalSub',
                   path: '/settings/team/portal',
                 ),
+              // OPH-360 (UI-AUDIT #18): the companies and their people. A
+              // plain role verb, the same gate shape as the rows above.
+              if (may('customers.manage'))
+                _GroupRow(
+                  keyName: 'settings-group-customers',
+                  icon: Icons.business_outlined,
+                  titleKey: 'settings.group.customers',
+                  subtitleKey: 'settings.group.customersSub',
+                  path: '/settings/team/customers',
+                ),
               // EE-111: the team's AI keys and the personal-key policy. Same
               // gate shape as the two rows above — a permission, not an
               // entitlement, so the door is absent rather than forbidden.

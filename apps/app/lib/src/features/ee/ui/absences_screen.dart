@@ -279,7 +279,9 @@ class _AbsenceSheetState extends ConsumerState<_AbsenceSheet> {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(today.year, today.month, today.day - 90),
-      lastDate: DateTime(today.year + 1, today.month, today.day),
+      // UI-AUDIT #47: the list's own horizon — nothing can be recorded
+      // past the last day the list shows.
+      lastDate: eeAbsenceHorizon(eeAbsenceToday(today)),
       initialDateRange: _days,
     );
     if (picked != null) setState(() => _days = picked);

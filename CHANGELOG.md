@@ -9,6 +9,29 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Extending a public link never shortens it (OPH-360).** "Extend…" asks how long — 1, 2, 7 or 30
+  days — and shows the new end before anything is sent; validity is offered in days, not "720
+  hours". Each link row names its services, its unit and the day it was made; revoking asks "Keep
+  it" or "Revoke link" in red, and a copy the browser refuses says so instead of failing silently.
+- **Companies and their people have a screen (OPH-360).** Settings › Companies lists the companies
+  you serve and their contacts; add someone and send the invitation, switch a contact off (their
+  sessions end at once) or back on, rename or archive a company. An older server says it cannot do
+  this yet.
+- **SLA administration asks before deleting (OPH-360).** Policies, calendars and monitors ask first
+  and say what changes; the default policy is replaced, not deleted; a calendar a policy uses names
+  that policy. Typing a policy's name enables Save, and a policy has a target table — first reply
+  and resolution per priority. A missed target with no deadline left says why.
+- **The SLA dashboard counts what it judges (OPH-360).** Missed, close to the limit and kept are
+  shown as numbers; the percentage says "of 191 judged"; a team without a default policy is warned;
+  a missed-target row carries its number and opens the request. Figures read "%40,3" and
+  "3 g 21 sa" in Turkish, on the performance board too.
+- **CSV downloads (OPH-360).** "Download CSV" in the request queue's menu (with `tickets.export`)
+  and on the audit log, with the filters on screen.
+- **The audit log reads like a log (OPH-360).** It is called "Audit log" as in Settings, filters by
+  every kind of record by name, and each row names its record (number, subject or name) and opens
+  it. Permission descriptions are in your language; absences a year ahead are listed and removable;
+  an empty unit says so; a form never published no longer reads "everything is published".
+
 - **The phone shell stays out of the way (OPH-359).** The request queue's "New request" button sits
   above the bottom bar and opens the form; lists and empty states clear the floating buttons; the
   bar's labels no longer clip at the capsule's edges; the unit picker scrolls, so a person in ten

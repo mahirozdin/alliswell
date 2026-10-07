@@ -5,6 +5,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../data/units_models.dart';
 import '../providers.dart';
 import '../units_providers.dart';
@@ -179,6 +180,22 @@ class _UnitCard extends ConsumerWidget {
                       case 'rename':
                         await EeTeamUnitsScreen._rename(context, ref, unit);
                       case 'archive':
+                        // OPH-360 (UI-AUDIT #22's pattern): archiving closes
+                        // the unit's workspaces for everyone in it, so it
+                        // says so and asks; restoring is harmless and does not.
+                        final ok =
+                            unit.archived ||
+                            await awConfirmDelete(
+                              context,
+                              title: 'ee.team.units.archiveTitle'.tr(
+                                args: {'name': unit.name},
+                              ),
+                              body: 'ee.team.units.archiveBody'.tr(),
+                              confirmLabel: 'ee.team.units.archive'.tr(),
+                              cancelLabel: 'ee.team.units.keep'.tr(),
+                              confirmKey: const Key('unit-archive-confirm'),
+                            );
+                        if (!ok) return;
                         await ref
                             .read(eeUnitsProvider.notifier)
                             .setArchived(unit.id, archived: !unit.archived);
@@ -238,60 +255,77 @@ class EeUnitMembersScreen extends ConsumerWidget {
           message: localizedError(error),
           onRetry: () => ref.invalidate(eeUnitMembersProvider(unit.id)),
         ),
-        data: (list) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
-          children: [
-            for (final member in list)
-              Padding(
-                padding: kAwListRowPadding,
-                child: Card(
-                  key: Key('unit-member-${member.userId}'),
-                  child: ListTile(
-                    leading: Icon(
-                      member.isManager
-                          ? Icons.manage_accounts_outlined
-                          : Icons.person_outline,
-                    ),
-                    title: Text(member.label),
-                    subtitle: member.isManager
-                        ? Text('ee.team.units.manager'.tr())
-                        : null,
-                    trailing: PopupMenuButton<String>(
-                      key: Key('unit-member-menu-${member.userId}'),
-                      onSelected: (value) async {
-                        switch (value) {
-                          case 'promote':
-                            await actions.setRole(member.userId, 'manager');
-                          case 'demote':
-                            await actions.setRole(member.userId, 'member');
-                          case 'remove':
-                            await actions.remove(member.userId);
-                        }
-                      },
-                      itemBuilder: (_) => [
-                        // Appointing a manager is TEAM authority: a delegated
-                        // manager cannot grow their own delegation, so the
-                        // control is absent rather than refused.
-                        if (mayAppoint)
-                          PopupMenuItem(
-                            value: member.isManager ? 'demote' : 'promote',
-                            child: Text(
-                              member.isManager
-                                  ? 'ee.team.units.demote'.tr()
-                                  : 'ee.team.units.promote'.tr(),
-                            ),
+        // UI-AUDIT #80: an empty roster says so, with the way in, instead of
+        // a blank page that reads as "still loading".
+        data: (list) => list.isEmpty
+            ? AwEmptyState(
+                key: const Key('unit-members-empty'),
+                icon: Icons.group_outlined,
+                title: 'ee.team.units.noMembersTitle'.tr(),
+                message: 'ee.team.units.noMembersBody'.tr(),
+              )
+            : ListView(
+                padding: const EdgeInsets.all(AwSpace.x4),
+                children: [
+                  for (final member in list)
+                    Padding(
+                      padding: kAwListRowPadding,
+                      child: Card(
+                        key: Key('unit-member-${member.userId}'),
+                        child: ListTile(
+                          leading: Icon(
+                            member.isManager
+                                ? Icons.manage_accounts_outlined
+                                : Icons.person_outline,
                           ),
-                        PopupMenuItem(
-                          value: 'remove',
-                          child: Text('ee.team.units.removeMember'.tr()),
+                          title: Text(member.label),
+                          subtitle: member.isManager
+                              ? Text('ee.team.units.manager'.tr())
+                              : null,
+                          trailing: PopupMenuButton<String>(
+                            key: Key('unit-member-menu-${member.userId}'),
+                            onSelected: (value) async {
+                              switch (value) {
+                                case 'promote':
+                                  await actions.setRole(
+                                    member.userId,
+                                    'manager',
+                                  );
+                                case 'demote':
+                                  await actions.setRole(
+                                    member.userId,
+                                    'member',
+                                  );
+                                case 'remove':
+                                  await actions.remove(member.userId);
+                              }
+                            },
+                            itemBuilder: (_) => [
+                              // Appointing a manager is TEAM authority: a delegated
+                              // manager cannot grow their own delegation, so the
+                              // control is absent rather than refused.
+                              if (mayAppoint)
+                                PopupMenuItem(
+                                  value: member.isManager
+                                      ? 'demote'
+                                      : 'promote',
+                                  child: Text(
+                                    member.isManager
+                                        ? 'ee.team.units.demote'.tr()
+                                        : 'ee.team.units.promote'.tr(),
+                                  ),
+                                ),
+                              PopupMenuItem(
+                                value: 'remove',
+                                child: Text('ee.team.units.removeMember'.tr()),
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
+                ],
               ),
-          ],
-        ),
       ),
     );
   }

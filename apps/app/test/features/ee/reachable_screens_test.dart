@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/ee/meetings_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 import 'package:alliswell/src/features/ee/ui/audit_log_screen.dart';
+import 'package:alliswell/src/features/ee/ui/customers_screen.dart';
 import 'package:alliswell/src/features/ee/ui/meeting_screen.dart';
 import 'package:alliswell/src/features/ee/ui/meetings_screen.dart';
 import 'package:alliswell/src/features/ee/ui/notification_center_screen.dart';
@@ -53,6 +54,7 @@ const _adminRows = [
   'settings-group-services',
   'settings-group-sla',
   'settings-group-portal',
+  'settings-group-customers',
   'settings-group-team-ai',
   'settings-group-team-identity',
   'settings-group-team-mail',
@@ -201,6 +203,31 @@ void main() {
     expect(key('settings-group-services'), findsOneWidget);
   });
 
+  testWidgets('UI-AUDIT #18: Settings opens the companies for an admin who '
+      'holds customers.manage, and draws no door without it', (tester) async {
+    tall(tester);
+    final api = FakeApi()
+      ..eeGoverned = true
+      ..eePermissions = ['customers.manage'];
+    await tester.pumpWidget(await app(api, extra: asAdmin()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    await openGroup(tester, 'settings-group-customers');
+    expect(find.byType(EeCustomersScreen), findsOneWidget);
+  });
+
+  testWidgets('UI-AUDIT #18: without customers.manage there is no door to '
+      'the companies', (tester) async {
+    tall(tester);
+    final api = FakeApi()
+      ..eeGoverned = true
+      ..eePermissions = ['services.manage'];
+    await tester.pumpWidget(await app(api, extra: asAdmin()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    expect(key('settings-group-customers'), findsNothing);
+  });
+
   testWidgets('EE-282: a plain instance draws none of the team rows', (
     tester,
   ) async {
@@ -214,6 +241,7 @@ void main() {
       'settings-group-services',
       'settings-group-sla',
       'settings-group-portal',
+      'settings-group-customers',
       'settings-group-team-ai',
       'settings-group-team-identity',
       'settings-group-team-mail',

@@ -25,6 +25,8 @@ import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
 import 'unit_scope.dart';
+import 'csv_download.dart';
+import '../unit_scope_providers.dart' show eeUnitHereProvider;
 import '../../workspaces/ui/workspace_switcher.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
@@ -118,6 +120,25 @@ class EeTicketQueueScreen extends ConsumerWidget {
                   // pushed screen with no address of its own (EE-098 never gave it
                   // one, and inventing one here would be a second way to reach it).
                   onSelected: (value) {
+                    // OPH-360 (UI-AUDIT #56): the export the server had all
+                    // along. The queue's own filters travel where the door
+                    // can take them (one value per field), scoped to the
+                    // unit on screen.
+                    if (value == 'csv') {
+                      eeDownloadCsv(context, ref, (api) {
+                        String? one(Set<String> values) =>
+                            values.length == 1 ? values.first : null;
+                        return api.tickets(
+                          status: one(filter.statuses),
+                          priority: one(filter.priorities),
+                          source: one(filter.sources),
+                          slaStatus: one(filter.slaStatuses),
+                          serviceId: filter.serviceId,
+                          unitId: ref.read(eeUnitHereProvider).unit?.unitId,
+                        );
+                      });
+                      return;
+                    }
                     // EE-220 adds `/assets` beside `/kb` for the same reason and by
                     // the same means: both are real ROUTES because both are things
                     // you link to (a QR code on a machine opens an asset).
@@ -283,6 +304,25 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // itself to the caller's own desks, so everybody sees a TRUE
                     // screen rather than a forbidden one. A manager with
                     // `units.manage` sees the team; everyone else sees their own.
+                    // OPH-360 (UI-AUDIT #56): taking the data out is
+                    // `tickets.export`, so the entry exists on a yes only.
+                    if (ref.read(canProvider('tickets.export')))
+                      PopupMenuItem(
+                        key: const Key('ticket-csv'),
+                        value: 'csv',
+                        child: Row(
+                          children: [
+                            const Icon(Icons.download_outlined),
+                            const SizedBox(width: AwSpace.x2),
+                            Flexible(
+                              child: Text(
+                                'ee.csv.download'.tr(),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     PopupMenuItem(
                       key: const Key('ticket-performance'),
                       value: 'perf',

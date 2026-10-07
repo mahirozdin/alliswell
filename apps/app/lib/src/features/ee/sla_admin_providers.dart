@@ -28,12 +28,18 @@ class EeSlaAdminController extends AsyncNotifier<EeSlaAdminData?> {
     return ref.watch(eeSlaAdminApiProvider).load();
   }
 
+  /// UI-AUDIT #22: a refusal reaches the CALLER, which says it in a
+  /// snackbar; the lists stay on screen. Folding it into the provider's state
+  /// turned one refused delete into a whole-screen error.
   Future<void> _then(Future<void> Function(EeSlaAdminApi api) action) async {
-    state = await AsyncValue.guard(() async {
-      final api = ref.read(eeSlaAdminApiProvider);
+    final api = ref.read(eeSlaAdminApiProvider);
+    try {
       await action(api);
-      return api.load();
-    });
+    } finally {
+      // Re-read either way: a partly applied edit (the policy saved, a target
+      // refused) must not leave the screen showing the old values.
+      state = await AsyncValue.guard(api.load);
+    }
   }
 
   Future<void> savePolicy({
@@ -53,6 +59,34 @@ class EeSlaAdminController extends AsyncNotifier<EeSlaAdminData?> {
       escalationMinutes: escalationMinutes,
     ),
   );
+
+  /// UI-AUDIT #46 — the policy and the target rows the sheet changed, then one
+  /// re-read. A new policy's id comes back from the create, so its targets
+  /// can be filled in the same sheet rather than in a second visit.
+  Future<void> savePolicyAndTargets({
+    String? id,
+    required String name,
+    String? calendarId,
+    bool? isDefault,
+    int? warnPercent,
+    Map<String, EeSlaTarget> targets = const {},
+  }) => _then((api) async {
+    final policyId = await api.savePolicy(
+      id: id,
+      name: name,
+      calendarId: calendarId,
+      isDefault: isDefault,
+      warnPercent: warnPercent,
+    );
+    for (final t in targets.values) {
+      await api.saveTarget(
+        policyId: policyId,
+        priority: t.priority,
+        firstResponseMinutes: t.firstResponseMinutes,
+        resolutionMinutes: t.resolutionMinutes,
+      );
+    }
+  });
 
   Future<void> saveTarget({
     required String policyId,

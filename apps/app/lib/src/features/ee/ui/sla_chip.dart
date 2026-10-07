@@ -174,30 +174,59 @@ class AwSlaCountdown extends StatelessWidget {
     final state = slaBadgeStateOf(ticket.slaStatus);
     if (state == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
+    final detail = slaBreachDetail(state, ticket.slaDueAt, now: now);
 
     // OPH-359 (UI-AUDIT #64): one node that says the whole line — "response
     // due: 2 h left" — rather than two fragments a reader may never join.
     return Semantics(
       container: true,
       excludeSemantics: true,
-      label:
-          '${'ee.sla.dueLabel'.tr()}: '
-          '${slaBadgeLabel(state, ticket.slaDueAt, now: now)}',
+      label: [
+        '${'ee.sla.dueLabel'.tr()}: '
+            '${slaBadgeLabel(state, ticket.slaDueAt, now: now)}',
+        ?detail,
+      ].join('. '),
       child: Padding(
         key: const Key('sla-countdown'),
         padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                'ee.sla.dueLabel'.tr(),
-                style: theme.textTheme.labelLarge,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'ee.sla.dueLabel'.tr(),
+                    style: theme.textTheme.labelLarge,
+                  ),
+                ),
+                AwSlaChip(ticket: ticket, now: now),
+              ],
             ),
-            AwSlaChip(ticket: ticket, now: now),
+            if (detail != null)
+              Text(
+                detail,
+                key: const Key('sla-breach-detail'),
+                style: theme.textTheme.bodySmall,
+              ),
           ],
         ),
       ),
     );
   }
+}
+
+/// OPH-360 (UI-AUDIT #22) — what "missed" means on the detail.
+///
+/// A missed promise used to read "SLA missed" and nothing else, and on a desk
+/// whose policy was since deleted there is no deadline left to show, which
+/// looked like a broken badge. The detail now says how late it is when the
+/// deadline is known, and that no clock runs any more when it is not. Rows
+/// keep the short badge.
+String? slaBreachDetail(SlaBadgeState state, DateTime? dueAt, {DateTime? now}) {
+  if (state != SlaBadgeState.breached) return null;
+  if (dueAt == null) return 'ee.sla.breachedNoClock'.tr();
+  final late = (now ?? DateTime.now()).difference(dueAt);
+  if (late.isNegative) return null;
+  return 'ee.sla.overdueBy'.tr(args: {'time': formatSlaDuration(late)});
 }

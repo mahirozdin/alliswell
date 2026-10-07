@@ -52,6 +52,7 @@ import 'features/ee/ui/team_settings_screen.dart';
 import 'features/ee/ui/team_members_screen.dart';
 import 'features/ee/ui/team_services_screen.dart';
 import 'features/ee/ui/portal_links_screen.dart';
+import 'features/ee/ui/customers_screen.dart';
 import 'features/ee/ui/meeting_screen.dart';
 import 'features/ee/ui/team_ai_keys_screen.dart';
 import 'features/ee/ui/approval_detail_screen.dart';
@@ -802,6 +803,18 @@ final routerProvider = Provider<GoRouter>((ref) {
           const EePortalLinksScreen(),
           title: 'ee.portal.title',
           permission: 'portal.manage_links',
+        ),
+      ),
+      // OPH-360 (UI-AUDIT #18): the companies the team serves and their
+      // people — list, add, invite, switch off, rename, archive — behind
+      // `customers.manage`. Before it a contact who left the customer kept
+      // their way into the company portal.
+      GoRoute(
+        path: '/settings/team/customers',
+        builder: (context, state) => _teamPage(
+          const EeCustomersScreen(),
+          title: 'ee.customers.title',
+          permission: 'customers.manage',
         ),
       ),
       // EE-111: the team's AI provider keys and the personal-key policy,

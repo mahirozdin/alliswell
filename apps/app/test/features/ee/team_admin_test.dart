@@ -362,6 +362,32 @@ void main() {
       },
     );
 
+    testWidgets(
+      'UI-AUDIT #22 pattern: cancelling a live invitation asks first',
+      (tester) async {
+        final api = FakeApi(
+          invites: [
+            const EeInvite(
+              id: 'I4',
+              email: 'bekliyor@example.com',
+              role: 'member',
+              state: 'pending',
+              expiresAt: '2026-08-21T00:00:00.000Z',
+            ),
+          ],
+        );
+        await tester.pumpWidget(harness(api, const EeTeamInvitesScreen()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('invite-revoke-I4')));
+        await tester.pumpAndSettle();
+        expect(api.calls, isEmpty);
+        expect(find.textContaining('bekliyor@example.com?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('invite-revoke-confirm')));
+        await tester.pumpAndSettle();
+        expect(api.calls, ['revoke:I4']);
+      },
+    );
+
     testWidgets('a dead invitation cannot be revoked twice', (tester) async {
       final api = FakeApi(
         invites: [

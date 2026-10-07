@@ -7,6 +7,8 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/sla_dashboard_models.dart';
 import '../sla_dashboard_providers.dart';
+import 'report_format.dart';
+import 'ticket_detail_screen.dart' show awOpenTicket;
 import '../../../widgets/route_leading.dart';
 
 /// The SLA dashboard (EE-098) — the screen this epic is sold on.
@@ -66,7 +68,15 @@ class EeSlaDashboardScreen extends ConsumerWidget {
             child: ListView(
               padding: const EdgeInsets.all(AwSpace.x4),
               children: [
-                _Compliance(value: data.compliance, total: data.total),
+                // UI-AUDIT #22: a team with no default policy measures nothing
+                // it opens from now on — said above the figure it undermines.
+                if (data.hasDefaultPolicy == false) ...[
+                  const _NoDefaultPolicy(),
+                  const SizedBox(height: AwSpace.x4),
+                ],
+                _Compliance(value: data.compliance, judged: data.judged),
+                const SizedBox(height: AwSpace.x4),
+                _Outcomes(data: data),
                 const SizedBox(height: AwSpace.x6),
                 _Breakdown(
                   titleKey: 'ee.slaDash.byUnit',
@@ -93,10 +103,12 @@ class EeSlaDashboardScreen extends ConsumerWidget {
 
 /// The headline: met against broken, as a percentage — or a dash.
 class _Compliance extends StatelessWidget {
-  const _Compliance({required this.value, required this.total});
+  const _Compliance({required this.value, required this.judged});
 
   final double? value;
-  final int total;
+
+  /// The denominator `value` was computed over (UI-AUDIT #52).
+  final int judged;
 
   @override
   Widget build(BuildContext context) {
@@ -134,9 +146,9 @@ class _Compliance extends StatelessWidget {
               // not a literal).
               value == null
                   ? '—'
-                  : 'ee.slaDash.compliancePercent'.tr(
-                      args: {'value': value!.toStringAsFixed(1)},
-                    ),
+                  // UI-AUDIT #88: the reader's locale writes it — "%40,3" in
+                  // Turkish, "40.3%" in English, not a fixed English point.
+                  : eePercentText(value!),
               key: const Key('sla-compliance'),
               style: theme.textTheme.displaySmall?.copyWith(color: colour),
             ),
@@ -144,8 +156,127 @@ class _Compliance extends StatelessWidget {
             Text(
               value == null
                   ? 'ee.slaDash.complianceNone'.tr()
-                  : 'ee.slaDash.complianceOf'.tr(args: {'total': '$total'}),
+                  : 'ee.slaDash.complianceOf'.tr(args: {'total': '$judged'}),
+              key: const Key('sla-compliance-of'),
               style: theme.textTheme.bodySmall,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// UI-AUDIT #52 — what the percentage is made of: broken, close, kept.
+///
+/// The counts were on the wire all along (`bySla`) and never drawn, so a
+/// board at 40 % could not say whether that was 114 broken promises or 2.
+class _Outcomes extends StatelessWidget {
+  const _Outcomes({required this.data});
+
+  final EeSlaDashboard data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final tokens = context.awTokens;
+    Widget figure(
+      String key,
+      String labelKey,
+      IconData icon,
+      Color mark,
+    ) => Expanded(
+      child: Semantics(
+        container: true,
+        excludeSemantics: true,
+        label: '${labelKey.tr()}: ${data.slaCount(key)}',
+        child: Column(
+          key: Key('sla-outcome-$key'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // The colour is the mark; the word and the number are body
+            // text (EE-097's rule — warning is 3.46, a mark only).
+            Row(
+              children: [
+                Icon(icon, size: 16, color: mark),
+                const SizedBox(width: AwSpace.x1),
+                Flexible(
+                  child: Text(
+                    labelKey.tr(),
+                    style: theme.textTheme.labelMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: AwSpace.x1),
+            Text('${data.slaCount(key)}', style: theme.textTheme.headlineSmall),
+          ],
+        ),
+      ),
+    );
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(AwSpace.x4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            figure(
+              'breached',
+              'ee.slaDash.outcomeBreached',
+              Icons.error_outline,
+              theme.colorScheme.error,
+            ),
+            figure(
+              'warned',
+              'ee.slaDash.outcomeWarned',
+              Icons.schedule,
+              tokens.warning,
+            ),
+            figure(
+              'met',
+              'ee.slaDash.outcomeMet',
+              Icons.verified_outlined,
+              tokens.success,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// UI-AUDIT #22 — no default policy: new requests are measured by nothing.
+class _NoDefaultPolicy extends StatelessWidget {
+  const _NoDefaultPolicy();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      key: const Key('sla-no-default-policy'),
+      child: Padding(
+        padding: const EdgeInsets.all(AwSpace.x4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(Icons.warning_amber_outlined, color: context.awTokens.warning),
+            const SizedBox(width: AwSpace.x3),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'ee.slaDash.noDefaultTitle'.tr(),
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: AwSpace.x1),
+                  Text(
+                    'ee.slaDash.noDefaultBody'.tr(),
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -258,8 +389,10 @@ class _Breaches extends StatelessWidget {
                 Icons.error_outline,
                 color: theme.colorScheme.error,
               ),
+              // UI-AUDIT #53: the number tells two rows with one subject
+              // apart, and the row opens the request it names.
               title: Text(
-                b.subject,
+                b.number == null ? b.subject : '#${b.number} · ${b.subject}',
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -270,6 +403,8 @@ class _Breaches extends StatelessWidget {
                 ].join(' · '),
                 style: theme.textTheme.bodySmall,
               ),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => awOpenTicket(context, b.id),
             ),
       ],
     );

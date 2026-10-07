@@ -357,15 +357,17 @@ void main() {
       expect(find.text('Sürüm 1 yayında.'), findsOneWidget);
     });
 
-    testWidgets('a service that never had a form is "not published yet"', (
-      tester,
-    ) async {
-      await openDesigner(tester, const EeService(id: 'S1', name: 'Yeni'));
-      expect(
-        tester.widget<Text>(key('form-status')).data,
-        'Henüz yayınlanmadı · her şey yayında',
-      );
-    });
+    testWidgets(
+      'UI-AUDIT #79: a service that never had a form is only "not published yet"',
+      (tester) async {
+        await openDesigner(tester, const EeService(id: 'S1', name: 'Yeni'));
+        // Not "· her şey yayında" — nothing is.
+        expect(
+          tester.widget<Text>(key('form-status')).data,
+          'Henüz yayınlanmadı',
+        );
+      },
+    );
   });
 
   group('the designer', () {

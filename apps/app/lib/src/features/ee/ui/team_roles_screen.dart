@@ -294,7 +294,10 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
                     key: Key('grant-${def.id}'),
                     value: _grants.contains(def.id),
                     title: Text(def.label.tr()),
-                    subtitle: Text(def.description),
+                    // UI-AUDIT #45: the description in the reader's language;
+                    // the server's English sentence only for a verb this
+                    // build has no words for yet (a newer server's).
+                    subtitle: Text(eePermissionDescription(def)),
                     onChanged: (on) => setState(() {
                       if (on == true) {
                         _grants.add(def.id);
@@ -318,3 +321,9 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
     );
   }
 }
+
+/// A permission's one-line description, translated (`ee.permDescription.<id>`)
+/// — the server's sentence only when this build has none for the id.
+String eePermissionDescription(EePermissionDef def) =>
+    AwI18n.instance.maybeTranslate('ee.permDescription.${def.id}') ??
+    def.description;

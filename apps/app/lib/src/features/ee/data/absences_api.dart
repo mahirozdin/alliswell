@@ -106,9 +106,22 @@ class EeAbsencesApi {
 
   static const _base = '/api/v1/ee/team/absences';
 
-  Future<EeAbsencePage> list() async {
+  /// UI-AUDIT #47: the list asks for the same horizon the date picker
+  /// offers ([eeAbsenceHorizon]). Without `to` the server answered its
+  /// 90-day default, so an absence recorded further out could be neither
+  /// seen nor removed. `from` travels too, so the window is exactly the
+  /// client's 366 days whatever the team's zone says "today" is (an older
+  /// server caps a window at 366 days, a current one at 367).
+  Future<EeAbsencePage> list({DateTime? now}) async {
+    final today = eeAbsenceToday(now ?? DateTime.now());
     try {
-      final res = await _dio.get<Map<String, dynamic>>(_base);
+      final res = await _dio.get<Map<String, dynamic>>(
+        _base,
+        queryParameters: {
+          'from': dayText(today),
+          'to': dayText(eeAbsenceHorizon(today)),
+        },
+      );
       final data = res.data ?? const <String, dynamic>{};
       return EeAbsencePage(
         absences: [
@@ -177,6 +190,14 @@ String dayText(DateTime day) =>
     '${day.year.toString().padLeft(4, '0')}-'
     '${day.month.toString().padLeft(2, '0')}-'
     '${day.day.toString().padLeft(2, '0')}';
+
+/// The calendar day [now] falls on, as a date with no time.
+DateTime eeAbsenceToday(DateTime now) => DateTime(now.year, now.month, now.day);
+
+/// The last day an absence can be recorded on and listed: a year ahead
+/// (365 days), the same for the picker and the list (UI-AUDIT #47).
+DateTime eeAbsenceHorizon(DateTime today) =>
+    DateTime(today.year, today.month, today.day + 365);
 
 DateTime _day(String text) => DateTime.utc(
   int.parse(text.substring(0, 4)),

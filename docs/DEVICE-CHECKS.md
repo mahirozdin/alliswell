@@ -7,6 +7,7 @@
 
 ## Kabuk, gezinme, erişilebilirlik (2026-10-07)
 
+- OPH-360 — Ayarlar › Herkese açık bağlantılar: 30 günlük bir linkte ⋮ → "Süreyi uzat…" → 2 gün → yeni bitiş eskisinden sonra; satırda birim ve oluşturma tarihi; iptal diyaloğunda "Vazgeç" / kırmızı "Bağlantıyı iptal et"; ekran okuyucu diyaloğu adıyla okuyor. Ayarlar › Firmalar: kişi ekle → davet bağlantısı bir kez; kişiyi kapat → firma portalındaki oturumu düşüyor. SLA panosu Aşıldı/Yaklaşıyor/Tutuldu ve "N değerlendirilen"; ihlal satırı talebi açıyor. Kuyruk ⋮ → "CSV indir" → Excel'de Türkçe karakterler doğru. Denetim günlüğü başlığı "Denetim günlüğü", satır talebi açıyor. Açık ve koyu temada.
 - OPH-359 — 1440 px web'de Ayarlar › Erişilebilirlik açıkken (ya da NVDA/VoiceOver ile) Tab: sol çubukta Ana Sayfa … Talepler, Onaylar okunuyor, Enter açıyor; mikrofon düğmesi tek bir "Yapay zekâyla konuş" düğmesi, Enter/çift dokunuşla balon açılıyor. Telefonda (390 px) Talepler: "Yeni talep" çubuğun üstünde, dokununca form; alt çubukta yalnız seçili sekmenin adı, kenarda kesik etiket yok; başlığın altında takım noktası + birim adı, birim seçici 10 birimde kayıyor. Hızlı erişim balonu sağ altta FAB'ın üstünde, listeyi kaydırınca kenara çekiliyor (rozet okunur). `#/tickets/<id>`'yi yeni sekmede aç → talep açılıyor, sol üstte Ana sayfa; kuyruktan talep/KB/SLA panosu açınca adres çubuğu o ekranın adresi. Toplantılar: "Kayıt yükle", başarısız toplantıda Türkçe neden. Açık ve koyu temada.
 
 ## Talep, onay, bilgi bankası, ekipman (2026-10-07)

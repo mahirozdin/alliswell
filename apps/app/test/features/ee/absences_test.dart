@@ -323,4 +323,33 @@ void main() {
     expect(find.byKey(const Key('absences-empty')), findsOneWidget);
     expect(server.asked, isEmpty);
   });
+
+  testWidgets(
+    'UI-AUDIT #47: the list asks for a year ahead — the picker\'s horizon — not the 90-day default',
+    (tester) async {
+      await pump(tester);
+      final listCall = server.asked.firstWhere(
+        (o) => o.method == 'GET' && o.path == '/api/v1/ee/team/absences',
+      );
+      final from = listCall.queryParameters['from'] as String;
+      final to = listCall.queryParameters['to'] as String;
+      final today = eeAbsenceToday(DateTime.now());
+      expect(from, dayText(today));
+      expect(to, dayText(eeAbsenceHorizon(today)));
+      // 366 days inclusive: within an older server's ceiling (366) and a
+      // current one's (367), and the same day the picker stops at.
+      expect(
+        DateTime.parse(
+          '${to}T00:00:00Z',
+        ).difference(DateTime.parse('${from}T00:00:00Z')).inDays,
+        365,
+      );
+    },
+  );
+
+  test('UI-AUDIT #47: the horizon crosses a leap day without growing', () {
+    final today = DateTime(2027, 6, 1);
+    final horizon = eeAbsenceHorizon(today);
+    expect(horizon, DateTime(2028, 5, 31));
+  });
 }

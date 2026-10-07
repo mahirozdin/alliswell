@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
@@ -222,7 +223,21 @@ class _CopyRow extends StatelessWidget {
           key: Key(keyName),
           tooltip: 'common.copy'.tr(),
           icon: const Icon(Icons.copy_outlined),
-          onPressed: () => Clipboard.setData(ClipboardData(text: value)),
+          // UI-AUDIT D2's rule: a refused clipboard says so — this value is
+          // shown once and cannot be read back.
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.maybeOf(context);
+            try {
+              await Clipboard.setData(ClipboardData(text: value));
+              messenger?.showSnackBar(
+                SnackBar(content: Text('ee.team.invites.copied'.tr())),
+              );
+            } catch (_) {
+              messenger?.showSnackBar(
+                SnackBar(content: Text('ee.team.invites.copyFailed'.tr())),
+              );
+            }
+          },
         ),
       ],
     );
@@ -255,8 +270,24 @@ class _InviteTile extends ConsumerWidget {
                   key: Key('invite-revoke-${invite.id}'),
                   tooltip: 'ee.team.invites.revoke'.tr(),
                   icon: const Icon(Icons.cancel_outlined),
-                  onPressed: () =>
-                      ref.read(eeInvitesProvider.notifier).revoke(invite.id),
+                  // OPH-360: the link already handed over stops working, so
+                  // the person is asked — "Keep it" beside the error-role act.
+                  onPressed: () async {
+                    final ok = await awConfirmDelete(
+                      context,
+                      title: 'ee.team.invites.revokeTitle'.tr(
+                        args: {'email': invite.email},
+                      ),
+                      body: 'ee.team.invites.revokeBody'.tr(),
+                      confirmLabel: 'ee.team.invites.revoke'.tr(),
+                      cancelLabel: 'ee.team.invites.keep'.tr(),
+                      confirmKey: const Key('invite-revoke-confirm'),
+                    );
+                    if (!ok || !context.mounted) return;
+                    await ref
+                        .read(eeInvitesProvider.notifier)
+                        .revoke(invite.id);
+                  },
                 )
               : null,
         ),

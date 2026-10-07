@@ -248,6 +248,54 @@ void main() {
     });
   });
 
+  group('UI-AUDIT OPH-360', () {
+    const unit = EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 0);
+
+    testWidgets('UI-AUDIT #80: an empty roster says so, not a blank page', (
+      tester,
+    ) async {
+      final api = FakeUnitsApi()..roster = const [];
+      await tester.pumpWidget(
+        harness(
+          api,
+          isAdmin: true,
+          child: const EeUnitMembersScreen(unit: unit),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-members-empty')), findsOneWidget);
+      expect(find.text('ee.team.units.noMembersTitle'.tr()), findsOneWidget);
+      // …and the way in stays.
+      expect(find.byKey(const Key('unit-member-add')), findsOneWidget);
+    });
+
+    testWidgets('UI-AUDIT #22 pattern: archiving a unit asks first', (
+      tester,
+    ) async {
+      final api = FakeUnitsApi();
+      await tester.pumpWidget(
+        harness(api, isAdmin: true, child: const EeTeamUnitsScreen()),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('unit-menu-U1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ee.team.units.archive'.tr()));
+      await tester.pumpAndSettle();
+      expect(api.calls, isNot(contains('archive:U1:true')));
+      await tester.tap(find.text('ee.team.units.keep'.tr()));
+      await tester.pumpAndSettle();
+      expect(api.calls, isNot(contains('archive:U1:true')));
+
+      await tester.tap(find.byKey(const Key('unit-menu-U1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ee.team.units.archive'.tr()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('unit-archive-confirm')));
+      await tester.pumpAndSettle();
+      expect(api.calls, contains('archive:U1:true'));
+    });
+  });
+
   // UI-AUDIT #62 (OPH-356, EE-302): a member's Settings asked the units list
   // and a request's detail asked the admin service list on every open — two
   // 403s each time, to learn what `/me/permissions` can now say.

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:go_router/go_router.dart';
+
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/history_models.dart';
 import '../history_providers.dart';
+import 'csv_download.dart';
 import '../../../widgets/status_views.dart';
 import '../../../widgets/route_leading.dart';
 
@@ -30,6 +33,62 @@ import '../../../widgets/route_leading.dart';
 /// `verb=` is a 400 from the server's typed schema and `verb` absent is "no
 /// filter"; those are different requests and only the second is what clearing
 /// means.
+/// UI-AUDIT #44: every type a team's history is written against — the
+/// server's `HISTORY_ENTITY_TYPES` (EE-302 keeps that list equal to the
+/// emit sites by test). The old seven-entry list could not filter to a
+/// request, a unit, a service, an invitation or a webhook, and drew the
+/// keys raw. Each has a name under `ee.audit.entity.<type>`.
+const kEeAuditEntityTypes = <String>[
+  'ee_alert_source',
+  'ee_announcement',
+  'ee_approval',
+  'ee_asset',
+  'ee_asset_import',
+  'ee_automation_rule',
+  'ee_business_calendar',
+  'ee_canned_reply',
+  'ee_catalog_import',
+  'ee_change',
+  'ee_change_freeze',
+  'ee_chat_channel',
+  'ee_classification_rule',
+  'ee_customer',
+  'ee_customer_user',
+  'ee_health_check',
+  'ee_identity_provider',
+  'ee_invite',
+  'ee_item_share',
+  'ee_kb_article',
+  'ee_mail_inbox',
+  'ee_meeting',
+  'ee_member_absence',
+  'ee_member_import',
+  'ee_notification_outbox',
+  'ee_oncall_schedule',
+  'ee_problem',
+  'ee_public_form',
+  'ee_role',
+  'ee_saved_view',
+  'ee_service',
+  'ee_service_category',
+  'ee_sla_policy',
+  'ee_supplier',
+  'ee_team',
+  'ee_team_ai_connection',
+  'ee_team_mail_settings',
+  'ee_team_member',
+  'ee_ticket',
+  'ee_ticket_export',
+  'ee_ticket_import',
+  'ee_ticket_rating',
+  'ee_ticket_template',
+  'ee_unit',
+  'ee_webhook',
+  'ee_whatsapp_config',
+  'task',
+  'workspace',
+];
+
 class EeAuditLogScreen extends ConsumerStatefulWidget {
   const EeAuditLogScreen({super.key});
 
@@ -56,16 +115,6 @@ class _EeAuditLogScreenState extends ConsumerState<EeAuditLogScreen> {
     'status_changed',
   ];
 
-  static const _entityTypes = <String>[
-    'ee_team',
-    'ee_team_member',
-    'ee_role',
-    'workspace',
-    'task',
-    'ee_public_form',
-    'ee_member_import',
-  ];
-
   bool get _filtered => _verb != null || _entityType != null;
 
   @override
@@ -81,7 +130,22 @@ class _EeAuditLogScreenState extends ConsumerState<EeAuditLogScreen> {
     return Scaffold(
       appBar: AppBar(
         leading: awRouteLeading(context),
+        // UI-AUDIT #89: the same name as the Settings row that opens it.
         title: Text('ee.audit.title'.tr()),
+        actions: [
+          // UI-AUDIT #56: the record as a file, with the filters on screen —
+          // the screen itself already stands behind `team.view_audit`.
+          IconButton(
+            key: const Key('audit-csv'),
+            tooltip: 'ee.csv.download'.tr(),
+            icon: const Icon(Icons.download_outlined),
+            onPressed: () => eeDownloadCsv(
+              context,
+              ref,
+              (api) => api.audit(verb: _verb, entityType: _entityType),
+            ),
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -89,7 +153,7 @@ class _EeAuditLogScreenState extends ConsumerState<EeAuditLogScreen> {
             verb: _verb,
             entityType: _entityType,
             verbs: _verbs,
-            entityTypes: _entityTypes,
+            entityTypes: kEeAuditEntityTypes,
             onVerb: (v) => setState(() => _verb = v),
             onEntityType: (v) => setState(() => _entityType = v),
             onClear: _filtered
@@ -180,8 +244,13 @@ class _FilterBar extends StatelessWidget {
                 value: null,
                 child: Text('ee.audit.anything'.tr()),
               ),
-              for (final t in entityTypes)
-                DropdownMenuItem(value: t, child: Text(t)),
+              // Sorted by what a person reads, not by the key.
+              for (final t
+                  in [...entityTypes]..sort(
+                    (a, b) =>
+                        eeAuditEntityName(a).compareTo(eeAuditEntityName(b)),
+                  ))
+                DropdownMenuItem(value: t, child: Text(eeAuditEntityName(t))),
             ],
           ),
           if (onClear != null)
@@ -238,6 +307,9 @@ class _AuditRow extends StatelessWidget {
         ? 'ee.history.actorSystem'.tr()
         : (event.actorName ?? 'ee.history.actorUnknown'.tr());
 
+    final record = eeAuditRecordLabel(event);
+    final path = eeAuditRecordPath(event);
+
     return Padding(
       padding: kAwListRowPadding,
       child: Card(
@@ -260,10 +332,21 @@ class _AuditRow extends StatelessWidget {
               ],
             ),
           ),
+          // UI-AUDIT #44: WHICH record — its kind in words, and its name or
+          // number when the event carries one — rather than "ee_ticket".
           subtitle: Text(
-            '${event.entityType} · ${_stamp(event.occurredAt)}',
+            [
+              eeAuditEntityName(event.entityType),
+              ?record,
+              _stamp(event.occurredAt),
+            ].join(' · '),
             style: theme.textTheme.bodySmall,
           ),
+          // …and a way to it, for the kinds that have a screen of their own.
+          trailing: path == null ? null : const Icon(Icons.chevron_right),
+          onTap: path == null || GoRouter.maybeOf(context) == null
+              ? null
+              : () => context.push(path),
         ),
       ),
     );
@@ -295,4 +378,58 @@ class _Message extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The kind of record, in words (UI-AUDIT #44). A type this build has no
+/// name for — a newer server's — falls back to the key rather than nothing.
+String eeAuditEntityName(String type) =>
+    AwI18n.instance.maybeTranslate('ee.audit.entity.$type') ?? type;
+
+/// The record's own name or number, read from the event's diff — the fields
+/// the server's emit sites write (`number`, `subject`, `title`, `name`,
+/// `email`, `filename`). A diff field is either a value or an `[old, new]`
+/// pair; the newer side wins, so a renamed record reads by its current name
+/// and a deleted one by the name it had.
+String? eeAuditRecordLabel(EeHistoryEvent event) {
+  final diff = event.diff;
+  if (diff == null) return null;
+  Object? valueOf(String key) {
+    final raw = diff[key];
+    if (raw is List) {
+      if (raw.length == 2) return raw[1] ?? raw[0];
+      return null;
+    }
+    return raw;
+  }
+
+  final number = valueOf('number');
+  final name = [
+    'subject',
+    'title',
+    'name',
+    'email',
+    'filename',
+  ].map(valueOf).whereType<String>().where((v) => v.isNotEmpty).firstOrNull;
+  if (number is num) {
+    return name == null ? '#${number.toInt()}' : '#${number.toInt()} $name';
+  }
+  return name;
+}
+
+/// Where a row leads, for the kinds of record that have a screen with an
+/// address. A deleted record has none to open.
+String? eeAuditRecordPath(EeHistoryEvent event) {
+  if (event.verb == 'deleted' || event.entityId.isEmpty) return null;
+  final id = event.entityId;
+  return switch (event.entityType) {
+    'ee_ticket' => '/tickets/$id',
+    'task' => '/tasks/$id',
+    'ee_change' => '/changes/$id',
+    'ee_problem' => '/problems/$id',
+    'ee_asset' => '/assets/$id',
+    'ee_kb_article' => '/kb/$id',
+    'ee_meeting' => '/meetings/$id',
+    'ee_approval' => '/approvals/$id',
+    _ => null,
+  };
 }

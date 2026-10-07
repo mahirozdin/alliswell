@@ -9,18 +9,17 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-359 kapandı (kabuk, gezinme ve erişilebilirlik: kuyruk FAB'ı,
-kaydırılan birim seçici, rail semantiği, birim kapsamı, Ana sayfa düğmesi, adresler, toplantı nedeni
-ve kayıt yükleme, AI düğmesi, Türkçe metinler); Epic 34'ün sırası OPH-360'ta.
+**Last updated:** 2026-10-07 — OPH-360 kapandı (yönetim, portal bağlantıları ve rapor ekranları);
+Epic 34'ün core yarısı bitti, backlog boş.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
-| Current epic             | **Epic 34** — 2026-10-07 UI denetimi: çıkışta yerel veri, takım adresi, core hata gövdesi ve hız sınırı, uzantı ekranları (OPH-355…OPH-360). İkiz yok; her iş sunucunun eski ve yeni davranışına dayanıklı. |
-| ➡️ **Next task**         | **OPH-360** — Yönetim, portal bağlantıları ve rapor ekranları |
-| Last completed           | OPH-359 — istemci: kabuğun gövdesi nav yüksekliğini `viewPadding`'e taşır (iç Scaffold FAB'ları çubuğun üstünde), FAB alanı `AwFabClearance` ile listelere ve boş durumlara; rail semantiği (bölüm Navigator'ının ModalBarrier'ı `BlockSemantics` — içerik artık kendi semantik kabı); birim seçici kayar (10 birim); uzantı listelerinde birim adı + seçici, birim değilse "Bir birim seçin" (`/ee/team/tickets/my-units` → `units`, kişiye bağlı önbellek); adresle açılan her ekranda geri ya da Ana sayfa (`awRouteLeading`); adresle açılan sayfa replikayı eşitler (`AwKeepReplicaCurrent`); `optionURLReflectsImperativeAPIs` + `/sla`, `/performance`, `/my-units`; toplantıda `failureCode` çevirisi + AI anahtarları eylemi + 404'te "Toplantı bulunamadı" + "Kayıt yükle"; AI düğmesi erişilebilirlikle açılır; takvim/semantik Türkçe, tr.json terimleri; mail alan etiketleri, webhook olay adları; erişilebilirlik etiketleri; hızlı erişim balonu altta ve kaydırmada çekilir, Onaylar rail hizası. |
+| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-360 kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
+| Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
+| ➡️ **Next task**         | **BACKLOG BOŞ** |
+| Last completed           | OPH-360 — istemci: portal linkinde süre seçimli uzatma (1/2/7/30 gün, yeni bitiş önizlemesi), satırda servisler/birim/tarih, iptal "Vazgeç"/"Bağlantıyı iptal et", adlı diyaloglar, pano hatası snackbar; `/settings/team/customers` (firma ve kişiler: ekle, davet, kapat/aç, adlandır, arşivle; eski sunucuda "desteklemiyor"); SLA yönetiminde silme onayı, varsayılan politika korunur, ad `onChanged`, hedef tablosu, birim arşivi ve davet iptali onayı; SLA panosu Aşıldı/Yaklaşıyor/Tutuldu, "N değerlendirilen", varsayılan yok uyarısı, ihlal #numara + gezinme; yerel sayı/süre biçimi (pano + performans); kuyruk ve denetim günlüğünde CSV indir; denetim günlüğü tür adları, kayıt adı ve bağlantı, başlık; izin açıklamaları tr+en (`ee.permDescription.*`); devamsızlık ufku 365 gün; form tasarımcısı durumu; boş birim. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -262,9 +262,13 @@ class _EeFormDesignerScreenState extends ConsumerState<EeFormDesignerScreen> {
                   args: {'version': '$_version'},
                 ),
               },
-              _dirty
-                  ? 'ee.team.services.designer.unpublished'.tr()
-                  : 'ee.team.services.designer.upToDate'.tr(),
+              // UI-AUDIT #79: a form that was never published has nothing
+              // "all published" — that half is only said once something is
+              // live. Unpublished edits are still worth saying either way.
+              if (_dirty)
+                'ee.team.services.designer.unpublished'.tr()
+              else if (_version > 0 || _published.isNotEmpty)
+                'ee.team.services.designer.upToDate'.tr(),
             ].join(' · '),
             key: const Key('form-status'),
             style: theme.textTheme.titleSmall,

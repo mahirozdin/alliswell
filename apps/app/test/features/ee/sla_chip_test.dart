@@ -143,6 +143,35 @@ void main() {
     expect(find.text('2 h 0 m left'), findsOneWidget);
   });
 
+  testWidgets(
+    'UI-AUDIT #22: a missed target with no deadline left says why, instead of a bare badge',
+    (tester) async {
+      await _pump(
+        tester,
+        AwSlaCountdown(ticket: _ticket(slaStatus: 'breached')),
+      );
+      expect(find.text('SLA missed'), findsOneWidget);
+      expect(find.byKey(const Key('sla-breach-detail')), findsOneWidget);
+      expect(find.textContaining('No clock runs'), findsOneWidget);
+    },
+  );
+
+  testWidgets('UI-AUDIT #22: a missed target with a deadline says how late', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      AwSlaCountdown(
+        ticket: _ticket(
+          slaStatus: 'breached',
+          slaDueAt: DateTime(2026, 8, 30, 10),
+        ),
+        now: DateTime(2026, 8, 30, 13, 15),
+      ),
+    );
+    expect(find.text('3 h 15 m over'), findsOneWidget);
+  });
+
   testWidgets('a settled ticket mutes the badge rather than hiding it', (
     tester,
   ) async {
