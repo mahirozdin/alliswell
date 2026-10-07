@@ -39,6 +39,264 @@ kutuyu işaretle.)_
 
 ---
 
+## Epic 34 — 2026-10-07 UI denetimi: oturum verisi, takım adresi, hata katmanı, ekranlar
+
+_Kaynak: 2026-10-07 canlı UI denetimi (v1.15.0; rapor sahibin makinesinde,
+`~/Documents/alliswell-ee-ui-audit-2026-10-07.md`). Ana tabloda 89 bulgu (#1–#89) + 4
+doğrulanacak (D1–D4). Bu epic uygulamanın (`apps/app`, uzantı ekranları dahil) ve core API'nin
+(`apps/api`) payıdır; sunucu modülleri uzantı deposunun karşı işlerindedir (EE-299…EE-304) ve
+**istemcinin uyacağı sözleşme o işlerin "Sözleşme" satırındadır** — core belgelerine uzantının
+tasarımı yazılmaz. Satır numaraları rapordandır ve kayar; her iş kendi metnini yeniden ölçer._
+
+**İkiz yok:** hiçbir çift core şemasını, replikayı ya da dikişi değiştirmiyor. Her iş tek başına
+kapanır ve sunucunun **hem eski hem yeni** davranışına dayanıklıdır: yeni alan yoksa bugünkü
+davranış, yeni uç 404 ise "ipucu yok", bilinmeyen durum değeri nötr çizilir.
+
+**Sıra:** OPH-355 (P0, #3) → OPH-356 (P0, #5 + takım adresi) → OPH-357 (core API + hata katmanı) →
+OPH-358 (talep/onay ekranları) → OPH-359 (kabuk, gezinme, erişilebilirlik) → OPH-360 (yönetim ve
+rapor ekranları). **Kritik yollar:** OPH-355 (yerel replika — sync klasörü; `migration_test.dart`
+gerekirse), OPH-357 (auth — hız sınırı giriş yolunu değiştirir: `auth.test.js`,
+`auth-refresh.test.js`, `auth-me.test.js`).
+
+**Her işin sabit DoD'si:** i18n tr+en (`check:i18n`), DESIGN tokenları, açık ve koyu tema, dokunma
+hedefi ≥ 44 px; test adları `UI-AUDIT #n:` önekli; core API değişikliği docs/API.md'de (MCP yüzeyi
+değişmiyor — rule 12 gerekçesi: bu epicin core API değişiklikleri hata gövdesi ve hız sınırıdır,
+araç değil). Cihazda bakılacaklar (ekran okuyucu, telefon yerleşimi) DEVICE-CHECKS.md'ye.
+
+**Risk planı (rule 10):** OPH-355 kullanıcının cihazdaki verisini SİLER — plan iş metninde; gönderilmemiş
+değişiklik kaybı kullanıcıya sorulmadan olmaz. OPH-357 hız sınırının anahtarını değiştirir — güvenlik
+kararı, ADR-0045 aynı işte.
+
+---
+
+### OPH-355 — P0: çıkışta yerel veri silinir, hesap değişince replika düşer; /me geçici hatasında son bilinen liste
+
+**Bulgular:** #3, #27. **Karşı yarı:** yok.
+
+**Plan:** (1) çıkış: `features/auth/providers.dart` ~100 `logout()` önce outbox'a bakar — gönderilmemiş
+değişiklik varsa onay diyaloğu ("N değişiklik bu cihazdan silinecek"); sonra drift veritabanını
+kapatır ve siler (yerel dosya; web'de IndexedDB `alliswell` ve `alliswell_alerts`), kullanıcıya bağlı
+LocalKv anahtarlarını temizler (liste kodda tek sabit; sunucu adresi, dil, tema cihazındır, kalır).
+(2) giriş: son oturumun kullanıcı kimliği saklanır; yeni giriş farklı kullanıcıysa ilk senkrondan
+önce replika düşürülür (çıkış atlanmış ya da çökmüş olsa bile). (3) bildirim listesi kullanıcıya göre
+süzülür (`features/ee/notifications_providers.dart` ~136) — savunma derinliği.
+
+- [ ] Plan (1)–(3); LESSONS'a `sync` alanında tek satır ("replika kullanıcıya aittir").
+- [ ] **#27** `features/workspaces/workspaces.dart` ~95: 429, 5xx ve zaman aşımında da önbellekteki
+      son listeye düşülür; birim seçici kaybolmaz.
+- [ ] Testler: yeni `test/features/auth/logout_wipe_test.dart` (çıkış → DB ve kullanıcı anahtarları
+      yok; cihaz ayarları duruyor; outbox doluyken diyalog), yeni
+      `test/sync/user_switch_test.dart` (A çıkar, B girer → A'nın satırı ve bildirimi görünmez),
+      `test/features/ee/notifications_test.dart` (kullanıcı süzgeci), yeni
+      `test/features/workspaces/workspaces_cache_test.dart` (#27).
+
+**Kabul:** raporun senaryosu: saha3 çıkar, saha2 aynı tarayıcıda girer → saha3'ün bildirimi yok;
+IndexedDB'de önceki kullanıcının metni yok. `/me` 429 → Ana sayfa son listeyle açılır.
+
+### OPH-356 — P0: takım adresi istemcide — davet bağlantısının sunucusu, varsayılan adreste takım bağlamı, yönetim rotalarının kapısı
+
+**Bulgular:** #5 (istemci), #7 (istemci), #61, #62 (istemci), #83, #84. **Karşı yarı:** EE-300
+(#5, #7), EE-302 (#62) — sözleşme orada.
+
+- [ ] **#5** `router.dart` `/join/:token` ve `features/ee/ui/join_screen.dart`: bağlantıdaki `server`
+      parametresi okunur; yalnız https ve `teamOriginOf(server, baseDomain)` geçerli bir takım
+      adresiyse kabul edilir (varsayılan sunucunun `/ee/status` `baseDomain`'i), kullanıcıya host
+      gösterilerek sunucu değiştirilir ve kabul ekranı o sunucuyla açılır; parametre yoksa bugünkü
+      davranış. Geçersiz parametre sessizce yok sayılmaz — "bağlantı bu uygulamaya ait değil" durumu.
+- [ ] **#7** `features/ee/team_origin.dart`, `core/server_url.dart`, giriş akışı: takım adresi
+      olmayan sunucuda girişten sonra takım ipucu uçtan okunur (404 ya da uç yok → ipucu yok); ipucu
+      varsa "Takımınızın adresi X — geç" önerisi. `teamOrigin` null iken takım alanı senkronlanmışsa
+      uzantı girişleri (Onaylar, Taleplerim, Ayarlar' takım satırları, portal ekranı) boş liste ya da
+      "izniniz yok" değil, tek tip "Takım adresi gerekiyor" boş durumu + geç düğmesi
+      (`widgets/status_views.dart`); `data/approvals_api.dart` ~44/58, `data/my_tickets_api.dart` ~76
+      404'ü boş liste yapmaz, tipli hata döner; `screens/home_shell.dart` ~200 girişleri
+      `teamOriginProvider`'a bağlar; talep detayı 404'te işlem düğmelerini gizler.
+- [ ] **#61** `router.dart` ~646–720 `/settings/team/*` için redirect + tek `EeForbiddenView`;
+      oluştur FAB'ları `canProvider`'a bağlı; `features/ee/providers.dart` ~165 `canProvider`
+      yüklenirken `false` (kontroller izin gelmeden çizilmez).
+- [ ] **#62** delege tespiti `/me/permissions` yanıtındaki birim listesinden (alan yoksa bugünkü
+      yoklama — eski sunucu), servis bilgisi katalogdan; üye ekranı yönetici ucunu yoklamaz.
+- [ ] **#83** uygulama turu: uzantı açık + takım adresindeyken Talepler adımı; "kişisel klasörler"
+      metni kurum hesabında gösterilmez.
+- [ ] **#84** takım çipi adı ve rengi takımın kendi kaydından (`eeTeamProvider`), slug türetmesi
+      yalnız yedek (`team_origin.dart` ~26/114). Uzantı backlog'undaki "takım çipi" satırı bununla kapanır.
+- [ ] Testler: `test/features/ee/team_origin_test.dart`, yeni `test/features/ee/join_screen_test.dart`
+      (#5: geçerli/geçersiz/eksik `server`), `test/router_redirect_test.dart` (#61),
+      `test/features/ee/permission_gates_test.dart`, `reachable_screens_test.dart`,
+      `approvals_screen_test.dart` (#7 404 ≠ boş), `team_chip_test.dart` (#84), onboarding turu testi (#83).
+
+**Kabul:** davet bağlantısı açılınca kabul ekranı takım sunucusuyla gelir; varsayılan adresle giren
+takım üyesi "Takım adresi gerekiyor" görür (boş liste değil) ve tek dokunuşla geçer; üye
+`#/settings/team/roles`'u açınca tek tip kilitli durum görür, "+" yok.
+
+### OPH-357 — Core API: 5xx gövdesi iç bilgi taşımaz, kodlu 429, kimliğe göre hız sınırı, Türkçe slug; istemcide kodsuz hata ve ikincil bölüm hataları
+
+**Bulgular:** #16 (core), #24, #25, #26, #81, D3. **Karşı yarı:** EE-302 (#16 tarih), EE-301 (#40 —
+anonim formun kendi HTML 429'u kök işleyiciden önce gelir).
+
+- [ ] **#16** `apps/api/src/app.js` kök `setErrorHandler`: ≥500 → `{ statusCode, code: 'INTERNAL_ERROR',
+      error: 'Internal Server Error', message: 'Internal server error' }`, asıl hata loglanır; 4xx
+      gövdeleri değişmez; alt bağlamın kendi işleyicisi kazanır (testle).
+- [ ] **#24 (sunucu)** `@fastify/rate-limit` `errorResponseBuilder`: `{ statusCode: 429, code:
+      'RATE_LIMITED', error, message, retryAfter }` (saniye) + `Retry-After` başlığı.
+- [ ] **#25, D3** `app.js` ~131 `keyGenerator`: kimlikli istek kullanıcı kimliğine (erişim token'ı
+      imzasıyla doğrulanır; geçersizse IP), giriş/kayıt/yenileme IP + e-posta özetine; `config.js`
+      ~267 `RATE_LIMIT_MAX` / yeni `RATE_LIMIT_AUTH_MAX` belgeli (SELF-HOSTING). **ADR-0045** (anahtar
+      seçimi, NAT arkasındaki fabrika, kaba kuvvet koruması korunuyor). D3: 9 birimli hesabın senkron
+      döngüsü dakikada kaç istek atıyor — betikle ölçülür, sayı commit'e; sınırı aşıyorsa döngü toplanır
+      ya da kimlik başı sınır ona göre seçilir.
+- [ ] **#81** `apps/api/src/lib/slug.js` ~13: NFKD'den önce `ı→i`, `İ→i` (`Bakım` → `bakim`).
+- [ ] **#24 (istemci)** `core/api_exception.dart` ~24, `core/error_messages.dart` ~11,
+      `features/auth/data/auth_api.dart` ~88: `error.RATE_LIMITED` (kalan saniyeyle), `error.HTTP_429`,
+      `error.notFound`, `error.server` (5xx) tr+en; kodsuz yanıtın yedeği `error.unknown` (İngilizce
+      ham metin yok); `performance_screen.dart` ~54 ve `sla_dashboard_screen.dart` ~44 `'$error'`
+      basmaz, `AwErrorState(onRetry:)` kullanır — aynı kalıp diğer uzantı ekranlarında taranır.
+- [ ] **#26** `features/ee/approvals_providers.dart` özet hatasında son değeri korur (giriş
+      kaybolmaz); talep detayının alt bölümleri (etkilenen ekipman, problem kartı) ve Üyeler
+      `AsyncError`'ı satır içi hata olarak çizer; boş durum yalnız gerçekten boşken.
+- [ ] Testler: yeni `apps/api/test/unit/error-handler.test.js`, yeni `rate-limit-keys.test.js`, yeni
+      `slug.test.js`; `apps/api/test/integration/{auth,auth-refresh,auth-me}.test.js` (kritik yol);
+      yeni `apps/app/test/core/error_messages_test.dart`; `test/features/ee/approvals_entry_test.dart`
+      (#26), talep detayı alt bölüm testi.
+- [ ] Belgeler: docs/API.md hata bölümü (`INTERNAL_ERROR`, `RATE_LIMITED`, `Retry-After`),
+      SELF-HOSTING ortam değişkenleri, ADR-0045 + indeks.
+
+**Kabul:** strict MySQL hatası 500'ü istemciye SQL taşımaz; aynı NAT'tan 12 kişi aynı dakikada
+girebilir, tek kullanıcının 12 yanlış parolası yine 429; Türkçe arayüzde 429 "Çok fazla istek,
+N sn sonra deneyin" + Tekrar dene.
+
+### OPH-358 — Talep, onay, bilgi bankası ve ekipman ekranları
+
+**Bulgular:** #6 (istemci), #9 (istemci), #14 (istemci etiketi), #21, #28 (istemci), #31, #33, #34,
+#36, #37 (istemci), #38 (istemci), #48 (istemci), #71, #72, #73, #74, #75, #77 (istemci), #78
+(istemci), #82. **Karşı yarı:** EE-302, EE-304 (sözleşmeler orada).
+
+- [ ] **#6** `features/ee/ui/ticket_detail_screen.dart` ~118 + `history_tab.dart`: Geçmiş sekmesi
+      hata durumunda Tekrar dene; satırlar kim/ne zaman ve form düzeltmesini okunur çizer.
+- [ ] **#9** `new_ticket_screen.dart` ~318/383 + `new_ticket_providers.dart` ~57: taslak kutusu yoksa
+      çevrimdışı form taslak sözü vermez ("bağlantı gelince gönderin" durumu); kutu varsa bugünkü akış.
+- [ ] **#21** `_CommentCard` (~1016): yazar adı (sunucunun yorum meta'sı; yoksa üye listesinden
+      `authorId`), taraf ve kanal rozeti (e-posta/portal), taraf hizası; talep sahibi kendi
+      talebindeyse composer "Masaya yaz", e-posta kaynaklı talepte "e-postayla gönderilir" ipucu.
+- [ ] **#28** `notifications_providers.dart` ~99: durum anahtarı `ee.tickets.status.<v>` ile çevrilir
+      (yeni alan yoksa eski parametre anahtar sayılır; bilinmeyen değer ham değil nötr metin).
+- [ ] **#31** `new_ticket_screen.dart` ~331/237: `canPop` değilse yeni talebe ya da
+      `/settings/team/my-tickets`'e gider + snackbar ("Bu çözdü" dalı dahil).
+- [ ] **#33** `_Relations` (~327) + `data/ticket_links_api.dart`: ilişkili/kopyası/alt talep listesi,
+      bağla/kopar (izinle), "tekrar açıldı" yeni talebi açar.
+- [ ] **#34** yeni talep formu ve `ticket_composer.dart`: dosya seçici; talep oluşunca core'un yükleme
+      yürüyüşüyle `ticket` hedefine, yanıt/iç not gönderilince `ticket_comment` hedefine (iç notun
+      dosyası masanın kalır — sunucu zaten süzüyor). Talep sahibi birimin üyesi değilse seçici
+      gizli + yazılı sınır (core yükleme yürüyüşü üyelik ister; uzantının parking lot'unda satır).
+- [ ] **#36** `kb_editor_sheet.dart` ~86: servis seçici; servissiz makalede "kimseye önerilmez" notu.
+- [ ] **#37** `asset_detail_screen.dart`: "Değişiklikler" bölümü (uç yoksa bölüm çizilmez).
+- [ ] **#38** KB makalesinde masaya önlenen talep sayaçları; onay detayında ekler/yazışma (veri gelince).
+- [ ] **#48** talep detayı: "Firma: … — firma portalında görünür" satırı + bağla/kaldır seçici
+      (izinle); alan yoksa satır yok.
+- [ ] **#14 (etiket)** onay ekranları `withdrawn` durumunu "Geri çekildi" çizer; bilinmeyen durum nötr.
+- [ ] **#71** `ticket_worklog_section.dart`: yerel tarih, "45 dk"/"1 sa 15 dk", 0 için "En az 1
+      dakika", görünür sil (⋮).
+- [ ] **#72** `ticket_bulk.dart` ~55 + i18n: `TICKET_INVALID_TRANSITION` için toplu işleme özgü metin.
+- [ ] **#73** `ticket_detail_screen.dart` ~204: iptalde "… tarihinde iptal edildi".
+- [ ] **#74** `approval_detail_screen.dart` ~464: "Talebi aç"tan dönünce `ref.invalidate`.
+- [ ] **#75** `kb_article_screen.dart` ~182: "Emekliye ayır" onay diyaloğu.
+- [ ] **#77** değişiklik/onay ekranı: pencere geçmişken "Pencere geçti" rozeti (`windowEnd < now`).
+- [ ] **#78** ekipman kartında `NumberFormat`/`DateFormat` (para, tarih), açık süre etiketi.
+- [ ] **#82** seçilen servis kartı `serviceIcon(service.icon)`.
+- [ ] Testler: `ticket_detail` testleri + `ticket_composer_test.dart` (#21, #34, #48), `history_tab_test.dart`
+      (#6), `new_ticket_screen_test.dart` (#9, #31, #82), yeni `ticket_relations_test.dart` (#33),
+      `ticket_attachments_test.dart` (#34), `kb_screens_test.dart` (#36, #38, #75),
+      `asset_screens_test.dart` (#37, #78), `approval_detail_test.dart` (#14, #74),
+      `change_screens_test.dart` (#77), `ticket_worklogs_test.dart` (#71), `ticket_bulk_test.dart` (#72),
+      `notifications_test.dart` (#28); golden'lar açık/koyu güncel.
+
+**Kabul:** raporun TLC/ONY senaryoları: #218'de her balonda yazar ve taraf; #209'un "tekrar açıldı"
+bağı iki detayda da görünür; doğrudan URL'den gönderilen talep boş sayfada kalmaz.
+
+### OPH-359 — Kabuk, gezinme ve erişilebilirlik; genel Türkçe metinler; toplantı ve AI düğmesi
+
+**Bulgular:** #10, #11, #12, #29, #30, #32, #54 (istemci), #55, #57, #58, #59, #60, #63, #64
+(portal ekranı dışı). **Karşı yarı:** EE-303 (#54 `failureCode`, #63 toplantı 404 kodu).
+
+- [ ] **#10** `screens/home_shell.dart` ~367 `extendBody` + `ticket_queue_screen.dart` ~61: iç
+      Scaffold FAB'ları nav yüksekliği kadar yukarıda; diğer iç FAB'lar taranır.
+- [ ] **#11** `workspaces/ui/workspace_switcher.dart` ~89: `isScrollControlled`, `useRootNavigator`,
+      kaydırılabilir liste.
+- [ ] **#12** rail semantiği (`home_shell.dart` ~283–360, `approvals_entry.dart` ~107): önce
+      Semantics debugger ile kök neden ölçülür (GlassSurface/BackdropFilter, scrollable+extended);
+      düzeltme + Tab sırası testi; ekran okuyucuyla doğrulama DEVICE-CHECKS'e.
+- [ ] **#29** uzantı liste ekranları (`#/tickets`, `#/kb`, `#/changes`, `#/problems`, `#/meetings`):
+      AppBar'da birim adı + seçici; seçili alan birim değilse "Bir birim seçin" durumu; KB boş
+      durumu yazma önerisini izne bağlar (`kb_providers.dart` ~58, `sections.dart` ~59).
+- [ ] **#30** ortak `AwAppBar` yardımcısı: `canPop` ise geri, değilse Ana sayfa (Onaylar'daki
+      yedek `approvals_screen.dart` ~58 buraya taşınır); 37 rota.
+- [ ] **#32** doğrudan açılan `#/tickets/:id`: `syncEnginesProvider` kökte izlenir ya da tek
+      seferlik pull + sunucudan okuma yedeği (`home_shell.dart` ~172, `ticket_archive_screen.dart` ~116).
+- [ ] **#54** `meeting_screen.dart` ~266 / `meetings_screen.dart`: `failureCode` çevirisi + "AI
+      anahtarları" eylemi; "Kayıt yükle" akışı (mevcut yükleme ucuna).
+- [ ] **#55** `features/ai/ui/ai_fab.dart` ~84: `onPressed` balonu açar, çift tetikleme bayrağı.
+- [ ] **#57** `quick_access/ui/quick_access_bubble.dart` ~110: varsayılan konum alt bölge, kaydırmada
+      solar (rozet varken de); Onaylar rail satırı rail dolgusuyla hizalı.
+- [ ] **#58** 390 px: eylemler ⋮'ye, nav `labelBehavior`, liste alt dolgusu FAB'ları hesaba katar.
+- [ ] **#59** `router.dart` ~733: `optionURLReflectsImperativeAPIs` ya da yol rotalarına `context.push`;
+      talep/onay/KB kendi adresini taşır.
+- [ ] **#60** `home/month_calendar.dart` ~28/192: `DateFormat(locale)`; semantik etiketler i18n;
+      tr.json ~1507, ~1091–1129 ("Task geçmişi", "Inbox").
+- [ ] **#63** `team_mail_screen.dart` ~208 alan etiketleri, webhook olay adları `ee.webhooks.event.<id>`,
+      tr.json "workspace" → "çalışma alanı", toplantı 404 metni koddan.
+- [ ] **#64** (portal dışı) kuyruk checkbox'ı, arşiv araması, `AwSlaCountdown`, `approval_reason_dialog.dart`
+      `semanticLabel`/`labelText`, `ColorSwatchDot` renk adı.
+- [ ] Testler: yeni `test/features/shell/fab_inset_test.dart` (#10, #58), `workspace_switcher_test.dart`
+      (#11), yeni `test/features/shell/rail_semantics_test.dart` (#12, #57), yeni
+      `test/features/ee/unit_scope_test.dart` (#29), `ticket_route_test.dart` (#30, #32, #59),
+      `meeting_screen_test.dart` (#54), yeni `test/features/ai/ai_fab_test.dart` (#55),
+      `test/features/home` takvim testi (#60), `team_mail_test.dart`, `team_webhooks_test.dart` (#63).
+
+**Kabul:** telefonda kuyruk FAB'ı görünür ve doğru açılır; 10 birimin hepsi seçilebilir; 1440 px'te
+Tab rail'e girer ve "Talepler" okunur; derin bağlantıda geri/Ana sayfa düğmesi var.
+
+### OPH-360 — Yönetim, portal bağlantıları ve rapor ekranları
+
+**Bulgular:** #13 (istemci), #18 (istemci), #22 (istemci), #23, #44 (istemci), #45, #46 (istemci —
+SLA hedef tablosu), #47, #52, #53, #56 (istemci), #64 (portal ekranı), #65, #67, #68, #79, #80, #88,
+#89 (ekran adı), D2. **Karşı yarı:** EE-300 (#18), EE-301 (#13, #67), EE-303 (#22, #47, #52, #53, #56).
+
+- [ ] **#13, #68, #67, #65, #64, D2** `portal_links_screen.dart`: "Uzat" süre seçimi (1/2/7/30 gün,
+      `ee.portal.ttlDays`) ve onay; satırda oluşturma tarihi, birim, servis adları (alan yoksa bugünkü
+      satır); iptal diyaloğu "Vazgeç" / "Bağlantıyı iptal et" (hata rengi); diyalog adları ve etiketler;
+      `Clipboard.setData` try/catch + hata snackbar'ı (~557).
+- [ ] **#18** yeni `/settings/team/customers` ekranı (firmalar → kişiler, ekle/davet/kapat/aç,
+      firmayı yeniden adlandır/arşivle; izinle). Rota uzantının el kitabı kapısına girer: uzantıda
+      GUIDE-ADMIN satırı gerekir (EE-304 ekran indiyse yazar; bu iş önce inerse uzantıya tek satırlık
+      belge commit'i bırakılır).
+- [ ] **#22, #23, #46** `sla_admin_screen.dart`: silmeden önce etkiyi anlatan onay (rol/webhook
+      kalıbı; `team_units_screen.dart` ~173 ve `team_invites_screen.dart` ~247 aynı); varsayılan
+      silmenin 409'u okunur metin; ad alanı `onChanged` → Kaydet etkin (#23); politikada hedef
+      tablosu (`sla_admin_providers.dart` ~57 `saveTarget`); talep detayı SLA çipi süre yoksa ihlal
+      zamanı.
+- [ ] **#52, #53, #88** `sla_dashboard_screen.dart`: Aşıldı/Yaklaşıyor/Tutuldu kartı, payda
+      "N değerlendirilen" (alan yoksa istemci toplar), "varsayılan politika yok" uyarısı, ihlal satırı
+      #numara ile talebe gider; `NumberFormat` ("%40,3") ve süre yardımcısı ("3 g 21 sa") — perf
+      ekranında da (`performance_screen.dart` ~228).
+- [ ] **#56** kuyruk ⋮ ve denetim ekranında "CSV indir" (`tickets.export` / denetim izniyle).
+- [ ] **#44, #89** `audit_log_screen.dart` ~58/260: tür adları `ee.audit.entity.<type>`, satırda kayıt
+      adı/numarası ve bağlantı, ekran başlığı "Denetim günlüğü" (Ayarlar satırıyla aynı).
+- [ ] **#45** `team_roles_screen.dart` ~288: `ee.perm.<id>.description` (71 izin, tr+en; anahtar
+      yoksa sunucu metni).
+- [ ] **#47** `absences_screen.dart` ~278: liste `to` = bugün+365 (seçiciyle aynı ufuk).
+- [ ] **#79** `form_designer_screen.dart` ~253: `version==0` iken yalnız "Henüz yayınlanmadı".
+- [ ] **#80** `team_units_screen.dart` ~236: boş üye listesinde `AwEmptyState`.
+- [ ] Testler: `portal_links_test.dart` (#13, #65, #67, #68, D2), yeni `customers_screen_test.dart` (#18),
+      `sla_admin_test.dart` (#22, #23, #46), `sla_dashboard_test.dart` (#52, #53, #88),
+      `performance_screen_test.dart` (#88), `audit_log_test.dart` (#44, #89, #56), `team_roles_test.dart`
+      (#45), `absences_test.dart` (#47), `form_designer_test.dart` (#79), `units_test.dart` (#80);
+      golden'lar açık/koyu güncel.
+
+**Kabul:** 720 saatlik link uzatılınca bitişi geri gelmez; firma kişisi uygulamadan kapatılabilir;
+SLA panosu ihlal sayısını ve "191 değerlendirilen"i gösterir; izin açıklamaları Türkçe.
+
+---
+
 ## Backlog / v2 parking lot
 
 Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alınınca buradan silinir.
@@ -139,8 +397,6 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   raporluyor: bant dırdır ediyor ve "Tekrar kontrol et" kullanıcının Kapalı seçimine rağmen
   yeniden abone ediyor (`gateway_web.alarmSupport`, OPH-316'nın modu okunmuyor). 2026-09-26'da
   #19 turunda ölçüldü.
-- **Oturum kapanışı yerel replikayı silmiyor** — tek `alliswell.sqlite`; hesap değişince önceki
-  hesabın satırları cihazda kalır (`logout()` replikaya dokunmuyor). Sertleştirme.
 - **OPH-337** — `LocalKv` okunamazsa "Gizli widget" (ve bildirim gizliliği) hata vermeden
   "hiç ayarlanmamış" okunur → başlıklar widget'a yazılabilir.
 - **OPH-226** — AI bağlantısının `baseUrl`'i korumasız bir SSRF yüzeyi (bilinçli kabul; yalnız

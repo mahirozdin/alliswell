@@ -9,16 +9,16 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-274 kapandı: `markdown_forge` 0.1.0 pub.dev'de
-(`BubiApps-LTD/markdown_forge`); uygulama onu oradan alıyor, depodaki kopya silindi.
+**Last updated:** 2026-10-07 — Epic 34 planlandı: 2026-10-07 canlı UI denetiminin uygulama ve core
+API payı (OPH-355…OPH-360); sunucu yarısı uzantının kendi deposunda.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
-| Current epic             | Açık epic yok.                                                                               |
-| ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki tek iş (OPH-142) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
+| Current epic             | **Epic 34** — 2026-10-07 UI denetimi: çıkışta yerel veri, takım adresi, core hata gövdesi ve hız sınırı, uzantı ekranları (OPH-355…OPH-360). İkiz yok; her iş sunucunun eski ve yeni davranışına dayanıklı. |
+| ➡️ **Next task**         | **OPH-355** — P0: çıkışta yerel veri silinir, hesap değişince replika düşer; /me geçici hatasında son bilinen liste (kritik yol: öbek 2 iş). |
 | Last completed           | ADR-0044 — paylaşılan alanlar birlikte senkronda, kişinin listeleri kendi işi (`owned`, `createdBy`, görev kapsamı, replika v37) ve üç dikiş eki (içeriden ret, silmenin anlatılması, hatırlatıcı kitlesi); OPH-353 liste ritmi (2026-09-30). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
