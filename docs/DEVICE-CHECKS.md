@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Kabuk, gezinme, erişilebilirlik (2026-10-07)
+
+- OPH-359 — 1440 px web'de Ayarlar › Erişilebilirlik açıkken (ya da NVDA/VoiceOver ile) Tab: sol çubukta Ana Sayfa … Talepler, Onaylar okunuyor, Enter açıyor; mikrofon düğmesi tek bir "Yapay zekâyla konuş" düğmesi, Enter/çift dokunuşla balon açılıyor. Telefonda (390 px) Talepler: "Yeni talep" çubuğun üstünde, dokununca form; alt çubukta yalnız seçili sekmenin adı, kenarda kesik etiket yok; başlığın altında takım noktası + birim adı, birim seçici 10 birimde kayıyor. Hızlı erişim balonu sağ altta FAB'ın üstünde, listeyi kaydırınca kenara çekiliyor (rozet okunur). `#/tickets/<id>`'yi yeni sekmede aç → talep açılıyor, sol üstte Ana sayfa; kuyruktan talep/KB/SLA panosu açınca adres çubuğu o ekranın adresi. Toplantılar: "Kayıt yükle", başarısız toplantıda Türkçe neden. Açık ve koyu temada.
+
 ## Talep, onay, bilgi bankası, ekipman (2026-10-07)
 
 - OPH-358 — telefonda talep yazışması: masanın balonları sağda, talep sahibininki solda, her birinin üstünde ad · taraf · kanal (uzantının EE-302'si canlıyken); kendi talebinde kutu "Masaya yaz"; e-postayla gelen talepte "e-postayla gönderilir"; iç nota dosya ekle → notun altında. Kapalı talepte "Bu konu tekrar açıldı" → yeni talebe geçiyor, iki talepte "İlişkili talepler" satırı. `#/tickets/new`'i doğrudan aç → gönder → Taleplerim + snackbar. Ekipman kartında "Bu ekipmanı etkileyen değişiklikler" (EE-304 canlıyken), tarih/para yerel biçim. Açık ve koyu temada.

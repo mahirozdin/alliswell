@@ -9,6 +9,7 @@ import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
 import '../notifications_providers.dart';
 import 'notification_prefs_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The notification centre (EE-077) — what happened to you, offline.
 ///
@@ -30,6 +31,7 @@ class EeNotificationCenterScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('ee.notif.centerTitle'.tr()),
         actions: [
           // No dead controls (DESIGN §22): with nothing unread the action is

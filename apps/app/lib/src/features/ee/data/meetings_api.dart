@@ -78,6 +78,43 @@ class EeMeetingsApi {
     }
   }
 
+  /// Opens a meeting and the slot its recording goes into (OPH-359, UI-AUDIT
+  /// #54): the server answers the meeting and a presigned PUT. The bytes go
+  /// straight to storage, never through this API.
+  Future<EeMeetingUploadSlot> create({
+    required String workspaceId,
+    required String mime,
+    required int sizeBytes,
+    String? title,
+  }) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        _base,
+        data: {
+          'workspaceId': workspaceId,
+          'mime': mime,
+          'sizeBytes': sizeBytes,
+          if (title != null && title.isNotEmpty) 'title': title,
+        },
+      );
+      return EeMeetingUploadSlot.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
+  /// Says the recording is there; the server checks, then starts the job.
+  Future<EeMeetingSummary> complete(String meetingId) async {
+    try {
+      final res = await _dio.post<Map<String, dynamic>>(
+        '$_base/$meetingId/complete',
+      );
+      return EeMeetingSummary.fromJson(res.data ?? const {});
+    } on DioException catch (e) {
+      throw asApiException(e);
+    }
+  }
+
   /// A short-lived link to the recording, minted on demand.
   ///
   /// Never cached in a model: it is a credential with an expiry, and a field

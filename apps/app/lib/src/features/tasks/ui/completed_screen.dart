@@ -14,6 +14,7 @@ import '../../../widgets/status_views.dart';
 import '../data/task.dart';
 import '../providers.dart';
 import 'task_tile.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Everything the user has finished (OPH-186, DESIGN §20 C4).
 ///
@@ -71,7 +72,10 @@ class _CompletedScreenState extends ConsumerState<CompletedScreen> {
         ref.watch(dayBoundaryProvider).value ?? awStartOfDay(DateTime.now());
 
     return Scaffold(
-      appBar: AppBar(title: Text('completed.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('completed.title'.tr()),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 760),

@@ -98,7 +98,7 @@
 - **DERS** go_router boş yolu `/`'ye çevirir, `alliswell://add` kök rotaya eşleşip `onException`'a varmaz → şemayı üst düzey `redirect`'te çöz; soğuk açılışta `?add=1` `/splash` parkında kaybolur → niyeti provider bayrağıyla taşı.
 - **DERS** `ref.listen` yalnız değişimde ateşler → açılışta zaten bekleyen yük (paylaşım) hiç işlenmez: ilk kareden sonra bekleyeni süpür; sonradan beliren değeri tek atımlı okuma, akışı izle.
 - **DERS** Hazır olmayan/hatalı async provider "boş" okunur (`.value` null → "anahtarın yok", sahte çevrimdışı) → eylemde `await x.future`; sunucu hakkında iddia eden ekran hatayı fırlatır, boş liste göstermez.
-- **DERS** HomeShell `extendBody:true` + cam çubuk: iç FAB ve `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → FAB shell'de, sheet/dialog kök navigator'da; `findsOneWidget` kaçırır → dokun.
+- **DERS** HomeShell `extendBody:true` + cam çubuk: `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → kök navigator'da; iç FAB'ı kabuk gövdesi `viewPadding`'le üste alır (OPH-359); `findsOneWidget` kaçırır → dokun.
 - **DERS** `AppSection.values` ↔ shell dal indeksi ↔ rail/bar hedefleri KONUMSAL kimliktir; hedef listesini filtrelemek yanlış ekranı açar → gizleme `visibleSections` ile, golden'la.
 - **DERS** Ertelenmiş closure (geri al, commit) `WidgetRef` yakalarsa satır dispose olunca iş sessizce koşmaz → store'u mount'luyken çöz; autoDispose family'yi akış ortasında `ref.read`'leme.
 - **DERS** `State.mounted` `dispose()` sırasında hâlâ true → dispose'tan tetiklenen `setState` çöker; Notifier dispose sonrası `state` yazımı `UnmountedRefException` → ayrı `_disposed` bayrağı.
@@ -118,7 +118,7 @@
 - **KARAR** Not yazma ekranında hiçbir şey yüzmez (`awIsDocumentRoute`); Ayarlar satır icat etmez (tema anahtarı yok), yeni ayar yeni kök grup açmaz, var olan Ayarlar URL'leri taşınmaz.
 - **DERS** `contrast.py` "FAILURES: 0" yalan söyleyebilir: çiftte olmayan yüzey ölçüsüzdür → çift = widget'ın GERÇEKTEN boyadığı karışım; `warning` metne verilmez (2.96); `ListTile` seçimi etiketi `primary` boyar.
 - **DERS** Metni saran `Opacity` kontrastı ölçülemez kılar (satır 2.11:1) → sakinlik yüzey tokenıyla (`awRecededSurface`); meşru kullanım `check:opacity` izin listesinde.
-- **DERS** Shell `extendBody:true` gövdeyi cam çubuğun altına uzatır → alt boşluksuz kaydırılabilir son satırları gizler: `awListPadding`; "sonun ötesine kaydır" boşluğu kaydırılabilir İÇERİK olmalı.
+- **DERS** `extendBody`: liste `awListPadding`; dal Navigator bariyeri (`BlockSemantics`) rail'i ağaçtan atar → içerik `Semantics(container:true)`; `push` URL'yi `optionURLReflectsImperativeAPIs` yazar (OPH-359).
 - **DERS** Düğme rengini `foregroundColor`'la ver; iç `TextButtonTheme` ambient temanın yerine geçip global 44 px dokunma hedefini sessizce düşürür.
 - **DERS** Temanın kart `margin`'i sıfır → üst üste dizilen çıplak `Card` komşusuna yapışır (talep kuyruğu böyle çıktı) → satır `kAwListRowPadding` ile sarılır ya da onu `margin` verir; `expectCardRhythm` 6 px'i ölçer (OPH-353).
 

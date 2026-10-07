@@ -7,6 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/sla_dashboard_models.dart';
 import '../sla_dashboard_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The SLA dashboard (EE-098) — the screen this epic is sold on.
 ///
@@ -39,7 +40,10 @@ class EeSlaDashboardScreen extends ConsumerWidget {
     final dashboard = ref.watch(eeSlaDashboardProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.slaDash.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.slaDash.title'.tr()),
+      ),
       body: dashboard.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         // OPH-357 (UI-AUDIT #24): the translated message and a way to ask

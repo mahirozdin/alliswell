@@ -24,6 +24,7 @@ import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_api.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-270 (AW-E09, the problem half) — known faults on the phone.
 ///
@@ -136,6 +137,13 @@ void main() {
     container = ProviderContainer(
       retry: awRetry,
       overrides: [
+        // OPH-359: a routed page keeps the replica current; this file
+        // drives the screens' own reads and runs no engine.
+        syncEnginesProvider.overrideWith((ref) => const {}),
+        syncSocketProvider.overrideWith((ref) => null),
+        // OPH-359: the unit switcher and the unit scope in the bar read these.
+        workspacesProvider.overrideWith((ref) async => const []),
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         databaseProvider.overrideWithValue(db),
         currentWorkspaceProvider.overrideWithValue(
           const AsyncValue.data(

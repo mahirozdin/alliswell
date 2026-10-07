@@ -6,6 +6,7 @@ import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../data/notification_prefs_api.dart';
 import '../notification_prefs_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The preference screen (EE-077, on EE-076's matrix).
 ///
@@ -22,7 +23,10 @@ class EeNotificationPrefsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final prefs = ref.watch(eeNotificationPrefsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.notif.prefsTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.notif.prefsTitle'.tr()),
+      ),
       body: prefs.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),

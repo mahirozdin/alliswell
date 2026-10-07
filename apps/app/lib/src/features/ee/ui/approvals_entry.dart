@@ -51,16 +51,29 @@ class EeApprovalsRailEntry extends ConsumerWidget {
         : label;
     void open() => GoRouter.of(context).push(kAwApprovalsPath);
 
+    // OPH-359 (UI-AUDIT #57): in the extended rail the icon sits in the same
+    // centred column as the destinations' icons and the label starts where
+    // theirs do — it used to be drawn 14 px and 32 px to their left, which
+    // read as "not part of this list".
     final child = extended
         ? Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AwSpace.x4,
-              vertical: AwSpace.x3,
+            padding: const EdgeInsets.only(
+              right: AwSpace.x4,
+              top: AwSpace.x3,
+              bottom: AwSpace.x3,
             ),
             child: Row(
               children: [
-                Icon(kAwApprovalsIcon, color: ink),
-                const SizedBox(width: AwSpace.x3),
+                SizedBox(
+                  width: kAwRailMinWidth,
+                  child: Center(
+                    child: Icon(
+                      kAwApprovalsIcon,
+                      key: const Key('nav-approvals-icon'),
+                      color: ink,
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Text(
                     label,

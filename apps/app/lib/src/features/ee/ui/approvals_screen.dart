@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
@@ -13,6 +12,7 @@ import 'approval_card.dart';
 import 'approval_reason_dialog.dart';
 import 'approval_detail_screen.dart';
 import 'team_address_views.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-184 / EE-294 — what is waiting on this person's decision.
 ///
@@ -55,9 +55,6 @@ class EeApprovalsScreen extends ConsumerWidget {
     int countOf(String tab) => approvals.hasValue
         ? items.where((a) => a.addressedTo == tab && a.actionable).length
         : (tab == 'me' ? summary?.personal : summary?.role) ?? 0;
-
-    final canPop =
-        GoRouter.maybeOf(context)?.canPop() ?? Navigator.canPop(context);
     final body = approvals.when(
       skipLoadingOnRefresh: true,
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -86,16 +83,8 @@ class EeApprovalsScreen extends ConsumerWidget {
       length: roleTab ? 2 : 1,
       child: Scaffold(
         appBar: AppBar(
-          // A web reload lands here with nothing under it: the way back is
-          // Home rather than no way at all.
-          leading: canPop
-              ? null
-              : IconButton(
-                  key: const Key('ee-approvals-home'),
-                  icon: const Icon(Icons.home_outlined),
-                  tooltip: 'nav.home'.tr(),
-                  onPressed: () => context.go('/home'),
-                ),
+          // OPH-359: the shared answer (awRouteLeading) this screen first had.
+          leading: awRouteLeading(context),
           title: Text('ee.approvals.title'.tr()),
           bottom: roleTab
               ? TabBar(

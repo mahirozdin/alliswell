@@ -936,8 +936,11 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   on release, snaps to the nearest vertical edge with `AwMotion.base` and the
   standard emphasized curve. Diameter 56 px (≥44 px target, §5). Position persists
   device-locally as edge + height fraction, clamped inside safe areas and above
-  the keyboard inset. Factory position: right edge, 35 % height — deliberately far
-  from the quick-add FAB's corner. After 3 s idle it half-recedes into the edge and
+  the keyboard inset — and, on a phone, above the glass bar and the FAB lane
+  (`kBubbleBottomReserve`, OPH-359). Factory position: right edge, at the bottom of
+  that band — just above the FAB lane, never in the FAB's corner. (It was 35 %
+  height until OPH-359: in the middle of the right edge it sat on every row's ⋮
+  menu, form switches and the text it was counting — UI-AUDIT #57.) After 3 s idle it half-recedes into the edge and
   dims to **40 % opacity — the platform's own default, not a taste call (OPH-196:
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on
@@ -957,8 +960,10 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   colour pair (glyph on container) is contrast-checked at **full** opacity in
   `scripts/design/contrast.py`; the exception is written in the code that
   implements it, never re-derived. **While the button carries a count (Q10) it
-  neither recedes nor dims** — a count is text somebody is asked to read, which
-  is exactly what this exception excludes (EE-294).
+  neither recedes nor dims at rest** — a count is text somebody is asked to read,
+  which is exactly what this exception excludes (EE-294). **While the content
+  under it scrolls it recedes whatever it carries** (OPH-359): the count is painted
+  outside the slide and the fade, so it is never dimmed.
 - **Q4c — The bubble is not a FAB (OPH-196).** Material's rule is one FAB per
   screen for the screen's single most important action; the quick-add FAB owns
   that slot and does not move. The bubble is a persistent *navigation* control,

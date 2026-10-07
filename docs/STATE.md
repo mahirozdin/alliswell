@@ -9,9 +9,9 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-358 kapandı (talep yazışmasında yazar/taraf/kanal, ekler,
-ilişkili talepler, firma satırı, geçmiş satırları, onay/değişiklik/bilgi bankası/ekipman ekranları);
-Epic 34'ün sırası OPH-359'da.
+**Last updated:** 2026-10-07 — OPH-359 kapandı (kabuk, gezinme ve erişilebilirlik: kuyruk FAB'ı,
+kaydırılan birim seçici, rail semantiği, birim kapsamı, Ana sayfa düğmesi, adresler, toplantı nedeni
+ve kayıt yükleme, AI düğmesi, Türkçe metinler); Epic 34'ün sırası OPH-360'ta.
 
 ## Snapshot
 
@@ -19,8 +19,8 @@ Epic 34'ün sırası OPH-359'da.
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
 | Current epic             | **Epic 34** — 2026-10-07 UI denetimi: çıkışta yerel veri, takım adresi, core hata gövdesi ve hız sınırı, uzantı ekranları (OPH-355…OPH-360). İkiz yok; her iş sunucunun eski ve yeni davranışına dayanıklı. |
-| ➡️ **Next task**         | **OPH-359** — Kabuk, gezinme ve erişilebilirlik; genel Türkçe metinler; toplantı ve AI düğmesi |
-| Last completed           | OPH-358 — istemci: yorum kartı yazar · taraf · kanal + taraf hizası (EE-302 `commentMeta`, yoksa üye listesinden ad, taraf yok), composer "Masaya yaz"/e-posta/firma ipuçları ve dosya (core yükleme: `ticket_comment`, yeni talepte `ticket`, yalnız birim üyesine), ilişkili talepler bağla/kopar + "tekrar açıldı" yeni talebe, firma satırı + seçici (`customers.manage`), geçmiş satırında durum/öncelik/form düzeltmesi, bildirimde durum çevirisi, `withdrawn`/bilinmeyen onay durumu nötr, "Pencere geçti", bilgi bankası servis seçici + sayaçlar + emekliye ayırma onayı, ekipman "Değişiklikler" (uç 404 → yok) + yerel tarih/para, işçilik "45 dk" + görünür sil, toplu `TICKET_INVALID_TRANSITION` metni, taslak alanı yokken taslak sözü yok, adresle açılan form gönderince Taleplerim'e. |
+| ➡️ **Next task**         | **OPH-360** — Yönetim, portal bağlantıları ve rapor ekranları |
+| Last completed           | OPH-359 — istemci: kabuğun gövdesi nav yüksekliğini `viewPadding`'e taşır (iç Scaffold FAB'ları çubuğun üstünde), FAB alanı `AwFabClearance` ile listelere ve boş durumlara; rail semantiği (bölüm Navigator'ının ModalBarrier'ı `BlockSemantics` — içerik artık kendi semantik kabı); birim seçici kayar (10 birim); uzantı listelerinde birim adı + seçici, birim değilse "Bir birim seçin" (`/ee/team/tickets/my-units` → `units`, kişiye bağlı önbellek); adresle açılan her ekranda geri ya da Ana sayfa (`awRouteLeading`); adresle açılan sayfa replikayı eşitler (`AwKeepReplicaCurrent`); `optionURLReflectsImperativeAPIs` + `/sla`, `/performance`, `/my-units`; toplantıda `failureCode` çevirisi + AI anahtarları eylemi + 404'te "Toplantı bulunamadı" + "Kayıt yükle"; AI düğmesi erişilebilirlikle açılır; takvim/semantik Türkçe, tr.json terimleri; mail alan etiketleri, webhook olay adları; erişilebilirlik etiketleri; hızlı erişim balonu altta ve kaydırmada çekilir, Onaylar rail hizası. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

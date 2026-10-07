@@ -8,6 +8,7 @@ import '../../../widgets/status_views.dart';
 import '../data/units_models.dart';
 import '../providers.dart';
 import '../units_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Units, and the people in them (EE-057).
 ///
@@ -35,7 +36,10 @@ class EeTeamUnitsScreen extends ConsumerWidget {
     final mayShape = ref.watch(canProvider('units.manage'));
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.units.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.units.title'.tr()),
+      ),
       floatingActionButton: mayShape
           ? FloatingActionButton(
               key: const Key('unit-new'),
@@ -221,7 +225,7 @@ class EeUnitMembersScreen extends ConsumerWidget {
     final actions = ref.read(eeUnitMemberActionsProvider(unit.id));
 
     return Scaffold(
-      appBar: AppBar(title: Text(unit.name)),
+      appBar: AppBar(leading: awRouteLeading(context), title: Text(unit.name)),
       floatingActionButton: FloatingActionButton(
         key: const Key('unit-member-add'),
         tooltip: 'ee.team.units.addMember'.tr(),

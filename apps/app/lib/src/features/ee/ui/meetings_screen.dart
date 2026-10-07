@@ -9,11 +9,17 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/providers.dart' show AttachSource, filePickerProvider;
 import '../../workspaces/workspaces.dart';
 import '../data/meeting_models.dart';
 import '../meetings_providers.dart';
+import '../providers.dart';
 import 'meeting_screen.dart';
+import '../../../widgets/route_leading.dart';
+import 'unit_scope.dart';
+import '../../workspaces/ui/workspace_switcher.dart';
 
 /// The unit's meetings (EE-271, AW-E26) — the door EE-115's screen never had.
 ///
@@ -36,10 +42,24 @@ class EeMeetingsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final workspace = ref.watch(currentWorkspaceProvider).value;
     return Scaffold(
-      appBar: AppBar(title: Text('ee.meetings.title'.tr())),
-      body: workspace == null
-          ? const Center(child: CircularProgressIndicator())
-          : _List(workspaceId: workspace.id),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: EeUnitScopedTitle(title: 'ee.meetings.title'.tr()),
+        // OPH-359 (UI-AUDIT #29): change unit where the list is.
+        actions: const [AwWorkspaceSwitcher()],
+      ),
+      // OPH-359 (UI-AUDIT #54): the way a recording gets here. The empty
+      // list promised meetings "once a recording is uploaded" and nothing in
+      // the app could upload one.
+      floatingActionButton:
+          workspace == null || !ref.watch(eeFeatureProvider('meetings'))
+          ? null
+          : _UploadFab(workspaceId: workspace.id),
+      body: EeUnitScopeGate(
+        child: workspace == null
+            ? const Center(child: CircularProgressIndicator())
+            : _List(workspaceId: workspace.id),
+      ),
     );
   }
 }
@@ -94,7 +114,8 @@ class _List extends ConsumerWidget {
         return RefreshIndicator(
           onRefresh: () async => retry(),
           child: ListView(
-            padding: awListPadding(context),
+            // Clears the upload button.
+            padding: awListPadding(context, extraBottom: 72),
             children: [for (final m in meetings) EeMeetingRow(meeting: m)],
           ),
         );
@@ -152,6 +173,18 @@ class EeMeetingRow extends StatelessWidget {
                       '${'ee.meeting.status.${status.name}'.tr()} · $when',
                       style: theme.textTheme.bodySmall,
                     ),
+                    // OPH-359 (UI-AUDIT #54): why it stopped, in words.
+                    if (eeMeetingFailureText(meeting.failureCode)
+                        case final reason?) ...[
+                      const SizedBox(height: AwSpace.x1),
+                      Text(
+                        reason,
+                        key: Key('meeting-reason-${meeting.id}'),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: muted,
+                        ),
+                      ),
+                    ],
                     if (status == EeMeetingStatus.ready) ...[
                       const SizedBox(height: AwSpace.x1),
                       Text(
@@ -189,5 +222,53 @@ void awOpenMeeting(BuildContext context, String meetingId) {
     MaterialPageRoute<void>(
       builder: (_) => EeMeetingScreen(meetingId: meetingId),
     ),
+  );
+}
+
+/// "Upload a recording": pick a file, put it in the meeting pipeline.
+class _UploadFab extends ConsumerStatefulWidget {
+  const _UploadFab({required this.workspaceId});
+  final String workspaceId;
+
+  @override
+  ConsumerState<_UploadFab> createState() => _UploadFabState();
+}
+
+class _UploadFabState extends ConsumerState<_UploadFab> {
+  bool _busy = false;
+
+  Future<void> _upload() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final picked = await ref.read(filePickerProvider)(AttachSource.anyFile);
+    if (picked.isEmpty || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await uploadMeetingRecording(
+        ref,
+        workspaceId: widget.workspaceId,
+        file: picked.first,
+      );
+      messenger.showSnackBar(
+        SnackBar(content: Text('ee.meetings.uploaded'.tr())),
+      );
+    } catch (error) {
+      messenger.showSnackBar(SnackBar(content: Text(localizedError(error))));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) => AwExtendedFab(
+    key: const Key('meetings-upload'),
+    onPressed: _busy ? null : _upload,
+    icon: _busy
+        ? const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : const Icon(Icons.upload_file_outlined),
+    label: Text('ee.meetings.upload'.tr()),
   );
 }

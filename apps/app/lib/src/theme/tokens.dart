@@ -38,6 +38,11 @@ abstract final class AwRadius {
 const double kAwWideBreakpoint = 800;
 const double kAwExtendedRailBreakpoint = 1160;
 
+/// The rail's collapsed width — also the column its destination icons are
+/// centred in when extended. Anything drawn in the rail beside them (the
+/// Approvals entry) uses the same column, or it sits out of line (OPH-359).
+const double kAwRailMinWidth = 84;
+
 /// Motion tokens: quick, physical, never decorative-slow.
 abstract final class AwMotion {
   static const Duration fast = Duration(milliseconds: 150);

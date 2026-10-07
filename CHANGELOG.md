@@ -9,6 +9,29 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The phone shell stays out of the way (OPH-359).** The request queue's "New request" button sits
+  above the bottom bar and opens the form; lists and empty states clear the floating buttons; the
+  bar's labels no longer clip at the capsule's edges; the unit picker scrolls, so a person in ten
+  units can choose every one; and the team and unit ride under the screen's title, by name.
+- **Screen readers and keyboards reach the navigation (OPH-359).** The side rail — Home, Requests,
+  Approvals — is in the accessibility tree and reachable with Tab; the AI button opens with a
+  screen reader or Enter; checkboxes, the archive search, the SLA line, dialogs and colour swatches
+  have names ("Blue", not "#2563EB").
+- **Every unit list says whose it is (OPH-359).** Requests, the knowledge base, changes, problems
+  and meetings show the unit's name and a unit switcher; on the team's general space they ask you to
+  choose a unit instead of saying the list is empty, and the knowledge base only suggests writing an
+  article to people who may.
+- **Links and reloads land where you were (OPH-359).** Screens opened from menus and lists put
+  their own address in the URL (the SLA dashboard, performance board and "My units" have one now);
+  a screen opened by its address has a back or Home button; a request opened from a link opens
+  instead of waiting forever.
+- **Meetings say why they failed, and recordings can be uploaded (OPH-359).** A failed meeting
+  explains the reason in your language, with a way to the team's AI keys when a key is missing; a
+  meeting that does not exist says so; "Upload a recording" sends a recording into the pipeline.
+- **Turkish where it was English (OPH-359).** Home's calendar ("Ekim 2026", "Pzt…"), "Görev
+  geçmişi", "Fikirler" instead of "Inbox", "çalışma alanı" instead of "workspace"; the mail screen
+  names missing fields as the form does, and webhook events are listed in words.
+
 - **A request's conversation says who wrote each message (OPH-358).** Every reply names its author,
   and — once the server sends it — whether it came from the desk, the requester or a company
   contact, by e-mail or the portal, on its own side of the thread. Writing on your own request

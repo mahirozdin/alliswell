@@ -22,6 +22,7 @@ import 'change_labels.dart';
 import 'new_ticket_screen.dart';
 import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// One machine's card — what a QR code opens (EE-194).
 ///
@@ -100,6 +101,7 @@ class EeAssetDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text(asset?.tag ?? 'ee.assets.one'.tr()),
         actions: [
           if (asset != null && canManage && asset.status != 'retired')

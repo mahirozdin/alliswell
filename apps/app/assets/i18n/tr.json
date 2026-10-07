@@ -583,7 +583,9 @@
     "disconnectConfirmBody": "AllisWell görevlerini oraya yazmayı bırakır. Takvimde olanlar yerinde kalır, istediğin zaman yeniden bağlayabilirsin.",
     "appleDisconnect": "Bu takvimi kullanmayı bırak",
     "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al.",
-    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz."
+    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz.",
+    "a11yToday": "bugün",
+    "a11yHasTasks": "görev var"
   },
   "tour": {
     "skip": "Atla",
@@ -1112,10 +1114,10 @@
       "error": "Yapay zekâ yanıt veremedi. Tekrar denensin mi?",
       "sharedContent": "Paylaşılan içerik",
       "offlineTitle": "Çevrimdışısın",
-      "offlineBody": "Yapay zekâ bağlantı ister. Yine de bunu Inbox'a kaydedebilirsin.",
+      "offlineBody": "Yapay zekâ bağlantı ister. Yine de bunu Fikirler'e kaydedebilirsin.",
       "unconfiguredTitle": "Henüz yapay zekâ sağlayıcısı yok",
-      "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Inbox'a kaydet.",
-      "saveToInbox": "Inbox'a kaydet"
+      "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Fikirler'e kaydet.",
+      "saveToInbox": "Fikirler'e kaydet"
     },
     "confirm": {
       "title": "Bu işleri gözden geçir",
@@ -1138,8 +1140,8 @@
       "localeLabel": "Ses dili",
       "cancel": "Vazgeç",
       "mic": "Konuş",
-      "savedToInbox": "Inbox'a kaydedildi",
-      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Inbox'a kaydet."
+      "savedToInbox": "Fikirler'e kaydedildi",
+      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Fikirler'e kaydet."
     },
     "share": {
       "makeTask": "Görev yap",
@@ -1149,8 +1151,8 @@
       "savedNote": "Not olarak kaydedildi",
       "summarizePrompt": "Bunu özetle.",
       "noProviderTitle": "Henüz yapay zekâ sağlayıcısı yok",
-      "noProviderBody": "AllisWell'in paylaşılan metni göreve çevirmesi için bir yapay zekâ sağlayıcısı gerekiyor. Bu metin Inbox'ında güvende.",
-      "openInbox": "Inbox'ı aç",
+      "noProviderBody": "AllisWell'in paylaşılan metni göreve çevirmesi için bir yapay zekâ sağlayıcısı gerekiyor. Bu metin Fikirler'de güvende.",
+      "openInbox": "Fikirler'i aç",
       "dismiss": "Tamam"
     },
     "quickAdd": {
@@ -1330,7 +1332,7 @@
         "create": "Yeni rol",
         "name": "Rol adı",
         "anchor": "Şunun üstünde",
-        "anchorHelp": "Takımdaki rütbeyi ve her workspace’in gördüğü rolü belirler",
+        "anchorHelp": "Takımdaki rütbeyi ve her çalışma alanının gördüğü rolü belirler",
         "intro": "Rol, insanların yapabileceği şeylerin adlandırılmış bir kümesidir. Baz roller silinemez; sahip her zaman her şeye sahiptir.",
         "summary": "{grants} izin · {members} üye",
         "locked": "Her zaman her şey",
@@ -1354,7 +1356,7 @@
         "removeMember": "Birimden çıkar",
         "memberCount": "{count} kişi",
         "noCandidates": "Eklenecek kimse kalmadı — takımdaki herkes bu birimde.",
-        "intro": "Bir birim kendi workspace’idir: içeriği yalnız birimdeki kişiler görür. Birime eklemek, kişinin cihazının o içeriği eşitlemeye başlaması demektir.",
+        "intro": "Bir birim kendi çalışma alanıdır: içeriği yalnız birimdeki kişiler görür. Birime eklemek, kişinin cihazının o içeriği eşitlemeye başlaması demektir.",
         "introManager": "Yönettiğiniz birimler. Kimlerin içinde olduğunu siz belirlersiniz; birimin kendisini takım yöneticisi açar ve adlandırır.",
         "emptyTitle": "Henüz birim yok",
         "emptyBody": "İlk birimi açın — bir departman, bir saha ekibi, ayrı çalışan herhangi bir grup.",
@@ -1544,7 +1546,7 @@
       "moreOnServer": "Daha eski kayıtlar sunucuda saklanıyor.",
       "actorSystem": "AllisWell",
       "actorUnknown": "Biri",
-      "taskTitle": "Task geçmişi",
+      "taskTitle": "Görev geçmişi",
       "ticket": {
         "unknownValue": "bilinmeyen bir değer",
         "requesterReplied": "Talep sahibi yanıtladı",
@@ -1763,7 +1765,7 @@
       "signOut": "Çıkış yap",
       "signIn": {
         "title": "Operatör girişi",
-        "subtitle": "Bu konsol instance operatörünündür; bir workspace hesabının değil.",
+        "subtitle": "Bu konsol sunucu operatörünündür; bir çalışma alanı hesabının değil.",
         "email": "E-posta",
         "password": "Parola",
         "code": "Doğrulayıcı kodu",
@@ -1834,7 +1836,7 @@
       },
       "limit": {
         "seats": "Koltuk",
-        "workspaces": "Workspace",
+        "workspaces": "Çalışma alanları",
         "portal_links_active": "Etkin portal bağlantısı",
         "portal_created_monthly": "Aylık portal kaydı",
         "audit_retention_days": "Tarih saklama",
@@ -2408,7 +2410,8 @@
         "mineEmptyTitle": "Arşivde henüz talebiniz yok",
         "mineEmptyBody": "Bir talep kapandıktan bir süre sonra buraya taşınır ve okunabilir kalır.",
         "mineMore": "Daha eski talepleri göster",
-        "yourRating": "Puanınız: {score}/5"
+        "yourRating": "Puanınız: {score}/5",
+        "searchLabel": "Arşivde ara"
       },
       "tags": {
         "title": "Etiketler",
@@ -2467,7 +2470,8 @@
           "childOf": "Alt talebi"
         }
       },
-      "statusUnknown": "başka bir durumda"
+      "statusUnknown": "başka bir durumda",
+      "selectRow": "{ticket} talebini seç"
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -2664,7 +2668,19 @@
       "isTicket": "Talep açıldı",
       "isTask": "Görev oluşturuldu",
       "ticketCreated": "Bu karar için bir talep açıldı.",
-      "taskCreated": "Bu karar için bir görev oluşturuldu."
+      "taskCreated": "Bu karar için bir görev oluşturuldu.",
+      "notFound": "Toplantı bulunamadı",
+      "notFoundBody": "Silinmiş olabilir ya da bulunmadığınız bir birime ait.",
+      "failure": {
+        "MEETING_NO_TRANSCRIBER": "Bu takımın henüz bir deşifre sağlayıcısı yok, bu yüzden kayıt metne çevrilemedi. Bir takım yöneticisi Takım yapay zekâ anahtarları'ndan ekleyebilir.",
+        "MEETING_TRANSCRIBE_FAILED": "Deşifre sağlayıcısı bu kaydı yeniden denemelere rağmen metne çeviremedi.",
+        "MEETING_TRANSCRIBE_RETRYING": "Deşifre sağlayıcısı yanıt vermedi; birazdan yeniden denenecek.",
+        "MEETING_NO_SUMMARISER": "Konuşmalar kaydedildi ama bu takımın özeti yazacak bir yapay zekâ sağlayıcısı yok. Bir takım yöneticisi Takım yapay zekâ anahtarları'ndan ekleyebilir.",
+        "MEETING_SUMMARY_FAILED": "Konuşmalar kaydedildi ama özet yazılamadı. Yeniden denenecek.",
+        "MEETING_STORAGE_UNCONFIGURED": "Bu sunucuda dosya depolama kurulu değil, bu yüzden kayıtlar saklanamıyor.",
+        "generic": "Bu toplantının işlenmesi bir sorun yüzünden durdu.",
+        "openAiKeys": "Takım yapay zekâ anahtarlarını aç"
+      }
     },
     "teamAi": {
       "title": "Takım yapay zekâ anahtarları",
@@ -2777,7 +2793,40 @@
       "emptyTitle": "Henüz uç yok",
       "emptyBody": "Takımın olaylarını zaten kullandığınız bir sisteme göndermek için bir uç ekleyin. Yalnız talep numarası, konu, birim ve bağlantı gider — talebin metni hiç gitmez.",
       "unavailable": "Burada kullanılamaz",
-      "unavailableBody": "Giden webhook'lar bir takıma aittir. Yönettiğiniz bir takımdan açın."
+      "unavailableBody": "Giden webhook'lar bir takıma aittir. Yönettiğiniz bir takımdan açın.",
+      "event": {
+        "task": {
+          "assigned": "İş atandı"
+        },
+        "invite": {
+          "created": "Davet gönderildi"
+        },
+        "report": {
+          "weekly": "Haftalık rapor"
+        },
+        "ticket": {
+          "routed": "Talep bir birime düştü",
+          "routed_public": "Dışarıdan gelen talep bir birime düştü",
+          "assigned": "Talep atandı",
+          "status_changed": "Talebin durumu değişti",
+          "commented": "Talebe yanıt yazıldı",
+          "rate": "Puanlama istendi"
+        },
+        "sla": {
+          "warned": "SLA süresi yaklaşıyor",
+          "breached": "SLA ihlal edildi"
+        },
+        "asset": {
+          "expiring": "Ekipman tarihi yaklaşıyor"
+        },
+        "approval": {
+          "requested": "Onay istendi",
+          "decided": "Onay karara bağlandı"
+        },
+        "share": {
+          "received": "Bir şey paylaşıldı"
+        }
+      }
     },
     "mail": {
       "inboxAdd": "Posta kutusu ekle",
@@ -2826,7 +2875,7 @@
     },
     "approvals": {
       "title": "Onaylar",
-      "empty": "Seni bekleyen bir şey yok",
+      "empty": "Sizi bekleyen bir şey yok",
       "emptyBody": "Kararınızı bekleyen talepler, değişiklikler ve işler burada görünür — kimin, ne zaman ve ne için istediğiyle.",
       "approve": "Onayla",
       "reject": "Reddet",
@@ -3203,7 +3252,8 @@
       "fieldService": "Servis",
       "fieldServiceNone": "Servis seçilmezse makale talep açan kimseye önerilmez.",
       "fieldServiceHelp": "Bu servis için talep açan kişiye yayımlandığında önerilir.",
-      "noService": "Servis yok"
+      "noService": "Servis yok",
+      "emptyBodyReader": "Burada henüz yazılmış bir şey yok. Biriminizin yayımladığı makaleler burada görünür."
     },
     "worklogs": {
       "title": "Harcanan süre",
@@ -3273,7 +3323,9 @@
       "offlineBody": "Toplantı notları sunucuda tutulur; bağlantı gelince liste açılır.",
       "empty": "Bu birimde henüz toplantı notu yok",
       "emptyBody": "Bir toplantının kaydı yüklendiğinde özeti ve kararları burada görünür.",
-      "counts": "{decisions} karar · {ideas} fikir"
+      "counts": "{decisions} karar · {ideas} fikir",
+      "upload": "Kayıt yükle",
+      "uploaded": "Kayıt yüklendi — birazdan deşifre edilecek."
     },
     "ticketWork": {
       "chip": "Talep {ref}",
@@ -3304,6 +3356,11 @@
       "minutes": "{m} dk",
       "hours": "{h} sa",
       "hoursMinutes": "{h} sa {m} dk"
+    },
+    "unitScope": {
+      "chooseTitle": "Bir birim seçin",
+      "chooseBody": "Bu liste bir birime ait; ekrandaki alan bir birim değil. Listesini görmek istediğiniz birimi seçin.",
+      "noUnitsBody": "Bu liste bir birime ait ve henüz hiçbir birimde değilsiniz. Bir takım yöneticisi sizi bir birime ekleyebilir."
     }
   },
   "perm": {

@@ -9,6 +9,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/team_webhooks_models.dart';
 import '../team_webhooks_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The team's outgoing endpoints (EE-175/EE-176).
 ///
@@ -41,7 +42,10 @@ class EeTeamWebhooksScreen extends ConsumerWidget {
     final data = ref.watch(eeTeamWebhooksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.webhooks.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.webhooks.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -200,7 +204,7 @@ class _EndpointCard extends ConsumerWidget {
                   runSpacing: AwSpace.x2,
                   children: [
                     for (final name in hook.eventClasses)
-                      Chip(label: Text(name)),
+                      Chip(label: Text(eeWebhookEventLabel(name))),
                   ],
                 ),
                 const SizedBox(height: AwSpace.x3),
@@ -386,7 +390,7 @@ class _Deliveries extends ConsumerWidget {
                       : Icons.schedule,
                   color: row.failed ? theme.colorScheme.error : tokens.success,
                 ),
-                title: Text(row.eventClass),
+                title: Text(eeWebhookEventLabel(row.eventClass)),
                 subtitle: Text(
                   row.lastError ??
                       'ee.webhooks.attempts'.tr(args: {'n': '${row.attempts}'}),
@@ -458,7 +462,10 @@ class _EndpointDialogState extends State<_EndpointDialog> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 value: _selected.contains(name),
-                title: Text(name),
+                title: Text(eeWebhookEventLabel(name)),
+                // The wire name stays visible: it is what the receiving
+                // system switches on, and the integrator needs to see it.
+                subtitle: Text(name),
                 onChanged: (on) => setState(() {
                   if (on ?? false) {
                     _selected.add(name);
@@ -521,7 +528,10 @@ class _EventsDialogState extends State<_EventsDialog> {
                 dense: true,
                 contentPadding: EdgeInsets.zero,
                 value: _selected.contains(name),
-                title: Text(name),
+                title: Text(eeWebhookEventLabel(name)),
+                // The wire name stays visible: it is what the receiving
+                // system switches on, and the integrator needs to see it.
+                subtitle: Text(name),
                 onChanged: (on) => setState(() {
                   if (on ?? false) {
                     _selected.add(name);
@@ -550,3 +560,10 @@ class _EventsDialogState extends State<_EventsDialog> {
     );
   }
 }
+
+/// An event class in words (OPH-359, UI-AUDIT #63): `ticket.status_changed`
+/// is what the receiving system switches on, not what a person reads. An
+/// event this build has no words for keeps its wire name.
+String eeWebhookEventLabel(String eventClass) =>
+    AwI18n.instance.maybeTranslate('ee.webhooks.event.$eventClass') ??
+    eventClass;

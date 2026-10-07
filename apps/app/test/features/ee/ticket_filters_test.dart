@@ -14,6 +14,7 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import '../../support/list_rhythm.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-171 — the filter row, as the person uses it.
 ///
@@ -91,6 +92,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // OPH-359: the unit switcher and the unit scope in the bar read these.
+          workspacesProvider.overrideWith((ref) async => const []),
+          eeMyUnitsScopeProvider.overrideWith((ref) async => null),
           ticketQueueProvider.overrideWith((ref) => Stream.value(rows)),
           ticketAssigneesProvider.overrideWith(
             (ref) => Stream.value(assignees),

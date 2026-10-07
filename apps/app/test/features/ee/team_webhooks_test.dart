@@ -202,4 +202,35 @@ void main() {
     // Nothing to press: a FAB that could only fail is a dead control.
     expect(find.byKey(const Key('team-webhooks-add')), findsNothing);
   });
+
+  // OPH-359 — UI-AUDIT #63.
+  testWidgets('UI-AUDIT #63: events are named in words; the wire name stays '
+      'beside them for the integrator', (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    await _pump(
+      tester,
+      EeWebhooksData(items: [_hook()], eventClasses: _vocabulary),
+    );
+    // The endpoint's chips, once its card is open.
+    await tester.tap(find.text('https://hooks.example.com/inbound'));
+    await tester.pumpAndSettle();
+    expect(find.text('Talep bir birime düştü'), findsOneWidget);
+    expect(find.text('ticket.routed'), findsNothing);
+    await tester.tap(find.byKey(const Key('team-webhooks-add')));
+    await tester.pumpAndSettle();
+    final row = find.byKey(const Key('webhook-event-sla.breached'));
+    expect(
+      find.descendant(of: row, matching: find.text('SLA ihlal edildi')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('sla.breached')),
+      findsOneWidget,
+    );
+    AwI18n.instance.setActiveCached(const Locale('en'));
+  });
+
+  test('an event this build has no words for keeps its wire name', () {
+    expect(eeWebhookEventLabel('ticket.reticulated'), 'ticket.reticulated');
+  });
 }

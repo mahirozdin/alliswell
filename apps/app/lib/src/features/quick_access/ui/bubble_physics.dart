@@ -31,11 +31,22 @@ const double kBubbleIdleOpacity = 0.40;
 /// How much of the circle hides past the edge when idle (paint only).
 const double kBubbleRecedeFraction = 0.5;
 
-/// Factory position: right edge, 35 % down — deliberately far from the
-/// quick-add FAB's corner (DESIGN §23 Q4c: the bubble is not a FAB).
+/// What the bottom of a phone screen already holds: the glass navigation bar
+/// (80 px and its 12 px float) and, above it, the FAB lane (a 56 px button and
+/// its 16 px margin). The band the button may rest in stops above both
+/// (OPH-359, UI-AUDIT #57) — parked over the bar it hid a tab, and parked over
+/// the FAB it hid the screen's one primary action.
+const double kBubbleBottomReserve = 92 + 72;
+
+/// Factory position: right edge, at the BOTTOM of its band — just above the
+/// FAB lane, never in the FAB's corner (DESIGN §23 Q4c: the bubble is not a
+/// FAB). OPH-359 (UI-AUDIT #57) moved it down from 35 %: in the middle of the
+/// right edge it sat on every row's ⋮ menu, on form switches and on the text
+/// of the approval it was counting. The bottom of a list is padding that
+/// scrolls; the middle of a screen is where the controls are.
 const BubblePosition kBubbleFactoryPosition = BubblePosition(
   edge: BubbleEdge.right,
-  heightFraction: 0.35,
+  heightFraction: 1,
 );
 
 /// Where the button rests: an edge plus a fraction of the usable height.
@@ -72,8 +83,12 @@ class BubblePosition {
 ) {
   final top = safeArea.top + kBubbleEdgeMargin;
   // The keyboard eats from the bottom; the safe-area bottom is already inside
-  // it when both are present, hence the max rather than the sum.
-  final bottomInset = math.max(safeArea.bottom, keyboardInset);
+  // it when both are present, hence the max rather than the sum. The bar and
+  // the FAB lane sit above the safe area, and a keyboard covers them both.
+  final bottomInset = math.max(
+    safeArea.bottom + kBubbleBottomReserve,
+    keyboardInset,
+  );
   final bottom = viewport.height - bottomInset - kBubbleEdgeMargin;
   final height = math.max(kBubbleDiameter, bottom - top);
   return (top: top, height: height);

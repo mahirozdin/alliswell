@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/gestures.dart' show DragStartBehavior;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -45,6 +46,7 @@ class QuickAccessBubble extends ConsumerStatefulWidget {
     required this.onTap,
     this.badge = 0,
     this.badgeSemantics = '',
+    this.contentScrolling,
   });
 
   final Size viewport;
@@ -56,6 +58,9 @@ class QuickAccessBubble extends ConsumerStatefulWidget {
   /// this person). Zero draws nothing.
   final int badge;
   final String badgeSemantics;
+
+  /// True while the content under the button scrolls (OPH-359, UI-AUDIT #57).
+  final ValueListenable<bool>? contentScrolling;
 
   @override
   ConsumerState<QuickAccessBubble> createState() => _QuickAccessBubbleState();
@@ -70,12 +75,27 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
   void initState() {
     super.initState();
     _restartIdleTimer();
+    widget.contentScrolling?.addListener(_onScrolling);
+  }
+
+  @override
+  void didUpdateWidget(QuickAccessBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.contentScrolling != widget.contentScrolling) {
+      oldWidget.contentScrolling?.removeListener(_onScrolling);
+      widget.contentScrolling?.addListener(_onScrolling);
+    }
   }
 
   @override
   void dispose() {
+    widget.contentScrolling?.removeListener(_onScrolling);
     _idleTimer?.cancel();
     super.dispose();
+  }
+
+  void _onScrolling() {
+    if (mounted) setState(() {});
   }
 
   void _restartIdleTimer() {
@@ -107,8 +127,12 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
     final dragging = _dragCentre != null;
     // EE-294 (DESIGN §23 Q4b): a count is text somebody is asked to read,
     // and the 40 % dim is sanctioned only for a control that carries none —
-    // so while a count shows, the button neither recedes nor dims.
-    final receded = _idle && !dragging && widget.badge == 0;
+    // so while a count shows, the button neither recedes nor dims AT REST.
+    // OPH-359 (UI-AUDIT #57): but while the person is scrolling the content
+    // under it, it gets out of the way whatever it carries. The count itself
+    // is painted outside the slide and the fade, so it is never dimmed.
+    final scrolling = widget.contentScrolling?.value ?? false;
+    final receded = !dragging && (scrolling || (_idle && widget.badge == 0));
 
     return Positioned(
       left: topLeft.dx,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:alliswell/src/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:async';
@@ -300,5 +301,50 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(bubble, findsNothing);
+  });
+
+  // OPH-359 — UI-AUDIT #57.
+  testWidgets('UI-AUDIT #57: while the content under it scrolls it steps '
+      'aside even with a count — and the count stays readable', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await resetQuickAccessPrefs();
+    final scrolling = ValueNotifier<bool>(false);
+    addTearDown(scrolling.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: Stack(
+            children: [
+              QuickAccessBubble(
+                viewport: const Size(390, 844),
+                safeArea: EdgeInsets.zero,
+                keyboardInset: 0,
+                onTap: () {},
+                badge: 3,
+                badgeSemantics: '3 approvals',
+                contentScrolling: scrolling,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Offset slide() =>
+        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset;
+    // At rest with a count: full and in place (DESIGN §23 Q4b).
+    await tester.pump(const Duration(seconds: 5));
+    expect(slide(), Offset.zero);
+
+    scrolling.value = true;
+    await tester.pumpAndSettle();
+    expect(slide().dx, greaterThan(0), reason: 'it still sits over the rows');
+    // The count is painted outside the slide and the fade.
+    expect(find.byKey(const Key('quick-bubble-badge')), findsOneWidget);
+
+    scrolling.value = false;
+    await tester.pumpAndSettle();
+    expect(slide(), Offset.zero);
   });
 }

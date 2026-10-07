@@ -19,6 +19,7 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-227 — one action on many requests, from the queue.
 ///
@@ -127,6 +128,9 @@ void main() {
     }, (id) => tickets.firstWhere((t) => t.id == id).status);
     container = ProviderContainer(
       overrides: <Override>[
+        // OPH-359: the unit switcher and the unit scope in the bar read these.
+        workspacesProvider.overrideWith((ref) async => const []),
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         ticketQueueProvider.overrideWith((ref) => Stream.value(tickets)),
         ticketAssigneesProvider.overrideWith(
           (ref) => Stream.value(const <String, List<Assignee>>{}),
@@ -492,5 +496,17 @@ void main() {
     await tester.tap(key('bulk-assign-$_other'));
     await tester.pumpAndSettle();
     expect(api.sent.single.action, {'type': 'assign', 'userId': _other});
+  });
+
+  // OPH-359 — UI-AUDIT #64.
+  testWidgets('UI-AUDIT #64: a row\'s box is NAMED for a screen reader', (
+    tester,
+  ) async {
+    await pumpQueue(tester);
+    await tester.longPress(key('ticket-T1'));
+    await tester.pumpAndSettle();
+    final box = tester.widget<Checkbox>(key('ticket-select-T2'));
+    expect(box.semanticLabel, isNotNull);
+    expect(box.semanticLabel, contains('Hat 1 durdu'));
   });
 }

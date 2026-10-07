@@ -8,6 +8,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/team_ai_models.dart';
 import '../team_ai_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The team's AI keys, and who else may bring one (EE-111, madde 13).
 ///
@@ -45,7 +46,10 @@ class EeTeamAiKeysScreen extends ConsumerWidget {
     final data = ref.watch(eeTeamAiProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.teamAi.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.teamAi.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

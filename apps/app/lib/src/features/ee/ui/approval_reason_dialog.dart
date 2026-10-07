@@ -38,12 +38,14 @@ class _EeApprovalReasonDialogState extends State<EeApprovalReasonDialog> {
   @override
   Widget build(BuildContext context) {
     final filled = _controller.text.trim().isNotEmpty;
+    final title = widget.approve
+        ? 'ee.approvals.approveTitle'.tr()
+        : 'ee.approvals.rejectTitle'.tr();
     return AlertDialog(
-      title: Text(
-        widget.approve
-            ? 'ee.approvals.approveTitle'.tr()
-            : 'ee.approvals.rejectTitle'.tr(),
-      ),
+      // OPH-359 (UI-AUDIT #64): named for what it asks, not the platform's
+      // generic "Alert".
+      semanticLabel: title,
+      title: Text(title),
       content: TextField(
         key: const Key('ee-approval-reason'),
         controller: _controller,

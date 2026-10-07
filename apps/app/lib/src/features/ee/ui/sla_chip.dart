@@ -175,19 +175,28 @@ class AwSlaCountdown extends StatelessWidget {
     if (state == null) return const SizedBox.shrink();
     final theme = Theme.of(context);
 
-    return Padding(
-      key: const Key('sla-countdown'),
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'ee.sla.dueLabel'.tr(),
-              style: theme.textTheme.labelLarge,
+    // OPH-359 (UI-AUDIT #64): one node that says the whole line — "response
+    // due: 2 h left" — rather than two fragments a reader may never join.
+    return Semantics(
+      container: true,
+      excludeSemantics: true,
+      label:
+          '${'ee.sla.dueLabel'.tr()}: '
+          '${slaBadgeLabel(state, ticket.slaDueAt, now: now)}',
+      child: Padding(
+        key: const Key('sla-countdown'),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                'ee.sla.dueLabel'.tr(),
+                style: theme.textTheme.labelLarge,
+              ),
             ),
-          ),
-          AwSlaChip(ticket: ticket, now: now),
-        ],
+            AwSlaChip(ticket: ticket, now: now),
+          ],
+        ),
       ),
     );
   }

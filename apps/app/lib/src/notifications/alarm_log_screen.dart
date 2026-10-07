@@ -10,6 +10,7 @@ import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
 import 'alarm_log.dart';
 import 'providers.dart';
+import '../widgets/route_leading.dart';
 
 /// The alarm log (OPH-176, DESIGN §11 A6): a plain, read-only list of what this
 /// device DID about alarms, newest first, plus one sentence of honest scope.
@@ -40,6 +41,7 @@ class AlarmLogScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('alarmLog.title'.tr()),
         actions: [
           IconButton(

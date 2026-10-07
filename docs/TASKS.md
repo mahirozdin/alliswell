@@ -66,48 +66,6 @@ araç değil). Cihazda bakılacaklar (ekran okuyucu, telefon yerleşimi) DEVICE-
 
 ---
 
-### OPH-359 — Kabuk, gezinme ve erişilebilirlik; genel Türkçe metinler; toplantı ve AI düğmesi
-
-**Bulgular:** #10, #11, #12, #29, #30, #32, #54 (istemci), #55, #57, #58, #59, #60, #63, #64
-(portal ekranı dışı). **Karşı yarı:** EE-303 (#54 `failureCode`, #63 toplantı 404 kodu).
-
-- [ ] **#10** `screens/home_shell.dart` ~367 `extendBody` + `ticket_queue_screen.dart` ~61: iç
-      Scaffold FAB'ları nav yüksekliği kadar yukarıda; diğer iç FAB'lar taranır.
-- [ ] **#11** `workspaces/ui/workspace_switcher.dart` ~89: `isScrollControlled`, `useRootNavigator`,
-      kaydırılabilir liste.
-- [ ] **#12** rail semantiği (`home_shell.dart` ~283–360, `approvals_entry.dart` ~107): önce
-      Semantics debugger ile kök neden ölçülür (GlassSurface/BackdropFilter, scrollable+extended);
-      düzeltme + Tab sırası testi; ekran okuyucuyla doğrulama DEVICE-CHECKS'e.
-- [ ] **#29** uzantı liste ekranları (`#/tickets`, `#/kb`, `#/changes`, `#/problems`, `#/meetings`):
-      AppBar'da birim adı + seçici; seçili alan birim değilse "Bir birim seçin" durumu; KB boş
-      durumu yazma önerisini izne bağlar (`kb_providers.dart` ~58, `sections.dart` ~59).
-- [ ] **#30** ortak `AwAppBar` yardımcısı: `canPop` ise geri, değilse Ana sayfa (Onaylar'daki
-      yedek `approvals_screen.dart` ~58 buraya taşınır); 37 rota.
-- [ ] **#32** doğrudan açılan `#/tickets/:id`: `syncEnginesProvider` kökte izlenir ya da tek
-      seferlik pull + sunucudan okuma yedeği (`home_shell.dart` ~172, `ticket_archive_screen.dart` ~116).
-- [ ] **#54** `meeting_screen.dart` ~266 / `meetings_screen.dart`: `failureCode` çevirisi + "AI
-      anahtarları" eylemi; "Kayıt yükle" akışı (mevcut yükleme ucuna).
-- [ ] **#55** `features/ai/ui/ai_fab.dart` ~84: `onPressed` balonu açar, çift tetikleme bayrağı.
-- [ ] **#57** `quick_access/ui/quick_access_bubble.dart` ~110: varsayılan konum alt bölge, kaydırmada
-      solar (rozet varken de); Onaylar rail satırı rail dolgusuyla hizalı.
-- [ ] **#58** 390 px: eylemler ⋮'ye, nav `labelBehavior`, liste alt dolgusu FAB'ları hesaba katar.
-- [ ] **#59** `router.dart` ~733: `optionURLReflectsImperativeAPIs` ya da yol rotalarına `context.push`;
-      talep/onay/KB kendi adresini taşır.
-- [ ] **#60** `home/month_calendar.dart` ~28/192: `DateFormat(locale)`; semantik etiketler i18n;
-      tr.json ~1507, ~1091–1129 ("Task geçmişi", "Inbox").
-- [ ] **#63** `team_mail_screen.dart` ~208 alan etiketleri, webhook olay adları `ee.webhooks.event.<id>`,
-      tr.json "workspace" → "çalışma alanı", toplantı 404 metni koddan.
-- [ ] **#64** (portal dışı) kuyruk checkbox'ı, arşiv araması, `AwSlaCountdown`, `approval_reason_dialog.dart`
-      `semanticLabel`/`labelText`, `ColorSwatchDot` renk adı.
-- [ ] Testler: yeni `test/features/shell/fab_inset_test.dart` (#10, #58), `workspace_switcher_test.dart`
-      (#11), yeni `test/features/shell/rail_semantics_test.dart` (#12, #57), yeni
-      `test/features/ee/unit_scope_test.dart` (#29), `ticket_route_test.dart` (#30, #32, #59),
-      `meeting_screen_test.dart` (#54), yeni `test/features/ai/ai_fab_test.dart` (#55),
-      `test/features/home` takvim testi (#60), `team_mail_test.dart`, `team_webhooks_test.dart` (#63).
-
-**Kabul:** telefonda kuyruk FAB'ı görünür ve doğru açılır; 10 birimin hepsi seçilebilir; 1440 px'te
-Tab rail'e girer ve "Talepler" okunur; derin bağlantıda geri/Ana sayfa düğmesi var.
-
 ### OPH-360 — Yönetim, portal bağlantıları ve rapor ekranları
 
 **Bulgular:** #13 (istemci), #18 (istemci), #22 (istemci), #23, #44 (istemci), #45, #46 (istemci —

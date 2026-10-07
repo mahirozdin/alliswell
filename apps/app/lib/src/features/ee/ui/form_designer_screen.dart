@@ -10,6 +10,7 @@ import '../data/services_models.dart';
 import '../form_design.dart';
 import '../services_providers.dart';
 import 'form_field_view.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-229 — a service's request form, designed beside its own preview.
 ///
@@ -187,6 +188,7 @@ class _EeFormDesignerScreenState extends ConsumerState<EeFormDesignerScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: awRouteLeading(context),
           title: Text(
             'ee.team.services.designer.title'.tr(
               args: {'service': widget.service.name},

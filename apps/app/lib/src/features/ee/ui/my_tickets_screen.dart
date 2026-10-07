@@ -16,6 +16,7 @@ import 'ticket_archive_screen.dart' show EeMyArchivedTicketsScreen;
 import 'ticket_detail_screen.dart';
 import 'ticket_drafts_section.dart';
 import 'team_address_views.dart';
+import '../../../widgets/route_leading.dart';
 
 /// "My requests" (EE-087) — what I asked for, and where it got to.
 ///
@@ -51,7 +52,10 @@ class EeMyTicketsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tickets = ref.watch(eeMyTicketsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.mineTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.mineTitle'.tr()),
+      ),
       // EE-225: the requester's own list is where asking for something new
       // belongs — and filing works with no signal (a draft), even though this
       // list does not.

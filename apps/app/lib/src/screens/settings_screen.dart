@@ -36,6 +36,7 @@ import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
 import '../features/ee/assignments_providers.dart';
+import '../widgets/route_leading.dart';
 
 /// Settings, as an index (OPH-260, DESIGN §32).
 ///
@@ -457,7 +458,7 @@ class _SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
+    appBar: AppBar(leading: awRouteLeading(context), title: Text(title)),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),

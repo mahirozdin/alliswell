@@ -157,9 +157,14 @@ void main() {
       expect(sw.onChanged, isNull);
       expect(sw.value, isFalse);
       // And names them, so the screen can be finished rather than guessed at.
+      // OPH-359 (UI-AUDIT #63): in the form's own words, not the wire's.
       expect(
         find.text(
-          'ee.mail.enabledBlocked'.tr(args: {'fields': 'host, password'}),
+          'ee.mail.enabledBlocked'.tr(
+            args: {
+              'fields': '${'ee.mail.host'.tr()}, ${'ee.mail.password'.tr()}',
+            },
+          ),
         ),
         findsOneWidget,
       );
@@ -302,5 +307,25 @@ void main() {
       expect(find.textContaining('mail.corp.example'), findsOneWidget);
       expect(find.textContaining('ter2'), findsNothing);
     });
+  });
+
+  testWidgets('UI-AUDIT #63: the missing fields are named as the form names '
+      'them — "fromAddress" never reaches a Turkish screen', (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    await _pump(tester, _mail(missingRequired: const ['host', 'fromAddress']));
+    await _reveal(tester, const Key('ee-mail-enabled'));
+    expect(
+      find.text(
+        'ee.mail.enabledBlocked'.tr(
+          args: {'fields': 'SMTP sunucusu, Gönderen adresi'},
+        ),
+      ),
+      findsOneWidget,
+    );
+    expect(find.textContaining('fromAddress'), findsNothing);
+  });
+
+  test('a field this build has no words for keeps its server name', () {
+    expect(eeMailFieldLabel('somethingNew'), 'somethingNew');
   });
 }

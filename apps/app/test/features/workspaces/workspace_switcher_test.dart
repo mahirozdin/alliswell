@@ -216,4 +216,65 @@ void main() {
       expect(find.byKey(Key('workspace-option-${saha.id}')), findsOneWidget);
     });
   });
+
+  // OPH-359 — UI-AUDIT #11.
+  group('UI-AUDIT #11: ten units, every one reachable', () {
+    final ten = [
+      for (var i = 0; i < 10; i++)
+        ws('01WS${'$i'.padLeft(2, '0')}AAAAAAAAAAAAAAAAAAAA', 'Birim $i'),
+    ];
+
+    for (final size in const [Size(390, 844), Size(1440, 900)]) {
+      testWidgets('at ${size.width.toInt()} px the last unit can be chosen', (
+        tester,
+      ) async {
+        tester.view.physicalSize = size;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        late WidgetRef captured;
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              currentUserIdProvider.overrideWithValue(
+                '01USERAAAAAAAAAAAAAAAAAAAA',
+              ),
+              workspacesProvider.overrideWith((ref) async => ten),
+            ],
+            child: MaterialApp(
+              theme: buildAwTheme(Brightness.light),
+              home: Consumer(
+                builder: (context, ref, _) {
+                  captured = ref;
+                  ref.watch(currentWorkspaceProvider);
+                  return const Scaffold(
+                    body: Center(child: AwWorkspaceSwitcher()),
+                  );
+                },
+              ),
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('workspace-switcher')));
+        await tester.pumpAndSettle();
+        final last = find.byKey(Key('workspace-option-${ten.last.id}'));
+        // The rows scroll: the last one is brought into view and is inside
+        // the screen, not cut off below the sheet.
+        await tester.scrollUntilVisible(
+          last,
+          100,
+          scrollable: find.descendant(
+            of: find.byKey(const Key('workspace-options')),
+            matching: find.byType(Scrollable),
+          ),
+        );
+        final rect = tester.getRect(last);
+        expect(rect.bottom, lessThanOrEqualTo(size.height));
+        await tester.tap(last);
+        await tester.pumpAndSettle();
+        expect(captured.read(currentWorkspaceProvider).value?.id, ten.last.id);
+      });
+    }
+  });
 }

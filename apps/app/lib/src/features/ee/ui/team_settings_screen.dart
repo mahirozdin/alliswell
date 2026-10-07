@@ -5,11 +5,13 @@ import 'package:go_router/go_router.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/color_swatch_dot.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/data/attach_source.dart';
 import '../../files/data/pick_files.dart';
 import '../data/team_settings.dart';
 import '../team_settings_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The team settings form (EE-037) — the first screen a team admin owns.
 ///
@@ -43,6 +45,11 @@ const List<String> _kTeamColors = [
   '#0284C7',
   '#4F46E5',
 ];
+
+List<String> _kTeamColorNames() => awColorNames([
+  for (final hex in _kTeamColors)
+    Color(int.parse('FF${hex.substring(1)}', radix: 16)),
+]);
 
 /// A short list, deliberately: these are the zones the product is sold into
 /// today, and a 400-entry dropdown is not a setting, it is a search problem.
@@ -92,7 +99,10 @@ class _EeTeamSettingsScreenState extends ConsumerState<EeTeamSettingsScreen> {
   Widget build(BuildContext context) {
     final async = ref.watch(eeTeamSettingsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.settings.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.settings.title'.tr()),
+      ),
       body: async.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -350,9 +360,10 @@ class _EeTeamSettingsScreenState extends ConsumerState<EeTeamSettingsScreen> {
             color: null,
             onTap: () => _run(() => controller.save(clear: const {'colorRgb'})),
           ),
-          for (final hex in _kTeamColors)
+          for (final (i, hex) in _kTeamColors.indexed)
             _swatch(
-              label: hex,
+              // OPH-359 (UI-AUDIT #64): a colour's name, not its hex.
+              label: _kTeamColorNames()[i],
               selected: settings.colorRgb == hex,
               color: Color(int.parse('FF${hex.substring(1)}', radix: 16)),
               onTap: () => _run(() => controller.save(colorRgb: hex)),

@@ -23,6 +23,8 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
+import 'package:alliswell/src/features/ee/ui/desk_paths.dart';
 
 /// EE-267 — AW-E19 on the screen: a manager of two units, looking at one,
 /// sees the other's broken promise and reaches it in one tap.
@@ -130,6 +132,8 @@ void main() {
     container = ProviderContainer(
       retry: awRetry,
       overrides: <Override>[
+        // OPH-359: the unit scope in the bar reads this.
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         eeUnitTicketsApiProvider.overrideWithValue(EeUnitTicketsApi(dio)),
         eeFeatureProvider.overrideWith((ref, name) => entitled),
         currentUserIdProvider.overrideWithValue(_me),
@@ -177,6 +181,14 @@ void main() {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (_, _) => home),
+        // OPH-359 (UI-AUDIT #59): "Birimlerim" has an address now; the
+        // shelf and the strip open it there.
+        GoRoute(
+          path: kAwMyUnitsPath,
+          builder: (_, state) => EeMyUnitsScreen(
+            alertsOnly: state.uri.queryParameters['alerts'] == '1',
+          ),
+        ),
         // EE-251's address, stood in for: which request was opened.
         GoRoute(
           path: '/tickets/:ticketId',

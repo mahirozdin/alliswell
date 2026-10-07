@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../i18n/i18n.dart';
 
@@ -25,22 +26,6 @@ class MonthCalendar extends StatefulWidget {
 }
 
 class _MonthCalendarState extends State<MonthCalendar> {
-  static const _weekdays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  static const _months = [
-    'January',
-    'February',
-    'March',
-    'April',
-    'May',
-    'June',
-    'July',
-    'August',
-    'September',
-    'October',
-    'November',
-    'December',
-  ];
-
   late DateTime _month; // first day of the shown month
 
   @override
@@ -59,6 +44,17 @@ class _MonthCalendarState extends State<MonthCalendar> {
     final today = DateTime.now();
     final todayDay = DateTime(today.year, today.month, today.day);
 
+    // OPH-359 (UI-AUDIT #60): the month and the weekday names in the app's
+    // language — they were fixed English arrays, so a Turkish screen said
+    // "October 2026 / Mon Tue". The grid stays Monday-first.
+    final locale = AwI18n.instance.locale.toLanguageTag();
+    final monthTitle = DateFormat.yMMMM(locale).format(_month);
+    final weekdays = [
+      // 2024-01-01 was a Monday.
+      for (var d = 1; d <= 7; d++)
+        DateFormat.E(locale).format(DateTime(2024, 1, d)),
+    ];
+
     // Monday-first offset of the month's day 1.
     final leading = (_month.weekday - DateTime.monday) % 7;
     final firstCell = _month.subtract(Duration(days: leading));
@@ -73,7 +69,7 @@ class _MonthCalendarState extends State<MonthCalendar> {
             // widths) never overflow the header (DESIGN §9 L2).
             Expanded(
               child: Text(
-                '${_months[_month.month - 1]} ${_month.year}',
+                monthTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleMedium?.copyWith(
@@ -98,7 +94,7 @@ class _MonthCalendarState extends State<MonthCalendar> {
         const SizedBox(height: 4),
         Row(
           children: [
-            for (final label in _weekdays)
+            for (final label in weekdays)
               Expanded(
                 child: Center(
                   child: Text(
@@ -188,8 +184,14 @@ class _DayCell extends StatelessWidget {
       child: Semantics(
         button: true,
         selected: isSelected,
-        label:
-            '${day.day}${isToday ? ', today' : ''}${hasTasks ? ', has tasks' : ''}',
+        // OPH-359 (UI-AUDIT #60): read in the app's language too, once —
+        // the number under it is not read a second time.
+        excludeSemantics: true,
+        label: [
+          '${day.day}',
+          if (isToday) 'calendar.a11yToday'.tr(),
+          if (hasTasks) 'calendar.a11yHasTasks'.tr(),
+        ].join(', '),
         child: SizedBox(
           height: 46,
           child: Column(

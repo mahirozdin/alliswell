@@ -13,6 +13,7 @@ import '../data/ai_models.dart';
 import '../providers.dart';
 import 'ai_consent_screen.dart';
 import 'ai_settings_card.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The full AI settings screen (OPH-220): connections list, add flow (provider
 /// → consent → key → test → connect), model pickers, and the MCP connector
@@ -43,7 +44,10 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
   Widget build(BuildContext context) {
     final status = ref.watch(aiStatusProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ai.settings.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ai.settings.title'.tr()),
+      ),
       body: status.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (_, _) => AwErrorState(

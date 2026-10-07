@@ -21,6 +21,7 @@ import 'change_detail_screen.dart';
 import 'change_labels.dart';
 import 'form_field_view.dart';
 import 'ticket_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Opens one approval by its address (EE-295) — what a row of the queue and an
 /// approval notification both open.
@@ -169,19 +170,11 @@ class _EeApprovalDetailScreenState
     final detail = ref.watch(eeApprovalDetailProvider(widget.approvalId));
     final value = detail.value;
     final request = value?.request;
-    final canPop =
-        GoRouter.maybeOf(context)?.canPop() ?? Navigator.canPop(context);
 
     return Scaffold(
       appBar: AppBar(
-        leading: canPop
-            ? null
-            : IconButton(
-                key: const Key('ee-approval-detail-home'),
-                icon: const Icon(Icons.home_outlined),
-                tooltip: 'nav.home'.tr(),
-                onPressed: () => context.go('/home'),
-              ),
+        // OPH-359: the shared answer (awRouteLeading) this screen first had.
+        leading: awRouteLeading(context),
         title: Text('ee.approvals.detailTitle'.tr()),
         actions: [
           if (value != null &&

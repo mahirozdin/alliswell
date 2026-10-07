@@ -7,6 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/performance_models.dart';
 import '../performance_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The performance panel (EE-205) — the same numbers per unit and per person.
 ///
@@ -49,7 +50,10 @@ class EePerformanceScreen extends ConsumerWidget {
     final days = ref.watch(eePerformanceRangeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.perfPanel.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.perfPanel.title'.tr()),
+      ),
       body: panel.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         // OPH-357 (UI-AUDIT #24): the translated message and a way to ask

@@ -216,3 +216,31 @@ class EeMeetingDetail {
   /// vendor's label. One function, so a rename reaches every place at once.
   String displayName(String label) => speakerNames[label] ?? label;
 }
+
+/// What `POST /ee/team/meetings` answers (OPH-359): the new meeting, and where
+/// its recording goes — a presigned PUT, with the headers it must carry.
+class EeMeetingUploadSlot {
+  const EeMeetingUploadSlot({
+    required this.meeting,
+    required this.url,
+    this.headers = const {},
+  });
+
+  factory EeMeetingUploadSlot.fromJson(Map<String, dynamic> json) {
+    final upload = (json['upload'] as Map?)?.cast<String, dynamic>() ?? {};
+    return EeMeetingUploadSlot(
+      meeting: EeMeetingSummary.fromJson(
+        (json['meeting'] as Map?)?.cast<String, dynamic>() ?? const {},
+      ),
+      url: (upload['url'] as String?) ?? '',
+      headers: {
+        for (final e in ((upload['headers'] as Map?) ?? const {}).entries)
+          '${e.key}': '${e.value}',
+      },
+    );
+  }
+
+  final EeMeetingSummary meeting;
+  final String url;
+  final Map<String, String> headers;
+}

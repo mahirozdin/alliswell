@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
+import 'fab_clearance.dart';
 
 /// Shared empty state: soft icon badge, title, guidance line, optional action.
 class AwEmptyState extends StatelessWidget {
@@ -33,10 +36,19 @@ class AwEmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     // Scrollable so tight layouts (collapsed panels, small windows) never
     // overflow — the state simply scrolls instead.
+    //
+    // OPH-359 (UI-AUDIT #58): centred in the space the eye can see, not in the
+    // space the layout was given. Inside the shell that space runs under the
+    // glass bar and the floating buttons, and the sentence that says what to
+    // do next landed behind the microphone.
+    final hidden =
+        MediaQuery.paddingOf(context).bottom + AwFabClearance.of(context);
     return Center(
       child: SingleChildScrollView(
         physics: physics,
-        padding: const EdgeInsets.all(AwSpace.x6),
+        padding: const EdgeInsets.all(
+          AwSpace.x6,
+        ).copyWith(bottom: AwSpace.x6 + hidden),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -250,6 +262,9 @@ class AwInlineError extends StatelessWidget {
 const EdgeInsets kAwListRowPadding = EdgeInsets.symmetric(vertical: 3);
 
 /// List padding that clears the glass bottom bar / FAB on every platform.
+///
+/// The shell's own floating buttons are cleared without being asked
+/// ([AwFabClearance], OPH-359): [extraBottom] is for a screen's OWN button.
 EdgeInsets awListPadding(
   BuildContext context, {
   double horizontal = AwSpace.x4,
@@ -261,6 +276,8 @@ EdgeInsets awListPadding(
     horizontal,
     top,
     horizontal,
-    bottomInset + AwSpace.x6 + extraBottom,
+    bottomInset +
+        AwSpace.x6 +
+        math.max(extraBottom, AwFabClearance.of(context)),
   );
 }

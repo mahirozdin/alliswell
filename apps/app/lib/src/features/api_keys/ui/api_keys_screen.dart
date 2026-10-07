@@ -18,6 +18,7 @@ import '../../workspaces/workspaces.dart';
 import '../data/api_key_models.dart';
 import '../providers.dart';
 import 'api_docs_row.dart';
+import '../../../widgets/route_leading.dart';
 
 /// API access (OPH-265, ADR-0032): the keys a person hands to their own
 /// scripts.
@@ -53,7 +54,10 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
   Widget build(BuildContext context) {
     final keys = ref.watch(apiKeysProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('apiKeys.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('apiKeys.title'.tr()),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),

@@ -13,6 +13,7 @@ import '../../workspaces/workspaces.dart';
 import '../absences_providers.dart';
 import '../assignments_providers.dart';
 import '../data/absences_api.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-236 (AW-E18) — who is away, and who is on call because of it.
 ///
@@ -36,7 +37,10 @@ class EeAbsencesScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.absences.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.absences.title'.tr()),
+      ),
       floatingActionButton: page.hasValue
           ? AwExtendedFab(
               key: const Key('absences-add'),

@@ -17,6 +17,8 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import '../../support/list_rhythm.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart';
 
 /// EE-196 — the knowledge base, as the person uses it.
 ///
@@ -80,6 +82,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
+          // OPH-359: the unit switcher and the unit scope in the bar read these.
+          workspacesProvider.overrideWith((ref) async => const []),
+          eeMyUnitsScopeProvider.overrideWith((ref) async => null),
           eeKbArticlesProvider.overrideWith((ref) => Stream.value(rows)),
           // The server's counters (OPH-358): none unless a test asks.
           eeKbArticleCountsProvider.overrideWith((ref, id) async => null),

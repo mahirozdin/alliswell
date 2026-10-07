@@ -3,6 +3,7 @@ import '../features/ai/data/ai_action_reporter.dart';
 import '../features/ai/providers.dart';
 import '../features/ee/approvals_providers.dart';
 import '../features/ee/providers.dart';
+import '../features/ee/unit_scope_providers.dart';
 import '../features/workspaces/workspaces.dart';
 import 'db/database.dart';
 import 'providers.dart' show kCreatedByRepullPrefix;
@@ -37,6 +38,7 @@ const List<String> kUserBoundKvPrefixes = [
   kEeStatusCachePrefix,
   kEePermissionsCachePrefix,
   kEeApprovalsDoorCachePrefix,
+  kEeMyUnitsCachePrefix,
   kCreatedByRepullPrefix,
   kReplicaOwnerKey,
 ];

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +40,7 @@ import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
 import '../theme/tokens.dart';
 import '../widgets/document_surface.dart';
+import '../widgets/fab_clearance.dart';
 import '../widgets/glass.dart';
 import '../widgets/refreshable.dart';
 
@@ -269,6 +271,11 @@ class HomeShell extends ConsumerWidget {
     // (alarmOverlayAutoShowProvider) so a due alarm never covers the app.
     final ringing = ref.watch(alarmOverlayControllerProvider).ringing;
 
+    // OPH-359 (UI-AUDIT #58): what the floating buttons cover, said once for
+    // every list inside the shell (see [AwFabClearance]).
+    final fabClearance = _fabBar(context, ref) == null
+        ? 0.0
+        : AwFabClearance.lane;
     final shell = LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= kAwWideBreakpoint;
@@ -307,7 +314,7 @@ class HomeShell extends ConsumerWidget {
                         ).clamp(0, visibleSections.length - 1),
                         onDestinationSelected: (i) =>
                             _goVisible(visibleSections, i),
-                        minWidth: 84,
+                        minWidth: kAwRailMinWidth,
                         groupAlignment: -0.9,
                         // OPH-199: the shortcut section sits right under the
                         // destinations. `scrollable` is not optional — a full
@@ -317,7 +324,7 @@ class HomeShell extends ConsumerWidget {
                           // The rail lives in an unbounded Row, and
                           // `minExtendedWidth` is only a floor, so a long
                           // shortcut title would otherwise widen the whole rail.
-                          width: extendedRail ? 256 : 84,
+                          width: extendedRail ? 256 : kAwRailMinWidth,
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -357,7 +364,24 @@ class HomeShell extends ConsumerWidget {
                     ),
                   ),
                 ),
-                Expanded(child: navigationShell),
+                // OPH-359 (UI-AUDIT #12): the content is its own semantics
+                // container. The section's Navigator paints its page route's
+                // ModalBarrier, and a barrier is a `BlockSemantics`: it hides
+                // every node painted BEFORE it in the same container. Without
+                // a boundary here that container was the shell's, and the
+                // rail — painted first in this Row — vanished from the
+                // accessibility tree: no screen reader, no Tab on the web.
+                // The phone's bar is painted after the body, which is why
+                // only the wide layout lost it.
+                Expanded(
+                  child: Semantics(
+                    container: true,
+                    child: AwFabClearance(
+                      extent: fabClearance,
+                      child: navigationShell,
+                    ),
+                  ),
+                ),
               ],
             ),
           );
@@ -369,7 +393,7 @@ class HomeShell extends ConsumerWidget {
           floatingActionButtonLocation: aiFabVisible(ref)
               ? FloatingActionButtonLocation.centerFloat
               : FloatingActionButtonLocation.endFloat,
-          body: navigationShell,
+          body: _ShellBody(fabClearance: fabClearance, child: navigationShell),
           bottomNavigationBar: Padding(
             padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
             child: SafeArea(
@@ -380,27 +404,39 @@ class HomeShell extends ConsumerWidget {
                 borderRadius: const BorderRadius.all(
                   Radius.circular(AwRadius.pill),
                 ),
-                child: NavigationBar(
-                  selectedIndex: destinationIndexFor(
-                    visibleSections,
-                    navigationShell.currentIndex,
-                  ).clamp(0, visibleSections.length - 1),
-                  onDestinationSelected: (i) => _goVisible(visibleSections, i),
-                  destinations: [
-                    for (final section in visibleSections)
-                      NavigationDestination(
-                        icon: KeyedSubtree(
-                          key: _navKeys[section]!.icon,
-                          child: Icon(section.icon),
+                // OPH-359 (UI-AUDIT #58): the capsule's pill corners clipped
+                // the outermost labels ("Ana Sayfa", "Talepler"), so the bar
+                // sits inside the curve; and six labels do not fit a phone,
+                // so past five only the selected one is written — the rest
+                // keep their icon and tooltip.
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
+                  child: NavigationBar(
+                    labelBehavior: visibleSections.length > 5
+                        ? NavigationDestinationLabelBehavior.onlyShowSelected
+                        : NavigationDestinationLabelBehavior.alwaysShow,
+                    selectedIndex: destinationIndexFor(
+                      visibleSections,
+                      navigationShell.currentIndex,
+                    ).clamp(0, visibleSections.length - 1),
+                    onDestinationSelected: (i) =>
+                        _goVisible(visibleSections, i),
+                    destinations: [
+                      for (final section in visibleSections)
+                        NavigationDestination(
+                          icon: KeyedSubtree(
+                            key: _navKeys[section]!.icon,
+                            child: Icon(section.icon),
+                          ),
+                          selectedIcon: KeyedSubtree(
+                            key: _navKeys[section]!.selected,
+                            child: Icon(section.selectedIcon),
+                          ),
+                          label: section.title,
+                          tooltip: section.title,
                         ),
-                        selectedIcon: KeyedSubtree(
-                          key: _navKeys[section]!.selected,
-                          child: Icon(section.selectedIcon),
-                        ),
-                        label: section.title,
-                        tooltip: section.title,
-                      ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -555,6 +591,40 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 
 const _shareStatusBudget = Duration(seconds: 2);
 
+/// The phone shell's body (OPH-359, UI-AUDIT #10).
+///
+/// `extendBody` lets the content scroll under the glass bar, and Scaffold
+/// says so to the body through `padding.bottom` — which a list reads. A
+/// section's OWN Scaffold places its FAB by `viewPadding.bottom` instead, so
+/// the request queue's "new request" sat exactly under the bar: invisible,
+/// and a tap on it opened Files. Copying the bar's height into the view
+/// padding puts every inner FAB (and floating snackbar) above the bar, for
+/// every section, without each screen having to know the shell exists.
+class _ShellBody extends StatelessWidget {
+  const _ShellBody({required this.fabClearance, required this.child});
+
+  final double fabClearance;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final covered = media.padding.bottom;
+    return MediaQuery(
+      data: media.copyWith(
+        viewPadding: media.viewPadding.copyWith(
+          bottom: math.max(media.viewPadding.bottom, covered),
+        ),
+      ),
+      child: AwFabClearance(extent: fabClearance, child: child),
+    );
+  }
+}
+
+/// Below this width a section's app bar puts the team and unit under its
+/// title (OPH-359) — the switcher's own compact width, so the two agree.
+const double kAwCompactAppBarWidth = 600;
+
 /// Shared app bar for section screens with quick access to Settings.
 ///
 /// [onRefresh] adds the pointer-only refresh action (OPH-171, DESIGN §15 R5):
@@ -571,16 +641,24 @@ AppBar buildSectionAppBar(
   /// controls, instead of a second pinned row eating the phone screen.
   List<Widget> trailingActions = const [],
 }) {
-  final wide = MediaQuery.sizeOf(context).width >= kAwWideBreakpoint;
+  final width = MediaQuery.sizeOf(context).width;
+  final wide = width >= kAwWideBreakpoint;
+  // OPH-359 (UI-AUDIT #58): on a phone the team dot and the unit switcher go
+  // UNDER the title instead of beside the actions. In the action row they ate
+  // the room the title needed ("A…"), and the switcher could only be an icon
+  // there — so nobody could see WHICH unit was on screen. Under the title it
+  // has the width to say its name.
+  final compact = width < kAwCompactAppBarWidth;
   return AppBar(
-    title: Text(title),
+    title: compact
+        ? AwWorkspaceSwitcher(title: title, leading: const AwTeamChip())
+        : Text(title),
     actions: [
       // EE-018: which team this window belongs to. Renders nothing on a CE
       // server or a plain host, so the community build is untouched.
       // EE-061: which unit this window is showing, next to which team it
       // belongs to — the two identity questions live in one corner.
-      const AwWorkspaceSwitcher(),
-      const AwTeamChip(),
+      if (!compact) ...[const AwWorkspaceSwitcher(), const AwTeamChip()],
       ...leadingActions,
       if (onRefresh != null && wide) AwRefreshAction(onRefresh: onRefresh),
       ...trailingActions,

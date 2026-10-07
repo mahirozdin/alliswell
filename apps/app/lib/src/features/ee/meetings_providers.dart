@@ -2,7 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/api_exception.dart';
 import '../../core/reachability.dart';
+import '../../i18n/i18n.dart';
 import '../auth/providers.dart';
+import '../files/providers.dart'
+    show PickedUpload, mimeForName, uploadTransportProvider;
 import 'data/meeting_models.dart';
 import 'data/meetings_api.dart';
 import 'providers.dart';
@@ -78,3 +81,53 @@ Future<void> nameMeetingSpeakers(
   await ref.read(eeMeetingsApiProvider).nameSpeakers(meetingId, names);
   ref.invalidate(eeMeetingProvider(meetingId));
 }
+
+/// Puts a recording in front of the meeting pipeline (OPH-359, UI-AUDIT #54):
+/// open the meeting, PUT the bytes to the slot the server minted, then say it
+/// is there. The list is asked again, so the new row appears as "queued".
+///
+/// The empty list said "once a meeting's recording is uploaded…" and nothing
+/// in the app could upload one — the endpoint existed for scripts only.
+Future<EeMeetingSummary> uploadMeetingRecording(
+  WidgetRef ref, {
+  required String workspaceId,
+  required PickedUpload file,
+}) async {
+  final api = ref.read(eeMeetingsApiProvider);
+  final dot = file.name.lastIndexOf('.');
+  final slot = await api.create(
+    workspaceId: workspaceId,
+    mime: file.mime ?? mimeForName(file.name),
+    sizeBytes: file.sizeBytes,
+    title: dot > 0 ? file.name.substring(0, dot) : file.name,
+  );
+  await ref.read(uploadTransportProvider)(
+    url: slot.url,
+    headers: slot.headers,
+    source: file,
+  );
+  final done = await api.complete(slot.meeting.id);
+  ref.invalidate(eeMeetingListProvider(workspaceId));
+  return done;
+}
+
+/// What a failed (or stalled) meeting says about why, in the reader's
+/// language (OPH-359, UI-AUDIT #54). Read from `failureCode` — the server's
+/// `failureMessage` is English prose for logs and is never shown (EE-303).
+/// An unknown code still gets a sentence: a new server must not leave a bare
+/// "failed" behind.
+String? eeMeetingFailureText(String? code) {
+  if (code == null || code.isEmpty) return null;
+  return AwI18n.instance.maybeTranslate('ee.meeting.failure.$code') ??
+      'ee.meeting.failure.generic'.tr();
+}
+
+/// The failures a team admin fixes by adding a provider key.
+bool eeMeetingFailureNeedsAiKey(String? code) =>
+    code == 'MEETING_NO_TRANSCRIBER' || code == 'MEETING_NO_SUMMARISER';
+
+/// A meeting that does not exist (or is not this person's to see) — a 404,
+/// with the server's `MEETING_NOT_FOUND` code or without one (EE-303).
+bool eeMeetingNotFound(Object? error) =>
+    error is ApiException &&
+    (error.code == 'MEETING_NOT_FOUND' || error.statusCode == 404);

@@ -8,6 +8,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The role list and its grant matrix (EE-053).
 ///
@@ -30,7 +31,10 @@ class EeTeamRolesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roles = ref.watch(eeTeamRolesProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.roles.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.roles.title'.tr()),
+      ),
       // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
       floatingActionButton: !ref.watch(canProvider('team.manage_roles'))
           ? null
@@ -206,6 +210,7 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
     final catalogue = ref.watch(eePermissionCatalogueProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text(
           _isCreate
               ? 'ee.team.roles.create'.tr()

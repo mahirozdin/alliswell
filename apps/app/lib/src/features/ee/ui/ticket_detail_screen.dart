@@ -38,6 +38,7 @@ import 'ticket_actions.dart';
 import 'ticket_composer.dart';
 import 'ticket_tags_section.dart';
 import 'ticket_worklog_section.dart';
+import '../../../widgets/route_leading.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
 ///
@@ -98,6 +99,7 @@ class EeTicketDetailScreen extends ConsumerWidget {
       length: 2,
       child: Scaffold(
         appBar: AppBar(
+          leading: awRouteLeading(context),
           title: Text('ee.tickets.detailTitle'.tr()),
           bottom: TabBar(
             tabs: [

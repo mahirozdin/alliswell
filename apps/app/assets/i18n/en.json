@@ -584,7 +584,9 @@
     "disconnectConfirmBody": "AllisWell stops writing your tasks to it. Events already there stay where they are, and you can connect again any time.",
     "appleDisconnect": "Stop using this calendar",
     "appleDisconnectBody": "AllisWell stops writing your tasks to Apple Calendar. Events already there stay. macOS/iOS keeps the permission itself — remove that in Settings if you want it gone.",
-    "notInShared": "Calendars connect to a person's own account. In your organisation's workspaces your work lives in AllisWell, and no calendar is connected here."
+    "notInShared": "Calendars connect to a person's own account. In your organisation's workspaces your work lives in AllisWell, and no calendar is connected here.",
+    "a11yToday": "today",
+    "a11yHasTasks": "has tasks"
   },
   "tour": {
     "skip": "Skip",
@@ -2409,7 +2411,8 @@
         "mineEmptyTitle": "Nothing in the archive yet",
         "mineEmptyBody": "A request moves here some time after it closes, and stays readable.",
         "mineMore": "Show older requests",
-        "yourRating": "Your rating: {score}/5"
+        "yourRating": "Your rating: {score}/5",
+        "searchLabel": "Search the archive"
       },
       "tags": {
         "title": "Tags",
@@ -2468,7 +2471,8 @@
           "childOf": "Child of"
         }
       },
-      "statusUnknown": "in another status"
+      "statusUnknown": "in another status",
+      "selectRow": "Select {ticket}"
     },
     "sla": {
       "breached": "SLA missed",
@@ -2665,7 +2669,19 @@
       "isTicket": "Request opened",
       "isTask": "Task created",
       "ticketCreated": "A request was opened for this decision.",
-      "taskCreated": "A task was created for this decision."
+      "taskCreated": "A task was created for this decision.",
+      "notFound": "Meeting not found",
+      "notFoundBody": "It may have been deleted, or it belongs to a unit you are not in.",
+      "failure": {
+        "MEETING_NO_TRANSCRIBER": "This team has no transcription provider yet, so the recording could not be turned into text. A team admin can add one under Team AI keys.",
+        "MEETING_TRANSCRIBE_FAILED": "The transcription provider could not turn this recording into text, even after retrying.",
+        "MEETING_TRANSCRIBE_RETRYING": "The transcription provider did not answer; it will be tried again shortly.",
+        "MEETING_NO_SUMMARISER": "The words are saved, but this team has no AI provider to write the summary. A team admin can add one under Team AI keys.",
+        "MEETING_SUMMARY_FAILED": "The words are saved, but the summary could not be written. It will be tried again.",
+        "MEETING_STORAGE_UNCONFIGURED": "This server has no file storage set up, so recordings cannot be kept.",
+        "generic": "Something stopped this meeting from being processed.",
+        "openAiKeys": "Open Team AI keys"
+      }
     },
     "teamAi": {
       "title": "Team AI keys",
@@ -2778,7 +2794,40 @@
       "emptyTitle": "No endpoints yet",
       "emptyBody": "Add one to send this team's events to a system you already run. Only the request number, subject, desk and a link travel — never the text of a request.",
       "unavailable": "Not available here",
-      "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer."
+      "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer.",
+      "event": {
+        "task": {
+          "assigned": "Work assigned"
+        },
+        "invite": {
+          "created": "Invitation sent"
+        },
+        "report": {
+          "weekly": "Weekly report"
+        },
+        "ticket": {
+          "routed": "Request routed to a unit",
+          "routed_public": "Request from outside routed to a unit",
+          "assigned": "Request assigned",
+          "status_changed": "Request status changed",
+          "commented": "Reply on a request",
+          "rate": "Rating requested"
+        },
+        "sla": {
+          "warned": "SLA deadline approaching",
+          "breached": "SLA breached"
+        },
+        "asset": {
+          "expiring": "Equipment date approaching"
+        },
+        "approval": {
+          "requested": "Approval requested",
+          "decided": "Approval decided"
+        },
+        "share": {
+          "received": "Something shared"
+        }
+      }
     },
     "mail": {
       "inboxAdd": "Add a mailbox",
@@ -3204,7 +3253,8 @@
       "fieldService": "Service",
       "fieldServiceNone": "Without a service the article is suggested to nobody filing a request.",
       "fieldServiceHelp": "Once published it is suggested to people filing a request for this service.",
-      "noService": "No service"
+      "noService": "No service",
+      "emptyBodyReader": "Nothing has been written here yet. Articles your unit publishes will appear here."
     },
     "worklogs": {
       "title": "Time spent",
@@ -3274,7 +3324,9 @@
       "offlineBody": "Meeting notes are kept on the server; the list opens when you are back online.",
       "empty": "No meeting notes in this unit yet",
       "emptyBody": "When a meeting's recording is uploaded, its summary and decisions appear here.",
-      "counts": "{decisions} decisions · {ideas} ideas"
+      "counts": "{decisions} decisions · {ideas} ideas",
+      "upload": "Upload a recording",
+      "uploaded": "Recording uploaded — it will be transcribed shortly."
     },
     "ticketWork": {
       "chip": "Request {ref}",
@@ -3305,6 +3357,11 @@
       "minutes": "{m} min",
       "hours": "{h} h",
       "hoursMinutes": "{h} h {m} min"
+    },
+    "unitScope": {
+      "chooseTitle": "Choose a unit",
+      "chooseBody": "This list belongs to a unit, and the space on screen is not one. Pick the unit whose list you want to see.",
+      "noUnitsBody": "This list belongs to a unit, and you are not in one yet. A team admin can add you to a unit."
     }
   },
   "perm": {

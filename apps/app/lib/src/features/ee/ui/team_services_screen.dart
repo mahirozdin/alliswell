@@ -16,6 +16,7 @@ import '../units_providers.dart';
 import 'form_designer_screen.dart';
 import 'service_categories_screen.dart';
 import 'service_icons.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The service catalogue (EE-082, madde 8).
 ///
@@ -69,6 +70,7 @@ class _EeTeamServicesScreenState extends ConsumerState<EeTeamServicesScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('ee.team.services.title'.tr()),
         actions: [
           AwSearchAction(
@@ -609,7 +611,10 @@ class _EeServiceRoutingScreenState
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.service.name)),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text(widget.service.name),
+      ),
       body: units.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),

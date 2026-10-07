@@ -12,6 +12,7 @@ import '../providers.dart';
 import '../team_admin_providers.dart'
     show eeHoldsTeamVerbProvider, eeTeamProvider;
 import '../team_origin.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The one "your team's address is needed" state (OPH-356, UI-AUDIT #7).
 ///
@@ -130,7 +131,10 @@ class EeTeamRouteGate extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     Widget locked(Widget body) => Scaffold(
-      appBar: AppBar(title: Text(titleKey.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text(titleKey.tr()),
+      ),
       body: body,
     );
 

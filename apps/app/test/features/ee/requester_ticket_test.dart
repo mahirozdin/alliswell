@@ -28,6 +28,8 @@ import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/sync/providers.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-252 — the person who ASKED runs their request from the app: reads it,
 /// answers the desk, and ends or disputes it once the desk calls it resolved.
@@ -109,6 +111,10 @@ void main() {
     List<EeTicketFile> files = const [],
     List<EeRequesterComment>? comments,
   }) => [
+    // OPH-359: a routed page keeps the replica current; these screens are
+    // tested without one.
+    syncEnginesProvider.overrideWith((ref) => const {}),
+    syncSocketProvider.overrideWith((ref) => null),
     eeTicketWriteApiProvider.overrideWithValue(api),
     eeRequesterTicketApiProvider.overrideWithValue(reads),
     eeRequesterFilesProvider.overrideWith((ref, id) async => files),
@@ -568,6 +574,9 @@ void main() {
     testWidgets('…and the queue for somebody who does', (tester) async {
       await pumpHome(tester, [
         eeDeskProvider.overrideWithValue(true),
+        // OPH-359: the queue's bar carries the unit switcher and scope.
+        workspacesProvider.overrideWith((ref) async => const []),
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         ticketQueueProvider.overrideWith((ref) => Stream.value(const [])),
         ticketAssigneesProvider.overrideWith((ref) => Stream.value(const {})),
         currentUserIdProvider.overrideWithValue(_me),

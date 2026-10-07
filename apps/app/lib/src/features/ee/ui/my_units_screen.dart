@@ -2,9 +2,11 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
+import 'desk_paths.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -12,6 +14,7 @@ import '../../workspaces/workspaces.dart';
 import '../data/unit_tickets_api.dart';
 import '../unit_tickets_providers.dart';
 import 'sla_chip.dart';
+import '../../../widgets/route_leading.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket;
 
 /// EE-267 (AW-E19) — one tap from a request of another unit to the request.
@@ -89,7 +92,10 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
   Widget build(BuildContext context) {
     final first = ref.watch(eeUnitTicketsPageProvider(_key('')));
     return Scaffold(
-      appBar: AppBar(title: Text('ee.myUnits.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.myUnits.title'.tr()),
+      ),
       body: first.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => unitTicketsNeedConnection(error)
@@ -409,11 +415,15 @@ class EeOtherUnitsAlertStrip extends ConsumerWidget {
               ),
               child: TextButton(
                 key: const Key('other-units-all'),
-                onPressed: () => Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => const EeMyUnitsScreen(alertsOnly: true),
-                  ),
-                ),
+                // By its address where there is a router (OPH-359).
+                onPressed: () => GoRouter.maybeOf(context) != null
+                    ? context.push('$kAwMyUnitsPath?alerts=1')
+                    : Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) =>
+                              const EeMyUnitsScreen(alertsOnly: true),
+                        ),
+                      ),
                 child: Text('ee.myUnits.stripAll'.tr()),
               ),
             ),

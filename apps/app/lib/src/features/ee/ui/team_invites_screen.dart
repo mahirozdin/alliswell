@@ -10,6 +10,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Invitations (EE-042).
 ///
@@ -28,7 +29,10 @@ class EeTeamInvitesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final invites = ref.watch(eeInvitesProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.invites.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.invites.title'.tr()),
+      ),
       // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
       floatingActionButton: !ref.watch(canProvider('team.manage_invites'))
           ? null

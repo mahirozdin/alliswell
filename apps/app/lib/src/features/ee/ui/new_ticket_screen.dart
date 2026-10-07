@@ -29,6 +29,7 @@ import '../providers.dart';
 import '../ticket_drafts_providers.dart';
 import 'form_field_view.dart';
 import 'service_icons.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-225 — filing a request from the app.
 ///
@@ -473,7 +474,10 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     final mayAttach = online && ref.watch(inSharedWorkspacesProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.new.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.new.title'.tr()),
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(eeCatalogProvider.future),
         child: ListView(

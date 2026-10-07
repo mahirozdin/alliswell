@@ -10,6 +10,7 @@ import '../data/kb_models.dart';
 import '../kb_providers.dart';
 import '../providers.dart';
 import 'kb_editor_sheet.dart';
+import '../../../widgets/route_leading.dart';
 
 /// One article (EE-196).
 ///
@@ -40,6 +41,7 @@ class EeKbArticleScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('ee.kb.articleTitle'.tr()),
         actions: [
           if (canWrite &&

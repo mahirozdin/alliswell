@@ -6,6 +6,7 @@ import '../../../theme/tokens.dart';
 import '../data/history_models.dart';
 import '../history_providers.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The team's whole history, filtered (EE-130).
 ///
@@ -78,7 +79,10 @@ class _EeAuditLogScreenState extends ConsumerState<EeAuditLogScreen> {
     final page = ref.watch(eeTeamAuditProvider(filters));
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.audit.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.audit.title'.tr()),
+      ),
       body: Column(
         children: [
           _FilterBar(

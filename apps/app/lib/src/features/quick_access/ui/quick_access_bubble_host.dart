@@ -59,13 +59,41 @@ class QuickAccessBubbleHost extends ConsumerWidget {
 }
 
 /// The layer that actually watches the rail's contents.
-class _BubbleLayer extends ConsumerWidget {
+class _BubbleLayer extends ConsumerStatefulWidget {
   const _BubbleLayer({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BubbleLayer> createState() => _BubbleLayerState();
+}
+
+class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
+  /// Whether something under the button is being scrolled (OPH-359, UI-AUDIT
+  /// #57). This layer is above every route, so one listener hears them all.
+  final _scrolling = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _scrolling.dispose();
+    super.dispose();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification is ScrollStartNotification ||
+        (notification is ScrollUpdateNotification &&
+            notification.dragDetails != null)) {
+      _scrolling.value = true;
+    } else if (notification is ScrollEndNotification) {
+      _scrolling.value = false;
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.child;
     final rows = ref.watch(quickAccessRowsProvider).value ?? const [];
     // EE-294 (DESIGN §23 Q10): an entry the app pins is something to open —
     // the Approvals door of somebody with no shortcuts of their own still
@@ -87,7 +115,10 @@ class _BubbleLayer extends ConsumerWidget {
       // The child is the whole app: loose constraints would starve it.
       fit: StackFit.expand,
       children: [
-        child,
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          child: child,
+        ),
         ValueListenableBuilder<int>(
           valueListenable: observer.depth,
           builder: (context, depth, _) {
@@ -107,6 +138,7 @@ class _BubbleLayer extends ConsumerWidget {
                   safeArea: media.padding,
                   keyboardInset: media.viewInsets.bottom,
                   badge: badge,
+                  contentScrolling: _scrolling,
                   badgeSemantics: pins
                       .where((pin) => pin.badge > 0)
                       .map((pin) => pin.badgeSemantics ?? '${pin.badge}')

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show DatabaseConnection;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -13,9 +15,12 @@ import 'package:alliswell/src/features/ee/ui/notification_center_screen.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
+import 'package:alliswell/src/screens/home_shell.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+
+import '../shell/shell_harness.dart';
 
 /// EE-251 — a request has an address. Before it the detail screen was only
 /// ever pushed from the queue, so a notification that named a ticket went
@@ -122,4 +127,144 @@ void main() {
       expect(find.byType(EeNewTicketScreen), findsNothing);
     });
   });
+
+  // OPH-359 — UI-AUDIT #30, #32 and #59.
+  group('UI-AUDIT #30: a request opened by its address has a way out', () {
+    late AwDatabase db;
+
+    setUp(() {
+      db = AwDatabase(DatabaseConnection(NativeDatabase.memory()));
+      AwI18n.instance.setActiveCached(const Locale('en'));
+    });
+    tearDown(() => db.close());
+
+    testWidgets('nothing under it → a Home button, and it goes Home', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        initialLocation: '/tickets/$id',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const Scaffold(body: Text('HOME')),
+          ),
+          ...eeTicketRoutes(),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            databaseProvider.overrideWithValue(db),
+            ticketProvider.overrideWith((ref, ticketId) => Stream.value(null)),
+            eeRequesterTicketProvider.overrideWith(
+              (ref, ticketId) async => null,
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(router.canPop(), isFalse);
+      final home = find.byKey(const Key('aw-route-home'));
+      expect(home, findsOneWidget);
+      await tester.tap(home);
+      await tester.pumpAndSettle();
+      expect(find.text('HOME'), findsOneWidget);
+    });
+
+    testWidgets('something under it → the ordinary back button, no Home', (
+      tester,
+    ) async {
+      final router = GoRouter(
+        initialLocation: '/home',
+        routes: [
+          GoRoute(
+            path: '/home',
+            builder: (context, state) => const Scaffold(body: Text('HOME')),
+          ),
+          ...eeTicketRoutes(),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            databaseProvider.overrideWithValue(db),
+            ticketProvider.overrideWith((ref, ticketId) => Stream.value(null)),
+            eeRequesterTicketProvider.overrideWith(
+              (ref, ticketId) async => null,
+            ),
+          ],
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      router.push('/tickets/$id');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('aw-route-home')), findsNothing);
+      expect(find.byType(BackButton), findsOneWidget);
+    });
+  });
+
+  group('UI-AUDIT #32 / #59: the whole app', () {
+    setUp(() => AwI18n.instance.setActiveCached(const Locale('en')));
+
+    testWidgets('#32: a request link opened cold keeps the replica syncing — '
+        'the shell never mounted, the engines run anyway', (tester) async {
+      sizeTo(tester, const Size(1280, 900));
+      final api = teamApi();
+      await tester.pumpWidget(
+        await teamApp(
+          api,
+          more: [
+            pendingDeepLinkProvider.overrideWith(() => _Parked('/tickets/$id')),
+          ],
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(appRouter().state.uri.path, '/tickets/$id');
+      expect(find.byType(HomeShell), findsNothing);
+      expect(
+        api.requests.where((r) => r.contains('/sync/pull')),
+        isNotEmpty,
+        reason: 'nothing pulled: the detail would wait forever for its row',
+      );
+    });
+
+    testWidgets('#59: a pushed screen carries its own address in the URL', (
+      tester,
+    ) async {
+      sizeTo(tester, const Size(1280, 900));
+      await tester.pumpWidget(await teamApp(teamApi()));
+      await tester.pumpAndSettle();
+      final router = appRouter();
+      unawaited(router.push('/settings'));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/settings');
+      unawaited(router.push('/kb'));
+      await tester.pumpAndSettle();
+      expect(router.routeInformationProvider.value.uri.path, '/kb');
+    });
+
+    test('#59: the desk\'s boards have addresses', () {
+      final config = GoRouter(routes: eeDeskBoardRoutes()).configuration;
+      for (final path in const ['/sla', '/performance', '/my-units']) {
+        expect(config.findMatch(Uri.parse(path)).last.route.path, path);
+      }
+    });
+  });
+}
+
+class _Parked extends PendingDeepLink {
+  _Parked(this._location);
+  final String _location;
+  @override
+  String? build() => _location;
 }

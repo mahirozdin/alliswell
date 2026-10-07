@@ -15,6 +15,7 @@ import '../../auth/providers.dart';
 import '../data/team_address_api.dart';
 import '../providers.dart';
 import '../team_origin.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Where an invitation was resolved to: the address its endpoints answer on,
 /// and what the invitation says there.
@@ -132,7 +133,10 @@ class _JoinTeamScreenState extends ConsumerState<JoinTeamScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('ee.join.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.join.title'.tr()),
+      ),
       body: FutureBuilder<JoinTarget>(
         future: _target,
         builder: (context, snapshot) {

@@ -16,6 +16,7 @@ import 'approval_reason_dialog.dart';
 import 'approval_signature_card.dart';
 import 'change_labels.dart';
 import 'ticket_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Opens one change (EE-269) — by its address when a router is there, so the
 /// list, a request's relations and the approver's queue reach the SAME screen
@@ -62,7 +63,10 @@ class EeChangeDetailScreen extends ConsumerWidget {
     final live = ref.watch(eeChangeLiveProvider(changeId));
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.changes.detailTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.changes.detailTitle'.tr()),
+      ),
       body: device.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),

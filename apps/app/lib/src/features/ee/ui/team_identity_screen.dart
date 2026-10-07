@@ -11,6 +11,7 @@ import '../providers.dart' show canProvider;
 import '../data/identity_api.dart';
 import '../data/identity_models.dart';
 import '../identity_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Where a team connects its own identity source (OPH-287).
 ///
@@ -51,7 +52,10 @@ class EeTeamIdentityScreen extends ConsumerWidget {
     final data = ref.watch(eeIdentityProvidersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.identity.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.identity.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

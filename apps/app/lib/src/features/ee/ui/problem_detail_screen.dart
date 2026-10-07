@@ -12,6 +12,7 @@ import '../data/problems_models.dart';
 import '../problems_providers.dart';
 import 'problem_labels.dart';
 import 'ticket_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Opens one problem (EE-270) by its address where a router is there — the
 /// list, a request's linked-problem card and a link reach the SAME screen —
@@ -54,7 +55,10 @@ class EeProblemDetailScreen extends ConsumerWidget {
     final live = ref.watch(eeProblemLiveProvider(problemId));
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.problems.detailTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.problems.detailTitle'.tr()),
+      ),
       body: device.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),

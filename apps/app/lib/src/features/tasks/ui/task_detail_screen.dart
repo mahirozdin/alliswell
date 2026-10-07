@@ -34,6 +34,7 @@ import 'repeat_row.dart';
 import 'task_visuals.dart';
 import '../../ee/assignments_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
+import '../../../widgets/route_leading.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
 /// replica instantly and sync in the background (OPH-054/055).
@@ -55,7 +56,7 @@ class TaskDetailScreen extends ConsumerWidget {
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (error, _) => Scaffold(
-        appBar: AppBar(),
+        appBar: AppBar(leading: awRouteLeading(context)),
         body: Center(child: Text('$error')),
       ),
       data: (value) => _TaskDetail(task: value),
@@ -150,6 +151,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     final work = ref.watch(ticketWorkOfTaskProvider(task.id)).value;
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('task.detailTitle'.tr()),
         actions: [
           // EE-069 / item 10: the task's own history. Present only where there

@@ -8,6 +8,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/sla_admin_models.dart';
 import '../sla_admin_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// What an admin may edit about a promise (EE-099).
 ///
@@ -42,6 +43,7 @@ class EeSlaAdminScreen extends ConsumerWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          leading: awRouteLeading(context),
           title: Text('ee.slaAdmin.title'.tr()),
           bottom: TabBar(
             tabs: [

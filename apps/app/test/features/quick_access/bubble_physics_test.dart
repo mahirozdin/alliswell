@@ -130,15 +130,47 @@ void main() {
 
     test('the factory position keeps clear of the quick-add FAB corner', () {
       expect(kBubbleFactoryPosition.edge, BubbleEdge.right);
-      expect(kBubbleFactoryPosition.heightFraction, closeTo(0.35, 0.001));
       final origin = bubbleOrigin(
         kBubbleFactoryPosition,
         viewport,
         safeArea,
         0,
       );
-      // Well above the bottom-right FAB (DESIGN §23 Q4c).
-      expect(origin.dy + kBubbleDiameter, lessThan(viewport.height * 0.6));
+      // Above the bar AND the FAB lane (DESIGN §23 Q4c): never in the FAB's
+      // corner, never over a tab.
+      expect(
+        origin.dy + kBubbleDiameter,
+        lessThanOrEqualTo(
+          viewport.height - safeArea.bottom - kBubbleBottomReserve,
+        ),
+      );
+    });
+
+    // OPH-359 — UI-AUDIT #57.
+    test('UI-AUDIT #57: it rests low, out of the middle of the screen where '
+        'the row menus and the form controls are', () {
+      final origin = bubbleOrigin(
+        kBubbleFactoryPosition,
+        viewport,
+        safeArea,
+        0,
+      );
+      expect(origin.dy, greaterThan(viewport.height * 0.6));
+    });
+
+    test('UI-AUDIT #57: no stored position can park it over the bar or the '
+        'FAB lane — only a keyboard moves the floor', () {
+      const bottomed = BubblePosition(
+        edge: BubbleEdge.right,
+        heightFraction: 1,
+      );
+      final origin = bubbleOrigin(bottomed, viewport, safeArea, 0);
+      expect(
+        origin.dy + kBubbleDiameter,
+        lessThanOrEqualTo(
+          viewport.height - safeArea.bottom - kBubbleBottomReserve,
+        ),
+      );
     });
   });
 }

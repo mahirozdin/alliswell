@@ -12,6 +12,7 @@ import '../data/services_models.dart';
 import '../portal_links_providers.dart';
 import '../services_providers.dart';
 import '../units_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The public doors, and who may open them (EE-106).
 ///
@@ -49,7 +50,10 @@ class EePortalLinksScreen extends ConsumerWidget {
     final data = ref.watch(eePortalLinksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.portal.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.portal.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
