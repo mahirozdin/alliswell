@@ -129,6 +129,16 @@ Offset bubbleOrigin(
   return Offset(dx, dy);
 }
 
+/// How much of a screen's bottom a scrolling view must leave free so that
+/// whatever it ends with can be scrolled up from under a button resting at
+/// [origin] (UI-AUDIT #57): from the screen's bottom edge to a small gap
+/// above the button. A button parked in the upper half asks for nothing —
+/// padding the END of a list does not move its top rows.
+double bubbleClearance(Offset origin, Size viewport) {
+  if (origin.dy < viewport.height / 2) return 0;
+  return viewport.height - origin.dy + kBubbleEdgeMargin;
+}
+
 /// How far the PAINTED circle slides toward its edge when idle. The gesture
 /// box never moves — see [kBubbleDiameter].
 double recedePaintDx(BubbleEdge edge, double t) {

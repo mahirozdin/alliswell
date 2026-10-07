@@ -415,6 +415,24 @@ class _Calendar extends ConsumerWidget {
               ),
               onTap: () => awOpenChange(context, clash.changeId),
             ),
+          // A draft in the same window WARNS softly (UI-AUDIT #76): nothing is
+          // planned yet, so it is no clash — but it is not "nothing else".
+          for (final draft in c.drafts)
+            _ConflictLine(
+              key: Key('change-draft-${draft.changeId}'),
+              icon: Icons.edit_calendar_outlined,
+              text: 'ee.changes.calendar.draft'.tr(
+                args: {
+                  'title': draft.title,
+                  'window': changeWindowText(
+                    draft.windowStart,
+                    draft.windowEnd,
+                    format: format,
+                  ),
+                },
+              ),
+              onTap: () => awOpenChange(context, draft.changeId),
+            ),
         ],
       ],
     );

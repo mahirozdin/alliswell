@@ -9,17 +9,17 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-360 kapandı (yönetim, portal bağlantıları ve rapor ekranları);
-Epic 34'ün core yarısı bitti, backlog boş.
+**Last updated:** 2026-10-07 — OPH-361 kapandı (UI denetiminin ikinci turunda core'da kalanlar);
+backlog boş.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-360 kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
+| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-361 kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-360 — istemci: portal linkinde süre seçimli uzatma (1/2/7/30 gün, yeni bitiş önizlemesi), satırda servisler/birim/tarih, iptal "Vazgeç"/"Bağlantıyı iptal et", adlı diyaloglar, pano hatası snackbar; `/settings/team/customers` (firma ve kişiler: ekle, davet, kapat/aç, adlandır, arşivle; eski sunucuda "desteklemiyor"); SLA yönetiminde silme onayı, varsayılan politika korunur, ad `onChanged`, hedef tablosu, birim arşivi ve davet iptali onayı; SLA panosu Aşıldı/Yaklaşıyor/Tutuldu, "N değerlendirilen", varsayılan yok uyarısı, ihlal #numara + gezinme; yerel sayı/süre biçimi (pano + performans); kuyruk ve denetim günlüğünde CSV indir; denetim günlüğü tür adları, kayıt adı ve bağlantı, başlık; izin açıklamaları tr+en (`ee.permDescription.*`); devamsızlık ufku 365 gün; form tasarımcısı durumu; boş birim. |
+| Last completed           | OPH-361 — ikinci tur: web replikası her üst düzey commit'ten sonra IndexedDB'ye yazılır (`FlushAfterCommit`), taslak taşıyıcısı kabuktan `AllisWellApp`'e (çevrimdışı taslak yenilemede kalır, bağlantıyla kendiliğinden gider); yeni talepte dosya ekleme yalnız talebin birimindeki üyeye; kendi talebinde "Masaya yazın…/Masaya gönder"; değişiklik takviminde aynı penceredeki taslak; denetim satırı sunucunun `entityLabel`'ı ve kişinin tarih biçimi; `report.savedView` adı + `check:i18n`'de uzantı sözlüğü kapısı (`scripts/i18n/ee-vocabulary.mjs`); portal linkinde dakikaya kadar saat ve ikizde kısa kimlik; rail'de Onaylar odaklanabilir düğme; telefonda listeler/formlar Hızlı erişim balonunun altından kaydırılabilir (`AwBubbleClearance`). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -609,6 +609,49 @@ void main() {
     expect(find.byKey(const Key('change-calendar-clear')), findsOneWidget);
   });
 
+  testWidgets('UI-AUDIT #76: a draft on the same service in the same window '
+      'is named, never "nothing else in this window"', (tester) async {
+    final end = _start.add(const Duration(hours: 2));
+    final self = _change(
+      backupId,
+      title: 'Taslak A',
+      status: 'draft',
+      start: _start,
+      end: end,
+    );
+    server.script['GET /api/v1/ee/team/changes/$backupId'] = (_) => self;
+    server.script['GET /api/v1/ee/team/changes/$backupId/approvals'] = (_) => {
+      'approvals': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/$backupId/assets'] = (_) => {
+      'assets': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/calendar'] = (_) => {
+      'changes': [
+        {
+          ...self,
+          'clashes': const [],
+          'drafts': [
+            {
+              'changeId': draftId,
+              'title': 'Taslak B',
+              'type': 'normal',
+              'status': 'draft',
+              'windowStart': _start.toUtc().toIso8601String(),
+              'windowEnd': end.toUtc().toIso8601String(),
+            },
+          ],
+        },
+      ],
+      'freezes': const [],
+    };
+    await pumpAt(tester, '/changes/$backupId');
+
+    expect(find.byKey(const Key('change-calendar-clear')), findsNothing);
+    expect(find.byKey(Key('change-draft-$draftId')), findsOneWidget);
+    expect(find.textContaining('Taslak B'), findsOneWidget);
+  });
+
   testWidgets('UI-AUDIT #77: a change whose window has passed unworked says '
       '"window passed"; one still ahead does not', (tester) async {
     final past = DateTime.now().subtract(const Duration(days: 3));

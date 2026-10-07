@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:alliswell/src/features/quick_access/ui/bubble_physics.dart';
+import 'package:alliswell/src/widgets/fab_clearance.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/data/portal_links_models.dart';
@@ -89,6 +91,7 @@ Future<void> _pump(
   WidgetTester tester,
   EePortalLinksData? value, {
   Brightness brightness = Brightness.light,
+  double bubbleClearance = 0,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
@@ -98,9 +101,12 @@ Future<void> _pump(
         // OPH-356: the create button waits for a yes.
         canProvider.overrideWith((ref, id) => true),
       ],
-      child: MaterialApp(
-        theme: buildAwTheme(brightness),
-        home: const EePortalLinksScreen(),
+      child: AwBubbleClearance(
+        extent: bubbleClearance,
+        child: MaterialApp(
+          theme: buildAwTheme(brightness),
+          home: const EePortalLinksScreen(),
+        ),
       ),
     ),
   );
@@ -457,6 +463,93 @@ void main() {
         expect(_inTile('L1', 'Bakım'), findsOneWidget);
         expect(_inTile('L1', 'made'), findsOneWidget);
         expect(_inTile('L1', '2 services'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #67: three links for one service, desk and day differ by the '
+      'minute they were made — and twins in the same minute by their reference',
+      (tester) async {
+        EePortalLink made(String id, DateTime at) => EePortalLink(
+          id: id,
+          serviceId: 'S1',
+          serviceNames: const ['Yazılım kurulumu'],
+          unitName: 'Bilgi İşlem',
+          state: EePortalLinkState.active,
+          enabled: true,
+          expiresAt: DateTime(2026, 11, 6),
+          createdAt: at,
+        );
+        await _pump(
+          tester,
+          EePortalLinksData(
+            links: [
+              made('01LINKAAAAAAAAAAAAAAAAAAA1', DateTime(2026, 10, 7, 9, 15)),
+              made('01LINKAAAAAAAAAAAAAAAQRST2', DateTime(2026, 10, 7, 14, 2)),
+              made('01LINKAAAAAAAAAAAAAAAWXYZ3', DateTime(2026, 10, 7, 14, 2)),
+            ],
+            linkQuota: const EePortalQuota(used: 3),
+            ticketQuota: const EePortalQuota(used: 0),
+          ),
+        );
+        String subtitleOf(String id) =>
+            (tester
+                        .widget<ListTile>(find.byKey(Key('portal-link-$id')))
+                        .subtitle!
+                    as Text)
+                .data!;
+        final rows = [
+          subtitleOf('01LINKAAAAAAAAAAAAAAAAAAA1'),
+          subtitleOf('01LINKAAAAAAAAAAAAAAAQRST2'),
+          subtitleOf('01LINKAAAAAAAAAAAAAAAWXYZ3'),
+        ];
+        expect(rows.toSet(), hasLength(3), reason: rows.join('\n'));
+        // The lone 09:15 row needs no reference; the 14:02 twins carry one.
+        expect(rows[0], isNot(contains('ref.')));
+        expect(rows[1], contains('ref. AQRST2'));
+        expect(rows[2], contains('ref. AWXYZ3'));
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #57 (retest): on a phone the last row\'s menu can always be '
+      'scrolled up from under the Quick Access bubble',
+      (tester) async {
+        const viewport = Size(390, 844);
+        tester.view.physicalSize = viewport;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final origin = bubbleOrigin(
+          kBubbleFactoryPosition,
+          viewport,
+          EdgeInsets.zero,
+          0,
+        );
+        final bubble = origin & const Size.square(kBubbleDiameter);
+        await _pump(
+          tester,
+          EePortalLinksData(
+            links: [for (var i = 1; i <= 6; i++) _link(id: 'L$i')],
+            linkQuota: const EePortalQuota(used: 6),
+            ticketQuota: const EePortalQuota(used: 0),
+          ),
+          bubbleClearance: bubbleClearance(origin, viewport),
+        );
+        await tester.drag(find.byType(ListView), const Offset(0, -2000));
+        await tester.pumpAndSettle();
+        // Scrolled to the end, no row's menu is left under the button — the
+        // end of the list is room, not rows (on a 4-row list the 4th row's
+        // menu used to stay under it for good).
+        for (var i = 1; i <= 6; i++) {
+          final finder = find.byKey(Key('portal-menu-L$i'));
+          if (finder.evaluate().isEmpty) continue;
+          final menu = tester.getRect(finder);
+          expect(
+            menu.overlaps(bubble),
+            isFalse,
+            reason: 'L$i menu $menu stays under the bubble $bubble',
+          );
+        }
       },
     );
 

@@ -5,6 +5,7 @@ import '../../../core/modal_observer.dart';
 import '../../../router.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/document_surface.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../auth/providers.dart';
 import '../../onboarding/tour.dart';
 import '../../../notifications/alarm_overlay.dart';
@@ -110,6 +111,12 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
       ref.watch(quickBubblePositionProvider),
     );
     final hinted = ref.watch(quickBubbleHintedProvider);
+    final resting = bubbleOrigin(
+      position,
+      media.size,
+      media.padding,
+      media.viewInsets.bottom,
+    );
 
     return Stack(
       // The child is the whole app: loose constraints would starve it.
@@ -117,7 +124,12 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
       children: [
         NotificationListener<ScrollNotification>(
           onNotification: _onScroll,
-          child: child,
+          // UI-AUDIT #57 (retest): every route under the button learns how
+          // high it reaches, so its lists and forms end above it.
+          child: AwBubbleClearance(
+            extent: bubbleClearance(resting, media.size),
+            child: child,
+          ),
         ),
         ValueListenableBuilder<int>(
           valueListenable: observer.depth,

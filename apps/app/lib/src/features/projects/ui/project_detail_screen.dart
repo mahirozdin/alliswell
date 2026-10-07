@@ -29,6 +29,7 @@ import '../data/project.dart';
 import '../providers.dart';
 import 'project_archive.dart';
 import 'project_edit_sheet.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// Project detail (OPH-036 + feedback round 1): Overview opens on the
 /// project's README note (GitHub style), Tasks and Notes tabs are live lists
@@ -215,7 +216,7 @@ class _OverviewTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: awPagePadding(context, 16),
       children: [
         Wrap(
           spacing: 8,

@@ -10,6 +10,7 @@ import '../sla_dashboard_providers.dart';
 import 'report_format.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket;
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The SLA dashboard (EE-098) — the screen this epic is sold on.
 ///
@@ -66,7 +67,7 @@ class EeSlaDashboardScreen extends ConsumerWidget {
             onRefresh: () =>
                 ref.read(eeSlaDashboardProvider.notifier).refresh(),
             child: ListView(
-              padding: const EdgeInsets.all(AwSpace.x4),
+              padding: awPagePadding(context, AwSpace.x4),
               children: [
                 // UI-AUDIT #22: a team with no default policy measures nothing
                 // it opens from now on — said above the figure it undermines.

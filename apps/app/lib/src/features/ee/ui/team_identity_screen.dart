@@ -6,6 +6,7 @@ import '../../../core/persisted_prefs.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/identity_api.dart';
@@ -78,7 +79,7 @@ class EeTeamIdentityScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.only(bottom: 88),
+            padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
             children: [
               const _StatusCard(),
               for (final item in items) _ProviderTile(provider: item),

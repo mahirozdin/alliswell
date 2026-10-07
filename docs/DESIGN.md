@@ -940,7 +940,11 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   (`kBubbleBottomReserve`, OPH-359). Factory position: right edge, at the bottom of
   that band — just above the FAB lane, never in the FAB's corner. (It was 35 %
   height until OPH-359: in the middle of the right edge it sat on every row's ⋮
-  menu, form switches and the text it was counting — UI-AUDIT #57.) After 3 s idle it half-recedes into the edge and
+  menu, form switches and the text it was counting — UI-AUDIT #57.) Whatever a screen ends with
+  can always be scrolled up from under it: the bubble layer publishes how high it reaches
+  (`AwBubbleClearance`, OPH-361) and `awListPadding` / `awScrollEndPadding` / `awPagePadding` end
+  every scrolling page above it — the FAB lane's rule applied to the bubble, so a short list's last
+  ⋮ menu is never stuck beneath it. After 3 s idle it half-recedes into the edge and
   dims to **40 % opacity — the platform's own default, not a taste call (OPH-196:
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/team_webhooks_models.dart';
@@ -71,7 +72,7 @@ class EeTeamWebhooksScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.only(bottom: 88),
+            padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
             children: [
               for (final hook in value.items)
                 _EndpointCard(hook: hook, vocabulary: value.eventClasses),

@@ -281,6 +281,8 @@ class _EeTicketComposerState extends ConsumerState<EeTicketComposer> {
                 hintText:
                     (_internal
                             ? 'ee.tickets.composer.noteHint'
+                            : widget.asksHere
+                            ? 'ee.tickets.composer.replyOwnHint'
                             : 'ee.tickets.composer.replyHint')
                         .tr(),
               ),
@@ -374,6 +376,8 @@ class _EeTicketComposerState extends ConsumerState<EeTicketComposer> {
                 label: Text(
                   (_internal
                           ? 'ee.tickets.composer.addNote'
+                          : widget.asksHere
+                          ? 'ee.tickets.composer.sendOwn'
                           : 'ee.tickets.composer.sendReply')
                       .tr(),
                 ),

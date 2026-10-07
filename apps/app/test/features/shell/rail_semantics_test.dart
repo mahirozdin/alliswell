@@ -1,4 +1,7 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -102,6 +105,41 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
     expect(appRouter().state.uri.path, '/tickets');
+  });
+
+  testWidgets('UI-AUDIT #12 (retest): the Approvals node is a real button — '
+      'focusable and tappable — and Tab then Enter opens it', (tester) async {
+    final handle = tester.ensureSemantics();
+    await pumpWide(tester);
+    // The node a screen reader (and Flutter web's DOM, where a focusable
+    // node gets its tabindex) sees: it must carry the tap and the focus,
+    // not just the word "button" over a subtree it hid.
+    final node = tester.getSemantics(find.byKey(const Key('nav-approvals')));
+    final data = node.getSemanticsData();
+    expect(node.label, startsWith('ee.approvals.title'.tr()));
+    expect(data.hasAction(SemanticsAction.tap), isTrue);
+    expect(data.hasAction(SemanticsAction.focus), isTrue);
+    expect(data.flagsCollection.isFocused, isNot(Tristate.none));
+    handle.dispose();
+
+    final approvals = find.byKey(const Key('nav-approvals'));
+    var reached = false;
+    for (var i = 0; i < 150 && !reached; i++) {
+      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+      await tester.pump();
+      final focused = FocusManager.instance.primaryFocus?.context;
+      if (focused == null) continue;
+      reached =
+          find
+              .descendant(of: approvals, matching: find.byType(Focus))
+              .evaluate()
+              .any((e) => e == focused || _isAncestor(e, focused)) ||
+          _isAncestor(approvals.evaluate().first, focused);
+    }
+    expect(reached, isTrue, reason: 'Tab never reached "Approvals"');
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(appRouter().state.uri.path, '/approvals');
   });
 
   testWidgets('UI-AUDIT #57: in the extended rail Approvals lines up with '

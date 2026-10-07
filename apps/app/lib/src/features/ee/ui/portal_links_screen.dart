@@ -2,9 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
 import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../providers.dart' show canProvider;
@@ -94,9 +97,18 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final services = ref.watch(eeServicesProvider).value ?? const <EeService>[];
     final nameOf = {for (final s in services) s.id: s.name};
+    // UI-AUDIT #67 — rows that would still read the same (same services,
+    // desk and minute of making) carry their short reference too, so the
+    // one to pause or revoke can be told apart from its twin.
+    final seen = <String>{};
+    final twins = <String>{};
+    for (final link in data.links) {
+      final look = _lookOf(link, nameOf[link.serviceId]);
+      if (!seen.add(look)) twins.add(look);
+    }
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 88),
+      padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
       children: [
         _QuotaCard(links: data.linkQuota, tickets: data.ticketQuota),
         if (!data.attachmentScanOn) const _ScanOffCard(),
@@ -110,7 +122,11 @@ class _Body extends ConsumerWidget {
             ),
           ),
         for (final link in data.links)
-          _LinkTile(link: link, serviceName: nameOf[link.serviceId]),
+          _LinkTile(
+            link: link,
+            serviceName: nameOf[link.serviceId],
+            showRef: twins.contains(_lookOf(link, nameOf[link.serviceId])),
+          ),
       ],
     );
   }
@@ -212,7 +228,10 @@ class _QuotaRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: theme.textTheme.bodyMedium),
+          // A phone's width: the label wraps rather than pushing the count
+          // off the card.
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+          const SizedBox(width: AwSpace.x2),
           Text(
             quota.isUnlimited
                 ? 'ee.portal.unlimited'.tr(args: {'used': '${quota.used}'})
@@ -230,14 +249,18 @@ class _QuotaRow extends StatelessWidget {
 }
 
 class _LinkTile extends ConsumerWidget {
-  const _LinkTile({required this.link, this.serviceName});
+  const _LinkTile({required this.link, this.serviceName, this.showRef = false});
   final EePortalLink link;
   final String? serviceName;
+
+  /// Another row reads exactly like this one: say the reference as well.
+  final bool showRef;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final tokens = context.awTokens;
+    final format = ref.watch(dateFormatProvider);
 
     // The MARK. `expired` is neutral, not amber: running out is what a link
     // with an expiry is supposed to do.
@@ -278,11 +301,14 @@ class _LinkTile extends ConsumerWidget {
           // that tell apart rows minted for the same service.
           if (link.unitName != null && link.unitName!.isNotEmpty)
             link.unitName!,
+          // To the minute (UI-AUDIT #67): three links minted for one service
+          // on one day differ by the hour they were made.
           if (link.createdAt != null)
             'ee.portal.createdAt'.tr(
-              args: {'date': _date(context, link.createdAt!)},
+              args: {'date': awFormatDateTime(link.createdAt!, format: format)},
             ),
           if (link.hasCustomFields) 'ee.portal.customFields'.tr(),
+          if (showRef) 'ee.portal.ref'.tr(args: {'ref': portalLinkRef(link)}),
         ].join(' · '),
         maxLines: 3,
         overflow: TextOverflow.ellipsis,
@@ -353,6 +379,23 @@ class _LinkTile extends ConsumerWidget {
         }
     }
   }
+}
+
+/// What a row says before its reference: services, desk, minute of making.
+String _lookOf(EePortalLink link, String? serviceName) {
+  final made = link.createdAt;
+  final minute = made == null
+      ? ''
+      : '${made.year}-${made.month}-${made.day} ${made.hour}:${made.minute}';
+  return '${_titleOf(link, serviceName)}|${link.unitName ?? ''}|$minute';
+}
+
+/// A link's short reference: the tail of its id — the random half of a ULID,
+/// so two links made in the same millisecond still differ. Not the secret
+/// (the URL's token is shown once and never again).
+String portalLinkRef(EePortalLink link) {
+  final id = link.id;
+  return (id.length <= 6 ? id : id.substring(id.length - 6)).toUpperCase();
 }
 
 String _titleOf(EePortalLink link, String? serviceName) {

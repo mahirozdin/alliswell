@@ -10,6 +10,7 @@ import '../data/units_models.dart';
 import '../providers.dart';
 import '../units_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// Units, and the people in them (EE-057).
 ///
@@ -73,7 +74,7 @@ class EeTeamUnitsScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.all(AwSpace.x4),
+            padding: awPagePadding(context, AwSpace.x4),
             children: [
               Text(
                 mayShape

@@ -2272,6 +2272,8 @@
         "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç.",
         "replyOwn": "Masaya yaz",
         "replyOwnAudience": "Bunu masa okur.",
+        "replyOwnHint": "Masaya yazın…",
+        "sendOwn": "Masaya gönder",
         "byEmail": "Yanıt talep sahibine e-postayla gönderilir.",
         "customerPortal": "Yanıt {name} firma portalında da görünür.",
         "filesInternal": "İç nota eklenen dosyaları yalnız masa görür.",
@@ -2713,6 +2715,7 @@
       "unlimited": "{used} · sınırsız",
       "expiresAt": "{date} tarihine kadar",
       "customFields": "özel alanlar",
+      "ref": "kimlik {ref}",
       "unknownService": "Bilinmeyen servis",
       "pause": "Duraklat",
       "resume": "Yeniden aç",
@@ -2906,7 +2909,8 @@
           "created": "Davet gönderildi"
         },
         "report": {
-          "weekly": "Haftalık rapor"
+          "weekly": "Haftalık rapor",
+          "savedView": "Kayıtlı görünümün zamanlanmış raporu"
         },
         "ticket": {
           "routed": "Talep bir birime düştü",
@@ -3209,10 +3213,11 @@
       },
       "calendar": {
         "title": "Takvim",
-        "clear": "Bu pencerede başka bir iş yok, dondurma da yok.",
+        "clear": "Bu pencerede aynı servise dokunan başka bir değişiklik yok, dondurma da yok.",
         "noWindow": "Pencere yok — bu değişiklik henüz takvimde değil.",
         "freeze": "Bu pencere “{reason}” dondurmasıyla çakışıyor ({window}).",
-        "clash": "Aynı serviste aynı pencerede: “{title}” ({window})."
+        "clash": "Aynı serviste aynı pencerede: “{title}” ({window}).",
+        "draft": "Aynı serviste aynı pencerede henüz planlanmamış bir taslak var: “{title}” ({window})."
       },
       "source": {
         "title": "Açıldığı talep",

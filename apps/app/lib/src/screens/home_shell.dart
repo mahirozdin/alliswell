@@ -5,10 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../features/ee/new_ticket_providers.dart';
 import '../features/ee/providers.dart';
 import '../features/ee/team_origin.dart';
-import '../features/ee/ticket_drafts_providers.dart';
 import '../features/ee/ui/approvals_entry.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
@@ -183,13 +181,8 @@ class HomeShell extends ConsumerWidget {
     // OPH-130: republish the home-screen widget snapshot on task/project change
     // (self-disables off iOS/Android/macOS).
     ref.watch(widgetSyncProvider);
-    // EE-225: carry drafts written in this person's own workspace while
-    // another is on screen (self-disables otherwise — see the provider).
-    ref.watch(draftCourierProvider);
-    // …and notice when one becomes a request: "sent" is a transition, not a
-    // row, so it is only seen by something already listening when it happens.
-    // A listener, not a watch: the shell has nothing to redraw when it does.
-    ref.listen(sentDraftsProvider, (_, _) {});
+    // EE-225's draft courier and "sent" listener live on the app itself
+    // (`AllisWellApp`), not here: a page opened by its address has no shell.
     // EE-084: which sections are DRAWN. Not the same list as the branches —
     // `sections.dart` says why that distinction exists.
     //

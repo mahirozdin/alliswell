@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'dart:typed_data';
 
+import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/features/ee/data/csv_export_api.dart';
 import 'package:alliswell/src/features/ee/data/history_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
@@ -44,6 +45,7 @@ EeHistoryEvent _event({
   String? actorName = 'Ada Yönetici',
   String entityType = 'ee_team_member',
   Map<String, dynamic>? diff,
+  String? entityLabel,
 }) => EeHistoryEvent(
   id: id,
   occurredAt: DateTime(2026, 8, 31, 9, 5),
@@ -53,6 +55,7 @@ EeHistoryEvent _event({
   entityId: 'X1',
   actorName: actorName,
   diff: diff,
+  entityLabel: entityLabel,
 );
 
 class _FakeCsv extends EeCsvExportApi {
@@ -360,6 +363,37 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('ticket X1'), findsOneWidget);
     });
+
+    testWidgets(
+      'UI-AUDIT #44: a status change with no subject in its diff is named by '
+      'the server, and dated in the reader\'s format — never ISO',
+      (tester) async {
+        await _pump(
+          tester,
+          page: EeHistoryPage(
+            items: [
+              _event(
+                verb: 'status_changed',
+                entityType: 'ee_ticket',
+                diff: {
+                  'status': ['open', 'resolved'],
+                },
+                entityLabel: '#201 Yazıcı arızası',
+              ),
+            ],
+          ),
+        );
+        final stamp = awFormatDateTime(
+          DateTime(2026, 8, 31, 9, 5),
+          format: kAwSystemDateFormat,
+        );
+        expect(
+          find.textContaining('Request · #201 Yazıcı arızası · $stamp'),
+          findsOneWidget,
+        );
+        expect(find.textContaining('2026-08-31'), findsNothing);
+      },
+    );
 
     test('UI-AUDIT #44: a renamed record reads by its new name', () {
       final label = eeAuditRecordLabel(

@@ -14,10 +14,10 @@
 ## deploy-prod — dağıtım kapısı, web önbelleği, yedek
 - **KARAR** Dağıtım sunucudaki runner'da koşar: runner uzantının private deposuna kayıtlı (`alliswell-deploy`), public depoya asla; `deploy.yml` tek uygulama, etiket `vars.DEPLOY_VIA_OVERLAY` ile oradaki Deploy'u başlatır (ADR-0043).
 - **DERS** Sunucuya ikinci runner kurulursa yolu `/actions-runner/` içermeli: `deploy.yml`'in Node araması yalnız onu atlar, başka ad v1.4.0'daki argon2/node24 kırılmasını geri getirir (`/opt/actions-runner` başka bir projenin).
-- **DERS** `$(printf …)` son satır sonunu siler, `while read` satır sonu olmayan son satırı atlar → dağıtımın `.env` satırlarından sonuncusu sessizce uygulanmıyordu (`EE_REQUIRED` tek başınayken hiç); `read … || [ -n "$line" ]` + eklemeden önce satır sonu. Sunucu bloğu testte bash'le koşar.
+- **DERS** `$(printf …)` son satır sonunu siler, `while read` satır sonu olmayan son satırı atlar → dağıtımın `.env`'inin son satırı sessizce düşüyordu; `read … || [ -n "$line" ]` + eklemeden önce satır sonu; sunucu bloğu testte bash'le koşar.
 - **DERS** Sunucunun SSH giriş uyarısı her oturumda stdout'a yanıt basar → public dağıtım kayıtlarına sahibin mesajlaşma kimliği düştü; adres yalnız bir secret'ın değerine eşit olduğu için `***`. Kayıtları okunmayacak sanma, ne bastığını ölç.
 - **KARAR** Uzantılı dağıtım yalnız uzantı CI'ının (`DEPLOY_OVERLAY_CI_WORKFLOW`, varsayılan `EE CI`) en yeni koşusu yeşilse çıkar; sunucuya denetlenen SHA gider, koşu okunamazsa durur — kırmızı uzantı commit'i sunucuya çıkamaz.
-- **DERS** Flutter web adları hash'siz (`main.dart.js`, `flutter_bootstrap.js`) → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; "deploy başarılı" ≠ yeni kod → servis edileni ölç. Cloudflare'in Browser Cache TTL'i *Respect Existing Headers* olmalı, yoksa `.js`'i origin ne derse desin 4 saate yeniden yazar (OPH-273; ölçüm `curl --resolve` ile origin'e karşı).
+- **DERS** Flutter web adları hash'siz → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; servis edileni ölç. Cloudflare Browser Cache TTL *Respect Existing Headers* olmalı, yoksa `.js` 4 saate yeniden yazılır (OPH-273; `curl --resolve` ile origin'e karşı).
 - **DERS** `mysqldump` `--no-tablespaces`'sız "Error:" basar ama 0 ile tam dump üretir; takvim/AI/TOTP sırları `.env` anahtarlarıyla şifreli → başka anahtarla geri yükleme kusursuz görünür, 2FA'lıları kilitler.
 - **NOT** Docroot: landing kökte, Flutter web `/app` (`--base-href /app/`); `.htaccess` build'den gelir (sunucununkini taşıma, /app sessizce ölür); Vite `public/` nokta dosyalarını kopyalamaz → özel plugin.
 
@@ -88,6 +88,7 @@
 - **DERS** Replikanın iki yazarı var (widget arka plan izolatı + uygulama) → `awSqlitePragmas`: WAL + `busy_timeout=5000`.
 - **DERS** Süzgecin okuduğu sunucu-sahipli yeni kolon (v37 `createdBy`) eski satırda null → alan bir kez imleç 0'dan çekilir (`repullOnceForCreatedBy`); başsız tur `sync_states`'in HER satırını dolaşır.
 - **DERS** Web replikası commit'li `web/sqlite3.wasm` + `web/drift_worker.js`'e dayanır, drift/sqlite3 sürümüne sabittir → drift yükseltilirken ikisi birlikte yenilenir.
+- **DERS** Web IDB replikası yalnız transaction dışı ifadeden sonra flush eder (drift `COMMIT`'i saymaz) → `FlushAfterCommit` (OPH-361).
 
 ## flutter-app — ürün sözleşmeleri, Riverpod, go_router, testler
 - **KARAR** Inbox ("Fikirler") yakalama kutusudur: yakalamalar Home'da asla görünmez; tarih ya da proje verilince aynı yazımda `open`'a terfi eder.

@@ -7,6 +7,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/unit_tickets_api.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/reachability.dart';
 import 'package:alliswell/src/features/ee/data/kb_api.dart';
@@ -215,9 +217,13 @@ void main() {
     bool offline = false,
     EeTicketAsset? asset,
     List<WorkspaceSummary> workspaces = const [],
+    List<EeUnitScope> myUnits = const [],
   }) async {
     container = ProviderContainer(
       overrides: <Override>[
+        // N1: the picker follows membership in the REQUEST'S unit — the
+        // server's answer of which units this person works in.
+        eeMyUnitsScopeProvider.overrideWith((ref) async => myUnits),
         // OPH-358: who works a desk is read from the account's workspaces —
         // the file picker follows it (UI-AUDIT #34).
         workspacesProvider.overrideWith((ref) async => workspaces),
@@ -779,6 +785,7 @@ void main() {
       container = ProviderContainer(
         overrides: <Override>[
           workspacesProvider.overrideWith((ref) async => const []),
+          eeMyUnitsScopeProvider.overrideWith((ref) async => const []),
           eeNewTicketApiProvider.overrideWithValue(api),
           eeKbApiProvider.overrideWithValue(kb),
           eeFeatureProvider.overrideWith((ref, feature) => true),
@@ -848,6 +855,13 @@ void main() {
             owned: false,
           ),
         ],
+        myUnits: const [
+          EeUnitScope(
+            unitId: 'U3',
+            unitName: 'Bilgi işlem',
+            workspaceId: 'W-UNIT',
+          ),
+        ],
       );
       await pick(tester, 'S-PRINT');
       await tester.enterText(key('new-ticket-subject'), 'Kağıt sıkıştı');
@@ -871,6 +885,44 @@ void main() {
     'UI-AUDIT #34: somebody who only asks gets no picker — the limit is said instead',
     (tester) async {
       await pumpForm(tester);
+      await pick(tester, 'S-PRINT');
+      expect(key('new-ticket-attach'), findsNothing);
+      await tester.scrollUntilVisible(
+        key('new-ticket-files-desk-only'),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(key('new-ticket-files-desk-only'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'N1: a member of the team\'s general space who is not in the request\'s '
+    'unit gets no picker — never a file that is then "not sent"',
+    (tester) async {
+      await pumpForm(
+        tester,
+        // The team's general space: every member has it.
+        workspaces: const [
+          WorkspaceSummary(
+            id: 'W-GENERAL',
+            name: 'Demo Fabrika',
+            slug: 'genel',
+            colorRgb: '#2563EB',
+            role: 'member',
+            owned: false,
+          ),
+        ],
+        // Works another desk, not Bilgi işlem (U3).
+        myUnits: const [
+          EeUnitScope(unitId: 'U1', unitName: 'Bakım', workspaceId: 'W-BAKIM'),
+        ],
+      );
       await pick(tester, 'S-PRINT');
       expect(key('new-ticket-attach'), findsNothing);
       await tester.scrollUntilVisible(

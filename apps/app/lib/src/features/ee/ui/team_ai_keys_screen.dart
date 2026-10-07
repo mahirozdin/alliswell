@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
 import '../providers.dart' show canProvider;
 import '../data/team_ai_models.dart';
@@ -88,7 +89,7 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 88),
+      padding: EdgeInsets.only(bottom: awScrollEndPadding(context, 88)),
       children: [
         _PolicyCard(
           allowed: data.personalKeysAllowed,

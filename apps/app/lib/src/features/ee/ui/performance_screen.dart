@@ -9,6 +9,7 @@ import '../data/performance_models.dart';
 import '../performance_providers.dart';
 import 'report_format.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The performance panel (EE-205) — the same numbers per unit and per person.
 ///
@@ -74,7 +75,7 @@ class EePerformanceScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () => ref.read(eePerformanceProvider.notifier).refresh(),
             child: ListView(
-              padding: const EdgeInsets.all(AwSpace.x4),
+              padding: awPagePadding(context, AwSpace.x4),
               children: [
                 _Caution(text: data.closedIsNotPerformance),
                 const SizedBox(height: AwSpace.x4),

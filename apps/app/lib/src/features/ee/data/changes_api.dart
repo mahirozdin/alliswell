@@ -105,6 +105,10 @@ class EeChangesApi {
           for (final c in (self?['clashes'] as List<dynamic>? ?? const []))
             EeChangeClash.fromJson(c as Map<String, dynamic>),
         ],
+        drafts: [
+          for (final c in (self?['drafts'] as List<dynamic>? ?? const []))
+            EeChangeClash.fromJson(c as Map<String, dynamic>),
+        ],
         freezes: [
           for (final f in (data['freezes'] as List<dynamic>? ?? const []))
             EeChangeFreeze.fromJson(f as Map<String, dynamic>),

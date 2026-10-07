@@ -17,6 +17,7 @@ import 'form_designer_screen.dart';
 import 'service_categories_screen.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The service catalogue (EE-082, madde 8).
 ///
@@ -619,7 +620,7 @@ class _EeServiceRoutingScreenState
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),
         data: (list) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
+          padding: awPagePadding(context, AwSpace.x4),
           children: [
             ..._shelfAndIcon(context),
             const SizedBox(height: AwSpace.x6),

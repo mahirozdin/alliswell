@@ -8,6 +8,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../shared_items_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// "Shared with me" (EE-061) — the receiving end of EE-059's bridge.
 ///
@@ -43,7 +44,7 @@ class EeSharedWithMeScreen extends ConsumerWidget {
                 message: 'ee.shared.emptyBody'.tr(),
               )
             : ListView(
-                padding: const EdgeInsets.all(AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4),
                 children: [
                   Text(
                     'ee.shared.intro'.tr(),

@@ -27,6 +27,7 @@ import '../my_tickets_providers.dart';
 import '../new_ticket_providers.dart';
 import '../providers.dart';
 import '../ticket_drafts_providers.dart';
+import '../unit_scope_providers.dart';
 import 'form_field_view.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
@@ -409,15 +410,29 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
         : '$sent — ${'ee.tickets.new.filesFailed'.tr(args: {'count': '$failed'})}';
   }
 
+  /// The unit the request will land in, once the form knows it: the
+  /// service's only unit, or the one chosen among several. Null before that.
+  String? _targetUnitId(EeCatalogService? service) {
+    if (service == null || service.units.isEmpty) return null;
+    if (service.units.length == 1) return service.units.single.id;
+    return _unitId;
+  }
+
   /// The picked files onto the new request. Core's upload walk asks for
   /// membership in the request's unit (EE-168), so they go only where this
   /// person is a member; anywhere else they are counted as not sent rather
   /// than tried and refused one by one. Answers how many did not go.
   Future<int> _sendFiles(String ticketId, String? workspaceId) async {
     if (_files.isEmpty) return 0;
-    final mine = {
-      for (final w in ref.read(workspacesProvider).value ?? const []) w.id,
-    };
+    // Awaited, not peeked: nothing on this screen watches the list, so a
+    // peek can find it still loading and count every file as refused.
+    final List<WorkspaceSummary> known;
+    try {
+      known = await ref.read(workspacesProvider.future);
+    } catch (_) {
+      return _files.length;
+    }
+    final mine = {for (final w in known) w.id};
     if (workspaceId == null || !mine.contains(workspaceId)) {
       return _files.length;
     }
@@ -470,8 +485,17 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     final canDraft = online || ref.watch(draftWorkspaceIdProvider) != null;
     // UI-AUDIT #34: files go through core's upload walk, which asks for
     // membership in the request's unit — so the picker is offered to the
-    // people who work a desk, and somebody who only asks is told the limit.
-    final mayAttach = online && ref.watch(inSharedWorkspacesProvider);
+    // people who work THAT desk, and somebody who only asks is told the limit.
+    // N1 (retest): "works some desk" was read off the shared workspaces,
+    // which every member of the team has (its general space) — so a pure
+    // requester was handed a picker whose files were then counted as not
+    // sent without one being tried. The question is the request's unit.
+    final unit = _targetUnitId(service);
+    final mine = ref.watch(eeMyUnitsScopeProvider).value;
+    final worksHere =
+        unit != null && mine != null && mine.any((u) => u.unitId == unit);
+    final mayAttach = online && worksHere;
+    final saysDeskOnly = online && !worksHere && unit != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -727,7 +751,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
                     ),
                 ],
               ),
-            ] else if (online) ...[
+            ] else if (saysDeskOnly) ...[
               const SizedBox(height: AwSpace.x3),
               Text(
                 'ee.tickets.new.filesDeskOnly'.tr(),

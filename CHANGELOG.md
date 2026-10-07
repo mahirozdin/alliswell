@@ -9,6 +9,19 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **A request drafted offline survives a reload and goes on its own (OPH-361).** In the browser
+  the draft is written to disk the moment it is saved, and it is sent as soon as the connection
+  is back — from "My requests" too — without pressing "Try again". The new-request form offers
+  "Attach file" only to people who work the request's unit, so nobody is told afterwards that
+  their file could not be added.
+- **Small fixes from the second audit pass (OPH-361).** Writing on your own request says "Write
+  to the desk…" and "Send to the desk"; a change's calendar names a draft in the same window
+  instead of saying nothing else is there; audit rows are dated in your date format and named by
+  the server when it can; the scheduled saved-view report has a name among webhook events; two
+  links made for the same service show the minute they were made and, when even that matches, a
+  short reference. Approvals in the side rail is reachable with Tab and opens with Enter; on a
+  phone every list and form can be scrolled out from under the Quick Access button.
+
 - **Sync works on a MySQL that is not set to UTC.** A self-hosted database whose clock follows a
   non-UTC host stamped rows hours ahead, so every device's edit was turned away as stale; each
   connection now runs in UTC.

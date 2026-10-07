@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:go_router/go_router.dart';
 
+import '../../../core/date_format.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/history_models.dart';
@@ -295,14 +297,15 @@ class _EventList extends StatelessWidget {
   }
 }
 
-class _AuditRow extends StatelessWidget {
+class _AuditRow extends ConsumerWidget {
   const _AuditRow({required this.event});
 
   final EeHistoryEvent event;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    final format = ref.watch(dateFormatProvider);
     final actorName = event.isSystem
         ? 'ee.history.actorSystem'.tr()
         : (event.actorName ?? 'ee.history.actorUnknown'.tr());
@@ -338,7 +341,8 @@ class _AuditRow extends StatelessWidget {
             [
               eeAuditEntityName(event.entityType),
               ?record,
-              _stamp(event.occurredAt),
+              // The person's own date format (DESIGN §17), never ISO.
+              awFormatDateTime(event.occurredAt, format: format),
             ].join(' · '),
             style: theme.textTheme.bodySmall,
           ),
@@ -350,13 +354,6 @@ class _AuditRow extends StatelessWidget {
         ),
       ),
     );
-  }
-
-  /// Local time, to the minute. Seconds on an audit list are noise; the exact
-  /// instant is in the export, which is where somebody goes when it matters.
-  static String _stamp(DateTime at) {
-    String two(int n) => n.toString().padLeft(2, '0');
-    return '${at.year}-${two(at.month)}-${two(at.day)} ${two(at.hour)}:${two(at.minute)}';
   }
 }
 
@@ -385,12 +382,15 @@ class _Message extends StatelessWidget {
 String eeAuditEntityName(String type) =>
     AwI18n.instance.maybeTranslate('ee.audit.entity.$type') ?? type;
 
-/// The record's own name or number, read from the event's diff — the fields
+/// The record's own name or number: the server's [EeHistoryEvent.entityLabel]
+/// when it sent one, else read from the event's diff — the fields
 /// the server's emit sites write (`number`, `subject`, `title`, `name`,
 /// `email`, `filename`). A diff field is either a value or an `[old, new]`
 /// pair; the newer side wins, so a renamed record reads by its current name
 /// and a deleted one by the name it had.
 String? eeAuditRecordLabel(EeHistoryEvent event) {
+  final named = event.entityLabel?.trim();
+  if (named != null && named.isNotEmpty) return named;
   final diff = event.diff;
   if (diff == null) return null;
   Object? valueOf(String key) {

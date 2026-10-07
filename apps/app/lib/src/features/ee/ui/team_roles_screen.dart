@@ -9,6 +9,7 @@ import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The role list and its grant matrix (EE-053).
 ///
@@ -51,7 +52,7 @@ class EeTeamRolesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(eeTeamRolesProvider),
         ),
         data: (list) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
+          padding: awPagePadding(context, AwSpace.x4),
           children: [
             Text(
               'ee.team.roles.intro'.tr(),

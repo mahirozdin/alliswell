@@ -11,6 +11,7 @@ import '../kb_providers.dart';
 import '../providers.dart';
 import 'kb_editor_sheet.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// One article (EE-196).
 ///
@@ -71,7 +72,7 @@ class EeKbArticleScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: awPagePadding(context, 16),
             children: [
               Row(
                 children: [

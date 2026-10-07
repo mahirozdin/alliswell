@@ -12,6 +12,7 @@ import '../../files/data/pick_files.dart';
 import '../data/team_settings.dart';
 import '../team_settings_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The team settings form (EE-037) — the first screen a team admin owns.
 ///
@@ -120,7 +121,7 @@ class _EeTeamSettingsScreenState extends ConsumerState<EeTeamSettingsScreen> {
   Widget _form(BuildContext context, EeTeamSettings settings) {
     final controller = ref.read(eeTeamSettingsProvider.notifier);
     return ListView(
-      padding: const EdgeInsets.all(AwSpace.x4),
+      padding: awPagePadding(context, AwSpace.x4),
       children: [
         _logo(settings, controller),
         const SizedBox(height: AwSpace.x6),

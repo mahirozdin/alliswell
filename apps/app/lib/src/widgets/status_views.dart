@@ -264,7 +264,8 @@ const EdgeInsets kAwListRowPadding = EdgeInsets.symmetric(vertical: 3);
 /// List padding that clears the glass bottom bar / FAB on every platform.
 ///
 /// The shell's own floating buttons are cleared without being asked
-/// ([AwFabClearance], OPH-359): [extraBottom] is for a screen's OWN button.
+/// ([AwFabClearance], OPH-359), and so is the Quick Access bubble
+/// ([AwBubbleClearance]): [extraBottom] is for a screen's OWN button.
 EdgeInsets awListPadding(
   BuildContext context, {
   double horizontal = AwSpace.x4,
@@ -276,8 +277,13 @@ EdgeInsets awListPadding(
     horizontal,
     top,
     horizontal,
-    bottomInset +
-        AwSpace.x6 +
-        math.max(extraBottom, AwFabClearance.of(context)),
+    // …and the phone's Quick Access bubble (UI-AUDIT #57): the last row can
+    // always be scrolled up from under it.
+    awScrollEndPadding(
+      context,
+      bottomInset +
+          AwSpace.x6 +
+          math.max(extraBottom, AwFabClearance.of(context)),
+    ),
   );
 }

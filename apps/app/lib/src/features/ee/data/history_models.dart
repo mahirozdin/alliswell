@@ -17,6 +17,7 @@ class EeHistoryEvent {
     this.actorColorRgb,
     this.workspaceId,
     this.diff,
+    this.entityLabel,
   });
 
   final String id;
@@ -34,6 +35,12 @@ class EeHistoryEvent {
   final String? actorColorRgb;
   final String? workspaceId;
   final Map<String, dynamic>? diff;
+
+  /// The record's own name as the server reads it NOW — "#201 Yazıcı arızası",
+  /// a unit's name — resolved in one batched lookup per page (UI-AUDIT #44).
+  /// A status change's diff carries no subject, so without it the row could
+  /// only say "a request". Absent from an older server: the diff fallback.
+  final String? entityLabel;
 
   bool get isSystem => actor == 'system';
 
@@ -58,6 +65,7 @@ class EeHistoryEvent {
     actorColorRgb: json['actorColorRgb'] as String?,
     workspaceId: json['workspaceId'] as String?,
     diff: (json['diff'] as Map?)?.cast<String, dynamic>(),
+    entityLabel: json['entityLabel'] as String?,
   );
 }
 

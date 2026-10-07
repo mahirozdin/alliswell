@@ -17,6 +17,7 @@ import '../ticket_archive_providers.dart';
 import 'requester_ticket_screen.dart';
 import '../../../widgets/route_leading.dart';
 import 'ticket_detail_screen.dart' show EeTicketAnswersView;
+import '../../../widgets/fab_clearance.dart';
 
 /// A retry that can change the answer: the reads here do not ask while the
 /// app knows it is offline, so the sync engine's pull is the probe — if the
@@ -242,7 +243,7 @@ class EeArchivedTicketView extends ConsumerWidget {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AwSpace.x4),
+        padding: awPagePadding(context, AwSpace.x4),
         children: [
           // The strip is the first thing on the screen, before the subject:
           // a read-only record must not be mistaken for a live one somebody

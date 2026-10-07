@@ -23,6 +23,7 @@ import 'new_ticket_screen.dart';
 import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// One machine's card — what a QR code opens (EE-194).
 ///
@@ -195,7 +196,7 @@ class _Card extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final types = ref.watch(eeAssetTypesProvider).value ?? const EeAssetTypes();
     return ListView(
-      padding: const EdgeInsets.all(AwSpace.x4),
+      padding: awPagePadding(context, AwSpace.x4),
       children: [
         _Facts(
           asset: asset,

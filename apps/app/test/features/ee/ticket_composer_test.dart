@@ -472,6 +472,14 @@ void main() {
         expect(find.text('Masaya yaz'), findsOneWidget);
         expect(find.text('Bunu masa okur.'), findsOneWidget);
         expect(find.text('Bunu talep sahibi okur.'), findsNothing);
+        // The hint and the button say the same thing as the segment.
+        final field = tester.widget<TextField>(
+          find.byKey(const Key('ticket-composer-text')),
+        );
+        expect(field.decoration?.hintText, 'Masaya yazın…');
+        expect(find.text('Masaya gönder'), findsOneWidget);
+        expect(find.text('Talep sahibine gönder'), findsNothing);
+        expect(find.textContaining('Talep sahibine yaz'), findsNothing);
       },
     );
 

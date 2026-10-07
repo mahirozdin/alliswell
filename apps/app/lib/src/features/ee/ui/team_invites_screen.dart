@@ -12,6 +12,7 @@ import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// Invitations (EE-042).
 ///
@@ -58,7 +59,7 @@ class EeTeamInvitesScreen extends ConsumerWidget {
                 message: 'ee.team.invites.emptyBody'.tr(),
               )
             : ListView.builder(
-                padding: const EdgeInsets.all(AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4),
                 itemCount: items.length,
                 itemBuilder: (context, i) => _InviteTile(invite: items[i]),
               ),

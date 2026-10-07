@@ -39,6 +39,7 @@ import 'ticket_composer.dart';
 import 'ticket_tags_section.dart';
 import 'ticket_worklog_section.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
 ///
@@ -196,7 +197,7 @@ class _Thread extends ConsumerWidget {
         requesterId != null && ref.watch(currentUserIdProvider) == requesterId;
 
     return ListView(
-      padding: const EdgeInsets.all(AwSpace.x4),
+      padding: awPagePadding(context, AwSpace.x4),
       children: [
         // EE-167: the number above the subject rather than inside it. On the
         // detail screen there is room for a line, and the thing somebody reads

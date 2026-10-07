@@ -173,4 +173,23 @@ void main() {
       );
     });
   });
+
+  group('UI-AUDIT #57 (retest): the room a screen leaves at its end', () {
+    test('reaches from the bottom edge to above the resting button', () {
+      final origin = bubbleOrigin(
+        kBubbleFactoryPosition,
+        viewport,
+        safeArea,
+        0,
+      );
+      final room = bubbleClearance(origin, viewport);
+      expect(viewport.height - room, lessThan(origin.dy));
+    });
+
+    test('a button parked in the upper half asks for nothing', () {
+      const high = BubblePosition(edge: BubbleEdge.right, heightFraction: 0);
+      final origin = bubbleOrigin(high, viewport, safeArea, 0);
+      expect(bubbleClearance(origin, viewport), 0);
+    });
+  });
 }

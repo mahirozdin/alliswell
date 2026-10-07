@@ -233,4 +233,12 @@ void main() {
   test('an event this build has no words for keeps its wire name', () {
     expect(eeWebhookEventLabel('ticket.reticulated'), 'ticket.reticulated');
   });
+
+  test('UI-AUDIT #63: the scheduled saved-view report has words, not its key '
+      '(scripts/i18n/ee-vocabulary.mjs holds every server event to this)', () {
+    expect(
+      eeWebhookEventLabel('report.savedView'),
+      'Scheduled saved view report',
+    );
+  });
 }
