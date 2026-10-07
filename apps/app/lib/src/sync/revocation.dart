@@ -52,7 +52,7 @@ const Map<String, String> _noteChildren = {'note_link_rows': 'note_id'};
 /// a revocation: the person's own diagnostic logs. Losing access to a team's
 /// workspace is not a reason to erase the evidence of what their own phone
 /// did.
-const Set<String> _deviceLocal = {'alarm_events', 'share_events'};
+const Set<String> kDeviceLocalTables = {'alarm_events', 'share_events'};
 
 /// Every table this module has an opinion about. [revocationCoverage] compares
 /// it with the live schema so a table added in a later version cannot quietly
@@ -63,7 +63,7 @@ Set<String> revocationCoverage(AwDatabase db) => {
     if (table.columnsByName.containsKey('workspace_id')) table.actualTableName,
   ..._taskChildren.keys,
   ..._noteChildren.keys,
-  ..._deviceLocal,
+  ...kDeviceLocalTables,
 };
 
 /// Parks this workspace's unsent mutations, then removes its replica.

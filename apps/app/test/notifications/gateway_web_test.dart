@@ -94,6 +94,9 @@ class _FakeCache implements AlertCache {
   Future<void> putFallback(AlertText text) async {
     fallback = text;
   }
+
+  @override
+  Future<void> clear() async => entries.clear();
 }
 
 WebNotificationsGateway _gatewayFor(

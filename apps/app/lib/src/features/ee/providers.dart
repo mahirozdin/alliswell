@@ -17,7 +17,7 @@ final eeApiProvider = Provider<EeApi>(
   (ref) => EeApi(ref.watch(apiClientProvider)),
 );
 
-const String _kEeStatusCachePrefix = 'alliswell_ee_status::';
+const String kEeStatusCachePrefix = 'alliswell_ee_status::';
 
 /// What this instance is licensed for, cached in localKv so a fresh launch
 /// has a last-known truth before the network answers (no flicker, honest
@@ -36,7 +36,7 @@ class EeStatusController extends AsyncNotifier<EeStatus> {
     if (userId == null) return EeStatus.none;
     // Keyed per user, not per instance: one device can serve two people, and
     // "signed out" must never inherit the previous account's capability list.
-    _cacheKey = '$_kEeStatusCachePrefix$userId';
+    _cacheKey = '$kEeStatusCachePrefix$userId';
     final cached = await _readCache();
     try {
       final fresh = await ref.read(eeApiProvider).status();
@@ -78,7 +78,7 @@ final eeFeatureProvider = Provider.family<bool, String>(
   (ref, feature) => ref.watch(eeStatusProvider).value?.has(feature) ?? false,
 );
 
-const String _kEePermissionsCachePrefix = 'alliswell_ee_permissions::';
+const String kEePermissionsCachePrefix = 'alliswell_ee_permissions::';
 
 /// What the signed-in person may do in the CURRENT workspace (EE-052).
 ///
@@ -113,7 +113,7 @@ class EePermissionsController extends AsyncNotifier<EePermissions> {
     if (workspaceId == null) return EePermissions.unknown;
     // Keyed per user AND per workspace: one device serves two people, and one
     // person can hold different roles in different workspaces.
-    _cacheKey = '$_kEePermissionsCachePrefix$userId::$workspaceId';
+    _cacheKey = '$kEePermissionsCachePrefix$userId::$workspaceId';
     final cached = await _readCache();
     try {
       final fresh = await ref.read(eeApiProvider).myPermissions(workspaceId);

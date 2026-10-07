@@ -52,10 +52,9 @@ tasarımı yazılmaz. Satır numaraları rapordandır ve kayar; her iş kendi me
 kapanır ve sunucunun **hem eski hem yeni** davranışına dayanıklıdır: yeni alan yoksa bugünkü
 davranış, yeni uç 404 ise "ipucu yok", bilinmeyen durum değeri nötr çizilir.
 
-**Sıra:** OPH-355 (P0, #3) → OPH-356 (P0, #5 + takım adresi) → OPH-357 (core API + hata katmanı) →
+**Sıra:** OPH-356 (P0, #5 + takım adresi) → OPH-357 (core API + hata katmanı) →
 OPH-358 (talep/onay ekranları) → OPH-359 (kabuk, gezinme, erişilebilirlik) → OPH-360 (yönetim ve
-rapor ekranları). **Kritik yollar:** OPH-355 (yerel replika — sync klasörü; `migration_test.dart`
-gerekirse), OPH-357 (auth — hız sınırı giriş yolunu değiştirir: `auth.test.js`,
+rapor ekranları). **Kritik yol:** OPH-357 (auth — hız sınırı giriş yolunu değiştirir: `auth.test.js`,
 `auth-refresh.test.js`, `auth-me.test.js`).
 
 **Her işin sabit DoD'si:** i18n tr+en (`check:i18n`), DESIGN tokenları, açık ve koyu tema, dokunma
@@ -63,35 +62,10 @@ hedefi ≥ 44 px; test adları `UI-AUDIT #n:` önekli; core API değişikliği d
 değişmiyor — rule 12 gerekçesi: bu epicin core API değişiklikleri hata gövdesi ve hız sınırıdır,
 araç değil). Cihazda bakılacaklar (ekran okuyucu, telefon yerleşimi) DEVICE-CHECKS.md'ye.
 
-**Risk planı (rule 10):** OPH-355 kullanıcının cihazdaki verisini SİLER — plan iş metninde; gönderilmemiş
-değişiklik kaybı kullanıcıya sorulmadan olmaz. OPH-357 hız sınırının anahtarını değiştirir — güvenlik
-kararı, ADR-0045 aynı işte.
+**Risk planı (rule 10):** OPH-357 hız sınırının anahtarını değiştirir — güvenlik kararı, ADR-0045
+aynı işte.
 
 ---
-
-### OPH-355 — P0: çıkışta yerel veri silinir, hesap değişince replika düşer; /me geçici hatasında son bilinen liste
-
-**Bulgular:** #3, #27. **Karşı yarı:** yok.
-
-**Plan:** (1) çıkış: `features/auth/providers.dart` ~100 `logout()` önce outbox'a bakar — gönderilmemiş
-değişiklik varsa onay diyaloğu ("N değişiklik bu cihazdan silinecek"); sonra drift veritabanını
-kapatır ve siler (yerel dosya; web'de IndexedDB `alliswell` ve `alliswell_alerts`), kullanıcıya bağlı
-LocalKv anahtarlarını temizler (liste kodda tek sabit; sunucu adresi, dil, tema cihazındır, kalır).
-(2) giriş: son oturumun kullanıcı kimliği saklanır; yeni giriş farklı kullanıcıysa ilk senkrondan
-önce replika düşürülür (çıkış atlanmış ya da çökmüş olsa bile). (3) bildirim listesi kullanıcıya göre
-süzülür (`features/ee/notifications_providers.dart` ~136) — savunma derinliği.
-
-- [ ] Plan (1)–(3); LESSONS'a `sync` alanında tek satır ("replika kullanıcıya aittir").
-- [ ] **#27** `features/workspaces/workspaces.dart` ~95: 429, 5xx ve zaman aşımında da önbellekteki
-      son listeye düşülür; birim seçici kaybolmaz.
-- [ ] Testler: yeni `test/features/auth/logout_wipe_test.dart` (çıkış → DB ve kullanıcı anahtarları
-      yok; cihaz ayarları duruyor; outbox doluyken diyalog), yeni
-      `test/sync/user_switch_test.dart` (A çıkar, B girer → A'nın satırı ve bildirimi görünmez),
-      `test/features/ee/notifications_test.dart` (kullanıcı süzgeci), yeni
-      `test/features/workspaces/workspaces_cache_test.dart` (#27).
-
-**Kabul:** raporun senaryosu: saha3 çıkar, saha2 aynı tarayıcıda girer → saha3'ün bildirimi yok;
-IndexedDB'de önceki kullanıcının metni yok. `/me` 429 → Ana sayfa son listeyle açılır.
 
 ### OPH-356 — P0: takım adresi istemcide — davet bağlantısının sunucusu, varsayılan adreste takım bağlamı, yönetim rotalarının kapısı
 

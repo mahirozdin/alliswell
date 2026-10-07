@@ -10,6 +10,7 @@ import '../core/persisted_prefs.dart';
 import '../features/ai/ui/ai_settings_card.dart';
 import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
+import '../features/auth/ui/sign_out.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/workspaces/workspaces.dart';
@@ -364,7 +365,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             // Router redirect drops the user on /login once state clears.
-            onTap: () => ref.read(authControllerProvider.notifier).logout(),
+            // Asks first when unsent changes would be deleted (OPH-355).
+            onTap: () => signOutWithConfirm(context, ref),
           ),
         ),
       ],

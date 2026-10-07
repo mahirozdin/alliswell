@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Çıkışta yerel veri (2026-10-07)
+
+- OPH-355 — web'de bir hesapla gir, talep ve bildirim görün, çıkış yap: DevTools › Application › IndexedDB'de `alliswell` bloklarında önceki metin aranınca bulunmuyor, `alliswell_alerts`'te yalnız `__fallback` kalıyor; aynı tarayıcıda ikinci hesapla gir → ilk hesabın bildirimi yok. Çevrimdışı bir değişiklik yapıp çıkışa bas → "N değişiklik" diyaloğu.
+
 ## Liste ritmi (2026-09-30)
 
 - OPH-353 — açık ve koyu temada talep kuyruğu, Taleplerim, Bilgi bankası, Varlıklar, bildirim merkezi, denetim günlüğü ve dosyalar: kartlar arası eşit boşluk, hiçbir liste çizgiyle ayrılmıyor.

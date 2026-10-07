@@ -30,6 +30,22 @@ class _WebLocalKv implements LocalKv {
       // Ignore.
     }
   }
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {
+    try {
+      final storage = web.window.localStorage;
+      final doomed = <String>[
+        for (var i = 0; i < storage.length; i++)
+          if (storage.key(i) case final key? when test(key)) key,
+      ];
+      for (final key in doomed) {
+        storage.removeItem(key);
+      }
+    } on Object {
+      // Ignore.
+    }
+  }
 }
 
 LocalKv createLocalKv() => _WebLocalKv();

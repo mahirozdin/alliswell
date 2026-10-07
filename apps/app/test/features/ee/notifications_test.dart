@@ -76,6 +76,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(db),
+        currentUserIdProvider.overrideWithValue(me),
         // The list the current workspace comes from, so everything derived
         // from it — which workspaces sync, and so what the badge counts —
         // agrees with the override below (EE-296).
@@ -352,6 +353,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          currentUserIdProvider.overrideWithValue(me),
           syncWorkspaceIdsProvider.overrideWithValue(const [ws, other]),
         ],
       );
@@ -390,4 +392,62 @@ void main() {
       expect(row.destination, '/tickets/01JABCDEFGHJKMNPQRSTVWXYZ0');
     },
   );
+
+  test(
+    "UI-AUDIT #3: the centre and the badge show only the signed-in person's rows",
+    () async {
+      // Saha3's request notifications were still in the replica when saha2
+      // signed in on the same browser, and the centre — filtering by unit
+      // only — listed them. Sign-out wipes the replica now (OPH-355); this
+      // is the second wall, for a row that outlives it anyway.
+      await pull('N1', data: notification('N1'));
+      await pull(
+        'N2',
+        data: {
+          ...notification('N2', createdAt: '2026-08-24T12:00:00.000Z'),
+          'userId': 'U-previous',
+          'params': {'taskTitle': 'VPN erişimi', 'actorName': 'Saha3'},
+        },
+      );
+      final container = containerWith();
+
+      final rows = await readCentre(container);
+      expect([for (final r in rows) r.id], ['N1']);
+      final badge = container.listen(
+        unreadNotificationCountProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      addTearDown(badge.close);
+      expect(await container.read(unreadNotificationCountProvider.future), 1);
+
+      // "Mark all read" marks what the centre lists — not somebody else's row.
+      expect(
+        await NotificationStore(db).markAllRead(const [ws], userId: me),
+        1,
+      );
+      final queued = await db.select(db.pendingMutations).get();
+      expect([for (final m in queued) m.entityId], ['N1']);
+    },
+  );
+
+  test('UI-AUDIT #3: signed out, the centre and the badge are empty', () async {
+    await pull('N1', data: notification('N1'));
+    final container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+        currentUserIdProvider.overrideWithValue(null),
+        syncWorkspaceIdsProvider.overrideWithValue(const [ws]),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect(await readCentre(container), isEmpty);
+    final badge = container.listen(
+      unreadNotificationCountProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(badge.close);
+    expect(await container.read(unreadNotificationCountProvider.future), 0);
+  });
 }

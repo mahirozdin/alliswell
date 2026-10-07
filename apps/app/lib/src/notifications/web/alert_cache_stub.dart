@@ -13,6 +13,9 @@ class _NoAlertCache implements AlertCache {
 
   @override
   Future<void> putFallback(AlertText text) async {}
+
+  @override
+  Future<void> clear() async {}
 }
 
 AlertCache createAlertCache() => const _NoAlertCache();

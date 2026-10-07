@@ -7,6 +7,18 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Fixed
+
+- **Signing out removes your data from the device (OPH-355).** The local copy — tasks, notes,
+  requests, notifications and anything not yet sent — and your cached account details are deleted
+  when you sign out; if changes have not reached the server yet, the app tells you how many and
+  asks first. Signing in as a different person on the same device or browser starts from a clean
+  copy, and the notification centre only ever lists your own notifications. Device settings
+  (server address, language, theme) stay.
+- **A busy or briefly failing server no longer blanks Home (OPH-355).** When the account lookup is
+  rate-limited, fails on the server or times out, Home and the workspace switcher carry on with
+  the last known list.
+
 ## [1.15.0] — 2026-09-30
 
 ### Changed

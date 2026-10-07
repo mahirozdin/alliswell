@@ -28,13 +28,13 @@ final eeApprovalsApiProvider = Provider<EeApprovalsApi>(
 
 // ── The badge and the door (EE-294) ─────────────────────────────────────────
 
-const String _kDoorCachePrefix = 'alliswell_ee_approvals_door::';
+const String kEeApprovalsDoorCachePrefix = 'alliswell_ee_approvals_door::';
 
 String? _doorCacheKey(Ref ref) {
   final userId = ref.watch(currentUserIdProvider);
   final origin = ref.watch(teamOriginProvider);
   if (userId == null || origin == null) return null;
-  return '$_kDoorCachePrefix$userId::${origin.slug}';
+  return '$kEeApprovalsDoorCachePrefix$userId::${origin.slug}';
 }
 
 /// The last answer the server gave about the door — read before the network

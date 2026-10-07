@@ -67,7 +67,7 @@ class WorkspaceSummary {
   final bool reportsOwnership;
 }
 
-const String _kWorkspacesCachePrefix = 'alliswell_me_workspaces::';
+const String kWorkspacesCachePrefix = 'alliswell_me_workspaces::';
 
 /// The signed-in user's workspaces. Re-fetches whenever the session changes;
 /// empty while signed out.
@@ -79,7 +79,7 @@ const String _kWorkspacesCachePrefix = 'alliswell_me_workspaces::';
 final workspacesProvider = FutureProvider<List<WorkspaceSummary>>((ref) async {
   final session = ref.watch(authControllerProvider).value;
   if (session == null) return const [];
-  final key = '$_kWorkspacesCachePrefix${session.user.id}';
+  final key = '$kWorkspacesCachePrefix${session.user.id}';
   final dio = ref.watch(apiClientProvider);
   try {
     final res = await dio.get<Map<String, dynamic>>('/api/v1/me');
@@ -93,10 +93,12 @@ final workspacesProvider = FutureProvider<List<WorkspaceSummary>>((ref) async {
     );
     return workspaces;
   } on DioException catch (e) {
-    // Only NO answer falls back to the last list. A server that answered —
-    // a revoked session, a deleted account — said something the cache must
-    // not paper over.
-    if (e.response == null) {
+    // A passing failure falls back to the last list: no answer at all (offline,
+    // a timeout), a rate limit or a server error (UI-AUDIT #27 — a 429 at a
+    // busy shift change used to blank Home and drop the unit switcher while
+    // the replica held everything). An answer that MEANS something — a revoked
+    // session, a deleted account, a refused request — is never papered over.
+    if (isTransientMeFailure(e)) {
       final cached = await readCachedWorkspaces(session.user.id);
       if (cached != null) return cached;
     }
@@ -104,10 +106,19 @@ final workspacesProvider = FutureProvider<List<WorkspaceSummary>>((ref) async {
   }
 });
 
+/// Whether a failed `/me` says nothing about the account — the network or the
+/// server stumbled — so the last known list still stands. 401/403/404 and the
+/// rest of 4xx are answers about the account and are not transient.
+bool isTransientMeFailure(DioException e) {
+  final status = e.response?.statusCode;
+  if (status == null) return true;
+  return status == 408 || status == 429 || status >= 500;
+}
+
 /// The last `/me` list this device saw for [userId], or null — also what a
 /// background turn reads, since it has no provider graph and no network promise.
 Future<List<WorkspaceSummary>?> readCachedWorkspaces(String userId) async {
-  final raw = await localKv.get('$_kWorkspacesCachePrefix$userId');
+  final raw = await localKv.get('$kWorkspacesCachePrefix$userId');
   if (raw == null) return null;
   try {
     return [
@@ -168,6 +179,9 @@ List<WorkspaceSummary> switchableWorkspacesOf(List<WorkspaceSummary> all) {
   return shared.isEmpty ? all : shared;
 }
 
+/// Where [SelectedWorkspace] keeps its choice, one key per user.
+const String kSelectedWorkspacePrefix = 'alliswell_selected_workspace::';
+
 /// Which workspace this person last chose — persisted, and keyed PER USER.
 ///
 /// One device serves two people (the permission cache learned this first), so
@@ -175,9 +189,8 @@ List<WorkspaceSummary> switchableWorkspacesOf(List<WorkspaceSummary> all) {
 /// Null means "not chosen yet", which is not the same as "chose the first
 /// one": the fallback below has to keep working for somebody who never picked.
 class SelectedWorkspace extends Notifier<String?> {
-  static const _prefix = 'alliswell_selected_workspace';
-
-  String? _key(String? userId) => userId == null ? null : '$_prefix::$userId';
+  String? _key(String? userId) =>
+      userId == null ? null : '$kSelectedWorkspacePrefix$userId';
 
   @override
   String? build() {

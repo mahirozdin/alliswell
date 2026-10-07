@@ -14,7 +14,7 @@ import 'ai_api.dart';
 /// The honest guarantee: a local wipe loses the queued report and the server
 /// row stays "proposed, unconfirmed" — accuracy degrades to under-claiming,
 /// never to a lie.
-const String _kPendingActions = 'alliswell_ai_pending_actions';
+const String kAiPendingActionsKey = 'alliswell_ai_pending_actions';
 
 final aiActionReporterProvider = Provider<AiActionReporter>(
   (ref) => AiActionReporter(ref.watch(aiApiProvider)),
@@ -76,7 +76,7 @@ class AiActionReporter {
   }
 
   Future<List<Map<String, dynamic>>> _readQueue() async {
-    final raw = await localKv.get(_kPendingActions);
+    final raw = await localKv.get(kAiPendingActionsKey);
     if (raw == null) return [];
     try {
       return (jsonDecode(raw) as List).cast<Map<String, dynamic>>();
@@ -86,5 +86,5 @@ class AiActionReporter {
   }
 
   Future<void> _writeQueue(List<Map<String, dynamic>> queue) =>
-      localKv.set(_kPendingActions, jsonEncode(queue));
+      localKv.set(kAiPendingActionsKey, jsonEncode(queue));
 }

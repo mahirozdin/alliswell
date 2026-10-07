@@ -119,6 +119,11 @@
       "testFailed": "The test alarm could not be scheduled. See the alarm log."
     },
     "signOut": "Sign out",
+    "signOutUnsent": {
+      "title": "Unsent changes",
+      "body": "{count} changes on this device have not reached the server yet. Signing out deletes them from this device for good.",
+      "confirm": "Delete and sign out"
+    },
     "aboutBody": "Open-source, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
     "language": {
       "title": "Language",

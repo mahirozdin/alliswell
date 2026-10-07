@@ -116,6 +116,20 @@ class SyncEngine {
     _conflicts.close();
   }
 
+  /// [stop], then wait for a round already in flight to finish (OPH-355).
+  ///
+  /// Sign-out wipes the replica right after; a pull that was mid-flight would
+  /// otherwise land its page on the empty database a moment later and leave
+  /// the previous person's rows on the device.
+  Future<void> halt() async {
+    stop();
+    while (_running) {
+      await (_idle?.future ?? Future<void>.value());
+    }
+  }
+
+  Completer<void>? _idle;
+
   /// Debounced push trigger — call after every optimistic local write.
   void notifyLocalWrite() {
     if (_stopped) return;
@@ -141,6 +155,7 @@ class SyncEngine {
       return true;
     }
     _running = true;
+    final idle = _idle = Completer<void>();
     var converged = false;
     try {
       await _pushPending();
@@ -167,6 +182,7 @@ class SyncEngine {
       _scheduleRetry();
     } finally {
       _running = false;
+      idle.complete();
     }
     if (_rerunWanted && !_stopped) {
       _rerunWanted = false;

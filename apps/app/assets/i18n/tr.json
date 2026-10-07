@@ -118,6 +118,11 @@
       "testFailed": "Test alarmı kurulamadı. Alarm günlüğüne bakın."
     },
     "signOut": "Çıkış yap",
+    "signOutUnsent": {
+      "title": "Gönderilmemiş değişiklikler",
+      "body": "Bu cihazdaki {count} değişiklik henüz sunucuya ulaşmadı. Çıkış yaparsan bu cihazdan kalıcı olarak silinir.",
+      "confirm": "Sil ve çıkış yap"
+    },
     "aboutBody": "Açık kaynak, kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
     "language": {
       "title": "Dil",

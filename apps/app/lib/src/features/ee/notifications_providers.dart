@@ -7,6 +7,7 @@ import '../../i18n/i18n.dart';
 import '../../sync/db/database.dart';
 import '../../sync/outbox.dart';
 import '../../sync/providers.dart';
+import '../workspaces/workspaces.dart';
 
 /// The notification centre's data (EE-077, on EE-073's synced inbox).
 ///
@@ -129,15 +130,22 @@ class NotificationItem {
 /// Every synced workspace counts: what happened to a person in one unit is
 /// news whichever unit is on screen — a request assigned to them in another
 /// unit showed up only once they happened to switch to it.
+///
+/// And only the signed-in person's rows (UI-AUDIT #3). A notification is
+/// addressed to ONE person; the replica is wiped when the person changes
+/// (OPH-355), and this filter is the second wall — a row that outlived a
+/// sign-out must still never reach the next person's centre.
 final unreadNotificationCountProvider = StreamProvider<int>((ref) {
   final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
-  if (workspaceIds.isEmpty) return Stream.value(0);
+  final userId = ref.watch(currentUserIdProvider);
+  if (workspaceIds.isEmpty || userId == null) return Stream.value(0);
   final db = ref.watch(databaseProvider);
   final count = db.notifications.id.count();
   final query = db.selectOnly(db.notifications)
     ..addColumns([count])
     ..where(
       db.notifications.workspaceId.isIn(workspaceIds) &
+          db.notifications.userId.equals(userId) &
           db.notifications.readAt.isNull(),
     );
   return query.map((row) => row.read(count) ?? 0).watchSingle();
@@ -153,10 +161,13 @@ final notificationCenterProvider = StreamProvider<List<NotificationItem>>((
   ref,
 ) {
   final workspaceIds = ref.watch(syncWorkspaceIdsProvider);
-  if (workspaceIds.isEmpty) return Stream.value(const <NotificationItem>[]);
+  final userId = ref.watch(currentUserIdProvider);
+  if (workspaceIds.isEmpty || userId == null) {
+    return Stream.value(const <NotificationItem>[]);
+  }
   final db = ref.watch(databaseProvider);
   final query = db.select(db.notifications)
-    ..where((n) => n.workspaceId.isIn(workspaceIds))
+    ..where((n) => n.workspaceId.isIn(workspaceIds) & n.userId.equals(userId))
     ..orderBy([
       (n) => OrderingTerm.desc(n.createdAt),
       (n) => OrderingTerm.desc(n.id),
@@ -213,17 +224,23 @@ class NotificationStore {
   }
 
   /// "Mark everything read" — everything the centre lists, from
-  /// [workspaceIds]; one mutation per row, on purpose.
+  /// [workspaceIds] and, when given, addressed to [userId] (the centre's own
+  /// filter); one mutation per row, on purpose.
   ///
   /// The server has no bulk verb for this and inventing a client-only one
   /// would make the two paths disagree the first time a push failed halfway.
   /// The outbox is built for exactly this: a queue of small, independently
   /// retryable facts. Each row's mutation goes to its own workspace.
-  Future<int> markAllRead(List<String> workspaceIds) async {
+  Future<int> markAllRead(List<String> workspaceIds, {String? userId}) async {
     if (workspaceIds.isEmpty) return 0;
     final unread =
         await (_db.select(_db.notifications)..where(
-              (n) => n.workspaceId.isIn(workspaceIds) & n.readAt.isNull(),
+              (n) =>
+                  n.workspaceId.isIn(workspaceIds) &
+                  n.readAt.isNull() &
+                  (userId == null
+                      ? const Constant(true)
+                      : n.userId.equals(userId)),
             ))
             .get();
     for (final row in unread) {

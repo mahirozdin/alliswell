@@ -64,7 +64,8 @@
 - **DERS** Serileştiriciyi REST ile sync PULL paylaşır → yeni alanı (`tagIds`) pull yükleyicisi yüklemezse her snapshot sessizce boş değer (`[]`) taşır.
 - **DERS** Not kilidinin base'i notun KENDİ revizyonudur, workspace imleci değil — imleç soket pull'uyla karşı yazımı geçer, gövde sessizce ezilir; kendi başarılı push'u base'i ilerletir.
 - **DERS** LWW intent adı gerçekten yazılan kolon olmalı: emekli kolona bağlı intent hiç eşleşmez, kilit log'suz kilitlemeyi bırakır → kolon emekliye çıkınca intent'i taşı.
-- **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; replika çıkışta silinmez → yerelde de `userId` süz (ADR-0018).
+- **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; yerelde de `userId` süz (ADR-0018) (ikinci duvar).
+- **KARAR** Replika tek kişinin (OPH-355): çıkış + başkasının girişi onu ve `kUserBoundKvPrefixes`'i siler, yerinde (`secure_delete`+VACUUM); kişiye ait yeni LocalKv anahtarı → o listeye.
 - **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa hiçbir çekme onu görmez → satırı kaldıran iş aynı txn'de sync yazımı kaydeder; testi gerçek çekmeyle yap.
 - **DERS** Genel push makinesi silmeyi `deleted_at` adıyla yazar ve onunla tombstone'lar → push'lanan her varlığın soft-delete kolonu `deleted_at` olmalı.
 - **DERS** `registerSyncEntity` tip başına tek kayıt, tek serileştirici → aynı tabloyu iki kitleye iki alan kümesiyle sunmak ayrı tip ya da server-only REST ister.
