@@ -227,10 +227,15 @@ void main() {
                 ticketEvent('01EVENT0000000000000000A2', 'updated', {
                   'answersChanged': ['tedarikci', 'tutar'],
                 }),
-                ticketEvent('01EVENT0000000000000000A3', 'status_changed', {
-                  'status': ['waiting', 'in_progress'],
-                  'reason': [null, 'requester_replied'],
-                }, name: 'Deniz Yılmaz'),
+                ticketEvent(
+                  '01EVENT0000000000000000A3',
+                  'status_changed',
+                  {
+                    'status': ['waiting', 'in_progress'],
+                    'reason': [null, 'requester_replied'],
+                  },
+                  name: 'Deniz Yılmaz',
+                ),
               ],
             ),
           ),
