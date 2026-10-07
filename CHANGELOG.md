@@ -9,6 +9,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Sync works on a MySQL that is not set to UTC.** A self-hosted database whose clock follows a
+  non-UTC host stamped rows hours ahead, so every device's edit was turned away as stale; each
+  connection now runs in UTC.
 - **Extending a public link never shortens it (OPH-360).** "Extend…" asks how long — 1, 2, 7 or 30
   days — and shows the new end before anything is sent; validity is offered in days, not "720
   hours". Each link row names its services, its unit and the day it was made; revoking asks "Keep
