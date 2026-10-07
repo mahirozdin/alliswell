@@ -1022,9 +1022,10 @@ packages:
   markdown_forge:
     dependency: "direct main"
     description:
-      path: "packages/markdown_forge"
-      relative: true
-    source: path
+      name: markdown_forge
+      sha256: "4ada03cc913561cf5c1629d21cd9011ec9416ac8fac4917abe97c7de6d9f811d"
+      url: "https://pub.dev"
+    source: hosted
     version: "0.1.0"
   matcher:
     dependency: transitive
