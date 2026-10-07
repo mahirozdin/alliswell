@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
+import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/kb_models.dart';
 import '../kb_providers.dart';
@@ -101,6 +102,22 @@ class EeKbArticleScreen extends ConsumerWidget {
                     : 'ee.kb.noSolutionYet'.tr(),
                 muted: !(row.solution?.trim().isNotEmpty ?? false),
               ),
+              // UI-AUDIT #36: an article no service names is offered to
+              // nobody filing a request — said where the writer can act on it.
+              if (row.serviceId == null && canWrite)
+                Padding(
+                  key: const Key('kb-no-service'),
+                  padding: const EdgeInsets.only(bottom: AwSpace.x4),
+                  child: Text(
+                    'ee.kb.noServiceNote'.tr(),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              // UI-AUDIT #38: what the article did at the door — the desk's
+              // numbers, read from the server (they live there, EE-197).
+              if (canWrite) _Counts(articleId: articleId),
               const SizedBox(height: 24),
               if (canWrite)
                 _Flow(
@@ -177,6 +194,30 @@ class _FlowState extends ConsumerState<_Flow> {
   bool _busy = false;
 
   Future<void> _move(String to) async {
+    // UI-AUDIT #75: retiring is the one move with no way back (the server's
+    // `retired` is terminal), so it is asked before it is done.
+    if (to == 'retired') {
+      final sure = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('ee.kb.retireTitle'.tr()),
+          content: Text('ee.kb.retireBody'.tr()),
+          actions: [
+            TextButton(
+              key: const Key('kb-retire-cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text('common.cancel'.tr()),
+            ),
+            FilledButton(
+              key: const Key('kb-retire-confirm'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text('ee.kb.moveTo.retired'.tr()),
+            ),
+          ],
+        ),
+      );
+      if (sure != true || !mounted) return;
+    }
     setState(() => _busy = true);
     try {
       await ref.read(eeKbApiProvider).setStatus(widget.articleId, to);
@@ -250,4 +291,48 @@ class KbStatusChip extends StatelessWidget {
     visualDensity: VisualDensity.compact,
     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
   );
+}
+
+/// OPH-358 (UI-AUDIT #38) — "offered 5 times, 2 asked anyway, prevented 3":
+/// the deflection numbers the guide and the demo talk about, which only the
+/// API showed. Quiet while it loads and when it cannot be read — the
+/// article above is the page; these are a footnote.
+class _Counts extends ConsumerWidget {
+  const _Counts({required this.articleId});
+
+  final String articleId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final article = ref.watch(eeKbArticleCountsProvider(articleId)).value;
+    if (article == null) return const SizedBox.shrink();
+    final theme = Theme.of(context);
+    return Padding(
+      key: const Key('kb-counts'),
+      padding: const EdgeInsets.only(bottom: AwSpace.x2),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            Icons.insights_outlined,
+            size: 18,
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: Text(
+              'ee.kb.counts'.tr(
+                args: {
+                  'suggested': '${article.suggestedCount}',
+                  'converted': '${article.convertedCount}',
+                  'deflected': '${article.deflectedCount}',
+                },
+              ),
+              style: theme.textTheme.bodySmall,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

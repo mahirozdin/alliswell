@@ -292,7 +292,8 @@ class DemoCorpus {
               ),
               actor: h['actor'] as String,
               verb: h['verb'] as String,
-              entityType: 'ticket',
+              // The server's audit name for a request (`ee_ticket`).
+              entityType: 'ee_ticket',
               entityId: ticketId,
               actorId: h['actorId'] as String?,
               actorName: who?['displayName'] as String?,

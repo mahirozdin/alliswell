@@ -1,7 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/api_exception.dart';
@@ -16,6 +19,9 @@ import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ticket_drafts_providers.dart';
 import 'package:alliswell/src/features/ee/ui/my_tickets_screen.dart';
 import 'package:alliswell/src/features/ee/ui/new_ticket_screen.dart';
+import 'package:alliswell/src/features/ee/ui/service_icons.dart';
+import 'package:alliswell/src/features/files/providers.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
@@ -67,6 +73,7 @@ const _catalog = EeCatalog(
     EeCatalogService(
       id: 'S-PRINT',
       name: 'Yazıcı arızası',
+      icon: 'laptop',
       units: [EeCatalogUnit(id: 'U3', name: 'Bilgi işlem')],
       needsApproval: true,
     ),
@@ -78,7 +85,7 @@ class _FakeApi extends Fake implements EeNewTicketApi {
   Object? failWith;
 
   @override
-  Future<({String id, int? number})> create({
+  Future<({String id, int? number, String? workspaceId})> create({
     required String serviceId,
     required String subject,
     String? body,
@@ -101,7 +108,33 @@ class _FakeApi extends Fake implements EeNewTicketApi {
       'requesterName': requesterName,
       'requesterEmail': requesterEmail,
     });
-    return (id: 'T-NEW', number: 42);
+    return (id: 'T-NEW', number: 42, workspaceId: 'W-UNIT');
+  }
+}
+
+/// Core's upload walk, as the form uses it (OPH-358): which file went onto
+/// which target, and nothing on the wire.
+class _FakeUploads extends UploadsNotifier {
+  final started =
+      <
+        ({String workspaceId, String targetType, String targetId, String name})
+      >[];
+
+  @override
+  Future<String?> start({
+    required String workspaceId,
+    required String targetType,
+    required String targetId,
+    String? folderId,
+    required PickedUpload source,
+  }) async {
+    started.add((
+      workspaceId: workspaceId,
+      targetType: targetType,
+      targetId: targetId,
+      name: source.name,
+    ));
+    return 'F-${started.length}';
   }
 }
 
@@ -164,10 +197,12 @@ void main() {
   late _FakeDrafts drafts;
   late _FakeKb kb;
   late ProviderContainer container;
+  late _FakeUploads uploads;
 
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     AwI18n.instance.setActiveCached(const Locale('tr'));
+    uploads = _FakeUploads();
     api = _FakeApi();
     drafts = _FakeDrafts();
     kb = _FakeKb();
@@ -179,9 +214,23 @@ void main() {
     String? home = 'W-OWN',
     bool offline = false,
     EeTicketAsset? asset,
+    List<WorkspaceSummary> workspaces = const [],
   }) async {
     container = ProviderContainer(
       overrides: <Override>[
+        // OPH-358: who works a desk is read from the account's workspaces —
+        // the file picker follows it (UI-AUDIT #34).
+        workspacesProvider.overrideWith((ref) async => workspaces),
+        uploadsProvider.overrideWith(() => uploads),
+        attachSourcesProvider.overrideWithValue(const [AttachSource.anyFile]),
+        filePickerProvider.overrideWithValue(
+          (source) async => [
+            PickedUpload.fromBytes(
+              name: 'pres-fotografi.jpg',
+              bytes: Uint8List.fromList(const [1, 2, 3]),
+            ),
+          ],
+        ),
         eeNewTicketApiProvider.overrideWithValue(api),
         eeKbApiProvider.overrideWithValue(kb),
         eeFeatureProvider.overrideWith((ref, feature) => true),
@@ -239,6 +288,18 @@ void main() {
   }
 
   Future<void> send(WidgetTester tester) async {
+    // The form is a lazy list: a button below the fold is not built until
+    // the list is scrolled towards it.
+    await tester.scrollUntilVisible(
+      key('new-ticket-submit'),
+      300,
+      scrollable: find
+          .descendant(
+            of: find.byType(ListView).first,
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.ensureVisible(key('new-ticket-submit'));
     // The scroll lands on the next frame; tapping before it hits whatever was
     // there (EE-283's longer hint pushed the button past the fold).
@@ -444,14 +505,27 @@ void main() {
   );
 
   testWidgets(
-    'offline with no own space on the device: nothing written, and why',
+    'UI-AUDIT #9: offline with no own space, the form promises no draft — it says to send when connected, and nothing is written',
     (tester) async {
       await pumpForm(tester, offline: true, home: null);
+      // No promise that cannot be kept: neither "kept on this phone as a
+      // draft" nor "a draft carries…".
+      expect(key('new-ticket-offline'), findsNothing);
+      expect(key('new-ticket-draft-note'), findsNothing);
+      expect(key('new-ticket-offline-no-draft'), findsOneWidget);
+      expect(find.textContaining('kişisel bir alan yok'), findsOneWidget);
       await tester.enterText(key('new-ticket-subject'), 'Durdu');
       await tester.pumpAndSettle();
-      await send(tester);
+      expect(find.text('Taslak olarak kaydet'), findsNothing);
+      expect(find.text('Bağlantı gelince gönderin'), findsOneWidget);
+      final submit = tester.widget<ButtonStyleButton>(key('new-ticket-submit'));
+      expect(submit.onPressed, isNull, reason: 'nothing to press');
       expect(drafts.written, isEmpty);
-      expect(errorText(tester), contains('kişisel bir alan yok'));
+      // What was typed stays for the moment the signal returns.
+      expect(
+        tester.widget<TextField>(key('new-ticket-subject')).controller!.text,
+        'Durdu',
+      );
     },
   );
 
@@ -680,4 +754,136 @@ void main() {
     expect(api.created.single['assetId'], 'A-PRESS');
     expect(api.created.single['serviceId'], 'S-PRINT');
   });
+
+  // ── OPH-358 ──────────────────────────────────────────────────────────────
+
+  testWidgets(
+    'UI-AUDIT #82: the chosen service wears its own icon, not the generic one',
+    (tester) async {
+      await pumpForm(tester);
+      expect(
+        tester.widget<Icon>(key('new-ticket-service-icon')).icon,
+        Icons.category_outlined,
+      );
+      await pick(tester, 'S-PRINT');
+      expect(
+        tester.widget<Icon>(key('new-ticket-service-icon')).icon,
+        serviceIconData('laptop'),
+      );
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #31: opened by its address, a sent request lands on "my requests" with the confirmation — not on an empty page',
+    (tester) async {
+      container = ProviderContainer(
+        overrides: <Override>[
+          workspacesProvider.overrideWith((ref) async => const []),
+          eeNewTicketApiProvider.overrideWithValue(api),
+          eeKbApiProvider.overrideWithValue(kb),
+          eeFeatureProvider.overrideWith((ref, feature) => true),
+          eeCatalogProvider.overrideWith((ref) async => _catalog),
+          ticketDraftStoreProvider.overrideWithValue(drafts),
+          draftWorkspaceIdProvider.overrideWithValue('W-OWN'),
+          syncEngineProvider.overrideWithValue(null),
+          canProvider.overrideWith(
+            (ref, permission) => permission == 'tickets.create',
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      // The only page on the stack: a refresh, a pasted link, a QR sign.
+      final router = GoRouter(
+        initialLocation: '/tickets/new',
+        routes: [
+          GoRoute(
+            path: '/tickets/new',
+            builder: (_, _) => const EeNewTicketScreen(),
+          ),
+          GoRoute(
+            path: '/settings/team/my-tickets',
+            builder: (_, _) =>
+                const Scaffold(body: Text('my-tickets', key: Key('mine'))),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await pick(tester, 'S-PRINT');
+      await tester.enterText(key('new-ticket-subject'), 'Kağıt sıkıştı');
+      await tester.pumpAndSettle();
+      await send(tester);
+
+      expect(api.created, hasLength(1));
+      expect(find.byKey(const Key('mine')), findsOneWidget);
+      expect(find.byType(EeNewTicketScreen), findsNothing);
+      expect(find.text('Talep açıldı — #42'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #34: somebody who works the desk attaches a file, and it goes onto the new request in its unit',
+    (tester) async {
+      await pumpForm(
+        tester,
+        workspaces: const [
+          WorkspaceSummary(
+            id: 'W-UNIT',
+            name: 'Bilgi işlem',
+            slug: 'bi',
+            colorRgb: '#2563EB',
+            role: 'member',
+            owned: false,
+          ),
+        ],
+      );
+      await pick(tester, 'S-PRINT');
+      await tester.enterText(key('new-ticket-subject'), 'Kağıt sıkıştı');
+      await tester.ensureVisible(key('new-ticket-attach'));
+      await tester.tap(key('new-ticket-attach'));
+      await tester.pumpAndSettle();
+      expect(find.text('pres-fotografi.jpg'), findsOneWidget);
+      await send(tester);
+
+      expect(api.created, hasLength(1));
+      expect(uploads.started.single, (
+        workspaceId: 'W-UNIT',
+        targetType: 'ticket',
+        targetId: 'T-NEW',
+        name: 'pres-fotografi.jpg',
+      ));
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #34: somebody who only asks gets no picker — the limit is said instead',
+    (tester) async {
+      await pumpForm(tester);
+      await pick(tester, 'S-PRINT');
+      expect(key('new-ticket-attach'), findsNothing);
+      await tester.scrollUntilVisible(
+        key('new-ticket-files-desk-only'),
+        300,
+        scrollable: find
+            .descendant(
+              of: find.byType(ListView).first,
+              matching: find.byType(Scrollable),
+            )
+            .first,
+      );
+      expect(key('new-ticket-files-desk-only'), findsOneWidget);
+    },
+  );
 }

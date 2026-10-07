@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/day_boundary.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
@@ -19,12 +20,14 @@ import 'ticket_detail_screen.dart';
 /// Opens one change (EE-269) — by its address when a router is there, so the
 /// list, a request's relations and the approver's queue reach the SAME screen
 /// a link does, and by a plain push where the screen is hosted without one.
-void awOpenChange(BuildContext context, String changeId) {
+///
+/// Resolves when the change is left (OPH-358, UI-AUDIT #74).
+Future<void> awOpenChange(BuildContext context, String changeId) async {
   if (GoRouter.maybeOf(context) != null) {
-    context.push('/changes/$changeId');
+    await context.push<void>('/changes/$changeId');
     return;
   }
-  Navigator.of(context).push(
+  await Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => EeChangeDetailScreen(changeId: changeId),
     ),
@@ -140,6 +143,14 @@ class _Body extends ConsumerWidget {
             ),
           ],
         ),
+        if (changeWindowPassed(
+          change.windowEnd,
+          change.status,
+          ref.watch(nowProvider)(),
+        )) ...[
+          const SizedBox(height: AwSpace.x2),
+          const EeWindowPassedBadge(),
+        ],
         if (!fromDevice) ...[
           const SizedBox(height: AwSpace.x2),
           Row(

@@ -106,6 +106,20 @@ class NotificationItem {
         out[name.substring(0, name.length - 3)] = value.tr();
       }
     }
+    // OPH-358 (UI-AUDIT #28): a request's new status, in this device's
+    // language. The server sends the machine word — as `status` since EE-302,
+    // and before that under `statusLabel`, which despite its name always held
+    // the raw key ("#209 artık in_progress"). Either is read as a key; a word
+    // this build does not know is a neutral phrase, never the raw value.
+    if (eventClass == 'ticket.status_changed' ||
+        titleKey == 'ee.notif.ticket.status_changed.title') {
+      final raw = params['status'] ?? params['statusLabel'];
+      if (raw is String) {
+        out['statusLabel'] =
+            AwI18n.instance.maybeTranslate('ee.tickets.status.$raw') ??
+            'ee.tickets.statusUnknown'.tr();
+      }
+    }
     return out;
   }
 

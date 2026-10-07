@@ -42,6 +42,18 @@ class EeTicketLinksApi {
             .map((e) => EeTicketAsset.fromJson(e as Map<String, dynamic>))
             .toList(growable: false),
         waitingReason: ticket['waitingReason'] as String?,
+        // OPH-358 — EE-302's additions to the same read; absent from an older
+        // server, which then draws no company line and no sides.
+        customerId: ticket['customerId'] as String?,
+        customerName: ticket['customerName'] as String?,
+        customerKnown: ticket.containsKey('customerId'),
+        commentMeta: {
+          for (final row
+              in ((ticket['commentMeta'] as List<dynamic>?) ?? const [])
+                  .whereType<Map<String, dynamic>>())
+            if (row['commentId'] is String)
+              row['commentId'] as String: EeCommentMeta.fromJson(row),
+        },
       );
     } on DioException catch (error) {
       final code = error.response?.statusCode;
@@ -94,6 +106,69 @@ class EeTicketLinksApi {
         },
       );
       return (res.data ?? const <String, dynamic>{})['id'] as String;
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// OPH-358 (UI-AUDIT #33) — says two requests belong together
+  /// (`related`), that this one repeats another (`duplicate_of`) or is part of
+  /// it (`child_of`). Behind `tickets.link` on the server; a refusal travels.
+  Future<void> link(
+    String ticketId, {
+    required String type,
+    required String relatedTicketId,
+  }) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '$_base/$ticketId/links',
+        data: {'type': type, 'relatedTicketId': relatedTicketId},
+      );
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// Takes a link back — from the side that made the claim, or either side
+  /// of a `related` one (the server's rule; the screen offers only those).
+  Future<void> unlink(String ticketId, String linkId) async {
+    try {
+      await _dio.delete<void>('$_base/$ticketId/links/$linkId');
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// OPH-358 (UI-AUDIT #48) — the team's companies, for the picker. Archived
+  /// ones are not offered: a request is not filed under a company that left.
+  Future<List<EeCustomerChoice>> customers() async {
+    try {
+      final res = await _dio.get<Map<String, dynamic>>(
+        '/api/v1/ee/team/customers',
+      );
+      return [
+        for (final row
+            in ((res.data?['customers'] as List<dynamic>?) ?? const [])
+                .whereType<Map<String, dynamic>>())
+          if (row['archived'] != true)
+            EeCustomerChoice(
+              id: row['id'] as String,
+              name: row['name'] as String,
+            ),
+      ];
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// Files the request under [customerId], or under nobody with null.
+  /// `customers.manage` on the server; a refusal travels.
+  Future<void> setCustomer(String ticketId, String? customerId) async {
+    try {
+      await _dio.post<Map<String, dynamic>>(
+        '$_base/$ticketId/customer',
+        data: {'customerId': customerId},
+      );
     } on DioException catch (error) {
       throw asApiException(error);
     }

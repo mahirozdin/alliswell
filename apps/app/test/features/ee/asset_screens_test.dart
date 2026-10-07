@@ -349,29 +349,36 @@ void main() {
 
     String meta(String id) =>
         tester.widget<Text>(find.byKey(Key('asset-ticket-meta-$id'))).data!;
-    final hours = 'ee.assets.history.ticketLabour'.tr(args: {'hours': '1.5'});
+    // UI-AUDIT #71/#78: minutes and hours as said, money in the reader's
+    // number format (English here).
+    final hours = 'ee.assets.history.ticketLabour'.tr(
+      args: {'duration': '1 h 30 min'},
+    );
     expect(meta('T1'), contains(hours));
     expect(meta('T1'), contains('150.00 TRY'));
     // Priced by nobody: the hours, and no money — never "0.00".
     expect(
       meta('T3'),
-      contains('ee.assets.history.ticketLabour'.tr(args: {'hours': '0.3'})),
+      contains(
+        'ee.assets.history.ticketLabour'.tr(args: {'duration': '20 min'}),
+      ),
     );
     expect(meta('T3'), isNot(contains('TRY')));
     // Another desk's request says its state and nothing about its hours.
     expect(meta('T2'), 'ee.tickets.status.closed'.tr());
 
-    // The machine's total in the same spelling — twenty minutes are "0.3",
-    // and 110 minutes "1.8", where whole hours used to round them away.
+    // The machine's total in the same spelling — twenty minutes are "20 min",
+    // and 110 minutes "1 h 50 min", where whole hours used to round them
+    // away and one decimal turned 45 minutes into "0.8".
     expect(
       tester.widget<Text>(find.byKey(const Key('asset-history-labour'))).data,
-      'ee.assets.history.labour'.tr(args: {'hours': '1.8'}),
+      'ee.assets.history.labour'.tr(args: {'duration': '1 h 50 min'}),
     );
     expect(
       tester
           .widget<Text>(find.byKey(const Key('asset-history-labour-unpriced')))
           .data,
-      'ee.assets.history.labourUnpriced'.tr(args: {'hours': '0.3'}),
+      'ee.assets.history.labourUnpriced'.tr(args: {'duration': '20 min'}),
     );
   });
 
@@ -763,6 +770,137 @@ void main() {
       );
     });
   });
+
+  // ── OPH-358 ──────────────────────────────────────────────────────────────
+
+  Future<void> pumpCard(
+    WidgetTester tester, {
+    required EeAsset machine,
+    List<EeAssetChange>? changes,
+    EeAssetStats stats = const EeAssetStats(
+      months: 12,
+      ticketCount: 0,
+      openTicketCount: 0,
+      openMinutes: 0,
+    ),
+  }) async {
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeAssetOnDeviceProvider.overrideWith(
+            (ref, id) => Stream.value(machine),
+          ),
+          eeAssetHistoryProvider.overrideWith(
+            (ref, id) async => EeAssetHistory(stats: stats),
+          ),
+          eeAssetChangesProvider.overrideWith((ref, id) async => changes),
+          canProvider.overrideWith((ref, id) => false),
+        ],
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: EeAssetDetailScreen(assetId: machine.id),
+        ),
+      ),
+    );
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3;
+    addTearDown(tester.view.reset);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'UI-AUDIT #37: the card lists the changes planned on the machine, each opening its change',
+    (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+      await pumpCard(
+        tester,
+        machine: asset,
+        changes: [
+          EeAssetChange(
+            id: '01CHAAAAAAAAAAAAAAAAAAAAAA',
+            number: 7,
+            title: 'Disk ve RAID kartı değişimi',
+            status: 'awaiting_approval',
+            windowStart: DateTime(2020, 10, 4, 1),
+            windowEnd: DateTime(2020, 10, 4, 5),
+          ),
+        ],
+      );
+      final row = find.byKey(
+        const Key('asset-change-01CHAAAAAAAAAAAAAAAAAAAAAA'),
+      );
+      await tester.ensureVisible(row);
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.text('#7 · Disk ve RAID kartı değişimi'),
+        ),
+        findsOneWidget,
+      );
+      // Its state, its window — and that the window has gone by (UI-AUDIT #77).
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.textContaining('Onay bekliyor'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: row,
+          matching: find.textContaining('Pencere geçti'),
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #37: a server without the door draws no section — never "no changes"',
+    (tester) async {
+      await pumpCard(tester, machine: asset);
+      expect(find.byKey(const Key('asset-changes')), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #78: dates and money in the reader\'s format; open time as minutes and hours',
+    (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+      await pumpCard(
+        tester,
+        machine: const EeAsset(
+          id: '01JABCDEFGHJKMNPQRSTVWXYZ',
+          tag: 'BT-SRV-003',
+          name: 'Hat 3 sunucusu',
+          type: 'machine',
+          status: 'in_use',
+          warrantyUntil: '2026-11-26',
+          purchasedAt: '2024-03-15',
+          purchaseCostMinor: 38500000,
+          currency: 'TRY',
+        ),
+        stats: const EeAssetStats(
+          months: 12,
+          ticketCount: 4,
+          openTicketCount: 3,
+          openMinutes: 40,
+        ),
+      );
+      expect(find.text('26.11.2026'), findsOneWidget);
+      expect(find.text('15.03.2024'), findsOneWidget);
+      expect(find.text('385.000,00 TRY'), findsOneWidget);
+      expect(find.text('2026-11-26'), findsNothing);
+      expect(find.text('385000.00 TRY'), findsNothing);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('asset-history-counts'))).data,
+        'Son 12 ay: 4 talep, 3 hâlâ açık; talepler toplam 40 dk açık kaldı',
+      );
+    },
+  );
 }
 
 /// The app already knows the server is out of reach (OPH-342).

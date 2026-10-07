@@ -360,6 +360,41 @@ void main() {
     expect(api.sent.single.action, {'type': 'status', 'status': 'cancelled'});
   });
 
+  testWidgets(
+    'UI-AUDIT #72: a move the request cannot make is said as that — with the status that refused it, not "the screen may be stale"',
+    (tester) async {
+      await pumpQueue(tester);
+      api.answer = const EeBulkResult(
+        changed: 1,
+        skipped: 1,
+        rows: [
+          EeBulkRow(ticketId: 'T1', changed: true),
+          EeBulkRow(
+            ticketId: 'T3',
+            changed: false,
+            reason: 'TICKET_INVALID_TRANSITION',
+          ),
+        ],
+      );
+      await select(tester, ['T1', 'T3']);
+      await openSheet(tester, 'bulk-status');
+      await tester.tap(key('bulk-status-triage'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Bulunduğu durumdan bu duruma geçemez'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('eskimiş'), findsNothing);
+      expect(
+        tester.widget<Text>(key('bulk-result-row-T3')).data,
+        '• Kompresör sesi (Devam ediyor)',
+      );
+      await tester.tap(key('bulk-result-ok'));
+      await tester.pumpAndSettle();
+    },
+  );
+
   testWidgets('a partial answer names each refused request under its reason', (
     tester,
   ) async {
@@ -386,7 +421,7 @@ void main() {
       tester.widget<Text>(key('bulk-result-title')).data,
       '3 talepten 1 tanesi değişti',
     );
-    expect(find.textContaining('onay bekliyor'), findsOneWidget);
+    expect(find.textContaining('Onay bekliyor'), findsOneWidget);
     expect(find.text('• Kompresör sesi'), findsOneWidget);
     expect(find.textContaining('Zaten öyleydi'), findsOneWidget);
     // The rows that need a look lead; "it already was" comes last.

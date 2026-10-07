@@ -25,6 +25,58 @@ String changeWindowText(
   return '$from – $to';
 }
 
+/// The statuses in which a change still waits for its window (OPH-358,
+/// UI-AUDIT #77): the plan has not been carried out yet.
+const kEeChangeBeforeWork = {
+  'draft',
+  'assessing',
+  'awaiting_approval',
+  'scheduled',
+};
+
+/// The window is over and the work never happened: "Pencere geçti" — a
+/// signature asked for a night that has passed is a question for the planner,
+/// not the approver (UI-AUDIT #77).
+bool changeWindowPassed(DateTime? windowEnd, String status, DateTime now) =>
+    windowEnd != null &&
+    windowEnd.isBefore(now) &&
+    kEeChangeBeforeWork.contains(status);
+
+/// The badge that says it — an icon AND the words, never colour alone.
+class EeWindowPassedBadge extends StatelessWidget {
+  const EeWindowPassedBadge({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      key: const Key('change-window-passed'),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AwSpace.x3,
+        vertical: AwSpace.x2,
+      ),
+      decoration: BoxDecoration(
+        color: scheme.errorContainer,
+        borderRadius: BorderRadius.circular(AwRadius.m),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.event_busy, size: 18, color: scheme.onErrorContainer),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: Text(
+              'ee.changes.windowPassedLong'.tr(),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 /// The three chips a change row and its detail both carry.
 class EeChangeChips extends StatelessWidget {
   const EeChangeChips({super.key, required this.change, this.dense = false});

@@ -34,6 +34,14 @@ String approvalTitle(EeApproval approval) {
   ].join(' · ');
 }
 
+/// An approval's state in words (OPH-358, UI-AUDIT #14). `withdrawn` is
+/// EE-302's: the request it asked about was cancelled or closed, so nobody
+/// needs to answer it. A state this build does not know reads as a neutral
+/// word — never the raw key.
+String approvalStatusLabel(String status) =>
+    AwI18n.instance.maybeTranslate('ee.approvals.status.$status') ??
+    'ee.approvals.statusUnknown'.tr();
+
 /// Who is being asked — a person's or a custom role's name, else a built-in
 /// role's word in this language.
 String approvalWaitingOn(EeApproval approval) {
@@ -79,7 +87,7 @@ class EeApprovalCard extends ConsumerWidget {
     final target = approval.target;
 
     final kindLabel = 'ee.approvals.kind.${approval.targetType}'.tr();
-    final detail = _detailLine(ctx, format);
+    final detail = _detailLine(ctx, format, now);
     final asked = [
       'ee.approvals.askedAgo'.tr(
         args: {'when': awRelativePast(approval.createdAt, now)},
@@ -207,7 +215,8 @@ class EeApprovalCard extends ConsumerWidget {
               if (!approval.isPending) ...[
                 const SizedBox(height: AwSpace.x2),
                 Text(
-                  'ee.approvals.status.${approval.status}'.tr(),
+                  approvalStatusLabel(approval.status),
+                  key: Key('ee-approval-status-${approval.id}'),
                   style: text.bodySmall,
                 ),
                 if (approval.decisionReason != null)
@@ -241,7 +250,7 @@ class EeApprovalCard extends ConsumerWidget {
 
   /// Service · desk for a request; type · risk · window for a change; the
   /// due date for a task.
-  String _detailLine(EeApprovalContext? ctx, String format) {
+  String _detailLine(EeApprovalContext? ctx, String format, DateTime now) {
     if (ctx == null) return '';
     return switch (approval.targetType) {
       'ee_change' => [
@@ -249,6 +258,9 @@ class EeApprovalCard extends ConsumerWidget {
         if (ctx.risk case final risk?) 'ee.changes.risk.$risk'.tr(),
         if ((ctx.windowStart, ctx.windowEnd) case (final s?, final e?))
           changeWindowText(s, e, format: format),
+        // UI-AUDIT #77: still asking for a signature on a night gone by.
+        if (approval.isPending && (ctx.windowEnd?.isBefore(now) ?? false))
+          'ee.changes.windowPassed'.tr(),
       ].join(' · '),
       'task' => [
         if (ctx.taskDueAt case final due?)

@@ -601,6 +601,35 @@ void main() {
     expect(find.byKey(const Key('change-calendar-clear')), findsOneWidget);
   });
 
+  testWidgets('UI-AUDIT #77: a change whose window has passed unworked says '
+      '"window passed"; one still ahead does not', (tester) async {
+    final past = DateTime.now().subtract(const Duration(days: 3));
+    server.script['GET /api/v1/ee/team/changes/$backupId'] = (_) => _change(
+      backupId,
+      title: 'Hat 3 PLC yedeği',
+      start: past,
+      end: past.add(const Duration(hours: 4)),
+    );
+    server.script['GET /api/v1/ee/team/changes/$backupId/approvals'] = (_) => {
+      'approvals': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/$backupId/assets'] = (_) => {
+      'assets': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/calendar'] = (_) => {
+      'changes': const [],
+      'freezes': const [],
+    };
+    await pumpAt(tester, '/changes/$backupId');
+    expect(find.byKey(const Key('change-window-passed')), findsOneWidget);
+    expect(find.textContaining('Pencere geçti'), findsOneWidget);
+
+    // The disk change's window is tomorrow: nothing to warn about.
+    scriptDiskChange();
+    await pumpAt(tester, '/changes/$diskId');
+    expect(find.byKey(const Key('change-window-passed')), findsNothing);
+  });
+
   testWidgets('the list is this unit\'s copy, split by the clock, and search '
       'narrows it with no signal', (tester) async {
     server.offline = true;

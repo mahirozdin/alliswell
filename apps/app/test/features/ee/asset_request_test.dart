@@ -248,9 +248,10 @@ void main() {
     // The card says what the press cost and when it was bought — on the
     // device since EE-191, drawn since EE-271 — in the record's own currency.
     expect(find.text('ee.assets.field.purchased'.tr()), findsOneWidget);
-    expect(find.text('2024-03-15'), findsOneWidget);
+    // UI-AUDIT #78: in the reader's date and number format.
+    expect(find.text('15.03.2024'), findsOneWidget);
     expect(find.text('ee.assets.field.purchaseCost'.tr()), findsOneWidget);
-    expect(find.text('12500.00 EUR'), findsOneWidget);
+    expect(find.text('12.500,00 EUR'), findsOneWidget);
 
     await tester.ensureVisible(key('asset-open-request'));
     await tester.tap(key('asset-open-request'));

@@ -88,6 +88,38 @@ class EeTicketAsset {
   );
 }
 
+/// OPH-358 (UI-AUDIT #21) — who wrote one reply, in the server's words.
+///
+/// The replica carries a reply's author id and nothing else: an outside
+/// sender has no account, and "came by mail" is not a column. The desk's read
+/// of the request (EE-302's `commentMeta`) says it; a server from before that
+/// sends nothing, and the thread then names authors from the roster alone and
+/// draws no side.
+class EeCommentMeta {
+  const EeCommentMeta({
+    required this.commentId,
+    required this.side,
+    required this.channel,
+    this.authorName,
+  });
+
+  factory EeCommentMeta.fromJson(Map<String, dynamic> json) => EeCommentMeta(
+    commentId: json['commentId'] as String,
+    side: (json['side'] as String?) ?? 'desk',
+    channel: (json['channel'] as String?) ?? 'app',
+    authorName: json['authorName'] as String?,
+  );
+
+  final String commentId;
+
+  /// `desk` | `requester` | `customer` | `system`.
+  final String side;
+
+  /// `app` | `email` | `portal` | `customer_portal` | `system`.
+  final String channel;
+  final String? authorName;
+}
+
 /// Everything the detail screen shows below the conversation.
 ///
 /// One object rather than three providers, because the three arrive from two
@@ -100,7 +132,26 @@ class EeTicketRelations {
     this.taskIds = const [],
     this.assets = const [],
     this.waitingReason,
+    this.customerId,
+    this.customerName,
+    this.customerKnown = false,
+    this.commentMeta = const {},
   });
+
+  /// Whether the server SAID which company (EE-302) — `customerId: null` is
+  /// "none", an absent field is "this server does not tell". Only the first
+  /// offers to link one: the second draws no line at all.
+  final bool customerKnown;
+
+  /// OPH-358 (UI-AUDIT #48): the company this request is filed under, whose
+  /// portal shows it. Null when it has none — or when the server is older
+  /// than EE-302 and does not say; either way no line is drawn.
+  final String? customerId;
+  final String? customerName;
+
+  /// OPH-358 (UI-AUDIT #21): by reply id. Empty from a server that does not
+  /// send it.
+  final Map<String, EeCommentMeta> commentMeta;
 
   final List<EeTicketLink> links;
   final List<EeLinkedProblem> problems;
@@ -154,4 +205,12 @@ class EeExternalFiles {
 
   bool isExternal(String fileId) => ids.contains(fileId);
   bool isUnscanned(String fileId) => unscanned.contains(fileId);
+}
+
+/// A company a request can be filed under (OPH-358, UI-AUDIT #48).
+class EeCustomerChoice {
+  const EeCustomerChoice({required this.id, required this.name});
+
+  final String id;
+  final String name;
 }

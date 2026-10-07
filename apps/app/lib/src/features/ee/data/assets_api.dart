@@ -91,6 +91,31 @@ class EeAssetsApi {
   }
 
   /// Everything that ever happened to it, archive included, plus the counts.
+  /// OPH-358 (UI-AUDIT #37) — the changes planned on this machine (EE-304's
+  /// `GET /assets/:id/changes`). Null when the server has no such door (a
+  /// 404 from a server before it, or a 403): the card then draws no section,
+  /// rather than "none" — which would be a claim it cannot make.
+  Future<List<EeAssetChange>?> changes(String assetId) async {
+    try {
+      final res = await _dio.get<Object?>('$_base/$assetId/changes');
+      final data = res.data;
+      final rows = switch (data) {
+        final List<dynamic> list => list,
+        final Map<String, dynamic> map =>
+          (map['changes'] ?? map['items']) as List<dynamic>? ?? const [],
+        _ => const <dynamic>[],
+      };
+      return rows
+          .whereType<Map<String, dynamic>>()
+          .map(EeAssetChange.fromJson)
+          .toList(growable: false);
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return null;
+      throw asApiException(error);
+    }
+  }
+
   Future<EeAssetHistory> history(String assetId, {int? months}) async {
     try {
       final res = await _dio.get<Map<String, dynamic>>(

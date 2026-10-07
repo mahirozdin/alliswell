@@ -9,6 +9,26 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **A request's conversation says who wrote each message (OPH-358).** Every reply names its author,
+  and — once the server sends it — whether it came from the desk, the requester or a company
+  contact, by e-mail or the portal, on its own side of the thread. Writing on your own request
+  says "Write to the desk"; on a request that came by e-mail the box says the reply leaves as an
+  e-mail; a company-linked request shows the company and that its portal shows the replies.
+- **Files on new requests and replies (OPH-358).** Desk members can attach files when filing a
+  request and when writing a reply or an internal note; a note's files stay with the desk.
+- **Linked requests (OPH-358).** A request lists the requests it is linked to (related, duplicate,
+  parent/child) and opens them; the desk can link and unlink them, and "This came up again" opens
+  the new request.
+- **Request history, approvals, knowledge base and equipment read clearly (OPH-358).** History rows
+  say what changed (status, priority, corrected form answers); a cancelled request says
+  "cancelled on"; status notifications read "now In progress", not "in_progress"; a withdrawn
+  approval says so; a change whose window has passed says "Window passed"; retiring an article
+  asks first; articles can be linked to a service and show how often they prevented a request;
+  equipment shows the changes planned on it, and dates, money and worked time ("45 min",
+  "1 h 15 min") in your format. Without a personal space offline the new-request form no longer
+  promises a draft it cannot keep, and a form opened by its address returns to My requests after
+  sending.
+
 - **People behind one office address no longer lock each other out (OPH-357).** Rate limits now
   count each signed-in person on their own, and sign-in counts per account: a whole shift can sign
   in from the same network at once, while one account's repeated wrong passwords are still stopped.

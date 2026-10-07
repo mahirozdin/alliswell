@@ -80,6 +80,8 @@ void main() {
             return fromServer;
           }),
           eeMemberNamesProvider.overrideWith((ref) => Stream.value(names)),
+          // Somebody at the desk, not the person who asked (OPH-358).
+          currentUserIdProvider.overrideWithValue('01USDESKAAAAAAAAAAAAAAAAAA'),
           eeMailLauncherProvider.overrideWithValue((address) async {
             mailedTo.add(address);
           }),

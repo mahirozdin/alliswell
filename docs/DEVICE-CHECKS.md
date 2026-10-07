@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Talep, onay, bilgi bankası, ekipman (2026-10-07)
+
+- OPH-358 — telefonda talep yazışması: masanın balonları sağda, talep sahibininki solda, her birinin üstünde ad · taraf · kanal (uzantının EE-302'si canlıyken); kendi talebinde kutu "Masaya yaz"; e-postayla gelen talepte "e-postayla gönderilir"; iç nota dosya ekle → notun altında. Kapalı talepte "Bu konu tekrar açıldı" → yeni talebe geçiyor, iki talepte "İlişkili talepler" satırı. `#/tickets/new`'i doğrudan aç → gönder → Taleplerim + snackbar. Ekipman kartında "Bu ekipmanı etkileyen değişiklikler" (EE-304 canlıyken), tarih/para yerel biçim. Açık ve koyu temada.
+
 ## Takım adresi (2026-10-07)
 
 - OPH-356 — yönetici yeni davet oluşturur (uzantının EE-300'ü canlıdayken bağlantı `…/app/#/join/<token>?server=…`): bağlantıyı oturumsuz bir tarayıcıda aç → "Takım adresi: <slug>.alliswell.space" + kod/ad/parola → katıl → takım adresinde girişli Ana sayfa. Varsayılan adreste takım üyesiyle gir → Ana sayfada takım bandı, Ayarlar'da tek "Takım adresi gerekiyor" satırı, "Geç" → çıkış yapmadan takım adresinde Talepler + Onaylar. Üye `#/settings/team/roles` → kilitli durum, "+" yok. Açık ve koyu temada bant ve kilitli durum.

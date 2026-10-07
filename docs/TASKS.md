@@ -66,54 +66,6 @@ araç değil). Cihazda bakılacaklar (ekran okuyucu, telefon yerleşimi) DEVICE-
 
 ---
 
-### OPH-358 — Talep, onay, bilgi bankası ve ekipman ekranları
-
-**Bulgular:** #6 (istemci), #9 (istemci), #14 (istemci etiketi), #21, #28 (istemci), #31, #33, #34,
-#36, #37 (istemci), #38 (istemci), #48 (istemci), #71, #72, #73, #74, #75, #77 (istemci), #78
-(istemci), #82. **Karşı yarı:** EE-302, EE-304 (sözleşmeler orada).
-
-- [ ] **#6** `features/ee/ui/ticket_detail_screen.dart` ~118 + `history_tab.dart`: Geçmiş sekmesi
-      hata durumunda Tekrar dene; satırlar kim/ne zaman ve form düzeltmesini okunur çizer.
-- [ ] **#9** `new_ticket_screen.dart` ~318/383 + `new_ticket_providers.dart` ~57: taslak kutusu yoksa
-      çevrimdışı form taslak sözü vermez ("bağlantı gelince gönderin" durumu); kutu varsa bugünkü akış.
-- [ ] **#21** `_CommentCard` (~1016): yazar adı (sunucunun yorum meta'sı; yoksa üye listesinden
-      `authorId`), taraf ve kanal rozeti (e-posta/portal), taraf hizası; talep sahibi kendi
-      talebindeyse composer "Masaya yaz", e-posta kaynaklı talepte "e-postayla gönderilir" ipucu.
-- [ ] **#28** `notifications_providers.dart` ~99: durum anahtarı `ee.tickets.status.<v>` ile çevrilir
-      (yeni alan yoksa eski parametre anahtar sayılır; bilinmeyen değer ham değil nötr metin).
-- [ ] **#31** `new_ticket_screen.dart` ~331/237: `canPop` değilse yeni talebe ya da
-      `/settings/team/my-tickets`'e gider + snackbar ("Bu çözdü" dalı dahil).
-- [ ] **#33** `_Relations` (~327) + `data/ticket_links_api.dart`: ilişkili/kopyası/alt talep listesi,
-      bağla/kopar (izinle), "tekrar açıldı" yeni talebi açar.
-- [ ] **#34** yeni talep formu ve `ticket_composer.dart`: dosya seçici; talep oluşunca core'un yükleme
-      yürüyüşüyle `ticket` hedefine, yanıt/iç not gönderilince `ticket_comment` hedefine (iç notun
-      dosyası masanın kalır — sunucu zaten süzüyor). Talep sahibi birimin üyesi değilse seçici
-      gizli + yazılı sınır (core yükleme yürüyüşü üyelik ister; uzantının parking lot'unda satır).
-- [ ] **#36** `kb_editor_sheet.dart` ~86: servis seçici; servissiz makalede "kimseye önerilmez" notu.
-- [ ] **#37** `asset_detail_screen.dart`: "Değişiklikler" bölümü (uç yoksa bölüm çizilmez).
-- [ ] **#38** KB makalesinde masaya önlenen talep sayaçları; onay detayında ekler/yazışma (veri gelince).
-- [ ] **#48** talep detayı: "Firma: … — firma portalında görünür" satırı + bağla/kaldır seçici
-      (izinle); alan yoksa satır yok.
-- [ ] **#14 (etiket)** onay ekranları `withdrawn` durumunu "Geri çekildi" çizer; bilinmeyen durum nötr.
-- [ ] **#71** `ticket_worklog_section.dart`: yerel tarih, "45 dk"/"1 sa 15 dk", 0 için "En az 1
-      dakika", görünür sil (⋮).
-- [ ] **#72** `ticket_bulk.dart` ~55 + i18n: `TICKET_INVALID_TRANSITION` için toplu işleme özgü metin.
-- [ ] **#73** `ticket_detail_screen.dart` ~204: iptalde "… tarihinde iptal edildi".
-- [ ] **#74** `approval_detail_screen.dart` ~464: "Talebi aç"tan dönünce `ref.invalidate`.
-- [ ] **#75** `kb_article_screen.dart` ~182: "Emekliye ayır" onay diyaloğu.
-- [ ] **#77** değişiklik/onay ekranı: pencere geçmişken "Pencere geçti" rozeti (`windowEnd < now`).
-- [ ] **#78** ekipman kartında `NumberFormat`/`DateFormat` (para, tarih), açık süre etiketi.
-- [ ] **#82** seçilen servis kartı `serviceIcon(service.icon)`.
-- [ ] Testler: `ticket_detail` testleri + `ticket_composer_test.dart` (#21, #34, #48), `history_tab_test.dart`
-      (#6), `new_ticket_screen_test.dart` (#9, #31, #82), yeni `ticket_relations_test.dart` (#33),
-      `ticket_attachments_test.dart` (#34), `kb_screens_test.dart` (#36, #38, #75),
-      `asset_screens_test.dart` (#37, #78), `approval_detail_test.dart` (#14, #74),
-      `change_screens_test.dart` (#77), `ticket_worklogs_test.dart` (#71), `ticket_bulk_test.dart` (#72),
-      `notifications_test.dart` (#28); golden'lar açık/koyu güncel.
-
-**Kabul:** raporun TLC/ONY senaryoları: #218'de her balonda yazar ve taraf; #209'un "tekrar açıldı"
-bağı iki detayda da görünür; doğrudan URL'den gönderilen talep boş sayfada kalmaz.
-
 ### OPH-359 — Kabuk, gezinme ve erişilebilirlik; genel Türkçe metinler; toplantı ve AI düğmesi
 
 **Bulgular:** #10, #11, #12, #29, #30, #32, #54 (istemci), #55, #57, #58, #59, #60, #63, #64

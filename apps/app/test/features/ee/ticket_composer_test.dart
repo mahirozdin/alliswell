@@ -24,6 +24,8 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import 'support/ticket_detail_harness.dart';
+
 /// EE-223 — writing on a request from the app.
 ///
 /// The server half (`POST /comments`, who may mark a note internal) is tested
@@ -40,13 +42,14 @@ class _FakeWriteApi extends Fake implements EeTicketWriteApi {
   Object? failWith;
 
   @override
-  Future<void> comment(
+  Future<String?> comment(
     String ticketId, {
     required String body,
     required bool internal,
   }) async {
     if (failWith != null) throw failWith!;
     sent.add((body: body, internal: internal));
+    return '01CMAAAAAAAAAAAAAAAAAAAAA${sent.length}';
   }
 
   @override
@@ -380,4 +383,347 @@ void main() {
       expect(find.byKey(const Key('ticket-composer-closed')), findsOneWidget);
     });
   });
+
+  // ── OPH-358 ──────────────────────────────────────────────────────────────
+
+  group('OPH-358: who wrote, where it goes, and whose portal shows it', () {
+    const desk = '01USDESKAAAAAAAAAAAAAAAAAA';
+    const asker = '01USASKERAAAAAAAAAAAAAAAAA';
+
+    testWidgets(
+      'UI-AUDIT #21: every reply names its author, side and channel, and sits on its side',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(
+            source: 'email',
+            requesterEmail: 'deniz@ornek.com',
+          ),
+          comments: [
+            harnessComment('C1', authorId: desk, body: 'Bakıyoruz.'),
+            harnessComment('C2', body: 'Etkilenen 3 adet.'),
+          ],
+          relations: const EeTicketRelations(
+            commentMeta: {
+              'C1': EeCommentMeta(
+                commentId: 'C1',
+                side: 'desk',
+                channel: 'app',
+                authorName: 'Kerem Bakım',
+              ),
+              'C2': EeCommentMeta(
+                commentId: 'C2',
+                side: 'requester',
+                channel: 'email',
+                authorName: 'Deniz Yılmaz',
+              ),
+            },
+          ),
+        );
+        Text author(String id) =>
+            tester.widget<Text>(find.byKey(Key('ticket-comment-author-$id')));
+        expect(author('C1').data, 'Kerem Bakım · Masa');
+        expect(author('C2').data, 'Deniz Yılmaz · Talep sahibi · e-posta');
+        // The desk's words at the end, the other party's at the start.
+        expect(
+          tester
+              .widget<Align>(find.byKey(const Key('ticket-comment-align-C1')))
+              .alignment,
+          AlignmentDirectional.centerEnd,
+        );
+        expect(
+          tester
+              .widget<Align>(find.byKey(const Key('ticket-comment-align-C2')))
+              .alignment,
+          AlignmentDirectional.centerStart,
+        );
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #21: a server that sends no meta still names a colleague from the roster — and guesses no side',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(),
+          comments: [harnessComment('C1', authorId: desk, body: 'Bakıyoruz.')],
+          names: const {desk: 'Kerem Bakım'},
+        );
+        expect(
+          tester
+              .widget<Text>(find.byKey(const Key('ticket-comment-author-C1')))
+              .data,
+          'Kerem Bakım',
+        );
+        expect(find.byKey(const Key('ticket-comment-align-C1')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #21: the person who asked writes to the desk, not "to the requester"',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(requesterId: asker),
+          me: asker,
+          verbs: {'tickets.comment'},
+        );
+        await tester.ensureVisible(find.byKey(const Key('ticket-composer')));
+        expect(find.text('Masaya yaz'), findsOneWidget);
+        expect(find.text('Bunu masa okur.'), findsOneWidget);
+        expect(find.text('Bunu talep sahibi okur.'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #21: on a request that came by mail the box says the reply leaves as mail',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(
+            source: 'email',
+            requesterEmail: 'deniz@ornek.com',
+          ),
+          verbs: {'tickets.comment'},
+        );
+        await tester.ensureVisible(find.byKey(const Key('ticket-composer')));
+        expect(
+          find.byKey(const Key('ticket-composer-by-email')),
+          findsOneWidget,
+        );
+        // An internal note goes nowhere outside, and says nothing of mail.
+        await tester.tap(find.text('İç not'));
+        await settleDetail(tester);
+        expect(find.byKey(const Key('ticket-composer-by-email')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #48: the company the request is filed under, that its portal shows it, and the picker for customers.manage',
+      (tester) async {
+        final links = FakeLinksApi();
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(),
+          relations: const EeTicketRelations(
+            customerId: '01CUAAAAAAAAAAAAAAAAAAAAAA',
+            customerName: 'Anadolu Otomotiv',
+            customerKnown: true,
+          ),
+          verbs: {'customers.manage', 'tickets.comment'},
+          links: links,
+        );
+        expect(find.text('Firma: Anadolu Otomotiv'), findsOneWidget);
+        expect(
+          find.textContaining('firmanın portalında görünür'),
+          findsOneWidget,
+        );
+        // And the reply box says the reply shows there too.
+        await tester.ensureVisible(find.byKey(const Key('ticket-composer')));
+        expect(
+          find.byKey(const Key('ticket-composer-customer')),
+          findsOneWidget,
+        );
+
+        await tester.ensureVisible(
+          find.byKey(const Key('ticket-customer-change')),
+        );
+        await tester.tap(find.byKey(const Key('ticket-customer-change')));
+        await settleDetail(tester);
+        await tester.tap(find.byKey(const Key('ticket-customer-clear')));
+        await settleDetail(tester);
+        expect(links.customersSet, [null]);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #48: a server that does not say draws no company line; one that says "none" offers the link only with the verb',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(),
+          verbs: {'customers.manage'},
+        );
+        expect(find.byKey(const Key('ticket-customer')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #48: an unfiled request is linked to a company from the picker',
+      (tester) async {
+        final links = FakeLinksApi();
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(),
+          relations: const EeTicketRelations(customerKnown: true),
+          verbs: {'customers.manage'},
+          links: links,
+        );
+        expect(find.text('Bir firmaya bağlı değil'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('ticket-customer-change')));
+        await settleDetail(tester);
+        await tester.tap(
+          find.byKey(
+            const Key('ticket-customer-choice-01CUAAAAAAAAAAAAAAAAAAAAAA'),
+          ),
+        );
+        await settleDetail(tester);
+        expect(links.customersSet, ['01CUAAAAAAAAAAAAAAAAAAAAAA']);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #48: without customers.manage the company is read, not changed',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(),
+          relations: const EeTicketRelations(
+            customerId: '01CUAAAAAAAAAAAAAAAAAAAAAA',
+            customerName: 'Anadolu Otomotiv',
+            customerKnown: true,
+          ),
+        );
+        expect(find.text('Firma: Anadolu Otomotiv'), findsOneWidget);
+        expect(find.byKey(const Key('ticket-customer-change')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #34: a file picked for an internal note is uploaded onto THAT note, in the request\'s unit',
+      (tester) async {
+        final uploads = _RecordingUploads();
+        final write = FakeThreadWriteApi();
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(),
+          verbs: {'tickets.comment'},
+          write: write,
+          extra: [
+            uploadsProvider.overrideWith(() => uploads),
+            attachSourcesProvider.overrideWithValue(const [
+              AttachSource.anyFile,
+            ]),
+            filePickerProvider.overrideWithValue(
+              (source) async => [
+                PickedUpload.fromBytes(
+                  name: 'olcum.pdf',
+                  bytes: harnessBytes(),
+                ),
+              ],
+            ),
+          ],
+        );
+        await tester.ensureVisible(find.byKey(const Key('ticket-composer')));
+        await tester.tap(find.text('İç not'));
+        await settleDetail(tester);
+        await tester.tap(find.byKey(const Key('ticket-composer-attach')));
+        await settleDetail(tester);
+        expect(find.text('olcum.pdf'), findsOneWidget);
+        // The note's files are the desk's, and the box says so.
+        expect(find.textContaining('yalnız masa görür'), findsOneWidget);
+        await tester.enterText(
+          find.byKey(const Key('ticket-composer-text')),
+          'Ölçüm ekte.',
+        );
+        await settleDetail(tester);
+        await tester.ensureVisible(
+          find.byKey(const Key('ticket-composer-send')),
+        );
+        await settleDetail(tester);
+        expect(
+          tester
+              .widget<ButtonStyleButton>(
+                find.byKey(const Key('ticket-composer-send')),
+              )
+              .onPressed,
+          isNotNull,
+        );
+        await tester.tap(find.byKey(const Key('ticket-composer-send')));
+        await settleDetail(tester);
+
+        expect(write.sent.single, (body: 'Ölçüm ekte.', internal: true));
+        expect(uploads.started.single, (
+          workspaceId: 'W1',
+          targetType: 'ticket_comment',
+          targetId: '01CMNEWAAAAAAAAAAAAAAAAAAA',
+        ));
+      },
+    );
+
+    testWidgets('UI-AUDIT #34: a reply\'s files show under it', (tester) async {
+      await pumpTicketDetail(
+        tester,
+        ticket: harnessTicket(),
+        comments: [harnessComment('C1', authorId: desk)],
+        commentFiles: {
+          'C1': [
+            FileAttachment(
+              id: 'F1',
+              workspaceId: 'W1',
+              targetType: 'ticket_comment',
+              targetId: 'C1',
+              name: 'olcum.pdf',
+              mime: 'application/pdf',
+              sizeBytes: 3,
+              createdAt: DateTime.utc(2026, 10, 7),
+            ),
+          ],
+        },
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('ticket-comment-C1')),
+          matching: find.text('olcum.pdf'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets(
+      'UI-AUDIT #73: a cancelled request says it was cancelled, a closed one that it closed',
+      (tester) async {
+        await pumpTicketDetail(
+          tester,
+          ticket: harnessTicket(
+            status: 'cancelled',
+            terminalAt: DateTime(2026, 10, 7, 12),
+          ),
+        );
+        expect(
+          tester
+              .widget<Text>(
+                find.descendant(
+                  of: find.byKey(const Key('ticket-terminal-on')),
+                  matching: find.byType(Text),
+                ),
+              )
+              .data,
+          '07.10.2026 tarihinde iptal edildi',
+        );
+      },
+    );
+  });
+}
+
+/// Core's upload walk, recording which file went onto which target.
+class _RecordingUploads extends UploadsNotifier {
+  final started =
+      <({String workspaceId, String targetType, String targetId})>[];
+
+  @override
+  Future<String?> start({
+    required String workspaceId,
+    required String targetType,
+    required String targetId,
+    String? folderId,
+    required PickedUpload source,
+  }) async {
+    started.add((
+      workspaceId: workspaceId,
+      targetType: targetType,
+      targetId: targetId,
+    ));
+    return 'F-${started.length}';
+  }
 }

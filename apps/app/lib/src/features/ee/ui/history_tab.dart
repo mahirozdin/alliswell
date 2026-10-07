@@ -7,7 +7,10 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/history_models.dart';
+import '../data/labour_models.dart';
+import '../data/ticket_write_api.dart';
 import '../history_providers.dart';
+import '../ticket_write_providers.dart';
 import 'assignee_avatars.dart';
 
 /// The reusable history tab (EE-026). E07's units and E09's tickets attach it
@@ -123,6 +126,13 @@ class _HistoryRow extends ConsumerWidget {
                 // a row saying only "changed the status" cannot tell a
                 // finished subtask from a finished task. Everything else in a
                 // diff stays the entity's private business.
+                // OPH-358 (UI-AUDIT #6): a request's row says WHAT moved —
+                // the status it left and the one it took, the questions an
+                // approver corrected — because "updated this" on twenty rows
+                // reads as nothing happening twenty times.
+                if (event.entityType == 'ee_ticket')
+                  if (_TicketChange.of(event) case final change?)
+                    _TicketChangeLine(event: event, change: change),
                 if (event.diff?['subtask'] case final List<dynamic> subtask
                     when subtask.isNotEmpty && subtask.first is String)
                   Text(
@@ -186,6 +196,145 @@ class _Avatar extends StatelessWidget {
       initials: event.actorInitials,
       colorRgb: event.actorColorRgb,
       size: 32,
+    );
+  }
+}
+
+/// What one request row's diff says, in words (OPH-358, UI-AUDIT #6). Only
+/// the keys the request's writers are known to send (`tickets/db.js`); any
+/// other diff stays the entity's private business, as before.
+class _TicketChange {
+  const _TicketChange({this.line, this.answerKeys = const []});
+
+  final String? line;
+
+  /// `answersChanged`: the form questions a correction moved — named by the
+  /// row widget, which can ask for the labels.
+  final List<String> answerKeys;
+
+  static String? _pair(Object? value, String Function(String) word) {
+    if (value is! List || value.length != 2) return null;
+    final from = value[0];
+    final to = value[1];
+    if (to is! String) return null;
+    return from is String ? '${word(from)} → ${word(to)}' : word(to);
+  }
+
+  static String _status(String v) =>
+      AwI18n.instance.maybeTranslate('ee.tickets.status.$v') ??
+      'ee.history.ticket.unknownValue'.tr();
+
+  static String _priority(String v) =>
+      AwI18n.instance.maybeTranslate('ee.tickets.priority.$v') ??
+      'ee.history.ticket.unknownValue'.tr();
+
+  static _TicketChange? of(EeHistoryEvent event) {
+    final diff = event.diff;
+    if (diff == null) return null;
+    final answers = diff['answersChanged'];
+    if (answers is List && answers.isNotEmpty) {
+      return _TicketChange(answerKeys: answers.whereType<String>().toList());
+    }
+    final reason = diff['reason'];
+    if (reason is List &&
+        reason.length == 2 &&
+        reason[1] == 'requester_replied') {
+      final status = _pair(diff['status'], _status);
+      return _TicketChange(
+        line: ['ee.history.ticket.requesterReplied'.tr(), ?status].join(' · '),
+      );
+    }
+    if (_pair(diff['status'], _status) case final status?) {
+      return _TicketChange(
+        line: 'ee.history.ticket.status'.tr(args: {'change': status}),
+      );
+    }
+    if (_pair(diff['priority'], _priority) case final priority?) {
+      return _TicketChange(
+        line: 'ee.history.ticket.priority'.tr(args: {'change': priority}),
+      );
+    }
+    final tag = diff['tag'];
+    if (tag is List && tag.length == 2) {
+      if (tag[1] is String) {
+        return _TicketChange(
+          line: 'ee.history.ticket.tagAdded'.tr(
+            args: {'tag': tag[1] as String},
+          ),
+        );
+      }
+      if (tag[0] is String) {
+        return _TicketChange(
+          line: 'ee.history.ticket.tagRemoved'.tr(
+            args: {'tag': tag[0] as String},
+          ),
+        );
+      }
+    }
+    if (diff.containsKey('customer')) {
+      return _TicketChange(line: 'ee.history.ticket.customer'.tr());
+    }
+    final internal = diff['internal'];
+    if (diff.containsKey('comment') &&
+        internal is List &&
+        internal.length == 2) {
+      return _TicketChange(
+        line:
+            (internal[1] == true
+                    ? 'ee.history.ticket.note'
+                    : 'ee.history.ticket.reply')
+                .tr(),
+      );
+    }
+    if (diff['minutes'] case final num minutes when minutes > 0) {
+      return _TicketChange(
+        line: 'ee.history.ticket.worklog'.tr(
+          args: {'duration': eeDurationText(minutes.toInt())},
+        ),
+      );
+    }
+    return null;
+  }
+}
+
+class _TicketChangeLine extends ConsumerWidget {
+  const _TicketChangeLine({required this.event, required this.change});
+
+  final EeHistoryEvent event;
+  final _TicketChange change;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    var line = change.line;
+    if (change.answerKeys.isNotEmpty) {
+      // The questions as the form asks them. Read only for a row that needs
+      // them (the request's own read, EE-278), and the key stands in until —
+      // or unless — it answers.
+      final labels = {
+        for (final answer
+            in ref
+                    .watch(eeTicketActionsProvider(event.entityId))
+                    .value
+                    ?.answers ??
+                const <EeTicketAnswer>[])
+          if (answer.key != null) answer.key!: answer.label,
+      };
+      line = 'ee.history.ticket.formCorrected'.tr(
+        args: {
+          'fields': [
+            for (final key in change.answerKeys) labels[key] ?? key,
+          ].join(', '),
+        },
+      );
+    }
+    if (line == null) return const SizedBox.shrink();
+    return Text(
+      line,
+      key: Key('history-change-${event.id}'),
+      style: theme.textTheme.bodySmall?.copyWith(
+        color: theme.colorScheme.onSurface,
+      ),
     );
   }
 }

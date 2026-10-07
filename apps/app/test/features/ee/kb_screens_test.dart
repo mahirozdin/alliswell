@@ -4,9 +4,13 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/kb_api.dart';
+import 'package:alliswell/src/features/ee/data/kb_models.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/services_providers.dart';
 import 'package:alliswell/src/features/ee/ui/kb_article_screen.dart';
+import 'package:alliswell/src/features/ee/ui/kb_editor_sheet.dart';
 import 'package:alliswell/src/features/ee/ui/kb_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
@@ -77,6 +81,8 @@ void main() {
       ProviderScope(
         overrides: [
           eeKbArticlesProvider.overrideWith((ref) => Stream.value(rows)),
+          // The server's counters (OPH-358): none unless a test asks.
+          eeKbArticleCountsProvider.overrideWith((ref, id) async => null),
           ...overrides,
         ],
         child: MaterialApp(
@@ -224,4 +230,200 @@ void main() {
     // And the edit action is gone too — the server refuses every later edit.
     expect(find.byKey(const Key('kb-edit')), findsNothing);
   });
+
+  // ── OPH-358 ──────────────────────────────────────────────────────────────
+
+  final published = KbArticleRecord(
+    id: 'K6',
+    workspaceId: _ws,
+    title: 'VPN bağlantısı kopuyorsa',
+    symptom: 'VPN her 10 dakikada kopuyor',
+    status: 'published',
+    solution: 'İstemciyi güncelleyin',
+    revision: 1,
+    updatedAt: DateTime.utc(2026, 9, 20),
+  );
+
+  testWidgets(
+    'UI-AUDIT #75: "retire" asks first — cancelling moves nothing, confirming retires',
+    (tester) async {
+      final api = _FakeKbApi();
+      await pump(
+        tester,
+        const EeKbArticleScreen(articleId: 'K6'),
+        overrides: [
+          eeKbArticleProvider(
+            'K6',
+          ).overrideWith((ref) => Stream.value(published)),
+          canProvider('kb.write').overrideWith((ref) => true),
+          canProvider('kb.publish').overrideWith((ref) => true),
+          eeKbApiProvider.overrideWithValue(api),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('kb-move-retired')));
+      await tester.pumpAndSettle();
+      expect(find.text('ee.kb.retireBody'.tr()), findsOneWidget);
+      await tester.tap(find.byKey(const Key('kb-retire-cancel')));
+      await tester.pumpAndSettle();
+      expect(api.moves, isEmpty);
+
+      await tester.tap(find.byKey(const Key('kb-move-retired')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kb-retire-confirm')));
+      await tester.pumpAndSettle();
+      expect(api.moves, ['retired']);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #38: the desk reads what the article did at the door — offered, asked anyway, prevented',
+    (tester) async {
+      await pump(
+        tester,
+        const EeKbArticleScreen(articleId: 'K6'),
+        overrides: [
+          eeKbArticleProvider(
+            'K6',
+          ).overrideWith((ref) => Stream.value(published)),
+          canProvider('kb.write').overrideWith((ref) => true),
+          canProvider('kb.publish').overrideWith((ref) => true),
+          eeKbArticleCountsProvider('K6').overrideWith(
+            (ref) async => const EeKbArticle(
+              id: 'K6',
+              title: 'VPN bağlantısı kopuyorsa',
+              symptom: 'VPN her 10 dakikada kopuyor',
+              status: 'published',
+              suggestedCount: 5,
+              convertedCount: 2,
+              deflectedCount: 3,
+            ),
+          ),
+        ],
+      );
+      expect(
+        find.text(
+          '5 kez önerildi · 2 kez okunup yine talep açıldı · 3 talep önlendi',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #36: an article with no service says it is offered to nobody, and the editor sets one',
+    (tester) async {
+      final api = _FakeKbApi();
+      await pump(
+        tester,
+        const EeKbArticleScreen(articleId: 'K6'),
+        overrides: [
+          eeKbArticleProvider(
+            'K6',
+          ).overrideWith((ref) => Stream.value(published)),
+          canProvider('kb.write').overrideWith((ref) => true),
+          canProvider('kb.publish').overrideWith((ref) => true),
+          eeKbApiProvider.overrideWithValue(api),
+          eeServiceGlancesProvider.overrideWithValue(const {
+            'S1': EeServiceGlance(
+              id: 'S1',
+              name: 'Ağ ve VPN',
+              hasForm: false,
+              archived: false,
+            ),
+          }),
+        ],
+      );
+      expect(find.byKey(const Key('kb-no-service')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('kb-edit')));
+      await tester.pumpAndSettle();
+      expect(find.text('ee.kb.fieldServiceNone'.tr()), findsOneWidget);
+      await tester.tap(find.byKey(const Key('kb-field-service')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ağ ve VPN').last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('kb-save')));
+      await tester.pumpAndSettle();
+      expect(api.patches.single, {'serviceId': 'S1'});
+    },
+  );
+
+  testWidgets('UI-AUDIT #36: a new article is written with its service', (
+    tester,
+  ) async {
+    final api = _FakeKbApi();
+    await pump(
+      tester,
+      Consumer(
+        builder: (context, ref, _) => Scaffold(
+          body: TextButton(
+            onPressed: () => showKbEditorSheet(context, ref),
+            child: const Text('new'),
+          ),
+        ),
+      ),
+      overrides: [
+        eeKbApiProvider.overrideWithValue(api),
+        eeServiceGlancesProvider.overrideWithValue(const {
+          'S1': EeServiceGlance(
+            id: 'S1',
+            name: 'Ağ ve VPN',
+            hasForm: false,
+            archived: false,
+          ),
+        }),
+      ],
+    );
+    await tester.tap(find.text('new'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('kb-field-title')), 'VPN');
+    await tester.enterText(
+      find.byKey(const Key('kb-field-symptom')),
+      'Kopuyor',
+    );
+    await tester.tap(find.byKey(const Key('kb-field-service')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ağ ve VPN').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('kb-save')));
+    await tester.pumpAndSettle();
+    expect(api.createdWith, ['S1']);
+  });
+}
+
+/// The knowledge base's server half, recording what the screen asked.
+class _FakeKbApi extends Fake implements EeKbApi {
+  final moves = <String>[];
+  final patches = <Map<String, dynamic>>[];
+  final createdWith = <String?>[];
+
+  EeKbArticle _article(String id, String status) =>
+      EeKbArticle(id: id, title: 't', symptom: 's', status: status);
+
+  @override
+  Future<EeKbArticle> setStatus(String articleId, String status) async {
+    moves.add(status);
+    return _article(articleId, status);
+  }
+
+  @override
+  Future<EeKbArticle> update(
+    String articleId,
+    Map<String, dynamic> patch,
+  ) async {
+    patches.add(patch);
+    return _article(articleId, 'published');
+  }
+
+  @override
+  Future<EeKbArticle> create({
+    required String title,
+    required String symptom,
+    String? environment,
+    String? solution,
+    String? serviceId,
+  }) async {
+    createdWith.add(serviceId);
+    return _article('K9', 'wip');
+  }
 }

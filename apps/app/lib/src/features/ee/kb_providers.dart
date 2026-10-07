@@ -164,3 +164,13 @@ final eeKbOfTicketProvider = FutureProvider.autoDispose
       if (!ref.watch(eeFeatureProvider('teams'))) return const [];
       return ref.watch(eeKbApiProvider).ofTicket(ticketId);
     });
+
+/// OPH-358 (UI-AUDIT #38) — one article as the server holds it, for the
+/// counters the replica does not carry (suggested / asked anyway /
+/// prevented). Asked when the desk opens the article; offline it simply has
+/// no answer and the card draws no numbers.
+final eeKbArticleCountsProvider = FutureProvider.autoDispose
+    .family<EeKbArticle?, String>((ref, articleId) async {
+      if (!ref.watch(eeFeatureProvider('teams'))) return null;
+      return ref.watch(eeKbApiProvider).get(articleId);
+    });

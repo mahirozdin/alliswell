@@ -386,6 +386,11 @@ class _EeApprovalDetailScreenState
             icon: Icons.schedule,
             text: changeWindowText(s, e, format: format),
           ),
+        // UI-AUDIT #77: a signature for a night that has passed.
+        if (changeWindowPassed(change.windowEnd, change.status, now)) ...[
+          const EeWindowPassedBadge(),
+          const SizedBox(height: AwSpace.x2),
+        ],
         if (change.createdByName case final by?)
           _Fact(icon: Icons.person_outline, text: by),
         if (change.impact case final impact?) ...[
@@ -461,15 +466,20 @@ class _EeApprovalDetailScreenState
     ];
   }
 
-  void _openTarget(EeApproval approval) {
+  /// Opens what is being decided — and reads this page again on the way back
+  /// (UI-AUDIT #74): a note written on the request there belongs on the page
+  /// the decision is made from.
+  Future<void> _openTarget(EeApproval approval) async {
     switch (approval.targetType) {
       case 'ee_ticket':
-        awOpenTicket(context, approval.targetId);
+        await awOpenTicket(context, approval.targetId);
       case 'ee_change':
-        awOpenChange(context, approval.targetId);
+        await awOpenChange(context, approval.targetId);
       case 'task':
-        context.push('/tasks/${approval.targetId}');
+        await context.push<void>('/tasks/${approval.targetId}');
     }
+    if (!mounted) return;
+    ref.invalidate(eeApprovalDetailProvider(widget.approvalId));
   }
 
   Future<void> _download(String approvalId, EeApprovalFile file) async {
@@ -589,7 +599,7 @@ class _StatusBanner extends StatelessWidget {
       );
     } else {
       line = [
-        'ee.approvals.status.${approval.status}'.tr(),
+        approvalStatusLabel(approval.status),
         ?approval.decidedByName,
         if (approval.decisionReason case final reason?) '“$reason”',
       ].join(' · ');

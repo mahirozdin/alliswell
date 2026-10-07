@@ -74,10 +74,10 @@ void main() {
           ).overrideWith((ref) async => actions),
           // Everything else the screen watches, quiet (see the attachments
           // test for why each one is here).
-          targetFilesProvider((
-            targetType: 'ticket',
-            targetId: _ticketId,
-          )).overrideWith((ref) => Stream.value(const [])),
+          // The request's files and each reply's (OPH-358), all quiet.
+          targetFilesProvider.overrideWith(
+            (ref, target) => Stream.value(const []),
+          ),
           eeTicketExternalFilesProvider(
             _ticketId,
           ).overrideWith((ref) async => EeExternalFiles.none),

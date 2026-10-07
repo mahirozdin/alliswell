@@ -320,14 +320,26 @@ class EeArchivedTicketView extends ConsumerWidget {
               _Fact(
                 key: const Key('archive-approval'),
                 icon: Icons.verified_outlined,
-                text: 'ee.tickets.archive.approval.${approval.status}'.tr(
-                  args: {
-                    'name': approval.decidedByName ?? '—',
-                    'date': approval.decidedAt == null
-                        ? '—'
-                        : awFormatDate(approval.decidedAt!, format: dateFormat),
-                  },
-                ),
+                // UI-AUDIT #14: a state this build does not know is a
+                // neutral sentence, never the key.
+                text:
+                    (AwI18n.instance.maybeTranslate(
+                                  'ee.tickets.archive.approval.${approval.status}',
+                                ) !=
+                                null
+                            ? 'ee.tickets.archive.approval.${approval.status}'
+                            : 'ee.tickets.archive.approval.unknown')
+                        .tr(
+                          args: {
+                            'name': approval.decidedByName ?? '—',
+                            'date': approval.decidedAt == null
+                                ? '—'
+                                : awFormatDate(
+                                    approval.decidedAt!,
+                                    format: dateFormat,
+                                  ),
+                          },
+                        ),
               ),
             if (ticket.ratingScore != null)
               _Fact(

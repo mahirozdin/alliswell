@@ -211,6 +211,48 @@ void main() {
     expect(row.destination, '/tickets/K1');
   });
 
+  // ── OPH-358 (UI-AUDIT #28): a request's new status, in words ────────────
+
+  test('UI-AUDIT #28: "#209 is now In progress", not "in_progress" — from the '
+      'old server\'s statusLabel and the new one\'s status alike', () async {
+    for (final (id, params) in [
+      ('N8', {'ticketRef': '#209', 'statusLabel': 'in_progress'}),
+      (
+        'N9',
+        {'ticketRef': '#209', 'status': 'waiting', 'statusLabel': 'waiting'},
+      ),
+      ('N10', {'ticketRef': '#209', 'status': 'some_new_state'}),
+    ]) {
+      await pull(
+        id,
+        data: {
+          ...notification(id, titleKey: 'ee.notif.ticket.status_changed.title'),
+          'eventClass': 'ticket.status_changed',
+          'bodyKey': 'ee.notif.ticket.status_changed.body',
+          'params': {...params, 'subject': 'Kompresör'},
+          'entityType': 'ee_ticket',
+          'entityId': 'K$id',
+        },
+      );
+    }
+    final rows = await readCentre(containerWith());
+    String title(String id) {
+      final row = rows.firstWhere((r) => r.id == id);
+      return row.titleKey.tr(args: row.args);
+    }
+
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    expect(title('N8'), '#209 artık Devam ediyor');
+    expect(title('N9'), '#209 artık Beklemede');
+    // A word this build does not know is a neutral phrase, never the key.
+    expect(title('N10'), '#209 artık başka bir durumda');
+    for (final id in ['N8', 'N9', 'N10']) {
+      expect(title(id), isNot(contains('_')));
+    }
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    expect(title('N8'), contains('In progress'));
+  });
+
   test('an approval request opens the screen where it is answered', () async {
     await pull(
       'N6',

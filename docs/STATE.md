@@ -9,9 +9,9 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-357 kapandı (kök hata işleyicisi 5xx'te `INTERNAL_ERROR`,
-kodlu 429 + `retryAfter`, hız sınırı kimliğe göre — ADR-0045, Türkçe slug, istemcide kodsuz hata
-ve ikincil bölüm hataları); Epic 34'ün sırası OPH-358'de.
+**Last updated:** 2026-10-07 — OPH-358 kapandı (talep yazışmasında yazar/taraf/kanal, ekler,
+ilişkili talepler, firma satırı, geçmiş satırları, onay/değişiklik/bilgi bankası/ekipman ekranları);
+Epic 34'ün sırası OPH-359'da.
 
 ## Snapshot
 
@@ -19,8 +19,8 @@ ve ikincil bölüm hataları); Epic 34'ün sırası OPH-358'de.
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
 | Current epic             | **Epic 34** — 2026-10-07 UI denetimi: çıkışta yerel veri, takım adresi, core hata gövdesi ve hız sınırı, uzantı ekranları (OPH-355…OPH-360). İkiz yok; her iş sunucunun eski ve yeni davranışına dayanıklı. |
-| ➡️ **Next task**         | **OPH-358** — Talep, onay, bilgi bankası ve ekipman ekranları |
-| Last completed           | OPH-357 — core: kök `setErrorHandler` (beklenmeyen ≥500 → sabit `INTERNAL_ERROR`, kasıtlı `HttpError` ve 4xx değişmez, alt bağlamın işleyicisi kazanır), `RATE_LIMITED` 429 + `retryAfter` + `Retry-After`, kova = API anahtarı / doğrulanmış kullanıcı / IP, kimlik bilgisi uçlarında IP + hesap ve yeni `RATE_LIMIT_AUTH_IP_MAX` tavanı (ADR-0045), slug'da ı/İ → i; istemci: `ApiException.statusCode/retryAfter`, kodsuz yanıtlar duruma göre çevrilir (`error.RATE_LIMITED/HTTP_429/notFound/server`), panolar `AwErrorState(onRetry)`, talep detayında ilişkiler/değişiklikler satır içi hata, Onaylar özeti son canlı değeri korur; D3: dokuz birim ilk girişte 27 pull, döngü ~2,6/dk (2026-10-07). |
+| ➡️ **Next task**         | **OPH-359** — Kabuk, gezinme ve erişilebilirlik; genel Türkçe metinler; toplantı ve AI düğmesi |
+| Last completed           | OPH-358 — istemci: yorum kartı yazar · taraf · kanal + taraf hizası (EE-302 `commentMeta`, yoksa üye listesinden ad, taraf yok), composer "Masaya yaz"/e-posta/firma ipuçları ve dosya (core yükleme: `ticket_comment`, yeni talepte `ticket`, yalnız birim üyesine), ilişkili talepler bağla/kopar + "tekrar açıldı" yeni talebe, firma satırı + seçici (`customers.manage`), geçmiş satırında durum/öncelik/form düzeltmesi, bildirimde durum çevirisi, `withdrawn`/bilinmeyen onay durumu nötr, "Pencere geçti", bilgi bankası servis seçici + sayaçlar + emekliye ayırma onayı, ekipman "Değişiklikler" (uç 404 → yok) + yerel tarih/para, işçilik "45 dk" + görünür sil, toplu `TICKET_INVALID_TRANSITION` metni, taslak alanı yokken taslak sözü yok, adresle açılan form gönderince Taleplerim'e. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

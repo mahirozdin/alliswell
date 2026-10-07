@@ -53,11 +53,14 @@ class _FakeWriteApi extends Fake implements EeTicketWriteApi {
   final moves = <String>[];
 
   @override
-  Future<void> comment(
+  Future<String?> comment(
     String ticketId, {
     required String body,
     required bool internal,
-  }) async => comments.add((body: body, internal: internal));
+  }) async {
+    comments.add((body: body, internal: internal));
+    return null;
+  }
 
   @override
   Future<void> setStatus(
@@ -406,6 +409,8 @@ void main() {
     );
 
     List<Override> formOverrides() => [
+      // OPH-358: somebody who only asks works no desk — no file picker.
+      workspacesProvider.overrideWith((ref) async => const []),
       eeCatalogProvider.overrideWith((ref) async => catalog()),
       draftWorkspaceIdProvider.overrideWithValue('W-OWN'),
       canProvider.overrideWith(

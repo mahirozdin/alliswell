@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,12 +7,15 @@ import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/fold.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
+import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../files/providers.dart';
+import '../../workspaces/workspaces.dart';
 import '../changes_providers.dart';
 import '../data/changes_models.dart';
 import '../data/kb_models.dart';
@@ -58,12 +63,15 @@ import 'ticket_worklog_section.dart';
 /// the queue, an asset's history and a notification then reach the SAME
 /// place a pasted link does — and by a plain push when the screen is hosted
 /// without one.
-void awOpenTicket(BuildContext context, String ticketId) {
+///
+/// Resolves when the opened screen is left (OPH-358, UI-AUDIT #74): a caller
+/// showing something the request can change asks again then.
+Future<void> awOpenTicket(BuildContext context, String ticketId) async {
   if (GoRouter.maybeOf(context) != null) {
-    context.push('/tickets/$ticketId');
+    await context.push<void>('/tickets/$ticketId');
     return;
   }
-  Navigator.of(context).push(
+  await Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => EeTicketDetailScreen(ticketId: ticketId),
     ),
@@ -173,6 +181,17 @@ class _Thread extends ConsumerWidget {
     final checked = mayBeUnverified || hasForm
         ? ref.watch(eeTicketActionsProvider(ticket.id)).value
         : null;
+    // OPH-358: who wrote each reply and which company the request is filed
+    // under ride the read `_Relations` already makes (EE-302) — no second
+    // question to the server. Null until it answers, and from a server that
+    // does not say: then the thread names authors from the roster alone.
+    final relations = ref.watch(eeTicketRelationsProvider(ticket.id)).value;
+    final commentMeta = relations?.commentMeta ?? const {};
+    // UI-AUDIT #21: the person who asked, reading their own request in the
+    // desk's view (a desk member's own request, EE-304's product rule).
+    final requesterId = ticket.requesterId;
+    final asksHere =
+        requesterId != null && ref.watch(currentUserIdProvider) == requesterId;
 
     return ListView(
       padding: const EdgeInsets.all(AwSpace.x4),
@@ -208,14 +227,21 @@ class _Thread extends ConsumerWidget {
             ],
             if (ticket.terminalAt != null)
               _Chip(
-                label: 'ee.tickets.closedOn'.tr(
-                  args: {
-                    'date': awFormatDate(
-                      ticket.terminalAt!,
-                      format: dateFormat,
-                    ),
-                  },
-                ),
+                key: const Key('ticket-terminal-on'),
+                // UI-AUDIT #73: a cancelled request was never "closed" — the
+                // stamp is the same column, the sentence is not.
+                label:
+                    (ticket.status == 'cancelled'
+                            ? 'ee.tickets.cancelledOn'
+                            : 'ee.tickets.closedOn')
+                        .tr(
+                          args: {
+                            'date': awFormatDate(
+                              ticket.terminalAt!,
+                              format: dateFormat,
+                            ),
+                          },
+                        ),
               ),
           ],
         ),
@@ -289,6 +315,7 @@ class _Thread extends ConsumerWidget {
                       _CommentCard(
                         comment: comment,
                         dateFormat: dateFormat,
+                        meta: commentMeta[comment.id],
                         unverified:
                             checked?.unverifiedCommentIds.contains(
                               comment.id,
@@ -308,7 +335,19 @@ class _Thread extends ConsumerWidget {
           // with the terminal stamp it sends down; the box follows that stamp
           // rather than a list of statuses of its own.
           ticket.terminalAt == null
-              ? EeTicketComposer(ticketId: ticket.id)
+              ? EeTicketComposer(
+                  ticketId: ticket.id,
+                  workspaceId: ticket.workspaceId,
+                  asksHere: asksHere,
+                  // UI-AUDIT #21: a request that came by mail is answered by
+                  // mail — the box says so before the send.
+                  byEmail:
+                      ticket.source == 'email' &&
+                      (ticket.requesterEmail ?? checked?.requesterEmail) !=
+                          null,
+                  // UI-AUDIT #48: and a company's portal shows the reply too.
+                  customerName: relations?.customerName,
+                )
               : Padding(
                   key: const Key('ticket-composer-closed'),
                   padding: const EdgeInsets.only(top: AwSpace.x3),
@@ -358,6 +397,18 @@ class _Relations extends ConsumerWidget {
       data: (data) {
         final canConvert = ref.watch(canProvider('tickets.convert'));
         final canCreate = ref.watch(canProvider('tickets.create'));
+        final canLink = ref.watch(canProvider('tickets.link'));
+        // Asked only where the server said whose it is (EE-302): an older
+        // server has no line to put a picker on.
+        final canFileUnder =
+            data.customerKnown && ref.watch(canProvider('customers.manage'));
+        // UI-AUDIT #33: request-to-request links; a problem link is the
+        // known-error card above, not a row here.
+        final links = [
+          for (final link in data.links)
+            if (link.type != 'problem_of' && _otherEnd(link, ticketId) != null)
+              link,
+        ];
         final titles =
             ref.watch(eeLinkedTaskTitlesProvider(data.taskIds)).value ??
             const {};
@@ -431,6 +482,23 @@ class _Relations extends ConsumerWidget {
                   ),
                 ),
             ],
+            // UI-AUDIT #48: whose portal shows this request. Drawn when the
+            // server names a company (EE-302); a server that does not is a
+            // request with no line — never a guessed "no company".
+            if (data.customerId != null || (data.customerKnown && canFileUnder))
+              _Customer(
+                ticketId: ticketId,
+                customerName: data.customerId == null
+                    ? null
+                    : (data.customerName ?? 'ee.tickets.customer.unnamed'.tr()),
+                canChange: canFileUnder,
+              ),
+            if (links.isNotEmpty || canLink)
+              _LinkedTickets(
+                ticketId: ticketId,
+                links: links,
+                canLink: canLink,
+              ),
             const SizedBox(height: AwSpace.x6),
             Text(
               'ee.tickets.linkedTasks'.tr(),
@@ -509,12 +577,439 @@ class _Relations extends ConsumerWidget {
       ),
     );
     if (confirmed != true || !context.mounted) return;
-    await ref.read(eeTicketLinksApiProvider).openRelated(ticketId);
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    final String opened;
+    try {
+      opened = await ref.read(eeTicketLinksApiProvider).openRelated(ticketId);
+    } catch (error) {
+      messenger?.showSnackBar(SnackBar(content: Text(localizedError(error))));
+      return;
+    }
     ref.invalidate(eeTicketRelationsProvider(ticketId));
+    messenger?.showSnackBar(
+      SnackBar(content: Text('ee.tickets.relatedOpened'.tr())),
+    );
+    // UI-AUDIT #33: the new request is where the work continues — go there,
+    // rather than leaving the agent on the closed one wondering where it is.
     if (!context.mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('ee.tickets.relatedOpened'.tr())));
+    unawaited(ref.read(syncEngineProvider)?.syncNow());
+    unawaited(awOpenTicket(context, opened));
+  }
+}
+
+/// The far end of a request-to-request link, from [ticketId]'s side.
+String? _otherEnd(EeTicketLink link, String ticketId) =>
+    link.ticketId == ticketId ? link.relatedTicketId : link.ticketId;
+
+/// OPH-358 (UI-AUDIT #33) — the requests this one is linked to, by kind and
+/// from this side ("a duplicate of #12" here is "duplicated by #31" there),
+/// each opening the other; and, for `tickets.link`, the door to link one
+/// more and to take a link back.
+class _LinkedTickets extends ConsumerWidget {
+  const _LinkedTickets({
+    required this.ticketId,
+    required this.links,
+    required this.canLink,
+  });
+
+  final String ticketId;
+  final List<EeTicketLink> links;
+  final bool canLink;
+
+  /// `duplicate_of` and `child_of` are claims one request makes about the
+  /// other, so the label depends on which end is reading it.
+  String _label(EeTicketLink link) {
+    final mine = link.ticketId == ticketId;
+    return switch (link.type) {
+      'duplicate_of' =>
+        mine
+            ? 'ee.tickets.links.type.duplicateOf'.tr()
+            : 'ee.tickets.links.type.duplicatedBy'.tr(),
+      'child_of' =>
+        mine
+            ? 'ee.tickets.links.type.childOf'.tr()
+            : 'ee.tickets.links.type.parentOf'.tr(),
+      _ => 'ee.tickets.links.type.related'.tr(),
+    };
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final ends = [for (final link in links) _otherEnd(link, ticketId)!];
+    final known =
+        ref.watch(eeLinkedTicketsProvider(ends.join(','))).value ??
+        const <String, TicketRecord>{};
+    return Column(
+      key: const Key('ticket-links'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: AwSpace.x6),
+        Text('ee.tickets.links.title'.tr(), style: theme.textTheme.titleSmall),
+        const SizedBox(height: AwSpace.x2),
+        if (links.isEmpty)
+          Text('ee.tickets.links.empty'.tr(), style: theme.textTheme.bodySmall),
+        for (final link in links)
+          ListTile(
+            key: Key('ticket-link-${link.id}'),
+            contentPadding: EdgeInsets.zero,
+            dense: true,
+            leading: const Icon(Icons.link),
+            title: Text(_title(known[_otherEnd(link, ticketId)])),
+            subtitle: Text(_label(link)),
+            onTap: () => awOpenTicket(context, _otherEnd(link, ticketId)!),
+            // A directional claim is taken back from the side that made it;
+            // `related` from either (the server's rule, so no dead button).
+            trailing:
+                canLink && (link.ticketId == ticketId || link.type == 'related')
+                ? IconButton(
+                    key: Key('ticket-unlink-${link.id}'),
+                    tooltip: 'ee.tickets.links.remove'.tr(),
+                    icon: const Icon(Icons.link_off),
+                    onPressed: () => _unlink(context, ref, link),
+                  )
+                : null,
+          ),
+        if (canLink)
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              key: const Key('ticket-link-add'),
+              onPressed: () => _add(context, ref),
+              icon: const Icon(Icons.add_link),
+              label: Text('ee.tickets.links.add'.tr()),
+            ),
+          ),
+      ],
+    );
+  }
+
+  String _title(TicketRecord? other) {
+    if (other == null) return 'ee.tickets.links.offDevice'.tr();
+    return other.number == null
+        ? other.subject
+        : '#${other.number} · ${other.subject}';
+  }
+
+  Future<void> _unlink(
+    BuildContext context,
+    WidgetRef ref,
+    EeTicketLink link,
+  ) async {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await ref.read(eeTicketLinksApiProvider).unlink(ticketId, link.id);
+      ref.invalidate(eeTicketRelationsProvider(ticketId));
+    } catch (error) {
+      messenger?.showSnackBar(SnackBar(content: Text(localizedError(error))));
+    }
+  }
+
+  Future<void> _add(BuildContext context, WidgetRef ref) async {
+    final here = ref.read(ticketProvider(ticketId)).value;
+    if (here == null) return;
+    final picked = await showModalBottomSheet<({String type, String id})>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) =>
+          _LinkPicker(ticketId: ticketId, workspaceId: here.workspaceId),
+    );
+    if (picked == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await ref
+          .read(eeTicketLinksApiProvider)
+          .link(ticketId, type: picked.type, relatedTicketId: picked.id);
+      ref.invalidate(eeTicketRelationsProvider(ticketId));
+      messenger?.showSnackBar(
+        SnackBar(content: Text('ee.tickets.links.added'.tr())),
+      );
+    } catch (error) {
+      messenger?.showSnackBar(SnackBar(content: Text(localizedError(error))));
+    }
+  }
+}
+
+/// Which request, and what it is to this one. The kinds are the server's
+/// three request-to-request links; the list is this unit's requests on the
+/// device, found by number or by words in the subject.
+class _LinkPicker extends ConsumerStatefulWidget {
+  const _LinkPicker({required this.ticketId, required this.workspaceId});
+
+  final String ticketId;
+  final String workspaceId;
+
+  @override
+  ConsumerState<_LinkPicker> createState() => _LinkPickerState();
+}
+
+class _LinkPickerState extends ConsumerState<_LinkPicker> {
+  String _type = 'related';
+  String _query = '';
+
+  bool _matches(TicketRecord row) {
+    final q = foldSearchText(_query.trim().replaceFirst('#', ''));
+    if (q.isEmpty) return true;
+    return '${row.number ?? ''}' == q ||
+        foldSearchText(row.subject).contains(q);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = [
+      for (final row
+          in ref.watch(eeLinkCandidatesProvider(widget.workspaceId)).value ??
+              const <TicketRecord>[])
+        if (row.id != widget.ticketId && _matches(row)) row,
+    ];
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          AwSpace.x4,
+          0,
+          AwSpace.x4,
+          AwSpace.x4 + MediaQuery.viewInsetsOf(context).bottom,
+        ),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.75,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'ee.tickets.links.add'.tr(),
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: AwSpace.x3),
+              SegmentedButton<String>(
+                key: const Key('ticket-link-type'),
+                showSelectedIcon: false,
+                segments: [
+                  ButtonSegment(
+                    value: 'related',
+                    label: Text('ee.tickets.links.kind.related'.tr()),
+                  ),
+                  ButtonSegment(
+                    value: 'duplicate_of',
+                    label: Text('ee.tickets.links.kind.duplicateOf'.tr()),
+                  ),
+                  ButtonSegment(
+                    value: 'child_of',
+                    label: Text('ee.tickets.links.kind.childOf'.tr()),
+                  ),
+                ],
+                selected: {_type},
+                onSelectionChanged: (s) => setState(() => _type = s.first),
+              ),
+              const SizedBox(height: AwSpace.x3),
+              TextField(
+                key: const Key('ticket-link-search'),
+                decoration: InputDecoration(
+                  prefixIcon: const Icon(Icons.search),
+                  hintText: 'ee.tickets.links.searchHint'.tr(),
+                ),
+                onChanged: (value) => setState(() => _query = value),
+              ),
+              const SizedBox(height: AwSpace.x2),
+              Flexible(
+                child: rows.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.all(AwSpace.x4),
+                        child: Text(
+                          'ee.tickets.links.noCandidates'.tr(),
+                          textAlign: TextAlign.center,
+                        ),
+                      )
+                    : ListView(
+                        shrinkWrap: true,
+                        children: [
+                          for (final row in rows.take(50))
+                            ListTile(
+                              key: Key('ticket-link-candidate-${row.id}'),
+                              title: Text(
+                                row.number == null
+                                    ? row.subject
+                                    : '#${row.number} · ${row.subject}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              subtitle: Text(
+                                'ee.tickets.status.${row.status}'.tr(),
+                              ),
+                              onTap: () => Navigator.of(
+                                context,
+                              ).pop((type: _type, id: row.id)),
+                            ),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// OPH-358 (UI-AUDIT #48) — the company a request is filed under, and what
+/// that means: its people read it in their portal. The picker is
+/// `customers.manage`'s, the server's own gate (EE-299).
+class _Customer extends ConsumerWidget {
+  const _Customer({
+    required this.ticketId,
+    required this.customerName,
+    required this.canChange,
+  });
+
+  final String ticketId;
+  final String? customerName;
+  final bool canChange;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final name = customerName;
+    return Padding(
+      key: const Key('ticket-customer'),
+      padding: const EdgeInsets.only(top: AwSpace.x4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Icon(
+              Icons.apartment_outlined,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: AwSpace.x2),
+          Expanded(
+            child: name == null
+                ? Text(
+                    'ee.tickets.customer.none'.tr(),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'ee.tickets.customer.line'.tr(args: {'name': name}),
+                        key: const Key('ticket-customer-name'),
+                        style: theme.textTheme.bodyLarge,
+                      ),
+                      Text(
+                        'ee.tickets.customer.visible'.tr(),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+          ),
+          if (canChange)
+            TextButton(
+              key: const Key('ticket-customer-change'),
+              onPressed: () => _pick(context, ref),
+              child: Text(
+                (name == null
+                        ? 'ee.tickets.customer.link'
+                        : 'ee.tickets.customer.change')
+                    .tr(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _pick(BuildContext context, WidgetRef ref) async {
+    // `('', …)` is "under nobody"; null is "backed out".
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (_) => _CustomerPicker(hasOne: customerName != null),
+    );
+    if (picked == null || !context.mounted) return;
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    try {
+      await ref
+          .read(eeTicketLinksApiProvider)
+          .setCustomer(ticketId, picked.isEmpty ? null : picked);
+      ref.invalidate(eeTicketRelationsProvider(ticketId));
+    } catch (error) {
+      messenger?.showSnackBar(SnackBar(content: Text(localizedError(error))));
+    }
+  }
+}
+
+class _CustomerPicker extends ConsumerWidget {
+  const _CustomerPicker({required this.hasOne});
+
+  final bool hasOne;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final choices = ref.watch(eeCustomerChoicesProvider);
+    return SafeArea(
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.7,
+        ),
+        child: choices.when(
+          loading: () => const Padding(
+            padding: EdgeInsets.all(AwSpace.x6),
+            child: Center(child: CircularProgressIndicator()),
+          ),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(eeCustomerChoicesProvider),
+          ),
+          data: (rows) => ListView(
+            shrinkWrap: true,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AwSpace.x4,
+                  0,
+                  AwSpace.x4,
+                  AwSpace.x2,
+                ),
+                child: Text(
+                  'ee.tickets.customer.pickTitle'.tr(),
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
+              ),
+              if (rows.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.all(AwSpace.x4),
+                  child: Text('ee.tickets.customer.noneToPick'.tr()),
+                ),
+              for (final row in rows)
+                ListTile(
+                  key: Key('ticket-customer-choice-${row.id}'),
+                  leading: const Icon(Icons.apartment_outlined),
+                  title: Text(row.name),
+                  onTap: () => Navigator.of(context).pop(row.id),
+                ),
+              if (hasOne)
+                ListTile(
+                  key: const Key('ticket-customer-clear'),
+                  leading: const Icon(Icons.link_off),
+                  title: Text('ee.tickets.customer.clear'.tr()),
+                  onTap: () => Navigator.of(context).pop(''),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -824,7 +1319,7 @@ class _Attachments extends ConsumerWidget {
 }
 
 class _Chip extends StatelessWidget {
-  const _Chip({required this.label});
+  const _Chip({super.key, required this.label});
   final String label;
 
   @override
@@ -1041,75 +1536,188 @@ class _Unverified extends StatelessWidget {
   }
 }
 
-class _CommentCard extends StatelessWidget {
+/// One line of the conversation (EE-084; OPH-358, UI-AUDIT #21).
+///
+/// Who wrote it, on which side and by which way, above the words — the
+/// archive's twin of this card always said who; the live one said nothing,
+/// so a customer's mailed answer and a colleague's reply looked the same.
+/// The side and the channel are the server's (`commentMeta`); without them
+/// the author is still named from the roster, and no side is guessed.
+///
+/// The side also places the card: the desk's words at the end, the other
+/// party's at the start, the way every conversation reads. Unknown side →
+/// the full width, as before.
+class _CommentCard extends ConsumerWidget {
   const _CommentCard({
     required this.comment,
     required this.dateFormat,
+    this.meta,
     this.unverified = false,
   });
 
   final TicketCommentRecord comment;
   final String dateFormat;
+  final EeCommentMeta? meta;
 
   /// EE-254: arrived as mail claiming a colleague's address it could not prove.
   final bool unverified;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    return Padding(
-      padding: kAwListRowPadding,
-      child: Card(
-        key: Key('ticket-comment-${comment.id}'),
-        // The tint is the first of the three signals; the icon and the word
-        // below are the other two. One of them is enough for anybody, and
-        // together they are enough for everybody. `surfaceContainerHighest` is
-        // the theme's own "this is set apart" surface — a hand-mixed amber would
-        // be a colour the contrast gate has never measured.
-        color: comment.internal
-            ? theme.colorScheme.surfaceContainerHighest
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.all(AwSpace.x4),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (comment.internal)
-                Row(
-                  children: [
-                    const Icon(Icons.lock_outline, size: 16),
-                    const SizedBox(width: AwSpace.x1),
-                    // Wraps rather than running off the card on a phone — the
-                    // English label is 45 characters (found by EE-266's archive
-                    // twin of this card).
-                    Expanded(
-                      child: Text(
-                        'ee.tickets.internalNote'.tr(),
-                        style: theme.textTheme.labelMedium,
-                      ),
-                    ),
-                  ],
+    final side = meta?.side;
+    final authorId = comment.authorId;
+    final author =
+        meta?.authorName ??
+        (authorId == null
+            ? null
+            : ref.watch(
+                eeMemberNamesProvider.select((names) => names.value?[authorId]),
+              ));
+    final channel = switch (meta?.channel) {
+      'email' => 'ee.tickets.threadMeta.channel.email'.tr(),
+      'portal' => 'ee.tickets.threadMeta.channel.portal'.tr(),
+      'customer_portal' => 'ee.tickets.threadMeta.channel.customerPortal'.tr(),
+      _ => null,
+    };
+    final sideLabel = side == null
+        ? null
+        : AwI18n.instance.maybeTranslate('ee.tickets.threadMeta.side.$side');
+    final header = [?author, ?sideLabel, ?channel].join(' · ');
+    final card = Card(
+      key: Key('ticket-comment-${comment.id}'),
+      margin: EdgeInsets.zero,
+      // The tint is the first of the three signals; the icon and the word
+      // below are the other two. One of them is enough for anybody, and
+      // together they are enough for everybody. `surfaceContainerHighest` is
+      // the theme's own "this is set apart" surface — a hand-mixed amber would
+      // be a colour the contrast gate has never measured.
+      color: comment.internal
+          ? theme.colorScheme.surfaceContainerHighest
+          : null,
+      child: Padding(
+        padding: const EdgeInsets.all(AwSpace.x4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (header.isNotEmpty) ...[
+              Text(
+                header,
+                key: Key('ticket-comment-author-${comment.id}'),
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
                 ),
-              if (comment.internal) const SizedBox(height: AwSpace.x2),
-              if (unverified) ...[
-                _Unverified(
-                  key: Key('ticket-comment-unverified-${comment.id}'),
-                  text: 'ee.tickets.senderUnverifiedShort'.tr(),
-                ),
-                const SizedBox(height: AwSpace.x2),
-              ],
-              Text(comment.body, style: theme.textTheme.bodyMedium),
-              if (comment.createdAt != null) ...[
-                const SizedBox(height: AwSpace.x1),
-                Text(
-                  awFormatDateTime(comment.createdAt!, format: dateFormat),
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
+              ),
+              const SizedBox(height: AwSpace.x1),
             ],
-          ),
+            if (comment.internal)
+              Row(
+                children: [
+                  const Icon(Icons.lock_outline, size: 16),
+                  const SizedBox(width: AwSpace.x1),
+                  // Wraps rather than running off the card on a phone — the
+                  // English label is 45 characters (found by EE-266's archive
+                  // twin of this card).
+                  Expanded(
+                    child: Text(
+                      'ee.tickets.internalNote'.tr(),
+                      style: theme.textTheme.labelMedium,
+                    ),
+                  ),
+                ],
+              ),
+            if (comment.internal) const SizedBox(height: AwSpace.x2),
+            if (unverified) ...[
+              _Unverified(
+                key: Key('ticket-comment-unverified-${comment.id}'),
+                text: 'ee.tickets.senderUnverifiedShort'.tr(),
+              ),
+              const SizedBox(height: AwSpace.x2),
+            ],
+            Text(comment.body, style: theme.textTheme.bodyMedium),
+            _CommentFiles(commentId: comment.id),
+            if (comment.createdAt != null) ...[
+              const SizedBox(height: AwSpace.x1),
+              Text(
+                awFormatDateTime(comment.createdAt!, format: dateFormat),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ],
         ),
       ),
     );
+    return Padding(
+      padding: kAwListRowPadding,
+      child: side == null
+          ? SizedBox(width: double.infinity, child: card)
+          : Align(
+              key: Key('ticket-comment-align-${comment.id}'),
+              alignment: side == 'desk' || side == 'system'
+                  ? AlignmentDirectional.centerEnd
+                  : AlignmentDirectional.centerStart,
+              child: FractionallySizedBox(widthFactor: 0.88, child: card),
+            ),
+    );
   }
+}
+
+/// OPH-358 (UI-AUDIT #34): the files that came with one reply — a file sent
+/// with an internal note is the desk's, exactly as the note is, and the
+/// server never sends it to anybody else (EE-252).
+class _CommentFiles extends ConsumerWidget {
+  const _CommentFiles({required this.commentId});
+
+  final String commentId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final files =
+        ref
+            .watch(
+              targetFilesProvider((
+                targetType: 'ticket_comment',
+                targetId: commentId,
+              )),
+            )
+            .value ??
+        const <FileAttachment>[];
+    if (files.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x2),
+      child: Wrap(
+        spacing: AwSpace.x2,
+        runSpacing: AwSpace.x1,
+        children: [
+          for (final file in files)
+            ActionChip(
+              key: Key('ticket-comment-file-${file.id}'),
+              avatar: const Icon(Icons.attach_file, size: 16),
+              label: Text(
+                file.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onPressed: () => _openFile(context, ref, file.id),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+Future<void> _openFile(
+  BuildContext context,
+  WidgetRef ref,
+  String fileId,
+) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final url = await ref.read(fileUrlProvider(fileId).future);
+  if (url == null) {
+    messenger?.showSnackBar(
+      SnackBar(content: Text('ee.tickets.attachmentUnavailable'.tr())),
+    );
+    return;
+  }
+  await launchUrlString(url);
 }

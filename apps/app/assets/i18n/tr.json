@@ -1544,7 +1544,20 @@
       "moreOnServer": "Daha eski kayıtlar sunucuda saklanıyor.",
       "actorSystem": "AllisWell",
       "actorUnknown": "Biri",
-      "taskTitle": "Task geçmişi"
+      "taskTitle": "Task geçmişi",
+      "ticket": {
+        "unknownValue": "bilinmeyen bir değer",
+        "requesterReplied": "Talep sahibi yanıtladı",
+        "status": "Durum: {change}",
+        "priority": "Öncelik: {change}",
+        "tagAdded": "Etiket eklendi: {tag}",
+        "tagRemoved": "Etiket kaldırıldı: {tag}",
+        "customer": "Firma bağı değişti",
+        "note": "İç not yazıldı",
+        "reply": "Yanıt yazıldı",
+        "worklog": "Süre yazıldı: {duration}",
+        "formCorrected": "Form cevapları düzeltildi: {fields}"
+      }
     },
     "verb": {
       "created": "bunu oluşturdu",
@@ -2127,7 +2140,10 @@
           "NOT_FOUND": "Bu talepte yapılamaz — biriminde değilsin ya da talep artık görünmüyor",
           "TICKET_PRIORITY_OVERRIDE_DENIED": "Öncelik masanın matrisinden geliyor; değiştirmeye yetkin yok",
           "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "Bu kişi talebin biriminde değil",
-          "UNKNOWN": "Masa bir neden söylemeden değiştirmedi"
+          "UNKNOWN": "Masa bir neden söylemeden değiştirmedi",
+          "TICKET_INVALID_TRANSITION": "Bulunduğu durumdan bu duruma geçemez",
+          "TICKET_TERMINAL": "Talep kapanmış ya da iptal edilmiş; değiştirilemez",
+          "TICKET_APPROVAL_PENDING": "Onay bekliyor; onay gelene kadar yalnızca iptal edilebilir"
         }
       },
       "status": {
@@ -2178,7 +2194,13 @@
         "offline": "Çevrimdışısın. Yanıt yalnız bağlantı varken gider, kendiliğinden gönderilmez; yazdığın, uygulama açık kaldıkça burada duruyor.",
         "replySent": "Yanıt gönderildi",
         "noteAdded": "İç not eklendi",
-        "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç."
+        "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç.",
+        "replyOwn": "Masaya yaz",
+        "replyOwnAudience": "Bunu masa okur.",
+        "byEmail": "Yanıt talep sahibine e-postayla gönderilir.",
+        "customerPortal": "Yanıt {name} firma portalında da görünür.",
+        "filesInternal": "İç nota eklenen dosyaları yalnız masa görür.",
+        "filesFailed": "Gönderildi, ama {count} dosya yüklenemedi — dosyayı yeniden ekleyin."
       },
       "actions": {
         "statusTitle": "Durumu değiştir",
@@ -2282,7 +2304,11 @@
         "assetPickTitle": "Hangi makine?",
         "assetSearch": "Etiket, ad ya da yer",
         "assetNoneOnDevice": "Bu birimin cihazda tutulan bir varlığı yok. Makinenin etiketini okutup kartından da talep açabilirsiniz.",
-        "assetNoMatch": "Bu aramayla eşleşen bir makine yok."
+        "assetNoMatch": "Bu aramayla eşleşen bir makine yok.",
+        "offlineNoDraft": "Bağlantı yok ve bu cihazda taslağın tutulacağı kişisel bir alan yok. Yazdıklarınız burada duruyor; bağlantı gelince gönderin.",
+        "waitForSignal": "Bağlantı gelince gönderin",
+        "filesFailed": "{count} dosya eklenemedi",
+        "filesDeskOnly": "Dosyayı talebi alan birimin üyeleri ekleyebilir; gerekirse masa sizden ister."
       },
       "drafts": {
         "title": "Taslaklar",
@@ -2372,7 +2398,9 @@
           "approved": "{name} {date} tarihinde onayladı",
           "rejected": "{name} {date} tarihinde reddetti",
           "expired": "Onay cevapsız kalıp süresi doldu",
-          "pending": "Kapandığında onay hâlâ bekliyordu"
+          "pending": "Kapandığında onay hâlâ bekliyordu",
+          "withdrawn": "Talep kapandığı için onay geri çekildi",
+          "unknown": "Onayın son durumu bilinmiyor"
         },
         "mineSection": "Arşiv",
         "mineTitle": "Arşivdeki taleplerim",
@@ -2391,7 +2419,55 @@
         "save": "Ekle",
         "remove": "Etiketi kaldır",
         "offline": "Etiket eklemek ve kaldırmak bağlantı ister."
-      }
+      },
+      "cancelledOn": "{date} tarihinde iptal edildi",
+      "threadMeta": {
+        "side": {
+          "desk": "Masa",
+          "requester": "Talep sahibi",
+          "customer": "Firma kişisi",
+          "system": "Sistem"
+        },
+        "channel": {
+          "email": "e-posta",
+          "portal": "portal",
+          "customerPortal": "firma portalı"
+        }
+      },
+      "customer": {
+        "line": "Firma: {name}",
+        "visible": "Bu talep firmanın portalında görünür; firmanın kişileri yanıtları okuyabilir.",
+        "none": "Bir firmaya bağlı değil",
+        "unnamed": "Adı bilinmeyen firma",
+        "link": "Firmaya bağla",
+        "change": "Değiştir",
+        "pickTitle": "Talebin firması",
+        "noneToPick": "Henüz firma yok.",
+        "clear": "Firmadan ayır"
+      },
+      "links": {
+        "title": "İlişkili talepler",
+        "empty": "Başka bir talebe bağlı değil.",
+        "add": "Talebe bağla",
+        "added": "Talepler bağlandı",
+        "remove": "Bağı kaldır",
+        "offDevice": "Bu cihazda olmayan bir talep",
+        "searchHint": "Numara ya da konu",
+        "noCandidates": "Eşleşen talep yok.",
+        "type": {
+          "related": "İlişkili",
+          "duplicateOf": "Bunun kopyası olduğu talep",
+          "duplicatedBy": "Bu talebin kopyası",
+          "childOf": "Üst talep",
+          "parentOf": "Alt talep"
+        },
+        "kind": {
+          "related": "İlişkili",
+          "duplicateOf": "Kopyası",
+          "childOf": "Alt talebi"
+        }
+      },
+      "statusUnknown": "başka bir durumda"
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -2763,7 +2839,8 @@
         "pending": "Bekliyor",
         "approved": "Onaylandı",
         "rejected": "Reddedildi",
-        "expired": "Düştü — kimse zamanında cevaplamadı"
+        "expired": "Düştü — kimse zamanında cevaplamadı",
+        "withdrawn": "Geri çekildi"
       },
       "tabMine": "Bende",
       "tabTeam": "Takımda",
@@ -2828,7 +2905,8 @@
         "ee_ticket": "Talebi aç",
         "ee_change": "Değişikliği aç",
         "task": "Görevi aç"
-      }
+      },
+      "statusUnknown": "Durumu bilinmiyor"
     },
     "assets": {
       "status": {
@@ -2881,13 +2959,13 @@
       },
       "history": {
         "title": "Bu varlıkla ilgili talepler",
-        "counts": "Son {months} ay: {count} talep, {open} hâlâ açık, {hours} saat açık kalma",
+        "counts": "Son {months} ay: {count} talep, {open} hâlâ açık; talepler toplam {duration} açık kaldı",
         "empty": "Bu varlığı adlandıran talep yok",
         "archived": "Arşivlenmiş",
-        "labour": "Kayıtlı {hours} sa çalışma",
-        "labourCost": "İşçilik: {amount} {currency}",
-        "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce.",
-        "ticketLabour": "{hours} sa işçilik",
+        "labour": "Kayıtlı {duration} çalışma",
+        "labourCost": "İşçilik: {money}",
+        "labourUnpriced": "Bunun {duration} kadarı saatlik ücreti tanımlı olmayan kişilerce.",
+        "ticketLabour": "{duration} işçilik",
         "live": "Sunucudan · bağlantı ister",
         "offline": "Geçmiş bağlantı ister — talepler ve işçilik bağlantı gelince burada görünür.",
         "openTimeNote": "Açık kalma, taleplerin açık kaldığı süredir; makinenin durduğu süre değildir. Duruş kaydı tutulmuyor."
@@ -2908,6 +2986,10 @@
         "fromServer": "Sunucudan okundu — bu cihazda tutulmuyor",
         "notOnDevice": "Bu varlık bu cihazda yok",
         "notOnDeviceBody": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar cihazda tutulmaz. Bağlantı gelince açılır."
+      },
+      "changes": {
+        "title": "Bu ekipmanı etkileyen değişiklikler",
+        "empty": "Bu ekipman için planlanmış değişiklik yok."
       }
     },
     "changes": {
@@ -3014,7 +3096,10 @@
         "save": "Değişikliği aç",
         "offline": "Değişiklik açmak bağlantı ister.",
         "done": "Değişiklik açıldı"
-      }
+      },
+      "windowPassed": "Pencere geçti",
+      "windowPassedLong": "Pencere geçti — değişiklik uygulanmadı; yeniden planlanmalı.",
+      "statusUnknown": "Bilinmeyen durum"
     },
     "problems": {
       "title": "Problemler",
@@ -3110,16 +3195,24 @@
         "approved": "Onayla",
         "published": "Yayına al",
         "retired": "Emekliye ayır"
-      }
+      },
+      "retireTitle": "Makale emekliye ayrılsın mı?",
+      "retireBody": "Emekliye ayrılan makale artık önerilmez ve bu geri alınamaz.",
+      "noServiceNote": "Bu makale bir servise bağlı değil; talep açan kimseye önerilmez.",
+      "counts": "{suggested} kez önerildi · {converted} kez okunup yine talep açıldı · {deflected} talep önlendi",
+      "fieldService": "Servis",
+      "fieldServiceNone": "Servis seçilmezse makale talep açan kimseye önerilmez.",
+      "fieldServiceHelp": "Bu servis için talep açan kişiye yayımlandığında önerilir.",
+      "noService": "Servis yok"
     },
     "worklogs": {
       "title": "Harcanan süre",
       "add": "Süre yaz",
       "empty": "Bu talebe henüz süre yazılmadı.",
-      "entry": "{date} — {hours} sa",
+      "entry": "{date} — {duration}",
       "money": "{amount} {currency}",
-      "totalHours": "Toplam {hours} sa",
-      "unpriced": "{hours} sa saatlik ücreti tanımlı olmayan kişilerce yazıldı — gerçek iş, fiyatı yok.",
+      "totalHours": "Toplam {duration}",
+      "unpriced": "{duration} saatlik ücreti tanımlı olmayan kişilerce yazıldı — gerçek iş, fiyatı yok.",
       "minutes": "Dakika",
       "minutesHelp": "Gerçekte ne kadar çalıştınız. Kronometre değil, elle.",
       "minutesInvalid": "Tam sayı olarak dakika girin.",
@@ -3128,7 +3221,9 @@
       "note": "Ne yaptınız (isteğe bağlı)",
       "remove": "Geri çek",
       "removeTitle": "Bu kayıt geri çekilsin mi?",
-      "removeBody": "Kayıtlar düzenlenmez, geri çekilir — doğru süreyi yeniden yazmanız gerekecek. İki adım da geçmişte kalır."
+      "removeBody": "Kayıtlar düzenlenmez, geri çekilir — doğru süreyi yeniden yazmanız gerekecek. İki adım da geçmişte kalır.",
+      "minutesTooFew": "En az 1 dakika girin.",
+      "menu": "Kayıt seçenekleri"
     },
     "absences": {
       "title": "Devamsızlıklar",
@@ -3204,6 +3299,11 @@
       "title": "Bu ekran takım yöneticilerine ait",
       "body": "Rolünüz bu ayarları açmaya izin vermiyor. Burada bir şeyin değişmesi gerekiyorsa takım yöneticinize yazın.",
       "back": "Ana sayfaya dön"
+    },
+    "duration": {
+      "minutes": "{m} dk",
+      "hours": "{h} sa",
+      "hoursMinutes": "{h} sa {m} dk"
     }
   },
   "perm": {

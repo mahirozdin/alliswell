@@ -1545,7 +1545,20 @@
       "moreOnServer": "Older entries are kept on the server.",
       "actorSystem": "AllisWell",
       "actorUnknown": "Someone",
-      "taskTitle": "Task history"
+      "taskTitle": "Task history",
+      "ticket": {
+        "unknownValue": "an unknown value",
+        "requesterReplied": "The requester replied",
+        "status": "Status: {change}",
+        "priority": "Priority: {change}",
+        "tagAdded": "Tag added: {tag}",
+        "tagRemoved": "Tag removed: {tag}",
+        "customer": "Company link changed",
+        "note": "Internal note written",
+        "reply": "Reply written",
+        "worklog": "Time logged: {duration}",
+        "formCorrected": "Form answers corrected: {fields}"
+      }
     },
     "verb": {
       "created": "created this",
@@ -2128,7 +2141,10 @@
           "NOT_FOUND": "Cannot be done on this request — you are not in its unit, or it is no longer visible",
           "TICKET_PRIORITY_OVERRIDE_DENIED": "The priority comes from the desk's matrix; you may not override it",
           "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "This person is not in the request's unit",
-          "UNKNOWN": "The desk did not change it and gave no reason"
+          "UNKNOWN": "The desk did not change it and gave no reason",
+          "TICKET_INVALID_TRANSITION": "Cannot move to that status from where it stands",
+          "TICKET_TERMINAL": "Closed or cancelled; it cannot be changed",
+          "TICKET_APPROVAL_PENDING": "Waiting for approval; until then it can only be cancelled"
         }
       },
       "status": {
@@ -2179,7 +2195,13 @@
         "offline": "You're offline. A reply only goes while you're connected — it is not sent on its own; what you've written stays here while the app is open.",
         "replySent": "Reply sent",
         "noteAdded": "Internal note added",
-        "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above."
+        "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above.",
+        "replyOwn": "Write to the desk",
+        "replyOwnAudience": "The desk reads this.",
+        "byEmail": "The reply is sent to the requester by email.",
+        "customerPortal": "The reply also shows in {name}'s company portal.",
+        "filesInternal": "Files on an internal note are seen by the desk only.",
+        "filesFailed": "Sent, but {count} file(s) could not be uploaded — attach them again."
       },
       "actions": {
         "statusTitle": "Change status",
@@ -2283,7 +2305,11 @@
         "assetPickTitle": "Which machine?",
         "assetSearch": "Tag, name or place",
         "assetNoneOnDevice": "This unit has no assets on this device. You can also scan the machine's label and open a request from its card.",
-        "assetNoMatch": "No machine matches this search."
+        "assetNoMatch": "No machine matches this search.",
+        "offlineNoDraft": "No connection, and no personal space on this device to keep a draft in. What you typed stays here; send it when the signal returns.",
+        "waitForSignal": "Send when connected",
+        "filesFailed": "{count} file(s) could not be attached",
+        "filesDeskOnly": "Files can be added by members of the unit handling the request; the desk will ask if it needs one."
       },
       "drafts": {
         "title": "Drafts",
@@ -2373,7 +2399,9 @@
           "approved": "Approved by {name} on {date}",
           "rejected": "Rejected by {name} on {date}",
           "expired": "Approval expired unanswered",
-          "pending": "Approval was still pending when it closed"
+          "pending": "Approval was still pending when it closed",
+          "withdrawn": "The approval was withdrawn when the request closed",
+          "unknown": "The approval's last state is unknown"
         },
         "mineSection": "Archive",
         "mineTitle": "My archived requests",
@@ -2392,7 +2420,55 @@
         "save": "Add",
         "remove": "Remove the tag",
         "offline": "Adding and removing tags needs a connection."
-      }
+      },
+      "cancelledOn": "Cancelled on {date}",
+      "threadMeta": {
+        "side": {
+          "desk": "Desk",
+          "requester": "Requester",
+          "customer": "Company contact",
+          "system": "System"
+        },
+        "channel": {
+          "email": "email",
+          "portal": "portal",
+          "customerPortal": "company portal"
+        }
+      },
+      "customer": {
+        "line": "Company: {name}",
+        "visible": "This request shows in the company's portal; its contacts can read the replies.",
+        "none": "Not filed under a company",
+        "unnamed": "Unnamed company",
+        "link": "Link company",
+        "change": "Change",
+        "pickTitle": "The request's company",
+        "noneToPick": "No companies yet.",
+        "clear": "Remove the company"
+      },
+      "links": {
+        "title": "Linked requests",
+        "empty": "Not linked to another request.",
+        "add": "Link a request",
+        "added": "Requests linked",
+        "remove": "Remove link",
+        "offDevice": "A request this device does not hold",
+        "searchHint": "Number or subject",
+        "noCandidates": "No matching request.",
+        "type": {
+          "related": "Related",
+          "duplicateOf": "Duplicate of",
+          "duplicatedBy": "Duplicated by",
+          "childOf": "Parent request",
+          "parentOf": "Child request"
+        },
+        "kind": {
+          "related": "Related",
+          "duplicateOf": "Duplicate of",
+          "childOf": "Child of"
+        }
+      },
+      "statusUnknown": "in another status"
     },
     "sla": {
       "breached": "SLA missed",
@@ -2764,7 +2840,8 @@
         "pending": "Waiting",
         "approved": "Approved",
         "rejected": "Rejected",
-        "expired": "Lapsed — nobody answered in time"
+        "expired": "Lapsed — nobody answered in time",
+        "withdrawn": "Withdrawn"
       },
       "tabMine": "Mine",
       "tabTeam": "Team",
@@ -2829,7 +2906,8 @@
         "ee_ticket": "Open the request",
         "ee_change": "Open the change",
         "task": "Open the task"
-      }
+      },
+      "statusUnknown": "Status unknown"
     },
     "assets": {
       "status": {
@@ -2882,13 +2960,13 @@
       },
       "history": {
         "title": "Requests about this asset",
-        "counts": "Last {months} months: {count} requests, {open} still open, {hours}h of open time",
+        "counts": "Last {months} months: {count} requests, {open} still open; requests stayed open {duration} in total",
         "empty": "No requests have named this asset yet",
         "archived": "Archived",
-        "labour": "{hours} h of recorded work",
-        "labourCost": "Labour: {amount} {currency}",
-        "labourUnpriced": "{hours} h of it by people with no hourly rate.",
-        "ticketLabour": "{hours} h of work",
+        "labour": "{duration} of recorded work",
+        "labourCost": "Labour: {money}",
+        "labourUnpriced": "{duration} of it by people with no hourly rate.",
+        "ticketLabour": "{duration} of work",
         "live": "From the server · needs a connection",
         "offline": "History needs a connection — requests and labour show up here once you are back online.",
         "openTimeNote": "Open time is how long requests stayed open, not how long the machine was stopped. Downtime is not recorded."
@@ -2909,6 +2987,10 @@
         "fromServer": "Read from the server — not kept on this device",
         "notOnDevice": "This asset is not on this device",
         "notOnDeviceBody": "Equipment outside this unit, and retired records untouched for 90 days, are not kept on devices. It opens once you are back online."
+      },
+      "changes": {
+        "title": "Changes affecting this equipment",
+        "empty": "No changes planned for this equipment."
       }
     },
     "changes": {
@@ -3015,7 +3097,10 @@
         "save": "Raise the change",
         "offline": "Raising a change needs a connection.",
         "done": "Change raised"
-      }
+      },
+      "windowPassed": "Window passed",
+      "windowPassedLong": "The window has passed — the change was not carried out; it needs a new plan.",
+      "statusUnknown": "Unknown status"
     },
     "problems": {
       "title": "Problems",
@@ -3111,16 +3196,24 @@
         "approved": "Approve",
         "published": "Publish",
         "retired": "Retire"
-      }
+      },
+      "retireTitle": "Retire this article?",
+      "retireBody": "A retired article is no longer suggested, and this cannot be undone.",
+      "noServiceNote": "This article is not linked to a service, so it is suggested to nobody filing a request.",
+      "counts": "Suggested {suggested} times · read and asked anyway {converted} times · {deflected} requests prevented",
+      "fieldService": "Service",
+      "fieldServiceNone": "Without a service the article is suggested to nobody filing a request.",
+      "fieldServiceHelp": "Once published it is suggested to people filing a request for this service.",
+      "noService": "No service"
     },
     "worklogs": {
       "title": "Time spent",
       "add": "Log time",
       "empty": "No time logged on this request yet.",
-      "entry": "{hours} h on {date}",
+      "entry": "{duration} on {date}",
       "money": "{amount} {currency}",
-      "totalHours": "{hours} h in total",
-      "unpriced": "{hours} h logged by people with no hourly rate — real work, no price attached.",
+      "totalHours": "{duration} in total",
+      "unpriced": "{duration} logged by people with no hourly rate — real work, no price attached.",
       "minutes": "Minutes",
       "minutesHelp": "How long you actually worked. Typed, not timed.",
       "minutesInvalid": "Enter a whole number of minutes.",
@@ -3129,7 +3222,9 @@
       "note": "What you did (optional)",
       "remove": "Withdraw",
       "removeTitle": "Withdraw this entry?",
-      "removeBody": "Entries are withdrawn rather than edited, so you will need to log the corrected time again. Both steps stay in the history."
+      "removeBody": "Entries are withdrawn rather than edited, so you will need to log the corrected time again. Both steps stay in the history.",
+      "minutesTooFew": "Enter at least 1 minute.",
+      "menu": "Entry options"
     },
     "absences": {
       "title": "Absences",
@@ -3205,6 +3300,11 @@
       "title": "This screen is for the team's admins",
       "body": "Your role does not open these settings. If something here needs changing, ask your team admin.",
       "back": "Go to Home"
+    },
+    "duration": {
+      "minutes": "{m} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
     }
   },
   "perm": {

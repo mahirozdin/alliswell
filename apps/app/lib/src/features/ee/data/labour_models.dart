@@ -2,9 +2,14 @@
 /// shows labour shares (the request's worklog panel since EE-208, a
 /// machine's history since EE-240).
 ///
-/// A leaf with no imports of its own: the worklog models and the asset models
-/// both need these, and each importing the other would make them a cycle.
+/// A leaf with no imports of its own models: the worklog models and the
+/// asset models both need these, and each importing the other would make
+/// them a cycle.
 library;
+
+import 'package:intl/intl.dart';
+
+import '../../../i18n/i18n.dart';
 
 /// Money in ONE currency, which is the only shape this product prints money in.
 ///
@@ -70,6 +75,24 @@ class EeWorklogTotals {
       );
 }
 
-/// One spelling of worked time for every surface that writes it: hours with
-/// one decimal, so twenty minutes reads "0.3", never "0".
-String eeHoursText(int minutes) => (minutes / 60).toStringAsFixed(1);
+/// One spelling of worked time for every surface that writes it (OPH-358,
+/// UI-AUDIT #71): whole minutes and hours, the way people say them — "45 dk",
+/// "1 sa 15 dk", "2 sa". The old one-decimal hours turned 45 minutes into
+/// "0.8" with an English decimal point, and lost the minutes doing it.
+String eeDurationText(int minutes) {
+  final h = minutes ~/ 60;
+  final m = minutes % 60;
+  if (h == 0) return 'ee.duration.minutes'.tr(args: {'m': '$m'});
+  if (m == 0) return 'ee.duration.hours'.tr(args: {'h': '$h'});
+  return 'ee.duration.hoursMinutes'.tr(args: {'h': '$h', 'm': '$m'});
+}
+
+/// Money in the reader's locale (OPH-358, UI-AUDIT #78): "385.000,00 TRY",
+/// never "385000.00 TRY". The currency is the record's own, never converted.
+String eeMoneyText(int minor, String? currency) {
+  final amount = NumberFormat.decimalPatternDigits(
+    locale: AwI18n.instance.locale.toLanguageTag(),
+    decimalDigits: 2,
+  ).format(minor / 100);
+  return currency == null ? amount : '$amount $currency';
+}
