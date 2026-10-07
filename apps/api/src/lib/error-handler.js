@@ -11,7 +11,8 @@ import sensible from '@fastify/sensible';
  *
  * - **4xx** — unchanged. Handed back to Fastify's default handler, which
  *   produces exactly the body it always did (validation errors included).
- *   The one addition is `retryAfter` on the limiter's `RATE_LIMITED` 429.
+ *   The one addition is `retryAfter` on the limiter's `RATE_LIMITED` 429. A
+ *   thrown plain object (a route limiter's own body) keeps its status code.
  * - **5xx written on purpose** — an `HttpError` from `app.httpErrors`
  *   (`serviceUnavailable('…not configured')`, `badGateway(...)`): its author
  *   chose the words and the code, and clients branch on them. Unchanged.
@@ -42,6 +43,11 @@ export function rootErrorHandler(error, request, reply) {
         retryAfter: error.retryAfter,
       });
     }
+    // A plain object is not an Error: `reply.send` would serialize it with
+    // whatever status the reply holds (200), turning a refusal into a success.
+    // @fastify/rate-limit throws exactly that when a route's
+    // `errorResponseBuilder` returns a body (the extension's sales shield).
+    if (!(error instanceof Error)) return reply.code(statusCode).send(error);
     // Fastify's default handler, i.e. the body every 4xx always had.
     return reply.send(error);
   }

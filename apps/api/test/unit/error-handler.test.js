@@ -158,4 +158,36 @@ describe('root error handler (OPH-357)', () => {
 
     await app.close();
   });
+
+  it("a route limiter's own 429 body keeps its 429, not a 200", async () => {
+    const body = {
+      statusCode: 429,
+      error: 'Too Many Requests',
+      code: 'SALES_TEMPORARILY_UNAVAILABLE',
+      message: 'Too many requests right now.',
+    };
+    const app = await appWith((app) =>
+      app.post(
+        '/shield',
+        {
+          config: {
+            rateLimit: {
+              max: 1,
+              timeWindow: '1 minute',
+              keyGenerator: () => 'one',
+              errorResponseBuilder: () => body,
+            },
+          },
+        },
+        async () => ({ ok: true }),
+      ),
+    );
+
+    expect((await app.inject({ method: 'POST', url: '/shield' })).statusCode).toBe(200);
+    const refused = await app.inject({ method: 'POST', url: '/shield' });
+    expect(refused.statusCode).toBe(429);
+    expect(refused.json()).toEqual(body);
+
+    await app.close();
+  });
 });
