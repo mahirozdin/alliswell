@@ -347,10 +347,9 @@ Screenshot obligations, gaps and the harness to shoot them are OPH-252.
 
 ## 9. The engine is a package: `markdown_forge`
 
-OPH-274 extracted the renderer and the editor into
-[`apps/app/packages/markdown_forge`](../apps/app/packages/markdown_forge) —
-MIT-licensed, published from
-[`github.com/BubiApps-LTD/markdown_forge`](https://github.com/BubiApps-LTD/markdown_forge) to pub.dev,
+OPH-274 extracted the renderer and the editor into the
+[`markdown_forge`](https://pub.dev/packages/markdown_forge) package — MIT-licensed,
+developed in [`github.com/BubiApps-LTD/markdown_forge`](https://github.com/BubiApps-LTD/markdown_forge),
 because nothing in it is AllisWell-specific once three seams are injected:
 
 | AllisWell had | The package asks for | We hand it |
@@ -366,12 +365,12 @@ or `ProviderScope`, so a change that reaches for them fails to build rather
 than quietly re-coupling. `AwMarkdownScope` mounts the seams once, at the app
 root.
 
-Publishing: the standalone repo (2026-10-07) carries the package, its
-pure-package tests, an `example/`, CI and a tag-triggered pub.dev workflow
-(OIDC). The first `flutter pub publish` is the owner's (Google sign-in). Until
-it lands the app consumes this directory by path; after it, the app depends
-on the pub.dev version and this directory is deleted — the standalone repo is
-the one source, so the two copies must not drift in between.
+Publishing: 0.1.0 is on pub.dev (2026-10-07) and the app depends on it by
+version — there is no in-repo copy any more. A change to the engine is a PR in
+that repo (its CI runs the pure-package tests on Flutter 3.44 and on the
+oldest SDK it admits, 3.35), then a `vX.Y.Z` tag publishes it through GitHub
+Actions (OIDC), then a version bump here. Tests that need AllisWell (themes,
+`.tr()`, files) stay in `apps/app/test/features/notes/`.
 
 ## 11. Round 19: what the page shows, and what the field shows
 

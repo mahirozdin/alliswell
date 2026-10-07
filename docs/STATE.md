@@ -9,8 +9,8 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-274: `markdown_forge` public repo'su açıldı
-(`BubiApps-LTD/markdown_forge`); kalan tek adım sahibin ilk pub.dev yayını.
+**Last updated:** 2026-10-07 — OPH-274 kapandı: `markdown_forge` 0.1.0 pub.dev'de
+(`BubiApps-LTD/markdown_forge`); uygulama onu oradan alıyor, depodaki kopya silindi.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
 | Current epic             | Açık epic yok.                                                                               |
-| ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki iki iş (OPH-142, OPH-274) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
+| ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki tek iş (OPH-142) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
 | Last completed           | ADR-0044 — paylaşılan alanlar birlikte senkronda, kişinin listeleri kendi işi (`owned`, `createdBy`, görev kapsamı, replika v37) ve üç dikiş eki (içeriden ret, silmenin anlatılması, hatırlatıcı kitlesi); OPH-353 liste ritmi (2026-09-30). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
@@ -31,22 +31,21 @@
    secret'ları emekliye, `diagnose.yml` runner'a.
 3. **`main` için branch protection** — Settings › Branches, public depoda ücretsiz tek kural
    (2026-09-26: korumasız).
-4. **OPH-274** — repo hazır (`BubiApps-LTD/markdown_forge`); kalan: ilk `flutter pub publish`.
-5. **OPH-142** — critical-alerts başvurusunun sonucu (onaylanırsa tek entitlement satırı).
-6. **OPH-304** — Play Console `USE_EXACT_ALARM` beyanı (form + video; malzeme
+4. **OPH-142** — critical-alerts başvurusunun sonucu (onaylanırsa tek entitlement satırı).
+5. **OPH-304** — Play Console `USE_EXACT_ALARM` beyanı (form + video; malzeme
    `docs/store/exact-alarm-declaration.md`). GitHub #11 kod tamam diye kapandı (2026-09-26);
    Galaxy A12 bildireni Android sürümü, alarm günlüğü ve cihaz bilgisiyle dönerse yeni issue.
-7. **OPH-335** — macOS widget hedefi: `cd apps/app/macos && ruby scripts/add_widget_extension.rb`
+6. **OPH-335** — macOS widget hedefi: `cd apps/app/macos && ruby scripts/add_widget_extension.rb`
    → Xcode'da AllisWellWidgetMac hedefine takımı seç → `flutter build macos` → pbxproj farkını
    commit'le (`macos/AllisWellWidgetMac/SETUP.md`).
-8. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
+7. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
    `VITE_SALES_CAPTCHA_SITE_KEY`, sunucu yarısıyla birlikte (uzantının belgeleri); tek yarı her
    gönderimi reddeder.
-9. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
-    (`docs/store/directories.md`, önkoşulları boş).
-10. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
-    doğrulama 2026-07-29) — ilki **~2026-10**.
-11. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
+8. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
+   (`docs/store/directories.md`, önkoşulları boş).
+9. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
+   doğrulama 2026-07-29) — ilki **~2026-10**.
+10. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
     canlıda; APNs yoksa iOS'a hiçbir push teslim edilmez ve hiçbir test yakalamaz) · OpenAI "Sign in
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.

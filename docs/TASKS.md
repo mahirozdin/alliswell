@@ -37,16 +37,6 @@ kutuyu işaretle.)_
       already gates on the runtime grant, and the second "Critical Alerts" permission prompt +
       Settings toggle appear automatically.
 
-### OPH-274 — Notlar %100 markdown: rich text editör kaldırıldı, motor `markdown_forge` paketi oldu (ADR-0033, v1.7.0) ⏸️ SAHİP
-
-_Kod 2026-08-18'de kapandı (v1.7.0); motor bugün `apps/app/packages/markdown_forge` yolundan geliyor._
-
-- [x] Public repo: [BubiApps-LTD/markdown_forge](https://github.com/BubiApps-LTD/markdown_forge)
-      (2026-10-07) — paket + saf-paket testleri + `example/` + CI + etiketle pub.dev yayını (OIDC).
-- [ ] **AÇIK — sahibin adımı:** ilk `flutter pub publish` (Google girişi ister — ajan yapamaz).
-- [ ] Yayın sonrası (ajan): `apps/app/pubspec.yaml`'daki `path:` bağımlılığı `markdown_forge: ^0.1.0`
-      olur, `apps/app/packages/markdown_forge` silinir; paketin değişiklikleri artık o repoda.
-
 ---
 
 ## Backlog / v2 parking lot
@@ -114,7 +104,7 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   biz markdown'ı iyi okuyan bir görev uygulamasıyız, Obsidian değiliz); Vim/Emacs kısayolları
   ve özel CSS temaları (**reddedildi** — Rule 11, tek tasarım sistemi); göreli yollu görseller
   (`./x.png` bugün sebepli yer tutucuyla çiziliyor — OPH-247); bölünmüş görünümde satır eşlemeli
-  senkron kaydırma (bugün oransal — `markdown_forge/lib/src/edit/source_mode.dart`, OPH-248);
+  senkron kaydırma (bugün oransal — `markdown_forge` reposunda `lib/src/edit/source_mode.dart`, OPH-248);
   dış dosyanın diskte değişmesini canlı izleme (bugün yalnız kaydetmede çatışma + elle
   `reprobe` — OPH-251).
 - **Round 18 park kuyruğu (gerekçeler ADR-0031/0032):** **generic OIDC girişi**
