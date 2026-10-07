@@ -39,6 +39,34 @@ kutuyu işaretle.)_
 
 ---
 
+## Epic 34 — 2026-10-07 UI denetimi: oturum verisi, takım adresi, hata katmanı, ekranlar
+
+_Kaynak: 2026-10-07 canlı UI denetimi ve iki yeniden testi (rapor sahibin makinesinde,
+`~/Documents/alliswell-ee-ui-audit-2026-10-07.md`). OPH-355…OPH-361 kapandı; bu, ikinci yeniden
+testin core'da kalanıdır. Sunucu yarısı yok — uzantı yalnız eski davranışıyla da çalışır._
+
+### OPH-362 — balon yuvası, teslim edilen taslağın düşmesi, türe göre "iptal etti", SLA hedef başlığı
+
+**Bulgular:** #57 (kalan), R2-1, R2-2, R2-4. **Kritik yol:** sync (push yanıtı) —
+`apps/api/test/integration/sync.test.js`, `test/sync/sync_engine_test.dart`.
+
+- [ ] **#57** telefonda (390×844) balon açılıştaki dinlenme konumunda kontrolleri örtüyor (Üyeler ⋮,
+      Birimler ⋮, Onaylar ikinci "Onayla", Takım ayarları "Kaydet"). Liste sonu dolgusu ilk bakışı
+      kurtaramaz: balon kendi şeridinde (alt çubuğun satırı) dinlenir; kabuk kapsülü kısaltır,
+      kabuk dışındaki her sayfa şeridin üstünde biter (sayfa geçişlerinde tek yerde). DESIGN §23 Q4.
+- [ ] **R2-1** teslim edilen çevrimdışı taslak aynı oturumda "Masaya ulaştı…" kalıyor: push yanıtı,
+      aynı işlemde emekliye ayrılan satırı (`rebase: {present:false}`, tekrarda da) söyler; istemci
+      satırı hemen düşürür — tombstone'u taşıyacak pull'a bağlı kalmaz.
+- [ ] **R2-2** denetim günlüğünde `revoked` türden bağımsız "bir oturumu sonlandırdı":
+      `ee.verbFor.<tür>.<fiil>` + nötr `ee.verb.revoked`; `ee-vocabulary` kapısı türü ve fiili
+      sunucunun listelerine, iki dili birbirine bağlar.
+- [ ] **R2-4** SLA politikası "Hedef süreler"de öncelik başlığı alanın yüzen etiketiyle çakışıyor
+      (1440 px): `AwSpace` boşluğu; telefonda da.
+
+**Kabul:** widget/birim testleri (`UI-AUDIT` önekli) her biri için kırmızı→yeşil; açık ve koyu tema.
+
+---
+
 ## Backlog / v2 parking lot
 
 Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alınınca buradan silinir.
