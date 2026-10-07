@@ -242,6 +242,40 @@ void main() {
     expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
   });
 
+  testWidgets('UI-AUDIT #65: the decision button says the decision, and a '
+      'rejection is in the error role', (tester) async {
+    await _pump(tester, [_approval()]);
+    await tester.tap(find.byKey(const Key('ee-approval-approve-A1')));
+    await tester.pumpAndSettle();
+    final confirm = find.byKey(const Key('ee-approval-confirm'));
+    expect(
+      find.descendant(of: confirm, matching: find.text('Approve')),
+      findsOneWidget,
+    );
+    expect(find.text('Save'), findsNothing);
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('ee-approval-reason')),
+    );
+    expect(field.decoration?.helperMaxLines, 3);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('ee-approval-reject-A1')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: confirm, matching: find.text('Reject')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(confirm)
+          .style
+          ?.backgroundColor
+          ?.resolve(const {}),
+      buildAwTheme(Brightness.light).colorScheme.error,
+    );
+  });
+
   testWidgets('a target that is gone says so — among the rows no decision '
       'can change, not among the work', (tester) async {
     await _pump(tester, [_approval(target: null)]);

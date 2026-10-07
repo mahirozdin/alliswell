@@ -1218,7 +1218,11 @@
     "revokeConfirmBody": "Bu anahtarı kullanan her şey anında çalışmayı durdurur. Geri alınamaz — istediğin zaman yeni bir anahtar oluşturabilirsin.",
     "emptyTitle": "Henüz anahtar yok",
     "emptyBody": "Bir script'in, cron job'ın ya da ev otomasyonunun görevlerine ve notlarına ulaşmasını istediğinde bir tane oluştur.",
-    "couldNotLoad": "Sunucuya ulaşılamadı, anahtarların gösterilemiyor."
+    "couldNotLoad": "Sunucuya ulaşılamadı, anahtarların gösterilemiyor.",
+    "revokeConfirm": "Anahtarı iptal et",
+    "keep": "Vazgeç",
+    "copyFailed": "Anahtar kopyalanamadı. Kaydetmediyseniz bu anahtarı iptal edip yenisini oluşturun — bir daha gösterilemez.",
+    "boundTo": "Aşağıdaki anahtarlar yalnız “{name}” çalışma alanına erişir."
   },
   "versions": {
     "title": "Sürüm geçmişi",

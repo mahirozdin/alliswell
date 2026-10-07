@@ -1219,7 +1219,11 @@
     "revokeConfirmBody": "Anything using this key stops working immediately. This cannot be undone — you can always create a new key.",
     "emptyTitle": "No keys yet",
     "emptyBody": "Create one when you want a script, a cron job or a home-automation box to reach your tasks and notes.",
-    "couldNotLoad": "Could not reach the server, so your keys cannot be shown."
+    "couldNotLoad": "Could not reach the server, so your keys cannot be shown.",
+    "revokeConfirm": "Revoke key",
+    "keep": "Keep it",
+    "copyFailed": "Could not copy the key. If you did not save it, revoke this key and create a new one — it cannot be shown again.",
+    "boundTo": "The keys below reach only the “{name}” workspace."
   },
   "versions": {
     "title": "Version history",

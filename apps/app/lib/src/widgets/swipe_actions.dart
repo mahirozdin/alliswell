@@ -179,6 +179,7 @@ Future<bool> awConfirmDelete(
   String? confirmLabel,
   String? cancelLabel,
   Key confirmKey = const Key('confirm-delete'),
+  Key? cancelKey,
 }) async {
   final scheme = Theme.of(context).colorScheme;
   final ok = await showDialog<bool>(
@@ -195,6 +196,7 @@ Future<bool> awConfirmDelete(
       content: Text(body),
       actions: [
         TextButton(
+          key: cancelKey,
           onPressed: () => Navigator.pop(ctx, false),
           child: Text(cancelLabel ?? 'common.cancel'.tr()),
         ),

@@ -55,6 +55,9 @@ class _EeApprovalReasonDialogState extends State<EeApprovalReasonDialog> {
         decoration: InputDecoration(
           labelText: 'ee.approvals.reasonLabel'.tr(),
           helperText: 'ee.approvals.reasonHelp'.tr(),
+          // OPH-360 (UI-AUDIT #65): the sentence is the point; it wraps
+          // rather than being cut at one line.
+          helperMaxLines: 3,
         ),
         onChanged: (_) => setState(() {}),
       ),
@@ -63,12 +66,24 @@ class _EeApprovalReasonDialogState extends State<EeApprovalReasonDialog> {
           onPressed: () => Navigator.of(context).pop(),
           child: Text('common.cancel'.tr()),
         ),
+        // OPH-360 (UI-AUDIT #65): the button says the decision — "Approve"
+        // or "Reject" — not "Save"; a rejection takes the error role.
         FilledButton(
           key: const Key('ee-approval-confirm'),
+          style: widget.approve
+              ? null
+              : FilledButton.styleFrom(
+                  backgroundColor: Theme.of(context).colorScheme.error,
+                  foregroundColor: Theme.of(context).colorScheme.onError,
+                ),
           onPressed: filled
               ? () => Navigator.of(context).pop(_controller.text.trim())
               : null,
-          child: Text('common.save'.tr()),
+          child: Text(
+            widget.approve
+                ? 'ee.approvals.approve'.tr()
+                : 'ee.approvals.reject'.tr(),
+          ),
         ),
       ],
     );

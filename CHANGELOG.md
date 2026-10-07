@@ -13,6 +13,8 @@ This file holds the unreleased changes and the latest release; at each release t
   days — and shows the new end before anything is sent; validity is offered in days, not "720
   hours". Each link row names its services, its unit and the day it was made; revoking asks "Keep
   it" or "Revoke link" in red, and a copy the browser refuses says so instead of failing silently.
+  Revoking an API key reads the same way and the list says which workspace its keys reach; the
+  approval dialog's button says "Approve" or "Reject" (in red) instead of "Save".
 - **Companies and their people have a screen (OPH-360).** Settings › Companies lists the companies
   you serve and their contacts; add someone and send the invitation, switch a contact off (their
   sessions end at once) or back on, rename or archive a company. An older server says it cannot do
