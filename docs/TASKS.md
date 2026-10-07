@@ -39,6 +39,30 @@ kutuyu işaretle.)_
 
 ---
 
+## Epic 34 — 2026-10-07 UI denetimi: oturum verisi, takım adresi, hata katmanı, ekranlar
+
+_Kaynak: 2026-10-07 canlı UI denetimi ve üç yeniden testi (rapor sahibin makinesinde,
+`~/Documents/alliswell-ee-ui-audit-2026-10-07.md`). OPH-355…OPH-362 kapandı; bu, üçüncü yeniden
+testin core'da kalanıdır. Sunucu yarısı yok._
+
+### OPH-363 — sayfa FAB'ı liste sonunu açar, balonun erişilebilirlik düğümü, gönderilen taslak tek kez
+
+**Bulgular:** R3-1 (P2, OPH-362 gerilemesi), R3-2, R3-3. Kritik yol yok.
+
+- [ ] **R3-1** 390×844'te `/settings/team/units`'te "+ Yeni birim" (y692–748) liste sonunda bile son
+      satırın ⋮'sini örtüyor; yuvadaki balon artık sayfanın FAB'ını gizlemiyor. Sayfa FAB'ı olan her
+      Scaffold liste sonu dolgusunda onu ister (`awListPadding`/`awPagePadding`/`awScrollEndPadding`
+      `fab:`); Webhook'lar, Herkese açık bağlantılar ve diğer FAB'lı ekranlar aynı kalıpla; bir kaynak
+      taraması unutanı yakalar.
+- [ ] **R3-2** yuvadaki Hızlı erişim düğmesinin semantik düğümü web'de tüm ekranı kaplıyor: sürükleme
+      tanıyıcıları düğmeyi kaydırma kabı gibi duyuruyor → düğüm yalnız 56 px'lik düğme, tek eylem dokunma.
+- [ ] **R3-3** oturumluk "İletildi — talebin aşağıda" satırı kapatılamıyor ve yenilenene kadar gerçek
+      talebi ikiliyor → alttaki liste aynı konulu talebi taşıyınca satır çekilir; ayrıca "Kapat".
+
+**Kabul:** her biri için widget testi kırmızı→yeşil; açık ve koyu tema.
+
+---
+
 ## Backlog / v2 parking lot
 
 Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alınınca buradan silinir.
