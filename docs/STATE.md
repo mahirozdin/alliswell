@@ -9,17 +9,17 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-274 kapandı: `markdown_forge` 0.1.0 pub.dev'de
-(`BubiApps-LTD/markdown_forge`); uygulama onu oradan alıyor, depodaki kopya silindi.
+**Last updated:** 2026-10-08 — OPH-363 kapandı (UI denetiminin üçüncü yeniden testinden core'da
+kalanlar); backlog boş.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
-| Current epic             | Açık epic yok.                                                                               |
-| ➡️ **Next task**         | **BACKLOG BOŞ** — kod kuyruğu boş: TASKS'taki tek iş (OPH-142) ⏸️ sahibin adımını bekliyor; sıradaki adım sahibin (aşağıda). Uzantının işaretçisi kendi deposunda. |
-| Last completed           | ADR-0044 — paylaşılan alanlar birlikte senkronda, kişinin listeleri kendi işi (`owned`, `createdBy`, görev kapsamı, replika v37) ve üç dikiş eki (içeriden ret, silmenin anlatılması, hatırlatıcı kitlesi); OPH-353 liste ritmi (2026-09-30). |
+| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
+| Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
+| ➡️ **Next task**         | **BACKLOG BOŞ** |
+| Last completed           | OPH-363 — sayfanın kendi FAB'ı olan her Scaffold liste sonu dolgusunda onu ister (`awListPadding`/`awPagePadding`/`awScrollEndPadding` `fab:`; Birimler, birim kadrosu, Webhook'lar, Herkese açık bağlantılar, Roller, Davetler, Firmalar, API anahtarları, SLA, yönetim Takımlar…; `page_fab_clearance_test` kaynak taraması); yuvadaki Hızlı erişim düğmesinin semantiği yalnız 56 px'lik düğme ve dokunma (sürükleme duyurulmaz); "İletildi — talebin aşağıda" satırı alttaki liste aynı konulu talebi gösterince çekilir, "Kapat" ile de kapanır. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

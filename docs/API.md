@@ -5783,14 +5783,46 @@ never on the message:
 | 403 | `AUTH_WORKSPACE_FORBIDDEN` | You are not a member there |
 | 404 | `TASK_NOT_FOUND`, `NOTE_NOT_FOUND`, … | Also what you get for someone else's row |
 | 409 | `TASK_ARCHIVED`, `TASK_INVALID_TRANSITION` | The state refuses this write |
-| 429 | — | Rate limited; see below |
+| 429 | `RATE_LIMITED` | Rate limited; see below |
+| 500 | `INTERNAL_ERROR` | Something failed on the server; the details are in its log |
+
+**A 5xx never carries internals.** An error the server did not write on
+purpose — a database refusal, a bug — answers one fixed body, whatever went
+wrong; the real error is logged on the server with the request's id
+(`x-request-id`):
+
+```json
+{ "statusCode": 500, "code": "INTERNAL_ERROR",
+  "error": "Internal Server Error", "message": "Internal server error" }
+```
+
+A 5xx the server *does* mean — `503 STORAGE_NOT_CONFIGURED`, a `502` from an
+AI provider — keeps its own code and message. Every 4xx body is as described
+above.
 
 ## 6. Rate limits
 
-Key-authenticated requests are counted **per key** (default 300/minute,
-`API_KEY_RATE_LIMIT_MAX`), not per IP — your script cannot exhaust your
-browser's budget, and one busy key cannot throttle the instance's other
-clients. A limited request answers `429` with a `retry-after` header.
+Every limit is per minute, and a limited request answers `429` with the
+wait both in a `Retry-After` header and in the body, in whole seconds:
+
+```json
+{ "statusCode": 429, "code": "RATE_LIMITED", "error": "Too Many Requests",
+  "message": "Rate limit exceeded, retry in 42 seconds", "retryAfter": 42 }
+```
+
+Who a request counts against ([ADR-0045](adr/0045-rate-limits-count-who-is-asking.md)):
+
+- **An API key** — its own bucket (default 300/minute, `API_KEY_RATE_LIMIT_MAX`),
+  not per IP: your script cannot exhaust your browser's budget, and one busy
+  key cannot throttle the instance's other clients.
+- **A signed-in user** (valid access token) — their own bucket, whatever
+  address they come from (`RATE_LIMIT_MAX`, default 300). Colleagues behind
+  one office NAT no longer share one budget.
+- **Sign-in, sign-up, refresh** — per IP *and* account (`RATE_LIMIT_AUTH_MAX`,
+  default 10), under a per-IP ceiling across all of them
+  (`RATE_LIMIT_AUTH_IP_MAX`, default ten times that). One account's wrong
+  passwords are stopped; the people next to it are not.
+- **Anything else** — per IP (`RATE_LIMIT_MAX`).
 
 ## 7. Key lifecycle
 

@@ -229,7 +229,7 @@ class EeNewTicketApi {
   /// what a person reads out on the phone). The caller sends only the answers
   /// to VISIBLE fields: a hidden field's old value is not something the
   /// person meant to say.
-  Future<({String id, int? number})> create({
+  Future<({String id, int? number, String? workspaceId})> create({
     required String serviceId,
     required String subject,
     String? body,
@@ -263,6 +263,8 @@ class EeNewTicketApi {
       return (
         id: data['id'] as String,
         number: (data['number'] as num?)?.toInt(),
+        // OPH-358: the unit it landed in — where a file sent with it goes.
+        workspaceId: data['workspaceId'] as String?,
       );
     } on DioException catch (error) {
       throw asApiException(error);

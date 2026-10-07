@@ -5,7 +5,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/data/history_models.dart';
+import 'package:alliswell/src/features/ee/data/ticket_write_api.dart';
 import 'package:alliswell/src/features/ee/history_providers.dart';
+import 'package:alliswell/src/features/ee/ticket_write_providers.dart';
 import 'package:alliswell/src/features/ee/ui/history_tab.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
@@ -177,4 +179,136 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // ── OPH-358: a request's history ─────────────────────────────────────────
+
+  const ticketId = '01TKAAAAAAAAAAAAAAAAAAAAAA';
+
+  EeHistoryEvent ticketEvent(
+    String id,
+    String verb,
+    Map<String, dynamic> diff, {
+    String name = 'Ayla Servis',
+  }) => EeHistoryEvent(
+    id: id,
+    occurredAt: DateTime.utc(2026, 10, 7, 9, 30),
+    actor: 'user',
+    verb: verb,
+    entityType: 'ee_ticket',
+    entityId: ticketId,
+    actorName: name,
+    actorInitials: 'AS',
+    diff: diff,
+  );
+
+  Widget ticketHarness(List<Override> overrides) => ProviderScope(
+    overrides: overrides,
+    child: MaterialApp(
+      theme: buildAwTheme(Brightness.light),
+      home: const Scaffold(
+        body: EeHistoryTab(entityType: 'ee_ticket', entityId: ticketId),
+      ),
+    ),
+  );
+
+  testWidgets(
+    'UI-AUDIT #6: a request row says who, when and WHAT moved — the status it left, and the questions an approver corrected, by their labels',
+    (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      var asked = 0;
+      await tester.pumpWidget(
+        ticketHarness([
+          withPage(
+            EeHistoryPage(
+              items: [
+                ticketEvent('01EVENT0000000000000000A1', 'status_changed', {
+                  'status': ['new', 'in_progress'],
+                }),
+                ticketEvent('01EVENT0000000000000000A2', 'updated', {
+                  'answersChanged': ['tedarikci', 'tutar'],
+                }),
+                ticketEvent(
+                  '01EVENT0000000000000000A3',
+                  'status_changed',
+                  {
+                    'status': ['waiting', 'in_progress'],
+                    'reason': [null, 'requester_replied'],
+                  },
+                  name: 'Deniz Yılmaz',
+                ),
+              ],
+            ),
+          ),
+          eeTicketActionsProvider(ticketId).overrideWith((ref) async {
+            asked += 1;
+            return const EeTicketActions(
+              status: 'in_progress',
+              priority: 'normal',
+              answers: [
+                EeTicketAnswer(
+                  key: 'tutar',
+                  label: 'Tahmini tutar (TL)',
+                  type: 'number',
+                  value: '15000',
+                ),
+                EeTicketAnswer(
+                  key: 'tedarikci',
+                  label: 'Tedarikçi',
+                  type: 'text',
+                  value: 'B',
+                ),
+              ],
+            );
+          }),
+        ]),
+      );
+      await tester.pumpAndSettle();
+
+      // Who did it.
+      expect(
+        find.textContaining('Ayla Servis', findRichText: true),
+        findsWidgets,
+      );
+      // What moved — words, not keys.
+      expect(find.text('Durum: Yeni → Devam ediyor'), findsOneWidget);
+      expect(
+        find.text('Form cevapları düzeltildi: Tedarikçi, Tahmini tutar (TL)'),
+        findsOneWidget,
+      );
+      expect(
+        find.text('Talep sahibi yanıtladı · Beklemede → Devam ediyor'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('in_progress'), findsNothing);
+      expect(find.textContaining('tutar,'), findsNothing);
+      // The labels were asked for once, because a row needed them.
+      expect(asked, 1);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #6: a request history the server refuses offers a retry, and the retry asks again',
+    (tester) async {
+      var asked = 0;
+      await tester.pumpWidget(
+        ticketHarness([
+          eeHistoryProvider.overrideWith((ref, arg) async {
+            asked += 1;
+            throw Exception('400');
+          }),
+        ]),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(AwErrorState), findsOneWidget);
+      final before = asked;
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AwErrorState),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(asked, greaterThan(before));
+    },
+  );
 }

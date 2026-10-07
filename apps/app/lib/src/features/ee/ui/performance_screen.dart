@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/performance_models.dart';
 import '../performance_providers.dart';
+import 'report_format.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The performance panel (EE-205) — the same numbers per unit and per person.
 ///
@@ -48,10 +52,18 @@ class EePerformanceScreen extends ConsumerWidget {
     final days = ref.watch(eePerformanceRangeProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.perfPanel.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.perfPanel.title'.tr()),
+      ),
       body: panel.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(message: '$error'),
+        // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
+        // again — never the exception's own text.
+        error: (error, _) => AwErrorState(
+          message: localizedError(error),
+          onRetry: () => ref.invalidate(eePerformanceProvider),
+        ),
         data: (data) {
           if (data == null) {
             return AwEmptyState(
@@ -63,7 +75,7 @@ class EePerformanceScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () => ref.read(eePerformanceProvider.notifier).refresh(),
             child: ListView(
-              padding: const EdgeInsets.all(AwSpace.x4),
+              padding: awPagePadding(context, AwSpace.x4),
               children: [
                 _Caution(text: data.closedIsNotPerformance),
                 const SizedBox(height: AwSpace.x4),
@@ -231,15 +243,14 @@ class _RowCard extends StatelessWidget {
   /// a zero standing in for "nothing measured".
   String _avg(EeTimedAverage a) {
     if (a.minutes == null) return '—';
-    final value = 'ee.perfPanel.minutes'.tr(
-      args: {'minutes': a.minutes!.toStringAsFixed(1)},
-    );
+    // UI-AUDIT #88: "3 g 21 sa", not "5587.5 dk".
+    final value = eeSpanText(a.minutes!);
     return a.isPartial ? '$value (${a.measured}/${a.total})' : value;
   }
 
   String _csat(EeCsatFigure c) {
     if (c.average == null) return '—';
-    return '${c.average!.toStringAsFixed(1)} (${c.answered}/${c.sent})';
+    return '${eeDecimalText(c.average!)} (${c.answered}/${c.sent})';
   }
 
   @override
@@ -279,9 +290,7 @@ class _RowCard extends StatelessWidget {
                   if (row.compliance != null)
                     _Figure(
                       labelKey: 'ee.perfPanel.compliance',
-                      value: 'ee.perfPanel.percent'.tr(
-                        args: {'value': row.compliance!.toStringAsFixed(1)},
-                      ),
+                      value: eePercentText(row.compliance!),
                     ),
                 ],
               ),

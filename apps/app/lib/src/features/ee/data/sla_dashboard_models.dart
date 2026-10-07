@@ -31,23 +31,36 @@ class EeSlaBreach {
     required this.subject,
     required this.priority,
     required this.status,
+    this.number,
     this.slaDueAt,
+    this.breachedAt,
   });
 
   final String id;
+
+  /// UI-AUDIT #53 (EE-303): two requests with one subject are told apart by
+  /// their number, as everywhere else. Null from an older server.
+  final int? number;
   final String subject;
   final String priority;
   final String status;
   final DateTime? slaDueAt;
 
+  /// When the promise broke — the order the server lists them in.
+  final DateTime? breachedAt;
+
   factory EeSlaBreach.fromJson(Map<String, dynamic> json) => EeSlaBreach(
     id: json['id'] as String,
+    number: (json['number'] as num?)?.toInt(),
     subject: json['subject'] as String,
     priority: json['priority'] as String,
     status: json['status'] as String,
     slaDueAt: json['slaDueAt'] == null
         ? null
         : DateTime.parse(json['slaDueAt'] as String).toLocal(),
+    breachedAt: json['breachedAt'] == null
+        ? null
+        : DateTime.parse(json['breachedAt'] as String).toLocal(),
   );
 }
 
@@ -60,14 +73,26 @@ class EeSlaBreach {
 class EeSlaDashboard {
   const EeSlaDashboard({
     this.compliance,
+    int? judged,
+    this.hasDefaultPolicy,
     this.byStatus = const [],
     this.byUnit = const [],
     this.byService = const [],
     this.bySla = const [],
     this.breaches = const [],
-  });
+    // A public `judged` getter falls back to `bySla`, so the stored value
+    // stays private — and a private named parameter is not portable yet.
+    // ignore: prefer_initializing_formals
+  }) : _judged = judged;
 
   final double? compliance;
+
+  final int? _judged;
+
+  /// UI-AUDIT #22 (EE-303): false = the team has no default policy, so new
+  /// requests get no SLA at all. Null from an older server, which is not
+  /// a claim either way — the board then says nothing about it.
+  final bool? hasDefaultPolicy;
   final List<EeSlaBucket> byStatus;
   final List<EeSlaBucket> byUnit;
   final List<EeSlaBucket> byService;
@@ -76,12 +101,28 @@ class EeSlaDashboard {
 
   int get total => byStatus.fold(0, (n, b) => n + b.count);
 
+  /// How many requests `compliance` was computed over (UI-AUDIT #52): kept
+  /// plus broken. The byStatus total also counts requests nobody promised
+  /// anything about, which made "40 % of 199" a sum nobody could check. An
+  /// older server does not send it, so it is summed here from `bySla`.
+  int get judged => _judged ?? (slaCount('met') + slaCount('breached'));
+
+  /// One `bySla` bucket's count — 0 when the bucket is absent.
+  int slaCount(String key) {
+    for (final b in bySla) {
+      if (b.key == key) return b.count;
+    }
+    return 0;
+  }
+
   static List<EeSlaBucket> _buckets(dynamic raw) => ((raw as List?) ?? const [])
       .map((b) => EeSlaBucket.fromJson(b as Map<String, dynamic>))
       .toList();
 
   factory EeSlaDashboard.fromJson(Map<String, dynamic> json) => EeSlaDashboard(
     compliance: (json['compliance'] as num?)?.toDouble(),
+    judged: (json['judged'] as num?)?.toInt(),
+    hasDefaultPolicy: json['hasDefaultPolicy'] as bool?,
     byStatus: _buckets(json['byStatus']),
     byUnit: _buckets(json['byUnit']),
     byService: _buckets(json['byService']),

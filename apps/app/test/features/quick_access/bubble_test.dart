@@ -1,6 +1,8 @@
+import 'package:flutter/semantics.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:alliswell/src/theme/theme.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'dart:async';
@@ -11,9 +13,14 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/features/quick_access/ui/bubble_physics.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_panel.dart';
+import 'package:go_router/go_router.dart';
+import 'package:alliswell/src/screens/settings_screen.dart';
+import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/widgets/glass.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -300,5 +307,206 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(bubble, findsNothing);
+  });
+
+  // OPH-362 — UI-AUDIT #57: the rest that still covered controls.
+  group('UI-AUDIT #57: at rest it covers nothing', () {
+    Future<void> pumpPhone(
+      WidgetTester tester, {
+      String? storedPosition,
+      Brightness brightness = Brightness.light,
+    }) async {
+      final api = FakeApi();
+      api.seedQuickLink(
+        kind: 'url',
+        url: 'https://alliswell.space',
+        title: 'Site',
+      );
+      phone(tester);
+      tester.platformDispatcher.platformBrightnessTestValue = brightness;
+      addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+      final app = await signedInApp(api);
+      if (storedPosition != null) {
+        await localKv.set('alliswell_quick_bubble_pos', storedPosition);
+      }
+      await tester.pumpWidget(app);
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> openSettings(WidgetTester tester) async {
+      GoRouter.of(tester.element(find.byType(NavigationBar))).push('/settings');
+      await tester.pumpAndSettle();
+    }
+
+    /// Every control the person could be after, as on-screen rectangles.
+    Iterable<Rect> controlsOf(WidgetTester tester, Finder page) => [
+      for (final type in const [InkWell, Switch, TextField])
+        for (final e
+            in find
+                .descendant(of: page, matching: find.byType(type))
+                .evaluate())
+          tester.getRect(find.byWidget(e.widget)),
+    ];
+
+    for (final brightness in Brightness.values) {
+      testWidgets('docked in the shell, beside the bar and below the FAB '
+          '(${brightness.name})', (tester) async {
+        await pumpPhone(tester, brightness: brightness);
+        final button = tester.getRect(bubble);
+        final bar = tester.getRect(find.byType(NavigationBar));
+        expect(
+          button.overlaps(bar),
+          isFalse,
+          reason: 'the bar ends short of the button',
+        );
+        expect(
+          button.center.dy,
+          moreOrLessEquals(bar.center.dy),
+          reason: 'it rests in the bar\'s own row',
+        );
+        for (final fab in find.byType(FloatingActionButton).evaluate()) {
+          expect(
+            button.overlaps(tester.getRect(find.byWidget(fab.widget))),
+            isFalse,
+          );
+        }
+      });
+
+      testWidgets('a page outside the shell ends above it, so nothing on it '
+          'starts under the button (${brightness.name})', (tester) async {
+        await pumpPhone(tester, brightness: brightness);
+        await openSettings(tester);
+        final button = tester.getRect(bubble);
+        final page = find.byType(SettingsScreen);
+        expect(
+          tester.getRect(page).bottom,
+          lessThanOrEqualTo(button.top - kBubbleEdgeMargin),
+        );
+        // What is VISIBLE of each control: a row the list clips at the
+        // page's bottom edge is only there as far as the page is.
+        final visible = tester.getRect(page);
+        final covered = controlsOf(tester, page)
+            .map((control) => control.intersect(visible))
+            .where((part) => !part.isEmpty && part.overlaps(button))
+            .toList();
+        expect(covered, isEmpty);
+      });
+    }
+
+    // R3-2 (OPH-363): a screen reader found the docked button as a node
+    // the size of the whole screen — its focus ring framed everything, and a
+    // touch-explore anywhere announced "Quick Access".
+    for (final atSettings in [false, true]) {
+      testWidgets('its accessibility node is the 56 px button, not the screen '
+          '(${atSettings ? 'a page outside the shell' : 'the shell'})', (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        await pumpPhone(tester);
+        if (atSettings) await openSettings(tester);
+        final node = tester.getSemantics(
+          find.bySemanticsLabel(RegExp('^${'quick.title'.tr()}')),
+        );
+        final rect = MatrixUtils.transformRect(
+          node.transform ?? Matrix4.identity(),
+          node.rect,
+        );
+        // The rect is in the parent node's frame — walk up to the screen.
+        var global = rect;
+        var parent = node.parent;
+        while (parent != null) {
+          if (parent.transform != null) {
+            global = MatrixUtils.transformRect(parent.transform!, global);
+          }
+          parent = parent.parent;
+        }
+        final button = tester.getRect(bubble);
+        expect(global.width, moreOrLessEquals(kBubbleDiameter));
+        expect(global.height, moreOrLessEquals(kBubbleDiameter));
+        expect(global.center.dx, moreOrLessEquals(button.center.dx));
+        expect(global.center.dy, moreOrLessEquals(button.center.dy));
+        // A button, tapped — not a scroll container: the drag's pan
+        // recognisers once advertised scrollUp/Down/Left/Right, which the
+        // web engine renders as a scrollable region.
+        final data = node.getSemanticsData();
+        expect(data.flagsCollection.isButton, isTrue);
+        expect(data.hasAction(SemanticsAction.tap), isTrue);
+        for (final scroll in const [
+          SemanticsAction.scrollUp,
+          SemanticsAction.scrollDown,
+          SemanticsAction.scrollLeft,
+          SemanticsAction.scrollRight,
+        ]) {
+          expect(data.hasAction(scroll), isFalse, reason: '$scroll');
+        }
+        semantics.dispose();
+      });
+    }
+
+    testWidgets('a keyboard covers the bar\'s row — the docked button goes '
+        'with it and the page gets its full height back', (tester) async {
+      await pumpPhone(tester);
+      await openSettings(tester);
+      tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pumpAndSettle();
+      expect(bubble, findsNothing);
+      expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
+    });
+
+    testWidgets('a place the person chose is theirs: the page is not '
+        'shortened for a button that is not in the dock', (tester) async {
+      await pumpPhone(tester, storedPosition: 'right:0.300');
+      final bar = tester.getRect(find.byType(GlassSurface).first);
+      expect(bar.right, 390 - AwSpace.x3, reason: 'the bar is whole');
+      await openSettings(tester);
+      expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
+      expect(tester.getRect(bubble).top, lessThan(844 / 2));
+    });
+  });
+
+  // OPH-359 — UI-AUDIT #57.
+  testWidgets('UI-AUDIT #57: while the content under it scrolls it steps '
+      'aside even with a count — and the count stays readable', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    await resetQuickAccessPrefs();
+    final scrolling = ValueNotifier<bool>(false);
+    addTearDown(scrolling.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: Stack(
+            children: [
+              QuickAccessBubble(
+                viewport: const Size(390, 844),
+                safeArea: EdgeInsets.zero,
+                keyboardInset: 0,
+                onTap: () {},
+                badge: 3,
+                badgeSemantics: '3 approvals',
+                contentScrolling: scrolling,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    Offset slide() =>
+        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset;
+    // At rest with a count: full and in place (DESIGN §23 Q4b).
+    await tester.pump(const Duration(seconds: 5));
+    expect(slide(), Offset.zero);
+
+    scrolling.value = true;
+    await tester.pumpAndSettle();
+    expect(slide().dx, greaterThan(0), reason: 'it still sits over the rows');
+    // The count is painted outside the slide and the fade.
+    expect(find.byKey(const Key('quick-bubble-badge')), findsOneWidget);
+
+    scrolling.value = false;
+    await tester.pumpAndSettle();
+    expect(slide(), Offset.zero);
   });
 }

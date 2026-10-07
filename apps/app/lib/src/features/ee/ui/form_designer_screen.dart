@@ -10,6 +10,7 @@ import '../data/services_models.dart';
 import '../form_design.dart';
 import '../services_providers.dart';
 import 'form_field_view.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-229 — a service's request form, designed beside its own preview.
 ///
@@ -187,6 +188,7 @@ class _EeFormDesignerScreenState extends ConsumerState<EeFormDesignerScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
+          leading: awRouteLeading(context),
           title: Text(
             'ee.team.services.designer.title'.tr(
               args: {'service': widget.service.name},
@@ -260,9 +262,13 @@ class _EeFormDesignerScreenState extends ConsumerState<EeFormDesignerScreen> {
                   args: {'version': '$_version'},
                 ),
               },
-              _dirty
-                  ? 'ee.team.services.designer.unpublished'.tr()
-                  : 'ee.team.services.designer.upToDate'.tr(),
+              // UI-AUDIT #79: a form that was never published has nothing
+              // "all published" — that half is only said once something is
+              // live. Unpublished edits are still worth saying either way.
+              if (_dirty)
+                'ee.team.services.designer.unpublished'.tr()
+              else if (_version > 0 || _published.isNotEmpty)
+                'ee.team.services.designer.upToDate'.tr(),
             ].join(' · '),
             key: const Key('form-status'),
             style: theme.textTheme.titleSmall,

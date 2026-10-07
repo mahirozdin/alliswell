@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
+import '../../../core/error_messages.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../theme/tokens.dart';
 import '../../../i18n/i18n.dart';
 import '../data/worklog_models.dart';
@@ -111,7 +114,12 @@ class _Row extends ConsumerWidget {
       leading: const Icon(Icons.schedule),
       title: Text(
         'ee.worklogs.entry'.tr(
-          args: {'hours': eeHoursText(row.minutes), 'date': row.workedOn},
+          args: {
+            'duration': eeDurationText(row.minutes),
+            // UI-AUDIT #71: the day in the person's own date format, not the
+            // wire's `YYYY-MM-DD`.
+            'date': _day(row.workedOn, ref.watch(dateFormatProvider)),
+          },
         ),
         style: theme.textTheme.bodyMedium,
       ),
@@ -120,21 +128,40 @@ class _Row extends ConsumerWidget {
           : Text(row.note!, style: theme.textTheme.bodySmall),
       // HIDDEN, not empty. A dash or a "—" here would still be a statement
       // about the cost of an hour.
-      trailing: row.hasCost
-          ? Text(
-              'ee.worklogs.money'.tr(
-                args: {
-                  'amount': (row.costMinor! / 100).toStringAsFixed(2),
-                  'currency': row.currency!,
-                },
-              ),
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (row.hasCost)
+            Text(
+              eeMoneyText(row.costMinor!, row.currency!),
               key: Key('worklog-cost-${row.id}'),
               style: theme.textTheme.labelLarge,
-            )
-          : null,
+            ),
+          // UI-AUDIT #71: withdrawing an entry is a menu anybody can see,
+          // not a long press nobody is told about.
+          PopupMenuButton<String>(
+            key: Key('worklog-menu-${row.id}'),
+            tooltip: 'ee.worklogs.menu'.tr(),
+            onSelected: (_) => _confirmRemove(context, ref),
+            itemBuilder: (_) => [
+              PopupMenuItem(
+                key: Key('worklog-remove-${row.id}'),
+                value: 'remove',
+                child: Text('ee.worklogs.remove'.tr()),
+              ),
+            ],
+          ),
+        ],
+      ),
       onLongPress: () => _confirmRemove(context, ref),
     );
   }
+
+  static String _day(String workedOn, String format) =>
+      switch (DateTime.tryParse(workedOn)) {
+        final day? => awFormatDate(day, format: format),
+        null => workedOn,
+      };
 
   Future<void> _confirmRemove(BuildContext context, WidgetRef ref) async {
     final ok = await showDialog<bool>(
@@ -176,7 +203,7 @@ class _Totals extends StatelessWidget {
       children: [
         Text(
           'ee.worklogs.totalHours'.tr(
-            args: {'hours': eeHoursText(totals.minutes)},
+            args: {'duration': eeDurationText(totals.minutes)},
           ),
           key: const Key('worklog-total-hours'),
           style: theme.textTheme.bodyMedium,
@@ -184,19 +211,14 @@ class _Totals extends StatelessWidget {
         // One line per currency. The list IS the refusal to add them.
         for (final money in totals.byCurrency)
           Text(
-            'ee.worklogs.money'.tr(
-              args: {
-                'amount': (money.costMinor / 100).toStringAsFixed(2),
-                'currency': money.currency,
-              },
-            ),
+            eeMoneyText(money.costMinor, money.currency),
             key: Key('worklog-total-${money.currency}'),
             style: theme.textTheme.labelLarge,
           ),
         if (totals.unpricedMinutes > 0)
           Text(
             'ee.worklogs.unpriced'.tr(
-              args: {'hours': eeHoursText(totals.unpricedMinutes)},
+              args: {'duration': eeDurationText(totals.unpricedMinutes)},
             ),
             key: const Key('worklog-unpriced'),
             style: theme.textTheme.bodySmall,
@@ -229,6 +251,7 @@ class _AddSheetState extends ConsumerState<_AddSheet> {
     super.dispose();
   }
 
+  /// The wire's day (`YYYY-MM-DD`) — what the server stores.
   String get _dayText =>
       '${_day.year.toString().padLeft(4, '0')}-'
       '${_day.month.toString().padLeft(2, '0')}-'
@@ -271,7 +294,16 @@ class _AddSheetState extends ConsumerState<_AddSheet> {
             key: const Key('worklog-day'),
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.event),
-            title: Text('ee.worklogs.day'.tr(args: {'date': _dayText})),
+            title: Text(
+              'ee.worklogs.day'.tr(
+                args: {
+                  'date': awFormatDate(
+                    _day,
+                    format: ref.watch(dateFormatProvider),
+                  ),
+                },
+              ),
+            ),
             trailing: TextButton(
               onPressed: _pickDay,
               child: Text('ee.worklogs.changeDay'.tr()),
@@ -309,8 +341,14 @@ class _AddSheetState extends ConsumerState<_AddSheet> {
 
   Future<void> _save() async {
     final minutes = int.tryParse(_minutes.text.trim());
-    if (minutes == null || minutes <= 0) {
+    // UI-AUDIT #71: "0" IS a whole number — the two refusals say different
+    // things.
+    if (minutes == null || minutes < 0) {
       setState(() => _error = 'ee.worklogs.minutesInvalid'.tr());
+      return;
+    }
+    if (minutes == 0) {
+      setState(() => _error = 'ee.worklogs.minutesTooFew'.tr());
       return;
     }
     setState(() {
@@ -326,7 +364,7 @@ class _AddSheetState extends ConsumerState<_AddSheet> {
       if (mounted) {
         setState(() {
           _saving = false;
-          _error = '$err';
+          _error = localizedError(err);
         });
       }
     }

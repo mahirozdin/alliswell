@@ -4,8 +4,11 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/changes_providers.dart';
+import 'package:alliswell/src/features/ee/data/changes_models.dart';
 import 'package:alliswell/src/features/ee/data/services_models.dart';
 import 'package:alliswell/src/features/ee/data/ticket_links_models.dart';
 import 'package:alliswell/src/features/ee/kb_providers.dart';
@@ -61,9 +64,13 @@ void main() {
     required EeTicketRelations relations,
     required bool canManage,
     required bool canLink,
+    Future<EeTicketRelations> Function()? loadRelations,
+    Future<List<EeChange>> Function()? loadChanges,
+    bool canCreateChange = false,
   }) async {
     await tester.pumpWidget(
       ProviderScope(
+        retry: awRetry,
         overrides: <Override>[
           ticketProvider(
             _ticketId,
@@ -82,15 +89,15 @@ void main() {
           ).overrideWith((ref) async => EeExternalFiles.none),
           eeTicketRelationsProvider(
             _ticketId,
-          ).overrideWith((ref) async => relations),
+          ).overrideWith((ref) => loadRelations?.call() ?? relations),
           eeKbSuggestionsProvider(
             'Hat 3 her vardiya iki kez duruyor',
           ).overrideWith((ref) async => const []),
           eeKbOfTicketProvider(_ticketId).overrideWith((ref) async => const []),
           eeChangesRaisedFromProvider(
             _ticketId,
-          ).overrideWith((ref) async => const []),
-          canProvider('changes.create').overrideWith((ref) => false),
+          ).overrideWith((ref) => loadChanges?.call() ?? const <EeChange>[]),
+          canProvider('changes.create').overrideWith((ref) => canCreateChange),
           canProvider('problems.manage').overrideWith((ref) => canManage),
           canProvider('tickets.link').overrideWith((ref) => canLink),
           // The record the card opens: quiet, so the test is about the card.
@@ -194,5 +201,104 @@ void main() {
       find.byKey(const Key('problem-new-title')),
     );
     expect(title.controller!.text, 'Hat 3 her vardiya iki kez duruyor');
+  });
+
+  const limited = ApiException(
+    'RATE_LIMITED',
+    'Rate limit exceeded, retry in 30 seconds',
+    statusCode: 429,
+    retryAfter: 30,
+  );
+
+  testWidgets('UI-AUDIT #26: a refused relations read is said inline, and '
+      'Retry brings the equipment and the known-error card back', (
+    tester,
+  ) async {
+    var calls = 0;
+    await pump(
+      tester,
+      relations: const EeTicketRelations(),
+      canManage: false,
+      canLink: false,
+      loadRelations: () async {
+        calls += 1;
+        if (calls == 1) throw limited;
+        return const EeTicketRelations(
+          problems: [
+            EeLinkedProblem(
+              id: _problemId,
+              title: 'Hat 3 PLC her vardiya kilitleniyor',
+              status: 'known_error',
+              hasUsableWorkaround: true,
+              workaround: 'PLC panelinden yazılımı yeniden başlatın',
+            ),
+          ],
+          assets: [
+            EeTicketAsset(
+              assetId: '01ASSETAAAAAAAAAAAAAAAAAAA',
+              tag: 'PLC-03',
+              name: 'Hat 3 PLC',
+              status: 'faulty',
+            ),
+          ],
+        );
+      },
+    );
+
+    final error = find.byKey(const Key('ticket-relations-error'));
+    expect(error, findsOneWidget);
+    expect(
+      find.descendant(
+        of: error,
+        matching: find.text('error.RATE_LIMITED'.tr(args: {'seconds': '30'})),
+      ),
+      findsOneWidget,
+    );
+    // Not drawn as "nothing linked": the empty line stays away too.
+    expect(find.text('ee.tickets.linkedTasksEmpty'.tr()), findsNothing);
+    expect(find.byKey(const Key('ticket-problem-$_problemId')), findsNothing);
+
+    await tester.ensureVisible(
+      find.descendant(of: error, matching: find.byType(TextButton)),
+    );
+    await tester.tap(
+      find.descendant(of: error, matching: find.byType(TextButton)),
+    );
+    for (var i = 0; i < 3; i += 1) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(calls, 2);
+    expect(error, findsNothing);
+    expect(find.byKey(const Key('ticket-problem-$_problemId')), findsOneWidget);
+    expect(find.text('ee.tickets.affectedAssets'.tr()), findsOneWidget);
+    expect(find.textContaining('PLC-03'), findsOneWidget);
+  });
+
+  testWidgets('UI-AUDIT #26: a refused read of the changes raised from it is '
+      'said inline, not drawn as none', (tester) async {
+    var calls = 0;
+    await pump(
+      tester,
+      relations: const EeTicketRelations(),
+      canManage: false,
+      canLink: false,
+      loadChanges: () async {
+        calls += 1;
+        throw limited;
+      },
+    );
+    final error = find.byKey(const Key('ticket-changes-error'));
+    expect(error, findsOneWidget);
+    expect(find.byKey(const Key('ticket-changes')), findsNothing);
+    await tester.ensureVisible(
+      find.descendant(of: error, matching: find.byType(TextButton)),
+    );
+    await tester.tap(
+      find.descendant(of: error, matching: find.byType(TextButton)),
+    );
+    for (var i = 0; i < 3; i += 1) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(calls, 2);
   });
 }

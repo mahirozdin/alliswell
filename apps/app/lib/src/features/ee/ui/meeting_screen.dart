@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
@@ -7,6 +8,8 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/meeting_models.dart';
 import '../meetings_providers.dart';
+import '../providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// One meeting: what it decided, and who said what (EE-114/EE-115).
 ///
@@ -46,13 +49,26 @@ class EeMeetingScreen extends ConsumerWidget {
     final data = ref.watch(eeMeetingProvider(meetingId));
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.meeting.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.meeting.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeMeetingProvider(meetingId)),
-        ),
+        // OPH-359 (UI-AUDIT #63, EE-303): a meeting that is not there is a
+        // sentence, not "unexpected server response" — whether the 404 says
+        // MEETING_NOT_FOUND or, from an older server, nothing.
+        error: (error, _) => eeMeetingNotFound(error)
+            ? AwEmptyState(
+                key: const Key('meeting-not-found'),
+                icon: Icons.search_off_outlined,
+                title: 'ee.meeting.notFound'.tr(),
+                message: 'ee.meeting.notFoundBody'.tr(),
+              )
+            : AwErrorState(
+                message: localizedError(error),
+                onRetry: () => ref.invalidate(eeMeetingProvider(meetingId)),
+              ),
         data: (value) {
           if (value == null) {
             return AwEmptyState(
@@ -238,13 +254,14 @@ class _SectionTitle extends StatelessWidget {
   );
 }
 
-/// The pipeline's state, said in a word as well as drawn in a colour.
-class _StatusCard extends StatelessWidget {
+/// The pipeline's state, said in a word as well as drawn in a colour — and,
+/// when it stopped, WHY and what to do (OPH-359, UI-AUDIT #54).
+class _StatusCard extends ConsumerWidget {
   const _StatusCard({required this.summary});
   final EeMeetingSummary summary;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final tokens = context.awTokens;
 
@@ -256,7 +273,7 @@ class _StatusCard extends StatelessWidget {
       _ => (Icons.autorenew, theme.disabledColor),
     };
 
-    return Card(
+    final card = Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: ListTile(
         leading: Icon(
@@ -273,7 +290,6 @@ class _StatusCard extends StatelessWidget {
           ].join(' · '),
           style: theme.textTheme.bodySmall,
         ),
-        isThreeLine: summary.failureMessage != null,
         trailing: summary.status.isWorking
             ? const SizedBox(
                 width: 20,
@@ -282,6 +298,45 @@ class _StatusCard extends StatelessWidget {
               )
             : null,
       ),
+    );
+    // The reason is the server's CODE in the reader's words; the English
+    // `failureMessage` it also sends is for logs and is never drawn (EE-303).
+    final reason = eeMeetingFailureText(summary.failureCode);
+    if (reason == null) return card;
+    final canFix =
+        eeMeetingFailureNeedsAiKey(summary.failureCode) &&
+        ref.watch(canProvider('team.manage_ai_keys'));
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        card,
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            AwSpace.x4,
+            AwSpace.x2,
+            AwSpace.x4,
+            0,
+          ),
+          child: Text(
+            reason,
+            key: const Key('meeting-failure-reason'),
+            style: theme.textTheme.bodyMedium,
+          ),
+        ),
+        if (canFix)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: TextButton.icon(
+                key: const Key('meeting-failure-ai-keys'),
+                onPressed: () => context.push('/settings/team/ai-keys'),
+                icon: const Icon(Icons.key_outlined),
+                label: Text('ee.meeting.failure.openAiKeys'.tr()),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

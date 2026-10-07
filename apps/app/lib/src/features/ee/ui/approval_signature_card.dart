@@ -4,6 +4,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/changes_models.dart';
+import 'approval_card.dart';
 
 /// One signature asked about something — who, and what they said (EE-269).
 ///
@@ -49,11 +50,7 @@ class EeSignatureCard extends StatelessWidget {
       line = switch (approval.status) {
         'approved' => 'ee.changes.approval.approved'.tr(args: {'who': by}),
         'rejected' => 'ee.changes.approval.rejected'.tr(args: {'who': by}),
-        _ =>
-          AwI18n.instance.maybeTranslate(
-                'ee.approvals.status.${approval.status}',
-              ) ??
-              approval.status,
+        _ => approvalStatusLabel(approval.status),
       };
     }
     final decide = onDecide;

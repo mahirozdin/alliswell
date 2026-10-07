@@ -17,7 +17,7 @@ final eeApiProvider = Provider<EeApi>(
   (ref) => EeApi(ref.watch(apiClientProvider)),
 );
 
-const String _kEeStatusCachePrefix = 'alliswell_ee_status::';
+const String kEeStatusCachePrefix = 'alliswell_ee_status::';
 
 /// What this instance is licensed for, cached in localKv so a fresh launch
 /// has a last-known truth before the network answers (no flicker, honest
@@ -36,7 +36,7 @@ class EeStatusController extends AsyncNotifier<EeStatus> {
     if (userId == null) return EeStatus.none;
     // Keyed per user, not per instance: one device can serve two people, and
     // "signed out" must never inherit the previous account's capability list.
-    _cacheKey = '$_kEeStatusCachePrefix$userId';
+    _cacheKey = '$kEeStatusCachePrefix$userId';
     final cached = await _readCache();
     try {
       final fresh = await ref.read(eeApiProvider).status();
@@ -78,7 +78,7 @@ final eeFeatureProvider = Provider.family<bool, String>(
   (ref, feature) => ref.watch(eeStatusProvider).value?.has(feature) ?? false,
 );
 
-const String _kEePermissionsCachePrefix = 'alliswell_ee_permissions::';
+const String kEePermissionsCachePrefix = 'alliswell_ee_permissions::';
 
 /// What the signed-in person may do in the CURRENT workspace (EE-052).
 ///
@@ -113,7 +113,7 @@ class EePermissionsController extends AsyncNotifier<EePermissions> {
     if (workspaceId == null) return EePermissions.unknown;
     // Keyed per user AND per workspace: one device serves two people, and one
     // person can hold different roles in different workspaces.
-    _cacheKey = '$_kEePermissionsCachePrefix$userId::$workspaceId';
+    _cacheKey = '$kEePermissionsCachePrefix$userId::$workspaceId';
     final cached = await _readCache();
     try {
       final fresh = await ref.read(eeApiProvider).myPermissions(workspaceId);
@@ -150,19 +150,26 @@ class EePermissionsController extends AsyncNotifier<EePermissions> {
 }
 
 /// EE-253: does this person work a desk? The "Talepler" tab reads it to draw
-/// the queue or "my requests". True while unknown, like [canProvider].
+/// the queue or "my requests". True while unknown: it picks between two
+/// lists, it draws no control.
 final eeDeskProvider = Provider<bool>(
   (ref) => ref.watch(eePermissionsProvider).value?.desk ?? true,
 );
 
 /// `ref.watch(canProvider('tasks.create'))` — the one question a screen asks.
 ///
-/// Answers TRUE while loading and while signed out, and that default is
-/// deliberate: this gate exists to remove a button somebody genuinely may not
-/// press, not to make the app unusable for a second on every launch. A wrong
-/// TRUE costs one refused request with a clear message; a wrong FALSE is a
-/// feature that silently is not there.
+/// Answers FALSE while the permissions are loading (OPH-356, UI-AUDIT #61).
+/// It used to answer true, on the theory that a wrong yes costs one refused
+/// request; measured, it cost more — a delegated unit manager was handed
+/// "New unit", a unit menu and "Make member" for the second after every
+/// sign-in, and pressed them. A control may only exist on a yes. The wait is
+/// short: the last answer is cached per user and workspace, so a returning
+/// person has it on the first frame.
+///
+/// Signed out, on a plain build and on a workspace nothing governs, the
+/// LOADED answer is [EePermissions.unknown], which says yes to everything —
+/// so none of those ever lose a button to this.
 final canProvider = Provider.family<bool, String>(
   (ref, permission) =>
-      ref.watch(eePermissionsProvider).value?.can(permission) ?? true,
+      ref.watch(eePermissionsProvider).value?.can(permission) ?? false,
 );

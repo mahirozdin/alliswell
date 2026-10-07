@@ -118,6 +118,11 @@
       "testFailed": "Test alarmı kurulamadı. Alarm günlüğüne bakın."
     },
     "signOut": "Çıkış yap",
+    "signOutUnsent": {
+      "title": "Gönderilmemiş değişiklikler",
+      "body": "Bu cihazdaki {count} değişiklik henüz sunucuya ulaşmadı. Çıkış yaparsan bu cihazdan kalıcı olarak silinir.",
+      "confirm": "Sil ve çıkış yap"
+    },
     "aboutBody": "Açık kaynak, kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
     "language": {
       "title": "Dil",
@@ -188,7 +193,9 @@
       "meetings": "Toplantılar",
       "meetingsSub": "Birimin toplantı notları ve kararları",
       "teamAudit": "Denetim günlüğü",
-      "teamAuditSub": "Takımda kim neyi ne zaman değiştirdi"
+      "teamAuditSub": "Takımda kim neyi ne zaman değiştirdi",
+      "customers": "Firmalar",
+      "customersSub": "Hizmet verdiğiniz firmalar ve portalına kimlerin girebileceği"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -578,7 +585,9 @@
     "disconnectConfirmBody": "AllisWell görevlerini oraya yazmayı bırakır. Takvimde olanlar yerinde kalır, istediğin zaman yeniden bağlayabilirsin.",
     "appleDisconnect": "Bu takvimi kullanmayı bırak",
     "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al.",
-    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz."
+    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz.",
+    "a11yToday": "bugün",
+    "a11yHasTasks": "görev var"
   },
   "tour": {
     "skip": "Atla",
@@ -598,7 +607,10 @@
     "doneTitle": "Hazırsın",
     "doneBody": "Bu turu Ayarlar → Uygulama turu'ndan istediğin an tekrar aç.",
     "filesTitle": "Dosyalar",
-    "filesBody": "Alanının tüm dosyaları: kişisel klasörler artı projelere, görevlere ve notlara ekli her şey."
+    "filesBody": "Alanının tüm dosyaları: kişisel klasörler artı projelere, görevlere ve notlara ekli her şey.",
+    "ticketsTitle": "Talepler",
+    "ticketsBody": "Bir sorunu bildir ya da bir şey iste, bitene kadar izle. Taleplerin ve yanıtları burada.",
+    "filesBodyTeam": "Biriminin dosyaları: projelere, görevlere ve notlara ekli her şey tek yerde."
   },
   "error": {
     "unknown": "Bir şeyler ters gitti. Lütfen tekrar dene.",
@@ -607,7 +619,11 @@
     "AUTH_INVALID_CREDENTIALS": "E-posta veya parola yanlış.",
     "AUTH_EMAIL_TAKEN": "Bu e-postayla bir hesap zaten var.",
     "NETWORK_ERROR": "Sunucuya ulaşılamadı. Bağlantını ve sunucu adresini kontrol et.",
-    "server": "Beklenmeyen sunucu yanıtı.",
+    "server": "Sunucu bu isteği tamamlayamadı. Biraz sonra tekrar dene.",
+    "notFound": "Bulunamadı — kaldırılmış ya da taşınmış olabilir.",
+    "RATE_LIMITED": "Çok fazla istek, {seconds} sn sonra tekrar dene.",
+    "HTTP_429": "Çok fazla istek, biraz bekleyip tekrar dene.",
+    "INTERNAL_ERROR": "Sunucu bu isteği tamamlayamadı. Biraz sonra tekrar dene.",
     "routeNotFound": "Bu bağlantı AllisWell’in bu sürümünde bir yere gitmiyor.",
     "goHome": "Ana sayfaya dön",
     "AI_RATE_LIMITED": "Biraz yavaşla — yapay zekâ limiti bir dakikada dolar.",
@@ -637,7 +653,26 @@
     "TICKET_FIELD_REQUIRED": "Zorunlu bir soru cevapsız kaldı.",
     "TICKET_NO_FORM": "Bu talep bir formla açılmadı; düzeltilecek cevabı yok.",
     "TICKET_WORK_BOUND": "Bu görev bir talebin işi; silinemez. İşi bırakmak için talebi bırak.",
-    "TICKET_WORK_LOCKED": "Bu görev bir talebin işi: projesi, üst görevi, tekrarı ve durumu talebe bağlı."
+    "TICKET_WORK_LOCKED": "Bu görev bir talebin işi: projesi, üst görevi, tekrarı ve durumu talebe bağlı.",
+    "INVITE_NOT_FOUND": "Böyle bir davet yok. Bağlantıyı kontrol edin ya da yeni bir davet isteyin.",
+    "INVITE_ALREADY_ACCEPTED": "Bu davet zaten kullanılmış.",
+    "INVITE_REVOKED": "Bu davet iptal edilmiş. Takım yöneticinizden yeni bir davet isteyin.",
+    "INVITE_EXPIRED": "Bu davetin süresi dolmuş. Takım yöneticinizden yeni bir davet isteyin.",
+    "INVITE_BURNED": "Çok fazla yanlış kod girildi; bu davet artık çalışmıyor. Takım yöneticinizden yeni bir davet isteyin.",
+    "INVITE_CODE_WRONG": "Kod doğru değil. Davet e-postasını kontrol edip yeniden deneyin.",
+    "INVITE_SIGN_IN_REQUIRED": "Bu adresin zaten bir hesabı var; giriş yapıp bağlantıyı yeniden açın.",
+    "INVITE_WRONG_ACCOUNT": "Bu davet başka bir hesap için.",
+    "INVITE_PASSWORD_REQUIRED": "Hesabınızı oluşturmayı bitirmek için bir parola belirleyin.",
+    "INVITE_TEAM_SUSPENDED": "Bu takım askıya alınmış; şu an yeni üye alamıyor.",
+    "TEAM_MEMBER_EXISTS": "Bu takımdasınız zaten.",
+    "EE_NO_TEAM_HERE": "Bu adreste yanıt veren bir takım yok.",
+    "SLA_POLICY_DEFAULT": "Bu, takımın varsayılan politikası; silinemez. Önce başka bir politikayı varsayılan yapın, sonra bunu silin.",
+    "SLA_TIMEZONE_INVALID": "Bu, sunucunun tanıdığı bir saat dilimi değil. Europe/Istanbul gibi bir IANA kimliği yazın.",
+    "CUSTOMER_ARCHIVED": "Bu firma arşivli. Önce arşivden çıkarın.",
+    "CUSTOMER_NAME_TAKEN": "Bu adla bir firma zaten var.",
+    "CUSTOMER_USER_TAKEN": "Bu adres burada zaten bir kişiye ait.",
+    "CUSTOMER_EMAIL_INVALID": "Bu bir e-posta adresi değil.",
+    "CUSTOMER_USER_DEACTIVATED": "Bu kişinin erişimi kapalı. Yeniden eklemek yerine erişimini açın."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1088,10 +1123,10 @@
       "error": "Yapay zekâ yanıt veremedi. Tekrar denensin mi?",
       "sharedContent": "Paylaşılan içerik",
       "offlineTitle": "Çevrimdışısın",
-      "offlineBody": "Yapay zekâ bağlantı ister. Yine de bunu Inbox'a kaydedebilirsin.",
+      "offlineBody": "Yapay zekâ bağlantı ister. Yine de bunu Fikirler'e kaydedebilirsin.",
       "unconfiguredTitle": "Henüz yapay zekâ sağlayıcısı yok",
-      "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Inbox'a kaydet.",
-      "saveToInbox": "Inbox'a kaydet"
+      "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Fikirler'e kaydet.",
+      "saveToInbox": "Fikirler'e kaydet"
     },
     "confirm": {
       "title": "Bu işleri gözden geçir",
@@ -1114,8 +1149,8 @@
       "localeLabel": "Ses dili",
       "cancel": "Vazgeç",
       "mic": "Konuş",
-      "savedToInbox": "Inbox'a kaydedildi",
-      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Inbox'a kaydet."
+      "savedToInbox": "Fikirler'e kaydedildi",
+      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Fikirler'e kaydet."
     },
     "share": {
       "makeTask": "Görev yap",
@@ -1125,8 +1160,8 @@
       "savedNote": "Not olarak kaydedildi",
       "summarizePrompt": "Bunu özetle.",
       "noProviderTitle": "Henüz yapay zekâ sağlayıcısı yok",
-      "noProviderBody": "AllisWell'in paylaşılan metni göreve çevirmesi için bir yapay zekâ sağlayıcısı gerekiyor. Bu metin Inbox'ında güvende.",
-      "openInbox": "Inbox'ı aç",
+      "noProviderBody": "AllisWell'in paylaşılan metni göreve çevirmesi için bir yapay zekâ sağlayıcısı gerekiyor. Bu metin Fikirler'de güvende.",
+      "openInbox": "Fikirler'i aç",
       "dismiss": "Tamam"
     },
     "quickAdd": {
@@ -1183,7 +1218,11 @@
     "revokeConfirmBody": "Bu anahtarı kullanan her şey anında çalışmayı durdurur. Geri alınamaz — istediğin zaman yeni bir anahtar oluşturabilirsin.",
     "emptyTitle": "Henüz anahtar yok",
     "emptyBody": "Bir script'in, cron job'ın ya da ev otomasyonunun görevlerine ve notlarına ulaşmasını istediğinde bir tane oluştur.",
-    "couldNotLoad": "Sunucuya ulaşılamadı, anahtarların gösterilemiyor."
+    "couldNotLoad": "Sunucuya ulaşılamadı, anahtarların gösterilemiyor.",
+    "revokeConfirm": "Anahtarı iptal et",
+    "keep": "Vazgeç",
+    "copyFailed": "Anahtar kopyalanamadı. Kaydetmediyseniz bu anahtarı iptal edip yenisini oluşturun — bir daha gösterilemez.",
+    "boundTo": "Aşağıdaki anahtarlar yalnız “{name}” çalışma alanına erişir."
   },
   "versions": {
     "title": "Sürüm geçmişi",
@@ -1225,11 +1264,61 @@
       "anyAction": "Her işlem",
       "anything": "Her şey",
       "clear": "Filtreleri temizle",
-      "couldNotLoad": "Geçmiş yüklenemedi.",
+      "couldNotLoad": "Denetim günlüğü yüklenemedi.",
       "empty": "Henüz hiçbir şey kaydedilmedi.",
       "emptyFiltered": "Bu filtrelere uyan olay yok.",
       "moreOnServer": "Sunucuda daha fazlası var — görmek için filtreleri daraltın.",
-      "title": "Takım geçmişi"
+      "title": "Denetim günlüğü",
+      "entity": {
+        "ee_alert_source": "Uyarı kaynağı",
+        "ee_announcement": "Duyuru",
+        "ee_approval": "Onay",
+        "ee_asset": "Varlık",
+        "ee_asset_import": "Varlık içe aktarımı",
+        "ee_automation_rule": "Otomasyon kuralı",
+        "ee_business_calendar": "Mesai takvimi",
+        "ee_canned_reply": "Hazır yanıt",
+        "ee_catalog_import": "Katalog içe aktarımı",
+        "ee_change": "Değişiklik",
+        "ee_change_freeze": "Değişiklik dondurma",
+        "ee_chat_channel": "Sohbet kanalı",
+        "ee_classification_rule": "Sınıflandırma kuralı",
+        "ee_customer": "Firma",
+        "ee_customer_user": "Firma kişisi",
+        "ee_health_check": "İzleyici",
+        "ee_identity_provider": "Kimlik kaynağı",
+        "ee_invite": "Davet",
+        "ee_item_share": "Paylaşım",
+        "ee_kb_article": "Bilgi bankası makalesi",
+        "ee_mail_inbox": "Posta kutusu",
+        "ee_meeting": "Toplantı",
+        "ee_member_absence": "Devamsızlık",
+        "ee_member_import": "Üye içe aktarımı",
+        "ee_notification_outbox": "Bildirim teslimi",
+        "ee_oncall_schedule": "Nöbet listesi",
+        "ee_problem": "Problem",
+        "ee_public_form": "Herkese açık bağlantı",
+        "ee_role": "Rol",
+        "ee_saved_view": "Kayıtlı görünüm",
+        "ee_service": "Servis",
+        "ee_service_category": "Servis kategorisi",
+        "ee_sla_policy": "SLA politikası",
+        "ee_supplier": "Tedarikçi",
+        "ee_team": "Takım",
+        "ee_team_ai_connection": "Takım yapay zekâ anahtarı",
+        "ee_team_mail_settings": "Takım posta sunucusu",
+        "ee_team_member": "Takım üyesi",
+        "ee_ticket": "Talep",
+        "ee_ticket_export": "Talep dışa aktarımı",
+        "ee_ticket_import": "Talep içe aktarımı",
+        "ee_ticket_rating": "Memnuniyet puanı",
+        "ee_ticket_template": "Talep şablonu",
+        "ee_unit": "Birim",
+        "ee_webhook": "Webhook",
+        "ee_whatsapp_config": "WhatsApp bağlantısı",
+        "task": "Görev",
+        "workspace": "Çalışma alanı"
+      }
     },
     "badge": "Enterprise",
     "locked": "Bu özellik kurumsal lisans gerektirir.",
@@ -1299,14 +1388,19 @@
         "manual": "Bu sunucu e-posta göndermiyor; aşağıdakileri {email} adresine kendiniz iletin.",
         "link": "Bağlantı",
         "code": "Kod",
-        "separately": "Bağlantıyı ve kodu farklı yollardan gönderin. Bir kez gösterilir — ikisi de geri okunamaz."
+        "separately": "Bağlantıyı ve kodu farklı yollardan gönderin. Bir kez gösterilir — ikisi de geri okunamaz.",
+        "copied": "Kopyalandı",
+        "copyFailed": "Kopyalanamadı. Yukarıdan seçip elle kopyalayın — bir daha gösterilmeyecek.",
+        "revokeTitle": "{email} davetiyesi iptal edilsin mi?",
+        "revokeBody": "Gönderilmiş bağlantı ve kod artık çalışmaz. Aynı adresi daha sonra yeniden davet edebilirsiniz.",
+        "keep": "Vazgeç"
       },
       "roles": {
         "title": "Roller",
         "create": "Yeni rol",
         "name": "Rol adı",
         "anchor": "Şunun üstünde",
-        "anchorHelp": "Takımdaki rütbeyi ve her workspace’in gördüğü rolü belirler",
+        "anchorHelp": "Takımdaki rütbeyi ve her çalışma alanının gördüğü rolü belirler",
         "intro": "Rol, insanların yapabileceği şeylerin adlandırılmış bir kümesidir. Baz roller silinemez; sahip her zaman her şeye sahiptir.",
         "summary": "{grants} izin · {members} üye",
         "locked": "Her zaman her şey",
@@ -1330,12 +1424,17 @@
         "removeMember": "Birimden çıkar",
         "memberCount": "{count} kişi",
         "noCandidates": "Eklenecek kimse kalmadı — takımdaki herkes bu birimde.",
-        "intro": "Bir birim kendi workspace’idir: içeriği yalnız birimdeki kişiler görür. Birime eklemek, kişinin cihazının o içeriği eşitlemeye başlaması demektir.",
+        "intro": "Bir birim kendi çalışma alanıdır: içeriği yalnız birimdeki kişiler görür. Birime eklemek, kişinin cihazının o içeriği eşitlemeye başlaması demektir.",
         "introManager": "Yönettiğiniz birimler. Kimlerin içinde olduğunu siz belirlersiniz; birimin kendisini takım yöneticisi açar ve adlandırır.",
         "emptyTitle": "Henüz birim yok",
         "emptyBody": "İlk birimi açın — bir departman, bir saha ekibi, ayrı çalışan herhangi bir grup.",
         "noneTitle": "Burada yönetebileceğiniz bir birim yok",
-        "noneBody": "Bir birimin yöneticisi yapıldıysanız uygulamayı yenileyin; değilse bu sayfa size ait değil."
+        "noneBody": "Bir birimin yöneticisi yapıldıysanız uygulamayı yenileyin; değilse bu sayfa size ait değil.",
+        "archiveTitle": "“{name}” arşivlensin mi?",
+        "archiveBody": "Birimin çalışma alanları içindeki herkes için kapanır ve içeriği cihazlarına eşitlenmez. Üyelik korunur; daha sonra geri aldığınızda her şey geri gelir.",
+        "keep": "Vazgeç",
+        "noMembersTitle": "Bu birimde henüz kimse yok",
+        "noMembersBody": "Burada çalışan kişileri aşağıdaki düğmeyle ekleyin. Birimin içeriğini yalnız onlar görür."
       },
       "services": {
         "title": "Servisler",
@@ -1490,12 +1589,28 @@
     },
     "join": {
       "title": "Takıma katıl",
-      "pendingTitle": "Davet alındı",
-      "pendingBody": "Bu davet henüz kullanılamıyor. Sunucuda davetler açıldığında takım yöneticinden tekrar göndermesini iste.",
-      "pendingBodyTeam": "Bu davet {team} takımı için. Henüz kullanılamıyor — davetler açıldığında takım yöneticinden tekrar göndermesini iste.",
-      "unavailableTitle": "Burada davet kullanılamıyor",
-      "unavailableBody": "Bu sunucuda takım özelliği çalışmıyor, dolayısıyla davet bağlantısının katılacağı bir yer yok.",
-      "goHome": "Ana Sayfa'ya git"
+      "unavailableTitle": "Davetler burada kullanılamıyor",
+      "unavailableBody": "Bu sunucu takım çalıştırmıyor, bu yüzden davet bağlantısının katılacağı bir yer yok.",
+      "goHome": "Ana Sayfa'ya git",
+      "goSignIn": "Girişe git",
+      "wrongServerTitle": "Bu bağlantı bu uygulamaya ait değil",
+      "wrongServerBody": "Bağlantı uygulamayı {host} adresine götürmek istiyor; bu adres {server} sunucusunun bir takımı değil. Sizi davet eden kişiden yeni bir bağlantı isteyin.",
+      "failedTitle": "Bu davet açılamıyor",
+      "forTeam": "{team} takımına katılın",
+      "hostLine": "Takım adresi: {host}",
+      "invitedAs": "{email} için davet",
+      "codeLabel": "Davet kodu",
+      "codeHelp": "Davet e-postasındaki 6 haneli kod",
+      "codeInvalid": "E-postadaki 6 haneli kodu girin.",
+      "nameLabel": "Adınız",
+      "passwordLabel": "Parola belirleyin",
+      "passwordHelp": "En az 8 karakter",
+      "passwordShort": "Parola en az 8 karakter olmalı.",
+      "accept": "Takıma katıl",
+      "signInFirst": "Bu adresin zaten bir hesabı var. Önce giriş yapın; davet ardından burada yeniden açılır.",
+      "signIn": "Giriş yap",
+      "wrongAccount": "Bu davet {email} için; siz {current} olarak giriş yaptınız. Çıkış yapıp bağlantıyı yeniden açın.",
+      "joined": "{team} takımına katıldınız"
     },
     "history": {
       "couldNotLoad": "Geçmiş yüklenemedi.",
@@ -1504,7 +1619,20 @@
       "moreOnServer": "Daha eski kayıtlar sunucuda saklanıyor.",
       "actorSystem": "AllisWell",
       "actorUnknown": "Biri",
-      "taskTitle": "Task geçmişi"
+      "taskTitle": "Görev geçmişi",
+      "ticket": {
+        "unknownValue": "bilinmeyen bir değer",
+        "requesterReplied": "Talep sahibi yanıtladı",
+        "status": "Durum: {change}",
+        "priority": "Öncelik: {change}",
+        "tagAdded": "Etiket eklendi: {tag}",
+        "tagRemoved": "Etiket kaldırıldı: {tag}",
+        "customer": "Firma bağı değişti",
+        "note": "İç not yazıldı",
+        "reply": "Yanıt yazıldı",
+        "worklog": "Süre yazıldı: {duration}",
+        "formCorrected": "Form cevapları düzeltildi: {fields}"
+      }
     },
     "verb": {
       "created": "bunu oluşturdu",
@@ -1530,7 +1658,7 @@
       "authenticated": "oturum açtı",
       "sign_in_failed": "oturum açamadı",
       "locked": "kilitlendi",
-      "revoked": "bir oturumu sonlandırdı",
+      "revoked": "bunu iptal etti",
       "priority_overridden": "matris dışında bir öncelik verdi",
       "approval_requested": "onay istedi",
       "approved": "onayladı",
@@ -1556,6 +1684,29 @@
       "category_changed": "kataloglama yerini değiştirdi",
       "form_updated": "formu yeniledi",
       "migration_applied": "göçü uyguladı"
+    },
+    "verbFor": {
+      "ee_team_member": {
+        "revoked": "bir üyenin oturumlarını sonlandırdı"
+      },
+      "ee_invite": {
+        "revoked": "bir daveti iptal etti"
+      },
+      "ee_webhook": {
+        "revoked": "bir webhook'u iptal etti"
+      },
+      "ee_public_form": {
+        "revoked": "herkese açık bir bağlantıyı iptal etti"
+      },
+      "ee_item_share": {
+        "revoked": "bir paylaşımı geri aldı"
+      },
+      "ee_chat_channel": {
+        "revoked": "bir sohbet kanalının bağlantısını kesti"
+      },
+      "ee_mail_inbox": {
+        "revoked": "bir posta kutusunun bağlantısını kesti"
+      }
     },
     "perm": {
       "alarms": {
@@ -1617,7 +1768,7 @@
         "manage_roles": "Rolleri yönet",
         "manage_security": "Parola kurallarını belirle ve iki adımlı doğrulamayı zorunlu kıl",
         "manage_settings": "Takım ayarları",
-        "view_audit": "Takım geçmişini gör",
+        "view_audit": "Denetim günlüğünü gör",
         "workspace": {
           "archive": "Çalışma alanlarını arşivle",
           "create": "Çalışma alanı oluştur",
@@ -1710,7 +1861,7 @@
       "signOut": "Çıkış yap",
       "signIn": {
         "title": "Operatör girişi",
-        "subtitle": "Bu konsol instance operatörünündür; bir workspace hesabının değil.",
+        "subtitle": "Bu konsol sunucu operatörünündür; bir çalışma alanı hesabının değil.",
         "email": "E-posta",
         "password": "Parola",
         "code": "Doğrulayıcı kodu",
@@ -1781,7 +1932,7 @@
       },
       "limit": {
         "seats": "Koltuk",
-        "workspaces": "Workspace",
+        "workspaces": "Çalışma alanları",
         "portal_links_active": "Etkin portal bağlantısı",
         "portal_created_monthly": "Aylık portal kaydı",
         "audit_retention_days": "Tarih saklama",
@@ -2087,7 +2238,10 @@
           "NOT_FOUND": "Bu talepte yapılamaz — biriminde değilsin ya da talep artık görünmüyor",
           "TICKET_PRIORITY_OVERRIDE_DENIED": "Öncelik masanın matrisinden geliyor; değiştirmeye yetkin yok",
           "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "Bu kişi talebin biriminde değil",
-          "UNKNOWN": "Masa bir neden söylemeden değiştirmedi"
+          "UNKNOWN": "Masa bir neden söylemeden değiştirmedi",
+          "TICKET_INVALID_TRANSITION": "Bulunduğu durumdan bu duruma geçemez",
+          "TICKET_TERMINAL": "Talep kapanmış ya da iptal edilmiş; değiştirilemez",
+          "TICKET_APPROVAL_PENDING": "Onay bekliyor; onay gelene kadar yalnızca iptal edilebilir"
         }
       },
       "status": {
@@ -2138,7 +2292,15 @@
         "offline": "Çevrimdışısın. Yanıt yalnız bağlantı varken gider, kendiliğinden gönderilmez; yazdığın, uygulama açık kaldıkça burada duruyor.",
         "replySent": "Yanıt gönderildi",
         "noteAdded": "İç not eklendi",
-        "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç."
+        "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç.",
+        "replyOwn": "Masaya yaz",
+        "replyOwnAudience": "Bunu masa okur.",
+        "replyOwnHint": "Masaya yazın…",
+        "sendOwn": "Masaya gönder",
+        "byEmail": "Yanıt talep sahibine e-postayla gönderilir.",
+        "customerPortal": "Yanıt {name} firma portalında da görünür.",
+        "filesInternal": "İç nota eklenen dosyaları yalnız masa görür.",
+        "filesFailed": "Gönderildi, ama {count} dosya yüklenemedi — dosyayı yeniden ekleyin."
       },
       "actions": {
         "statusTitle": "Durumu değiştir",
@@ -2242,7 +2404,11 @@
         "assetPickTitle": "Hangi makine?",
         "assetSearch": "Etiket, ad ya da yer",
         "assetNoneOnDevice": "Bu birimin cihazda tutulan bir varlığı yok. Makinenin etiketini okutup kartından da talep açabilirsiniz.",
-        "assetNoMatch": "Bu aramayla eşleşen bir makine yok."
+        "assetNoMatch": "Bu aramayla eşleşen bir makine yok.",
+        "offlineNoDraft": "Bağlantı yok ve bu cihazda taslağın tutulacağı kişisel bir alan yok. Yazdıklarınız burada duruyor; bağlantı gelince gönderin.",
+        "waitForSignal": "Bağlantı gelince gönderin",
+        "filesFailed": "{count} dosya eklenemedi",
+        "filesDeskOnly": "Dosyayı talebi alan birimin üyeleri ekleyebilir; gerekirse masa sizden ister."
       },
       "drafts": {
         "title": "Taslaklar",
@@ -2332,7 +2498,9 @@
           "approved": "{name} {date} tarihinde onayladı",
           "rejected": "{name} {date} tarihinde reddetti",
           "expired": "Onay cevapsız kalıp süresi doldu",
-          "pending": "Kapandığında onay hâlâ bekliyordu"
+          "pending": "Kapandığında onay hâlâ bekliyordu",
+          "withdrawn": "Talep kapandığı için onay geri çekildi",
+          "unknown": "Onayın son durumu bilinmiyor"
         },
         "mineSection": "Arşiv",
         "mineTitle": "Arşivdeki taleplerim",
@@ -2340,7 +2508,8 @@
         "mineEmptyTitle": "Arşivde henüz talebiniz yok",
         "mineEmptyBody": "Bir talep kapandıktan bir süre sonra buraya taşınır ve okunabilir kalır.",
         "mineMore": "Daha eski talepleri göster",
-        "yourRating": "Puanınız: {score}/5"
+        "yourRating": "Puanınız: {score}/5",
+        "searchLabel": "Arşivde ara"
       },
       "tags": {
         "title": "Etiketler",
@@ -2351,7 +2520,56 @@
         "save": "Ekle",
         "remove": "Etiketi kaldır",
         "offline": "Etiket eklemek ve kaldırmak bağlantı ister."
-      }
+      },
+      "cancelledOn": "{date} tarihinde iptal edildi",
+      "threadMeta": {
+        "side": {
+          "desk": "Masa",
+          "requester": "Talep sahibi",
+          "customer": "Firma kişisi",
+          "system": "Sistem"
+        },
+        "channel": {
+          "email": "e-posta",
+          "portal": "portal",
+          "customerPortal": "firma portalı"
+        }
+      },
+      "customer": {
+        "line": "Firma: {name}",
+        "visible": "Bu talep firmanın portalında görünür; firmanın kişileri yanıtları okuyabilir.",
+        "none": "Bir firmaya bağlı değil",
+        "unnamed": "Adı bilinmeyen firma",
+        "link": "Firmaya bağla",
+        "change": "Değiştir",
+        "pickTitle": "Talebin firması",
+        "noneToPick": "Henüz firma yok.",
+        "clear": "Firmadan ayır"
+      },
+      "links": {
+        "title": "İlişkili talepler",
+        "empty": "Başka bir talebe bağlı değil.",
+        "add": "Talebe bağla",
+        "added": "Talepler bağlandı",
+        "remove": "Bağı kaldır",
+        "offDevice": "Bu cihazda olmayan bir talep",
+        "searchHint": "Numara ya da konu",
+        "noCandidates": "Eşleşen talep yok.",
+        "type": {
+          "related": "İlişkili",
+          "duplicateOf": "Bunun kopyası olduğu talep",
+          "duplicatedBy": "Bu talebin kopyası",
+          "childOf": "Üst talep",
+          "parentOf": "Alt talep"
+        },
+        "kind": {
+          "related": "İlişkili",
+          "duplicateOf": "Kopyası",
+          "childOf": "Alt talebi"
+        }
+      },
+      "statusUnknown": "başka bir durumda",
+      "selectRow": "{ticket} talebini seç"
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -2372,13 +2590,13 @@
         "spare_part": "Yedek parça bekleniyor",
         "approval": "Onay bekleniyor",
         "planned_window": "Planlı pencere bekleniyor"
-      }
+      },
+      "breachedNoClock": "Hedef süre aşıldı. Bu talepte artık işleyen bir SLA saati yok, bu yüzden gösterilecek bir son tarih de yok."
     },
     "slaDash": {
       "title": "SLA panosu",
       "compliance": "Tutulan sözler",
-      "compliancePercent": "%{value}",
-      "complianceOf": "{total} talep üzerinden",
+      "complianceOf": "{total} değerlendirilen",
       "complianceNone": "Henüz değerlendirilen yok",
       "byUnit": "Birime göre",
       "byService": "Servise göre",
@@ -2388,7 +2606,12 @@
       "noServices": "Henüz talebi olan servis yok.",
       "noService": "Servissiz",
       "unavailable": "Burada pano yok",
-      "unavailableBody": "Bu adreste bir takım yok ya da bir masaya bağlı değilsiniz."
+      "unavailableBody": "Bu adreste bir takım yok ya da bir masaya bağlı değilsiniz.",
+      "outcomeBreached": "Aşıldı",
+      "outcomeWarned": "Yaklaşıyor",
+      "outcomeMet": "Tutuldu",
+      "noDefaultTitle": "Varsayılan SLA politikası yok",
+      "noDefaultBody": "Servisi ya da firması politika belirtmeyen yeni taleplere hiç SLA uygulanmıyor, bu yüzden burada sayılmıyorlar. SLA yönetiminde bir politikayı varsayılan yapın."
     },
     "perfPanel": {
       "title": "Performans panosu",
@@ -2407,8 +2630,6 @@
       "mttr": "Çözüm",
       "csat": "Memnuniyet",
       "compliance": "SLA uyumu",
-      "minutes": "{minutes} dk",
-      "percent": "%{value}",
       "byProcessType": "İşin türüne göre",
       "noProcessTypes": "Bu aralıkta iş yok.",
       "processTypeNone": "Türü kaydedilmemiş",
@@ -2478,7 +2699,24 @@
         "5": "Cum",
         "6": "Cmt",
         "7": "Paz"
-      }
+      },
+      "targets": "Hedef süreler",
+      "targetsHelp": "Önceliğe göre, dakika olarak. O saat için söz verilmeyecekse kutuyu boş bırakın.",
+      "firstResponse": "İlk yanıt",
+      "resolution": "Çözüm",
+      "minutesSuffix": "dk",
+      "noTarget": "Söz yok",
+      "targetInvalid": "0'dan büyük tam bir dakika sayısı",
+      "keep": "Vazgeç",
+      "defaultDeleteTitle": "Varsayılan politika silinemez",
+      "deletePolicyTitle": "“{name}” silinsin mi?",
+      "deletePolicyBody": "Bu politikayı kullanan servis ve firmaların yeni talepleri takımın varsayılan politikasıyla ölçülür. Hedef süreleri de silinir. Bu işlem geri alınamaz.",
+      "deleteCalendarTitle": "“{name}” silinsin mi?",
+      "deleteCalendarBody": "Vardiyaları ve tatilleri de silinir. Şu an bu takvime göre sayan bir politika yok. Bu işlem geri alınamaz.",
+      "calendarInUseTitle": "Bu takvim kullanılıyor",
+      "calendarInUseBody": "Şu politikalar bu takvime göre sayıyor: {policies}. Önce onları başka bir takvime bağlayın, sonra silin.",
+      "deleteMonitorTitle": "“{name}” silinsin mi?",
+      "deleteMonitorBody": "Bu adres artık yoklanmaz; yanıt vermediğinde talep de açılmaz. Bu işlem geri alınamaz."
     },
     "portal": {
       "title": "Herkese açık talep bağlantıları",
@@ -2487,7 +2725,6 @@
       "unit": "Hangi birim bakacak",
       "unitHelp": "Bu servise iki veya daha fazla birim bakıyor. Formu dolduran kişiye soramayız, o yüzden burada seçin.",
       "ttl": "Geçerlilik",
-      "ttlHours": "{hours} saat",
       "createdTitle": "Bağlantı oluşturuldu",
       "createdOnce": "Bu adres yalnızca şimdi gösteriliyor. Hemen kopyalayın — bizde bir kopyası kalmıyor ve tekrar gösterilemez.",
       "copy": "Kopyala",
@@ -2501,10 +2738,11 @@
       "unlimited": "{used} · sınırsız",
       "expiresAt": "{date} tarihine kadar",
       "customFields": "özel alanlar",
+      "ref": "kimlik {ref}",
       "unknownService": "Bilinmeyen servis",
       "pause": "Duraklat",
       "resume": "Yeniden aç",
-      "extend": "48 saat uzat",
+      "extend": "Süreyi uzat…",
       "revoke": "İptal et",
       "revokeTitle": "Bağlantı iptal edilsin mi?",
       "revokeBody": "Bağlantıyı elinde tutan kimse formu artık açamayacak. Bu işlem geri alınamaz — yeni bir bağlantı oluşturmanız gerekir.",
@@ -2521,7 +2759,19 @@
       "catalogue": "Katalog linki",
       "catalogueHelp": "Tek servis yerine seçtiğiniz servisleri gösterir; ziyaretçi seçer.",
       "catalogueAmbiguous": "İki birim cevapladığı için kataloğa konamaz — tek servislik link açın.",
-      "catalogueCount": "{count} servis"
+      "catalogueCount": "{count} servis",
+      "ttlDays": "{days} gün",
+      "ttlDayOne": "1 gün",
+      "extendTitle": "Bağlantının süresini uzat",
+      "extendFrom": "Şu an {date} tarihine kadar geçerli. Seçtiğiniz süre bunun üstüne eklenir.",
+      "extendFromNow": "Süresi dolmuş. Seçtiğiniz süre şimdiden başlar.",
+      "extendUntil": "{date} tarihine kadar geçerli olur",
+      "extendConfirm": "Uzat",
+      "keep": "Vazgeç",
+      "revokeConfirm": "Bağlantıyı iptal et",
+      "createdAt": "{date} tarihinde oluşturuldu",
+      "urlLabel": "Bağlantı adresi",
+      "copyFailed": "Kopyalanamadı. Kapatmadan önce yukarıdaki adresi seçip elle kopyalayın."
     },
     "meeting": {
       "title": "Toplantı",
@@ -2548,7 +2798,19 @@
       "isTicket": "Talep açıldı",
       "isTask": "Görev oluşturuldu",
       "ticketCreated": "Bu karar için bir talep açıldı.",
-      "taskCreated": "Bu karar için bir görev oluşturuldu."
+      "taskCreated": "Bu karar için bir görev oluşturuldu.",
+      "notFound": "Toplantı bulunamadı",
+      "notFoundBody": "Silinmiş olabilir ya da bulunmadığınız bir birime ait.",
+      "failure": {
+        "MEETING_NO_TRANSCRIBER": "Bu takımın henüz bir deşifre sağlayıcısı yok, bu yüzden kayıt metne çevrilemedi. Bir takım yöneticisi Takım yapay zekâ anahtarları'ndan ekleyebilir.",
+        "MEETING_TRANSCRIBE_FAILED": "Deşifre sağlayıcısı bu kaydı yeniden denemelere rağmen metne çeviremedi.",
+        "MEETING_TRANSCRIBE_RETRYING": "Deşifre sağlayıcısı yanıt vermedi; birazdan yeniden denenecek.",
+        "MEETING_NO_SUMMARISER": "Konuşmalar kaydedildi ama bu takımın özeti yazacak bir yapay zekâ sağlayıcısı yok. Bir takım yöneticisi Takım yapay zekâ anahtarları'ndan ekleyebilir.",
+        "MEETING_SUMMARY_FAILED": "Konuşmalar kaydedildi ama özet yazılamadı. Yeniden denenecek.",
+        "MEETING_STORAGE_UNCONFIGURED": "Bu sunucuda dosya depolama kurulu değil, bu yüzden kayıtlar saklanamıyor.",
+        "generic": "Bu toplantının işlenmesi bir sorun yüzünden durdu.",
+        "openAiKeys": "Takım yapay zekâ anahtarlarını aç"
+      }
     },
     "teamAi": {
       "title": "Takım yapay zekâ anahtarları",
@@ -2661,7 +2923,41 @@
       "emptyTitle": "Henüz uç yok",
       "emptyBody": "Takımın olaylarını zaten kullandığınız bir sisteme göndermek için bir uç ekleyin. Yalnız talep numarası, konu, birim ve bağlantı gider — talebin metni hiç gitmez.",
       "unavailable": "Burada kullanılamaz",
-      "unavailableBody": "Giden webhook'lar bir takıma aittir. Yönettiğiniz bir takımdan açın."
+      "unavailableBody": "Giden webhook'lar bir takıma aittir. Yönettiğiniz bir takımdan açın.",
+      "event": {
+        "task": {
+          "assigned": "İş atandı"
+        },
+        "invite": {
+          "created": "Davet gönderildi"
+        },
+        "report": {
+          "weekly": "Haftalık rapor",
+          "savedView": "Kayıtlı görünümün zamanlanmış raporu"
+        },
+        "ticket": {
+          "routed": "Talep bir birime düştü",
+          "routed_public": "Dışarıdan gelen talep bir birime düştü",
+          "assigned": "Talep atandı",
+          "status_changed": "Talebin durumu değişti",
+          "commented": "Talebe yanıt yazıldı",
+          "rate": "Puanlama istendi"
+        },
+        "sla": {
+          "warned": "SLA süresi yaklaşıyor",
+          "breached": "SLA ihlal edildi"
+        },
+        "asset": {
+          "expiring": "Ekipman tarihi yaklaşıyor"
+        },
+        "approval": {
+          "requested": "Onay istendi",
+          "decided": "Onay karara bağlandı"
+        },
+        "share": {
+          "received": "Bir şey paylaşıldı"
+        }
+      }
     },
     "mail": {
       "inboxAdd": "Posta kutusu ekle",
@@ -2710,7 +3006,7 @@
     },
     "approvals": {
       "title": "Onaylar",
-      "empty": "Seni bekleyen bir şey yok",
+      "empty": "Sizi bekleyen bir şey yok",
       "emptyBody": "Kararınızı bekleyen talepler, değişiklikler ve işler burada görünür — kimin, ne zaman ve ne için istediğiyle.",
       "approve": "Onayla",
       "reject": "Reddet",
@@ -2723,7 +3019,8 @@
         "pending": "Bekliyor",
         "approved": "Onaylandı",
         "rejected": "Reddedildi",
-        "expired": "Düştü — kimse zamanında cevaplamadı"
+        "expired": "Düştü — kimse zamanında cevaplamadı",
+        "withdrawn": "Geri çekildi"
       },
       "tabMine": "Bende",
       "tabTeam": "Takımda",
@@ -2788,7 +3085,8 @@
         "ee_ticket": "Talebi aç",
         "ee_change": "Değişikliği aç",
         "task": "Görevi aç"
-      }
+      },
+      "statusUnknown": "Durumu bilinmiyor"
     },
     "assets": {
       "status": {
@@ -2841,13 +3139,13 @@
       },
       "history": {
         "title": "Bu varlıkla ilgili talepler",
-        "counts": "Son {months} ay: {count} talep, {open} hâlâ açık, {hours} saat açık kalma",
+        "counts": "Son {months} ay: {count} talep, {open} hâlâ açık; talepler toplam {duration} açık kaldı",
         "empty": "Bu varlığı adlandıran talep yok",
         "archived": "Arşivlenmiş",
-        "labour": "Kayıtlı {hours} sa çalışma",
-        "labourCost": "İşçilik: {amount} {currency}",
-        "labourUnpriced": "Bunun {hours} saati saatlik ücreti tanımlı olmayan kişilerce.",
-        "ticketLabour": "{hours} sa işçilik",
+        "labour": "Kayıtlı {duration} çalışma",
+        "labourCost": "İşçilik: {money}",
+        "labourUnpriced": "Bunun {duration} kadarı saatlik ücreti tanımlı olmayan kişilerce.",
+        "ticketLabour": "{duration} işçilik",
         "live": "Sunucudan · bağlantı ister",
         "offline": "Geçmiş bağlantı ister — talepler ve işçilik bağlantı gelince burada görünür.",
         "openTimeNote": "Açık kalma, taleplerin açık kaldığı süredir; makinenin durduğu süre değildir. Duruş kaydı tutulmuyor."
@@ -2868,6 +3166,10 @@
         "fromServer": "Sunucudan okundu — bu cihazda tutulmuyor",
         "notOnDevice": "Bu varlık bu cihazda yok",
         "notOnDeviceBody": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar cihazda tutulmaz. Bağlantı gelince açılır."
+      },
+      "changes": {
+        "title": "Bu ekipmanı etkileyen değişiklikler",
+        "empty": "Bu ekipman için planlanmış değişiklik yok."
       }
     },
     "changes": {
@@ -2934,10 +3236,11 @@
       },
       "calendar": {
         "title": "Takvim",
-        "clear": "Bu pencerede başka bir iş yok, dondurma da yok.",
+        "clear": "Bu pencerede aynı servise dokunan başka bir değişiklik yok, dondurma da yok.",
         "noWindow": "Pencere yok — bu değişiklik henüz takvimde değil.",
         "freeze": "Bu pencere “{reason}” dondurmasıyla çakışıyor ({window}).",
-        "clash": "Aynı serviste aynı pencerede: “{title}” ({window})."
+        "clash": "Aynı serviste aynı pencerede: “{title}” ({window}).",
+        "draft": "Aynı serviste aynı pencerede henüz planlanmamış bir taslak var: “{title}” ({window})."
       },
       "source": {
         "title": "Açıldığı talep",
@@ -2974,7 +3277,10 @@
         "save": "Değişikliği aç",
         "offline": "Değişiklik açmak bağlantı ister.",
         "done": "Değişiklik açıldı"
-      }
+      },
+      "windowPassed": "Pencere geçti",
+      "windowPassedLong": "Pencere geçti — değişiklik uygulanmadı; yeniden planlanmalı.",
+      "statusUnknown": "Bilinmeyen durum"
     },
     "problems": {
       "title": "Problemler",
@@ -3070,16 +3376,25 @@
         "approved": "Onayla",
         "published": "Yayına al",
         "retired": "Emekliye ayır"
-      }
+      },
+      "retireTitle": "Makale emekliye ayrılsın mı?",
+      "retireBody": "Emekliye ayrılan makale artık önerilmez ve bu geri alınamaz.",
+      "noServiceNote": "Bu makale bir servise bağlı değil; talep açan kimseye önerilmez.",
+      "counts": "{suggested} kez önerildi · {converted} kez okunup yine talep açıldı · {deflected} talep önlendi",
+      "fieldService": "Servis",
+      "fieldServiceNone": "Servis seçilmezse makale talep açan kimseye önerilmez.",
+      "fieldServiceHelp": "Bu servis için talep açan kişiye yayımlandığında önerilir.",
+      "noService": "Servis yok",
+      "emptyBodyReader": "Burada henüz yazılmış bir şey yok. Biriminizin yayımladığı makaleler burada görünür."
     },
     "worklogs": {
       "title": "Harcanan süre",
       "add": "Süre yaz",
       "empty": "Bu talebe henüz süre yazılmadı.",
-      "entry": "{date} — {hours} sa",
+      "entry": "{date} — {duration}",
       "money": "{amount} {currency}",
-      "totalHours": "Toplam {hours} sa",
-      "unpriced": "{hours} sa saatlik ücreti tanımlı olmayan kişilerce yazıldı — gerçek iş, fiyatı yok.",
+      "totalHours": "Toplam {duration}",
+      "unpriced": "{duration} saatlik ücreti tanımlı olmayan kişilerce yazıldı — gerçek iş, fiyatı yok.",
       "minutes": "Dakika",
       "minutesHelp": "Gerçekte ne kadar çalıştınız. Kronometre değil, elle.",
       "minutesInvalid": "Tam sayı olarak dakika girin.",
@@ -3088,7 +3403,9 @@
       "note": "Ne yaptınız (isteğe bağlı)",
       "remove": "Geri çek",
       "removeTitle": "Bu kayıt geri çekilsin mi?",
-      "removeBody": "Kayıtlar düzenlenmez, geri çekilir — doğru süreyi yeniden yazmanız gerekecek. İki adım da geçmişte kalır."
+      "removeBody": "Kayıtlar düzenlenmez, geri çekilir — doğru süreyi yeniden yazmanız gerekecek. İki adım da geçmişte kalır.",
+      "minutesTooFew": "En az 1 dakika girin.",
+      "menu": "Kayıt seçenekleri"
     },
     "absences": {
       "title": "Devamsızlıklar",
@@ -3138,7 +3455,9 @@
       "offlineBody": "Toplantı notları sunucuda tutulur; bağlantı gelince liste açılır.",
       "empty": "Bu birimde henüz toplantı notu yok",
       "emptyBody": "Bir toplantının kaydı yüklendiğinde özeti ve kararları burada görünür.",
-      "counts": "{decisions} karar · {ideas} fikir"
+      "counts": "{decisions} karar · {ideas} fikir",
+      "upload": "Kayıt yükle",
+      "uploaded": "Kayıt yüklendi — birazdan deşifre edilecek."
     },
     "ticketWork": {
       "chip": "Talep {ref}",
@@ -3147,6 +3466,207 @@
       "release": "Talebi bırak",
       "releaseOffline": "Talebi bırakmak bağlantı ister — kararı masanın kuralları verir.",
       "released": "{ref} talebini bıraktın — listenden çıktı."
+    },
+    "teamAddress": {
+      "requiredTitle": "Takım adresi gerekiyor",
+      "requiredBody": "Bu ekran takımınızın kendi adresinde çalışır. Kullanmak için uygulamayı o adrese yöneltin: Ayarlar › Sunucu.",
+      "requiredBodyTeam": "{team} kendi adresinde çalışır: {host}. Talepler, onaylar ve takım ayarları orada.",
+      "switch": "{host} adresine geç",
+      "bannerBody": "Takımınız {team} kendi adresinde çalışıyor: {host}. Talepler ve onaylar orada.",
+      "bannerDismiss": "Şimdi değil",
+      "settingsRowBody": "Takım ekranları takımınızın kendi adresinde açılır",
+      "settingsRowHint": "{team} şu adreste: {host} — geçmek için dokunun",
+      "notInTeamTitle": "Bu takımın üyesi değilsiniz",
+      "notInTeamBody": "Bu adres hesabınızın üyesi olmadığı bir takıma ait."
+    },
+    "forbidden": {
+      "title": "Bu ekran takım yöneticilerine ait",
+      "body": "Rolünüz bu ayarları açmaya izin vermiyor. Burada bir şeyin değişmesi gerekiyorsa takım yöneticinize yazın.",
+      "back": "Ana sayfaya dön"
+    },
+    "duration": {
+      "minutes": "{m} dk",
+      "hours": "{h} sa",
+      "hoursMinutes": "{h} sa {m} dk",
+      "days": "{d} g",
+      "daysHours": "{d} g {h} sa"
+    },
+    "unitScope": {
+      "chooseTitle": "Bir birim seçin",
+      "chooseBody": "Bu liste bir birime ait; ekrandaki alan bir birim değil. Listesini görmek istediğiniz birimi seçin.",
+      "noUnitsBody": "Bu liste bir birime ait ve henüz hiçbir birimde değilsiniz. Bir takım yöneticisi sizi bir birime ekleyebilir."
+    },
+    "csv": {
+      "download": "CSV indir",
+      "preparing": "Dosya hazırlanıyor…",
+      "saved": "Kaydedildi: {name}",
+      "savedTruncated": "Kaydedildi: {name}. Satır sınırında durdu; dosyanın içinde de yazıyor. Geri kalanı için filtreleri daraltın."
+    },
+    "permDescription": {
+      "oncall": {
+        "manage": "Birimlerin nöbet listelerini ve kimlerin nöbette olduğunu belirle"
+      },
+      "tickets": {
+        "link": "Talepleri birbirine ve problemlere bağla",
+        "manage_worklog": "Başkasının kaydettiği süreyi düzelt ya da sil",
+        "assign": "Talebi başkasına ver ya da üstünden al",
+        "create": "Bir servise talep aç",
+        "comment": "Talebe yaz",
+        "close": "Talebi kapat ya da iptal et",
+        "export": "Talepleri dosya olarak dışarı aktar",
+        "create_on_behalf": "Başkası adına talep aç",
+        "convert": "Talebi birimde bir göreve dönüştür",
+        "override_priority": "Etki × aciliyet matrisinin üretmeyeceği bir öncelik ver",
+        "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve yeniden başlat"
+      },
+      "suppliers": {
+        "manage": "Tedarikçi listesini ve her birinin verdiği sözü tut"
+      },
+      "approvals": {
+        "decide": "Sahip olduğunuz bir role gelen onayları yanıtla — sizi adıyla anan onay bu izin olmadan da sizindir"
+      },
+      "problems": {
+        "manage": "Problem kaydı aç ve yürüt"
+      },
+      "portal": {
+        "manage_links": "Herkese açık talep bağlantıları oluştur, iptal et ve süresini uzat"
+      },
+      "team": {
+        "manage_invites": "Takıma kişi davet et ve davetleri iptal et",
+        "manage_deliveries": "Bir bildirimin neden ulaşmadığını gör ve yeniden gönder",
+        "manage_identity": "Takımın dizinini ve çoklu oturum açma sağlayıcılarını bağla ve yönet",
+        "manage_ai_keys": "Takımın yapay zekâ sağlayıcı anahtarlarını ve kişisel anahtar politikasını yönet",
+        "manage_roles": "İzin kataloğunu oku ve takımın rollerini yönet",
+        "export_data": "Takımın sahip olduğu her şeyi tek dosya olarak indir",
+        "view_audit": "Takımın bütün denetim günlüğünü oku",
+        "import_members": "Üyeleri dosyadan toplu olarak içe aktar",
+        "manage_security": "Takımın parola kurallarını belirle ve iki adımlı doğrulamayı zorunlu kıl",
+        "force_logout": "Bir üyenin oturumlarını gör ve hepsini kapat",
+        "manage_mail": "Takımın kendi posta sunucusunu bağla ve yönet",
+        "workspace": {
+          "view": "Takımın çalışma alanlarını ve arşiv durumlarını gör",
+          "create": "Takım çalışma alanı aç",
+          "archive": "Takım çalışma alanını arşivle ya da geri al"
+        },
+        "manage_settings": "Takımın adını, logosunu, dilini, saat dilimini ve rengini düzenle",
+        "manage_members": "Takım üyelerinin rolünü yükselt, düşür ve üyeleri çıkar",
+        "import_tickets": "Başka bir servis masasından talepleri toplu olarak taşı"
+      },
+      "assets": {
+        "view": "Varlık defterini gör",
+        "manage": "Varlık kaydı aç, düzenle ve taşı"
+      },
+      "tasks": {
+        "view": "Görevleri gör",
+        "create": "Görev oluştur",
+        "edit": "Görevleri düzenle",
+        "complete": "Görevleri tamamla ve yeniden aç",
+        "delete": "Görevleri sil",
+        "assign": "Görevi başkasına ver ya da üstünden al"
+      },
+      "projects": {
+        "view": "Projeleri gör",
+        "create": "Proje oluştur",
+        "edit": "Projeleri düzenle",
+        "archive": "Projeleri arşivle ve geri al"
+      },
+      "notes": {
+        "view": "Notları gör",
+        "create": "Not oluştur",
+        "edit": "Notları düzenle",
+        "delete": "Notları sil"
+      },
+      "files": {
+        "view": "Dosyaları gör",
+        "upload": "Dosya yükle",
+        "edit": "Dosyaları yeniden adlandır ve taşı",
+        "delete": "Dosyaları sil"
+      },
+      "calendar": {
+        "view": "Takvim bağlantılarını gör",
+        "manage": "Takvim bağla ve bağlantıyı kaldır"
+      },
+      "alarms": {
+        "create_urgent": "Sessiz modu aşan acil alarm kur"
+      },
+      "announcements": {
+        "manage": "Herkesin gördüğü duyuruları yaz ve ne zaman yayında olacaklarını belirle"
+      },
+      "units": {
+        "manage": "Birim aç, yeniden adlandır, arşivle ve birim yöneticisi ata",
+        "manage_members": "Bir birime kişi ekle ve çıkar"
+      },
+      "shares": {
+        "create": "Birimin bir öğesini başka bir birimle ya da kişiyle paylaş",
+        "revoke": "Birimin paylaştığı bir şeyi geri al"
+      },
+      "absences": {
+        "manage": "Başkasının devamsızlığını kaydet ya da kaldır"
+      },
+      "webhooks": {
+        "manage": "Giden webhook ekle ve kaldır"
+      },
+      "kb": {
+        "write": "Bilgi bankası makalesi yaz ve düzelt",
+        "publish": "Makaleyi yayımla ya da yayımlanmış bir makaleyi geri çek"
+      },
+      "sla": {
+        "manage": "SLA politikalarını, mesai takvimlerini ve izleyicileri düzenle"
+      },
+      "changes": {
+        "create": "Değişiklik aç",
+        "edit": "Değişikliği düzenle ve ilerlet",
+        "implement": "Değişikliği yapıldı, başarısız ya da geri alındı olarak işaretle"
+      },
+      "customers": {
+        "manage": "Hizmet verilen firmaları, kişilerini ve hedeflerini tut; bir talebin hangi firma için olduğunu belirle"
+      },
+      "services": {
+        "manage": "Servis oluştur, formlarını düzenle ve hangi birimlerin baktığını belirle"
+      }
+    },
+    "customers": {
+      "title": "Firmalar",
+      "create": "Firma ekle",
+      "name": "Firma adı",
+      "rename": "Yeniden adlandır",
+      "archive": "Arşivle",
+      "unarchive": "Arşivden çıkar",
+      "archived": "arşivli — kişileri giriş yapamaz",
+      "actions": "İşlemler",
+      "keep": "Vazgeç",
+      "archiveTitle": "“{name}” arşivlensin mi?",
+      "archiveBody": "Kişileri firma portalına artık giremez ve talep açamaz; yeni kişi de eklenemez. Açık talepleri masada kalır. Daha sonra arşivden çıkarabilirsiniz.",
+      "archivedNote": "Bu firma arşivli: kişileri giriş yapamaz ve talep açamaz. Kişi eklemek ya da davet etmek için firma listesinden arşivden çıkarın.",
+      "emptyTitle": "Henüz firma yok",
+      "emptyBody": "Hizmet verdiğiniz firmaları ekleyin. Kişileri takımınızın adresindeki firma portalına girer ve kendi taleplerini izler.",
+      "unavailable": "Kullanılamıyor",
+      "unavailableBody": "Burada firmaları yönetme izniniz yok ya da bu adreste bir takım yok.",
+      "addContact": "Kişi ekle",
+      "email": "E-posta adresi",
+      "contactName": "Ad (isteğe bağlı)",
+      "inviteNow": "Daveti hemen gönder",
+      "addDeactivated": "Bu adres burada kapatılmış bir kişiye ait.",
+      "invite": "Davet gönder",
+      "inviteTitle": "Davet hazır",
+      "inviteBody": "Bu takımın posta sunucusu varsa bağlantı e-postayla gider. Yalnız şimdi gösteriliyor — kendiniz iletecekseniz kopyalayın.",
+      "inviteLink": "Davet bağlantısı",
+      "copied": "Kopyalandı",
+      "copyFailed": "Kopyalanamadı. Yukarıdaki bağlantıyı seçip elle kopyalayın.",
+      "deactivate": "Erişimini kapat",
+      "reactivate": "Erişimini aç",
+      "deactivateTitle": "{name} için erişim kapatılsın mı?",
+      "deactivateBody": "Firma portalına artık giremez; açık bütün oturumları şimdi düşer. Talepleri kalır. Daha sonra yeniden açabilirsiniz.",
+      "stateOn": "Etkin",
+      "stateOff": "Erişimi kapalı",
+      "invitePending": "davet henüz kullanılmadı",
+      "lastSeen": "son giriş {date}",
+      "noContactsTitle": "Bu firmada henüz kimse yok",
+      "noContactsBody": "Bu firmanın taleplerini izleyecek kişileri ekleyin.",
+      "more": "Daha fazla göster",
+      "unsupportedTitle": "Bu sunucu kişileri henüz listeleyemiyor",
+      "unsupportedBody": "Firma kişilerini listelemek ve kapatmak daha yeni bir sunucu ister. Sunucuyu yöneten kişiden güncellemesini isteyin.",
+      "unsupportedAction": "Bu sunucu bunu henüz desteklemiyor. Sunucuyu yöneten kişiden güncellemesini isteyin."
     }
   },
   "perm": {

@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -8,6 +10,9 @@ import 'package:alliswell/src/features/ee/data/meeting_models.dart';
 import 'package:alliswell/src/features/ee/data/meetings_api.dart';
 import 'package:alliswell/src/features/ee/meetings_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
+import 'package:alliswell/src/features/files/providers.dart'
+    show PickedUpload, filePickerProvider, uploadTransportProvider;
 import 'package:alliswell/src/features/ee/ui/meetings_screen.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -30,6 +35,29 @@ class _FakeMeetings extends Fake implements EeMeetingsApi {
   Future<List<EeMeetingSummary>?> list(String workspaceId) async {
     listed += 1;
     return rows;
+  }
+
+  final calls = <String>[];
+
+  @override
+  Future<EeMeetingUploadSlot> create({
+    required String workspaceId,
+    required String mime,
+    required int sizeBytes,
+    String? title,
+  }) async {
+    calls.add('create $workspaceId $mime $sizeBytes $title');
+    return EeMeetingUploadSlot(
+      meeting: _meeting('M9', title ?? '', EeMeetingStatus.awaitingUpload),
+      url: 'https://store.example/put/M9',
+      headers: const {'content-type': 'audio/mpeg'},
+    );
+  }
+
+  @override
+  Future<EeMeetingSummary> complete(String meetingId) async {
+    calls.add('complete $meetingId');
+    return _meeting(meetingId, 'kayit', EeMeetingStatus.queued);
   }
 }
 
@@ -63,9 +91,23 @@ void main() {
     WidgetTester tester, {
     bool entitled = true,
     bool offline = false,
+    List<PickedUpload> picked = const [],
+    List<String>? puts,
   }) async {
     final container = ProviderContainer(
       overrides: [
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
+        workspacesProvider.overrideWith((ref) async => const []),
+        filePickerProvider.overrideWithValue((source) async => picked),
+        uploadTransportProvider.overrideWithValue(({
+          required url,
+          required headers,
+          required source,
+          onProgress,
+          cancelToken,
+        }) async {
+          puts?.add('PUT $url ${source.name}');
+        }),
         eeMeetingsApiProvider.overrideWithValue(api),
         eeFeatureProvider.overrideWith((ref, name) => entitled),
         syncEngineProvider.overrideWithValue(null),
@@ -155,5 +197,61 @@ void main() {
     api.rows = const [];
     await pump(tester);
     expect(key('meetings-empty'), findsOneWidget);
+  });
+
+  // OPH-359 — UI-AUDIT #54.
+  testWidgets('UI-AUDIT #54: a failed row says why, from its code', (
+    tester,
+  ) async {
+    api.rows = [
+      EeMeetingSummary(
+        id: 'M2',
+        workspaceId: 'W1',
+        status: EeMeetingStatus.failed,
+        attempts: 1,
+        decisionCount: 0,
+        ideaCount: 0,
+        createdAt: DateTime.now(),
+        title: 'Sessiz kayıt',
+        failureCode: 'MEETING_NO_TRANSCRIBER',
+        failureMessage: 'This team has no transcription provider configured.',
+      ),
+    ];
+    await pump(tester);
+    expect(
+      tester.widget<Text>(key('meeting-reason-M2')).data,
+      'ee.meeting.failure.MEETING_NO_TRANSCRIBER'.tr(),
+    );
+    expect(find.textContaining('transcription provider'), findsNothing);
+  });
+
+  testWidgets('UI-AUDIT #54: "upload a recording" opens the meeting, puts the '
+      'bytes in its slot and says it is there', (tester) async {
+    final puts = <String>[];
+    await pump(
+      tester,
+      picked: [
+        PickedUpload.fromBytes(
+          name: 'vardiya.mp3',
+          bytes: Uint8List.fromList(List.filled(32, 1)),
+        ),
+      ],
+      puts: puts,
+    );
+    final listedBefore = api.listed;
+    await tester.tap(key('meetings-upload'));
+    await tester.pumpAndSettle();
+    expect(api.calls, ['create W1 audio/mpeg 32 vardiya', 'complete M9']);
+    expect(puts, ['PUT https://store.example/put/M9 vardiya.mp3']);
+    // The list is asked again, so the new meeting appears.
+    expect(api.listed, greaterThan(listedBefore));
+    expect(find.text('ee.meetings.uploaded'.tr()), findsOneWidget);
+  });
+
+  testWidgets('no upload button where the instance has no meetings', (
+    tester,
+  ) async {
+    await pump(tester, entitled: false);
+    expect(key('meetings-upload'), findsNothing);
   });
 }

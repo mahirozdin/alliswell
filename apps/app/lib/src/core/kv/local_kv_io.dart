@@ -39,6 +39,19 @@ class _PrefsLocalKv implements LocalKv {
       // Ignore.
     }
   }
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {
+    try {
+      final prefs = await _prefs;
+      if (prefs == null) return;
+      for (final key in prefs.getKeys().where(test).toList()) {
+        await prefs.remove(key);
+      }
+    } on Object {
+      // Ignore.
+    }
+  }
 }
 
 LocalKv createLocalKv() => _PrefsLocalKv();

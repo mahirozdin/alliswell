@@ -15,6 +15,9 @@ import '../providers.dart';
 import 'change_detail_screen.dart';
 import 'change_labels.dart';
 import 'new_change_screen.dart';
+import '../../../widgets/route_leading.dart';
+import 'unit_scope.dart';
+import '../../workspaces/ui/workspace_switcher.dart';
 
 /// Planned work (EE-269, AW-E09) — the list.
 ///
@@ -52,8 +55,11 @@ class EeChangesScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('ee.changes.title'.tr()),
+        leading: awRouteLeading(context),
+        title: EeUnitScopedTitle(title: 'ee.changes.title'.tr()),
         actions: [
+          // OPH-359 (UI-AUDIT #29): change unit where the list is.
+          const AwWorkspaceSwitcher(),
           AwSearchAction(
             fieldKey: const Key('change-search'),
             hintText: 'ee.changes.searchHint'.tr(),
@@ -68,63 +74,65 @@ class EeChangesScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: list.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeChangeListProvider),
-        ),
-        data: (changes) {
-          final searching = hits != null || query.isNotEmpty;
-          if (searching) {
-            final found = hits == null
-                ? const <EeChange>[]
-                : _ranked(changes.all, hits);
-            if (found.isEmpty) {
+      body: EeUnitScopeGate(
+        child: list.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(eeChangeListProvider),
+          ),
+          data: (changes) {
+            final searching = hits != null || query.isNotEmpty;
+            if (searching) {
+              final found = hits == null
+                  ? const <EeChange>[]
+                  : _ranked(changes.all, hits);
+              if (found.isEmpty) {
+                return AwEmptyState(
+                  key: const Key('change-search-empty'),
+                  icon: Icons.search_off,
+                  title: 'ee.changes.searchEmpty'.tr(),
+                  message: 'ee.changes.searchEmptyBody'.tr(),
+                );
+              }
+              return ListView(
+                padding: awListPadding(context),
+                children: [for (final c in found) EeChangeRow(change: c)],
+              );
+            }
+            if (changes.isEmpty) {
               return AwEmptyState(
-                key: const Key('change-search-empty'),
-                icon: Icons.search_off,
-                title: 'ee.changes.searchEmpty'.tr(),
-                message: 'ee.changes.searchEmptyBody'.tr(),
+                key: const Key('change-empty'),
+                icon: Icons.event_note_outlined,
+                title: 'ee.changes.empty'.tr(),
+                message: 'ee.changes.emptyBody'.tr(),
               );
             }
             return ListView(
               padding: awListPadding(context),
-              children: [for (final c in found) EeChangeRow(change: c)],
+              children: [
+                ..._section(
+                  context,
+                  key: 'ahead',
+                  title: 'ee.changes.section.ahead'.tr(),
+                  rows: changes.ahead,
+                ),
+                ..._section(
+                  context,
+                  key: 'unscheduled',
+                  title: 'ee.changes.section.unscheduled'.tr(),
+                  rows: changes.unscheduled,
+                ),
+                ..._section(
+                  context,
+                  key: 'past',
+                  title: 'ee.changes.section.past'.tr(),
+                  rows: changes.past,
+                ),
+              ],
             );
-          }
-          if (changes.isEmpty) {
-            return AwEmptyState(
-              key: const Key('change-empty'),
-              icon: Icons.event_note_outlined,
-              title: 'ee.changes.empty'.tr(),
-              message: 'ee.changes.emptyBody'.tr(),
-            );
-          }
-          return ListView(
-            padding: awListPadding(context),
-            children: [
-              ..._section(
-                context,
-                key: 'ahead',
-                title: 'ee.changes.section.ahead'.tr(),
-                rows: changes.ahead,
-              ),
-              ..._section(
-                context,
-                key: 'unscheduled',
-                title: 'ee.changes.section.unscheduled'.tr(),
-                rows: changes.unscheduled,
-              ),
-              ..._section(
-                context,
-                key: 'past',
-                title: 'ee.changes.section.past'.tr(),
-                rows: changes.past,
-              ),
-            ],
-          );
-        },
+          },
+        ),
       ),
     );
   }

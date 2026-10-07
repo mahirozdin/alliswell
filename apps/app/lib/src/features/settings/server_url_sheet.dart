@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/server_url.dart';
 import '../../i18n/i18n.dart';
 import '../auth/providers.dart';
+import '../auth/ui/sign_out.dart';
 
 /// Lets the user point this install at a different AllisWell server.
 ///
@@ -50,6 +51,12 @@ class _ServerUrlDialogState extends ConsumerState<_ServerUrlDialog> {
     // Only disturb the session when the address actually moves.
     if (target != current) {
       final signedIn = ref.read(authControllerProvider).value != null;
+      // The sign-out below deletes the replica (OPH-355): ask BEFORE the
+      // address moves, while backing out still leaves everything as it was.
+      if (signedIn && !await confirmSignOut(context, ref)) {
+        if (mounted) setState(() => _saving = false);
+        return;
+      }
       // Store the override as "" when it matches the built-in default, so the
       // app keeps following that default if it ever changes.
       await ref

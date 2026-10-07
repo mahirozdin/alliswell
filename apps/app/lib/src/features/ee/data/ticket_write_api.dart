@@ -34,13 +34,19 @@ class EeTicketAnswer {
     required this.label,
     required this.type,
     required this.value,
+    this.key,
   });
 
   factory EeTicketAnswer.fromJson(Map<String, dynamic> json) => EeTicketAnswer(
     label: json['label'] as String,
     type: json['type'] as String,
     value: json['value'] as String,
+    key: json['key'] as String?,
   );
+
+  /// The field's key — what a history row's `answersChanged` names
+  /// (OPH-358, UI-AUDIT #6), so the row can say the question, not the key.
+  final String? key;
 
   final String label;
 
@@ -284,16 +290,19 @@ class EeTicketWriteApi {
   /// A reply (the requester reads it) or an internal note (only the unit
   /// does). The rest is the server's: who may mark a note internal, what is
   /// mailed, what reaches a linked child request (EE-182, EE-189).
-  Future<void> comment(
+  /// Answers the new reply's id (OPH-358): a file sent with it is attached
+  /// to THAT reply, so an internal note's file stays the desk's.
+  Future<String?> comment(
     String ticketId, {
     required String body,
     required bool internal,
   }) async {
     try {
-      await _dio.post<Map<String, dynamic>>(
+      final response = await _dio.post<Map<String, dynamic>>(
         '$_tickets/$ticketId/comments',
         data: {'body': body, 'internal': internal},
       );
+      return response.data?['id'] as String?;
     } on DioException catch (error) {
       throw asApiException(error);
     }

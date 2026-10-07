@@ -1,7 +1,7 @@
 import 'labour_models.dart';
 
 export 'labour_models.dart'
-    show EeMoneyByCurrency, EeWorklogTotals, eeHoursText;
+    show EeMoneyByCurrency, EeWorklogTotals, eeDurationText, eeMoneyText;
 
 /// The equipment register, as the screens read it (EE-191, EE-192, EE-194).
 class EeAsset {
@@ -233,4 +233,34 @@ class EeAssetUnit {
   final String name;
   final String? unitName;
   final bool stock;
+}
+
+/// A change planned on a machine (OPH-358, UI-AUDIT #37; EE-304's shape).
+class EeAssetChange {
+  const EeAssetChange({
+    required this.id,
+    required this.title,
+    required this.status,
+    this.number,
+    this.windowStart,
+    this.windowEnd,
+  });
+
+  factory EeAssetChange.fromJson(Map<String, dynamic> json) => EeAssetChange(
+    id: json['id'] as String,
+    title: (json['title'] as String?) ?? '',
+    status: (json['status'] as String?) ?? '',
+    number: (json['number'] as num?)?.toInt(),
+    windowStart: DateTime.tryParse(
+      json['windowStart'] as String? ?? '',
+    )?.toLocal(),
+    windowEnd: DateTime.tryParse(json['windowEnd'] as String? ?? '')?.toLocal(),
+  );
+
+  final String id;
+  final String title;
+  final String status;
+  final int? number;
+  final DateTime? windowStart;
+  final DateTime? windowEnd;
 }

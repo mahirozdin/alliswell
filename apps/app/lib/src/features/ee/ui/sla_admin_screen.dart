@@ -4,9 +4,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/sla_admin_models.dart';
 import '../sla_admin_providers.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
+import 'report_format.dart';
+import '../../../widgets/route_leading.dart';
 
 /// What an admin may edit about a promise (EE-099).
 ///
@@ -41,6 +46,7 @@ class EeSlaAdminScreen extends ConsumerWidget {
       length: 3,
       child: Scaffold(
         appBar: AppBar(
+          leading: awRouteLeading(context),
           title: Text('ee.slaAdmin.title'.tr()),
           bottom: TabBar(
             tabs: [
@@ -122,13 +128,19 @@ class _PolicyList extends ConsumerWidget {
       );
     }
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const Key('sla-policy-new'),
-        tooltip: 'ee.slaAdmin.newPolicy'.tr(),
-        onPressed: () => _editPolicy(context, ref, data, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('sla.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('sla-policy-new'),
+              tooltip: 'ee.slaAdmin.newPolicy'.tr(),
+              onPressed: () => _editPolicy(context, ref, data, null),
+              child: const Icon(Icons.add),
+            ),
       body: ListView(
+        padding: EdgeInsets.only(
+          bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+        ),
         children: [
           for (final p in data.policies)
             ListTile(
@@ -170,28 +182,210 @@ class _PolicyList extends ConsumerWidget {
   }
 }
 
+/// Runs an admin edit and puts a refusal in front of the person (UI-AUDIT
+/// #22): the server's coded sentence, translated — "mark another policy as
+/// the default first" — while the lists stay on screen.
+Future<void> _guarded(
+  BuildContext context,
+  Future<void> Function() edit,
+) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  try {
+    await edit();
+  } catch (error) {
+    messenger?.showSnackBar(SnackBar(content: Text(localizedError(error))));
+  }
+}
+
+/// The priorities a target can be set for, most urgent first — the order the
+/// desk reads them in.
+const kSlaPriorities = ['urgent', 'high', 'normal', 'low'];
+
+/// What the policy sheet hands back: the edit to save, or a wish to delete.
+/// The sheet owns its text fields (and disposes them when it closes), so
+/// only plain values leave it.
+class _PolicyEdit {
+  const _PolicyEdit({
+    this.delete = false,
+    this.name = '',
+    this.calendarId,
+    this.isDefault = false,
+    this.warnPercent = 80,
+    this.targets = const {},
+  });
+
+  final bool delete;
+  final String name;
+  final String? calendarId;
+  final bool isDefault;
+  final int warnPercent;
+
+  /// Only the rows that changed: an untouched priority keeps whatever the
+  /// server holds, and a cleared one travels as nulls (no promise).
+  final Map<String, EeSlaTarget> targets;
+}
+
 Future<void> _editPolicy(
   BuildContext context,
   WidgetRef ref,
   EeSlaAdminData data,
   EeSlaPolicy? policy,
 ) async {
-  final nameCtrl = TextEditingController(text: policy?.name ?? '');
-  String? calendarId = policy?.calendarId;
-  bool isDefault = policy?.isDefault ?? false;
-  int warnPercent = policy?.warnPercent ?? 80;
-
-  final saved = await showModalBottomSheet<bool>(
+  final edit = await showModalBottomSheet<_PolicyEdit>(
     context: context,
     isScrollControlled: true,
-    builder: (sheetContext) => StatefulBuilder(
-      builder: (sheetContext, setState) => Padding(
-        padding: EdgeInsets.only(
-          left: AwSpace.x4,
-          right: AwSpace.x4,
-          top: AwSpace.x4,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AwSpace.x4,
+    builder: (_) => _PolicySheet(data: data, policy: policy),
+  );
+  if (edit == null || !context.mounted) return;
+  final controller = ref.read(eeSlaAdminProvider.notifier);
+  if (!edit.delete) {
+    await _guarded(
+      context,
+      () => controller.savePolicyAndTargets(
+        id: policy?.id,
+        name: edit.name,
+        calendarId: edit.calendarId,
+        isDefault: edit.isDefault,
+        warnPercent: edit.warnPercent,
+        targets: edit.targets,
+      ),
+    );
+    return;
+  }
+  if (policy == null) return;
+  // UI-AUDIT #22: the default is not deleted from here at all — it is
+  // replaced. Saying so before the tap beats a refusal after it, and an older
+  // server that would have deleted it is never asked.
+  if (policy.isDefault) {
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        semanticLabel: 'ee.slaAdmin.defaultDeleteTitle'.tr(),
+        title: Text('ee.slaAdmin.defaultDeleteTitle'.tr()),
+        content: Text('error.SLA_POLICY_DEFAULT'.tr()),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text('common.ok'.tr()),
+          ),
+        ],
+      ),
+    );
+    return;
+  }
+  final ok = await awConfirmDelete(
+    context,
+    title: 'ee.slaAdmin.deletePolicyTitle'.tr(args: {'name': policy.name}),
+    body: 'ee.slaAdmin.deletePolicyBody'.tr(),
+    cancelLabel: 'ee.slaAdmin.keep'.tr(),
+    confirmKey: const Key('sla-policy-delete-confirm'),
+  );
+  if (ok && context.mounted) {
+    await _guarded(context, () => controller.deletePolicy(policy.id));
+  }
+}
+
+class _PolicySheet extends StatefulWidget {
+  const _PolicySheet({required this.data, this.policy});
+
+  final EeSlaAdminData data;
+  final EeSlaPolicy? policy;
+
+  @override
+  State<_PolicySheet> createState() => _PolicySheetState();
+}
+
+class _PolicySheetState extends State<_PolicySheet> {
+  late final TextEditingController _name;
+  late String? _calendarId;
+  late bool _isDefault;
+  late int _warnPercent;
+
+  // UI-AUDIT #46 — the target table, one row per priority and two clocks a
+  // row. The server had the endpoint all along and the app never wrote it,
+  // so every policy showed "0 targets" and promised nothing.
+  late final Map<String, (TextEditingController, TextEditingController)>
+  _targets;
+
+  @override
+  void initState() {
+    super.initState();
+    final policy = widget.policy;
+    _name = TextEditingController(text: policy?.name ?? '');
+    _calendarId = policy?.calendarId;
+    _isDefault = policy?.isDefault ?? false;
+    _warnPercent = policy?.warnPercent ?? 80;
+    _targets = {
+      for (final p in kSlaPriorities)
+        p: (
+          TextEditingController(
+            text: '${policy?.targetFor(p)?.firstResponseMinutes ?? ''}',
+          ),
+          TextEditingController(
+            text: '${policy?.targetFor(p)?.resolutionMinutes ?? ''}',
+          ),
         ),
+    };
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    for (final pair in _targets.values) {
+      pair.$1.dispose();
+      pair.$2.dispose();
+    }
+    super.dispose();
+  }
+
+  static int? _minutesOf(TextEditingController c) {
+    final v = int.tryParse(c.text.trim());
+    return v == null || v <= 0 ? null : v;
+  }
+
+  bool get _targetsValid => _targets.values.every(
+    (pair) => [
+      pair.$1,
+      pair.$2,
+    ].every((c) => c.text.trim().isEmpty || _minutesOf(c) != null),
+  );
+
+  _PolicyEdit _edit() {
+    final changed = <String, EeSlaTarget>{};
+    for (final p in kSlaPriorities) {
+      final before = widget.policy?.targetFor(p);
+      final first = _minutesOf(_targets[p]!.$1);
+      final resolve = _minutesOf(_targets[p]!.$2);
+      if (first != before?.firstResponseMinutes ||
+          resolve != before?.resolutionMinutes) {
+        changed[p] = EeSlaTarget(
+          priority: p,
+          firstResponseMinutes: first,
+          resolutionMinutes: resolve,
+        );
+      }
+    }
+    return _PolicyEdit(
+      name: _name.text.trim(),
+      calendarId: _calendarId,
+      isDefault: _isDefault,
+      warnPercent: _warnPercent,
+      targets: changed,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final policy = widget.policy;
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AwSpace.x4,
+        right: AwSpace.x4,
+        top: AwSpace.x4,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AwSpace.x4,
+      ),
+      child: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -200,20 +394,24 @@ Future<void> _editPolicy(
               policy == null
                   ? 'ee.slaAdmin.newPolicy'.tr()
                   : 'ee.slaAdmin.editPolicy'.tr(),
-              style: Theme.of(sheetContext).textTheme.titleMedium,
+              style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: AwSpace.x3),
             TextField(
               key: const Key('sla-policy-name'),
-              controller: nameCtrl,
+              controller: _name,
               decoration: InputDecoration(
                 labelText: 'ee.slaAdmin.policyName'.tr(),
               ),
+              // UI-AUDIT #23: Save reads this field, so typing must redraw the
+              // sheet — without it Save stayed off until something else (the
+              // slider) happened to rebuild.
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AwSpace.x3),
             DropdownButtonFormField<String?>(
               key: const Key('sla-policy-calendar'),
-              initialValue: calendarId,
+              initialValue: _calendarId,
               decoration: InputDecoration(
                 labelText: 'ee.slaAdmin.calendar'.tr(),
               ),
@@ -224,43 +422,57 @@ Future<void> _editPolicy(
                   value: null,
                   child: Text('ee.slaAdmin.always'.tr()),
                 ),
-                for (final c in data.calendars)
+                for (final c in widget.data.calendars)
                   DropdownMenuItem(value: c.id, child: Text(c.name)),
               ],
-              onChanged: (v) => setState(() => calendarId = v),
+              onChanged: (v) => setState(() => _calendarId = v),
             ),
             const SizedBox(height: AwSpace.x3),
             Row(
               children: [
                 Expanded(child: Text('ee.slaAdmin.warnPercent'.tr())),
-                Text('%$warnPercent'),
+                Text('%$_warnPercent'),
               ],
             ),
             Slider(
               key: const Key('sla-policy-warn'),
-              value: warnPercent.toDouble(),
+              value: _warnPercent.toDouble(),
               min: 0,
               max: 100,
               divisions: 20,
-              onChanged: (v) => setState(() => warnPercent = v.round()),
+              onChanged: (v) => setState(() => _warnPercent = v.round()),
             ),
             // 0 and 100 are both honest ways to ask for no warning at all —
             // never, and "warn me as I break it", which is not a warning.
             Text(
-              warnPercent == 0 || warnPercent == 100
+              _warnPercent == 0 || _warnPercent == 100
                   ? 'ee.slaAdmin.warnOff'.tr()
-                  : 'ee.slaAdmin.warnOn'.tr(args: {'percent': '$warnPercent'}),
-              style: Theme.of(sheetContext).textTheme.bodySmall,
+                  : 'ee.slaAdmin.warnOn'.tr(args: {'percent': '$_warnPercent'}),
+              style: theme.textTheme.bodySmall,
             ),
             const SizedBox(height: AwSpace.x2),
             SwitchListTile(
               key: const Key('sla-policy-default'),
               contentPadding: EdgeInsets.zero,
-              value: isDefault,
+              value: _isDefault,
               title: Text('ee.slaAdmin.makeDefault'.tr()),
               subtitle: Text('ee.slaAdmin.makeDefaultBody'.tr()),
-              onChanged: (v) => setState(() => isDefault = v),
+              onChanged: (v) => setState(() => _isDefault = v),
             ),
+            const SizedBox(height: AwSpace.x3),
+            Text('ee.slaAdmin.targets'.tr(), style: theme.textTheme.titleSmall),
+            const SizedBox(height: AwSpace.x1),
+            Text(
+              'ee.slaAdmin.targetsHelp'.tr(),
+              style: theme.textTheme.bodySmall,
+            ),
+            for (final p in kSlaPriorities)
+              _TargetRow(
+                priority: p,
+                firstResponse: _targets[p]!.$1,
+                resolution: _targets[p]!.$2,
+                onChanged: () => setState(() {}),
+              ),
             const SizedBox(height: AwSpace.x4),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
@@ -268,15 +480,20 @@ Future<void> _editPolicy(
                 if (policy != null)
                   TextButton(
                     key: const Key('sla-policy-delete'),
-                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    style: TextButton.styleFrom(
+                      foregroundColor: theme.colorScheme.error,
+                    ),
+                    onPressed: () => Navigator.of(
+                      context,
+                    ).pop(const _PolicyEdit(delete: true)),
                     child: Text('ee.slaAdmin.delete'.tr()),
                   ),
                 const SizedBox(width: AwSpace.x2),
                 FilledButton(
                   key: const Key('sla-policy-save'),
-                  onPressed: nameCtrl.text.trim().isEmpty
+                  onPressed: _name.text.trim().isEmpty || !_targetsValid
                       ? null
-                      : () => Navigator.of(sheetContext).pop(true),
+                      : () => Navigator.of(context).pop(_edit()),
                   child: Text('ee.slaAdmin.save'.tr()),
                 ),
               ],
@@ -284,23 +501,77 @@ Future<void> _editPolicy(
           ],
         ),
       ),
-    ),
-  );
-
-  if (saved == true) {
-    await ref
-        .read(eeSlaAdminProvider.notifier)
-        .savePolicy(
-          id: policy?.id,
-          name: nameCtrl.text.trim(),
-          calendarId: calendarId,
-          isDefault: isDefault,
-          warnPercent: warnPercent,
-        );
-  } else if (saved == false && policy != null) {
-    await ref.read(eeSlaAdminProvider.notifier).deletePolicy(policy.id);
+    );
   }
-  nameCtrl.dispose();
+}
+
+/// One priority's two clocks, in minutes, with the span read back in words.
+class _TargetRow extends StatelessWidget {
+  const _TargetRow({
+    required this.priority,
+    required this.firstResponse,
+    required this.resolution,
+    required this.onChanged,
+  });
+
+  final String priority;
+  final TextEditingController firstResponse;
+  final TextEditingController resolution;
+  final VoidCallback onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget field(String which, TextEditingController c, String labelKey) {
+      final v = int.tryParse(c.text.trim());
+      final invalid = c.text.trim().isNotEmpty && (v == null || v <= 0);
+      return Expanded(
+        child: TextField(
+          key: Key('sla-target-$priority-$which'),
+          controller: c,
+          keyboardType: TextInputType.number,
+          decoration: InputDecoration(
+            labelText: labelKey.tr(),
+            suffixText: 'ee.slaAdmin.minutesSuffix'.tr(),
+            // The minutes read back as a span, so "2880" is seen to be two
+            // days before it is saved.
+            helperText: invalid
+                ? null
+                : v == null
+                ? 'ee.slaAdmin.noTarget'.tr()
+                : eeSpanText(v.toDouble()),
+            errorText: invalid ? 'ee.slaAdmin.targetInvalid'.tr() : null,
+          ),
+          onChanged: (_) => onChanged(),
+        ),
+      );
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x3),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'ee.tickets.priority.$priority'.tr(),
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          // UI-AUDIT R2-4: an outlined field's label floats ON its top border,
+          // half of it above the box — with no gap the heading and "First
+          // reply" were drawn on top of each other. One spacing step clears
+          // the floated label with room to spare.
+          const SizedBox(height: AwSpace.x3),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              field('first', firstResponse, 'ee.slaAdmin.firstResponse'),
+              const SizedBox(width: AwSpace.x3),
+              field('resolve', resolution, 'ee.slaAdmin.resolution'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 // ── calendars ─────────────────────────────────────────────────────────────
@@ -319,19 +590,25 @@ class _CalendarList extends ConsumerWidget {
         message: 'ee.slaAdmin.noCalendarsBody'.tr(),
         action: FilledButton(
           key: const Key('sla-calendar-new-empty'),
-          onPressed: () => _editCalendar(context, ref, null),
+          onPressed: () => _editCalendar(context, ref, data, null),
           child: Text('ee.slaAdmin.newCalendar'.tr()),
         ),
       );
     }
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const Key('sla-calendar-new'),
-        tooltip: 'ee.slaAdmin.newCalendar'.tr(),
-        onPressed: () => _editCalendar(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('sla.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('sla-calendar-new'),
+              tooltip: 'ee.slaAdmin.newCalendar'.tr(),
+              onPressed: () => _editCalendar(context, ref, data, null),
+              child: const Icon(Icons.add),
+            ),
       body: ListView(
+        padding: EdgeInsets.only(
+          bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+        ),
         children: [
           for (final c in data.calendars)
             ExpansionTile(
@@ -384,7 +661,7 @@ class _CalendarList extends ConsumerWidget {
                   children: [
                     TextButton(
                       key: Key('sla-calendar-edit-${c.id}'),
-                      onPressed: () => _editCalendar(context, ref, c),
+                      onPressed: () => _editCalendar(context, ref, data, c),
                       child: Text('ee.slaAdmin.edit'.tr()),
                     ),
                   ],
@@ -400,6 +677,7 @@ class _CalendarList extends ConsumerWidget {
 Future<void> _editCalendar(
   BuildContext context,
   WidgetRef ref,
+  EeSlaAdminData data,
   EeBusinessCalendar? calendar,
 ) async {
   final nameCtrl = TextEditingController(text: calendar?.name ?? '');
@@ -408,78 +686,155 @@ Future<void> _editCalendar(
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    builder: (sheetContext) => Padding(
-      padding: EdgeInsets.only(
-        left: AwSpace.x4,
-        right: AwSpace.x4,
-        top: AwSpace.x4,
-        bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AwSpace.x4,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            calendar == null
-                ? 'ee.slaAdmin.newCalendar'.tr()
-                : 'ee.slaAdmin.editCalendar'.tr(),
-            style: Theme.of(sheetContext).textTheme.titleMedium,
-          ),
-          const SizedBox(height: AwSpace.x3),
-          TextField(
-            key: const Key('sla-calendar-name'),
-            controller: nameCtrl,
-            decoration: InputDecoration(
-              labelText: 'ee.slaAdmin.calendarName'.tr(),
+    builder: (sheetContext) => _DisposeWith(
+      controllers: [nameCtrl, tzCtrl],
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: AwSpace.x4,
+          right: AwSpace.x4,
+          top: AwSpace.x4,
+          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AwSpace.x4,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              calendar == null
+                  ? 'ee.slaAdmin.newCalendar'.tr()
+                  : 'ee.slaAdmin.editCalendar'.tr(),
+              style: Theme.of(sheetContext).textTheme.titleMedium,
             ),
-          ),
-          const SizedBox(height: AwSpace.x3),
-          TextField(
-            key: const Key('sla-calendar-tz'),
-            controller: tzCtrl,
-            decoration: InputDecoration(
-              labelText: 'ee.slaAdmin.timezone'.tr(),
-              // Empty follows the team, which follows UTC — two levels of
-              // "not chosen" rather than a default copied at create time.
-              helperText: 'ee.slaAdmin.timezoneHelp'.tr(),
-            ),
-          ),
-          const SizedBox(height: AwSpace.x4),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              if (calendar != null)
-                TextButton(
-                  key: const Key('sla-calendar-delete'),
-                  onPressed: () => Navigator.of(sheetContext).pop(false),
-                  child: Text('ee.slaAdmin.delete'.tr()),
-                ),
-              const SizedBox(width: AwSpace.x2),
-              FilledButton(
-                key: const Key('sla-calendar-save'),
-                onPressed: () => Navigator.of(sheetContext).pop(true),
-                child: Text('ee.slaAdmin.save'.tr()),
+            const SizedBox(height: AwSpace.x3),
+            TextField(
+              key: const Key('sla-calendar-name'),
+              controller: nameCtrl,
+              decoration: InputDecoration(
+                labelText: 'ee.slaAdmin.calendarName'.tr(),
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: AwSpace.x3),
+            TextField(
+              key: const Key('sla-calendar-tz'),
+              controller: tzCtrl,
+              decoration: InputDecoration(
+                labelText: 'ee.slaAdmin.timezone'.tr(),
+                // Empty follows the team, which follows UTC — two levels of
+                // "not chosen" rather than a default copied at create time.
+                helperText: 'ee.slaAdmin.timezoneHelp'.tr(),
+              ),
+            ),
+            const SizedBox(height: AwSpace.x4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                if (calendar != null)
+                  TextButton(
+                    key: const Key('sla-calendar-delete'),
+                    onPressed: () => Navigator.of(sheetContext).pop(false),
+                    child: Text('ee.slaAdmin.delete'.tr()),
+                  ),
+                const SizedBox(width: AwSpace.x2),
+                FilledButton(
+                  key: const Key('sla-calendar-save'),
+                  onPressed: () => Navigator.of(sheetContext).pop(true),
+                  child: Text('ee.slaAdmin.save'.tr()),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     ),
   );
+  // Read now: the sheet owns the controllers and disposes them once its
+  // closing animation ends, which a fast answer would otherwise outrun.
+  final name = nameCtrl.text.trim();
+  final timezone = tzCtrl.text.trim();
 
-  if (saved == true) {
-    await ref
-        .read(eeSlaAdminProvider.notifier)
-        .saveCalendar(
-          id: calendar?.id,
-          name: nameCtrl.text.trim(),
-          timezone: tzCtrl.text.trim().isEmpty ? null : tzCtrl.text.trim(),
+  if (saved == true && context.mounted) {
+    await _guarded(
+      context,
+      () => ref
+          .read(eeSlaAdminProvider.notifier)
+          .saveCalendar(
+            id: calendar?.id,
+            name: name,
+            timezone: timezone.isEmpty ? null : timezone,
+          ),
+    );
+  } else if (saved == false && calendar != null && context.mounted) {
+    // UI-AUDIT #22: the impact, before the tap. A calendar a policy still
+    // counts against cannot go (the server refuses, by design), so the
+    // dialog names the policies instead of offering a delete that fails.
+    final users = [
+      for (final p in data.policies)
+        if (p.calendarId == calendar.id) p.name,
+    ];
+    if (users.isNotEmpty) {
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          semanticLabel: 'ee.slaAdmin.calendarInUseTitle'.tr(),
+          title: Text('ee.slaAdmin.calendarInUseTitle'.tr()),
+          content: Text(
+            'ee.slaAdmin.calendarInUseBody'.tr(
+              args: {'policies': users.join(', ')},
+            ),
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text('common.ok'.tr()),
+            ),
+          ],
+        ),
+      );
+    } else {
+      final ok = await awConfirmDelete(
+        context,
+        title: 'ee.slaAdmin.deleteCalendarTitle'.tr(
+          args: {'name': calendar.name},
+        ),
+        body: 'ee.slaAdmin.deleteCalendarBody'.tr(),
+        cancelLabel: 'ee.slaAdmin.keep'.tr(),
+        confirmKey: const Key('sla-calendar-delete-confirm'),
+      );
+      if (ok && context.mounted) {
+        await _guarded(
+          context,
+          () =>
+              ref.read(eeSlaAdminProvider.notifier).deleteCalendar(calendar.id),
         );
-  } else if (saved == false && calendar != null) {
-    await ref.read(eeSlaAdminProvider.notifier).deleteCalendar(calendar.id);
+      }
+    }
   }
-  nameCtrl.dispose();
-  tzCtrl.dispose();
+}
+
+/// Hands a sheet's text controllers to the sheet itself (OPH-360): they are
+/// disposed when the sheet's route is gone, not when the awaiting function
+/// moves on — a fast save used to dispose them under the closing animation.
+class _DisposeWith extends StatefulWidget {
+  const _DisposeWith({required this.controllers, required this.child});
+
+  final List<TextEditingController> controllers;
+  final Widget child;
+
+  @override
+  State<_DisposeWith> createState() => _DisposeWithState();
+}
+
+class _DisposeWithState extends State<_DisposeWith> {
+  @override
+  void dispose() {
+    for (final c in widget.controllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 // ── monitors ──────────────────────────────────────────────────────────────
@@ -505,13 +860,19 @@ class _MonitorList extends ConsumerWidget {
       );
     }
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const Key('sla-monitor-new'),
-        tooltip: 'ee.slaAdmin.newMonitor'.tr(),
-        onPressed: () => _editMonitor(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('sla.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('sla-monitor-new'),
+              tooltip: 'ee.slaAdmin.newMonitor'.tr(),
+              onPressed: () => _editMonitor(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: ListView(
+        padding: EdgeInsets.only(
+          bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+        ),
         children: [
           for (final c in data.checks)
             ListTile(
@@ -564,111 +925,128 @@ Future<void> _editMonitor(
   final saved = await showModalBottomSheet<bool>(
     context: context,
     isScrollControlled: true,
-    builder: (sheetContext) => StatefulBuilder(
-      builder: (sheetContext, setState) => Padding(
-        padding: EdgeInsets.only(
-          left: AwSpace.x4,
-          right: AwSpace.x4,
-          top: AwSpace.x4,
-          bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AwSpace.x4,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              check == null
-                  ? 'ee.slaAdmin.newMonitor'.tr()
-                  : 'ee.slaAdmin.editMonitor'.tr(),
-              style: Theme.of(sheetContext).textTheme.titleMedium,
-            ),
-            const SizedBox(height: AwSpace.x3),
-            TextField(
-              key: const Key('sla-monitor-name'),
-              controller: nameCtrl,
-              decoration: InputDecoration(
-                labelText: 'ee.slaAdmin.monitorName'.tr(),
+    builder: (sheetContext) => _DisposeWith(
+      controllers: [nameCtrl, urlCtrl, bodyCtrl],
+      child: StatefulBuilder(
+        builder: (sheetContext, setState) => Padding(
+          padding: EdgeInsets.only(
+            left: AwSpace.x4,
+            right: AwSpace.x4,
+            top: AwSpace.x4,
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom + AwSpace.x4,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                check == null
+                    ? 'ee.slaAdmin.newMonitor'.tr()
+                    : 'ee.slaAdmin.editMonitor'.tr(),
+                style: Theme.of(sheetContext).textTheme.titleMedium,
               ),
-            ),
-            const SizedBox(height: AwSpace.x3),
-            TextField(
-              key: const Key('sla-monitor-url'),
-              controller: urlCtrl,
-              decoration: InputDecoration(
-                labelText: 'ee.slaAdmin.url'.tr(),
-                // The server refuses anything but public http/https, and it
-                // says so in words. Repeating the rule here means the person
-                // reads it before typing rather than after being refused.
-                helperText: 'ee.slaAdmin.urlHelp'.tr(),
-              ),
-            ),
-            const SizedBox(height: AwSpace.x3),
-            TextField(
-              key: const Key('sla-monitor-body'),
-              controller: bodyCtrl,
-              decoration: InputDecoration(
-                labelText: 'ee.slaAdmin.expectBody'.tr(),
-                helperText: 'ee.slaAdmin.expectBodyHelp'.tr(),
-              ),
-            ),
-            SwitchListTile(
-              key: const Key('sla-monitor-enabled'),
-              contentPadding: EdgeInsets.zero,
-              value: enabled,
-              title: Text('ee.slaAdmin.enabled'.tr()),
-              onChanged: (v) => setState(() => enabled = v),
-            ),
-            if (check?.lastError != null)
-              Padding(
-                padding: const EdgeInsets.only(top: AwSpace.x2),
-                child: Text(
-                  check!.lastError!,
-                  key: const Key('sla-monitor-last-error'),
-                  style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(sheetContext).colorScheme.error,
-                  ),
+              const SizedBox(height: AwSpace.x3),
+              TextField(
+                key: const Key('sla-monitor-name'),
+                controller: nameCtrl,
+                decoration: InputDecoration(
+                  labelText: 'ee.slaAdmin.monitorName'.tr(),
                 ),
               ),
-            const SizedBox(height: AwSpace.x4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (check != null)
-                  TextButton(
-                    key: const Key('sla-monitor-delete'),
-                    onPressed: () => Navigator.of(sheetContext).pop(false),
-                    child: Text('ee.slaAdmin.delete'.tr()),
-                  ),
-                const SizedBox(width: AwSpace.x2),
-                FilledButton(
-                  key: const Key('sla-monitor-save'),
-                  onPressed: () => Navigator.of(sheetContext).pop(true),
-                  child: Text('ee.slaAdmin.save'.tr()),
+              const SizedBox(height: AwSpace.x3),
+              TextField(
+                key: const Key('sla-monitor-url'),
+                controller: urlCtrl,
+                decoration: InputDecoration(
+                  labelText: 'ee.slaAdmin.url'.tr(),
+                  // The server refuses anything but public http/https, and it
+                  // says so in words. Repeating the rule here means the person
+                  // reads it before typing rather than after being refused.
+                  helperText: 'ee.slaAdmin.urlHelp'.tr(),
                 ),
-              ],
-            ),
-          ],
+              ),
+              const SizedBox(height: AwSpace.x3),
+              TextField(
+                key: const Key('sla-monitor-body'),
+                controller: bodyCtrl,
+                decoration: InputDecoration(
+                  labelText: 'ee.slaAdmin.expectBody'.tr(),
+                  helperText: 'ee.slaAdmin.expectBodyHelp'.tr(),
+                ),
+              ),
+              SwitchListTile(
+                key: const Key('sla-monitor-enabled'),
+                contentPadding: EdgeInsets.zero,
+                value: enabled,
+                title: Text('ee.slaAdmin.enabled'.tr()),
+                onChanged: (v) => setState(() => enabled = v),
+              ),
+              if (check?.lastError != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: AwSpace.x2),
+                  child: Text(
+                    check!.lastError!,
+                    key: const Key('sla-monitor-last-error'),
+                    style: Theme.of(sheetContext).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(sheetContext).colorScheme.error,
+                    ),
+                  ),
+                ),
+              const SizedBox(height: AwSpace.x4),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  if (check != null)
+                    TextButton(
+                      key: const Key('sla-monitor-delete'),
+                      onPressed: () => Navigator.of(sheetContext).pop(false),
+                      child: Text('ee.slaAdmin.delete'.tr()),
+                    ),
+                  const SizedBox(width: AwSpace.x2),
+                  FilledButton(
+                    key: const Key('sla-monitor-save'),
+                    onPressed: () => Navigator.of(sheetContext).pop(true),
+                    child: Text('ee.slaAdmin.save'.tr()),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     ),
   );
+  // Read now — see `_DisposeWith`.
+  final name = nameCtrl.text.trim();
+  final url = urlCtrl.text.trim();
+  final body = bodyCtrl.text.trim();
 
-  if (saved == true) {
-    await ref
-        .read(eeSlaAdminProvider.notifier)
-        .saveCheck(
-          id: check?.id,
-          name: nameCtrl.text.trim(),
-          url: urlCtrl.text.trim(),
-          expectBody: bodyCtrl.text.trim().isEmpty
-              ? null
-              : bodyCtrl.text.trim(),
-          enabled: enabled,
-        );
-  } else if (saved == false && check != null) {
-    await ref.read(eeSlaAdminProvider.notifier).deleteCheck(check.id);
+  if (saved == true && context.mounted) {
+    await _guarded(
+      context,
+      () => ref
+          .read(eeSlaAdminProvider.notifier)
+          .saveCheck(
+            id: check?.id,
+            name: name,
+            url: url,
+            expectBody: body.isEmpty ? null : body,
+            enabled: enabled,
+          ),
+    );
+  } else if (saved == false && check != null && context.mounted) {
+    final ok = await awConfirmDelete(
+      context,
+      title: 'ee.slaAdmin.deleteMonitorTitle'.tr(args: {'name': check.name}),
+      body: 'ee.slaAdmin.deleteMonitorBody'.tr(),
+      cancelLabel: 'ee.slaAdmin.keep'.tr(),
+      confirmKey: const Key('sla-monitor-delete-confirm'),
+    );
+    if (ok && context.mounted) {
+      await _guarded(
+        context,
+        () => ref.read(eeSlaAdminProvider.notifier).deleteCheck(check.id),
+      );
+    }
   }
-  nameCtrl.dispose();
-  urlCtrl.dispose();
-  bodyCtrl.dispose();
 }

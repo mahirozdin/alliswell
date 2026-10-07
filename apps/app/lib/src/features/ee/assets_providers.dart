@@ -338,6 +338,21 @@ final eeAssetHistoryProvider = FutureProvider.autoDispose
       return ref.watch(eeAssetsApiProvider).history(assetId);
     });
 
+/// OPH-358 (UI-AUDIT #37) — the changes planned on one machine. Server-only
+/// like the history beside it; null when the server has no such door, and
+/// not asked offline (the history's line already says the card needs one).
+final eeAssetChangesProvider = FutureProvider.autoDispose
+    .family<List<EeAssetChange>?, String>((ref, assetId) async {
+      if (!ref.watch(eeFeatureProvider('teams'))) return null;
+      if (ref.watch(serverReachabilityProvider.select((up) => up == false))) {
+        return null;
+      }
+      // After the history has answered, never beside it: a card opened in a
+      // basement learns it is offline from ONE dead request, not two.
+      await ref.watch(eeAssetHistoryProvider(assetId).future);
+      return ref.watch(eeAssetsApiProvider).changes(assetId);
+    });
+
 /// The type vocabulary — the built-ins plus the team's own words. Server-only;
 /// offline the screens fall back to the keys on the device and to
 /// [assetTypeLabel]'s built-in translations, so this does not ask while the

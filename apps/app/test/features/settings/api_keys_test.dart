@@ -251,6 +251,67 @@ void main() {
     expect(find.textContaining('Revoked'), findsOneWidget);
   });
 
+  testWidgets(
+    'UI-AUDIT #65: revoking says "Keep it" / "Revoke key" in the error role, '
+    'and the list says which workspace its keys reach',
+    (tester) async {
+      final api = FakeApi();
+      final seeded = api.seedApiKey(name: 'Eski script');
+      await tester.pumpWidget(await screenWith(api));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('api-key-bound-to')), findsOneWidget);
+
+      await tester.tap(find.byKey(Key('api-key-revoke-${seeded['id']}')));
+      await tester.pumpAndSettle();
+      expect(find.text('Keep it'), findsOneWidget);
+      expect(find.text('Revoke key'), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      final confirm = tester.widget<FilledButton>(
+        find.byKey(const Key('api-key-revoke-confirm')),
+      );
+      expect(
+        confirm.style?.backgroundColor?.resolve(const {}),
+        buildAwTheme(Brightness.light).colorScheme.error,
+      );
+      await tester.tap(find.text('Keep it'));
+      await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets('UI-AUDIT D2: a refused clipboard says the key was not copied', (
+    tester,
+  ) async {
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+      SystemChannels.platform,
+      (call) async {
+        if (call.method == 'Clipboard.setData') {
+          throw PlatformException(code: 'denied');
+        }
+        return null;
+      },
+    );
+    addTearDown(
+      () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+        SystemChannels.platform,
+        null,
+      ),
+    );
+    final api = FakeApi();
+    await tester.pumpWidget(await screenWith(api));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('api-key-create')));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('api-key-name-field')), 'x');
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('api-key-create-submit')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('api-key-secret-copy')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Could not copy the key'), findsOneWidget);
+    expect(find.text('Key copied'), findsNothing);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
   testWidgets('an unreachable server says so — never an empty list', (
     tester,
   ) async {

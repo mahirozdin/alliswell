@@ -27,6 +27,18 @@ void main() {
     expect(redirect(at: '/register'), isNull);
   });
 
+  test('UI-AUDIT #5: an invitation opens signed OUT — its reader may have '
+      'no account yet, and the team address refuses free sign-up', () {
+    // Before OPH-356 this was '/login': the invitee was sent to sign in on
+    // the service's own address, with no account and no way to make one.
+    expect(redirect(at: '/join/tok_1234567890abcdef'), isNull);
+    expect(redirect(loggedIn: true, at: '/join/tok_1234567890abcdef'), isNull);
+    // …and mid-restore too: parked on the splash, a cold start lost it.
+    expect(redirect(restoring: true, at: '/join/tok_1234567890abcdef'), isNull);
+    expect(isJoinLocation('/join/x'), isTrue);
+    expect(isJoinLocation('/joined'), isFalse);
+  });
+
   test('signed in: auth and splash pages bounce to Home', () {
     expect(redirect(loggedIn: true, at: '/login'), '/home');
     expect(redirect(loggedIn: true, at: '/register'), '/home');

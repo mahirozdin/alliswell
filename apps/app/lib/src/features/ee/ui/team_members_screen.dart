@@ -7,6 +7,8 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The management roster (EE-042).
 ///
@@ -30,7 +32,10 @@ class EeTeamMembersScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roster = ref.watch(eeTeamRosterProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.members.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.members.title'.tr()),
+      ),
       body: roster.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -38,7 +43,7 @@ class EeTeamMembersScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(eeTeamRosterProvider),
         ),
         data: (data) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
+          padding: awPagePadding(context, AwSpace.x4),
           children: [
             _SeatBanner(seats: data.seats),
             const SizedBox(height: AwSpace.x4),

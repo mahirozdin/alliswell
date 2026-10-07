@@ -76,6 +76,7 @@ void main() {
     final container = ProviderContainer(
       overrides: [
         databaseProvider.overrideWithValue(db),
+        currentUserIdProvider.overrideWithValue(me),
         // The list the current workspace comes from, so everything derived
         // from it — which workspaces sync, and so what the badge counts —
         // agrees with the override below (EE-296).
@@ -208,6 +209,48 @@ void main() {
     expect(row.args['decision'], 'Onay isteğiniz reddedildi');
     // EE-251: a request has an address now, so the outcome opens it.
     expect(row.destination, '/tickets/K1');
+  });
+
+  // ── OPH-358 (UI-AUDIT #28): a request's new status, in words ────────────
+
+  test('UI-AUDIT #28: "#209 is now In progress", not "in_progress" — from the '
+      'old server\'s statusLabel and the new one\'s status alike', () async {
+    for (final (id, params) in [
+      ('N8', {'ticketRef': '#209', 'statusLabel': 'in_progress'}),
+      (
+        'N9',
+        {'ticketRef': '#209', 'status': 'waiting', 'statusLabel': 'waiting'},
+      ),
+      ('N10', {'ticketRef': '#209', 'status': 'some_new_state'}),
+    ]) {
+      await pull(
+        id,
+        data: {
+          ...notification(id, titleKey: 'ee.notif.ticket.status_changed.title'),
+          'eventClass': 'ticket.status_changed',
+          'bodyKey': 'ee.notif.ticket.status_changed.body',
+          'params': {...params, 'subject': 'Kompresör'},
+          'entityType': 'ee_ticket',
+          'entityId': 'K$id',
+        },
+      );
+    }
+    final rows = await readCentre(containerWith());
+    String title(String id) {
+      final row = rows.firstWhere((r) => r.id == id);
+      return row.titleKey.tr(args: row.args);
+    }
+
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    expect(title('N8'), '#209 artık Devam ediyor');
+    expect(title('N9'), '#209 artık Beklemede');
+    // A word this build does not know is a neutral phrase, never the key.
+    expect(title('N10'), '#209 artık başka bir durumda');
+    for (final id in ['N8', 'N9', 'N10']) {
+      expect(title(id), isNot(contains('_')));
+    }
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    expect(title('N8'), contains('In progress'));
   });
 
   test('an approval request opens the screen where it is answered', () async {
@@ -352,6 +395,7 @@ void main() {
       final container = ProviderContainer(
         overrides: [
           databaseProvider.overrideWithValue(db),
+          currentUserIdProvider.overrideWithValue(me),
           syncWorkspaceIdsProvider.overrideWithValue(const [ws, other]),
         ],
       );
@@ -390,4 +434,62 @@ void main() {
       expect(row.destination, '/tickets/01JABCDEFGHJKMNPQRSTVWXYZ0');
     },
   );
+
+  test(
+    "UI-AUDIT #3: the centre and the badge show only the signed-in person's rows",
+    () async {
+      // Saha3's request notifications were still in the replica when saha2
+      // signed in on the same browser, and the centre — filtering by unit
+      // only — listed them. Sign-out wipes the replica now (OPH-355); this
+      // is the second wall, for a row that outlives it anyway.
+      await pull('N1', data: notification('N1'));
+      await pull(
+        'N2',
+        data: {
+          ...notification('N2', createdAt: '2026-08-24T12:00:00.000Z'),
+          'userId': 'U-previous',
+          'params': {'taskTitle': 'VPN erişimi', 'actorName': 'Saha3'},
+        },
+      );
+      final container = containerWith();
+
+      final rows = await readCentre(container);
+      expect([for (final r in rows) r.id], ['N1']);
+      final badge = container.listen(
+        unreadNotificationCountProvider,
+        (_, _) {},
+        fireImmediately: true,
+      );
+      addTearDown(badge.close);
+      expect(await container.read(unreadNotificationCountProvider.future), 1);
+
+      // "Mark all read" marks what the centre lists — not somebody else's row.
+      expect(
+        await NotificationStore(db).markAllRead(const [ws], userId: me),
+        1,
+      );
+      final queued = await db.select(db.pendingMutations).get();
+      expect([for (final m in queued) m.entityId], ['N1']);
+    },
+  );
+
+  test('UI-AUDIT #3: signed out, the centre and the badge are empty', () async {
+    await pull('N1', data: notification('N1'));
+    final container = ProviderContainer(
+      overrides: [
+        databaseProvider.overrideWithValue(db),
+        currentUserIdProvider.overrideWithValue(null),
+        syncWorkspaceIdsProvider.overrideWithValue(const [ws]),
+      ],
+    );
+    addTearDown(container.dispose);
+    expect(await readCentre(container), isEmpty);
+    final badge = container.listen(
+      unreadNotificationCountProvider,
+      (_, _) {},
+      fireImmediately: true,
+    );
+    addTearDown(badge.close);
+    expect(await container.read(unreadNotificationCountProvider.future), 0);
+  });
 }

@@ -13,6 +13,7 @@ import '../../workspaces/workspaces.dart';
 import '../absences_providers.dart';
 import '../assignments_providers.dart';
 import '../data/absences_api.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-236 (AW-E18) — who is away, and who is on call because of it.
 ///
@@ -36,7 +37,10 @@ class EeAbsencesScreen extends ConsumerWidget {
     }
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.absences.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.absences.title'.tr()),
+      ),
       floatingActionButton: page.hasValue
           ? AwExtendedFab(
               key: const Key('absences-add'),
@@ -93,7 +97,7 @@ class _AbsenceList extends ConsumerWidget {
     final format = ref.watch(dateFormatProvider);
     final onCall = ref.watch(eeMyOnCallProvider).value ?? const [];
     return ListView(
-      padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+      padding: awListPadding(context, top: AwSpace.x4, fab: true),
       children: [
         if (onCall.isNotEmpty) ...[
           Text(
@@ -275,7 +279,9 @@ class _AbsenceSheetState extends ConsumerState<_AbsenceSheet> {
     final picked = await showDateRangePicker(
       context: context,
       firstDate: DateTime(today.year, today.month, today.day - 90),
-      lastDate: DateTime(today.year + 1, today.month, today.day),
+      // UI-AUDIT #47: the list's own horizon — nothing can be recorded
+      // past the last day the list shows.
+      lastDate: eeAbsenceHorizon(eeAbsenceToday(today)),
       initialDateRange: _days,
     );
     if (picked != null) setState(() => _days = picked);

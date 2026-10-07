@@ -6,6 +6,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../catalogue_search.dart';
 import '../data/services_models.dart';
 import '../data/units_models.dart';
@@ -15,6 +16,8 @@ import '../units_providers.dart';
 import 'form_designer_screen.dart';
 import 'service_categories_screen.dart';
 import 'service_icons.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The service catalogue (EE-082, madde 8).
 ///
@@ -68,6 +71,7 @@ class _EeTeamServicesScreenState extends ConsumerState<EeTeamServicesScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('ee.team.services.title'.tr()),
         actions: [
           AwSearchAction(
@@ -87,12 +91,15 @@ class _EeTeamServicesScreenState extends ConsumerState<EeTeamServicesScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        key: const Key('service-new'),
-        tooltip: 'ee.team.services.create'.tr(),
-        onPressed: () => _editService(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('services.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('service-new'),
+              tooltip: 'ee.team.services.create'.tr(),
+              onPressed: () => _editService(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: services.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -311,7 +318,7 @@ class _CatalogueTree extends StatelessWidget {
       );
     }
     return ListView(
-      padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+      padding: awListPadding(context, top: AwSpace.x4, fab: true),
       children: children,
     );
   }
@@ -605,12 +612,15 @@ class _EeServiceRoutingScreenState
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: Text(widget.service.name)),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text(widget.service.name),
+      ),
       body: units.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),
         data: (list) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
+          padding: awPagePadding(context, AwSpace.x4),
           children: [
             ..._shelfAndIcon(context),
             const SizedBox(height: AwSpace.x6),

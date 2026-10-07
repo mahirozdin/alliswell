@@ -15,7 +15,9 @@ import '../data/ticket_archive_api.dart';
 import '../requester_ticket_providers.dart';
 import '../ticket_archive_providers.dart';
 import 'requester_ticket_screen.dart';
+import '../../../widgets/route_leading.dart';
 import 'ticket_detail_screen.dart' show EeTicketAnswersView;
+import '../../../widgets/fab_clearance.dart';
 
 /// A retry that can change the answer: the reads here do not ask while the
 /// app knows it is offline, so the sync engine's pull is the probe — if the
@@ -94,7 +96,10 @@ class _Frame extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text('ee.tickets.detailTitle'.tr())),
+    appBar: AppBar(
+      leading: awRouteLeading(context),
+      title: Text('ee.tickets.detailTitle'.tr()),
+    ),
     body: child,
   );
 }
@@ -139,9 +144,16 @@ class _AnotherUnit extends ConsumerWidget {
           ? null
           : FilledButton.tonal(
               key: const Key('ticket-elsewhere-switch'),
-              onPressed: () => ref
-                  .read(selectedWorkspaceIdProvider.notifier)
-                  .select(workspaceId!),
+              onPressed: () async {
+                await ref
+                    .read(selectedWorkspaceIdProvider.notifier)
+                    .select(workspaceId!);
+                // OPH-359 (UI-AUDIT #32): and ask that unit for its copy now
+                // rather than at the engine's next beat — the person is
+                // looking at a screen that waits for exactly that row.
+                final engine = ref.read(syncEnginesProvider)[workspaceId];
+                unawaited(engine?.syncNow());
+              },
               child: Text(
                 'ee.tickets.elsewhere.switch'.tr(args: {'unit': name}),
               ),
@@ -223,6 +235,7 @@ class EeArchivedTicketView extends ConsumerWidget {
         : AwI18n.instance.maybeTranslate('ee.sla.${ticket.slaStatus}');
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text(
           summary.number == null
               ? 'ee.tickets.detailTitle'.tr()
@@ -230,7 +243,7 @@ class EeArchivedTicketView extends ConsumerWidget {
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(AwSpace.x4),
+        padding: awPagePadding(context, AwSpace.x4),
         children: [
           // The strip is the first thing on the screen, before the subject:
           // a read-only record must not be mistaken for a live one somebody
@@ -320,14 +333,26 @@ class EeArchivedTicketView extends ConsumerWidget {
               _Fact(
                 key: const Key('archive-approval'),
                 icon: Icons.verified_outlined,
-                text: 'ee.tickets.archive.approval.${approval.status}'.tr(
-                  args: {
-                    'name': approval.decidedByName ?? '—',
-                    'date': approval.decidedAt == null
-                        ? '—'
-                        : awFormatDate(approval.decidedAt!, format: dateFormat),
-                  },
-                ),
+                // UI-AUDIT #14: a state this build does not know is a
+                // neutral sentence, never the key.
+                text:
+                    (AwI18n.instance.maybeTranslate(
+                                  'ee.tickets.archive.approval.${approval.status}',
+                                ) !=
+                                null
+                            ? 'ee.tickets.archive.approval.${approval.status}'
+                            : 'ee.tickets.archive.approval.unknown')
+                        .tr(
+                          args: {
+                            'name': approval.decidedByName ?? '—',
+                            'date': approval.decidedAt == null
+                                ? '—'
+                                : awFormatDate(
+                                    approval.decidedAt!,
+                                    format: dateFormat,
+                                  ),
+                          },
+                        ),
               ),
             if (ticket.ratingScore != null)
               _Fact(
@@ -517,7 +542,10 @@ class _EeTicketArchiveSearchScreenState
     void retry() =>
         _retry(ref, () => ref.invalidate(eeArchiveSearchProvider(_query)));
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.archive.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.archive.title'.tr()),
+      ),
       body: Column(
         children: [
           Padding(
@@ -528,6 +556,9 @@ class _EeTicketArchiveSearchScreenState
               textInputAction: TextInputAction.search,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
+                // OPH-359 (UI-AUDIT #64): a field with a NAME — a hint alone
+                // reached a screen reader as an unnamed input.
+                labelText: 'ee.tickets.archive.searchLabel'.tr(),
                 hintText: 'ee.tickets.archive.searchHint'.tr(),
               ),
               onSubmitted: (value) => setState(() => _query = value.trim()),
@@ -659,7 +690,10 @@ class _EeMyArchivedTicketsScreenState
   Widget build(BuildContext context) {
     final first = ref.watch(eeMyArchivePageProvider(''));
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.archive.mineTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.archive.mineTitle'.tr()),
+      ),
       body: first.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => ticketNeedsConnection(error)

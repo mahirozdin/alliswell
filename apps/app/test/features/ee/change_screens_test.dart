@@ -30,6 +30,8 @@ import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_api.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-269 (AW-E09) — change management on the phone.
 ///
@@ -168,6 +170,13 @@ void main() {
     container = ProviderContainer(
       retry: awRetry,
       overrides: [
+        // OPH-359: a routed page keeps the replica current; this file
+        // drives the screens' own reads and runs no engine.
+        syncEnginesProvider.overrideWith((ref) => const {}),
+        syncSocketProvider.overrideWith((ref) => null),
+        // OPH-359: the unit switcher and the unit scope in the bar read these.
+        workspacesProvider.overrideWith((ref) async => const []),
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         databaseProvider.overrideWithValue(db),
         currentWorkspaceProvider.overrideWithValue(
           const AsyncValue.data(
@@ -185,6 +194,13 @@ void main() {
         eeChangesApiProvider.overrideWithValue(EeChangesApi(dio)),
         eeApprovalsApiProvider.overrideWithValue(EeApprovalsApi(dio)),
         eeServicesProvider.overrideWith(_Catalogue.new),
+        // OPH-356 (#62): the admin list is asked only of somebody who
+        // manages services — an answering list here stands for that person.
+        eeHoldsTeamVerbProvider.overrideWith(
+          (ref, id) => id == 'services.manage'
+              ? _adminServices != null
+              : grants.contains(id),
+        ),
         eeCatalogProvider.overrideWith((ref) async => _memberCatalog),
         // The screens poke the engine after a write; there is no engine here.
         syncEngineProvider.overrideWithValue(null),
@@ -591,6 +607,78 @@ void main() {
     expect(find.byKey(const Key('change-from-server')), findsOneWidget);
     expect(find.byKey(const Key('change-approval-none')), findsOneWidget);
     expect(find.byKey(const Key('change-calendar-clear')), findsOneWidget);
+  });
+
+  testWidgets('UI-AUDIT #76: a draft on the same service in the same window '
+      'is named, never "nothing else in this window"', (tester) async {
+    final end = _start.add(const Duration(hours: 2));
+    final self = _change(
+      backupId,
+      title: 'Taslak A',
+      status: 'draft',
+      start: _start,
+      end: end,
+    );
+    server.script['GET /api/v1/ee/team/changes/$backupId'] = (_) => self;
+    server.script['GET /api/v1/ee/team/changes/$backupId/approvals'] = (_) => {
+      'approvals': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/$backupId/assets'] = (_) => {
+      'assets': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/calendar'] = (_) => {
+      'changes': [
+        {
+          ...self,
+          'clashes': const [],
+          'drafts': [
+            {
+              'changeId': draftId,
+              'title': 'Taslak B',
+              'type': 'normal',
+              'status': 'draft',
+              'windowStart': _start.toUtc().toIso8601String(),
+              'windowEnd': end.toUtc().toIso8601String(),
+            },
+          ],
+        },
+      ],
+      'freezes': const [],
+    };
+    await pumpAt(tester, '/changes/$backupId');
+
+    expect(find.byKey(const Key('change-calendar-clear')), findsNothing);
+    expect(find.byKey(Key('change-draft-$draftId')), findsOneWidget);
+    expect(find.textContaining('Taslak B'), findsOneWidget);
+  });
+
+  testWidgets('UI-AUDIT #77: a change whose window has passed unworked says '
+      '"window passed"; one still ahead does not', (tester) async {
+    final past = DateTime.now().subtract(const Duration(days: 3));
+    server.script['GET /api/v1/ee/team/changes/$backupId'] = (_) => _change(
+      backupId,
+      title: 'Hat 3 PLC yedeği',
+      start: past,
+      end: past.add(const Duration(hours: 4)),
+    );
+    server.script['GET /api/v1/ee/team/changes/$backupId/approvals'] = (_) => {
+      'approvals': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/$backupId/assets'] = (_) => {
+      'assets': const [],
+    };
+    server.script['GET /api/v1/ee/team/changes/calendar'] = (_) => {
+      'changes': const [],
+      'freezes': const [],
+    };
+    await pumpAt(tester, '/changes/$backupId');
+    expect(find.byKey(const Key('change-window-passed')), findsOneWidget);
+    expect(find.textContaining('Pencere geçti'), findsOneWidget);
+
+    // The disk change's window is tomorrow: nothing to warn about.
+    scriptDiskChange();
+    await pumpAt(tester, '/changes/$diskId');
+    expect(find.byKey(const Key('change-window-passed')), findsNothing);
   });
 
   testWidgets('the list is this unit\'s copy, split by the clock, and search '

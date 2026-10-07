@@ -108,7 +108,9 @@ Tabular figures for day numbers and timers.
 
 - **Lists** are inset grouped cards: each row is a `Card` (radius 20,
   hairline border, solid surface) with 6 px vertical rhythm inside
-  `awListPadding(context)` (clears glass bars + FAB). No full-width
+  `awListPadding(context)` (clears glass bars + the shell's FAB; a screen whose OWN Scaffold
+  carries a FAB passes `fab: true` to `awListPadding`/`awPagePadding`/`awScrollEndPadding` —
+  OPH-363, held by `page_fab_clearance_test.dart`). No full-width
   divider lists. The rhythm is ONE constant, `kAwListRowPadding` (3 px above
   and below each row, `widgets/status_views.dart`): a row wraps itself in it
   (or passes it as the card's `margin`), never a number of its own — the
@@ -936,8 +938,25 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   on release, snaps to the nearest vertical edge with `AwMotion.base` and the
   standard emphasized curve. Diameter 56 px (≥44 px target, §5). Position persists
   device-locally as edge + height fraction, clamped inside safe areas and above
-  the keyboard inset. Factory position: right edge, 35 % height — deliberately far
-  from the quick-add FAB's corner. After 3 s idle it half-recedes into the edge and
+  the keyboard inset — and, on a phone, above the glass bar and the FAB lane
+  (`kBubbleBottomReserve`, OPH-359). **Factory position: DOCKED (OPH-362)** — the bottom of
+  that band is the dock: the button rests in the glass bar's own row, centred on it, on its
+  edge (right by default), and **the layout keeps that lane free** rather than the button
+  covering whatever is there. The shell's capsule ends a gap short of it (`AwBubbleDock.width`,
+  72 px on a phone; past four sections only the selected tab is labelled), and every page
+  OUTSIDE the shell — a root-navigator page route, go_router's or a pushed one — ends a gap
+  above it (`AwBubbleDock.height`, 80 px with no bottom inset), applied once by the page
+  transitions (`AwBubbleDockInset`), painted with the page wash, so no screen knows. A drag
+  that lets go below the free band docks; anywhere above it is the person's choice, and then
+  the page is not shortened: `awListPadding` / `awScrollEndPadding` / `awPagePadding` end every
+  scrolling page above the button (`AwBubbleClearance`, OPH-361 — the FAB lane's rule applied to
+  the bubble). A keyboard covers the bar's row, and a docked button goes with it. Its
+  accessibility node is the 56 px button with one action, tap — the drag is not announced
+  (OPH-363: the pan recognisers made it a screen-sized scroll region on the web). History: 35 %
+  height until OPH-359 (on every row's ⋮, form switches and the count's own text); just above
+  the FAB lane until OPH-362 — padding a list's END cannot uncover what a page draws at that
+  height on first sight (a member's ⋮, the second approval's "Approve", the end of "Save";
+  UI-AUDIT #57 retest). After 3 s idle it half-recedes into the edge and
   dims to **40 % opacity — the platform's own default, not a taste call (OPH-196:
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on
@@ -957,8 +976,10 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   colour pair (glyph on container) is contrast-checked at **full** opacity in
   `scripts/design/contrast.py`; the exception is written in the code that
   implements it, never re-derived. **While the button carries a count (Q10) it
-  neither recedes nor dims** — a count is text somebody is asked to read, which
-  is exactly what this exception excludes (EE-294).
+  neither recedes nor dims at rest** — a count is text somebody is asked to read,
+  which is exactly what this exception excludes (EE-294). **While the content
+  under it scrolls it recedes whatever it carries** (OPH-359): the count is painted
+  outside the slide and the fade, so it is never dimmed.
 - **Q4c — The bubble is not a FAB (OPH-196).** Material's rule is one FAB per
   screen for the screen's single most important action; the quick-add FAB owns
   that slot and does not move. The bubble is a persistent *navigation* control,

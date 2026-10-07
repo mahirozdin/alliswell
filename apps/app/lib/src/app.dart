@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 
 import 'core/app_liveness.dart';
+import 'features/ee/new_ticket_providers.dart';
+import 'features/ee/ticket_drafts_providers.dart';
 import 'features/quick_access/ui/quick_access_bubble_host.dart';
 import 'i18n/i18n.dart';
 import 'router.dart';
@@ -30,6 +32,15 @@ class AllisWellApp extends ConsumerWidget {
     // app is already syncing. Watched here, not under a sign-in gate: whether
     // the app is running is not a question about a session.
     ref.watch(appLivenessTrackerProvider);
+    // EE-225 / N2 (UI-AUDIT retest): the draft courier carries a request
+    // written offline in this person's own workspace while another is on
+    // screen, and `sentDraftsProvider` notices when one becomes a request.
+    // They hung off the home shell, which is not built under a page opened
+    // by its address — "my requests" after a reload — so a draft waited there
+    // until somebody pressed "try again". Listened, not watched: nothing here
+    // redraws when they change. Both are inert while signed out.
+    ref.listen(draftCourierProvider, (_, _) {});
+    ref.listen(sentDraftsProvider, (_, _) {});
     return ListenableBuilder(
       listenable: AwI18n.instance,
       builder: (context, _) => MaterialApp.router(

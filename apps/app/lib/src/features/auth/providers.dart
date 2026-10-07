@@ -3,6 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/reachability.dart';
 import '../../core/server_url.dart';
+import '../../notifications/web/alert_cache.dart';
+import '../../sync/local_data.dart';
+import '../../sync/providers.dart';
 import '../devices/providers.dart';
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
@@ -33,10 +36,21 @@ final authApiProvider = Provider<AuthApi>(
   (ref) => AuthApi(Dio(BaseOptions(baseUrl: ref.watch(apiBaseUrlProvider)))),
 );
 
+/// The replica and the person's small facts belong to one person (OPH-355):
+/// wiped at sign-out, and wiped at sign-in when they were somebody else's.
+final localDataGuardProvider = Provider<LocalDataGuard>(
+  (ref) => LocalDataGuard(
+    database: () => ref.read(databaseProvider),
+    clearAlerts: () => createAlertCache().clear(),
+  ),
+);
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final repository = AuthRepository(
     api: ref.watch(authApiProvider),
     storage: ref.watch(tokenStorageProvider),
+    onSessionUser: (userId, {required restored}) =>
+        ref.read(localDataGuardProvider).claimFor(userId, restored: restored),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -97,6 +111,9 @@ class AuthController extends AsyncNotifier<AuthSession?> {
       .read(authRepositoryProvider)
       .register(email: email, password: password, displayName: displayName);
 
+  /// Signs out AND removes what this person left on the device (OPH-355):
+  /// the replica — outbox included — and their small cached facts. A screen
+  /// asks first when [unsentChangeCount] is not zero (`confirmSignOut`).
   Future<void> logout({bool allDevices = false}) async {
     // Take this install off the notification registry FIRST, while the token
     // that can still do it exists (OPH-309). The registry swallows its own
@@ -106,7 +123,19 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // And stop being reachable even if the row outlives the request: a deleted
     // token cannot be sent to, whatever the server still believes (OPH-319).
     await ref.read(pushMessagingProvider).forgetToken();
+    // Every engine stops and finishes the round it is in, so no pull lands
+    // on the replica after the wipe below. Only engines that exist: reading
+    // the provider cold would START them. Bounded: a request hanging on a
+    // dead network must not hold the sign-out — a late page is still caught
+    // by the next sign-in's owner check (`LocalDataGuard.claimFor`).
+    if (ref.exists(syncEnginesProvider)) {
+      await Future.wait([
+        for (final engine in ref.read(syncEnginesProvider).values)
+          engine.halt(),
+      ]).timeout(const Duration(seconds: 5), onTimeout: () => const []);
+    }
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
+    await ref.read(localDataGuardProvider).wipe();
   }
 }
 

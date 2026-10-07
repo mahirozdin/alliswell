@@ -28,6 +28,8 @@ import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/sync/providers.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-252 — the person who ASKED runs their request from the app: reads it,
 /// answers the desk, and ends or disputes it once the desk calls it resolved.
@@ -53,11 +55,14 @@ class _FakeWriteApi extends Fake implements EeTicketWriteApi {
   final moves = <String>[];
 
   @override
-  Future<void> comment(
+  Future<String?> comment(
     String ticketId, {
     required String body,
     required bool internal,
-  }) async => comments.add((body: body, internal: internal));
+  }) async {
+    comments.add((body: body, internal: internal));
+    return null;
+  }
 
   @override
   Future<void> setStatus(
@@ -106,6 +111,10 @@ void main() {
     List<EeTicketFile> files = const [],
     List<EeRequesterComment>? comments,
   }) => [
+    // OPH-359: a routed page keeps the replica current; these screens are
+    // tested without one.
+    syncEnginesProvider.overrideWith((ref) => const {}),
+    syncSocketProvider.overrideWith((ref) => null),
     eeTicketWriteApiProvider.overrideWithValue(api),
     eeRequesterTicketApiProvider.overrideWithValue(reads),
     eeRequesterFilesProvider.overrideWith((ref, id) async => files),
@@ -406,6 +415,8 @@ void main() {
     );
 
     List<Override> formOverrides() => [
+      // OPH-358: somebody who only asks works no desk — no file picker.
+      workspacesProvider.overrideWith((ref) async => const []),
       eeCatalogProvider.overrideWith((ref) async => catalog()),
       draftWorkspaceIdProvider.overrideWithValue('W-OWN'),
       canProvider.overrideWith(
@@ -563,6 +574,9 @@ void main() {
     testWidgets('…and the queue for somebody who does', (tester) async {
       await pumpHome(tester, [
         eeDeskProvider.overrideWithValue(true),
+        // OPH-359: the queue's bar carries the unit switcher and scope.
+        workspacesProvider.overrideWith((ref) async => const []),
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         ticketQueueProvider.overrideWith((ref) => Stream.value(const [])),
         ticketAssigneesProvider.overrideWith((ref) => Stream.value(const {})),
         currentUserIdProvider.overrideWithValue(_me),

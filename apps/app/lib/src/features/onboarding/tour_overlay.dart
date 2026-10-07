@@ -38,7 +38,7 @@ class TourOverlay extends StatelessWidget {
         container: true,
         explicitChildNodes: true,
         label: 'tour.stepOf'.tr(
-          args: {'step': '${state.step + 1}', 'total': '${kTourSteps.length}'},
+          args: {'step': '${state.step + 1}', 'total': '${state.steps.length}'},
         ),
         child: AnimatedSwitcher(
           duration: AwMotion.fast,
@@ -105,7 +105,7 @@ class TourOverlay extends StatelessWidget {
               const SizedBox(height: AwSpace.x4),
               Row(
                 children: [
-                  for (var i = 0; i < kTourSteps.length; i++)
+                  for (var i = 0; i < state.steps.length; i++)
                     Container(
                       margin: const EdgeInsets.only(right: 6),
                       width: 7,

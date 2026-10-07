@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
@@ -11,6 +12,9 @@ import '../kb_providers.dart';
 import '../providers.dart';
 import 'kb_article_screen.dart';
 import 'kb_editor_sheet.dart';
+import '../../../widgets/route_leading.dart';
+import 'unit_scope.dart';
+import '../../workspaces/ui/workspace_switcher.dart';
 
 /// The knowledge base (EE-196).
 ///
@@ -40,8 +44,11 @@ class EeKbScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('ee.kb.title'.tr()),
+        leading: awRouteLeading(context),
+        title: EeUnitScopedTitle(title: 'ee.kb.title'.tr()),
         actions: [
+          // OPH-359 (UI-AUDIT #29): change unit where the list is.
+          const AwWorkspaceSwitcher(),
           AwSearchAction(
             fieldKey: const Key('kb-search'),
             hintText: 'ee.kb.searchHint'.tr(),
@@ -56,38 +63,44 @@ class EeKbScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: Column(
-        children: [
-          _StatusFilter(status: status),
-          Expanded(
-            child: articles.when(
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, _) => AwErrorState(
-                message: localizedError(error),
-                onRetry: () => ref.invalidate(eeKbArticlesProvider),
-              ),
-              data: (rows) {
-                final shown = _ranked(rows, hits);
-                if (shown.isEmpty) {
-                  return AwEmptyState(
-                    icon: Icons.menu_book_outlined,
-                    title: hits == null
-                        ? 'ee.kb.empty'.tr()
-                        : 'ee.kb.noMatches'.tr(),
-                    message: hits == null
-                        ? 'ee.kb.emptyBody'.tr()
-                        : 'ee.kb.noMatchesBody'.tr(),
+      body: EeUnitScopeGate(
+        child: Column(
+          children: [
+            _StatusFilter(status: status),
+            Expanded(
+              child: articles.when(
+                loading: () => const Center(child: CircularProgressIndicator()),
+                error: (error, _) => AwErrorState(
+                  message: localizedError(error),
+                  onRetry: () => ref.invalidate(eeKbArticlesProvider),
+                ),
+                data: (rows) {
+                  final shown = _ranked(rows, hits);
+                  if (shown.isEmpty) {
+                    return AwEmptyState(
+                      icon: Icons.menu_book_outlined,
+                      title: hits == null
+                          ? 'ee.kb.empty'.tr()
+                          : 'ee.kb.noMatches'.tr(),
+                      // OPH-359 (UI-AUDIT #29): "start one from a request"
+                      // only to somebody who may write one.
+                      message: hits != null
+                          ? 'ee.kb.noMatchesBody'.tr()
+                          : canWrite
+                          ? 'ee.kb.emptyBody'.tr()
+                          : 'ee.kb.emptyBodyReader'.tr(),
+                    );
+                  }
+                  return ListView.builder(
+                    padding: awListPadding(context),
+                    itemCount: shown.length,
+                    itemBuilder: (context, i) => _Row(article: shown[i]),
                   );
-                }
-                return ListView.builder(
-                  padding: awListPadding(context),
-                  itemCount: shown.length,
-                  itemBuilder: (context, i) => _Row(article: shown[i]),
-                );
-              },
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -196,11 +209,15 @@ class _Row extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
           ),
           trailing: KbStatusChip(status: article.status),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => EeKbArticleScreen(articleId: article.id),
-            ),
-          ),
+          // By its address where there is a router (OPH-359, UI-AUDIT #59):
+          // an article is a thing people link to, and the URL now says so.
+          onTap: () => GoRouter.maybeOf(context) != null
+              ? context.push('/kb/${article.id}')
+              : Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EeKbArticleScreen(articleId: article.id),
+                  ),
+                ),
         ),
       ),
     );

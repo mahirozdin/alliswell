@@ -119,6 +119,11 @@
       "testFailed": "The test alarm could not be scheduled. See the alarm log."
     },
     "signOut": "Sign out",
+    "signOutUnsent": {
+      "title": "Unsent changes",
+      "body": "{count} changes on this device have not reached the server yet. Signing out deletes them from this device for good.",
+      "confirm": "Delete and sign out"
+    },
     "aboutBody": "Open-source, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
     "language": {
       "title": "Language",
@@ -189,7 +194,9 @@
       "meetings": "Meetings",
       "meetingsSub": "Your unit's meeting notes and decisions",
       "teamAudit": "Audit log",
-      "teamAuditSub": "Who changed what in the team, and when"
+      "teamAuditSub": "Who changed what in the team, and when",
+      "customers": "Companies",
+      "customersSub": "Companies you serve and who may sign in to their portal"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -579,7 +586,9 @@
     "disconnectConfirmBody": "AllisWell stops writing your tasks to it. Events already there stay where they are, and you can connect again any time.",
     "appleDisconnect": "Stop using this calendar",
     "appleDisconnectBody": "AllisWell stops writing your tasks to Apple Calendar. Events already there stay. macOS/iOS keeps the permission itself — remove that in Settings if you want it gone.",
-    "notInShared": "Calendars connect to a person's own account. In your organisation's workspaces your work lives in AllisWell, and no calendar is connected here."
+    "notInShared": "Calendars connect to a person's own account. In your organisation's workspaces your work lives in AllisWell, and no calendar is connected here.",
+    "a11yToday": "today",
+    "a11yHasTasks": "has tasks"
   },
   "tour": {
     "skip": "Skip",
@@ -599,7 +608,10 @@
     "doneTitle": "You’re all set",
     "doneBody": "Reopen this tour anytime from Settings → App tour.",
     "filesTitle": "Files",
-    "filesBody": "Your whole space’s files: personal folders plus everything attached to projects, tasks and notes."
+    "filesBody": "Your whole space’s files: personal folders plus everything attached to projects, tasks and notes.",
+    "ticketsTitle": "Requests",
+    "ticketsBody": "Report a problem or ask for something, and follow it until it is done. Your requests and their answers live here.",
+    "filesBodyTeam": "Your unit's files: everything attached to projects, tasks and notes, in one place."
   },
   "error": {
     "unknown": "Something went wrong. Please try again.",
@@ -608,7 +620,11 @@
     "AUTH_INVALID_CREDENTIALS": "Email or password is incorrect.",
     "AUTH_EMAIL_TAKEN": "An account with this email already exists.",
     "NETWORK_ERROR": "Could not reach the server. Check your connection and the server address.",
-    "server": "Unexpected server response.",
+    "server": "The server could not complete this. Try again in a moment.",
+    "notFound": "That could not be found — it may have been removed or moved.",
+    "RATE_LIMITED": "Too many requests — try again in {seconds} s.",
+    "HTTP_429": "Too many requests — wait a moment and try again.",
+    "INTERNAL_ERROR": "The server could not complete this. Try again in a moment.",
     "routeNotFound": "That link does not lead anywhere in this version of AllisWell.",
     "goHome": "Go to Home",
     "AI_RATE_LIMITED": "Slow down a little — the AI limit refills in a minute.",
@@ -638,7 +654,26 @@
     "TICKET_FIELD_REQUIRED": "A required question is unanswered.",
     "TICKET_NO_FORM": "This request was not filed on a form, so it has no answers to correct.",
     "TICKET_WORK_BOUND": "This task is a request's work, so it cannot be deleted. To give the work back, release the request.",
-    "TICKET_WORK_LOCKED": "This task is a request's work: its project, parent task, repeat and status follow the request."
+    "TICKET_WORK_LOCKED": "This task is a request's work: its project, parent task, repeat and status follow the request.",
+    "INVITE_NOT_FOUND": "This invitation does not exist. Check the link, or ask for a new one.",
+    "INVITE_ALREADY_ACCEPTED": "This invitation has already been used.",
+    "INVITE_REVOKED": "This invitation was cancelled. Ask your team admin for a new one.",
+    "INVITE_EXPIRED": "This invitation has expired. Ask your team admin for a new one.",
+    "INVITE_BURNED": "Too many wrong codes — this invitation no longer works. Ask your team admin for a new one.",
+    "INVITE_CODE_WRONG": "That code is not right. Check the invitation email and try again.",
+    "INVITE_SIGN_IN_REQUIRED": "This address already has an account — sign in, then open the link again.",
+    "INVITE_WRONG_ACCOUNT": "This invitation is for a different account.",
+    "INVITE_PASSWORD_REQUIRED": "Choose a password to finish creating your account.",
+    "INVITE_TEAM_SUSPENDED": "This team is suspended and cannot take new members right now.",
+    "TEAM_MEMBER_EXISTS": "You are already in this team.",
+    "EE_NO_TEAM_HERE": "No team answers on this address.",
+    "SLA_POLICY_DEFAULT": "This is the team's default policy, so it cannot be deleted. Mark another policy as the default first, then delete this one.",
+    "SLA_TIMEZONE_INVALID": "That is not a time zone the server knows. Use an IANA id such as Europe/Istanbul.",
+    "CUSTOMER_ARCHIVED": "That company is archived. Restore it first.",
+    "CUSTOMER_NAME_TAKEN": "A company with that name already exists.",
+    "CUSTOMER_USER_TAKEN": "That address already belongs to a contact here.",
+    "CUSTOMER_EMAIL_INVALID": "That is not an e-mail address.",
+    "CUSTOMER_USER_DEACTIVATED": "That contact is switched off. Switch them back on instead."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1184,7 +1219,11 @@
     "revokeConfirmBody": "Anything using this key stops working immediately. This cannot be undone — you can always create a new key.",
     "emptyTitle": "No keys yet",
     "emptyBody": "Create one when you want a script, a cron job or a home-automation box to reach your tasks and notes.",
-    "couldNotLoad": "Could not reach the server, so your keys cannot be shown."
+    "couldNotLoad": "Could not reach the server, so your keys cannot be shown.",
+    "revokeConfirm": "Revoke key",
+    "keep": "Keep it",
+    "copyFailed": "Could not copy the key. If you did not save it, revoke this key and create a new one — it cannot be shown again.",
+    "boundTo": "The keys below reach only the “{name}” workspace."
   },
   "versions": {
     "title": "Version history",
@@ -1226,11 +1265,61 @@
       "anyAction": "Any action",
       "anything": "Anything",
       "clear": "Clear filters",
-      "couldNotLoad": "The history could not be loaded.",
+      "couldNotLoad": "The audit log could not be loaded.",
       "empty": "Nothing has been recorded yet.",
       "emptyFiltered": "No events match these filters.",
       "moreOnServer": "There is more on the server — narrow the filters to see it.",
-      "title": "Team history"
+      "title": "Audit log",
+      "entity": {
+        "ee_alert_source": "Alert source",
+        "ee_announcement": "Announcement",
+        "ee_approval": "Approval",
+        "ee_asset": "Asset",
+        "ee_asset_import": "Asset import",
+        "ee_automation_rule": "Automation rule",
+        "ee_business_calendar": "Business calendar",
+        "ee_canned_reply": "Canned reply",
+        "ee_catalog_import": "Catalogue import",
+        "ee_change": "Change",
+        "ee_change_freeze": "Change freeze",
+        "ee_chat_channel": "Chat channel",
+        "ee_classification_rule": "Classification rule",
+        "ee_customer": "Company",
+        "ee_customer_user": "Company contact",
+        "ee_health_check": "Health monitor",
+        "ee_identity_provider": "Identity source",
+        "ee_invite": "Invitation",
+        "ee_item_share": "Share",
+        "ee_kb_article": "Knowledge base article",
+        "ee_mail_inbox": "Mail inbox",
+        "ee_meeting": "Meeting",
+        "ee_member_absence": "Absence",
+        "ee_member_import": "Member import",
+        "ee_notification_outbox": "Notification delivery",
+        "ee_oncall_schedule": "On-call rota",
+        "ee_problem": "Problem",
+        "ee_public_form": "Public link",
+        "ee_role": "Role",
+        "ee_saved_view": "Saved view",
+        "ee_service": "Service",
+        "ee_service_category": "Service category",
+        "ee_sla_policy": "SLA policy",
+        "ee_supplier": "Supplier",
+        "ee_team": "Team",
+        "ee_team_ai_connection": "Team AI key",
+        "ee_team_mail_settings": "Team mail server",
+        "ee_team_member": "Team member",
+        "ee_ticket": "Request",
+        "ee_ticket_export": "Request export",
+        "ee_ticket_import": "Request import",
+        "ee_ticket_rating": "Satisfaction rating",
+        "ee_ticket_template": "Request template",
+        "ee_unit": "Unit",
+        "ee_webhook": "Webhook",
+        "ee_whatsapp_config": "WhatsApp connection",
+        "task": "Task",
+        "workspace": "Workspace"
+      }
     },
     "badge": "Enterprise",
     "locked": "This feature requires an enterprise license.",
@@ -1300,7 +1389,12 @@
         "manual": "This server sends no e-mail, so pass these to {email} yourself.",
         "link": "Link",
         "code": "Code",
-        "separately": "Send the link and the code by different routes. Shown once — neither can be read back."
+        "separately": "Send the link and the code by different routes. Shown once — neither can be read back.",
+        "copied": "Copied",
+        "copyFailed": "Could not copy. Select it above and copy it by hand — it will not be shown again.",
+        "revokeTitle": "Cancel the invitation to {email}?",
+        "revokeBody": "The link and code already sent stop working. You can invite the same address again later.",
+        "keep": "Keep it"
       },
       "roles": {
         "title": "Roles",
@@ -1336,7 +1430,12 @@
         "emptyTitle": "No units yet",
         "emptyBody": "Open the first one — a department, a field crew, any group that works apart.",
         "noneTitle": "No unit here is yours to manage",
-        "noneBody": "If you were just made a manager, refresh the app; otherwise this page is not for you."
+        "noneBody": "If you were just made a manager, refresh the app; otherwise this page is not for you.",
+        "archiveTitle": "Archive “{name}”?",
+        "archiveBody": "The unit's workspaces close for everyone in it and its content stops syncing to their devices. Membership is kept, so restoring it later gives everything back.",
+        "keep": "Keep it",
+        "noMembersTitle": "Nobody in this unit yet",
+        "noMembersBody": "Add the people who work here with the button below. Only they see the unit's content."
       },
       "services": {
         "title": "Services",
@@ -1491,12 +1590,28 @@
     },
     "join": {
       "title": "Join a team",
-      "pendingTitle": "Invite received",
-      "pendingBody": "This invite cannot be redeemed yet. Ask your team admin to send it again once invites are enabled on this server.",
-      "pendingBodyTeam": "This invite is for {team}. It cannot be redeemed yet — ask your team admin to send it again once invites are enabled.",
       "unavailableTitle": "Invites are not available here",
       "unavailableBody": "This server does not run teams, so an invite link has nothing to join.",
-      "goHome": "Go to Home"
+      "goHome": "Go to Home",
+      "goSignIn": "Go to sign in",
+      "wrongServerTitle": "This link does not belong to this app",
+      "wrongServerBody": "The link wants to take the app to {host}, which is not a team of {server}. Ask the person who invited you for a new link.",
+      "failedTitle": "This invitation cannot be opened",
+      "forTeam": "Join {team}",
+      "hostLine": "Team address: {host}",
+      "invitedAs": "Invitation for {email}",
+      "codeLabel": "Invitation code",
+      "codeHelp": "The 6-digit code from the invitation email",
+      "codeInvalid": "Enter the 6-digit code from the email.",
+      "nameLabel": "Your name",
+      "passwordLabel": "Choose a password",
+      "passwordHelp": "At least 8 characters",
+      "passwordShort": "The password needs at least 8 characters.",
+      "accept": "Join the team",
+      "signInFirst": "This address already has an account. Sign in first — the invitation opens here again afterwards.",
+      "signIn": "Sign in",
+      "wrongAccount": "This invitation is for {email}, and you are signed in as {current}. Sign out, then open the link again.",
+      "joined": "You joined {team}"
     },
     "history": {
       "couldNotLoad": "History could not be loaded.",
@@ -1505,7 +1620,20 @@
       "moreOnServer": "Older entries are kept on the server.",
       "actorSystem": "AllisWell",
       "actorUnknown": "Someone",
-      "taskTitle": "Task history"
+      "taskTitle": "Task history",
+      "ticket": {
+        "unknownValue": "an unknown value",
+        "requesterReplied": "The requester replied",
+        "status": "Status: {change}",
+        "priority": "Priority: {change}",
+        "tagAdded": "Tag added: {tag}",
+        "tagRemoved": "Tag removed: {tag}",
+        "customer": "Company link changed",
+        "note": "Internal note written",
+        "reply": "Reply written",
+        "worklog": "Time logged: {duration}",
+        "formCorrected": "Form answers corrected: {fields}"
+      }
     },
     "verb": {
       "created": "created this",
@@ -1531,7 +1659,7 @@
       "authenticated": "signed in",
       "sign_in_failed": "could not sign in",
       "locked": "was locked out",
-      "revoked": "ended a session",
+      "revoked": "revoked this",
       "priority_overridden": "set a priority outside the matrix",
       "approval_requested": "asked for an approval",
       "approved": "approved this",
@@ -1557,6 +1685,29 @@
       "category_changed": "moved it to another part of the catalogue",
       "form_updated": "published a new version of the form",
       "migration_applied": "brought a migration over"
+    },
+    "verbFor": {
+      "ee_team_member": {
+        "revoked": "ended a member's sessions"
+      },
+      "ee_invite": {
+        "revoked": "revoked an invitation"
+      },
+      "ee_webhook": {
+        "revoked": "revoked a webhook"
+      },
+      "ee_public_form": {
+        "revoked": "revoked a public link"
+      },
+      "ee_item_share": {
+        "revoked": "withdrew a share"
+      },
+      "ee_chat_channel": {
+        "revoked": "disconnected a chat channel"
+      },
+      "ee_mail_inbox": {
+        "revoked": "disconnected a mail inbox"
+      }
     },
     "perm": {
       "alarms": {
@@ -1618,7 +1769,7 @@
         "manage_roles": "Manage roles",
         "manage_security": "Set password rules and require two-factor authentication",
         "manage_settings": "Team settings",
-        "view_audit": "View team history",
+        "view_audit": "View the audit log",
         "workspace": {
           "archive": "Archive workspaces",
           "create": "Create workspaces",
@@ -2088,7 +2239,10 @@
           "NOT_FOUND": "Cannot be done on this request — you are not in its unit, or it is no longer visible",
           "TICKET_PRIORITY_OVERRIDE_DENIED": "The priority comes from the desk's matrix; you may not override it",
           "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "This person is not in the request's unit",
-          "UNKNOWN": "The desk did not change it and gave no reason"
+          "UNKNOWN": "The desk did not change it and gave no reason",
+          "TICKET_INVALID_TRANSITION": "Cannot move to that status from where it stands",
+          "TICKET_TERMINAL": "Closed or cancelled; it cannot be changed",
+          "TICKET_APPROVAL_PENDING": "Waiting for approval; until then it can only be cancelled"
         }
       },
       "status": {
@@ -2139,7 +2293,15 @@
         "offline": "You're offline. A reply only goes while you're connected — it is not sent on its own; what you've written stays here while the app is open.",
         "replySent": "Reply sent",
         "noteAdded": "Internal note added",
-        "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above."
+        "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above.",
+        "replyOwn": "Write to the desk",
+        "replyOwnAudience": "The desk reads this.",
+        "replyOwnHint": "Write to the desk…",
+        "sendOwn": "Send to the desk",
+        "byEmail": "The reply is sent to the requester by email.",
+        "customerPortal": "The reply also shows in {name}'s company portal.",
+        "filesInternal": "Files on an internal note are seen by the desk only.",
+        "filesFailed": "Sent, but {count} file(s) could not be uploaded — attach them again."
       },
       "actions": {
         "statusTitle": "Change status",
@@ -2243,7 +2405,11 @@
         "assetPickTitle": "Which machine?",
         "assetSearch": "Tag, name or place",
         "assetNoneOnDevice": "This unit has no assets on this device. You can also scan the machine's label and open a request from its card.",
-        "assetNoMatch": "No machine matches this search."
+        "assetNoMatch": "No machine matches this search.",
+        "offlineNoDraft": "No connection, and no personal space on this device to keep a draft in. What you typed stays here; send it when the signal returns.",
+        "waitForSignal": "Send when connected",
+        "filesFailed": "{count} file(s) could not be attached",
+        "filesDeskOnly": "Files can be added by members of the unit handling the request; the desk will ask if it needs one."
       },
       "drafts": {
         "title": "Drafts",
@@ -2333,7 +2499,9 @@
           "approved": "Approved by {name} on {date}",
           "rejected": "Rejected by {name} on {date}",
           "expired": "Approval expired unanswered",
-          "pending": "Approval was still pending when it closed"
+          "pending": "Approval was still pending when it closed",
+          "withdrawn": "The approval was withdrawn when the request closed",
+          "unknown": "The approval's last state is unknown"
         },
         "mineSection": "Archive",
         "mineTitle": "My archived requests",
@@ -2341,7 +2509,8 @@
         "mineEmptyTitle": "Nothing in the archive yet",
         "mineEmptyBody": "A request moves here some time after it closes, and stays readable.",
         "mineMore": "Show older requests",
-        "yourRating": "Your rating: {score}/5"
+        "yourRating": "Your rating: {score}/5",
+        "searchLabel": "Search the archive"
       },
       "tags": {
         "title": "Tags",
@@ -2352,7 +2521,56 @@
         "save": "Add",
         "remove": "Remove the tag",
         "offline": "Adding and removing tags needs a connection."
-      }
+      },
+      "cancelledOn": "Cancelled on {date}",
+      "threadMeta": {
+        "side": {
+          "desk": "Desk",
+          "requester": "Requester",
+          "customer": "Company contact",
+          "system": "System"
+        },
+        "channel": {
+          "email": "email",
+          "portal": "portal",
+          "customerPortal": "company portal"
+        }
+      },
+      "customer": {
+        "line": "Company: {name}",
+        "visible": "This request shows in the company's portal; its contacts can read the replies.",
+        "none": "Not filed under a company",
+        "unnamed": "Unnamed company",
+        "link": "Link company",
+        "change": "Change",
+        "pickTitle": "The request's company",
+        "noneToPick": "No companies yet.",
+        "clear": "Remove the company"
+      },
+      "links": {
+        "title": "Linked requests",
+        "empty": "Not linked to another request.",
+        "add": "Link a request",
+        "added": "Requests linked",
+        "remove": "Remove link",
+        "offDevice": "A request this device does not hold",
+        "searchHint": "Number or subject",
+        "noCandidates": "No matching request.",
+        "type": {
+          "related": "Related",
+          "duplicateOf": "Duplicate of",
+          "duplicatedBy": "Duplicated by",
+          "childOf": "Parent request",
+          "parentOf": "Child request"
+        },
+        "kind": {
+          "related": "Related",
+          "duplicateOf": "Duplicate of",
+          "childOf": "Child of"
+        }
+      },
+      "statusUnknown": "in another status",
+      "selectRow": "Select {ticket}"
     },
     "sla": {
       "breached": "SLA missed",
@@ -2373,13 +2591,13 @@
         "spare_part": "Waiting on a spare part",
         "approval": "Waiting on an approval",
         "planned_window": "Waiting on a planned window"
-      }
+      },
+      "breachedNoClock": "The target was missed. No clock runs on this request any more, so there is no deadline to show."
     },
     "slaDash": {
       "title": "SLA dashboard",
       "compliance": "Promises kept",
-      "compliancePercent": "{value}%",
-      "complianceOf": "across {total} requests",
+      "complianceOf": "of {total} judged",
       "complianceNone": "Nothing judged yet",
       "byUnit": "By desk",
       "byService": "By service",
@@ -2389,7 +2607,12 @@
       "noServices": "No services with requests yet.",
       "noService": "No service",
       "unavailable": "No dashboard here",
-      "unavailableBody": "This address has no team, or you are not on a desk that reports into one."
+      "unavailableBody": "This address has no team, or you are not on a desk that reports into one.",
+      "outcomeBreached": "Missed",
+      "outcomeWarned": "Close to the limit",
+      "outcomeMet": "Kept",
+      "noDefaultTitle": "No default SLA policy",
+      "noDefaultBody": "New requests whose service or company names no policy get no SLA at all, so they are not counted here. Mark a policy as the default under SLA management."
     },
     "perfPanel": {
       "title": "Performance",
@@ -2408,8 +2631,6 @@
       "mttr": "Resolution",
       "csat": "Satisfaction",
       "compliance": "SLA met",
-      "minutes": "{minutes} min",
-      "percent": "{value}%",
       "byProcessType": "By kind of work",
       "noProcessTypes": "Nothing in this window.",
       "processTypeNone": "No kind recorded",
@@ -2479,7 +2700,24 @@
         "5": "Fri",
         "6": "Sat",
         "7": "Sun"
-      }
+      },
+      "targets": "Targets",
+      "targetsHelp": "In minutes, per priority. Leave a box empty for no promise on that clock.",
+      "firstResponse": "First reply",
+      "resolution": "Resolution",
+      "minutesSuffix": "min",
+      "noTarget": "No promise",
+      "targetInvalid": "A whole number of minutes above 0",
+      "keep": "Keep it",
+      "defaultDeleteTitle": "The default policy stays",
+      "deletePolicyTitle": "Delete “{name}”?",
+      "deletePolicyBody": "Services and companies that use this policy fall back to the team's default for new requests. Its targets go with it. This cannot be undone.",
+      "deleteCalendarTitle": "Delete “{name}”?",
+      "deleteCalendarBody": "Its shifts and holidays go with it. No policy counts against it now. This cannot be undone.",
+      "calendarInUseTitle": "This calendar is in use",
+      "calendarInUseBody": "These policies count against it: {policies}. Point them at another calendar first, then delete it.",
+      "deleteMonitorTitle": "Delete “{name}”?",
+      "deleteMonitorBody": "Nothing will check this address any more, and no request opens when it stops answering. This cannot be undone."
     },
     "portal": {
       "title": "Public request links",
@@ -2488,7 +2726,6 @@
       "unit": "Which unit answers it",
       "unitHelp": "Two or more units answer this service. The person filling the form cannot be asked, so choose here.",
       "ttl": "Valid for",
-      "ttlHours": "{hours} hours",
       "createdTitle": "Link created",
       "createdOnce": "This is the only time this address is shown. Copy it now — we keep no copy, and it cannot be shown again.",
       "copy": "Copy",
@@ -2502,10 +2739,11 @@
       "unlimited": "{used} · unlimited",
       "expiresAt": "until {date}",
       "customFields": "custom fields",
+      "ref": "ref. {ref}",
       "unknownService": "Unknown service",
       "pause": "Pause",
       "resume": "Resume",
-      "extend": "Extend by 48 hours",
+      "extend": "Extend…",
       "revoke": "Revoke",
       "revokeTitle": "Revoke this link?",
       "revokeBody": "Anyone still holding it will no longer be able to open the form. This cannot be undone — you would have to create a new link.",
@@ -2522,7 +2760,19 @@
       "catalogue": "Catalogue link",
       "catalogueHelp": "Shows the services you pick instead of one; the visitor chooses.",
       "catalogueAmbiguous": "Two desks answer this, so it cannot go in a catalogue — use a single-service link.",
-      "catalogueCount": "{count} services"
+      "catalogueCount": "{count} services",
+      "ttlDays": "{days} days",
+      "ttlDayOne": "1 day",
+      "extendTitle": "Extend this link",
+      "extendFrom": "It now works until {date}. The time you choose is added to that.",
+      "extendFromNow": "It has run out. The time you choose starts now.",
+      "extendUntil": "Works until {date}",
+      "extendConfirm": "Extend",
+      "keep": "Keep it",
+      "revokeConfirm": "Revoke link",
+      "createdAt": "made {date}",
+      "urlLabel": "Link address",
+      "copyFailed": "Could not copy. Select the address above and copy it by hand before closing."
     },
     "meeting": {
       "title": "Meeting",
@@ -2549,7 +2799,19 @@
       "isTicket": "Request opened",
       "isTask": "Task created",
       "ticketCreated": "A request was opened for this decision.",
-      "taskCreated": "A task was created for this decision."
+      "taskCreated": "A task was created for this decision.",
+      "notFound": "Meeting not found",
+      "notFoundBody": "It may have been deleted, or it belongs to a unit you are not in.",
+      "failure": {
+        "MEETING_NO_TRANSCRIBER": "This team has no transcription provider yet, so the recording could not be turned into text. A team admin can add one under Team AI keys.",
+        "MEETING_TRANSCRIBE_FAILED": "The transcription provider could not turn this recording into text, even after retrying.",
+        "MEETING_TRANSCRIBE_RETRYING": "The transcription provider did not answer; it will be tried again shortly.",
+        "MEETING_NO_SUMMARISER": "The words are saved, but this team has no AI provider to write the summary. A team admin can add one under Team AI keys.",
+        "MEETING_SUMMARY_FAILED": "The words are saved, but the summary could not be written. It will be tried again.",
+        "MEETING_STORAGE_UNCONFIGURED": "This server has no file storage set up, so recordings cannot be kept.",
+        "generic": "Something stopped this meeting from being processed.",
+        "openAiKeys": "Open Team AI keys"
+      }
     },
     "teamAi": {
       "title": "Team AI keys",
@@ -2662,7 +2924,41 @@
       "emptyTitle": "No endpoints yet",
       "emptyBody": "Add one to send this team's events to a system you already run. Only the request number, subject, desk and a link travel — never the text of a request.",
       "unavailable": "Not available here",
-      "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer."
+      "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer.",
+      "event": {
+        "task": {
+          "assigned": "Work assigned"
+        },
+        "invite": {
+          "created": "Invitation sent"
+        },
+        "report": {
+          "weekly": "Weekly report",
+          "savedView": "Scheduled saved view report"
+        },
+        "ticket": {
+          "routed": "Request routed to a unit",
+          "routed_public": "Request from outside routed to a unit",
+          "assigned": "Request assigned",
+          "status_changed": "Request status changed",
+          "commented": "Reply on a request",
+          "rate": "Rating requested"
+        },
+        "sla": {
+          "warned": "SLA deadline approaching",
+          "breached": "SLA breached"
+        },
+        "asset": {
+          "expiring": "Equipment date approaching"
+        },
+        "approval": {
+          "requested": "Approval requested",
+          "decided": "Approval decided"
+        },
+        "share": {
+          "received": "Something shared"
+        }
+      }
     },
     "mail": {
       "inboxAdd": "Add a mailbox",
@@ -2724,7 +3020,8 @@
         "pending": "Waiting",
         "approved": "Approved",
         "rejected": "Rejected",
-        "expired": "Lapsed — nobody answered in time"
+        "expired": "Lapsed — nobody answered in time",
+        "withdrawn": "Withdrawn"
       },
       "tabMine": "Mine",
       "tabTeam": "Team",
@@ -2789,7 +3086,8 @@
         "ee_ticket": "Open the request",
         "ee_change": "Open the change",
         "task": "Open the task"
-      }
+      },
+      "statusUnknown": "Status unknown"
     },
     "assets": {
       "status": {
@@ -2842,13 +3140,13 @@
       },
       "history": {
         "title": "Requests about this asset",
-        "counts": "Last {months} months: {count} requests, {open} still open, {hours}h of open time",
+        "counts": "Last {months} months: {count} requests, {open} still open; requests stayed open {duration} in total",
         "empty": "No requests have named this asset yet",
         "archived": "Archived",
-        "labour": "{hours} h of recorded work",
-        "labourCost": "Labour: {amount} {currency}",
-        "labourUnpriced": "{hours} h of it by people with no hourly rate.",
-        "ticketLabour": "{hours} h of work",
+        "labour": "{duration} of recorded work",
+        "labourCost": "Labour: {money}",
+        "labourUnpriced": "{duration} of it by people with no hourly rate.",
+        "ticketLabour": "{duration} of work",
         "live": "From the server · needs a connection",
         "offline": "History needs a connection — requests and labour show up here once you are back online.",
         "openTimeNote": "Open time is how long requests stayed open, not how long the machine was stopped. Downtime is not recorded."
@@ -2869,6 +3167,10 @@
         "fromServer": "Read from the server — not kept on this device",
         "notOnDevice": "This asset is not on this device",
         "notOnDeviceBody": "Equipment outside this unit, and retired records untouched for 90 days, are not kept on devices. It opens once you are back online."
+      },
+      "changes": {
+        "title": "Changes affecting this equipment",
+        "empty": "No changes planned for this equipment."
       }
     },
     "changes": {
@@ -2935,10 +3237,11 @@
       },
       "calendar": {
         "title": "Calendar",
-        "clear": "Nothing else stands in this window, and no freeze covers it.",
+        "clear": "No other change touches this service in this window, and no freeze covers it.",
         "noWindow": "No window yet — this change is not in the calendar.",
         "freeze": "This window overlaps the freeze “{reason}” ({window}).",
-        "clash": "Same service, same window: “{title}” ({window})."
+        "clash": "Same service, same window: “{title}” ({window}).",
+        "draft": "A draft not yet planned sits on the same service in this window: “{title}” ({window})."
       },
       "source": {
         "title": "Raised from",
@@ -2975,7 +3278,10 @@
         "save": "Raise the change",
         "offline": "Raising a change needs a connection.",
         "done": "Change raised"
-      }
+      },
+      "windowPassed": "Window passed",
+      "windowPassedLong": "The window has passed — the change was not carried out; it needs a new plan.",
+      "statusUnknown": "Unknown status"
     },
     "problems": {
       "title": "Problems",
@@ -3071,16 +3377,25 @@
         "approved": "Approve",
         "published": "Publish",
         "retired": "Retire"
-      }
+      },
+      "retireTitle": "Retire this article?",
+      "retireBody": "A retired article is no longer suggested, and this cannot be undone.",
+      "noServiceNote": "This article is not linked to a service, so it is suggested to nobody filing a request.",
+      "counts": "Suggested {suggested} times · read and asked anyway {converted} times · {deflected} requests prevented",
+      "fieldService": "Service",
+      "fieldServiceNone": "Without a service the article is suggested to nobody filing a request.",
+      "fieldServiceHelp": "Once published it is suggested to people filing a request for this service.",
+      "noService": "No service",
+      "emptyBodyReader": "Nothing has been written here yet. Articles your unit publishes will appear here."
     },
     "worklogs": {
       "title": "Time spent",
       "add": "Log time",
       "empty": "No time logged on this request yet.",
-      "entry": "{hours} h on {date}",
+      "entry": "{duration} on {date}",
       "money": "{amount} {currency}",
-      "totalHours": "{hours} h in total",
-      "unpriced": "{hours} h logged by people with no hourly rate — real work, no price attached.",
+      "totalHours": "{duration} in total",
+      "unpriced": "{duration} logged by people with no hourly rate — real work, no price attached.",
       "minutes": "Minutes",
       "minutesHelp": "How long you actually worked. Typed, not timed.",
       "minutesInvalid": "Enter a whole number of minutes.",
@@ -3089,7 +3404,9 @@
       "note": "What you did (optional)",
       "remove": "Withdraw",
       "removeTitle": "Withdraw this entry?",
-      "removeBody": "Entries are withdrawn rather than edited, so you will need to log the corrected time again. Both steps stay in the history."
+      "removeBody": "Entries are withdrawn rather than edited, so you will need to log the corrected time again. Both steps stay in the history.",
+      "minutesTooFew": "Enter at least 1 minute.",
+      "menu": "Entry options"
     },
     "absences": {
       "title": "Absences",
@@ -3139,7 +3456,9 @@
       "offlineBody": "Meeting notes are kept on the server; the list opens when you are back online.",
       "empty": "No meeting notes in this unit yet",
       "emptyBody": "When a meeting's recording is uploaded, its summary and decisions appear here.",
-      "counts": "{decisions} decisions · {ideas} ideas"
+      "counts": "{decisions} decisions · {ideas} ideas",
+      "upload": "Upload a recording",
+      "uploaded": "Recording uploaded — it will be transcribed shortly."
     },
     "ticketWork": {
       "chip": "Request {ref}",
@@ -3148,6 +3467,207 @@
       "release": "Give the request back",
       "releaseOffline": "Giving a request back needs a connection — the desk's rules decide it.",
       "released": "You gave {ref} back — it is off your list."
+    },
+    "teamAddress": {
+      "requiredTitle": "Your team's address is needed",
+      "requiredBody": "This screen works on your team's own address. Point the app at it — Settings › Server — to use it.",
+      "requiredBodyTeam": "{team} works on its own address, {host}. Requests, approvals and team settings are there.",
+      "switch": "Switch to {host}",
+      "bannerBody": "Your team {team} works on its own address, {host}. Requests and approvals are there.",
+      "bannerDismiss": "Not now",
+      "settingsRowBody": "Team screens open on your team's own address",
+      "settingsRowHint": "{team} is at {host} — tap to switch",
+      "notInTeamTitle": "Not a member of this team",
+      "notInTeamBody": "This address belongs to a team your account is not in."
+    },
+    "forbidden": {
+      "title": "This screen is for the team's admins",
+      "body": "Your role does not open these settings. If something here needs changing, ask your team admin.",
+      "back": "Go to Home"
+    },
+    "duration": {
+      "minutes": "{m} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min",
+      "days": "{d} d",
+      "daysHours": "{d} d {h} h"
+    },
+    "unitScope": {
+      "chooseTitle": "Choose a unit",
+      "chooseBody": "This list belongs to a unit, and the space on screen is not one. Pick the unit whose list you want to see.",
+      "noUnitsBody": "This list belongs to a unit, and you are not in one yet. A team admin can add you to a unit."
+    },
+    "csv": {
+      "download": "Download CSV",
+      "preparing": "Preparing the file…",
+      "saved": "Saved: {name}",
+      "savedTruncated": "Saved: {name}. It stopped at the row limit, and the file says so inside. Narrow the filters for the rest."
+    },
+    "permDescription": {
+      "oncall": {
+        "manage": "Set the units’ on-call rotas and who is in them"
+      },
+      "tickets": {
+        "link": "Link requests to each other and to problems",
+        "manage_worklog": "Correct or remove somebody else’s recorded time",
+        "assign": "Put a request on someone else, or take one off them",
+        "create": "Open a request against a service",
+        "comment": "Write on a request",
+        "close": "Close or cancel a request",
+        "export": "Take requests out of the product as a file",
+        "create_on_behalf": "Open a request in somebody else's name",
+        "convert": "Turn a request into a task in the unit",
+        "override_priority": "Set a priority the impact × urgency matrix would not produce",
+        "pause_sla": "Stop and restart a request’s SLA clock without moving it"
+      },
+      "suppliers": {
+        "manage": "Keep the supplier list and what each one promised"
+      },
+      "approvals": {
+        "decide": "Answer approvals addressed to a role you hold — an approval naming you is yours without it"
+      },
+      "problems": {
+        "manage": "Open and work a problem record"
+      },
+      "portal": {
+        "manage_links": "Create, revoke and extend public request links"
+      },
+      "team": {
+        "manage_invites": "Invite people to the team, and cancel invitations",
+        "manage_deliveries": "See why a notification did not arrive, and send it again",
+        "manage_identity": "Connect and manage the team's directory and single sign-on providers",
+        "manage_ai_keys": "Manage the team's AI provider keys and the personal-key policy",
+        "manage_roles": "Read the permission catalogue and manage the team’s roles",
+        "export_data": "Download everything the team has, as one file",
+        "view_audit": "Read the whole team’s history feed",
+        "import_members": "Import members in bulk from a file",
+        "manage_security": "Set the team's password rules and require two-factor authentication",
+        "force_logout": "See a member's sessions and sign them out of all of them",
+        "manage_mail": "Connect and manage the team's own mail relay",
+        "workspace": {
+          "view": "See the team’s workspaces and their archived state",
+          "create": "Open a team workspace",
+          "archive": "Archive / restore a team workspace"
+        },
+        "manage_settings": "Edit the team's name, logo, language, time zone and colour",
+        "manage_members": "Promote, demote and remove team members",
+        "import_tickets": "Migrate requests in bulk from another help desk"
+      },
+      "assets": {
+        "view": "See the asset register",
+        "manage": "Open, edit and move an asset record"
+      },
+      "tasks": {
+        "view": "See tasks",
+        "create": "Create tasks",
+        "edit": "Edit tasks",
+        "complete": "Complete and reopen tasks",
+        "delete": "Delete tasks",
+        "assign": "Put a task on someone else, or take one off them"
+      },
+      "projects": {
+        "view": "See projects",
+        "create": "Create projects",
+        "edit": "Edit projects",
+        "archive": "Archive and restore projects"
+      },
+      "notes": {
+        "view": "See notes",
+        "create": "Create notes",
+        "edit": "Edit notes",
+        "delete": "Delete notes"
+      },
+      "files": {
+        "view": "See files",
+        "upload": "Upload files",
+        "edit": "Rename and move files",
+        "delete": "Delete files"
+      },
+      "calendar": {
+        "view": "See calendar connections",
+        "manage": "Connect and disconnect calendars"
+      },
+      "alarms": {
+        "create_urgent": "Raise an urgent alarm that overrides silent mode"
+      },
+      "announcements": {
+        "manage": "Write the notices everybody sees, and say when they run"
+      },
+      "units": {
+        "manage": "Open, rename, archive units and appoint unit managers",
+        "manage_members": "Add and remove the people in a unit"
+      },
+      "shares": {
+        "create": "Share a unit’s item with another unit or person",
+        "revoke": "Take back something the unit shared"
+      },
+      "absences": {
+        "manage": "Record or remove somebody else’s absence"
+      },
+      "webhooks": {
+        "manage": "Add and remove outgoing webhooks"
+      },
+      "kb": {
+        "write": "Write and revise knowledge-base articles",
+        "publish": "Publish an article, or take a published one back"
+      },
+      "sla": {
+        "manage": "Edit SLA policies, business calendars and health monitors"
+      },
+      "changes": {
+        "create": "Raise a change",
+        "edit": "Edit a change, and move it along",
+        "implement": "Mark a change done, failed or rolled back"
+      },
+      "customers": {
+        "manage": "Keep the list of companies served, their contacts and their targets, and say which company a request is for"
+      },
+      "services": {
+        "manage": "Create services, edit their forms and decide which units answer them"
+      }
+    },
+    "customers": {
+      "title": "Companies",
+      "create": "Add company",
+      "name": "Company name",
+      "rename": "Rename",
+      "archive": "Archive",
+      "unarchive": "Restore",
+      "archived": "archived — its people cannot sign in",
+      "actions": "Actions",
+      "keep": "Keep it",
+      "archiveTitle": "Archive “{name}”?",
+      "archiveBody": "Its people can no longer sign in to the company portal or open requests, and no new contact can be added. Its open requests stay on the desk. You can restore it later.",
+      "archivedNote": "This company is archived: its people cannot sign in or open requests. Restore it from the company list to add or invite anyone.",
+      "emptyTitle": "No companies yet",
+      "emptyBody": "Add the companies you serve. Their people then sign in to the company portal at your team's address and follow their own requests.",
+      "unavailable": "Not available",
+      "unavailableBody": "Companies are not yours to manage here, or this address has no team.",
+      "addContact": "Add someone",
+      "email": "E-mail address",
+      "contactName": "Name (optional)",
+      "inviteNow": "Send the invitation now",
+      "addDeactivated": "That address belongs to a contact who was switched off here.",
+      "invite": "Send invitation",
+      "inviteTitle": "Invitation ready",
+      "inviteBody": "The link is sent by e-mail when this team has a mail server. It is shown only now — copy it if you pass it on yourself.",
+      "inviteLink": "Invitation link",
+      "copied": "Copied",
+      "copyFailed": "Could not copy. Select the link above and copy it by hand.",
+      "deactivate": "Switch off",
+      "reactivate": "Switch back on",
+      "deactivateTitle": "Switch off {name}?",
+      "deactivateBody": "They can no longer sign in to the company portal, and every session they have open ends now. Their requests stay. You can switch them back on later.",
+      "stateOn": "Active",
+      "stateOff": "Switched off",
+      "invitePending": "invitation not used yet",
+      "lastSeen": "last seen {date}",
+      "noContactsTitle": "Nobody at this company yet",
+      "noContactsBody": "Add the people who should follow this company's requests.",
+      "more": "Show more",
+      "unsupportedTitle": "This server cannot list contacts yet",
+      "unsupportedBody": "Listing and switching off company contacts needs a newer server. Ask whoever runs it to update.",
+      "unsupportedAction": "This server does not support that yet. Ask whoever runs it to update."
     }
   },
   "perm": {

@@ -14,10 +14,10 @@
 ## deploy-prod — dağıtım kapısı, web önbelleği, yedek
 - **KARAR** Dağıtım sunucudaki runner'da koşar: runner uzantının private deposuna kayıtlı (`alliswell-deploy`), public depoya asla; `deploy.yml` tek uygulama, etiket `vars.DEPLOY_VIA_OVERLAY` ile oradaki Deploy'u başlatır (ADR-0043).
 - **DERS** Sunucuya ikinci runner kurulursa yolu `/actions-runner/` içermeli: `deploy.yml`'in Node araması yalnız onu atlar, başka ad v1.4.0'daki argon2/node24 kırılmasını geri getirir (`/opt/actions-runner` başka bir projenin).
-- **DERS** `$(printf …)` son satır sonunu siler, `while read` satır sonu olmayan son satırı atlar → dağıtımın `.env` satırlarından sonuncusu sessizce uygulanmıyordu (`EE_REQUIRED` tek başınayken hiç); `read … || [ -n "$line" ]` + eklemeden önce satır sonu. Sunucu bloğu testte bash'le koşar.
+- **DERS** `$(printf …)` son satır sonunu siler, `while read` satır sonu olmayan son satırı atlar → dağıtımın `.env`'inin son satırı sessizce düşüyordu; `read … || [ -n "$line" ]` + eklemeden önce satır sonu; sunucu bloğu testte bash'le koşar.
 - **DERS** Sunucunun SSH giriş uyarısı her oturumda stdout'a yanıt basar → public dağıtım kayıtlarına sahibin mesajlaşma kimliği düştü; adres yalnız bir secret'ın değerine eşit olduğu için `***`. Kayıtları okunmayacak sanma, ne bastığını ölç.
 - **KARAR** Uzantılı dağıtım yalnız uzantı CI'ının (`DEPLOY_OVERLAY_CI_WORKFLOW`, varsayılan `EE CI`) en yeni koşusu yeşilse çıkar; sunucuya denetlenen SHA gider, koşu okunamazsa durur — kırmızı uzantı commit'i sunucuya çıkamaz.
-- **DERS** Flutter web adları hash'siz (`main.dart.js`, `flutter_bootstrap.js`) → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; "deploy başarılı" ≠ yeni kod → servis edileni ölç. Cloudflare'in Browser Cache TTL'i *Respect Existing Headers* olmalı, yoksa `.js`'i origin ne derse desin 4 saate yeniden yazar (OPH-273; ölçüm `curl --resolve` ile origin'e karşı).
+- **DERS** Flutter web adları hash'siz → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; servis edileni ölç. Cloudflare Browser Cache TTL *Respect Existing Headers* olmalı, yoksa `.js` 4 saate yeniden yazılır (OPH-273; `curl --resolve` ile origin'e karşı).
 - **DERS** `mysqldump` `--no-tablespaces`'sız "Error:" basar ama 0 ile tam dump üretir; takvim/AI/TOTP sırları `.env` anahtarlarıyla şifreli → başka anahtarla geri yükleme kusursuz görünür, 2FA'lıları kilitler.
 - **NOT** Docroot: landing kökte, Flutter web `/app` (`--base-href /app/`); `.htaccess` build'den gelir (sunucununkini taşıma, /app sessizce ölür); Vite `public/` nokta dosyalarını kopyalamaz → özel plugin.
 
@@ -64,8 +64,9 @@
 - **DERS** Serileştiriciyi REST ile sync PULL paylaşır → yeni alanı (`tagIds`) pull yükleyicisi yüklemezse her snapshot sessizce boş değer (`[]`) taşır.
 - **DERS** Not kilidinin base'i notun KENDİ revizyonudur, workspace imleci değil — imleç soket pull'uyla karşı yazımı geçer, gövde sessizce ezilir; kendi başarılı push'u base'i ilerletir.
 - **DERS** LWW intent adı gerçekten yazılan kolon olmalı: emekli kolona bağlı intent hiç eşleşmez, kilit log'suz kilitlemeyi bırakır → kolon emekliye çıkınca intent'i taşı.
-- **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; replika çıkışta silinmez → yerelde de `userId` süz (ADR-0018).
-- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa hiçbir çekme onu görmez → satırı kaldıran iş aynı txn'de sync yazımı kaydeder; testi gerçek çekmeyle yap.
+- **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; yerelde de `userId` süz (ADR-0018) (ikinci duvar).
+- **KARAR** Replika tek kişinin (OPH-355): çıkış + başkasının girişi onu ve `kUserBoundKvPrefixes`'i siler, yerinde (`secure_delete`+VACUUM); kişiye ait yeni LocalKv anahtarı → o listeye.
+- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa çekme onu görmez → kaldıran iş aynı txn'de sync yazımı kaydeder, gerçek çekmeyle test; push `present:false` döner (OPH-362).
 - **DERS** Genel push makinesi silmeyi `deleted_at` adıyla yazar ve onunla tombstone'lar → push'lanan her varlığın soft-delete kolonu `deleted_at` olmalı.
 - **DERS** `registerSyncEntity` tip başına tek kayıt, tek serileştirici → aynı tabloyu iki kitleye iki alan kümesiyle sunmak ayrı tip ya da server-only REST ister.
 - **DERS** Sunucu patch'teki ilk bilinmeyen alanda mutation'ın TAMAMINI reddeder (reddedilen create yerel satırı bırakır) → testte istemcinin gerçek gövdesini gönder; `enqueueMutation` assert'i yalnız koşulan yolu görür.
@@ -87,6 +88,7 @@
 - **DERS** Replikanın iki yazarı var (widget arka plan izolatı + uygulama) → `awSqlitePragmas`: WAL + `busy_timeout=5000`.
 - **DERS** Süzgecin okuduğu sunucu-sahipli yeni kolon (v37 `createdBy`) eski satırda null → alan bir kez imleç 0'dan çekilir (`repullOnceForCreatedBy`); başsız tur `sync_states`'in HER satırını dolaşır.
 - **DERS** Web replikası commit'li `web/sqlite3.wasm` + `web/drift_worker.js`'e dayanır, drift/sqlite3 sürümüne sabittir → drift yükseltilirken ikisi birlikte yenilenir.
+- **DERS** Web IDB replikası yalnız transaction dışı ifadeden sonra flush eder (drift `COMMIT`'i saymaz) → `FlushAfterCommit` (OPH-361).
 
 ## flutter-app — ürün sözleşmeleri, Riverpod, go_router, testler
 - **KARAR** Inbox ("Fikirler") yakalama kutusudur: yakalamalar Home'da asla görünmez; tarih ya da proje verilince aynı yazımda `open`'a terfi eder.
@@ -97,28 +99,30 @@
 - **DERS** go_router boş yolu `/`'ye çevirir, `alliswell://add` kök rotaya eşleşip `onException`'a varmaz → şemayı üst düzey `redirect`'te çöz; soğuk açılışta `?add=1` `/splash` parkında kaybolur → niyeti provider bayrağıyla taşı.
 - **DERS** `ref.listen` yalnız değişimde ateşler → açılışta zaten bekleyen yük (paylaşım) hiç işlenmez: ilk kareden sonra bekleyeni süpür; sonradan beliren değeri tek atımlı okuma, akışı izle.
 - **DERS** Hazır olmayan/hatalı async provider "boş" okunur (`.value` null → "anahtarın yok", sahte çevrimdışı) → eylemde `await x.future`; sunucu hakkında iddia eden ekran hatayı fırlatır, boş liste göstermez.
-- **DERS** HomeShell `extendBody:true` + cam çubuk: iç Scaffold FAB'ı ve `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → FAB shell'de, sheet/dialog kök navigator'a; `findsOneWidget` kaçırır → testte dokun.
+- **DERS** HomeShell `extendBody:true` + cam çubuk: `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → kök navigator'da; iç FAB'ı kabuk gövdesi `viewPadding`'le üste alır (OPH-359); `findsOneWidget` kaçırır → dokun.
 - **DERS** `AppSection.values` ↔ shell dal indeksi ↔ rail/bar hedefleri KONUMSAL kimliktir; hedef listesini filtrelemek yanlış ekranı açar → gizleme `visibleSections` ile, golden'la.
 - **DERS** Ertelenmiş closure (geri al, commit) `WidgetRef` yakalarsa satır dispose olunca iş sessizce koşmaz → store'u mount'luyken çöz; autoDispose family'yi akış ortasında `ref.read`'leme.
 - **DERS** `State.mounted` `dispose()` sırasında hâlâ true → dispose'tan tetiklenen `setState` çöker; Notifier dispose sonrası `state` yazımı `UnmountedRefException` → ayrı `_disposed` bayrağı.
 - **DERS** Flutter 3.44'te eylemli `SnackBar` süre dolunca kapanmaz (`persist ?? action != null`) → eylemli snackbar yalnız `showAwActionSnackBar` (`persist:false`).
-- **DERS** Web'de dio 204 gövdesini `''` verir → `as Map` TypeError atar, temizlik atlanır (logout sunucuda öldü, app "girili" kaldı) → `data is Map ? … : {}`.
-- **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da yeniden hesap, saat `nowProvider`'dan; gün aritmetiği `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
+- **DERS** Web'de dio 204 gövdesi `''` → `as Map` TypeError, temizlik atlanır → `data is Map ? … : {}`.
+- **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da hesap, saat `nowProvider`'dan; `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
 - **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi yeni senkron varlığı push'ta uygulamazsa silinen satır sonraki pull'da geri döner.
-- **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; sürükleme `startGesture`+`moveBy`; gerçek async kurulum `tester.runAsync` içinde.
-- **DERS** Dokunmatik panel kare başına birden çok hareket olayı verir: gesture callback'i `build`'in yereline eklerse (`centre + d.delta`) sonuncusu dışındakiler düşer, `DragStartBehavior.start` da eşiği yutar → state alanına biriktir, `.down`; test aralarında `pump` olmayan art arda `moveBy` ile (#17).
+- **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; gerçek async kurulum `tester.runAsync`'te.
+- **DERS** Kare başına çok sürükleme olayı: `build` yereline eklenen delta (`centre + d.delta`) düşer, `DragStartBehavior.start` eşiği yutar → state'e biriktir, `.down`; testte `pump`suz `moveBy`.
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
-- **DERS** Test: elle `currentWorkspaceProvider` veren test `workspacesProvider`'ı (+ `currentUserIdProvider`) da verir, yoksa oturumun 4 sn zamanlayıcısı; `localKv` örneği tutar → anahtarı `setUp`'ta sil.
+- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn zamanlayıcısı; `localKv` örneği tutar → `setUp`'ta sil.
+- **DERS** Oturumda adres değişince örtülü ekranın provider'ları build içinde kurulur → adres geçişi Ana sayfadan (ADR-0046).
+- **DERS** Sheet controller'ını await eden fonksiyon dispose ederse kapanış animasyonu çöker → State'e ver (OPH-360).
 
 ## design-ui — tokenlar, kontrast, yüzeyler
 - **KARAR** Renk yalnız paletten, kullanıcıya hex asla; not rengi ADIYLA saklanır, her tema kendi değerini çözer (tek hex iki temada 4.5 tutmaz); markdown'a renk sözdizimi yok, yalnız `==vurgu==` (DESIGN §33).
 - **KARAR** Not yazma ekranında hiçbir şey yüzmez (`awIsDocumentRoute`); Ayarlar satır icat etmez (tema anahtarı yok), yeni ayar yeni kök grup açmaz, var olan Ayarlar URL'leri taşınmaz.
 - **DERS** `contrast.py` "FAILURES: 0" yalan söyleyebilir: çiftte olmayan yüzey ölçüsüzdür → çift = widget'ın GERÇEKTEN boyadığı karışım; `warning` metne verilmez (2.96); `ListTile` seçimi etiketi `primary` boyar.
 - **DERS** Metni saran `Opacity` kontrastı ölçülemez kılar (satır 2.11:1) → sakinlik yüzey tokenıyla (`awRecededSurface`); meşru kullanım `check:opacity` izin listesinde.
-- **DERS** Shell `extendBody:true` gövdeyi cam çubuğun altına uzatır → alt boşluksuz kaydırılabilir son satırları gizler: `awListPadding`; "sonun ötesine kaydır" boşluğu kaydırılabilir İÇERİK olmalı.
+- **DERS** `extendBody`: liste `awListPadding`; dal Navigator bariyeri (`BlockSemantics`) rail'i ağaçtan atar → içerik `Semantics(container:true)`; `push` URL'yi `optionURLReflectsImperativeAPIs` yazar (OPH-359).
 - **DERS** Düğme rengini `foregroundColor`'la ver; iç `TextButtonTheme` ambient temanın yerine geçip global 44 px dokunma hedefini sessizce düşürür.
-- **DERS** Temanın kart `margin`'i sıfır → üst üste dizilen çıplak `Card` komşusuna yapışır (talep kuyruğu böyle çıktı) → satır `kAwListRowPadding` ile sarılır ya da onu `margin` verir; `expectCardRhythm` 6 px'i ölçer (OPH-353).
+- **DERS** Temanın kart `margin`'i sıfır → üst üste dizilen çıplak `Card` komşusuna yapışır → satır `kAwListRowPadding` ile sarılır ya da onu `margin` verir; `expectCardRhythm` 6 px'i ölçer (OPH-353).
 
 ## i18n — AwI18n, anahtarlar, check:i18n
 - **KARAR** i18n uygulamanın senkron deposu `AwI18n`, paket yok (async delegate fake-async testte yüklenmez); `boot()` `runApp`'ten önce, `MaterialApp` dil dinleyicisinin İÇİNDE (const child yenilenmez) (ADR-0009).
@@ -246,7 +250,7 @@
 - **KARAR** Doğrulanan sır anahtarlı özet, kullandığımız sır şifreli + `last4`; her sır sınıfı kendi anahtarıyla (`AUTH_TOTP_KEY`…); TOTP bağımlılıksız (`node:crypto`); parola değişimi tüm oturumları kapatır (ADR-0006).
 - **KARAR** Web oturumu localStorage'da (`LocalKvSecretStore`) — XSS ödünü self-host v1 için kabul, httpOnly refresh-cookie park (OPH-025); "web token yalnız bellekte" diyen metin bayattır.
 - **DERS** `app.rejectApiKeys` preHandler'dır (authenticate'ten SONRA); `/ai/*` kapısı plugin-seviyesi hook (yeni rota unutamaz); rate limiter kimlikten ÖNCE koşar → `keyGenerator` başlığa bakar.
-- **DERS** Rate limit app seviyesinde (`request.ip`) → ikinci limitleyici yazma, rotayı `config.rateLimit`'le daralt; `TRUST_PROXY` varsayılan kapalı → proxy arkasında herkes 127.0.0.1 tek kova.
+- **DERS** Rate limit app seviyesinde → rotayı `config.rateLimit`'le daralt; kova kimlik, IP değil (ADR-0045); kasıtlı 5xx `app.httpErrors.*` ile (gerisi `INTERNAL_ERROR`).
 - **DERS** Kullanıcıya özel akış (AI sohbeti) `user:{userId}` soket odasına gider; `ws:*` workspace odası onu tüm üyelere yayınlar.
 - **DERS** `routes/oauth.js` `renderPage` title'ı kaçırır, body'yi HAM basar; helmet CSP kapalı → kullanıcı içeriği basan HTML sayfası her enterpolasyonu kaçırır, CSP seçer, payload'lı test.
 - **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP için OAuth 2.1 SUNUCUSU, `lib/oauth-identity.js` yalnız Google/Apple ID token; harici kimlik ayrı uçtan — `/auth/login`'i dallandırmak dummy verify'ı bozar.

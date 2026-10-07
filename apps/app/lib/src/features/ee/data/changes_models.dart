@@ -141,12 +141,21 @@ class EeChangeFreeze {
 /// What the calendar says about ONE change's window: the changes it clashes
 /// with and the freezes it overlaps, each by name.
 class EeChangeConflicts {
-  const EeChangeConflicts({this.clashes = const [], this.freezes = const []});
+  const EeChangeConflicts({
+    this.clashes = const [],
+    this.drafts = const [],
+    this.freezes = const [],
+  });
 
   final List<EeChangeClash> clashes;
+
+  /// Drafts and assessments on the same service in the same window (EE-304,
+  /// UI-AUDIT #76). Not clashes — nothing is planned yet — but not "nothing
+  /// else" either, so the screen names them softly instead of saying clear.
+  final List<EeChangeClash> drafts;
   final List<EeChangeFreeze> freezes;
 
-  bool get isEmpty => clashes.isEmpty && freezes.isEmpty;
+  bool get isEmpty => clashes.isEmpty && drafts.isEmpty && freezes.isEmpty;
 }
 
 /// One signature asked for on a change (EE-184's row, seen from the change).

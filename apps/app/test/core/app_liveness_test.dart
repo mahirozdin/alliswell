@@ -16,6 +16,10 @@ class _MemoryKv implements LocalKv {
 
   @override
   Future<void> remove(String key) async => values.remove(key);
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async =>
+      values.removeWhere((key, _) => test(key));
 }
 
 void main() {

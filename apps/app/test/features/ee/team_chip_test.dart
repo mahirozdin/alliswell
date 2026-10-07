@@ -9,7 +9,6 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
-import 'package:alliswell/src/features/ee/ui/join_screen.dart';
 import 'package:alliswell/src/features/ee/ui/team_chip.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
@@ -150,43 +149,77 @@ void main() {
     expect(find.text('Acme'), findsNothing);
   });
 
-  testWidgets('the join route lands somewhere real in both worlds', (
+  // UI-AUDIT #84 (OPH-356): one company, one name. The chip said the slug's
+  // "Acme" beside a unit switcher saying the team's real name.
+  testWidgets(
+    'UI-AUDIT #84: the chip carries the team\'s own name and colour',
+    (tester) async {
+      final api = entitledApi()
+        ..eeMyTeam = {
+          'slug': 'acme',
+          'name': 'Demir Çelik Fabrikası',
+          'color': '#16A34A',
+          'origin': 'https://acme.example.com',
+        };
+      final container = await prepared(
+        tester,
+        api,
+        serverUrl: 'https://acme.example.com',
+      );
+      await tester.pumpWidget(chipHarness(container));
+      await tester.pumpAndSettle();
+      expect(find.text('Demir Çelik Fabrikası'), findsOneWidget);
+      expect(find.text('Acme'), findsNothing);
+      final dot = tester.widget<Container>(
+        find.descendant(
+          of: find.byType(AwTeamChip),
+          matching: find.byType(Container),
+        ),
+      );
+      expect((dot.decoration! as BoxDecoration).color, const Color(0xFF16A34A));
+    },
+  );
+
+  testWidgets('UI-AUDIT #84: a server without /ee/me/team still names the team '
+      'from its own record', (tester) async {
+    final api = entitledApi()
+      ..eeTeamInfo = {
+        'id': 'T1',
+        'name': 'Demir Çelik Fabrikası',
+        'slug': 'acme',
+        'status': 'active',
+        'memberCount': 3,
+        'myRole': 'member',
+      };
+    final container = await prepared(
+      tester,
+      api,
+      serverUrl: 'https://acme.example.com',
+    );
+    await tester.pumpWidget(chipHarness(container));
+    await tester.pumpAndSettle();
+    expect(find.text('Demir Çelik Fabrikası'), findsOneWidget);
+    expect(find.text('Acme'), findsNothing);
+  });
+
+  testWidgets('UI-AUDIT #84: another team\'s record never renames this one', (
     tester,
   ) async {
-    final entitled = await prepared(
+    final api = entitledApi()
+      ..eeMyTeam = {
+        'slug': 'globex',
+        'name': 'Globex',
+        'color': '#000000',
+        'origin': 'https://globex.example.com',
+      };
+    final container = await prepared(
       tester,
-      entitledApi(),
+      api,
       serverUrl: 'https://acme.example.com',
     );
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: entitled,
-        child: MaterialApp(
-          theme: buildAwTheme(Brightness.light),
-          home: const JoinTeamScreen(token: 'tok_123'),
-        ),
-      ),
-    );
+    await tester.pumpWidget(chipHarness(container));
     await tester.pumpAndSettle();
-    expect(find.text('Invite received'), findsOneWidget);
-    expect(find.textContaining('Acme'), findsOneWidget); // whose invite it is
-
-    final ce = await prepared(
-      tester,
-      FakeApi(),
-      serverUrl: 'https://acme.example.com',
-    );
-    await tester.pumpWidget(
-      UncontrolledProviderScope(
-        container: ce,
-        child: MaterialApp(
-          theme: buildAwTheme(Brightness.light),
-          home: const JoinTeamScreen(token: 'tok_123'),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
-    // Honest, not a blank page and not a 404 the visitor must decode.
-    expect(find.text('Invites are not available here'), findsOneWidget);
+    // The slug's name is the honest fallback.
+    expect(find.text('Acme'), findsOneWidget);
   });
 }

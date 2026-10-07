@@ -16,7 +16,13 @@
 set -euo pipefail
 
 DART_VERSION=3.12.0   # the Dart inside ci.yml's `flutter-version: 3.44.0` — change the two together
-SDK_DIR=${DART_SDK_CACHE:-/srv/sandbox/tmp/dart-$DART_VERSION}
+# The sandbox's shared cache when this runs there; a user cache when verify falls back to the
+# local path (no sandbox) — /srv/sandbox does not exist or is not writable on such a machine.
+default_cache=/srv/sandbox/tmp
+if ! { [ -d "$default_cache" ] && [ -w "$default_cache" ]; }; then
+  default_cache=${XDG_CACHE_HOME:-$HOME/.cache}/alliswell
+fi
+SDK_DIR=${DART_SDK_CACHE:-$default_cache/dart-$DART_VERSION}
 
 [ $# -gt 0 ] || { echo "dart-format-ci: no files given" >&2; exit 2; }
 

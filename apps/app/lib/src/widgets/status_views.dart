@@ -1,7 +1,10 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
+import 'fab_clearance.dart';
 
 /// Shared empty state: soft icon badge, title, guidance line, optional action.
 class AwEmptyState extends StatelessWidget {
@@ -33,10 +36,19 @@ class AwEmptyState extends StatelessWidget {
     final theme = Theme.of(context);
     // Scrollable so tight layouts (collapsed panels, small windows) never
     // overflow — the state simply scrolls instead.
+    //
+    // OPH-359 (UI-AUDIT #58): centred in the space the eye can see, not in the
+    // space the layout was given. Inside the shell that space runs under the
+    // glass bar and the floating buttons, and the sentence that says what to
+    // do next landed behind the microphone.
+    final hidden =
+        MediaQuery.paddingOf(context).bottom + AwFabClearance.of(context);
     return Center(
       child: SingleChildScrollView(
         physics: physics,
-        padding: const EdgeInsets.all(AwSpace.x6),
+        padding: const EdgeInsets.all(
+          AwSpace.x6,
+        ).copyWith(bottom: AwSpace.x6 + hidden),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -178,11 +190,21 @@ class AwErrorState extends StatelessWidget {
 
 /// Inline form error: icon + message on an error-container band, placed
 /// right above the submit action (never color-only, never top-of-page).
+///
+/// With [onRetry] it is also the way a SECTION of a screen says it failed
+/// (OPH-357, UI-AUDIT #26): a part that loads on its own must not vanish
+/// silently or read as empty when its request was refused.
 class AwInlineError extends StatelessWidget {
-  const AwInlineError({super.key, required this.message, this.textKey});
+  const AwInlineError({
+    super.key,
+    required this.message,
+    this.textKey,
+    this.onRetry,
+  });
 
   final String message;
   final Key? textKey;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +219,9 @@ class AwInlineError extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: onRetry == null
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 20, color: scheme.onErrorContainer),
           const SizedBox(width: AwSpace.x2),
@@ -210,6 +234,17 @@ class AwInlineError extends StatelessWidget {
               ).textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer),
             ),
           ),
+          if (onRetry != null) ...[
+            const SizedBox(width: AwSpace.x2),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: scheme.onErrorContainer,
+                minimumSize: const Size(44, 44),
+              ),
+              child: Text('common.retry'.tr()),
+            ),
+          ],
         ],
       ),
     );
@@ -227,17 +262,34 @@ class AwInlineError extends StatelessWidget {
 const EdgeInsets kAwListRowPadding = EdgeInsets.symmetric(vertical: 3);
 
 /// List padding that clears the glass bottom bar / FAB on every platform.
+///
+/// The shell's own floating buttons are cleared without being asked
+/// ([AwFabClearance], OPH-359), and so is the Quick Access bubble
+/// ([AwBubbleClearance]). A screen whose own Scaffold has a floating button
+/// says [fab] (R3-1, OPH-363) — the same lane as the shell's; [extraBottom]
+/// is for anything taller.
 EdgeInsets awListPadding(
   BuildContext context, {
   double horizontal = AwSpace.x4,
   double top = AwSpace.x2,
   double extraBottom = 0,
+  bool fab = false,
 }) {
   final bottomInset = MediaQuery.paddingOf(context).bottom;
   return EdgeInsets.fromLTRB(
     horizontal,
     top,
     horizontal,
-    bottomInset + AwSpace.x6 + extraBottom,
+    // …and the phone's Quick Access bubble (UI-AUDIT #57): the last row can
+    // always be scrolled up from under it.
+    awScrollEndPadding(
+      context,
+      bottomInset +
+          AwSpace.x6 +
+          math.max(
+            math.max(extraBottom, AwFabClearance.of(context)),
+            fab ? AwFabClearance.lane : 0,
+          ),
+    ),
   );
 }

@@ -8,6 +8,7 @@ import 'package:alliswell/src/features/ee/team_ai_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_ai_keys_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-111 — the key screen, asserted where it would mislead.
 ///
@@ -60,7 +61,11 @@ Future<void> _pump(
 }) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [eeTeamAiProvider.overrideWith(() => _Fixed(value))],
+      overrides: [
+        eeTeamAiProvider.overrideWith(() => _Fixed(value)),
+        // OPH-356: the "+" waits for a yes.
+        canProvider.overrideWith((ref, id) => true),
+      ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),
         home: const EeTeamAiKeysScreen(),

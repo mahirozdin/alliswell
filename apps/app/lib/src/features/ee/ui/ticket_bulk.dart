@@ -552,12 +552,19 @@ class EeBulkResultSheet extends StatelessWidget {
     }
     final reasons = byReason.keys.toList()
       ..sort((a, b) => (a == 'NO_CHANGE' ? 1 : 0) - (b == 'NO_CHANGE' ? 1 : 0));
-    String label(String id) {
+    String label(String id, String reason) {
       final ticket = tickets[id];
       if (ticket == null) return id;
-      return ticket.number == null
+      final name = ticket.number == null
           ? ticket.subject
           : '#${ticket.number} · ${ticket.subject}';
+      // UI-AUDIT #72: "cannot move there" means nothing without where it
+      // stands — the row says the status that refused the move.
+      if (reason == 'TICKET_INVALID_TRANSITION' ||
+          reason == 'TICKET_TERMINAL') {
+        return '$name (${'ee.tickets.status.${ticket.status}'.tr()})';
+      }
+      return name;
     }
 
     return SafeArea(
@@ -593,7 +600,11 @@ class EeBulkResultSheet extends StatelessWidget {
               for (final id in byReason[reason]!)
                 Padding(
                   padding: const EdgeInsets.only(top: AwSpace.x1),
-                  child: Text('• ${label(id)}', style: _quiet(context)),
+                  child: Text(
+                    '• ${label(id, reason)}',
+                    key: Key('bulk-result-row-$id'),
+                    style: _quiet(context),
+                  ),
                 ),
             ],
             const SizedBox(height: AwSpace.x4),

@@ -290,6 +290,9 @@ class _NeverKv implements LocalKv {
 
   @override
   Future<void> remove(String key) async {}
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {}
 }
 
 /// A store holding a foreground stamp from a minute ago.
@@ -309,4 +312,7 @@ class _ForegroundKv implements LocalKv {
 
   @override
   Future<void> remove(String key) async {}
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {}
 }

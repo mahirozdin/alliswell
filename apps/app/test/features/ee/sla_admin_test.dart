@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/features/ee/data/sla_admin_models.dart';
 import 'package:alliswell/src/features/ee/sla_admin_providers.dart';
 import 'package:alliswell/src/features/ee/ui/sla_admin_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-099 — the three editors, asserted where they would mislead.
 ///
@@ -26,9 +28,39 @@ import 'package:alliswell/src/theme/tokens.dart';
 class _Fixed extends EeSlaAdminController {
   _Fixed(this._value);
   final EeSlaAdminData? _value;
+  final calls = <String>[];
+  Object? refuseWith;
+  Map<String, EeSlaTarget> savedTargets = const {};
   @override
   Future<EeSlaAdminData?> build() async => _value;
+
+  @override
+  Future<void> savePolicyAndTargets({
+    String? id,
+    required String name,
+    String? calendarId,
+    bool? isDefault,
+    int? warnPercent,
+    Map<String, EeSlaTarget> targets = const {},
+  }) async {
+    calls.add('save ${id ?? 'new'} $name');
+    savedTargets = targets;
+  }
+
+  @override
+  Future<void> deletePolicy(String id) async {
+    calls.add('delete $id');
+    if (refuseWith != null) throw refuseWith!;
+  }
+
+  @override
+  Future<void> deleteCalendar(String id) async => calls.add('deleteCal $id');
+
+  @override
+  Future<void> deleteCheck(String id) async => calls.add('deleteCheck $id');
 }
+
+late _Fixed _controller;
 
 Future<void> _pump(
   WidgetTester tester,
@@ -37,7 +69,11 @@ Future<void> _pump(
 }) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [eeSlaAdminProvider.overrideWith(() => _Fixed(value))],
+      overrides: [
+        eeSlaAdminProvider.overrideWith(() => _controller = _Fixed(value)),
+        // OPH-356: the "+" waits for a yes; this file is an admin's.
+        canProvider.overrideWith((ref, id) => true),
+      ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),
         home: const EeSlaAdminScreen(),
@@ -255,5 +291,293 @@ void main() {
     // Editing an existing policy offers deletion; creating one has nothing to
     // delete, which is why the button is conditional.
     expect(find.byKey(const Key('sla-policy-delete')), findsOneWidget);
+  });
+
+  group('UI-AUDIT OPH-360', () {
+    Future<void> openNew(WidgetTester tester) async {
+      await _pump(
+        tester,
+        const EeSlaAdminData(
+          policies: [EeSlaPolicy(id: 'P1', name: 'Mevcut', isDefault: true)],
+        ),
+      );
+      await tester.tap(find.byKey(const Key('sla-policy-new')));
+      await tester.pumpAndSettle();
+    }
+
+    FilledButton save(WidgetTester tester) =>
+        tester.widget<FilledButton>(find.byKey(const Key('sla-policy-save')));
+
+    testWidgets('UI-AUDIT #23: typing a name switches Save on, alone', (
+      tester,
+    ) async {
+      await openNew(tester);
+      expect(save(tester).onPressed, isNull);
+      await tester.enterText(find.byKey(const Key('sla-policy-name')), 'Altın');
+      await tester.pump();
+      // Nothing else touched — no slider, no switch.
+      expect(save(tester).onPressed, isNotNull);
+      await tester.ensureVisible(find.byKey(const Key('sla-policy-save')));
+      await tester.tap(find.byKey(const Key('sla-policy-save')));
+      await tester.pumpAndSettle();
+      expect(_controller.calls, ['save new Altın']);
+    });
+
+    testWidgets(
+      'UI-AUDIT #46: a policy has a target table, and only the changed rows travel',
+      (tester) async {
+        await _pump(
+          tester,
+          const EeSlaAdminData(
+            policies: [
+              EeSlaPolicy(
+                id: 'P1',
+                name: 'Standart',
+                isDefault: true,
+                targets: [
+                  EeSlaTarget(
+                    priority: 'high',
+                    firstResponseMinutes: 60,
+                    resolutionMinutes: 480,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        );
+        await tester.tap(find.byKey(const Key('sla-policy-P1')));
+        await tester.pumpAndSettle();
+        for (final p in ['urgent', 'high', 'normal', 'low']) {
+          expect(find.byKey(Key('sla-target-$p-first')), findsOneWidget);
+          expect(find.byKey(Key('sla-target-$p-resolve')), findsOneWidget);
+        }
+        // The stored target is shown, and read back as a span.
+        expect(find.text('8 h'), findsOneWidget);
+        await tester.enterText(
+          find.byKey(const Key('sla-target-urgent-first')),
+          '30',
+        );
+        await tester.enterText(
+          find.byKey(const Key('sla-target-urgent-resolve')),
+          '2880',
+        );
+        await tester.pump();
+        expect(find.text('2 d'), findsOneWidget);
+        await tester.ensureVisible(find.byKey(const Key('sla-policy-save')));
+        await tester.tap(find.byKey(const Key('sla-policy-save')));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, ['save P1 Standart']);
+        expect(_controller.savedTargets.keys, ['urgent']);
+        expect(_controller.savedTargets['urgent']!.firstResponseMinutes, 30);
+        expect(_controller.savedTargets['urgent']!.resolutionMinutes, 2880);
+      },
+    );
+
+    // OPH-362 — UI-AUDIT R2-4.
+    for (final size in const [Size(1440, 900), Size(390, 844)]) {
+      for (final brightness in Brightness.values) {
+        testWidgets('UI-AUDIT R2-4: each priority heading sits clear of its '
+            'fields\' floating labels (${size.width.toInt()} px, '
+            '${brightness.name})', (tester) async {
+          tester.view.physicalSize = size;
+          tester.view.devicePixelRatio = 1;
+          addTearDown(tester.view.resetPhysicalSize);
+          addTearDown(tester.view.resetDevicePixelRatio);
+          await _pump(
+            tester,
+            const EeSlaAdminData(
+              policies: [
+                EeSlaPolicy(
+                  id: 'P1',
+                  name: 'Standart',
+                  isDefault: true,
+                  targets: [
+                    EeSlaTarget(
+                      priority: 'urgent',
+                      firstResponseMinutes: 30,
+                      resolutionMinutes: 240,
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            brightness: brightness,
+          );
+          await tester.tap(find.byKey(const Key('sla-policy-P1')));
+          await tester.pumpAndSettle();
+          const headings = {
+            'urgent': 'Urgent',
+            'high': 'High',
+            'normal': 'Normal',
+            'low': 'Low',
+          };
+          for (final MapEntry(key: p, value: heading) in headings.entries) {
+            await tester.ensureVisible(find.byKey(Key('sla-target-$p-first')));
+            await tester.pumpAndSettle();
+            final title = tester.getRect(find.text(heading).last);
+            for (final (which, label) in const [
+              ('first', 'First reply'),
+              ('resolve', 'Resolution'),
+            ]) {
+              final field = find.byKey(Key('sla-target-$p-$which'));
+              // The label floats on the field's top border, half of it above
+              // the box — it, not the box, is what the heading collided with.
+              final floating = tester.getRect(
+                find.descendant(of: field, matching: find.text(label)),
+              );
+              expect(
+                title.bottom,
+                lessThanOrEqualTo(floating.top),
+                reason: '$heading over "$label" at ${size.width}',
+              );
+              expect(
+                tester.getRect(field).top - title.bottom,
+                greaterThanOrEqualTo(AwSpace.x2),
+                reason: 'the heading needs room above the border',
+              );
+            }
+          }
+        });
+      }
+    }
+
+    testWidgets('UI-AUDIT #46: a target that is not a number holds Save', (
+      tester,
+    ) async {
+      await openNew(tester);
+      await tester.enterText(find.byKey(const Key('sla-policy-name')), 'Altın');
+      await tester.enterText(
+        find.byKey(const Key('sla-target-low-first')),
+        'abc',
+      );
+      await tester.pump();
+      expect(save(tester).onPressed, isNull);
+    });
+
+    Future<void> openDelete(WidgetTester tester, EeSlaPolicy policy) async {
+      await _pump(tester, EeSlaAdminData(policies: [policy]));
+      await tester.tap(find.byKey(Key('sla-policy-${policy.id}')));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('sla-policy-delete')));
+      await tester.tap(find.byKey(const Key('sla-policy-delete')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'UI-AUDIT #22: deleting a policy asks first, with what it changes',
+      (tester) async {
+        await openDelete(tester, const EeSlaPolicy(id: 'P2', name: 'Altın'));
+        // Nothing has been deleted by the tap on Delete.
+        expect(_controller.calls, isEmpty);
+        expect(find.textContaining('fall back to the team'), findsOneWidget);
+        await tester.tap(find.text('Keep it'));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, isEmpty);
+      },
+    );
+
+    testWidgets('UI-AUDIT #22: confirming deletes', (tester) async {
+      await openDelete(tester, const EeSlaPolicy(id: 'P2', name: 'Altın'));
+      await tester.tap(find.byKey(const Key('sla-policy-delete-confirm')));
+      await tester.pumpAndSettle();
+      expect(_controller.calls, ['delete P2']);
+    });
+
+    testWidgets(
+      'UI-AUDIT #22: the default policy is not deleted — the screen says how to replace it',
+      (tester) async {
+        await openDelete(
+          tester,
+          const EeSlaPolicy(id: 'P1', name: 'Standart', isDefault: true),
+        );
+        expect(find.textContaining('Mark another policy'), findsOneWidget);
+        expect(
+          find.byKey(const Key('sla-policy-delete-confirm')),
+          findsNothing,
+        );
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #22: a 409 SLA_POLICY_DEFAULT from a stale list is a sentence, and the list stays',
+      (tester) async {
+        await _pump(
+          tester,
+          const EeSlaAdminData(
+            policies: [EeSlaPolicy(id: 'P2', name: 'Altın')],
+          ),
+        );
+        _controller.refuseWith = const ApiException(
+          'SLA_POLICY_DEFAULT',
+          'This is the default policy. Mark another policy as the default first, then delete this one.',
+          statusCode: 409,
+        );
+        await tester.tap(find.byKey(const Key('sla-policy-P2')));
+        await tester.pumpAndSettle();
+        await tester.ensureVisible(find.byKey(const Key('sla-policy-delete')));
+        await tester.tap(find.byKey(const Key('sla-policy-delete')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('sla-policy-delete-confirm')));
+        await tester.pumpAndSettle();
+        expect(
+          find.text(
+            "This is the team's default policy, so it cannot be "
+            'deleted. Mark another policy as the default first, then '
+            'delete this one.',
+          ),
+          findsOneWidget,
+        );
+        expect(find.byKey(const Key('sla-policy-P2')), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #22: a calendar a policy counts against names the policy instead of deleting',
+      (tester) async {
+        await _pump(
+          tester,
+          const EeSlaAdminData(
+            policies: [
+              EeSlaPolicy(id: 'P1', name: 'Standart', calendarId: 'C1'),
+            ],
+            calendars: [EeBusinessCalendar(id: 'C1', name: 'Mesai')],
+          ),
+        );
+        await tester.tap(find.byKey(const Key('sla-tab-calendars')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('sla-calendar-C1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('sla-calendar-edit-C1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('sla-calendar-delete')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Standart'), findsOneWidget);
+        await tester.tap(find.text('OK'));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, isEmpty);
+      },
+    );
+
+    testWidgets('UI-AUDIT #22: deleting a monitor asks first', (tester) async {
+      await _pump(
+        tester,
+        const EeSlaAdminData(
+          checks: [EeHealthCheck(id: 'H1', name: 'ERP', url: 'https://erp')],
+        ),
+      );
+      await tester.tap(find.byKey(const Key('sla-tab-monitors')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sla-monitor-H1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('sla-monitor-delete')));
+      await tester.pumpAndSettle();
+      expect(_controller.calls, isEmpty);
+      await tester.tap(find.byKey(const Key('sla-monitor-delete-confirm')));
+      await tester.pumpAndSettle();
+      expect(_controller.calls, ['deleteCheck H1']);
+    });
   });
 }

@@ -6,10 +6,13 @@ import '../../../core/persisted_prefs.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/identity_api.dart';
 import '../data/identity_models.dart';
 import '../identity_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Where a team connects its own identity source (OPH-287).
 ///
@@ -50,7 +53,10 @@ class EeTeamIdentityScreen extends ConsumerWidget {
     final data = ref.watch(eeIdentityProvidersProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.identity.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.identity.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -73,7 +79,9 @@ class EeTeamIdentityScreen extends ConsumerWidget {
             );
           }
           return ListView(
-            padding: const EdgeInsets.only(bottom: 88),
+            padding: EdgeInsets.only(
+              bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+            ),
             children: [
               const _StatusCard(),
               for (final item in items) _ProviderTile(provider: item),
@@ -81,7 +89,9 @@ class EeTeamIdentityScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('team.manage_identity'))
           ? null
           : FloatingActionButton(
               key: const Key('identity-add'),

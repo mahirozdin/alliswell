@@ -2,15 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/date_format.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
+import '../providers.dart' show canProvider;
 import '../data/portal_links_models.dart';
 import '../data/services_models.dart';
 import '../portal_links_providers.dart';
 import '../services_providers.dart';
 import '../units_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The public doors, and who may open them (EE-106).
 ///
@@ -48,7 +54,10 @@ class EePortalLinksScreen extends ConsumerWidget {
     final data = ref.watch(eePortalLinksProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.portal.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.portal.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -66,7 +75,9 @@ class EePortalLinksScreen extends ConsumerWidget {
           return _Body(data: value);
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('portal.manage_links'))
           ? null
           : FloatingActionButton(
               key: const Key('portal-create'),
@@ -86,9 +97,20 @@ class _Body extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final services = ref.watch(eeServicesProvider).value ?? const <EeService>[];
     final nameOf = {for (final s in services) s.id: s.name};
+    // UI-AUDIT #67 — rows that would still read the same (same services,
+    // desk and minute of making) carry their short reference too, so the
+    // one to pause or revoke can be told apart from its twin.
+    final seen = <String>{};
+    final twins = <String>{};
+    for (final link in data.links) {
+      final look = _lookOf(link, nameOf[link.serviceId]);
+      if (!seen.add(look)) twins.add(look);
+    }
 
     return ListView(
-      padding: const EdgeInsets.only(bottom: 88),
+      padding: EdgeInsets.only(
+        bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+      ),
       children: [
         _QuotaCard(links: data.linkQuota, tickets: data.ticketQuota),
         if (!data.attachmentScanOn) const _ScanOffCard(),
@@ -102,7 +124,11 @@ class _Body extends ConsumerWidget {
             ),
           ),
         for (final link in data.links)
-          _LinkTile(link: link, serviceName: nameOf[link.serviceId]),
+          _LinkTile(
+            link: link,
+            serviceName: nameOf[link.serviceId],
+            showRef: twins.contains(_lookOf(link, nameOf[link.serviceId])),
+          ),
       ],
     );
   }
@@ -204,7 +230,10 @@ class _QuotaRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: theme.textTheme.bodyMedium),
+          // A phone's width: the label wraps rather than pushing the count
+          // off the card.
+          Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
+          const SizedBox(width: AwSpace.x2),
           Text(
             quota.isUnlimited
                 ? 'ee.portal.unlimited'.tr(args: {'used': '${quota.used}'})
@@ -222,14 +251,18 @@ class _QuotaRow extends StatelessWidget {
 }
 
 class _LinkTile extends ConsumerWidget {
-  const _LinkTile({required this.link, this.serviceName});
+  const _LinkTile({required this.link, this.serviceName, this.showRef = false});
   final EePortalLink link;
   final String? serviceName;
+
+  /// Another row reads exactly like this one: say the reference as well.
+  final bool showRef;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final tokens = context.awTokens;
+    final format = ref.watch(dateFormatProvider);
 
     // The MARK. `expired` is neutral, not amber: running out is what a link
     // with an expiry is supposed to do.
@@ -251,12 +284,12 @@ class _LinkTile extends ConsumerWidget {
       // EE-197 — a catalogue link has no ONE service to name, so it says how
       // many it opens onto. Falling through to "unknown service" would have
       // read as a broken row for a link that is working exactly as minted.
+      // UI-AUDIT #67 — a server that names the services (EE-301) is believed
+      // first, so two catalogue rows read as their contents, not "2 services".
       title: Text(
-        link.serviceId == null
-            ? 'ee.portal.catalogueCount'.tr(
-                args: {'count': '${link.serviceCount}'},
-              )
-            : serviceName ?? 'ee.portal.unknownService'.tr(),
+        _titleOf(link, serviceName),
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
       ),
       subtitle: Text(
         [
@@ -266,9 +299,20 @@ class _LinkTile extends ConsumerWidget {
             'ee.portal.expiresAt'.tr(
               args: {'date': _date(context, link.expiresAt)},
             ),
+          // UI-AUDIT #67 — which desk and when it was made: the two facts
+          // that tell apart rows minted for the same service.
+          if (link.unitName != null && link.unitName!.isNotEmpty)
+            link.unitName!,
+          // To the minute (UI-AUDIT #67): three links minted for one service
+          // on one day differ by the hour they were made.
+          if (link.createdAt != null)
+            'ee.portal.createdAt'.tr(
+              args: {'date': awFormatDateTime(link.createdAt!, format: format)},
+            ),
           if (link.hasCustomFields) 'ee.portal.customFields'.tr(),
+          if (showRef) 'ee.portal.ref'.tr(args: {'ref': portalLinkRef(link)}),
         ].join(' · '),
-        maxLines: 2,
+        maxLines: 3,
         overflow: TextOverflow.ellipsis,
         style: theme.textTheme.bodySmall,
       ),
@@ -310,34 +354,143 @@ class _LinkTile extends ConsumerWidget {
           () => controller.setEnabled(link.id, !link.enabled),
         );
       case 'extend':
-        await _guard(context, () => controller.extend(link.id, 48));
+        // UI-AUDIT #13 — the length is chosen and the new end is shown
+        // before anything is sent. The body stays `{ ttlHours }` (EE-301's
+        // contract); a current server adds it to the later of now and the
+        // present end, so a long link is never pulled forward.
+        final days = await _pickExtension(context, link);
+        if (days != null && context.mounted) {
+          await _guard(context, () => controller.extend(link.id, days * 24));
+        }
       case 'revoke':
-        final confirmed = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: Text('ee.portal.revokeTitle'.tr()),
-            // Revocation is the only irreversible act on this screen, so it is
-            // the only one that asks — and the question says WHY it is asking.
-            content: Text('ee.portal.revokeBody'.tr()),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text('common.cancel'.tr()),
-              ),
-              FilledButton(
-                key: const Key('portal-revoke-confirm'),
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text('ee.portal.revoke'.tr()),
-              ),
-            ],
-          ),
+        // UI-AUDIT #65 — "Keep it" beside "Revoke link", the irreversible one
+        // in the error role, rather than "Cancel" beside "Cancel".
+        final confirmed = await awConfirmDelete(
+          context,
+          title: 'ee.portal.revokeTitle'.tr(),
+          // Revocation is the only irreversible act on this screen, so it is
+          // the only one that asks — and the question says WHY it is asking.
+          body: 'ee.portal.revokeBody'.tr(),
+          confirmLabel: 'ee.portal.revokeConfirm'.tr(),
+          cancelLabel: 'ee.portal.keep'.tr(),
+          confirmKey: const Key('portal-revoke-confirm'),
         );
         // The dialog awaited above may have outlived this element.
-        if ((confirmed ?? false) && context.mounted) {
+        if (confirmed && context.mounted) {
           await _guard(context, () => controller.revoke(link.id));
         }
     }
   }
+}
+
+/// What a row says before its reference: services, desk, minute of making.
+String _lookOf(EePortalLink link, String? serviceName) {
+  final made = link.createdAt;
+  final minute = made == null
+      ? ''
+      : '${made.year}-${made.month}-${made.day} ${made.hour}:${made.minute}';
+  return '${_titleOf(link, serviceName)}|${link.unitName ?? ''}|$minute';
+}
+
+/// A link's short reference: the tail of its id — the random half of a ULID,
+/// so two links made in the same millisecond still differ. Not the secret
+/// (the URL's token is shown once and never again).
+String portalLinkRef(EePortalLink link) {
+  final id = link.id;
+  return (id.length <= 6 ? id : id.substring(id.length - 6)).toUpperCase();
+}
+
+String _titleOf(EePortalLink link, String? serviceName) {
+  if (link.serviceNames.isNotEmpty) return link.serviceNames.join(', ');
+  if (link.serviceId == null) {
+    return 'ee.portal.catalogueCount'.tr(
+      args: {'count': '${link.serviceCount}'},
+    );
+  }
+  return serviceName ?? 'ee.portal.unknownService'.tr();
+}
+
+/// The lengths a link can be given, in days — at creation and on extension.
+const _ttlDays = [1, 2, 7, 30];
+
+String _daysLabel(int days) => days == 1
+    ? 'ee.portal.ttlDayOne'.tr()
+    : 'ee.portal.ttlDays'.tr(args: {'days': '$days'});
+
+/// UI-AUDIT #13 — how long to extend by, with the resulting end in the row.
+///
+/// The end is computed the way the server computes it (EE-301): from the
+/// later of now and the present end. Saying it before the tap is what makes
+/// "extend" a decision rather than a fixed 48 hours somebody has to trust.
+Future<int?> _pickExtension(BuildContext context, EePortalLink link) {
+  var days = 2;
+  return showDialog<int>(
+    context: context,
+    builder: (context) => StatefulBuilder(
+      builder: (context, setState) {
+        final now = DateTime.now();
+        final base = link.expiresAt.isAfter(now) ? link.expiresAt : now;
+        return AlertDialog(
+          key: const Key('portal-extend-dialog'),
+          semanticLabel: 'ee.portal.extendTitle'.tr(),
+          title: Text('ee.portal.extendTitle'.tr()),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  link.expiresAt.isAfter(now)
+                      ? 'ee.portal.extendFrom'.tr(
+                          args: {'date': _date(context, link.expiresAt)},
+                        )
+                      : 'ee.portal.extendFromNow'.tr(),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 8),
+                RadioGroup<int>(
+                  groupValue: days,
+                  onChanged: (value) => setState(() => days = value ?? days),
+                  child: Column(
+                    children: [
+                      for (final option in _ttlDays)
+                        RadioListTile<int>(
+                          key: Key('portal-extend-$option'),
+                          contentPadding: EdgeInsets.zero,
+                          value: option,
+                          title: Text(_daysLabel(option)),
+                          subtitle: Text(
+                            'ee.portal.extendUntil'.tr(
+                              args: {
+                                'date': _date(
+                                  context,
+                                  base.add(Duration(days: option)),
+                                ),
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('ee.portal.keep'.tr()),
+            ),
+            FilledButton(
+              key: const Key('portal-extend-confirm'),
+              onPressed: () => Navigator.of(context).pop(days),
+              child: Text('ee.portal.extendConfirm'.tr()),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }
 
 String _date(BuildContext context, DateTime at) =>
@@ -369,7 +522,8 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
 
   String? serviceId = services.isEmpty ? null : services.first.id;
   String? unitId;
-  int ttlHours = 48;
+  // UI-AUDIT #68 — offered in days; the wire stays hours.
+  var ttlDays = 2;
   // EE-197 — a catalogue link shows a chosen SET instead of one service. The
   // single-service link stays the default, because the narrowest surface
   // should be the one you get without deciding anything.
@@ -386,6 +540,7 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
         if (!needsUnit) unitId = null;
 
         return AlertDialog(
+          semanticLabel: 'ee.portal.create'.tr(),
           title: Text('ee.portal.create'.tr()),
           content: SingleChildScrollView(
             child: Column(
@@ -464,18 +619,16 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                 const SizedBox(height: 12),
                 DropdownButtonFormField<int>(
                   key: const Key('portal-ttl'),
-                  initialValue: ttlHours,
+                  initialValue: ttlDays,
                   decoration: InputDecoration(labelText: 'ee.portal.ttl'.tr()),
                   items: [
-                    for (final hours in [24, 48, 168, 720])
+                    for (final days in _ttlDays)
                       DropdownMenuItem(
-                        value: hours,
-                        child: Text(
-                          'ee.portal.ttlHours'.tr(args: {'hours': '$hours'}),
-                        ),
+                        value: days,
+                        child: Text(_daysLabel(days)),
                       ),
                   ],
-                  onChanged: (value) => setState(() => ttlHours = value ?? 48),
+                  onChanged: (value) => setState(() => ttlDays = value ?? 2),
                 ),
               ],
             ),
@@ -503,7 +656,7 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                                   ? chosen.toList(growable: false)
                                   : null,
                               unitId: unitId,
-                              ttlHours: ttlHours,
+                              ttlHours: ttlDays * 24,
                             );
                         navigator.pop(result);
                       } catch (error) {
@@ -535,15 +688,20 @@ Future<void> _showUrlOnce(BuildContext context, EePortalLinkCreated created) =>
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         key: const Key('portal-url-once'),
+        // UI-AUDIT #64 — read out as what it is, not as a nameless "Alert".
+        semanticLabel: 'ee.portal.createdTitle'.tr(),
         title: Text('ee.portal.createdTitle'.tr()),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            SelectableText(
-              created.url,
-              key: const Key('portal-url-text'),
-              style: Theme.of(context).textTheme.bodySmall,
+            Semantics(
+              label: 'ee.portal.urlLabel'.tr(),
+              child: SelectableText(
+                created.url,
+                key: const Key('portal-url-text'),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -555,14 +713,7 @@ Future<void> _showUrlOnce(BuildContext context, EePortalLinkCreated created) =>
         actions: [
           TextButton(
             key: const Key('portal-url-copy'),
-            onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: created.url));
-              if (context.mounted) {
-                ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                  SnackBar(content: Text('ee.portal.copied'.tr())),
-                );
-              }
-            },
+            onPressed: () => _copyUrl(context, created.url),
             child: Text('ee.portal.copy'.tr()),
           ),
           FilledButton(
@@ -572,3 +723,21 @@ Future<void> _showUrlOnce(BuildContext context, EePortalLinkCreated created) =>
         ],
       ),
     );
+
+/// UI-AUDIT D2 — a clipboard the browser refuses says so.
+///
+/// This is the only chance to keep the URL, so a silent failure here is the
+/// worst kind: the person closes the dialog believing they have it. On a
+/// refusal the snackbar tells them to select the address by hand while the
+/// dialog is still open.
+Future<void> _copyUrl(BuildContext context, String url) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  try {
+    await Clipboard.setData(ClipboardData(text: url));
+    messenger?.showSnackBar(SnackBar(content: Text('ee.portal.copied'.tr())));
+  } catch (_) {
+    messenger?.showSnackBar(
+      SnackBar(content: Text('ee.portal.copyFailed'.tr())),
+    );
+  }
+}

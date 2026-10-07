@@ -29,6 +29,12 @@ class _AiFabState extends ConsumerState<AiFab> {
   Timer? _holdTimer;
   DateTime? _downAt;
 
+  /// True between a pointer's lift and the end of the event that carried it.
+  /// The machine already answered that touch (a tap opens the bubble from
+  /// `onUp`); the FAB's own `onPressed` fires for the SAME touch a moment
+  /// later in the same dispatch and must not open a second bubble.
+  bool _pointerAnswered = false;
+
   @override
   void dispose() {
     _holdTimer?.cancel();
@@ -76,6 +82,21 @@ class _AiFabState extends ConsumerState<AiFab> {
         ? 0
         : DateTime.now().difference(_downAt!).inMilliseconds;
     _run(_machine.onUp(heldMs));
+    _pointerAnswered = true;
+    // Cleared once this event has been dispatched: the tap recogniser fires
+    // `onPressed` synchronously inside it, so anything arriving later — a
+    // screen reader's activation, Enter on a focused button — is new.
+    scheduleMicrotask(() => _pointerAnswered = false);
+  }
+
+  /// The path with no pointer behind it (OPH-359, UI-AUDIT #55): a screen
+  /// reader's double-tap, Flutter web's semantic click, Enter or Space on a
+  /// focused button. All of them arrive as `onPressed` and nothing else, and
+  /// it used to be `() {}` — so with accessibility on, the button did
+  /// nothing at all. It opens the bubble the way a plain tap does.
+  void _onActivated() {
+    if (_pointerAnswered) return;
+    showAiBubble(context);
   }
 
   @override
@@ -85,18 +106,21 @@ class _AiFabState extends ConsumerState<AiFab> {
       onPointerDown: _onDown,
       onPointerMove: _onMove,
       onPointerUp: _onUp,
+      // ONE node, named, with the action on it (UI-AUDIT #64): wrapping the
+      // FAB in a labelled Semantics used to leave the FAB's own unnamed
+      // button beside it — two stops for a screen reader, one of them silent.
       child: Semantics(
         button: true,
         label: 'ai.voice.fabLabel'.tr(),
         hint: 'ai.voice.fabHint'.tr(),
+        excludeSemantics: true,
+        onTap: _onActivated,
         child: FloatingActionButton(
           key: const Key('ai-fab'),
           heroTag: 'ai-fab',
           backgroundColor: scheme.secondaryContainer,
           foregroundColor: scheme.onSecondaryContainer,
-          // A plain tap (no hold) is handled by the machine via onUp; onPressed
-          // is a no-op so the button still reports as pressable to a11y tools.
-          onPressed: () {},
+          onPressed: _onActivated,
           child: const Icon(Icons.mic_none_outlined),
         ),
       ),

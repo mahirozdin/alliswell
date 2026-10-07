@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { fileURLToPath } from 'node:url';
 import { io as ioClient } from 'socket.io-client';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
@@ -237,5 +238,113 @@ describe.runIf(enabled)('integration: sync revision generator + pull/push', () =
       .where({ entity_type: 'note', entity_id: noteId })
       .select();
     expect(logged).toHaveLength(1);
+  });
+});
+
+// OPH-362 (UI-AUDIT R2-1): a write the server's own rules retire in the same
+// transaction — the extension's request draft becomes a request on arrival.
+// The device must learn it from the push answer itself, not only from a pull
+// that may never come (the courier carrying the draft stood down, a page
+// moved under it): the draft sat on screen as "waiting to become a request"
+// beside the request it had become.
+describe.runIf(enabled)('integration: a write retired in its own transaction', () => {
+  const FIXTURE_DIR = fileURLToPath(new URL('../fixtures/ee-overlay', import.meta.url));
+  const prefix = `oph362-${Date.now()}`;
+  let app;
+  let owner;
+
+  beforeAll(async () => {
+    app = await buildApp({
+      config: loadConfig({
+        ...process.env,
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '100',
+        EE_ENABLED: '1',
+        EE_DIR: FIXTURE_DIR,
+      }),
+    });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: `${prefix}-owner@example.com`, password: 'integration-pw-6' },
+    });
+    expect(res.statusCode).toBe(201);
+    const body = res.json();
+    owner = {
+      workspace: body.workspace,
+      headers: { authorization: `Bearer ${body.tokens.accessToken}` },
+    };
+  });
+
+  afterAll(async () => {
+    if (!app) return;
+    const users = await app.db('users').where('email', 'like', `${prefix}%`).select('id');
+    const ids = users.map((u) => u.id);
+    if (ids.length > 0) {
+      await app.db('workspaces').whereIn('owner_id', ids).delete();
+      await app.db('users').whereIn('id', ids).delete();
+    }
+    await app.close();
+  });
+
+  const push = (payload) =>
+    app.inject({ method: 'POST', url: '/api/v1/sync/push', headers: owner.headers, payload });
+
+  it('the push answer says the row is gone — first time and on a replay', async () => {
+    const clientId = newId();
+    const retired = newId();
+    const kept = newId();
+    const payload = {
+      clientId,
+      workspaceId: owner.workspace.id,
+      baseRevision: 0,
+      mutations: [
+        {
+          clientMutationId: newId(),
+          entityType: 'task',
+          entityId: retired,
+          operation: 'create',
+          patch: { title: 'file me away' },
+        },
+        {
+          clientMutationId: newId(),
+          entityType: 'task',
+          entityId: kept,
+          operation: 'create',
+          patch: { title: 'stays put' },
+        },
+      ],
+    };
+
+    const first = await push(payload);
+    expect(first.statusCode).toBe(200);
+    const [gone, alive] = first.json().results;
+    expect(gone).toMatchObject({
+      status: 'applied',
+      replayed: false,
+      rebase: { entityType: 'task', entityId: retired, present: false },
+    });
+    // An ordinary write carries nothing new — the answer only grows when the
+    // write did not survive.
+    expect(alive.status).toBe('applied');
+    expect(alive.rebase).toBeUndefined();
+
+    // The device that lost the first answer hears the same fact on its resend.
+    const replay = await push(payload);
+    expect(replay.json().results[0]).toMatchObject({
+      status: 'applied',
+      replayed: true,
+      rebase: { entityType: 'task', entityId: retired, present: false },
+    });
+    expect(replay.json().results[1].rebase).toBeUndefined();
+
+    // And the pull still tells the same story, for a device that only pulls.
+    const pull = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${gone.revision}`,
+      headers: owner.headers,
+    });
+    const mine = pull.json().changes.filter((c) => c.entityId === retired);
+    expect(mine.at(-1)).toMatchObject({ operation: 'delete', data: null });
   });
 });

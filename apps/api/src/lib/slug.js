@@ -12,6 +12,10 @@ import crypto from 'node:crypto';
  */
 export function slugify(text, fallback = 'space') {
   const slug = text
+    // Turkish dotless/dotted i first (OPH-357): NFKD has no decomposition for
+    // `ı`, so `Bakım` became `bak-m`. `İ` decomposes to I + a dot that the
+    // mark strip removes, but mapping it here keeps the rule in one place.
+    .replace(/[ıİ]/g, 'i')
     .normalize('NFKD') // decompose accents (é → e + U+0301), then strip the marks
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()

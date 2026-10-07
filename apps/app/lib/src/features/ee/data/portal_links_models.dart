@@ -19,6 +19,8 @@ class EePortalLink {
     required this.enabled,
     required this.expiresAt,
     this.unitId,
+    this.unitName,
+    this.serviceNames = const [],
     this.revokedAt,
     this.createdAt,
     this.origin,
@@ -30,6 +32,10 @@ class EePortalLink {
     serviceId: json['serviceId'] as String?,
     serviceCount: (json['serviceCount'] as num?)?.toInt() ?? 0,
     unitId: json['unitId'] as String?,
+    unitName: json['unitName'] as String?,
+    serviceNames: ((json['serviceNames'] as List?) ?? const [])
+        .whereType<String>()
+        .toList(growable: false),
     state: EePortalLinkState.parse(json['state'] as String?),
     enabled: (json['enabled'] as bool?) ?? true,
     expiresAt: DateTime.parse(json['expiresAt'] as String).toLocal(),
@@ -55,6 +61,13 @@ class EePortalLink {
   /// the server resolves it at creation so a screen never shows an empty
   /// destination for a link that has one (ADR-0013 §3).
   final String? unitId;
+
+  /// UI-AUDIT #67 (EE-301) — what tells two rows apart: the desk's name and
+  /// the services' names (a catalogue's in its order). Additive on the wire:
+  /// an older server sends neither, and the row falls back to what it showed
+  /// before (the service looked up by id, or "N services").
+  final String? unitName;
+  final List<String> serviceNames;
 
   final EePortalLinkState state;
 

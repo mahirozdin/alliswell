@@ -11,6 +11,7 @@ import '../../notifications/web_alert_mode.dart';
 import 'sound_picker_sheet.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
+import '../../widgets/route_leading.dart';
 
 /// **Hatırlatıcı Sistemi Ayarları** (round 9 #7, OPH-179 — DESIGN §18).
 ///
@@ -43,7 +44,10 @@ class ReminderSettingsScreen extends ConsumerWidget {
     final presetId = profile.presetId;
 
     return Scaffold(
-      appBar: AppBar(title: Text('reminderSettings.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('reminderSettings.title'.tr()),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),

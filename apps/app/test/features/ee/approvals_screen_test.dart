@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -6,13 +7,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/core/day_boundary.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
 import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/features/ee/data/approvals_api.dart';
 import 'package:alliswell/src/features/ee/data/approvals_models.dart';
+import 'package:alliswell/src/features/ee/data/team_address_api.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/team_origin.dart';
 import 'package:alliswell/src/features/ee/ui/approvals_screen.dart';
 import 'package:alliswell/src/features/ee/ui/approval_detail_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import '../../support/list_rhythm.dart';
+import '../auth/test_support.dart';
 
 /// EE-184 / EE-294 — the approvals screen, asserted where a redesign would
 /// mislead.
@@ -236,6 +242,40 @@ void main() {
     expect(tester.widget<FilledButton>(confirm).onPressed, isNotNull);
   });
 
+  testWidgets('UI-AUDIT #65: the decision button says the decision, and a '
+      'rejection is in the error role', (tester) async {
+    await _pump(tester, [_approval()]);
+    await tester.tap(find.byKey(const Key('ee-approval-approve-A1')));
+    await tester.pumpAndSettle();
+    final confirm = find.byKey(const Key('ee-approval-confirm'));
+    expect(
+      find.descendant(of: confirm, matching: find.text('Approve')),
+      findsOneWidget,
+    );
+    expect(find.text('Save'), findsNothing);
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('ee-approval-reason')),
+    );
+    expect(field.decoration?.helperMaxLines, 3);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('ee-approval-reject-A1')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: confirm, matching: find.text('Reject')),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<FilledButton>(confirm)
+          .style
+          ?.backgroundColor
+          ?.resolve(const {}),
+      buildAwTheme(Brightness.light).colorScheme.error,
+    );
+  });
+
   testWidgets('a target that is gone says so — among the rows no decision '
       'can change, not among the work', (tester) async {
     await _pump(tester, [_approval(target: null)]);
@@ -329,5 +369,73 @@ void main() {
     await _pump(tester, [_approval(canDecide: false)]);
     expect(find.byKey(const Key('ee-approval-approve-A1')), findsNothing);
     expect(find.byKey(const Key('ee-approval-reject-A1')), findsNothing);
+  });
+
+  // UI-AUDIT #7 (OPH-356): the approvals list answered 404 on the service's
+  // own address, and the client drew it as "nothing is waiting on you" — to
+  // a person with two approvals waiting on their team's address.
+  group('UI-AUDIT #7: a 404 is not an empty queue', () {
+    Dio notFound() {
+      final dio = Dio(BaseOptions(baseUrl: 'https://api.example.com'));
+      dio.httpClientAdapter = FakeHttpClientAdapter(
+        (options, body) async =>
+            jsonBody(404, {'statusCode': 404, 'message': 'Not found'}),
+      );
+      return dio;
+    }
+
+    test('the client throws it, typed — never an empty list', () async {
+      final api = EeApprovalsApi(notFound());
+      await expectLater(api.list(), throwsA(isA<EeNoTeamHereException>()));
+      await expectLater(api.summary(), throwsA(isA<EeNoTeamHereException>()));
+    });
+
+    Future<void> pumpOn404(WidgetTester tester, {AwTeamOrigin? origin}) async {
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            eeFeatureProvider.overrideWith((ref, name) => true),
+            eeApprovalsApiProvider.overrideWithValue(
+              EeApprovalsApi(notFound()),
+            ),
+            eeApprovalsSummaryProvider.overrideWith(
+              (ref) async => EeApprovalsSummary.none,
+            ),
+            teamOriginProvider.overrideWithValue(origin),
+            eeTeamAddressHintProvider.overrideWithValue(
+              const EeMyTeam(
+                slug: 'acme',
+                name: 'Demir Çelik Fabrikası',
+                origin: 'https://acme.example.com',
+              ),
+            ),
+            nowProvider.overrideWithValue(() => _now),
+          ],
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            home: const EeApprovalsScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets('off the team\'s address: "your team\'s address is needed", '
+        'with the way there', (tester) async {
+      await pumpOn404(tester);
+      expect(find.byKey(const Key('ee-team-address-required')), findsOneWidget);
+      expect(find.text('Switch to acme.example.com'), findsOneWidget);
+      expect(find.text('Nothing is waiting on you'), findsNothing);
+    });
+
+    testWidgets('on a team\'s address: "not in this team", not "nothing '
+        'waiting"', (tester) async {
+      await pumpOn404(
+        tester,
+        origin: teamOriginOf('https://globex.example.com', 'example.com'),
+      );
+      expect(find.byKey(const Key('ee-not-in-team')), findsOneWidget);
+      expect(find.byKey(const Key('ee-team-address-required')), findsNothing);
+    });
   });
 }

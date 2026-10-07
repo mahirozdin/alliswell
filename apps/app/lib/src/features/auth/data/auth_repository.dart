@@ -8,10 +8,22 @@ import 'token_storage.dart';
 /// persisted copy; every change (login, register, rotation, logout, forced
 /// sign-out after a failed refresh) is pushed on [sessionChanges].
 class AuthRepository {
-  AuthRepository({required this._api, required this._storage});
+  AuthRepository({
+    required this._api,
+    required this._storage,
+    this._onSessionUser,
+  });
 
   final AuthApi _api;
   final TokenStorage _storage;
+
+  /// Runs when a session is about to start for a person — a sign-in for
+  /// somebody other than the current session's user, or a session restored
+  /// at app start ([restored]) — and BEFORE it is exposed, so nothing can read
+  /// local data as theirs first. The replica's owner check lives here
+  /// (OPH-355, `LocalDataGuard.claimFor`). Token rotations do not call it.
+  final Future<void> Function(String userId, {required bool restored})?
+  _onSessionUser;
 
   final _sessionChanges = StreamController<AuthSession?>.broadcast();
   AuthSession? _session;
@@ -29,6 +41,9 @@ class AuthRepository {
         stored.tokens.refreshTokenExpiresAt.isBefore(DateTime.now())) {
       await _storage.clear();
       stored = null;
+    }
+    if (stored != null) {
+      await _onSessionUser?.call(stored.user.id, restored: true);
     }
     _session = stored;
     return stored;
@@ -112,6 +127,9 @@ class AuthRepository {
   }
 
   Future<void> _setSession(AuthSession session) async {
+    if (_session?.user.id != session.user.id) {
+      await _onSessionUser?.call(session.user.id, restored: false);
+    }
     _session = session;
     await _storage.save(session);
     _sessionChanges.add(session);

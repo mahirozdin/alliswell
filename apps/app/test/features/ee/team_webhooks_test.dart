@@ -8,6 +8,7 @@ import 'package:alliswell/src/features/ee/team_webhooks_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_webhooks_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-176 — the management screen, asserted where it would mislead.
 ///
@@ -54,6 +55,8 @@ Future<void> _pump(WidgetTester tester, EeWebhooksData? value) async {
         // The delivery list is a separate round trip; an endpoint with no
         // history is the ordinary case and the one this file draws.
         eeWebhookDeliveriesProvider.overrideWith((ref, id) async => const []),
+        // OPH-356: the "+" waits for a yes.
+        canProvider.overrideWith((ref, id) => true),
       ],
       child: MaterialApp(
         theme: buildAwTheme(Brightness.light),
@@ -198,5 +201,44 @@ void main() {
     expect(find.textContaining('belong to a team'), findsOneWidget);
     // Nothing to press: a FAB that could only fail is a dead control.
     expect(find.byKey(const Key('team-webhooks-add')), findsNothing);
+  });
+
+  // OPH-359 — UI-AUDIT #63.
+  testWidgets('UI-AUDIT #63: events are named in words; the wire name stays '
+      'beside them for the integrator', (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    await _pump(
+      tester,
+      EeWebhooksData(items: [_hook()], eventClasses: _vocabulary),
+    );
+    // The endpoint's chips, once its card is open.
+    await tester.tap(find.text('https://hooks.example.com/inbound'));
+    await tester.pumpAndSettle();
+    expect(find.text('Talep bir birime düştü'), findsOneWidget);
+    expect(find.text('ticket.routed'), findsNothing);
+    await tester.tap(find.byKey(const Key('team-webhooks-add')));
+    await tester.pumpAndSettle();
+    final row = find.byKey(const Key('webhook-event-sla.breached'));
+    expect(
+      find.descendant(of: row, matching: find.text('SLA ihlal edildi')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: row, matching: find.text('sla.breached')),
+      findsOneWidget,
+    );
+    AwI18n.instance.setActiveCached(const Locale('en'));
+  });
+
+  test('an event this build has no words for keeps its wire name', () {
+    expect(eeWebhookEventLabel('ticket.reticulated'), 'ticket.reticulated');
+  });
+
+  test('UI-AUDIT #63: the scheduled saved-view report has words, not its key '
+      '(scripts/i18n/ee-vocabulary.mjs holds every server event to this)', () {
+    expect(
+      eeWebhookEventLabel('report.savedView'),
+      'Scheduled saved view report',
+    );
   });
 }

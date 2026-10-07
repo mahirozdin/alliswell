@@ -14,6 +14,7 @@ import '../changes_providers.dart';
 import '../data/changes_models.dart';
 import '../services_providers.dart';
 import 'change_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Raising a change from the phone (EE-269 box 4, EE-279).
 ///
@@ -140,7 +141,10 @@ class _EeNewChangeScreenState extends ConsumerState<EeNewChangeScreen> {
     final source = widget.source;
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.changes.create.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.changes.create.title'.tr()),
+      ),
       body: ListView(
         padding: awListPadding(context, top: AwSpace.x4),
         children: [

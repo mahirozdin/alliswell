@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 
-import '../../../core/api_exception.dart';
+import 'team_address_api.dart';
 
 /// One of my own requests, as the server lists it (EE-087).
 ///
@@ -73,10 +73,10 @@ class EeMyTicketsApi {
           .map((t) => EeMyTicket.fromJson(t as Map<String, dynamic>))
           .toList();
     } on DioException catch (e) {
-      // 404 — no team at this address at all. Null, not an error: there is no
-      // requester surface to draw, which is a state and not a failure.
-      if (e.response?.statusCode == 404) return null;
-      throw asApiException(e);
+      // 404 — no team answers at this address. NOT null (OPH-356, UI-AUDIT
+      // #7): the screen drew null as "you have not asked for anything yet" to
+      // somebody with forty requests. Typed, so it can say what it means.
+      throwTeamError(e);
     }
   }
 }

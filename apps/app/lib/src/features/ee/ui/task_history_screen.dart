@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
 import 'history_tab.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Item 10's task half, on screen (EE-069).
 ///
@@ -23,7 +24,10 @@ class EeTaskHistoryScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) => Scaffold(
-    appBar: AppBar(title: Text('ee.history.taskTitle'.tr())),
+    appBar: AppBar(
+      leading: awRouteLeading(context),
+      title: Text('ee.history.taskTitle'.tr()),
+    ),
     body: EeHistoryTab(entityType: 'task', entityId: taskId),
   );
 }

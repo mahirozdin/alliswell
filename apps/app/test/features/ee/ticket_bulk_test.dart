@@ -19,6 +19,7 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-227 — one action on many requests, from the queue.
 ///
@@ -127,6 +128,9 @@ void main() {
     }, (id) => tickets.firstWhere((t) => t.id == id).status);
     container = ProviderContainer(
       overrides: <Override>[
+        // OPH-359: the unit switcher and the unit scope in the bar read these.
+        workspacesProvider.overrideWith((ref) async => const []),
+        eeMyUnitsScopeProvider.overrideWith((ref) async => null),
         ticketQueueProvider.overrideWith((ref) => Stream.value(tickets)),
         ticketAssigneesProvider.overrideWith(
           (ref) => Stream.value(const <String, List<Assignee>>{}),
@@ -360,6 +364,41 @@ void main() {
     expect(api.sent.single.action, {'type': 'status', 'status': 'cancelled'});
   });
 
+  testWidgets(
+    'UI-AUDIT #72: a move the request cannot make is said as that — with the status that refused it, not "the screen may be stale"',
+    (tester) async {
+      await pumpQueue(tester);
+      api.answer = const EeBulkResult(
+        changed: 1,
+        skipped: 1,
+        rows: [
+          EeBulkRow(ticketId: 'T1', changed: true),
+          EeBulkRow(
+            ticketId: 'T3',
+            changed: false,
+            reason: 'TICKET_INVALID_TRANSITION',
+          ),
+        ],
+      );
+      await select(tester, ['T1', 'T3']);
+      await openSheet(tester, 'bulk-status');
+      await tester.tap(key('bulk-status-triage'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining('Bulunduğu durumdan bu duruma geçemez'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('eskimiş'), findsNothing);
+      expect(
+        tester.widget<Text>(key('bulk-result-row-T3')).data,
+        '• Kompresör sesi (Devam ediyor)',
+      );
+      await tester.tap(key('bulk-result-ok'));
+      await tester.pumpAndSettle();
+    },
+  );
+
   testWidgets('a partial answer names each refused request under its reason', (
     tester,
   ) async {
@@ -386,7 +425,7 @@ void main() {
       tester.widget<Text>(key('bulk-result-title')).data,
       '3 talepten 1 tanesi değişti',
     );
-    expect(find.textContaining('onay bekliyor'), findsOneWidget);
+    expect(find.textContaining('Onay bekliyor'), findsOneWidget);
     expect(find.text('• Kompresör sesi'), findsOneWidget);
     expect(find.textContaining('Zaten öyleydi'), findsOneWidget);
     // The rows that need a look lead; "it already was" comes last.
@@ -457,5 +496,17 @@ void main() {
     await tester.tap(key('bulk-assign-$_other'));
     await tester.pumpAndSettle();
     expect(api.sent.single.action, {'type': 'assign', 'userId': _other});
+  });
+
+  // OPH-359 — UI-AUDIT #64.
+  testWidgets('UI-AUDIT #64: a row\'s box is NAMED for a screen reader', (
+    tester,
+  ) async {
+    await pumpQueue(tester);
+    await tester.longPress(key('ticket-T1'));
+    await tester.pumpAndSettle();
+    final box = tester.widget<Checkbox>(key('ticket-select-T2'));
+    expect(box.semanticLabel, isNotNull);
+    expect(box.semanticLabel, contains('Hat 1 durdu'));
   });
 }

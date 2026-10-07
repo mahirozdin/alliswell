@@ -22,8 +22,8 @@ final aiMessagesStoreProvider = Provider<AiMessagesStore>(
   (ref) => AiMessagesStore(ref.watch(databaseProvider)),
 );
 
-const String _kAiStatusCachePrefix = 'alliswell_ai_status::';
-const String _kAiConsentPrefix = 'alliswell_ai_consent::';
+const String kAiStatusCachePrefix = 'alliswell_ai_status::';
+const String kAiConsentPrefix = 'alliswell_ai_consent::';
 
 /// Whether AI surfaces are reachable, cached in localKv so a fresh launch has
 /// a last-known truth before the network answers (no flicker, honest offline).
@@ -47,7 +47,7 @@ class AiStatusController extends AsyncNotifier<AiStatus> {
     // went to the no-AI branch. "We have no workspace yet" and "this user has
     // no AI" are different facts and the cache is the only one that can tell
     // them apart before the network answers.
-    _cacheKey = '$_kAiStatusCachePrefix$userId';
+    _cacheKey = '$kAiStatusCachePrefix$userId';
     final workspace = ref.watch(currentWorkspaceProvider).value;
     if (workspace == null) return await _readCache() ?? AiStatus.disabled;
 
@@ -67,9 +67,19 @@ class AiStatusController extends AsyncNotifier<AiStatus> {
     state = await AsyncValue.guard(build);
   }
 
-  Future<AiStatus?> _readCache() async {
-    if (_cacheKey == null) return null;
-    final raw = await localKv.get(_cacheKey!);
+  /// The last-known answer from the device cache, without asking the network
+  /// and without touching [state]. For a caller that must decide NOW while
+  /// the first build is still waiting on `/ai/status` — a cold-start share.
+  Future<AiStatus?> lastKnown() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return null;
+    return _readCache('$kAiStatusCachePrefix$userId');
+  }
+
+  Future<AiStatus?> _readCache([String? key]) async {
+    final at = key ?? _cacheKey;
+    if (at == null) return null;
+    final raw = await localKv.get(at);
     if (raw == null) return null;
     try {
       return AiStatus.fromJson(jsonDecode(raw) as Map<String, dynamic>);
@@ -122,7 +132,7 @@ class AiConsentController extends Notifier<Map<String, bool>> {
 
   String _key(String provider) {
     final userId = ref.read(currentUserIdProvider) ?? 'anon';
-    return '$_kAiConsentPrefix$userId::$provider';
+    return '$kAiConsentPrefix$userId::$provider';
   }
 
   /// Reads (and caches) whether this user has consented for `provider`.

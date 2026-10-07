@@ -99,6 +99,35 @@ class _IndexedDbAlertCache implements AlertCache {
 
   @override
   Future<void> putFallback(AlertText text) => _write(kAwAlertFallbackKey, text);
+
+  @override
+  Future<void> clear() async {
+    final db = await _db();
+    if (db == null) return;
+    final done = Completer<void>();
+    try {
+      final transaction = db.transaction(kAwAlertStoreName.toJS, 'readwrite');
+      final store = transaction.objectStore(kAwAlertStoreName);
+      final request = store.openCursor();
+      request.onsuccess = (web.Event _) {
+        final cursor = request.result as web.IDBCursorWithValue?;
+        if (cursor == null) return;
+        if (cursor.key.dartify() != kAwAlertFallbackKey) cursor.delete();
+        cursor.continue_();
+      }.toJS;
+      void finish(web.Event _) {
+        if (!done.isCompleted) done.complete();
+      }
+
+      transaction.oncomplete = finish.toJS;
+      transaction.onerror = finish.toJS;
+      transaction.onabort = finish.toJS;
+    } on Object {
+      return;
+    }
+    // Never hold a sign-out hostage to a browser that does not answer.
+    await done.future.timeout(const Duration(seconds: 2), onTimeout: () {});
+  }
 }
 
 AlertCache createAlertCache() => _IndexedDbAlertCache();

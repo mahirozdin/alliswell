@@ -5,6 +5,7 @@ import '../../../core/modal_observer.dart';
 import '../../../router.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/document_surface.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../auth/providers.dart';
 import '../../onboarding/tour.dart';
 import '../../../notifications/alarm_overlay.dart';
@@ -59,13 +60,41 @@ class QuickAccessBubbleHost extends ConsumerWidget {
 }
 
 /// The layer that actually watches the rail's contents.
-class _BubbleLayer extends ConsumerWidget {
+class _BubbleLayer extends ConsumerStatefulWidget {
   const _BubbleLayer({required this.child});
 
   final Widget child;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_BubbleLayer> createState() => _BubbleLayerState();
+}
+
+class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
+  /// Whether something under the button is being scrolled (OPH-359, UI-AUDIT
+  /// #57). This layer is above every route, so one listener hears them all.
+  final _scrolling = ValueNotifier<bool>(false);
+
+  @override
+  void dispose() {
+    _scrolling.dispose();
+    super.dispose();
+  }
+
+  bool _onScroll(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification is ScrollStartNotification ||
+        (notification is ScrollUpdateNotification &&
+            notification.dragDetails != null)) {
+      _scrolling.value = true;
+    } else if (notification is ScrollEndNotification) {
+      _scrolling.value = false;
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final child = widget.child;
     final rows = ref.watch(quickAccessRowsProvider).value ?? const [];
     // EE-294 (DESIGN §23 Q10): an entry the app pins is something to open —
     // the Approvals door of somebody with no shortcuts of their own still
@@ -82,18 +111,49 @@ class _BubbleLayer extends ConsumerWidget {
       ref.watch(quickBubblePositionProvider),
     );
     final hinted = ref.watch(quickBubbleHintedProvider);
+    final resting = bubbleOrigin(
+      position,
+      media.size,
+      media.padding,
+      media.viewInsets.bottom,
+    );
+
+    // OPH-362: at rest in the dock the button covers no content — the shell
+    // shortens its bar beside it and every other page ends above it. A
+    // keyboard covers the bar's row, and the docked button goes with it
+    // rather than standing on whatever is being typed.
+    final docked = position.docked;
+    final keyboardUp = media.viewInsets.bottom > 0;
+    final lane = bubbleDockLane(resting, media.size);
 
     return Stack(
       // The child is the whole app: loose constraints would starve it.
       fit: StackFit.expand,
       children: [
-        child,
+        NotificationListener<ScrollNotification>(
+          onNotification: _onScroll,
+          // UI-AUDIT #57 (retest): every route under the button learns how
+          // high it reaches, so its lists and forms end above it — when it
+          // floats over them; docked, the lane itself is kept free.
+          child: AwBubbleDock(
+            edge: position.edge == BubbleEdge.left
+                ? AwDockEdge.left
+                : AwDockEdge.right,
+            height: docked && !keyboardUp ? lane.height : 0,
+            width: lane.width,
+            child: AwBubbleClearance(
+              extent: docked ? 0 : bubbleClearance(resting, media.size),
+              child: child,
+            ),
+          ),
+        ),
         ValueListenableBuilder<int>(
           valueListenable: observer.depth,
           builder: (context, depth, _) {
             // A dialog or a sheet is up — including this feature's own panel.
             // A floating control over a modal is two competing surfaces.
             if (depth > 0) return const SizedBox.shrink();
+            if (docked && keyboardUp) return const SizedBox.shrink();
             final origin = bubbleOrigin(
               position,
               media.size,
@@ -107,6 +167,7 @@ class _BubbleLayer extends ConsumerWidget {
                   safeArea: media.padding,
                   keyboardInset: media.viewInsets.bottom,
                   badge: badge,
+                  contentScrolling: _scrolling,
                   badgeSemantics: pins
                       .where((pin) => pin.badge > 0)
                       .map((pin) => pin.badgeSemantics ?? '${pin.badge}')

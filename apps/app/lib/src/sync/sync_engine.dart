@@ -116,6 +116,20 @@ class SyncEngine {
     _conflicts.close();
   }
 
+  /// [stop], then wait for a round already in flight to finish (OPH-355).
+  ///
+  /// Sign-out wipes the replica right after; a pull that was mid-flight would
+  /// otherwise land its page on the empty database a moment later and leave
+  /// the previous person's rows on the device.
+  Future<void> halt() async {
+    stop();
+    while (_running) {
+      await (_idle?.future ?? Future<void>.value());
+    }
+  }
+
+  Completer<void>? _idle;
+
   /// Debounced push trigger — call after every optimistic local write.
   void notifyLocalWrite() {
     if (_stopped) return;
@@ -141,6 +155,7 @@ class SyncEngine {
       return true;
     }
     _running = true;
+    final idle = _idle = Completer<void>();
     var converged = false;
     try {
       await _pushPending();
@@ -167,6 +182,7 @@ class SyncEngine {
       _scheduleRetry();
     } finally {
       _running = false;
+      idle.complete();
     }
     if (_rerunWanted && !_stopped) {
       _rerunWanted = false;
@@ -314,6 +330,22 @@ class SyncEngine {
               m.id.equals(row.id) & m.localUpdatedAt.equals(row.localUpdatedAt),
         ))
         .go();
+
+    // OPH-362 (UI-AUDIT R2-1): accepted, and retired by the server's own
+    // rules in the same transaction — a request draft that became a request
+    // on arrival. The answer says so itself, so the replica drops the row now
+    // instead of waiting for a pull that may never come (the courier that
+    // pushed it stands down the moment its outbox is empty). Replays too: a
+    // device that lost the first answer hears the same fact on its resend.
+    final settled = result.rebase;
+    if (result.applied && settled != null && !settled.present) {
+      await applyRebase(
+        db,
+        entityType: settled.entityType,
+        entityId: settled.entityId,
+        present: false,
+      );
+    }
 
     final lostSomething = !result.applied || result.discardedFields.isNotEmpty;
     if (lostSomething && !result.replayed) {

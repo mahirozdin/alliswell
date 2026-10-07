@@ -292,7 +292,8 @@ class DemoCorpus {
               ),
               actor: h['actor'] as String,
               verb: h['verb'] as String,
-              entityType: 'ticket',
+              // The server's audit name for a request (`ee_ticket`).
+              entityType: 'ee_ticket',
               entityId: ticketId,
               actorId: h['actorId'] as String?,
               actorName: who?['displayName'] as String?,
@@ -417,23 +418,33 @@ class DemoCorpus {
     );
   }
 
-  EePortalLinksData get portalLinks => EePortalLinksData(
-    links: [
-      for (final l in (_portal['links'] as List).cast<Map<String, dynamic>>())
-        EePortalLink(
-          id: l['id'] as String,
-          serviceId: l['serviceId'] as String,
-          unitId: l['unitId'] as String?,
-          state: EePortalLinkState.parse(l['state'] as String?),
-          enabled: l['enabled'] as bool,
-          expiresAt: DateTime.parse(l['expiresAt'] as String),
-          revokedAt: l['revokedAt'] == null
-              ? null
-              : DateTime.parse(l['revokedAt'] as String),
-          hasCustomFields: (l['hasCustomFields'] as bool?) ?? false,
-        ),
-    ],
-    linkQuota: _quota('linkQuota'),
-    ticketQuota: _quota('ticketQuota'),
-  );
+  EePortalLinksData get portalLinks {
+    // OPH-360 (UI-AUDIT #67): the row names its desk and its day, as a
+    // current server sends them — derived from the corpus, never retyped.
+    final unitName = {for (final u in units) u.id: u.name};
+    return EePortalLinksData(
+      links: [
+        for (final (i, l)
+            in (_portal['links'] as List).cast<Map<String, dynamic>>().indexed)
+          EePortalLink(
+            id: l['id'] as String,
+            serviceId: l['serviceId'] as String,
+            unitId: l['unitId'] as String?,
+            unitName: unitName[l['unitId']],
+            createdAt: DateTime.parse(
+              l['expiresAt'] as String,
+            ).subtract(Duration(days: 7 + i)),
+            state: EePortalLinkState.parse(l['state'] as String?),
+            enabled: l['enabled'] as bool,
+            expiresAt: DateTime.parse(l['expiresAt'] as String),
+            revokedAt: l['revokedAt'] == null
+                ? null
+                : DateTime.parse(l['revokedAt'] as String),
+            hasCustomFields: (l['hasCustomFields'] as bool?) ?? false,
+          ),
+      ],
+      linkQuota: _quota('linkQuota'),
+      ticketQuota: _quota('ticketQuota'),
+    );
+  }
 }

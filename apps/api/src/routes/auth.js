@@ -5,6 +5,7 @@ import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
+import { credentialRateLimit } from '../lib/rate-limit.js';
 import {
   createRefreshRecord,
   deviceLabel,
@@ -231,9 +232,16 @@ const oauthSchema = {
 
 export default async function authRoutes(app) {
   const { auth } = app.config;
-  // Tighter than the global limiter — credential endpoints are brute-force targets.
+  // Tighter than the global limiter — these are brute-force targets. Signed-in
+  // routes (MFA, password, sessions) count per user like everything else.
   const authRateLimit = {
     rateLimit: { max: app.config.rateLimitAuthMax, timeWindow: '1 minute' },
+  };
+  // The credential endpoints have no identity yet (ADR-0045 §2): per IP + the
+  // account the body names, under one per-IP ceiling for all of them.
+  const credentialLimit = {
+    onRequest: [app.credentialIpCeiling],
+    config: credentialRateLimit(app),
   };
 
   // Baseline argon2id hash so unknown-email logins burn the same verify cost as
@@ -241,68 +249,64 @@ export default async function authRoutes(app) {
   const timingSafeDummyHash = await hashPassword(crypto.randomUUID());
 
   // OPH-020 — create user + personal workspace + first session, all in one transaction.
-  app.post(
-    '/register',
-    { schema: registerSchema, config: authRateLimit },
-    async (request, reply) => {
-      const email = request.body.email.toLowerCase();
-      const displayName = request.body.displayName?.trim() || null;
+  app.post('/register', { schema: registerSchema, ...credentialLimit }, async (request, reply) => {
+    const email = request.body.email.toLowerCase();
+    const displayName = request.body.displayName?.trim() || null;
 
-      // Fast path for the common case; the unique index stays authoritative under races.
-      const existing = await app.db('users').where({ email }).first('id');
-      if (existing) throw emailTakenError(app);
+    // Fast path for the common case; the unique index stays authoritative under races.
+    const existing = await app.db('users').where({ email }).first('id');
+    if (existing) throw emailTakenError(app);
 
-      const passwordHash = await hashPassword(request.body.password);
+    const passwordHash = await hashPassword(request.body.password);
 
-      const userId = newId();
-      const workspaceId = newId();
-      const workspaceName = `${displayName ?? email.split('@')[0]}'s Space`;
-      const workspaceSlug = uniqueSlug(workspaceName);
-      let refresh;
+    const userId = newId();
+    const workspaceId = newId();
+    const workspaceName = `${displayName ?? email.split('@')[0]}'s Space`;
+    const workspaceSlug = uniqueSlug(workspaceName);
+    let refresh;
 
-      try {
-        await app.db.transaction(async (trx) => {
-          await trx('users').insert({
-            id: userId,
-            email,
-            password_hash: passwordHash,
-            display_name: displayName,
-          });
-          await trx('workspaces').insert({
-            id: workspaceId,
-            owner_id: userId,
-            name: workspaceName,
-            slug: workspaceSlug,
-          });
-          await trx('workspace_members').insert({
-            id: newId(),
-            workspace_id: workspaceId,
-            user_id: userId,
-            role: 'owner',
-          });
-          refresh = await createRefreshRecord(trx, auth, {
-            userId,
-            familyId: newId(),
-            ip: request.ip,
-            deviceName: deviceLabel(request),
-          });
+    try {
+      await app.db.transaction(async (trx) => {
+        await trx('users').insert({
+          id: userId,
+          email,
+          password_hash: passwordHash,
+          display_name: displayName,
         });
-      } catch (err) {
-        // Concurrent register with the same email lost the race on uq_users_email.
-        if (err?.code === 'ER_DUP_ENTRY' && err.message.includes('uq_users_email')) {
-          throw emailTakenError(app);
-        }
-        throw err;
-      }
-
-      const user = { id: userId, email, displayName };
-      return reply.code(201).send({
-        user,
-        workspace: { id: workspaceId, name: workspaceName, slug: workspaceSlug },
-        tokens: sessionTokens(app, user, refresh),
+        await trx('workspaces').insert({
+          id: workspaceId,
+          owner_id: userId,
+          name: workspaceName,
+          slug: workspaceSlug,
+        });
+        await trx('workspace_members').insert({
+          id: newId(),
+          workspace_id: workspaceId,
+          user_id: userId,
+          role: 'owner',
+        });
+        refresh = await createRefreshRecord(trx, auth, {
+          userId,
+          familyId: newId(),
+          ip: request.ip,
+          deviceName: deviceLabel(request),
+        });
       });
-    },
-  );
+    } catch (err) {
+      // Concurrent register with the same email lost the race on uq_users_email.
+      if (err?.code === 'ER_DUP_ENTRY' && err.message.includes('uq_users_email')) {
+        throw emailTakenError(app);
+      }
+      throw err;
+    }
+
+    const user = { id: userId, email, displayName };
+    return reply.code(201).send({
+      user,
+      workspace: { id: workspaceId, name: workspaceName, slug: workspaceSlug },
+      tokens: sessionTokens(app, user, refresh),
+    });
+  });
 
   // ── OPH-231 — Sign in with Google / Apple (ADR-0026) ──────────────────────
   //
@@ -325,7 +329,7 @@ export default async function authRoutes(app) {
   // addresses verified; Apple's private-relay addresses arrive verified too, and
   // Apple omits the address entirely after the first authorisation — which rule 1
   // already covers.
-  app.post('/oauth', { schema: oauthSchema, config: authRateLimit }, async (request, reply) => {
+  app.post('/oauth', { schema: oauthSchema, ...credentialLimit }, async (request, reply) => {
     const { provider, idToken } = request.body;
 
     let identity;
@@ -488,7 +492,7 @@ export default async function authRoutes(app) {
   });
 
   // OPH-021 — verify credentials, start a new session (new refresh-token family).
-  app.post('/login', { schema: loginSchema, config: authRateLimit }, async (request) => {
+  app.post('/login', { schema: loginSchema, ...credentialLimit }, async (request) => {
     const email = request.body.email.toLowerCase();
 
     const found = await app
@@ -613,7 +617,7 @@ export default async function authRoutes(app) {
   });
 
   // OPH-022 — rotate: retire the presented token, issue a new one in the SAME family.
-  app.post('/refresh', { schema: refreshSchema, config: authRateLimit }, async (request) => {
+  app.post('/refresh', { schema: refreshSchema, ...credentialLimit }, async (request) => {
     const tokenHash = hashRefreshToken(request.body.refreshToken, auth.refreshSecret);
     const row = await app.db('refresh_tokens').where({ token_hash: tokenHash }).first();
     if (!row) throw invalidRefreshError(app);
@@ -669,7 +673,7 @@ export default async function authRoutes(app) {
 
   // OPH-022 — revoke the presented token (?all=true: its whole family). Always 204:
   // logout must be idempotent and reveal nothing about token validity.
-  app.post('/logout', { schema: logoutSchema, config: authRateLimit }, async (request, reply) => {
+  app.post('/logout', { schema: logoutSchema, ...credentialLimit }, async (request, reply) => {
     const tokenHash = hashRefreshToken(request.body.refreshToken, auth.refreshSecret);
     const row = await app
       .db('refresh_tokens')

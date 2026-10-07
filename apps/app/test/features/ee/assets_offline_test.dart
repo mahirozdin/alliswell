@@ -117,6 +117,10 @@ void main() {
       // The app's own retry policy (`main.dart`), not Riverpod's default ten.
       retry: awRetry,
       overrides: [
+        // OPH-359: a routed page keeps the replica current; this file
+        // drives the screens' own reads and runs no engine.
+        syncEnginesProvider.overrideWith((ref) => const {}),
+        syncSocketProvider.overrideWith((ref) => null),
         databaseProvider.overrideWithValue(db),
         currentWorkspaceProvider.overrideWithValue(
           const AsyncValue.data(

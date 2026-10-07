@@ -139,8 +139,6 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   raporluyor: bant dırdır ediyor ve "Tekrar kontrol et" kullanıcının Kapalı seçimine rağmen
   yeniden abone ediyor (`gateway_web.alarmSupport`, OPH-316'nın modu okunmuyor). 2026-09-26'da
   #19 turunda ölçüldü.
-- **Oturum kapanışı yerel replikayı silmiyor** — tek `alliswell.sqlite`; hesap değişince önceki
-  hesabın satırları cihazda kalır (`logout()` replikaya dokunmuyor). Sertleştirme.
 - **OPH-337** — `LocalKv` okunamazsa "Gizli widget" (ve bildirim gizliliği) hata vermeden
   "hiç ayarlanmamış" okunur → başlıklar widget'a yazılabilir.
 - **OPH-226** — AI bağlantısının `baseUrl`'i korumasız bir SSRF yüzeyi (bilinçli kabul; yalnız

@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../widgets/fab_clearance.dart';
+import '../widgets/glass.dart';
 import 'tokens.dart';
 
 /// AllisWell brand seed — matches the API's default project color
@@ -502,7 +504,13 @@ class AwPageTransitionsBuilder extends PageTransitionsBuilder {
             begin: Offset.zero,
             end: const Offset(-slide, 0),
           ).animate(outgoing),
-          child: child ?? const SizedBox.shrink(),
+          // OPH-362: a page outside the shell ends above the docked Quick
+          // Access bubble — once, here, for every route (`AwBubbleDockInset`).
+          child: AwBubbleDockInset(
+            route: route,
+            background: (page) => AwPageBackground(child: page),
+            child: child ?? const SizedBox.shrink(),
+          ),
         ),
       ),
     );

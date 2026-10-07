@@ -8,6 +8,7 @@ import '../../../widgets/status_views.dart';
 import '../data/services_models.dart';
 import '../services_providers.dart';
 import 'service_icons.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-228 — the catalogue's shelves, as the admin arranges them.
 ///
@@ -31,7 +32,10 @@ class EeServiceCategoriesScreen extends ConsumerWidget {
     final shelves = ref.watch(eeServiceCategoriesProvider);
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.services.shelves.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.services.shelves.title'.tr()),
+      ),
       floatingActionButton: FloatingActionButton(
         key: const Key('shelf-new'),
         tooltip: 'ee.team.services.shelves.create'.tr(),
@@ -54,7 +58,7 @@ class EeServiceCategoriesScreen extends ConsumerWidget {
           }
           final tree = shelfTree(list);
           return ListView(
-            padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+            padding: awListPadding(context, top: AwSpace.x4, fab: true),
             children: [
               Text(
                 'ee.team.services.shelves.intro'.tr(),

@@ -22,6 +22,7 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 
 /// EE-279 — what planned work came of a request, and the door to raise some.
 ///
@@ -70,6 +71,9 @@ void main() {
             _ticketId,
           ).overrideWith((ref) => Stream.value(const [])),
           eeServicesProvider.overrideWith(_Catalogue.new),
+          eeHoldsTeamVerbProvider(
+            'services.manage',
+          ).overrideWith((ref) => true),
           eeTicketActionsProvider(_ticketId).overrideWith((ref) async => null),
           targetFilesProvider((
             targetType: 'ticket',

@@ -48,6 +48,10 @@ class _RecordingSyncApi implements SyncApi {
   final pushedFor = <String>[];
   final pulledFor = <String>[];
 
+  /// OPH-362: answer every write the way the server does for a draft that
+  /// became a request on arrival — applied, and gone.
+  bool retire = false;
+
   @override
   Future<SyncPullPage> pull(
     String workspaceId, {
@@ -80,6 +84,13 @@ class _RecordingSyncApi implements SyncApi {
             status: 'applied',
             replayed: false,
             revision: baseRevision + i + 1,
+            rebase: retire
+                ? SyncRebase(
+                    entityType: m.entityType,
+                    entityId: m.entityId,
+                    present: false,
+                  )
+                : null,
           ),
       ],
     );
@@ -277,6 +288,39 @@ void main() {
         expect(container.read(draftCourierProvider), isNull);
       },
     );
+
+    // OPH-362 — UI-AUDIT R2-1.
+    test('UI-AUDIT R2-1: a draft the server turned into a request leaves the '
+        'list as "sent" with the push answer, with no pull carrying the '
+        'tombstone', () async {
+      api.retire = true;
+      final container = containerFor(current: 'W-UNIT');
+      final courier = container.listen(draftCourierProvider, (_, _) {});
+      final sent = container.listen(sentDraftsProvider, (_, _) {});
+      addTearDown(courier.close);
+      addTearDown(sent.close);
+      await container.read(workspacesProvider.future);
+
+      await TicketDraftStore(db).write(
+        workspaceId: 'W-OWN',
+        subject: 'Kompresör gece durdu',
+        serviceId: 'S1',
+      );
+      for (
+        var i = 0;
+        i < 50 && container.read(sentDraftsProvider).isEmpty;
+        i++
+      ) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      // The fake pull never mentions the draft: the push answer alone did it.
+      expect(await db.select(db.ticketDrafts).get(), isEmpty);
+      expect(container.read(sentDraftsProvider).map((d) => d.subject), [
+        'Kompresör gece durdu',
+      ]);
+      final statuses = container.read(draftStatusesProvider);
+      expect(statuses.map((s) => s.state), [EeDraftState.sent]);
+    });
 
     test(
       'on its own space the ordinary engine carries it — no second engine',

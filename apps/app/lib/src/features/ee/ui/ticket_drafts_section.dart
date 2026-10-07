@@ -20,7 +20,8 @@ import '../../../widgets/status_views.dart';
 ///     than refusing it (EE-216), and the row says WHICH reason it is, with
 ///     the one fix a person can make here: naming the service;
 ///   • refused — in the server's words, and put away by its person;
-///   • sent — this session's conversions, pointing down at the request.
+///   • sent — this session's conversions, pointing down at the request until
+///     the list below shows it (or its person closes the line).
 ///
 /// The section draws nothing at all when there is nothing to say: an empty
 /// "drafts" heading above every requester's list would be noise.
@@ -29,7 +30,19 @@ class EeTicketDraftsSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final drafts = ref.watch(draftStatusesProvider);
+    // R3-3 (OPH-363): "sent — your request is below" is a pointer, and once
+    // the list below carries a request by that subject it points at itself:
+    // the same subject twice until a reload. The line gives way to the row.
+    final listed = {
+      for (final ticket in ref.watch(eeMyTicketsProvider).value ?? const [])
+        ticket.subject.trim(),
+    };
+    final drafts = [
+      for (final draft in ref.watch(draftStatusesProvider))
+        if (draft.state != EeDraftState.sent ||
+            !listed.contains(draft.subject.trim()))
+          draft,
+    ];
     // A draft that just went through is a request now: ask the list again,
     // so the two halves of this screen agree.
     ref.listen(
@@ -127,7 +140,9 @@ class _DraftCard extends ConsumerWidget {
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
-                  if (canName || draft.state == EeDraftState.rejected)
+                  if (canName ||
+                      draft.state == EeDraftState.rejected ||
+                      draft.state == EeDraftState.sent)
                     Align(
                       alignment: AlignmentDirectional.centerEnd,
                       child: canName
@@ -139,9 +154,15 @@ class _DraftCard extends ConsumerWidget {
                             )
                           : TextButton(
                               key: Key('ticket-draft-${draft.id}-forget'),
-                              onPressed: () => ref
-                                  .read(ticketDraftStoreProvider)
-                                  .forgetRejected(draft.id),
+                              // A refusal is a parked row; a "sent" line
+                              // is this session's memory (R3-3).
+                              onPressed: () => draft.state == EeDraftState.sent
+                                  ? ref
+                                        .read(sentDraftsProvider.notifier)
+                                        .dismiss(draft.id)
+                                  : ref
+                                        .read(ticketDraftStoreProvider)
+                                        .forgetRejected(draft.id),
                               child: Text('ee.tickets.drafts.forget'.tr()),
                             ),
                     ),

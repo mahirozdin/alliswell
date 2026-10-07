@@ -15,6 +15,8 @@ import '../providers.dart';
 import 'ticket_archive_screen.dart' show EeMyArchivedTicketsScreen;
 import 'ticket_detail_screen.dart';
 import 'ticket_drafts_section.dart';
+import 'team_address_views.dart';
+import '../../../widgets/route_leading.dart';
 
 /// "My requests" (EE-087) — what I asked for, and where it got to.
 ///
@@ -50,7 +52,10 @@ class EeMyTicketsScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final tickets = ref.watch(eeMyTicketsProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.mineTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.mineTitle'.tr()),
+      ),
       // EE-225: the requester's own list is where asking for something new
       // belongs — and filing works with no signal (a draft), even though this
       // list does not.
@@ -70,7 +75,7 @@ class EeMyTicketsScreen extends ConsumerWidget {
         // The same clearance every FAB list here keeps: the last card must
         // not sit under "new request".
         child: ListView(
-          padding: awListPadding(context, top: AwSpace.x4, extraBottom: 72),
+          padding: awListPadding(context, top: AwSpace.x4, fab: true),
           children: [
             const EeTicketDraftsSection(),
             ...tickets.when(
@@ -80,8 +85,12 @@ class EeMyTicketsScreen extends ConsumerWidget {
                   child: Center(child: CircularProgressIndicator()),
                 ),
               ],
+              // OPH-356 (UI-AUDIT #7): no team on this address used to be
+              // "you have not asked for anything yet".
               error: (error, _) => [
-                AwErrorState(
+                eeTeamErrorView(
+                  ref,
+                  error,
                   message: localizedError(error),
                   onRetry: () => ref.invalidate(eeMyTicketsProvider),
                 ),

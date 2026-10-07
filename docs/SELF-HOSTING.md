@@ -138,6 +138,24 @@ Keep `TRUST_PROXY=true` (the default in the compose file) so the API reads the
 real client IP from `X-Forwarded-For`. Without it every request looks like it
 came from the proxy and the per-IP rate limits collapse into one shared bucket.
 
+### Rate limits
+
+All per minute ([ADR-0045](adr/0045-rate-limits-count-who-is-asking.md)). A
+signed-in person counts against their own budget wherever they connect from,
+so a whole office behind one NAT address no longer shares one; the defaults
+fit a team as they are.
+
+| Variable | Default | Counts |
+| --- | --- | --- |
+| `RATE_LIMIT_MAX` | 300 | per signed-in user; per IP for anonymous requests |
+| `RATE_LIMIT_AUTH_MAX` | 10 | sign-in / sign-up / refresh, per IP **and** account |
+| `RATE_LIMIT_AUTH_IP_MAX` | 10 × `RATE_LIMIT_AUTH_MAX` | the same endpoints, per IP across all accounts |
+| `API_KEY_RATE_LIMIT_MAX` | 300 | per API key |
+
+A large site whose people all sign in at the start of a shift from one address
+may raise `RATE_LIMIT_AUTH_IP_MAX`; `RATE_LIMIT_AUTH_MAX` is the brute-force
+guard for one account and rarely needs to move.
+
 ## 4. Upgrading — your data stays
 
 ```bash

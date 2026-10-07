@@ -180,7 +180,11 @@ class FakeApi implements EeTeamAdminApi {
 }
 
 Widget harness(FakeApi api, Widget child) => ProviderScope(
-  overrides: [eeTeamAdminApiProvider.overrideWithValue(api)],
+  overrides: [
+    eeTeamAdminApiProvider.overrideWithValue(api),
+    // OPH-356: the create button waits for a yes; this file is an admin's.
+    canProvider.overrideWith((ref, id) => true),
+  ],
   child: MaterialApp(theme: buildAwTheme(Brightness.light), home: child),
 );
 
@@ -355,6 +359,32 @@ void main() {
         // On this instance the admin IS the delivery mechanism, and has to be
         // told rather than left waiting for an e-mail nobody will send.
         expect(find.textContaining('sends no e-mail'), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #22 pattern: cancelling a live invitation asks first',
+      (tester) async {
+        final api = FakeApi(
+          invites: [
+            const EeInvite(
+              id: 'I4',
+              email: 'bekliyor@example.com',
+              role: 'member',
+              state: 'pending',
+              expiresAt: '2026-08-21T00:00:00.000Z',
+            ),
+          ],
+        );
+        await tester.pumpWidget(harness(api, const EeTeamInvitesScreen()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('invite-revoke-I4')));
+        await tester.pumpAndSettle();
+        expect(api.calls, isEmpty);
+        expect(find.textContaining('bekliyor@example.com?'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('invite-revoke-confirm')));
+        await tester.pumpAndSettle();
+        expect(api.calls, ['revoke:I4']);
       },
     );
 

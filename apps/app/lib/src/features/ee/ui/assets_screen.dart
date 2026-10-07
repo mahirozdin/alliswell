@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
@@ -12,6 +13,7 @@ import '../data/assets_models.dart';
 import '../providers.dart';
 import 'asset_detail_screen.dart';
 import 'asset_labels.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The equipment register (EE-194).
 ///
@@ -92,6 +94,7 @@ class _EeAssetsScreenState extends ConsumerState<EeAssetsScreen> {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('ee.assets.title'.tr()),
         actions: [
           // EE-220. The house search shape (DESIGN §12 S1), and the first
@@ -537,11 +540,15 @@ class _Row extends StatelessWidget {
               if (asset.location != null) asset.location!,
             ].join(' · '),
           ),
-          onTap: () => Navigator.of(context).push(
-            MaterialPageRoute<void>(
-              builder: (_) => EeAssetDetailScreen(assetId: asset.id),
-            ),
-          ),
+          // By its address where there is a router (OPH-359, UI-AUDIT #59) —
+          // the same one a printed QR label opens.
+          onTap: () => GoRouter.maybeOf(context) != null
+              ? context.push('/assets/${asset.id}')
+              : Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => EeAssetDetailScreen(assetId: asset.id),
+                  ),
+                ),
         ),
       ),
     );

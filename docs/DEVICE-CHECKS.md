@@ -5,6 +5,26 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Kabuk, gezinme, erişilebilirlik (2026-10-07)
+
+- OPH-363 — telefonda (390 px) Ayarlar › Takım › Birimler'de sona kaydır → son birimin ⋮'si "+ Yeni birim"in üstünde, dokununca menü açılıyor (birim kadrosu, Webhook'lar, Herkese açık bağlantılar, Roller, Davetler'de aynı). TalkBack/VoiceOver ya da web'de ekran okuyucuyla Hızlı erişim düğmesine odaklan → odak çerçevesi yalnız 56 px'lik düğme. Çevrimdışı taslak gönderilince "İletildi — talebin aşağıda" liste o talebi gösterince kayboluyor; "Kapat" da kapatıyor. Açık ve koyu temada.
+- OPH-362 — telefonda (390 px) Hızlı erişim balonu sağ altta, alt çubuğun satırında; kapsül balondan önce bitiyor, FAB balonun üstünde. Ayarlar › Takım: Üyeler'de son satırın ⋮'si, Birimler'de İSG'nin ⋮'si, Onaylar'da ikinci kartın "Onayla"sı, Takım ayarları'nda "Kaydet"in sağ ucu açılışta, kaydırmadan dokunulabiliyor; sayfanın altında balonun şeridi sayfanın kendi zemininde, dikiş yok. Balonu ekranın ortasına sürükle → sayfa yeniden tam boy; aşağı sürükle → yeniden yuvada. Klavye açılınca balon kayboluyor. Çevrimdışı taslak bağlantı gelince Taleplerim'de "İletildi — talebin aşağıda" oluyor, "Masaya ulaştı…" kalmıyor. Denetim günlüğünde davet iptali "bir daveti iptal etti"; SLA politikası düzenlemede öncelik başlıkları alanların üstünde (1440 px ve telefonda). Açık ve koyu temada.
+
+- OPH-360 — Ayarlar › Herkese açık bağlantılar: 30 günlük bir linkte ⋮ → "Süreyi uzat…" → 2 gün → yeni bitiş eskisinden sonra; satırda birim ve oluşturma tarihi; iptal diyaloğunda "Vazgeç" / kırmızı "Bağlantıyı iptal et"; ekran okuyucu diyaloğu adıyla okuyor. Ayarlar › Firmalar: kişi ekle → davet bağlantısı bir kez; kişiyi kapat → firma portalındaki oturumu düşüyor. SLA panosu Aşıldı/Yaklaşıyor/Tutuldu ve "N değerlendirilen"; ihlal satırı talebi açıyor. Kuyruk ⋮ → "CSV indir" → Excel'de Türkçe karakterler doğru. Denetim günlüğü başlığı "Denetim günlüğü", satır talebi açıyor. Açık ve koyu temada.
+- OPH-359 — 1440 px web'de Ayarlar › Erişilebilirlik açıkken (ya da NVDA/VoiceOver ile) Tab: sol çubukta Ana Sayfa … Talepler, Onaylar okunuyor, Enter açıyor; mikrofon düğmesi tek bir "Yapay zekâyla konuş" düğmesi, Enter/çift dokunuşla balon açılıyor. Telefonda (390 px) Talepler: "Yeni talep" çubuğun üstünde, dokununca form; alt çubukta yalnız seçili sekmenin adı, kenarda kesik etiket yok; başlığın altında takım noktası + birim adı, birim seçici 10 birimde kayıyor. Hızlı erişim balonu sağ altta FAB'ın üstünde, listeyi kaydırınca kenara çekiliyor (rozet okunur). `#/tickets/<id>`'yi yeni sekmede aç → talep açılıyor, sol üstte Ana sayfa; kuyruktan talep/KB/SLA panosu açınca adres çubuğu o ekranın adresi. Toplantılar: "Kayıt yükle", başarısız toplantıda Türkçe neden. Açık ve koyu temada.
+
+## Talep, onay, bilgi bankası, ekipman (2026-10-07)
+
+- OPH-358 — telefonda talep yazışması: masanın balonları sağda, talep sahibininki solda, her birinin üstünde ad · taraf · kanal (uzantının EE-302'si canlıyken); kendi talebinde kutu "Masaya yaz"; e-postayla gelen talepte "e-postayla gönderilir"; iç nota dosya ekle → notun altında. Kapalı talepte "Bu konu tekrar açıldı" → yeni talebe geçiyor, iki talepte "İlişkili talepler" satırı. `#/tickets/new`'i doğrudan aç → gönder → Taleplerim + snackbar. Ekipman kartında "Bu ekipmanı etkileyen değişiklikler" (EE-304 canlıyken), tarih/para yerel biçim. Açık ve koyu temada.
+
+## Takım adresi (2026-10-07)
+
+- OPH-356 — yönetici yeni davet oluşturur (uzantının EE-300'ü canlıdayken bağlantı `…/app/#/join/<token>?server=…`): bağlantıyı oturumsuz bir tarayıcıda aç → "Takım adresi: <slug>.alliswell.space" + kod/ad/parola → katıl → takım adresinde girişli Ana sayfa. Varsayılan adreste takım üyesiyle gir → Ana sayfada takım bandı, Ayarlar'da tek "Takım adresi gerekiyor" satırı, "Geç" → çıkış yapmadan takım adresinde Talepler + Onaylar. Üye `#/settings/team/roles` → kilitli durum, "+" yok. Açık ve koyu temada bant ve kilitli durum.
+
+## Çıkışta yerel veri (2026-10-07)
+
+- OPH-355 — web'de bir hesapla gir, talep ve bildirim görün, çıkış yap: DevTools › Application › IndexedDB'de `alliswell` bloklarında önceki metin aranınca bulunmuyor, `alliswell_alerts`'te yalnız `__fallback` kalıyor; aynı tarayıcıda ikinci hesapla gir → ilk hesabın bildirimi yok. Çevrimdışı bir değişiklik yapıp çıkışa bas → "N değişiklik" diyaloğu.
+
 ## Liste ritmi (2026-09-30)
 
 - OPH-353 — açık ve koyu temada talep kuyruğu, Taleplerim, Bilgi bankası, Varlıklar, bildirim merkezi, denetim günlüğü ve dosyalar: kartlar arası eşit boşluk, hiçbir liste çizgiyle ayrılmıyor.

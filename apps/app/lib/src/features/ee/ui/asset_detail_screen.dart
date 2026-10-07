@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/date_format.dart';
+import '../../../core/day_boundary.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
@@ -15,9 +17,13 @@ import '../data/assets_models.dart';
 import '../providers.dart';
 import 'asset_edit_sheet.dart';
 import 'asset_labels.dart';
+import 'change_detail_screen.dart';
+import 'change_labels.dart';
 import 'new_ticket_screen.dart';
 import 'ticket_archive_screen.dart';
 import 'ticket_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// One machine's card — what a QR code opens (EE-194).
 ///
@@ -96,6 +102,7 @@ class EeAssetDetailScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text(asset?.tag ?? 'ee.assets.one'.tr()),
         actions: [
           if (asset != null && canManage && asset.status != 'retired')
@@ -189,16 +196,18 @@ class _Card extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final types = ref.watch(eeAssetTypesProvider).value ?? const EeAssetTypes();
     return ListView(
-      padding: const EdgeInsets.all(AwSpace.x4),
+      padding: awPagePadding(context, AwSpace.x4),
       children: [
         _Facts(
           asset: asset,
           typeLabel: assetTypeLabel(asset.type, types),
           provenance: _Provenance(asset: asset, fromServer: fromServer),
+          dateFormat: ref.watch(dateFormatProvider),
         ),
         _OpenRequest(asset: asset),
         const SizedBox(height: AwSpace.x6),
         _History(assetId: asset.id),
+        _Changes(assetId: asset.id),
       ],
     );
   }
@@ -246,13 +255,20 @@ class _Provenance extends ConsumerWidget {
   }
 }
 
-/// The purchase price as the record states it, or null when it states none.
+/// The purchase price as the record states it, or null when it states none —
+/// in the reader's number format (UI-AUDIT #78), in the record's currency.
 String? _price(EeAsset asset) {
   final minor = asset.purchaseCostMinor;
   if (minor == null) return null;
-  final amount = (minor / 100).toStringAsFixed(2);
-  final currency = asset.currency;
-  return currency == null ? amount : '$amount $currency';
+  return eeMoneyText(minor, asset.currency);
+}
+
+/// A day the record keeps as typed (`YYYY-MM-DD`), in the reader's date
+/// format (UI-AUDIT #78); anything else stays as it was written.
+String? _day(String? value, String format) {
+  if (value == null || value.isEmpty) return value;
+  final day = DateTime.tryParse(value);
+  return day == null ? value : awFormatDate(day, format: format);
 }
 
 class _Facts extends StatelessWidget {
@@ -260,10 +276,12 @@ class _Facts extends StatelessWidget {
     required this.asset,
     required this.typeLabel,
     required this.provenance,
+    required this.dateFormat,
   });
   final EeAsset asset;
   final String typeLabel;
   final Widget provenance;
+  final String dateFormat;
 
   @override
   Widget build(BuildContext context) {
@@ -276,15 +294,15 @@ class _Facts extends StatelessWidget {
       ('ee.assets.field.serial', asset.serialNo),
       ('ee.assets.field.manufacturer', asset.manufacturer),
       ('ee.assets.field.model', asset.model),
-      ('ee.assets.field.warranty', asset.warrantyUntil),
-      ('ee.assets.field.calibration', asset.calibrationDue),
+      ('ee.assets.field.warranty', _day(asset.warrantyUntil, dateFormat)),
+      ('ee.assets.field.calibration', _day(asset.calibrationDue, dateFormat)),
       ('ee.assets.field.supplier', asset.supplier),
       // EE-271: when it was bought and for how much — on the device since
       // EE-191 and never drawn, while the guide promised both. The date is
       // the day as typed (`YYYY-MM-DD`, like the warranty); the price is the
       // record's own currency, never converted — the history below keeps
       // labour in ITS currency beside it and adds nothing up.
-      ('ee.assets.field.purchased', asset.purchasedAt),
+      ('ee.assets.field.purchased', _day(asset.purchasedAt, dateFormat)),
       ('ee.assets.field.purchaseCost', _price(asset)),
     ];
     return Column(
@@ -439,7 +457,9 @@ class _HistoryBody extends StatelessWidget {
               'months': '${data.stats.months}',
               'count': '${data.stats.ticketCount}',
               'open': '${data.stats.openTicketCount}',
-              'hours': '${(data.stats.openMinutes / 60).round()}',
+              // UI-AUDIT #78: minutes and hours as said, never "0 hours"
+              // for a request that stayed open forty minutes.
+              'duration': eeDurationText(data.stats.openMinutes),
             },
           ),
           key: const Key('asset-history-counts'),
@@ -469,7 +489,7 @@ class _HistoryBody extends StatelessWidget {
           // hours, twenty minutes of recorded work read as "0".
           Text(
             'ee.assets.history.labour'.tr(
-              args: {'hours': eeHoursText(data.stats.labourMinutes)},
+              args: {'duration': eeDurationText(data.stats.labourMinutes)},
             ),
             key: const Key('asset-history-labour'),
             style: theme.textTheme.bodyMedium,
@@ -478,10 +498,7 @@ class _HistoryBody extends StatelessWidget {
           for (final money in data.stats.labourByCurrency)
             Text(
               'ee.assets.history.labourCost'.tr(
-                args: {
-                  'amount': (money.costMinor / 100).toStringAsFixed(2),
-                  'currency': money.currency,
-                },
+                args: {'money': eeMoneyText(money.costMinor, money.currency)},
               ),
               key: Key('asset-history-labour-${money.currency}'),
               style: theme.textTheme.bodySmall,
@@ -489,7 +506,9 @@ class _HistoryBody extends StatelessWidget {
           if (data.stats.labourUnpricedMinutes > 0)
             Text(
               'ee.assets.history.labourUnpriced'.tr(
-                args: {'hours': eeHoursText(data.stats.labourUnpricedMinutes)},
+                args: {
+                  'duration': eeDurationText(data.stats.labourUnpricedMinutes),
+                },
               ),
               key: const Key('asset-history-labour-unpriced'),
               style: theme.textTheme.bodySmall,
@@ -533,15 +552,12 @@ class _HistoryBody extends StatelessWidget {
                       : 'ee.tickets.status.${ticket.status}'.tr(),
                   if (ticket.labour != null && ticket.labour!.minutes > 0) ...[
                     'ee.assets.history.ticketLabour'.tr(
-                      args: {'hours': eeHoursText(ticket.labour!.minutes)},
+                      args: {
+                        'duration': eeDurationText(ticket.labour!.minutes),
+                      },
                     ),
                     for (final money in ticket.labour!.byCurrency)
-                      'ee.worklogs.money'.tr(
-                        args: {
-                          'amount': (money.costMinor / 100).toStringAsFixed(2),
-                          'currency': money.currency,
-                        },
-                      ),
+                      eeMoneyText(money.costMinor, money.currency),
                   ],
                 ].join(' · '),
                 key: Key('asset-ticket-meta-${ticket.id}'),
@@ -560,6 +576,88 @@ class _HistoryBody extends StatelessWidget {
                   : () => awOpenTicket(context, ticket.id),
             ),
       ],
+    );
+  }
+}
+
+/// OPH-358 (UI-AUDIT #37) — the planned work on this machine: the changes
+/// whose list of affected equipment names it, each opening the change.
+/// Drawn only when the server has the door (EE-304) and answers; offline the
+/// history above already says this half of the card needs a connection.
+class _Changes extends ConsumerWidget {
+  const _Changes({required this.assetId});
+  final String assetId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final changes = ref.watch(eeAssetChangesProvider(assetId));
+    final format = ref.watch(dateFormatProvider);
+    final now = ref.watch(nowProvider)();
+    return changes.when(
+      loading: () => const SizedBox.shrink(),
+      error: (error, _) => assetNeedsConnection(error)
+          ? const SizedBox.shrink()
+          : Padding(
+              padding: const EdgeInsets.only(top: AwSpace.x4),
+              child: AwInlineError(
+                key: const Key('asset-changes-error'),
+                message: localizedError(error),
+                onRetry: () => ref.invalidate(eeAssetChangesProvider(assetId)),
+              ),
+            ),
+      data: (rows) {
+        if (rows == null) return const SizedBox.shrink();
+        return Column(
+          key: const Key('asset-changes'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: AwSpace.x6),
+            Text(
+              'ee.assets.changes.title'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
+            const SizedBox(height: AwSpace.x2),
+            if (rows.isEmpty)
+              Text(
+                'ee.assets.changes.empty'.tr(),
+                style: theme.textTheme.bodySmall,
+              ),
+            for (final change in rows)
+              ListTile(
+                key: Key('asset-change-${change.id}'),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+                leading: const Icon(Icons.event_note_outlined),
+                title: Text(
+                  change.number == null
+                      ? change.title
+                      : '#${change.number} · ${change.title}',
+                ),
+                subtitle: Text(
+                  [
+                    AwI18n.instance.maybeTranslate(
+                          'ee.changes.status.${change.status}',
+                        ) ??
+                        'ee.changes.statusUnknown'.tr(),
+                    if ((change.windowStart, change.windowEnd) case (
+                      final start?,
+                      final end?,
+                    ))
+                      changeWindowText(start, end, format: format),
+                    if (changeWindowPassed(
+                      change.windowEnd,
+                      change.status,
+                      now,
+                    ))
+                      'ee.changes.windowPassed'.tr(),
+                  ].join(' · '),
+                ),
+                onTap: () => awOpenChange(context, change.id),
+              ),
+          ],
+        );
+      },
     );
   }
 }

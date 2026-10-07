@@ -4,9 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/team_ai_models.dart';
 import '../team_ai_providers.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The team's AI keys, and who else may bring one (EE-111, madde 13).
 ///
@@ -44,7 +47,10 @@ class EeTeamAiKeysScreen extends ConsumerWidget {
     final data = ref.watch(eeTeamAiProvider);
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.teamAi.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.teamAi.title'.tr()),
+      ),
       body: data.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -62,7 +68,9 @@ class EeTeamAiKeysScreen extends ConsumerWidget {
           return _Body(data: value);
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('team.manage_ai_keys'))
           ? null
           : FloatingActionButton(
               key: const Key('team-ai-add'),
@@ -81,7 +89,9 @@ class _Body extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ListView(
-      padding: const EdgeInsets.only(bottom: 88),
+      padding: EdgeInsets.only(
+        bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+      ),
       children: [
         _PolicyCard(
           allowed: data.personalKeysAllowed,

@@ -16,6 +16,7 @@ import '../../workspaces/workspaces.dart';
 import '../data/requester_ticket_api.dart';
 import '../requester_ticket_providers.dart';
 import '../ticket_write_providers.dart';
+import '../../../widgets/route_leading.dart';
 import 'new_ticket_screen.dart' show EeTicketFollowUp;
 
 /// One request, as the person who ASKED sees it (EE-252, ADR-0017 D17.6).
@@ -39,7 +40,10 @@ class EeRequesterTicketScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ticket = ref.watch(eeRequesterTicketProvider(ticketId));
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.detailTitle'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.detailTitle'.tr()),
+      ),
       body: ticket.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

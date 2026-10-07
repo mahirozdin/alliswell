@@ -13,6 +13,9 @@ import '../../../search/search.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../files/providers.dart';
+import '../../files/ui/attach_menu.dart';
+import '../../workspaces/workspaces.dart';
 import '../assets_providers.dart';
 import '../catalogue_search.dart';
 import '../data/assets_models.dart';
@@ -24,8 +27,10 @@ import '../my_tickets_providers.dart';
 import '../new_ticket_providers.dart';
 import '../providers.dart';
 import '../ticket_drafts_providers.dart';
+import '../unit_scope_providers.dart';
 import 'form_field_view.dart';
 import 'service_icons.dart';
+import '../../../widgets/route_leading.dart';
 
 /// EE-225 — filing a request from the app.
 ///
@@ -132,6 +137,11 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
   bool _busy = false;
   String? _error;
 
+  /// OPH-358 (UI-AUDIT #34): files to send with the request — uploaded onto
+  /// it (`ticket`) through core's walk once it exists. Online only: a draft
+  /// carries no files (EE-216's shape).
+  final _files = <PickedUpload>[];
+
   // ── EE-226: answers offered while the subject is written ──────────────
   //
   // The subject as last asked about, after the pause in typing.
@@ -225,6 +235,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
 
   Future<void> _openAnswer(EeKbSuggestion answer) async {
     final navigator = Navigator.of(context);
+    final router = GoRouter.maybeOf(context);
     final solved = await showEeKbAnswerSheet(
       context,
       answer,
@@ -234,7 +245,8 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     setState(() {});
     // "This solved it": the person leaves without a request, which is
     // exactly the deflection `dispose` reports.
-    if (solved == true) navigator.pop();
+    // UI-AUDIT #31: and leaves the same way a sent request does.
+    if (solved == true) _leave(navigator, router);
   }
 
   /// EE-252: the closed request's service, once, if the catalogue has it.
@@ -297,6 +309,9 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
 
   Future<void> _send() async {
     final online = ref.read(serverReachabilityProvider) != false;
+    // UI-AUDIT #9: offline with nowhere to keep a draft, nothing is promised
+    // and nothing is pressed — the button is already grey and says why.
+    if (!online && ref.read(draftWorkspaceIdProvider) == null) return;
     final missing = _missing(online);
     if (missing.isNotEmpty) {
       setState(
@@ -312,6 +327,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     });
     final messenger = ScaffoldMessenger.maybeOf(context);
     final navigator = Navigator.of(context);
+    final router = GoRouter.maybeOf(context);
     try {
       final String done;
       if (online) {
@@ -328,7 +344,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
         done = saved;
       }
       messenger?.showSnackBar(SnackBar(content: Text(done)));
-      navigator.pop();
+      _leave(navigator, router);
     } on ApiException catch (failure) {
       // No answer at all: the form turns into its offline self and says so;
       // what was typed stays exactly where it is.
@@ -341,6 +357,18 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
           _error = localizedError(failure);
         });
       }
+    }
+  }
+
+  /// UI-AUDIT #31: out of the form — back where it was opened from, or,
+  /// when it was opened by its address (a link, a refresh, a QR sign) and
+  /// there is nothing under it, to the person's own requests. A bare pop
+  /// there left an empty page behind.
+  void _leave(NavigatorState navigator, GoRouter? router) {
+    if (navigator.canPop()) {
+      navigator.pop();
+    } else if (router != null) {
+      router.go('/settings/team/my-tickets');
     }
   }
 
@@ -369,13 +397,57 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
           assetId: _asset?.id,
         );
     _filed = true;
+    final failed = await _sendFiles(filed.id, filed.workspaceId);
     // The requester's list is a REST read; the desk's queue is the replica.
     // Both are told now rather than at their next scheduled look.
     ref.invalidate(eeMyTicketsProvider);
     unawaited(ref.read(syncEngineProvider)?.syncNow());
-    return filed.number == null
+    final sent = filed.number == null
         ? 'ee.tickets.new.sent'.tr()
         : 'ee.tickets.new.sentNumbered'.tr(args: {'number': '${filed.number}'});
+    return failed == 0
+        ? sent
+        : '$sent — ${'ee.tickets.new.filesFailed'.tr(args: {'count': '$failed'})}';
+  }
+
+  /// The unit the request will land in, once the form knows it: the
+  /// service's only unit, or the one chosen among several. Null before that.
+  String? _targetUnitId(EeCatalogService? service) {
+    if (service == null || service.units.isEmpty) return null;
+    if (service.units.length == 1) return service.units.single.id;
+    return _unitId;
+  }
+
+  /// The picked files onto the new request. Core's upload walk asks for
+  /// membership in the request's unit (EE-168), so they go only where this
+  /// person is a member; anywhere else they are counted as not sent rather
+  /// than tried and refused one by one. Answers how many did not go.
+  Future<int> _sendFiles(String ticketId, String? workspaceId) async {
+    if (_files.isEmpty) return 0;
+    // Awaited, not peeked: nothing on this screen watches the list, so a
+    // peek can find it still loading and count every file as refused.
+    final List<WorkspaceSummary> known;
+    try {
+      known = await ref.read(workspacesProvider.future);
+    } catch (_) {
+      return _files.length;
+    }
+    final mine = {for (final w in known) w.id};
+    if (workspaceId == null || !mine.contains(workspaceId)) {
+      return _files.length;
+    }
+    final uploads = ref.read(uploadsProvider.notifier);
+    var failed = 0;
+    for (final file in _files) {
+      final id = await uploads.start(
+        workspaceId: workspaceId,
+        targetType: 'ticket',
+        targetId: ticketId,
+        source: file,
+      );
+      if (id == null) failed += 1;
+    }
+    return failed;
   }
 
   /// The offline way out: EE-216's store, in the person's own space. Null
@@ -407,9 +479,29 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
     final mayActForOthers = ref.watch(canProvider('tickets.create_on_behalf'));
     _seedFollowUpService(catalog.value);
     final service = _service;
+    // UI-AUDIT #9: a draft needs the person's own space to live in. Without
+    // one the form promises nothing — it says the request has to wait for
+    // the signal, and the button cannot be pressed until then.
+    final canDraft = online || ref.watch(draftWorkspaceIdProvider) != null;
+    // UI-AUDIT #34: files go through core's upload walk, which asks for
+    // membership in the request's unit — so the picker is offered to the
+    // people who work THAT desk, and somebody who only asks is told the limit.
+    // N1 (retest): "works some desk" was read off the shared workspaces,
+    // which every member of the team has (its general space) — so a pure
+    // requester was handed a picker whose files were then counted as not
+    // sent without one being tried. The question is the request's unit.
+    final unit = _targetUnitId(service);
+    final mine = ref.watch(eeMyUnitsScopeProvider).value;
+    final worksHere =
+        unit != null && mine != null && mine.any((u) => u.unitId == unit);
+    final mayAttach = online && worksHere;
+    final saysDeskOnly = online && !worksHere && unit != null;
 
     return Scaffold(
-      appBar: AppBar(title: Text('ee.tickets.new.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.tickets.new.title'.tr()),
+      ),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(eeCatalogProvider.future),
         child: ListView(
@@ -430,7 +522,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
               ),
               const SizedBox(height: AwSpace.x4),
             ],
-            if (!online) ...[
+            if (!online && canDraft) ...[
               _Note(
                 key: const Key('new-ticket-offline'),
                 icon: Icons.cloud_off_outlined,
@@ -444,12 +536,27 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
               ),
               const SizedBox(height: AwSpace.x4),
             ],
+            if (!canDraft) ...[
+              _Note(
+                key: const Key('new-ticket-offline-no-draft'),
+                icon: Icons.cloud_off_outlined,
+                text: 'ee.tickets.new.offlineNoDraft'.tr(),
+              ),
+              const SizedBox(height: AwSpace.x4),
+            ],
             // ── The service ───────────────────────────────────────────────
             Card(
               margin: EdgeInsets.zero,
               child: ListTile(
                 key: const Key('new-ticket-service'),
-                leading: const Icon(Icons.category_outlined),
+                // UI-AUDIT #82: the chosen service wears its own icon, the
+                // one the list showed a moment ago.
+                leading: Icon(
+                  service == null
+                      ? Icons.category_outlined
+                      : serviceIconData(service.icon),
+                  key: const Key('new-ticket-service-icon'),
+                ),
                 title: Text(service?.name ?? 'ee.tickets.new.pickService'.tr()),
                 subtitle: Text(
                   service?.description ?? 'ee.tickets.new.service'.tr(),
@@ -613,6 +720,45 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
                 ),
               ],
             ],
+            // ── Files (UI-AUDIT #34) ──────────────────────────────────────
+            if (mayAttach) ...[
+              const SizedBox(height: AwSpace.x3),
+              Wrap(
+                spacing: AwSpace.x2,
+                runSpacing: AwSpace.x1,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  AttachButton(
+                    buttonKey: const Key('new-ticket-attach'),
+                    style: AttachButtonStyle.text,
+                    enabled: !_busy,
+                    onPicked: (picks) async {
+                      if (mounted) setState(() => _files.addAll(picks));
+                    },
+                  ),
+                  for (final (i, file) in _files.indexed)
+                    InputChip(
+                      key: Key('new-ticket-file-$i'),
+                      avatar: const Icon(Icons.attach_file, size: 16),
+                      label: Text(
+                        file.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      onDeleted: _busy
+                          ? null
+                          : () => setState(() => _files.removeAt(i)),
+                    ),
+                ],
+              ),
+            ] else if (saysDeskOnly) ...[
+              const SizedBox(height: AwSpace.x3),
+              Text(
+                'ee.tickets.new.filesDeskOnly'.tr(),
+                key: const Key('new-ticket-files-desk-only'),
+                style: _quiet(theme),
+              ),
+            ],
             if (_error != null) ...[
               const SizedBox(height: AwSpace.x3),
               AwInlineError(
@@ -625,7 +771,7 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
               alignment: AlignmentDirectional.centerEnd,
               child: FilledButton.icon(
                 key: const Key('new-ticket-submit'),
-                onPressed: _busy ? null : _send,
+                onPressed: _busy || !canDraft ? null : _send,
                 icon: _busy
                     ? const SizedBox.square(
                         dimension: 16,
@@ -633,7 +779,11 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
                       )
                     : Icon(online ? Icons.send_outlined : Icons.save_outlined),
                 label: Text(
-                  (online ? 'ee.tickets.new.send' : 'ee.tickets.new.saveDraft')
+                  (online
+                          ? 'ee.tickets.new.send'
+                          : canDraft
+                          ? 'ee.tickets.new.saveDraft'
+                          : 'ee.tickets.new.waitForSignal')
                       .tr(),
                 ),
               ),

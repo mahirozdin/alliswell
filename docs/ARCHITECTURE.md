@@ -116,7 +116,10 @@ per-`clientMutationId` record means a replay returns the recorded answer instead
 decision. Independently of extensions, every REJECTED push result now carries a `rebase`
 hint (`{entityType, entityId, present, data?}`) built from the same snapshot loaders `/sync/pull`
 uses: a client writes optimistically, so a refusal leaves its replica holding a write nobody
-accepted, and incremental pull can never correct it.
+accepted, and incremental pull can never correct it. An APPLIED create/update that a hook or a
+write observer retired in the same transaction (an extension's request draft becoming a request)
+carries `rebase: {present: false}` too, replays included (OPH-362) — the device drops the row with
+the push answer instead of waiting for a pull that may never come.
 
 One of the two registries Epic 31 contracted has landed. **`files.target_type` is a
 registry** (OPH-325, ADR-0040): an extension registers a kind with

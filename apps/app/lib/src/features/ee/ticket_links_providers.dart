@@ -1,5 +1,7 @@
+import 'package:drift/drift.dart' show OrderingMode, OrderingTerm;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../sync/db/database.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
 import 'data/ticket_links_api.dart';
@@ -59,4 +61,51 @@ final eeLinkedTaskTitlesProvider =
       return (db.select(db.tasks)..where((t) => t.id.isIn(taskIds)))
           .watch()
           .map((rows) => {for (final row in rows) row.id: row.title});
+    });
+
+/// OPH-358 (UI-AUDIT #33) — the far end of a request's links, read from the
+/// DEVICE: the number and subject of every request in this unit are already
+/// here. A request this device does not hold (another unit's) is simply
+/// absent from the map, and the row then says so rather than vanishing.
+///
+/// Keyed by the ids joined with commas: a list built during a build is a new
+/// object every frame, and a family keyed by it would start over every frame.
+final eeLinkedTicketsProvider =
+    StreamProvider.family<Map<String, TicketRecord>, String>((ref, joined) {
+      final ticketIds = [
+        for (final id in joined.split(','))
+          if (id.isNotEmpty) id,
+      ];
+      if (ticketIds.isEmpty) {
+        return Stream.value(const <String, TicketRecord>{});
+      }
+      final db = ref.watch(databaseProvider);
+      return (db.select(db.tickets)..where((t) => t.id.isIn(ticketIds)))
+          .watch()
+          .map((rows) => {for (final row in rows) row.id: row});
+    });
+
+/// The requests a link can point at: this unit's, newest first, from the
+/// device. Capped — the picker filters as somebody types, and a desk looking
+/// for "the other one" means a recent one.
+final eeLinkCandidatesProvider =
+    StreamProvider.family<List<TicketRecord>, String>((ref, workspaceId) {
+      final db = ref.watch(databaseProvider);
+      return (db.select(db.tickets)
+            ..where((t) => t.workspaceId.equals(workspaceId))
+            ..orderBy([
+              (t) => OrderingTerm(
+                expression: t.createdAt,
+                mode: OrderingMode.desc,
+              ),
+            ])
+            ..limit(300))
+          .watch();
+    });
+
+/// OPH-358 (UI-AUDIT #48) — the companies a request can be filed under.
+final eeCustomerChoicesProvider =
+    FutureProvider.autoDispose<List<EeCustomerChoice>>((ref) async {
+      if (!ref.watch(eeFeatureProvider('teams'))) return const [];
+      return ref.watch(eeTicketLinksApiProvider).customers();
     });

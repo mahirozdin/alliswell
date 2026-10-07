@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/api_exception.dart';
@@ -379,4 +380,133 @@ void main() {
       'Bu onay sizden istenmedi.',
     );
   });
+
+  // ── OPH-358 ──────────────────────────────────────────────────────────────
+
+  testWidgets(
+    'UI-AUDIT #14: an approval withdrawn with its request reads "Withdrawn"; a state this build does not know reads neutral',
+    (tester) async {
+      await _pump(tester, window: () async => _window(status: 'withdrawn'));
+      final banner = tester.widget<Text>(
+        find.descendant(
+          of: _key('ee-approval-detail-status'),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(banner.data, startsWith('Withdrawn'));
+      expect(find.textContaining('ee.approvals.status'), findsNothing);
+      expect(find.textContaining('withdrawn'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #14: a state this build does not know reads neutral, never the key',
+    (tester) async {
+      await _pump(tester, window: () async => _window(status: 'superseded'));
+      final neutral = tester.widget<Text>(
+        find.descendant(
+          of: _key('ee-approval-detail-status'),
+          matching: find.byType(Text),
+        ),
+      );
+      expect(neutral.data, startsWith('Status unknown'));
+      expect(find.textContaining('superseded'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #74: back from "open the request", the page is read again — a note written there shows here',
+    (tester) async {
+      var reads = 0;
+      final router = GoRouter(
+        initialLocation: '/approvals/A1',
+        routes: [
+          GoRoute(
+            path: '/approvals/:id',
+            builder: (_, _) => const EeApprovalDetailScreen(approvalId: 'A1'),
+          ),
+          GoRoute(
+            path: '/tickets/:id',
+            builder: (context, _) => Scaffold(
+              body: TextButton(
+                key: const Key('back-from-ticket'),
+                onPressed: () => context.pop(),
+                child: const Text('back'),
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(900, 3200);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            eeApprovalsApiProvider.overrideWithValue(_FakeApi()),
+            eeApprovalDetailProvider.overrideWith((ref, id) async {
+              reads += 1;
+              return _window(openTarget: true);
+            }),
+            eeApprovalsProvider.overrideWith(_Empty.new),
+            nowProvider.overrideWithValue(() => _now),
+          ],
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(reads, 1);
+      await tester.tap(_key('ee-approval-open-target'));
+      await tester.pumpAndSettle();
+      await tester.tap(_key('back-from-ticket'));
+      await tester.pumpAndSettle();
+      expect(reads, 2);
+    },
+  );
+
+  testWidgets(
+    'UI-AUDIT #77: a change still waiting for a signature on a window that has passed says so',
+    (tester) async {
+      await _pump(
+        tester,
+        window: () async =>
+            _changeWindow(_now.subtract(const Duration(days: 2))),
+      );
+      expect(_key('change-window-passed'), findsOneWidget);
+    },
+  );
+
+  testWidgets('UI-AUDIT #77: a window still ahead carries no warning', (
+    tester,
+  ) async {
+    await _pump(
+      tester,
+      window: () async => _changeWindow(_now.add(const Duration(days: 2))),
+    );
+    expect(_key('change-window-passed'), findsNothing);
+  });
 }
+
+EeApprovalDetail _changeWindow(DateTime end) => EeApprovalDetail(
+  approval: EeApproval(
+    id: 'A1',
+    targetType: 'ee_change',
+    targetId: 'CH1',
+    status: 'pending',
+    createdAt: _now.subtract(const Duration(days: 9)),
+    canDecide: true,
+  ),
+  signatures: const [],
+  access: const EeApprovalAccess(full: true, edit: false, openTarget: false),
+  change: EeApprovalChangeView(
+    id: 'CH1',
+    title: 'Disk ve RAID kartı değişimi',
+    status: 'awaiting_approval',
+    windowStart: end.subtract(const Duration(hours: 4)),
+    windowEnd: end,
+  ),
+);

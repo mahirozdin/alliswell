@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ee/data/sla_dashboard_models.dart';
 import 'package:alliswell/src/features/ee/sla_dashboard_providers.dart';
 import 'package:alliswell/src/features/ee/ui/sla_dashboard_screen.dart';
@@ -31,8 +34,14 @@ EeSlaDashboard _dash({
   List<EeSlaBucket> byService = const [],
   List<EeSlaBreach> breaches = const [],
   int total = 0,
+  int? judged,
+  bool? hasDefaultPolicy,
+  List<EeSlaBucket> bySla = const [],
 }) => EeSlaDashboard(
   compliance: compliance,
+  judged: judged,
+  hasDefaultPolicy: hasDefaultPolicy,
+  bySla: bySla,
   byStatus: [EeSlaBucket(key: 'new', label: 'new', count: total)],
   byUnit: byUnit,
   byService: byService,
@@ -44,6 +53,24 @@ class _Fixed extends EeSlaDashboardController {
   final EeSlaDashboard? _value;
   @override
   Future<EeSlaDashboard?> build() async => _value;
+}
+
+/// OPH-357 (UI-AUDIT #24): fails once the way a busy server does, then
+/// answers.
+class _FailsOnce extends EeSlaDashboardController {
+  static int calls = 0;
+  @override
+  Future<EeSlaDashboard?> build() async {
+    calls += 1;
+    if (calls == 1) {
+      throw const ApiException(
+        'HTTP_503',
+        'Unexpected server response',
+        statusCode: 503,
+      );
+    }
+    return _dash(compliance: 100.0, total: 5);
+  }
 }
 
 Future<void> _pump(
@@ -85,14 +112,14 @@ void main() {
   testWidgets(
     'a healthy desk reads in the success colour, and says the total',
     (tester) async {
-      await _pump(tester, _dash(compliance: 97.5, total: 40));
+      await _pump(tester, _dash(compliance: 97.5, total: 40, judged: 40));
       final context = tester.element(find.byType(EeSlaDashboardScreen));
       // EE-147: this used to assert '%97.5' — the TURKISH form — under an
       // English locale, which is how the screen shipped a hardcoded percent
       // prefix and the enterprise page's English capture read "%78.4" for a
       // release. A test that asserts the defect is a test that defends it.
       expect(find.text('97.5%'), findsOneWidget);
-      expect(find.text('across 40 requests'), findsOneWidget);
+      expect(find.text('of 40 judged'), findsOneWidget);
       expect(_complianceColour(tester), context.awTokens.success);
     },
   );
@@ -102,7 +129,9 @@ void main() {
   ) async {
     AwI18n.instance.setActiveCached(const Locale('tr'));
     await _pump(tester, _dash(compliance: 97.5, total: 40));
-    expect(find.text('%97.5'), findsOneWidget);
+    // UI-AUDIT #88: and the decimal mark too — "%97,5", never "%97.5".
+    expect(find.text('%97,5'), findsOneWidget);
+    expect(find.text('%97.5'), findsNothing);
     expect(find.text('97.5%'), findsNothing);
   });
 
@@ -117,6 +146,31 @@ void main() {
       expect(_complianceColour(tester), isNot(context.awTokens.warning));
     },
   );
+
+  testWidgets('UI-AUDIT #24: a failed load is translated, never the '
+      "exception's own text, and Retry asks again", (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    _FailsOnce.calls = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: awRetry,
+        overrides: [eeSlaDashboardProvider.overrideWith(_FailsOnce.new)],
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: const EeSlaDashboardScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ApiException'), findsNothing);
+    expect(find.text('error.server'.tr()), findsOneWidget);
+
+    await tester.tap(find.text('common.retry'.tr()));
+    await tester.pumpAndSettle();
+    expect(_FailsOnce.calls, 2);
+    expect(find.byKey(const Key('sla-no-breaches')), findsOneWidget);
+  });
 
   testWidgets('GOOD NEWS GETS A SENTENCE, not an empty list', (tester) async {
     await _pump(tester, _dash(compliance: 100.0, total: 5));
@@ -243,5 +297,128 @@ void main() {
     );
     final context = tester.element(find.byType(EeSlaDashboardScreen));
     expect(_complianceColour(tester), Theme.of(context).colorScheme.error);
+  });
+
+  group('UI-AUDIT OPH-360', () {
+    testWidgets(
+      'UI-AUDIT #52: missed, close and kept are counted, and the percentage says what it is of',
+      (tester) async {
+        await _pump(
+          tester,
+          _dash(
+            compliance: 40.3,
+            total: 199,
+            judged: 191,
+            bySla: const [
+              EeSlaBucket(key: 'met', count: 77),
+              EeSlaBucket(key: 'breached', count: 114),
+              EeSlaBucket(key: 'warned', count: 3),
+              EeSlaBucket(key: 'ok', count: 5),
+            ],
+          ),
+        );
+        Finder inOutcome(String key, String text) => find.descendant(
+          of: find.byKey(Key('sla-outcome-$key')),
+          matching: find.text(text),
+        );
+        expect(inOutcome('breached', '114'), findsOneWidget);
+        expect(inOutcome('warned', '3'), findsOneWidget);
+        expect(inOutcome('met', '77'), findsOneWidget);
+        expect(find.text('of 191 judged'), findsOneWidget);
+        expect(find.textContaining('199'), findsNothing);
+      },
+    );
+
+    test('UI-AUDIT #52: an older server without `judged` is summed here', () {
+      final dash = EeSlaDashboard.fromJson({
+        'compliance': 40.3,
+        'byStatus': [
+          {'key': 'new', 'count': 199},
+        ],
+        'bySla': [
+          {'key': 'met', 'count': 77},
+          {'key': 'breached', 'count': 114},
+          {'key': 'none', 'count': 8},
+        ],
+      });
+      expect(dash.judged, 191);
+      expect(dash.hasDefaultPolicy, isNull);
+    });
+
+    testWidgets('UI-AUDIT #22: no default policy is said above the figure', (
+      tester,
+    ) async {
+      await _pump(tester, _dash(compliance: 40.0, hasDefaultPolicy: false));
+      expect(find.byKey(const Key('sla-no-default-policy')), findsOneWidget);
+      expect(find.text('No default SLA policy'), findsOneWidget);
+    });
+
+    testWidgets(
+      'UI-AUDIT #22: a server that has one, or does not say, shows no warning',
+      (tester) async {
+        await _pump(tester, _dash(compliance: 40.0, hasDefaultPolicy: true));
+        expect(find.byKey(const Key('sla-no-default-policy')), findsNothing);
+        await _pump(tester, _dash(compliance: 40.0));
+        expect(find.byKey(const Key('sla-no-default-policy')), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #53: a missed target carries its number and opens the request',
+      (tester) async {
+        final router = GoRouter(
+          routes: [
+            GoRoute(
+              path: '/',
+              builder: (context, state) => const EeSlaDashboardScreen(),
+            ),
+            GoRoute(
+              path: '/tickets/:id',
+              builder: (context, state) =>
+                  Text('ticket ${state.pathParameters['id']}'),
+            ),
+          ],
+        );
+        await tester.pumpWidget(
+          ProviderScope(
+            overrides: [
+              eeSlaDashboardProvider.overrideWith(
+                () => _Fixed(
+                  _dash(
+                    compliance: 50.0,
+                    breaches: const [
+                      EeSlaBreach(
+                        id: 'T1',
+                        number: 223,
+                        subject: 'Yazıcı arızası',
+                        priority: 'high',
+                        status: 'open',
+                      ),
+                      EeSlaBreach(
+                        id: 'T2',
+                        number: 224,
+                        subject: 'Yazıcı arızası',
+                        priority: 'high',
+                        status: 'resolved',
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+            child: MaterialApp.router(
+              theme: buildAwTheme(Brightness.light),
+              routerConfig: router,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('#223 · Yazıcı arızası'), findsOneWidget);
+        expect(find.text('#224 · Yazıcı arızası'), findsOneWidget);
+        await tester.tap(find.byKey(const Key('sla-breach-T2')));
+        await tester.pumpAndSettle();
+        expect(find.text('ticket T2'), findsOneWidget);
+      },
+    );
   });
 }

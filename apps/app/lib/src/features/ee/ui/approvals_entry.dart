@@ -51,16 +51,29 @@ class EeApprovalsRailEntry extends ConsumerWidget {
         : label;
     void open() => GoRouter.of(context).push(kAwApprovalsPath);
 
+    // OPH-359 (UI-AUDIT #57): in the extended rail the icon sits in the same
+    // centred column as the destinations' icons and the label starts where
+    // theirs do — it used to be drawn 14 px and 32 px to their left, which
+    // read as "not part of this list".
     final child = extended
         ? Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AwSpace.x4,
-              vertical: AwSpace.x3,
+            padding: const EdgeInsets.only(
+              right: AwSpace.x4,
+              top: AwSpace.x3,
+              bottom: AwSpace.x3,
             ),
             child: Row(
               children: [
-                Icon(kAwApprovalsIcon, color: ink),
-                const SizedBox(width: AwSpace.x3),
+                SizedBox(
+                  width: kAwRailMinWidth,
+                  child: Center(
+                    child: Icon(
+                      kAwApprovalsIcon,
+                      key: const Key('nav-approvals-icon'),
+                      color: ink,
+                    ),
+                  ),
+                ),
                 Expanded(
                   child: Text(
                     label,
@@ -104,13 +117,20 @@ class EeApprovalsRailEntry extends ConsumerWidget {
             ),
           );
 
-    return Semantics(
-      button: true,
-      label: semantics,
-      excludeSemantics: true,
-      child: Tooltip(
-        message: 'ee.approvals.navHint'.tr(),
-        waitDuration: const Duration(milliseconds: 600),
+    // UI-AUDIT #12 (retest): ONE node that is the button — its label, and
+    // the InkWell's tap and focus merged into it. `excludeSemantics` here
+    // used to drop the InkWell's own node with them, which left "button"
+    // over nothing: no tap action, not focusable, so on the web no tabindex
+    // — Tab jumped from Requests straight to Quick Access and Enter did
+    // nothing. Only the drawn parts (icon, word, badge) are hidden; the
+    // label above already says all of them.
+    return Tooltip(
+      message: 'ee.approvals.navHint'.tr(),
+      waitDuration: const Duration(milliseconds: 600),
+      excludeFromSemantics: true,
+      child: Semantics(
+        button: true,
+        label: semantics,
         child: InkWell(
           key: const Key('nav-approvals'),
           borderRadius: const BorderRadius.all(Radius.circular(AwRadius.pill)),
@@ -118,7 +138,7 @@ class EeApprovalsRailEntry extends ConsumerWidget {
           // 44 px is the floor for a target (DESIGN §5); a row is taller.
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
-            child: child,
+            child: ExcludeSemantics(child: child),
           ),
         ),
       ),

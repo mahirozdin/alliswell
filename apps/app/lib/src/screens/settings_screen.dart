@@ -7,9 +7,11 @@ import 'package:markdown_forge/markdown_forge.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
+import '../core/server_url.dart' show prettyServerUrl;
 import '../features/ai/ui/ai_settings_card.dart';
 import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
+import '../features/auth/ui/sign_out.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/workspaces/workspaces.dart';
@@ -23,6 +25,7 @@ import '../features/settings/server_url_sheet.dart';
 import '../features/widgets/widget_bridge.dart' show widgetsSupportedPlatform;
 import '../features/ee/providers.dart' show canProvider, eeFeatureProvider;
 import '../features/ee/team_admin_providers.dart';
+import '../features/ee/team_origin.dart';
 import '../features/ee/ui/notification_badge.dart';
 import '../features/ee/units_providers.dart';
 import '../i18n/i18n.dart';
@@ -33,6 +36,7 @@ import '../notifications/providers.dart';
 import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
 import '../features/ee/assignments_providers.dart';
+import '../widgets/route_leading.dart';
 
 /// Settings, as an index (OPH-260, DESIGN §32).
 ///
@@ -67,8 +71,16 @@ class SettingsScreen extends ConsumerWidget {
         teamAdmin && ref.watch(canProvider(permission));
     // Anyone whose workspace has a roster — the replica's own data, so it is
     // right offline and simply absent on a plain build (EE-068's gate).
+    //
+    // OPH-356 (UI-AUDIT #7): and only where the team answers. On the
+    // service's own address every one of these rows opened a screen that
+    // could only say 404 — "you have not asked for anything", "you may not" —
+    // so they give way to ONE row that says where the team is.
+    final addressRequired = ref.watch(eeTeamAddressRequiredProvider);
     final inTeam =
-        ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false;
+        !addressRequired &&
+        (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false);
+    final teamHint = ref.watch(eeTeamAddressHintProvider);
     return _SettingsPage(
       title: 'settings.title'.tr(),
       children: [
@@ -147,6 +159,30 @@ class SettingsScreen extends ConsumerWidget {
                 subtitleKey: 'settings.group.dataSub',
                 path: '/settings/data',
               ),
+              if (addressRequired)
+                ListTile(
+                  key: const Key('settings-team-address-required'),
+                  leading: const Icon(Icons.domain_outlined),
+                  title: Text('ee.teamAddress.requiredTitle'.tr()),
+                  subtitle: Text(
+                    teamHint?.origin == null
+                        ? 'ee.teamAddress.settingsRowBody'.tr()
+                        : 'ee.teamAddress.settingsRowHint'.tr(
+                            args: {
+                              'team': teamHint!.name,
+                              'host': prettyServerUrl(teamHint.origin!),
+                            },
+                          ),
+                  ),
+                  trailing: const Icon(Icons.swap_horiz),
+                  onTap: teamHint?.origin == null
+                      ? () => showServerUrlSheet(context)
+                      : () => switchToTeamOrigin(
+                          ProviderScope.containerOf(context, listen: false),
+                          teamHint!.origin!,
+                          router: GoRouter.of(context),
+                        ),
+                ),
               // EE-042: present only where there is a team AND the caller
               // runs it. Both halves matter — the entitlement decides whether
               // the capability exists, the role decides whether this person
@@ -242,6 +278,16 @@ class SettingsScreen extends ConsumerWidget {
                   titleKey: 'settings.group.portal',
                   subtitleKey: 'settings.group.portalSub',
                   path: '/settings/team/portal',
+                ),
+              // OPH-360 (UI-AUDIT #18): the companies and their people. A
+              // plain role verb, the same gate shape as the rows above.
+              if (may('customers.manage'))
+                _GroupRow(
+                  keyName: 'settings-group-customers',
+                  icon: Icons.business_outlined,
+                  titleKey: 'settings.group.customers',
+                  subtitleKey: 'settings.group.customersSub',
+                  path: '/settings/team/customers',
                 ),
               // EE-111: the team's AI keys and the personal-key policy. Same
               // gate shape as the two rows above — a permission, not an
@@ -364,7 +410,8 @@ class SettingsScreen extends ConsumerWidget {
               ),
             ),
             // Router redirect drops the user on /login once state clears.
-            onTap: () => ref.read(authControllerProvider.notifier).logout(),
+            // Asks first when unsent changes would be deleted (OPH-355).
+            onTap: () => signOutWithConfirm(context, ref),
           ),
         ),
       ],
@@ -421,7 +468,7 @@ class _SettingsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    appBar: AppBar(title: Text(title)),
+    appBar: AppBar(leading: awRouteLeading(context), title: Text(title)),
     body: Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 720),
@@ -712,7 +759,8 @@ class SettingsNotificationsScreen extends ConsumerWidget {
             // somebody looking for notification settings looks first; the
             // guide sent them to a screen with no door. Team-only, by the
             // replica's roster.
-            if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+            if (!ref.watch(eeTeamAddressRequiredProvider) &&
+                (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false))
               ListTile(
                 key: const Key('settings-team-notification-prefs'),
                 leading: const Icon(Icons.forum_outlined),

@@ -6,6 +6,7 @@ import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../widgets/sheets.dart';
 import '../kb_providers.dart';
+import '../services_providers.dart';
 
 /// Writing an article (EE-196).
 ///
@@ -63,6 +64,11 @@ class _KbEditorSheetState extends ConsumerState<_KbEditorSheet> {
   bool _busy = false;
   String? _error;
 
+  /// UI-AUDIT #36: the service the article answers. The door offers a
+  /// published article to whoever files a request for ITS service (EE-226),
+  /// so an article with none is offered to nobody — the sheet says so.
+  late String? _serviceId = widget.existing?.serviceId;
+
   @override
   void dispose() {
     _title.dispose();
@@ -88,6 +94,7 @@ class _KbEditorSheetState extends ConsumerState<_KbEditorSheet> {
           symptom: _symptom.text.trim(),
           environment: _nullable(_environment.text),
           solution: _nullable(_solution.text),
+          serviceId: _serviceId,
         );
       } else {
         final patch = <String, dynamic>{};
@@ -103,6 +110,9 @@ class _KbEditorSheetState extends ConsumerState<_KbEditorSheet> {
         if (_nullable(_solution.text) != existing.solution) {
           patch['solution'] = _nullable(_solution.text);
         }
+        if (_serviceId != existing.serviceId) {
+          patch['serviceId'] = _serviceId;
+        }
         if (patch.isNotEmpty) await api.update(existing.id, patch);
         ref.invalidate(eeKbArticleProvider(existing.id));
       }
@@ -115,6 +125,39 @@ class _KbEditorSheetState extends ConsumerState<_KbEditorSheet> {
         });
       }
     }
+  }
+
+  Widget _servicePicker(BuildContext context) {
+    final glances = ref.watch(eeServiceGlancesProvider);
+    final services = [
+      for (final service in glances.values)
+        if (!service.archived || service.id == _serviceId) service,
+    ]..sort((a, b) => a.name.compareTo(b.name));
+    final known = _serviceId == null || glances.containsKey(_serviceId);
+    return DropdownButtonFormField<String?>(
+      key: const Key('kb-field-service'),
+      initialValue: known ? _serviceId : null,
+      isExpanded: true,
+      decoration: InputDecoration(
+        labelText: 'ee.kb.fieldService'.tr(),
+        helperText: _serviceId == null
+            ? 'ee.kb.fieldServiceNone'.tr()
+            : 'ee.kb.fieldServiceHelp'.tr(),
+        helperMaxLines: 3,
+      ),
+      items: [
+        DropdownMenuItem<String?>(
+          value: null,
+          child: Text('ee.kb.noService'.tr()),
+        ),
+        for (final service in services)
+          DropdownMenuItem<String?>(
+            value: service.id,
+            child: Text(service.name, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: _busy ? null : (value) => setState(() => _serviceId = value),
+    );
   }
 
   @override
@@ -177,6 +220,8 @@ class _KbEditorSheetState extends ConsumerState<_KbEditorSheet> {
                 helperText: 'ee.kb.fieldSolutionHelp'.tr(),
               ),
             ),
+            const SizedBox(height: 12),
+            _servicePicker(context),
             if (_error != null) ...[
               const SizedBox(height: 12),
               Text(

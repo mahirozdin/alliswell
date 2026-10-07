@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:alliswell/src/features/quick_access/ui/bubble_physics.dart';
+import 'package:alliswell/src/widgets/fab_clearance.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/data/portal_links_models.dart';
@@ -11,6 +14,7 @@ import 'package:alliswell/src/features/ee/ui/portal_links_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-106 — the management screen, asserted where it would mislead.
 ///
@@ -28,9 +32,33 @@ import 'package:alliswell/src/theme/tokens.dart';
 class _Fixed extends EePortalLinksController {
   _Fixed(this._value);
   final EePortalLinksData? _value;
+  final calls = <String>[];
   @override
   Future<EePortalLinksData?> build() async => _value;
+
+  @override
+  Future<void> extend(String id, int ttlHours) async =>
+      calls.add('extend $id $ttlHours');
+
+  @override
+  Future<void> revoke(String id) async => calls.add('revoke $id');
+
+  @override
+  Future<EePortalLinkCreated> create({
+    String? serviceId,
+    List<String>? serviceIds,
+    String? unitId,
+    int? ttlHours,
+  }) async {
+    calls.add('create $serviceId $ttlHours');
+    return EePortalLinkCreated(
+      link: _link(),
+      url: 'https://team.example.com/p/TOKEN',
+    );
+  }
 }
+
+late _Fixed _controller;
 
 class _FixedServices extends EeServicesController {
   _FixedServices(this._value);
@@ -63,16 +91,22 @@ Future<void> _pump(
   WidgetTester tester,
   EePortalLinksData? value, {
   Brightness brightness = Brightness.light,
+  double bubbleClearance = 0,
 }) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        eePortalLinksProvider.overrideWith(() => _Fixed(value)),
+        eePortalLinksProvider.overrideWith(() => _controller = _Fixed(value)),
         eeServicesProvider.overrideWith(() => _FixedServices(_services)),
+        // OPH-356: the create button waits for a yes.
+        canProvider.overrideWith((ref, id) => true),
       ],
-      child: MaterialApp(
-        theme: buildAwTheme(brightness),
-        home: const EePortalLinksScreen(),
+      child: AwBubbleClearance(
+        extent: bubbleClearance,
+        child: MaterialApp(
+          theme: buildAwTheme(brightness),
+          home: const EePortalLinksScreen(),
+        ),
       ),
     ),
   );
@@ -315,6 +349,281 @@ void main() {
         expect(read({'attachmentScan': 'on'}).attachmentScanOn, isTrue);
         expect(read({'attachmentScan': 'off'}).attachmentScanOn, isFalse);
         expect(read({}).attachmentScanOn, isFalse);
+      },
+    );
+  });
+
+  group('UI-AUDIT OPH-360', () {
+    EePortalLinksData one(EePortalLink link) => EePortalLinksData(
+      links: [link],
+      linkQuota: const EePortalQuota(used: 1),
+      ticketQuota: const EePortalQuota(used: 0),
+    );
+
+    testWidgets(
+      'UI-AUDIT #13: extend asks how long, shows the end it adds to, and never sends a fixed 48',
+      (tester) async {
+        final end = DateTime.now().add(const Duration(days: 30));
+        await _pump(
+          tester,
+          one(
+            EePortalLink(
+              id: 'L1',
+              serviceId: 'S1',
+              state: EePortalLinkState.active,
+              enabled: true,
+              expiresAt: end,
+            ),
+          ),
+        );
+        await tester.tap(find.byKey(const Key('portal-menu-L1')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('48'), findsNothing);
+        await tester.tap(find.text('Extend…'));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('portal-extend-dialog')), findsOneWidget);
+        // Nothing has been sent yet: extending is a decision now.
+        expect(_controller.calls, isEmpty);
+        final l10n = MaterialLocalizations.of(
+          tester.element(find.byKey(const Key('portal-extend-dialog'))),
+        );
+        // The new end is counted from the present end, as the server does.
+        expect(
+          find.textContaining(
+            l10n.formatShortDate(end.add(const Duration(days: 7))),
+          ),
+          findsOneWidget,
+        );
+        for (final label in ['1 day', '2 days', '7 days', '30 days']) {
+          expect(find.text(label), findsOneWidget);
+        }
+        await tester.tap(find.byKey(const Key('portal-extend-7')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('portal-extend-confirm')));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, ['extend L1 168']);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #13: walking away from the extend dialog sends nothing',
+      (tester) async {
+        await _pump(tester, one(_link()));
+        await tester.tap(find.byKey(const Key('portal-menu-L1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Extend…'));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Keep it'));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, isEmpty);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #68: validity is offered in days, never "720 hours"',
+      (tester) async {
+        await _pump(tester, one(_link()));
+        await tester.tap(find.byKey(const Key('portal-create')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('portal-ttl')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('hours'), findsNothing);
+        expect(find.text('30 days'), findsWidgets);
+        await tester.tap(find.text('30 days').last);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('portal-create-confirm')));
+        await tester.pumpAndSettle();
+        // The wire still speaks hours.
+        expect(_controller.calls, ['create S1 720']);
+        await tester.tap(find.text('Done'));
+        await tester.pumpAndSettle(const Duration(seconds: 5));
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #67: a row names its services, its desk and the day it was made',
+      (tester) async {
+        final made = DateTime(2026, 9, 20);
+        await _pump(
+          tester,
+          one(
+            EePortalLink(
+              id: 'L1',
+              serviceCount: 2,
+              serviceNames: const ['Elektrik arızası', 'Aydınlatma'],
+              unitName: 'Bakım',
+              state: EePortalLinkState.active,
+              enabled: true,
+              expiresAt: DateTime(2026, 11, 6),
+              createdAt: made,
+            ),
+          ),
+        );
+        expect(_inTile('L1', 'Elektrik arızası, Aydınlatma'), findsOneWidget);
+        expect(_inTile('L1', 'Bakım'), findsOneWidget);
+        expect(_inTile('L1', 'made'), findsOneWidget);
+        expect(_inTile('L1', '2 services'), findsNothing);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #67: three links for one service, desk and day differ by the '
+      'minute they were made — and twins in the same minute by their reference',
+      (tester) async {
+        EePortalLink made(String id, DateTime at) => EePortalLink(
+          id: id,
+          serviceId: 'S1',
+          serviceNames: const ['Yazılım kurulumu'],
+          unitName: 'Bilgi İşlem',
+          state: EePortalLinkState.active,
+          enabled: true,
+          expiresAt: DateTime(2026, 11, 6),
+          createdAt: at,
+        );
+        await _pump(
+          tester,
+          EePortalLinksData(
+            links: [
+              made('01LINKAAAAAAAAAAAAAAAAAAA1', DateTime(2026, 10, 7, 9, 15)),
+              made('01LINKAAAAAAAAAAAAAAAQRST2', DateTime(2026, 10, 7, 14, 2)),
+              made('01LINKAAAAAAAAAAAAAAAWXYZ3', DateTime(2026, 10, 7, 14, 2)),
+            ],
+            linkQuota: const EePortalQuota(used: 3),
+            ticketQuota: const EePortalQuota(used: 0),
+          ),
+        );
+        String subtitleOf(String id) =>
+            (tester
+                        .widget<ListTile>(find.byKey(Key('portal-link-$id')))
+                        .subtitle!
+                    as Text)
+                .data!;
+        final rows = [
+          subtitleOf('01LINKAAAAAAAAAAAAAAAAAAA1'),
+          subtitleOf('01LINKAAAAAAAAAAAAAAAQRST2'),
+          subtitleOf('01LINKAAAAAAAAAAAAAAAWXYZ3'),
+        ];
+        expect(rows.toSet(), hasLength(3), reason: rows.join('\n'));
+        // The lone 09:15 row needs no reference; the 14:02 twins carry one.
+        expect(rows[0], isNot(contains('ref.')));
+        expect(rows[1], contains('ref. AQRST2'));
+        expect(rows[2], contains('ref. AWXYZ3'));
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT #57 (retest): on a phone the last row\'s menu can always be '
+      'scrolled up from under the Quick Access bubble',
+      (tester) async {
+        const viewport = Size(390, 844);
+        tester.view.physicalSize = viewport;
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final origin = bubbleOrigin(
+          kBubbleFactoryPosition,
+          viewport,
+          EdgeInsets.zero,
+          0,
+        );
+        final bubble = origin & const Size.square(kBubbleDiameter);
+        await _pump(
+          tester,
+          EePortalLinksData(
+            links: [for (var i = 1; i <= 6; i++) _link(id: 'L$i')],
+            linkQuota: const EePortalQuota(used: 6),
+            ticketQuota: const EePortalQuota(used: 0),
+          ),
+          bubbleClearance: bubbleClearance(origin, viewport),
+        );
+        await tester.drag(find.byType(ListView), const Offset(0, -2000));
+        await tester.pumpAndSettle();
+        // Scrolled to the end, no row's menu is left under the button — the
+        // end of the list is room, not rows (on a 4-row list the 4th row's
+        // menu used to stay under it for good).
+        for (var i = 1; i <= 6; i++) {
+          final finder = find.byKey(Key('portal-menu-L$i'));
+          if (finder.evaluate().isEmpty) continue;
+          final menu = tester.getRect(finder);
+          expect(
+            menu.overlaps(bubble),
+            isFalse,
+            reason: 'L$i menu $menu stays under the bubble $bubble',
+          );
+        }
+      },
+    );
+
+    test('UI-AUDIT #67: an older server without the fields still parses', () {
+      final link = EePortalLink.fromJson({
+        'id': 'L1',
+        'serviceId': null,
+        'serviceCount': 2,
+        'state': 'active',
+        'enabled': true,
+        'expiresAt': '2026-09-01T12:00:00.000Z',
+      });
+      expect(link.serviceNames, isEmpty);
+      expect(link.unitName, isNull);
+      expect(link.createdAt, isNull);
+    });
+
+    testWidgets(
+      'UI-AUDIT #65 #64: revoking asks "Keep it" or "Revoke link" in the error role, and the dialog is named',
+      (tester) async {
+        await _pump(tester, one(_link()));
+        await tester.tap(find.byKey(const Key('portal-menu-L1')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text('Revoke'));
+        await tester.pumpAndSettle();
+        expect(find.text('Keep it'), findsOneWidget);
+        expect(find.text('Cancel'), findsNothing);
+        final confirm = tester.widget<FilledButton>(
+          find.byKey(const Key('portal-revoke-confirm')),
+        );
+        expect(find.text('Revoke link'), findsOneWidget);
+        final scheme = buildAwTheme(Brightness.light).colorScheme;
+        expect(confirm.style?.backgroundColor?.resolve(const {}), scheme.error);
+        final dialog = tester.widget<AlertDialog>(find.byType(AlertDialog));
+        expect(dialog.semanticLabel, isNotEmpty);
+        await tester.tap(find.byKey(const Key('portal-revoke-confirm')));
+        await tester.pumpAndSettle();
+        expect(_controller.calls, ['revoke L1']);
+      },
+    );
+
+    testWidgets(
+      'UI-AUDIT D2: a refused clipboard says so instead of failing silently',
+      (tester) async {
+        tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+          SystemChannels.platform,
+          (call) async {
+            if (call.method == 'Clipboard.setData') {
+              throw PlatformException(code: 'denied');
+            }
+            return null;
+          },
+        );
+        addTearDown(
+          () => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
+            SystemChannels.platform,
+            null,
+          ),
+        );
+        await _pump(tester, one(_link()));
+        await tester.tap(find.byKey(const Key('portal-create')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('portal-create-confirm')));
+        await tester.pumpAndSettle();
+        final dialog = tester.widget<AlertDialog>(
+          find.byKey(const Key('portal-url-once')),
+        );
+        expect(dialog.semanticLabel, 'Link created');
+        await tester.tap(find.byKey(const Key('portal-url-copy')));
+        await tester.pumpAndSettle();
+        expect(find.textContaining('Could not copy'), findsOneWidget);
+        expect(find.text('Copied'), findsNothing);
+        await tester.tap(find.text('Done'));
+        await tester.pumpAndSettle(const Duration(seconds: 5));
       },
     );
   });

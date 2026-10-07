@@ -49,6 +49,11 @@ abstract class AlertCache {
   /// privacy mode already produces, so a cache miss and a private device read
   /// identically instead of inventing a third voice.
   Future<void> putFallback(AlertText text);
+
+  /// Drops every reminder's text — sign-out (OPH-355): the words are the
+  /// person's tasks, and the next person to use this browser must not find
+  /// them. The fallback stays; it says nothing about anybody.
+  Future<void> clear();
 }
 
 AlertCache createAlertCache() => impl.createAlertCache();

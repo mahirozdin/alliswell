@@ -10,6 +10,11 @@ abstract interface class LocalKv {
   Future<String?> get(String key);
   Future<void> set(String key, String value);
   Future<void> remove(String key);
+
+  /// Removes every key [test] accepts — what sign-out uses to drop the keys
+  /// that belong to a person rather than to the device (OPH-355). Must never
+  /// throw, like the rest.
+  Future<void> removeWhere(bool Function(String key) test);
 }
 
 /// Process-wide instance — persistence has no per-caller state.

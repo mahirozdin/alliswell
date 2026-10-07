@@ -64,9 +64,18 @@ class AwColorPicker extends ConsumerWidget {
     final theme = Theme.of(context);
     final recents = awRecentColorsFor(ref.watch(recentColorsProvider), palette);
 
+    final paletteNames = awColorNames([
+      for (final hex in palette) colorOf(hex),
+    ]);
+    String? nameOf(String hex) {
+      final i = palette.indexOf(hex);
+      return i < 0 ? null : paletteNames[i];
+    }
+
     Widget dot(String hex, {required String keyName}) => AwColorSwatchDot(
       key: Key(keyName),
       color: colorOf(hex),
+      semanticLabel: nameOf(hex),
       selected: selected?.toUpperCase() == hex.toUpperCase(),
       onTap: () {
         // Remembered before it is applied: the caller may close the sheet.

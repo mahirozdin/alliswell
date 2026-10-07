@@ -62,5 +62,5 @@ in the last text block, so a tag quoted earlier ends it with the wrong text.
   them. Both commands here were dry-run through the plugin's argument loop (2026-09-26).
 - `/ralph-baslat` computes the same for a scope: here it takes
   `--manuel "OPH-351 → OPH-356" --adet 6`, since this repo has no TODO.md.
-- 2026-09-26: nothing is ready (`next` exits 3 — OPH-142, OPH-273 and OPH-274 wait on the owner),
-  so there is no loop to start until a task is unparked or an epic is planned.
+- 2026-10-07: Epic 34 is ready (OPH-355…OPH-360, 6 tasks; OPH-355 and OPH-357 are critical
+  paths, so their batches are 2).

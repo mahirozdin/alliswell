@@ -10,6 +10,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/share_intent.dart';
 import '../data/share_log.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The share log (OPH-242): a plain, read-only list of what actually reached
 /// the app when something was shared to it, newest first, plus one sentence of
@@ -43,6 +44,7 @@ class ShareLogScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('shareLog.title'.tr()),
         actions: [
           IconButton(

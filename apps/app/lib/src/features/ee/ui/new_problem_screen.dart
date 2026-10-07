@@ -10,6 +10,7 @@ import '../../../widgets/status_views.dart';
 import '../data/problems_models.dart';
 import '../problems_providers.dart';
 import 'problem_detail_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// Raising a problem record from the phone (EE-270 box 2, EE-280).
 ///
@@ -102,6 +103,7 @@ class _EeNewProblemScreenState extends ConsumerState<EeNewProblemScreen> {
     final source = widget.source;
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text(
           source == null
               ? 'ee.problems.create.title'.tr()

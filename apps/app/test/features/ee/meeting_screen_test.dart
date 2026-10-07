@@ -4,7 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/features/ee/data/meeting_models.dart';
+import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/features/ee/meetings_providers.dart';
+import 'package:alliswell/src/features/ee/providers.dart' show canProvider;
 import 'package:alliswell/src/features/ee/ui/meeting_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
@@ -40,6 +42,7 @@ EeMeetingDetail _detail({
   Map<String, String> names = const {},
   bool withTranscript = true,
   String? failureMessage,
+  String? failureCode,
   EeDecisionRecord? record,
 }) => EeMeetingDetail(
   summary: EeMeetingSummary(
@@ -55,6 +58,7 @@ EeMeetingDetail _detail({
     durationMs: 3600000,
     noteId: 'N1',
     failureMessage: failureMessage,
+    failureCode: failureCode,
   ),
   decisions: [
     EeMeetingDecision(
@@ -89,6 +93,8 @@ Future<void> _pump(
   // Those cases pump a frame instead, which is enough: the claim is what the
   // screen SAYS, not that it has stopped moving.
   bool settle = true,
+  List<String> grants = const [],
+  Object? error,
 }) async {
   // A TALL surface, on purpose. The transcript is a lazy list: a row that has
   // not been laid out has no element, so on the default 800x600 canvas the
@@ -103,7 +109,10 @@ Future<void> _pump(
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
-        eeMeetingProvider('M1').overrideWith((ref) => Future.value(value)),
+        eeMeetingProvider('M1').overrideWith(
+          (ref) => error != null ? Future.error(error) : Future.value(value),
+        ),
+        canProvider.overrideWith((ref, id) => grants.contains(id)),
       ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),
@@ -292,5 +301,92 @@ void main() {
     );
     expect(_inRow(3, 'Ayşe'), findsOneWidget);
     expect(_inRow(1, '1:05'), findsOneWidget);
+  });
+
+  // OPH-359 — UI-AUDIT #54 and #63.
+  group('UI-AUDIT #54: a failed meeting says why, in the reader\'s words', () {
+    testWidgets('the failure CODE is translated; the English message is not '
+        'drawn', (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      await _pump(
+        tester,
+        _detail(
+          status: EeMeetingStatus.failed,
+          withTranscript: false,
+          failureCode: 'MEETING_NO_TRANSCRIBER',
+          failureMessage:
+              'This team has no transcription provider configured. Add one '
+              'under Team AI keys.',
+        ),
+      );
+      expect(
+        find.text('ee.meeting.failure.MEETING_NO_TRANSCRIBER'.tr()),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining('transcription provider configured'),
+        findsNothing,
+      );
+      // Only somebody who may fix it is offered the way to.
+      expect(find.byKey(const Key('meeting-failure-ai-keys')), findsNothing);
+    });
+
+    testWidgets('a team admin gets the way to the AI keys', (tester) async {
+      await _pump(
+        tester,
+        _detail(
+          status: EeMeetingStatus.failed,
+          withTranscript: false,
+          failureCode: 'MEETING_NO_TRANSCRIBER',
+        ),
+        grants: const ['team.manage_ai_keys'],
+      );
+      expect(find.byKey(const Key('meeting-failure-ai-keys')), findsOneWidget);
+    });
+
+    testWidgets('a code this build does not know still gets a sentence', (
+      tester,
+    ) async {
+      await _pump(
+        tester,
+        _detail(
+          status: EeMeetingStatus.failed,
+          withTranscript: false,
+          failureCode: 'MEETING_SOMETHING_NEW',
+        ),
+      );
+      expect(find.text('ee.meeting.failure.generic'.tr()), findsOneWidget);
+    });
+  });
+
+  group('UI-AUDIT #63 / EE-303: a meeting that is not there', () {
+    for (final (label, error) in [
+      (
+        'coded',
+        const ApiException(
+          'MEETING_NOT_FOUND',
+          'Meeting not found',
+          statusCode: 404,
+        ),
+      ),
+      (
+        'codeless (an older server)',
+        const ApiException(
+          'HTTP_404',
+          'Unexpected server response',
+          statusCode: 404,
+        ),
+      ),
+    ]) {
+      testWidgets('a $label 404 reads "meeting not found" in Turkish', (
+        tester,
+      ) async {
+        AwI18n.instance.setActiveCached(const Locale('tr'));
+        await _pump(tester, null, error: error);
+        expect(find.byKey(const Key('meeting-not-found')), findsOneWidget);
+        expect(find.text('ee.meeting.notFound'.tr()), findsOneWidget);
+        expect(find.textContaining('Unexpected'), findsNothing);
+      });
+    }
   });
 }

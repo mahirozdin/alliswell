@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/api_exception.dart';
 import 'models.dart';
 
 /// Raw HTTP calls to `/api/v1/auth/*`. No Authorization header is required by
@@ -76,24 +77,15 @@ class AuthApi {
     }
   }
 
+  /// One mapping for every API failure (`asApiException`), so a codeless
+  /// 429 carries its wait here too (OPH-357, UI-AUDIT #24).
   AuthException _asAuthException(DioException e) {
-    final data = e.response?.data;
-    if (data is Map<String, dynamic> && data['code'] is String) {
-      final message = data['message'];
-      return AuthException(
-        data['code'] as String,
-        message is String ? message : 'Request failed',
-      );
-    }
-    if (e.response != null) {
-      return AuthException(
-        'HTTP_${e.response!.statusCode}',
-        'Unexpected server response',
-      );
-    }
-    return const AuthException(
-      'NETWORK_ERROR',
-      'Could not reach the AllisWell server',
+    final api = asApiException(e);
+    return AuthException(
+      api.code,
+      api.message,
+      statusCode: api.statusCode,
+      retryAfter: api.retryAfter,
     );
   }
 }

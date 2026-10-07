@@ -15,9 +15,11 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../data/api_key_models.dart';
 import '../providers.dart';
 import 'api_docs_row.dart';
+import '../../../widgets/route_leading.dart';
 
 /// API access (OPH-265, ADR-0032): the keys a person hands to their own
 /// scripts.
@@ -53,7 +55,10 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
   Widget build(BuildContext context) {
     final keys = ref.watch(apiKeysProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('apiKeys.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('apiKeys.title'.tr()),
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
@@ -97,14 +102,30 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
   Widget _list(List<ApiKey> list) {
     final dateFormat = ref.watch(dateFormatProvider);
     return ListView(
-      padding: awListPadding(context, top: AwSpace.x2),
+      padding: awListPadding(context, top: AwSpace.x2, fab: true),
       children: [
         Card(
           child: Padding(
             padding: const EdgeInsets.all(AwSpace.x4),
-            child: Text(
-              'apiKeys.intro'.tr(),
-              style: Theme.of(context).textTheme.bodyMedium,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'apiKeys.intro'.tr(),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                // OPH-360 (UI-AUDIT #65): which workspace these keys reach —
+                // a key is bound to one, and the list is that one's.
+                if (ref.watch(currentWorkspaceProvider).value?.name
+                    case final name?) ...[
+                  const SizedBox(height: AwSpace.x2),
+                  Text(
+                    'apiKeys.boundTo'.tr(args: {'name': name}),
+                    key: const Key('api-key-bound-to'),
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ],
+              ],
             ),
           ),
         ),
@@ -205,33 +226,31 @@ class _ApiKeysScreenState extends ConsumerState<ApiKeysScreen> {
     ),
   );
 
+  /// UI-AUDIT D2's rule: the secret is shown once, so a refused clipboard
+  /// says so while the dialog can still be read.
   Future<void> _copySecret(String secret) async {
-    await Clipboard.setData(ClipboardData(text: secret));
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('apiKeys.copied'.tr())));
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      await Clipboard.setData(ClipboardData(text: secret));
+      messenger.showSnackBar(SnackBar(content: Text('apiKeys.copied'.tr())));
+    } catch (_) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('apiKeys.copyFailed'.tr())),
+      );
+    }
   }
 
   Future<void> _revoke(ApiKey key) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('apiKeys.revokeConfirmTitle'.tr(args: {'name': key.name})),
-        content: Text('apiKeys.revokeConfirmBody'.tr()),
-        actions: [
-          TextButton(
-            key: const Key('api-key-revoke-cancel'),
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('common.cancel'.tr()),
-          ),
-          FilledButton(
-            key: const Key('api-key-revoke-confirm'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('apiKeys.revoke'.tr()),
-          ),
-        ],
-      ),
+    // OPH-360 (UI-AUDIT #65): "Keep it" beside "Revoke key", the
+    // irreversible one in the error role — not "Cancel" beside "Revoke".
+    final confirmed = await awConfirmDelete(
+      context,
+      title: 'apiKeys.revokeConfirmTitle'.tr(args: {'name': key.name}),
+      body: 'apiKeys.revokeConfirmBody'.tr(),
+      confirmLabel: 'apiKeys.revokeConfirm'.tr(),
+      cancelLabel: 'apiKeys.keep'.tr(),
+      confirmKey: const Key('api-key-revoke-confirm'),
+      cancelKey: const Key('api-key-revoke-cancel'),
     );
     if (confirmed != true) return;
 

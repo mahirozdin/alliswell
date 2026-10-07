@@ -116,8 +116,8 @@ describe('GET /notes/:id/export (OPH-045)', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.headers['content-type']).toBe('text/markdown; charset=utf-8');
-    // slugify drops the dotless ı (no NFKD decomposition) — "gezi-plan".
-    expect(res.headers['content-disposition']).toBe('attachment; filename="gezi-plan.md"');
+    // The dotless ı folds to i (OPH-357) — it used to vanish ("gezi-plan").
+    expect(res.headers['content-disposition']).toBe('attachment; filename="gezi-plani.md"');
     // ADR-0033: the title lives in its own column and the STORED body never
     // repeats it, so a file that has to stand on its own gets its heading here.
     expect(res.body).toBe('# Gezi Planı\n\nRota ve **malzeme**');

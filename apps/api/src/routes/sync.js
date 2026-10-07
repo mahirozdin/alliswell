@@ -1619,6 +1619,56 @@ export default async function syncRoutes(app) {
     };
   }
 
+  /**
+   * OPH-362 (UI-AUDIT R2-1) — an accepted write that did not survive its own
+   * transaction.
+   *
+   * A hook or a write observer may retire the very row a client just wrote,
+   * in the same transaction: the extension's request draft becomes a request
+   * on arrival and leaves a tombstone behind. The client used to learn that
+   * only from the pull that follows its push — and a push whose pull never
+   * came (the engine carrying it stood down with an empty outbox, a page
+   * changed under it, the network dropped between the two calls) left the
+   * draft on the device saying "waiting to become a request" beside the very
+   * request it had become, for the rest of the session.
+   *
+   * So the answer itself says so: an applied create or update whose entity
+   * pull would now deliver as a tombstone carries `rebase: { present: false }`,
+   * exactly the shape a refusal's rebase already has and every client already
+   * applies. Replays included — a device that lost the first answer gets the
+   * same fact on its resend. One loader call per entity type per push, and
+   * only for types with a loader (the same ones pull can describe).
+   */
+  async function markGoneAfterWrite(ctx, mutations, results) {
+    const byType = new Map();
+    mutations.forEach((mutation, i) => {
+      const result = results[i];
+      if (result.status !== 'applied' && result.status !== 'merged') return;
+      if (mutation.operation === 'delete' || !SNAPSHOT_LOADERS[mutation.entityType]) return;
+      if (!byType.has(mutation.entityType)) byType.set(mutation.entityType, []);
+      byType.get(mutation.entityType).push(i);
+    });
+    for (const [type, indexes] of byType) {
+      const entry = SNAPSHOT_LOADERS[type];
+      const load = typeof entry === 'function' ? entry : entry.load;
+      const ids = [...new Set(indexes.map((i) => mutations[i].entityId))];
+      const { rows } = await load(ids, { userId: ctx.userId });
+      const byId = new Map(rows.map((row) => [row.id, row]));
+      for (const i of indexes) {
+        const row = byId.get(mutations[i].entityId);
+        // The pull rule, word for word: a soft-deleted row is a tombstone,
+        // and so is a missing one — unless the type is per-user, where a row
+        // the loader withholds is somebody else's, not gone.
+        const gone = row ? row.deleted_at != null : !entry.userScoped;
+        if (!gone) continue;
+        results[i] = {
+          ...results[i],
+          rebase: { entityType: type, entityId: mutations[i].entityId, present: false },
+        };
+      }
+    }
+  }
+
   async function processMutation(ctx, mutation) {
     const replayed = await findRecorded(ctx, mutation);
     if (replayed) return { clientMutationId: mutation.clientMutationId, ...replayed };
@@ -1736,6 +1786,9 @@ export default async function syncRoutes(app) {
                     // What the row really looks like after a refusal, so a
                     // client can rebase instead of keeping a write nobody
                     // accepted. `present: false` = drop your local copy.
+                    // OPH-362: also on an APPLIED write the server's own rules
+                    // retired in the same transaction (a draft that became a
+                    // request) — then only ever `present: false`.
                     rebase: {
                       type: 'object',
                       properties: {
@@ -1786,6 +1839,7 @@ export default async function syncRoutes(app) {
       for (const mutation of mutations) {
         results.push(await processMutation(ctx, mutation));
       }
+      await markGoneAfterWrite(ctx, mutations, results);
 
       const ws = await app.db('workspaces').where({ id: workspaceId }).first('revision');
       return { workspaceId, toRevision: Number(ws.revision), results };

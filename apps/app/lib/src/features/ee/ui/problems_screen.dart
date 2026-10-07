@@ -14,6 +14,9 @@ import '../providers.dart';
 import 'new_problem_screen.dart';
 import 'problem_detail_screen.dart';
 import 'problem_labels.dart';
+import '../../../widgets/route_leading.dart';
+import 'unit_scope.dart';
+import '../../workspaces/ui/workspace_switcher.dart';
 
 /// Known faults (EE-270, AW-E09's problem half) — the list.
 ///
@@ -40,8 +43,11 @@ class EeProblemsScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('ee.problems.title'.tr()),
+        leading: awRouteLeading(context),
+        title: EeUnitScopedTitle(title: 'ee.problems.title'.tr()),
         actions: [
+          // OPH-359 (UI-AUDIT #29): change unit where the list is.
+          const AwWorkspaceSwitcher(),
           AwSearchAction(
             fieldKey: const Key('problem-search'),
             hintText: 'ee.problems.searchHint'.tr(),
@@ -57,67 +63,72 @@ class EeProblemsScreen extends ConsumerWidget {
             ),
         ],
       ),
-      body: list.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeProblemListProvider),
-        ),
-        data: (problems) {
-          final searching = hits != null || query.isNotEmpty;
-          if (searching) {
-            final found = hits == null
-                ? const <EeProblem>[]
-                : _ranked(problems, hits);
-            if (found.isEmpty) {
-              return AwEmptyState(
-                key: const Key('problem-search-empty'),
-                icon: Icons.search_off,
-                title: 'ee.problems.searchEmpty'.tr(),
-                message: 'ee.problems.searchEmptyBody'.tr(),
+      body: EeUnitScopeGate(
+        child: list.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(eeProblemListProvider),
+          ),
+          data: (problems) {
+            final searching = hits != null || query.isNotEmpty;
+            if (searching) {
+              final found = hits == null
+                  ? const <EeProblem>[]
+                  : _ranked(problems, hits);
+              if (found.isEmpty) {
+                return AwEmptyState(
+                  key: const Key('problem-search-empty'),
+                  icon: Icons.search_off,
+                  title: 'ee.problems.searchEmpty'.tr(),
+                  message: 'ee.problems.searchEmptyBody'.tr(),
+                );
+              }
+              return ListView(
+                padding: awListPadding(context),
+                children: [for (final p in found) EeProblemRow(problem: p)],
               );
+            }
+            if (problems.isEmpty) {
+              return AwEmptyState(
+                key: const Key('problem-empty'),
+                icon: Icons.bug_report_outlined,
+                title: 'ee.problems.empty'.tr(),
+                message: 'ee.problems.emptyBody'.tr(),
+              );
+            }
+            final children = <Widget>[];
+            String? group;
+            for (final problem in problems) {
+              if (problem.status != group) {
+                group = problem.status;
+                children.add(
+                  Padding(
+                    key: Key('problem-section-${problem.status}'),
+                    padding: const EdgeInsets.fromLTRB(
+                      0,
+                      AwSpace.x4,
+                      0,
+                      AwSpace.x2,
+                    ),
+                    child: Text(
+                      AwI18n.instance.maybeTranslate(
+                            'ee.problems.section.${problem.status}',
+                          ) ??
+                          problem.status,
+                      style: Theme.of(context).textTheme.titleSmall,
+                    ),
+                  ),
+                );
+              }
+              children.add(EeProblemRow(problem: problem));
             }
             return ListView(
               padding: awListPadding(context),
-              children: [for (final p in found) EeProblemRow(problem: p)],
+              children: children,
             );
-          }
-          if (problems.isEmpty) {
-            return AwEmptyState(
-              key: const Key('problem-empty'),
-              icon: Icons.bug_report_outlined,
-              title: 'ee.problems.empty'.tr(),
-              message: 'ee.problems.emptyBody'.tr(),
-            );
-          }
-          final children = <Widget>[];
-          String? group;
-          for (final problem in problems) {
-            if (problem.status != group) {
-              group = problem.status;
-              children.add(
-                Padding(
-                  key: Key('problem-section-${problem.status}'),
-                  padding: const EdgeInsets.fromLTRB(
-                    0,
-                    AwSpace.x4,
-                    0,
-                    AwSpace.x2,
-                  ),
-                  child: Text(
-                    AwI18n.instance.maybeTranslate(
-                          'ee.problems.section.${problem.status}',
-                        ) ??
-                        problem.status,
-                    style: Theme.of(context).textTheme.titleSmall,
-                  ),
-                ),
-              );
-            }
-            children.add(EeProblemRow(problem: problem));
-          }
-          return ListView(padding: awListPadding(context), children: children);
-        },
+          },
+        ),
       ),
     );
   }

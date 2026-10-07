@@ -9,6 +9,7 @@ import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_roles_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-053 — the role list and its grant matrix.
 ///
@@ -138,7 +139,11 @@ class FakeRolesApi implements EeTeamAdminApi {
 }
 
 Widget harness(FakeRolesApi api) => ProviderScope(
-  overrides: [eeTeamAdminApiProvider.overrideWithValue(api)],
+  overrides: [
+    eeTeamAdminApiProvider.overrideWithValue(api),
+    // OPH-356: the "+" waits for a yes; this file is about an admin.
+    canProvider.overrideWith((ref, id) => true),
+  ],
   child: MaterialApp(
     theme: buildAwTheme(Brightness.light),
     home: const EeTeamRolesScreen(),
@@ -270,4 +275,127 @@ void main() {
 
     expect(api.calls, contains('create:Nöbetçi:member:tasks.view'));
   });
+
+  testWidgets(
+    'UI-AUDIT #45: permission descriptions are in Turkish under a Turkish UI',
+    (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      final api = FakeRolesApi();
+      await tester.pumpWidget(harness(api));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('role-new')));
+      await tester.pumpAndSettle();
+      expect(find.text('Görevleri gör'), findsWidgets);
+      expect(find.text('See tasks'), findsNothing);
+      expect(find.text('Create tasks'), findsNothing);
+    },
+  );
+
+  test(
+    'UI-AUDIT #45: a verb this build has no words for keeps the server text',
+    () {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(
+        eePermissionDescription(
+          const EePermissionDef(
+            id: 'future.verb',
+            label: 'ee.perm.future.verb',
+            description: 'Something new',
+          ),
+        ),
+        'Something new',
+      );
+    },
+  );
+
+  test(
+    'UI-AUDIT #45: every catalogue verb has a description in both languages',
+    () {
+      // The server's catalogue (EE `GET /ee/permissions`), 71 verbs on 2026-10-07.
+      const ids = [
+        'absences.manage',
+        'alarms.create_urgent',
+        'announcements.manage',
+        'approvals.decide',
+        'assets.manage',
+        'assets.view',
+        'calendar.manage',
+        'calendar.view',
+        'changes.create',
+        'changes.edit',
+        'changes.implement',
+        'customers.manage',
+        'files.delete',
+        'files.edit',
+        'files.upload',
+        'files.view',
+        'kb.publish',
+        'kb.write',
+        'notes.create',
+        'notes.delete',
+        'notes.edit',
+        'notes.view',
+        'oncall.manage',
+        'portal.manage_links',
+        'problems.manage',
+        'projects.archive',
+        'projects.create',
+        'projects.edit',
+        'projects.view',
+        'services.manage',
+        'shares.create',
+        'shares.revoke',
+        'sla.manage',
+        'suppliers.manage',
+        'tasks.assign',
+        'tasks.complete',
+        'tasks.create',
+        'tasks.delete',
+        'tasks.edit',
+        'tasks.view',
+        'team.export_data',
+        'team.force_logout',
+        'team.import_members',
+        'team.import_tickets',
+        'team.manage_ai_keys',
+        'team.manage_deliveries',
+        'team.manage_identity',
+        'team.manage_invites',
+        'team.manage_mail',
+        'team.manage_members',
+        'team.manage_roles',
+        'team.manage_security',
+        'team.manage_settings',
+        'team.view_audit',
+        'team.workspace.archive',
+        'team.workspace.create',
+        'team.workspace.view',
+        'tickets.assign',
+        'tickets.close',
+        'tickets.comment',
+        'tickets.convert',
+        'tickets.create',
+        'tickets.create_on_behalf',
+        'tickets.export',
+        'tickets.link',
+        'tickets.manage_worklog',
+        'tickets.override_priority',
+        'tickets.pause_sla',
+        'units.manage',
+        'units.manage_members',
+        'webhooks.manage',
+      ];
+      expect(ids, hasLength(71));
+      for (final locale in const [Locale('en'), Locale('tr')]) {
+        AwI18n.instance.setActiveCached(locale);
+        for (final id in ids) {
+          expect(
+            AwI18n.instance.maybeTranslate('ee.permDescription.$id'),
+            isNotNull,
+            reason: '$id in ${locale.languageCode}',
+          );
+        }
+      }
+    },
+  );
 }

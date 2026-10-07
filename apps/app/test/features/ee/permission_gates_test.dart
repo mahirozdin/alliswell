@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +11,9 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/ee/data/ee_models.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/router.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -107,4 +112,98 @@ void main() {
     );
     expect(urgent.onChanged, isNotNull);
   });
+
+  // UI-AUDIT #61 (OPH-356): a member who opened an admin address got a red
+  // "something went wrong" with a retry that could never work, a different
+  // message on every screen, and the create button drawn over it.
+  group('UI-AUDIT #61: the team administration\'s door', () {
+    FakeApi teamHost({required String role, List<String> grants = const []}) =>
+        FakeApi()
+          ..eeState = 'active'
+          ..eeFeatures = ['teams']
+          ..eeGoverned = true
+          ..eePermissions = grants
+          ..eeTeamInfo = {
+            'id': 'T1',
+            'name': 'Acme',
+            'slug': 'acme',
+            'status': 'active',
+            'memberCount': 3,
+            'myRole': role,
+          };
+
+    Future<void> open(WidgetTester tester, String location) async {
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(Scaffold).first),
+      );
+      container.read(routerProvider).go(location);
+      await tester.pumpAndSettle();
+    }
+
+    for (final location in [
+      '/settings/team',
+      '/settings/team/roles',
+      '/settings/team/invites',
+      '/settings/team/services',
+      '/settings/team/audit',
+    ]) {
+      testWidgets('a member at $location meets one locked state, no "+", and '
+          'no request to the endpoint', (tester) async {
+        final api = teamHost(role: 'member', grants: ['tasks.view']);
+        await tester.pumpWidget(await signedInApp(api));
+        await tester.pumpAndSettle();
+        api.eeTeamRequests.clear();
+        await open(tester, location);
+
+        expect(find.byKey(const Key('ee-forbidden')), findsOneWidget);
+        expect(
+          find.text('This screen is for the team\'s admins'),
+          findsOneWidget,
+        );
+        expect(find.byType(FloatingActionButton), findsNothing);
+        expect(find.text('Something went wrong'), findsNothing);
+        // Only the door's own question (who is this person in the team) was
+        // asked — never the screen's list.
+        expect(
+          api.eeTeamRequests.where((r) => r != 'GET /api/v1/ee/team'),
+          isEmpty,
+        );
+      });
+    }
+
+    testWidgets('an admin who holds the verb gets the screen and its "+"', (
+      tester,
+    ) async {
+      final api = teamHost(role: 'admin', grants: ['team.manage_roles']);
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+      await open(tester, '/settings/team/roles');
+      expect(find.byKey(const Key('ee-forbidden')), findsNothing);
+      expect(find.byKey(const Key('role-new')), findsOneWidget);
+    });
+
+    test('nothing is drawn on a guess: while the permissions load, every '
+        'answer is no', () async {
+      final pending = Completer<EePermissions>();
+      final container = ProviderContainer(
+        overrides: [
+          eePermissionsProvider.overrideWith(() => _Pending(pending.future)),
+        ],
+      );
+      addTearDown(container.dispose);
+      // Before OPH-356 this was TRUE: a delegated manager was handed "New
+      // unit" for the second the answer took to arrive.
+      expect(container.read(canProvider('units.manage')), isFalse);
+      pending.complete(EePermissions.unknown);
+      await container.read(eePermissionsProvider.future);
+      expect(container.read(canProvider('units.manage')), isTrue);
+    });
+  });
+}
+
+class _Pending extends EePermissionsController {
+  _Pending(this._answer);
+  final Future<EePermissions> _answer;
+  @override
+  Future<EePermissions> build() => _answer;
 }

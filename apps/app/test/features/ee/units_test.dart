@@ -1,15 +1,26 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/ee_models.dart';
+import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
+import 'package:alliswell/src/features/ee/data/services_api.dart';
+import 'package:alliswell/src/features/ee/data/team_admin_models.dart';
 import 'package:alliswell/src/features/ee/data/units_api.dart';
+import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
+import 'package:alliswell/src/features/ee/services_providers.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 import 'package:alliswell/src/features/ee/data/units_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_units_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/widgets/fab_clearance.dart';
+import '../auth/test_support.dart';
+import 'support/permissions.dart';
 
 /// EE-057 — the units screens.
 ///
@@ -84,6 +95,9 @@ Widget harness(
       (ref, id) => id == 'units.manage' ? isAdmin : true,
     ),
     eeFeatureProvider.overrideWith((ref, feature) => true),
+    // OPH-356 (#62): the list reads the permission answer first; one from
+    // before EE-302 (no `managedUnitIds`) still asks the list.
+    fixedPermissions(),
   ],
   child: MaterialApp(theme: buildAwTheme(Brightness.light), home: child),
 );
@@ -234,4 +248,270 @@ void main() {
       expect(api.calls, contains('add:U1:O1'));
     });
   });
+
+  // R3-1 (OPH-363): with the Quick Access bubble docked in the bar's row
+  // (OPH-362) nothing above the page cleared the page's OWN floating button
+  // any more — a units list ended under "+ New unit", and a tap on the last
+  // row's ⋮ at the end of the scroll opened the new-unit dialog instead.
+  group('R3-1: the end of a list clears the page\'s own button', () {
+    Future<void> pumpDocked(WidgetTester tester, Widget child) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(bottom: 34);
+      addTearDown(tester.view.reset);
+      final api =
+          FakeUnitsApi(
+              units: [
+                for (var i = 1; i <= 14; i++)
+                  EeUnit(id: 'U$i', name: 'Birim $i', memberCount: 2),
+              ],
+            )
+            ..roster = [
+              for (var i = 1; i <= 14; i++)
+                EeUnitMember(
+                  userId: 'P$i',
+                  role: 'member',
+                  displayName: 'Kişi $i',
+                ),
+            ];
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            eeUnitsApiProvider.overrideWithValue(api),
+            canProvider.overrideWith((ref, id) => true),
+            eeFeatureProvider.overrideWith((ref, feature) => true),
+            fixedPermissions(),
+          ],
+          child: MaterialApp(
+            theme: buildAwTheme(Brightness.light),
+            // The bubble docked on the right of the bottom row, as on a phone.
+            builder: (context, child) => AwBubbleDock(
+              edge: AwDockEdge.right,
+              height: 80,
+              width: 72,
+              child: child!,
+            ),
+            home: child,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> expectLastMenuReachable(
+      WidgetTester tester, {
+      required Key fab,
+      required Key lastMenu,
+    }) async {
+      await tester.drag(find.byType(ListView), const Offset(0, -4000));
+      await tester.pumpAndSettle();
+      final menu = tester.getRect(find.byKey(lastMenu));
+      final button = tester.getRect(find.byKey(fab));
+      expect(
+        menu.bottom,
+        lessThanOrEqualTo(button.top),
+        reason: 'the last row ends above the page\'s button ($menu vs $button)',
+      );
+      // And the tap lands on the menu, not on the button.
+      await tester.tapAt(menu.center);
+      await tester.pumpAndSettle();
+      expect(find.byType(PopupMenuItem<String>), findsWidgets);
+    }
+
+    testWidgets('the unit list', (tester) async {
+      await pumpDocked(tester, const EeTeamUnitsScreen());
+      await expectLastMenuReachable(
+        tester,
+        fab: const Key('unit-new'),
+        lastMenu: const Key('unit-menu-U14'),
+      );
+    });
+
+    testWidgets('a unit\'s roster', (tester) async {
+      await pumpDocked(
+        tester,
+        const EeUnitMembersScreen(
+          unit: EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 14),
+        ),
+      );
+      await expectLastMenuReachable(
+        tester,
+        fab: const Key('unit-member-add'),
+        lastMenu: const Key('unit-member-menu-P14'),
+      );
+    });
+  });
+
+  group('UI-AUDIT OPH-360', () {
+    const unit = EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 0);
+
+    testWidgets('UI-AUDIT #80: an empty roster says so, not a blank page', (
+      tester,
+    ) async {
+      final api = FakeUnitsApi()..roster = const [];
+      await tester.pumpWidget(
+        harness(
+          api,
+          isAdmin: true,
+          child: const EeUnitMembersScreen(unit: unit),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-members-empty')), findsOneWidget);
+      expect(find.text('ee.team.units.noMembersTitle'.tr()), findsOneWidget);
+      // …and the way in stays.
+      expect(find.byKey(const Key('unit-member-add')), findsOneWidget);
+    });
+
+    testWidgets('UI-AUDIT #22 pattern: archiving a unit asks first', (
+      tester,
+    ) async {
+      final api = FakeUnitsApi();
+      await tester.pumpWidget(
+        harness(api, isAdmin: true, child: const EeTeamUnitsScreen()),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('unit-menu-U1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ee.team.units.archive'.tr()));
+      await tester.pumpAndSettle();
+      expect(api.calls, isNot(contains('archive:U1:true')));
+      await tester.tap(find.text('ee.team.units.keep'.tr()));
+      await tester.pumpAndSettle();
+      expect(api.calls, isNot(contains('archive:U1:true')));
+
+      await tester.tap(find.byKey(const Key('unit-menu-U1')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('ee.team.units.archive'.tr()));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('unit-archive-confirm')));
+      await tester.pumpAndSettle();
+      expect(api.calls, contains('archive:U1:true'));
+    });
+  });
+
+  // UI-AUDIT #62 (OPH-356, EE-302): a member's Settings asked the units list
+  // and a request's detail asked the admin service list on every open — two
+  // 403s each time, to learn what `/me/permissions` can now say.
+  group('UI-AUDIT #62: no admin endpoint is probed to learn a member\'s '
+      'reach', () {
+    ProviderContainer containerWith(
+      EePermissions permissions, {
+      required _CountingUnits units,
+      List<String>? servicesAsked,
+      bool admin = false,
+    }) {
+      final dio = Dio(BaseOptions(baseUrl: 'https://acme.example.com'));
+      dio.httpClientAdapter = FakeHttpClientAdapter((options, body) async {
+        servicesAsked?.add(options.path);
+        return jsonBody(403, {'code': 'PERM_DENIED', 'message': 'no'});
+      });
+      final container = ProviderContainer(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, feature) => true),
+          fixedPermissions(permissions),
+          eeTeamProvider.overrideWith(
+            (ref) async => EeTeamInfo(
+              id: 'T1',
+              name: 'Acme',
+              slug: 'acme',
+              status: 'active',
+              myRole: admin ? 'admin' : 'member',
+            ),
+          ),
+          eeUnitsApiProvider.overrideWithValue(units),
+          eeServicesApiProvider.overrideWithValue(EeServicesApi(dio)),
+          eeCatalogProvider.overrideWith(
+            (ref) async => const EeCatalog(
+              services: [EeCatalogService(id: 'S1', name: 'Hat 3 PLC')],
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    const member = EePermissions(
+      workspaceId: 'W1',
+      governed: true,
+      permissions: ['tickets.create'],
+      managedUnitIds: [],
+    );
+
+    test('a member who runs no unit: the units list is never asked', () async {
+      final units = _CountingUnits();
+      final c = containerWith(member, units: units);
+      expect(await c.read(eeUnitsProvider.future), isNull);
+      expect(units.listed, 0);
+    });
+
+    test('a delegated manager: the list is asked, and answers', () async {
+      final units = _CountingUnits();
+      final c = containerWith(
+        const EePermissions(
+          workspaceId: 'W1',
+          governed: true,
+          managedUnitIds: ['U-QA'],
+        ),
+        units: units,
+      );
+      expect(await c.read(eeUnitsProvider.future), isNotNull);
+      expect(units.listed, 1);
+    });
+
+    test('a server from before EE-302 (no field): the list is still the '
+        'only way to know', () async {
+      final units = _CountingUnits();
+      final c = containerWith(
+        const EePermissions(workspaceId: 'W1', governed: true),
+        units: units,
+      );
+      await c.read(eeUnitsProvider.future);
+      expect(units.listed, 1);
+    });
+
+    test('an admin is asked even with no delegation of their own', () async {
+      final units = _CountingUnits();
+      final c = containerWith(
+        const EePermissions(
+          workspaceId: 'W1',
+          governed: true,
+          permissions: ['units.manage_members'],
+          managedUnitIds: [],
+        ),
+        units: units,
+        admin: true,
+      );
+      await c.read(eeUnitsProvider.future);
+      expect(units.listed, 1);
+    });
+
+    test('a request\'s services come from the catalogue for a member — the '
+        'admin list is never asked', () async {
+      final asked = <String>[];
+      final c = containerWith(
+        member,
+        units: _CountingUnits(),
+        servicesAsked: asked,
+      );
+      c.listen(eeServiceGlancesProvider, (_, _) {});
+      await c.read(eePermissionsProvider.future);
+      await c.read(eeTeamProvider.future);
+      await c.read(eeCatalogProvider.future);
+      final glances = c.read(eeServiceGlancesProvider);
+      expect(glances['S1']?.name, 'Hat 3 PLC');
+      expect(asked, isEmpty);
+    });
+  });
+}
+
+class _CountingUnits extends FakeUnitsApi {
+  int listed = 0;
+
+  @override
+  Future<List<EeUnit>?> list() {
+    listed += 1;
+    return super.list();
+  }
 }

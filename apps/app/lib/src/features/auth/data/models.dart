@@ -85,10 +85,20 @@ class AuthSession {
 
 /// Stable machine-readable failure from the API (`code` field) or transport.
 class AuthException implements Exception {
-  const AuthException(this.code, this.message);
+  const AuthException(
+    this.code,
+    this.message, {
+    this.statusCode,
+    this.retryAfter,
+  });
 
   final String code;
   final String message;
+
+  /// The HTTP status and, on a 429, the wait in seconds (OPH-357) — what
+  /// lets the sign-in screen say "try again in 42 s" instead of a placeholder.
+  final int? statusCode;
+  final int? retryAfter;
 
   @override
   String toString() => 'AuthException($code): $message';

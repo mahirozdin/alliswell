@@ -6,6 +6,7 @@ import 'data/services_api.dart';
 import 'data/services_models.dart';
 import 'new_ticket_providers.dart';
 import 'providers.dart';
+import 'team_admin_providers.dart' show eeHoldsTeamVerbProvider;
 
 /// Service catalogue providers (EE-082).
 ///
@@ -196,6 +197,12 @@ class EeServiceGlance {
 /// open to every member. Nothing new is asked while the admin list is still
 /// loading, so an admin never pays for the second read.
 final eeServiceGlancesProvider = Provider<Map<String, EeServiceGlance>>((ref) {
+  // OPH-356 (UI-AUDIT #62): somebody whose role does not manage services is
+  // not asked the admin list at all — it could only answer 403, on every
+  // request opened. Their glance is the member catalogue, which is theirs.
+  final manages = ref.watch(eeHoldsTeamVerbProvider('services.manage'));
+  if (manages == null) return const {};
+  if (!manages) return _catalogGlances(ref);
   final admin = ref.watch(eeServicesProvider);
   if (!admin.hasValue) return const {};
   final services = admin.value;
@@ -210,6 +217,10 @@ final eeServiceGlancesProvider = Provider<Map<String, EeServiceGlance>>((ref) {
         ),
     };
   }
+  return _catalogGlances(ref);
+});
+
+Map<String, EeServiceGlance> _catalogGlances(Ref ref) {
   final catalog = ref.watch(eeCatalogProvider).value;
   return {
     for (final s in catalog?.services ?? const <EeCatalogService>[])
@@ -219,4 +230,4 @@ final eeServiceGlancesProvider = Provider<Map<String, EeServiceGlance>>((ref) {
         hasForm: s.fields.isNotEmpty,
       ),
   };
-});
+}

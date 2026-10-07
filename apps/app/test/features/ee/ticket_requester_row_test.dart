@@ -21,6 +21,7 @@ import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 
 /// EE-258 (AW-E07) — the desk sees who asked, and where the answer goes.
 ///
@@ -71,6 +72,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
+          // OPH-359: the unit switcher and the unit scope in the bar read these.
+          workspacesProvider.overrideWith((ref) async => const []),
+          eeMyUnitsScopeProvider.overrideWith((ref) async => null),
           ticketProvider(_ticketId).overrideWith((ref) => Stream.value(ticket)),
           ticketCommentsProvider(
             _ticketId,
@@ -80,6 +84,8 @@ void main() {
             return fromServer;
           }),
           eeMemberNamesProvider.overrideWith((ref) => Stream.value(names)),
+          // Somebody at the desk, not the person who asked (OPH-358).
+          currentUserIdProvider.overrideWithValue('01USDESKAAAAAAAAAAAAAAAAAA'),
           eeMailLauncherProvider.overrideWithValue((address) async {
             mailedTo.add(address);
           }),
@@ -250,6 +256,9 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
+          // OPH-359: the unit switcher and the unit scope in the bar read these.
+          workspacesProvider.overrideWith((ref) async => const []),
+          eeMyUnitsScopeProvider.overrideWith((ref) async => null),
           ticketQueueProvider.overrideWith(
             (ref) => Stream.value([
               row('R1', requesterName: 'Ada Lovelace'),

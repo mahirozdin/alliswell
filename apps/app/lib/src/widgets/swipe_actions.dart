@@ -177,6 +177,9 @@ Future<bool> awConfirmDelete(
   required String title,
   required String body,
   String? confirmLabel,
+  String? cancelLabel,
+  Key confirmKey = const Key('confirm-delete'),
+  Key? cancelKey,
 }) async {
   final scheme = Theme.of(context).colorScheme;
   final ok = await showDialog<bool>(
@@ -186,15 +189,19 @@ Future<bool> awConfirmDelete(
     // Scaffold's own bar and FAB paint over them.
     useRootNavigator: true,
     builder: (ctx) => AlertDialog(
+      // UI-AUDIT #64: a screen reader names the dialog by its question,
+      // not by the platform's generic "Alert".
+      semanticLabel: title,
       title: Text(title),
       content: Text(body),
       actions: [
         TextButton(
+          key: cancelKey,
           onPressed: () => Navigator.pop(ctx, false),
-          child: Text('common.cancel'.tr()),
+          child: Text(cancelLabel ?? 'common.cancel'.tr()),
         ),
         FilledButton(
-          key: const Key('confirm-delete'),
+          key: confirmKey,
           style: FilledButton.styleFrom(
             backgroundColor: scheme.error,
             foregroundColor: scheme.onError,

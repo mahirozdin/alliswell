@@ -28,13 +28,13 @@ final eeApprovalsApiProvider = Provider<EeApprovalsApi>(
 
 // ── The badge and the door (EE-294) ─────────────────────────────────────────
 
-const String _kDoorCachePrefix = 'alliswell_ee_approvals_door::';
+const String kEeApprovalsDoorCachePrefix = 'alliswell_ee_approvals_door::';
 
 String? _doorCacheKey(Ref ref) {
   final userId = ref.watch(currentUserIdProvider);
   final origin = ref.watch(teamOriginProvider);
   if (userId == null || origin == null) return null;
-  return '$_kDoorCachePrefix$userId::${origin.slug}';
+  return '$kEeApprovalsDoorCachePrefix$userId::${origin.slug}';
 }
 
 /// The last answer the server gave about the door — read before the network
@@ -85,7 +85,12 @@ final _eeApprovalRequestsLandedProvider = StreamProvider.autoDispose<int>((
 /// breaks every suite that pumps its screen), whenever a new approval request
 /// lands in the replica, and after this person decides or corrects one.
 /// Quiet on every failure. With no signal it keeps the door (from the cache)
-/// and drops the count — a number from an hour ago is not a number.
+/// and drops the count — a number from an hour ago is not a number. A failed
+/// ask while ONLINE (a 429, a 5xx) keeps the last answer this session got
+/// (OPH-357, UI-AUDIT #26): falling back to the disk cache there dropped the
+/// door outright whenever the cache was still empty — a fresh install, a
+/// first launch on a team address — and a navigation entry that vanishes
+/// for one refused request reads as "you have nothing to decide".
 final eeApprovalsSummaryProvider =
     FutureProvider.autoDispose<EeApprovalsSummary>((ref) async {
       // The door exists only on a team's own address, and only where the
@@ -105,6 +110,7 @@ final eeApprovalsSummaryProvider =
       ref.watch(_eeApprovalRequestsLandedProvider);
       final cached = ref.watch(_eeApprovalsDoorCacheProvider.future);
       final api = ref.watch(eeApprovalsApiProvider);
+      final lastLive = ref.read(_eeApprovalsLastLiveProvider);
       if (offline) return await cached ?? EeApprovalsSummary.none;
       try {
         final fresh = await api.summary();
@@ -117,11 +123,25 @@ final eeApprovalsSummaryProvider =
             }),
           );
         }
+        if (key != null) lastLive[key] = fresh;
         return fresh;
       } on ApiException {
-        return await cached ?? EeApprovalsSummary.none;
+        final last = key == null ? null : lastLive[key];
+        return last ?? await cached ?? EeApprovalsSummary.none;
       }
     });
+
+/// The last summary the server gave in THIS session, per person and team
+/// address — what a failed refresh keeps showing (UI-AUDIT #26). Memory only
+/// and outliving the autoDispose summary on purpose: it is the summary's
+/// previous value, which a rebuilt FutureProvider does not otherwise have.
+final _eeApprovalsLastLiveProvider = Provider<Map<String, EeApprovalsSummary>>((
+  ref,
+) {
+  // Signing out (or switching person) starts from nothing.
+  ref.watch(currentUserIdProvider);
+  return <String, EeApprovalsSummary>{};
+});
 
 /// Is there an Approvals entry to draw? The live answer when there is one,
 /// the cached one before it arrives. Never `canProvider`: that says yes on a

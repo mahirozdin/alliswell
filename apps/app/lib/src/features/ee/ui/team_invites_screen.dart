@@ -7,8 +7,12 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
+import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// Invitations (EE-042).
 ///
@@ -27,15 +31,21 @@ class EeTeamInvitesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final invites = ref.watch(eeInvitesProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.invites.title'.tr())),
-      floatingActionButton: AwExtendedFab(
-        key: const Key('invite-create'),
-        // The StadiumBorder this screen used to pass by hand now lives in
-        // AwExtendedFab, so it is no longer one call site's private memory.
-        onPressed: () => _create(context, ref),
-        icon: const Icon(Icons.person_add_alt),
-        label: Text('ee.team.invites.new'.tr()),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.invites.title'.tr()),
       ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('team.manage_invites'))
+          ? null
+          : AwExtendedFab(
+              key: const Key('invite-create'),
+              // The StadiumBorder this screen used to pass by hand now lives in
+              // AwExtendedFab, so it is no longer one call site's private memory.
+              onPressed: () => _create(context, ref),
+              icon: const Icon(Icons.person_add_alt),
+              label: Text('ee.team.invites.new'.tr()),
+            ),
       body: invites.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -49,7 +59,7 @@ class EeTeamInvitesScreen extends ConsumerWidget {
                 message: 'ee.team.invites.emptyBody'.tr(),
               )
             : ListView.builder(
-                padding: const EdgeInsets.all(AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4, fab: true),
                 itemCount: items.length,
                 itemBuilder: (context, i) => _InviteTile(invite: items[i]),
               ),
@@ -214,7 +224,21 @@ class _CopyRow extends StatelessWidget {
           key: Key(keyName),
           tooltip: 'common.copy'.tr(),
           icon: const Icon(Icons.copy_outlined),
-          onPressed: () => Clipboard.setData(ClipboardData(text: value)),
+          // UI-AUDIT D2's rule: a refused clipboard says so — this value is
+          // shown once and cannot be read back.
+          onPressed: () async {
+            final messenger = ScaffoldMessenger.maybeOf(context);
+            try {
+              await Clipboard.setData(ClipboardData(text: value));
+              messenger?.showSnackBar(
+                SnackBar(content: Text('ee.team.invites.copied'.tr())),
+              );
+            } catch (_) {
+              messenger?.showSnackBar(
+                SnackBar(content: Text('ee.team.invites.copyFailed'.tr())),
+              );
+            }
+          },
         ),
       ],
     );
@@ -247,8 +271,24 @@ class _InviteTile extends ConsumerWidget {
                   key: Key('invite-revoke-${invite.id}'),
                   tooltip: 'ee.team.invites.revoke'.tr(),
                   icon: const Icon(Icons.cancel_outlined),
-                  onPressed: () =>
-                      ref.read(eeInvitesProvider.notifier).revoke(invite.id),
+                  // OPH-360: the link already handed over stops working, so
+                  // the person is asked — "Keep it" beside the error-role act.
+                  onPressed: () async {
+                    final ok = await awConfirmDelete(
+                      context,
+                      title: 'ee.team.invites.revokeTitle'.tr(
+                        args: {'email': invite.email},
+                      ),
+                      body: 'ee.team.invites.revokeBody'.tr(),
+                      confirmLabel: 'ee.team.invites.revoke'.tr(),
+                      cancelLabel: 'ee.team.invites.keep'.tr(),
+                      confirmKey: const Key('invite-revoke-confirm'),
+                    );
+                    if (!ok || !context.mounted) return;
+                    await ref
+                        .read(eeInvitesProvider.notifier)
+                        .revoke(invite.id);
+                  },
                 )
               : null,
         ),

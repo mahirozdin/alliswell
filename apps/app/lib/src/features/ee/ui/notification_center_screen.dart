@@ -6,8 +6,10 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
 import '../../../widgets/status_views.dart';
+import '../../workspaces/workspaces.dart';
 import '../notifications_providers.dart';
 import 'notification_prefs_screen.dart';
+import '../../../widgets/route_leading.dart';
 
 /// The notification centre (EE-077) — what happened to you, offline.
 ///
@@ -29,6 +31,7 @@ class EeNotificationCenterScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text('ee.notif.centerTitle'.tr()),
         actions: [
           // No dead controls (DESIGN §22): with nothing unread the action is
@@ -39,7 +42,10 @@ class EeNotificationCenterScreen extends ConsumerWidget {
               onPressed: () async {
                 final count = await ref
                     .read(notificationStoreProvider)
-                    .markAllRead(ref.read(syncWorkspaceIdsProvider));
+                    .markAllRead(
+                      ref.read(syncWorkspaceIdsProvider),
+                      userId: ref.read(currentUserIdProvider),
+                    );
                 if (!context.mounted || count == 0) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(

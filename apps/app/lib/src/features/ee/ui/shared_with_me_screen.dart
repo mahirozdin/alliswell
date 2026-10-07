@@ -7,6 +7,8 @@ import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../shared_items_providers.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// "Shared with me" (EE-061) — the receiving end of EE-059's bridge.
 ///
@@ -28,7 +30,10 @@ class EeSharedWithMeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final shared = ref.watch(sharedWithMeProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.shared.title'.tr())),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.shared.title'.tr()),
+      ),
       body: shared.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(message: localizedError(error)),
@@ -39,7 +44,7 @@ class EeSharedWithMeScreen extends ConsumerWidget {
                 message: 'ee.shared.emptyBody'.tr(),
               )
             : ListView(
-                padding: const EdgeInsets.all(AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4),
                 children: [
                   Text(
                     'ee.shared.intro'.tr(),

@@ -679,7 +679,10 @@ class Notifications extends Table {
   TextColumn get id => text()();
   TextColumn get workspaceId => text()();
 
-  /// Always this device's owner (see above). Kept for diagnosis, not filtering.
+  /// The person it is addressed to — this device's owner while the replica
+  /// is wiped on every change of person (OPH-355). The centre filters on it
+  /// anyway (UI-AUDIT #3): a row that outlived a sign-out must not reach the
+  /// next person.
   TextColumn get userId => text()();
 
   /// 'task.assigned', 'sla.breached', … — the routing vocabulary, shared with

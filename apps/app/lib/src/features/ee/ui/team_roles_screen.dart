@@ -5,8 +5,11 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/fab_clearance.dart';
 
 /// The role list and its grant matrix (EE-053).
 ///
@@ -29,13 +32,19 @@ class EeTeamRolesScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final roles = ref.watch(eeTeamRolesProvider);
     return Scaffold(
-      appBar: AppBar(title: Text('ee.team.roles.title'.tr())),
-      floatingActionButton: FloatingActionButton(
-        key: const Key('role-new'),
-        tooltip: 'ee.team.roles.create'.tr(),
-        onPressed: () => _openEditor(context, ref, null),
-        child: const Icon(Icons.add),
+      appBar: AppBar(
+        leading: awRouteLeading(context),
+        title: Text('ee.team.roles.title'.tr()),
       ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('team.manage_roles'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('role-new'),
+              tooltip: 'ee.team.roles.create'.tr(),
+              onPressed: () => _openEditor(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: roles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(
@@ -43,7 +52,7 @@ class EeTeamRolesScreen extends ConsumerWidget {
           onRetry: () => ref.invalidate(eeTeamRolesProvider),
         ),
         data: (list) => ListView(
-          padding: const EdgeInsets.all(AwSpace.x4),
+          padding: awPagePadding(context, AwSpace.x4, fab: true),
           children: [
             Text(
               'ee.team.roles.intro'.tr(),
@@ -202,6 +211,7 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
     final catalogue = ref.watch(eePermissionCatalogueProvider);
     return Scaffold(
       appBar: AppBar(
+        leading: awRouteLeading(context),
         title: Text(
           _isCreate
               ? 'ee.team.roles.create'.tr()
@@ -285,7 +295,10 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
                     key: Key('grant-${def.id}'),
                     value: _grants.contains(def.id),
                     title: Text(def.label.tr()),
-                    subtitle: Text(def.description),
+                    // UI-AUDIT #45: the description in the reader's language;
+                    // the server's English sentence only for a verb this
+                    // build has no words for yet (a newer server's).
+                    subtitle: Text(eePermissionDescription(def)),
                     onChanged: (on) => setState(() {
                       if (on == true) {
                         _grants.add(def.id);
@@ -309,3 +322,9 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
     );
   }
 }
+
+/// A permission's one-line description, translated (`ee.permDescription.<id>`)
+/// — the server's sentence only when this build has none for the id.
+String eePermissionDescription(EePermissionDef def) =>
+    AwI18n.instance.maybeTranslate('ee.permDescription.${def.id}') ??
+    def.description;

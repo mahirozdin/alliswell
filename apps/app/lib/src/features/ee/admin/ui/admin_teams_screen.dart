@@ -7,6 +7,7 @@ import '../../../../core/api_exception.dart';
 import '../../../../core/error_messages.dart';
 import '../../../../i18n/i18n.dart';
 import '../../../../theme/tokens.dart';
+import '../../../../widgets/fab_clearance.dart';
 import '../../../../widgets/fabs.dart';
 import '../../../../widgets/status_views.dart';
 import '../admin_providers.dart';
@@ -59,7 +60,7 @@ class AdminTeamsScreen extends ConsumerWidget {
                 ),
               )
             : ListView.builder(
-                padding: const EdgeInsets.all(AwSpace.x4),
+                padding: awPagePadding(context, AwSpace.x4, fab: true),
                 itemCount: rows.length,
                 itemBuilder: (context, i) {
                   final team = rows[i];

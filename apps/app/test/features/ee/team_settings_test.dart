@@ -158,7 +158,9 @@ void main() {
     await tester.pumpWidget(harness(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.bySemanticsLabel('#16A34A'));
+    // OPH-359 (UI-AUDIT #64): a colour is found — and read — by its name.
+    expect(find.bySemanticsLabel('#16A34A'), findsNothing);
+    await tester.tap(find.bySemanticsLabel('Green'));
     await tester.pumpAndSettle();
     expect(api.calls.single, {'colorRgb': '#16A34A'});
 

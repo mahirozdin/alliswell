@@ -266,6 +266,13 @@ class SentDrafts extends Notifier<List<({String id, String subject})>> {
     ];
     if (sent.isNotEmpty) state = [...sent, ...state];
   }
+
+  /// Puts a "sent" line away once its person has read it (R3-3, OPH-363).
+  /// Memory only, like the line itself.
+  void dismiss(String draftId) => state = [
+    for (final done in state)
+      if (done.id != draftId) done,
+  ];
 }
 
 final sentDraftsProvider =

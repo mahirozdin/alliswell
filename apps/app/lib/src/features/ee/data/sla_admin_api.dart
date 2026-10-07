@@ -55,7 +55,9 @@ class EeSlaAdminApi {
 
   // ── policies ──────────────────────────────────────────────────────────
 
-  Future<void> savePolicy({
+  /// Returns the policy's id — the new one on a create, so the targets that
+  /// were filled in the same sheet can follow it (UI-AUDIT #46).
+  Future<String> savePolicy({
     String? id,
     required String name,
     String? calendarId,
@@ -75,10 +77,11 @@ class EeSlaAdminApi {
       'escalationMinutes': ?escalationMinutes,
     };
     if (id == null) {
-      await _dio.post<Map<String, dynamic>>(_policies, data: body);
-    } else {
-      await _dio.patch<Map<String, dynamic>>('$_policies/$id', data: body);
+      final res = await _dio.post<Map<String, dynamic>>(_policies, data: body);
+      return res.data?['id'] as String;
     }
+    await _dio.patch<Map<String, dynamic>>('$_policies/$id', data: body);
+    return id;
   });
 
   Future<void> saveTarget({
