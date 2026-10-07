@@ -4,10 +4,10 @@ description: >-
   syntax while you type, source positions on every block, tables, task lists,
   footnotes, KaTeX math and Mermaid diagrams — themed from your own tokens.
 version: 0.1.0
-repository: https://github.com/bubiapps/markdown_forge
-issue_tracker: https://github.com/bubiapps/markdown_forge/issues
+repository: https://github.com/BubiApps-LTD/markdown_forge
+issue_tracker: https://github.com/BubiApps-LTD/markdown_forge/issues
 
-# Published from github.com/bubiapps/markdown_forge, not from this monorepo —
+# Published from github.com/BubiApps-LTD/markdown_forge, not from this monorepo —
 # AllisWell consumes it by path until the first pub.dev release (OPH-274).
 publish_to: none
 

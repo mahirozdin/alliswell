@@ -41,9 +41,11 @@ kutuyu işaretle.)_
 
 _Kod 2026-08-18'de kapandı (v1.7.0); motor bugün `apps/app/packages/markdown_forge` yolundan geliyor._
 
-- [ ] **AÇIK — sahibin iki adımı:** `bubiapps` GitHub org'u + `markdown_forge` public repo'su
-      (paket dizini kopyalanır) ve `dart pub publish` (Google OAuth ister — ajan yapamaz).
-      Yayın sonrası `apps/app/pubspec.yaml`'daki `path:` bağımlılığı pub.dev sürümüne döner.
+- [x] Public repo: [BubiApps-LTD/markdown_forge](https://github.com/BubiApps-LTD/markdown_forge)
+      (2026-10-07) — paket + saf-paket testleri + `example/` + CI + etiketle pub.dev yayını (OIDC).
+- [ ] **AÇIK — sahibin adımı:** ilk `flutter pub publish` (Google girişi ister — ajan yapamaz).
+- [ ] Yayın sonrası (ajan): `apps/app/pubspec.yaml`'daki `path:` bağımlılığı `markdown_forge: ^0.1.0`
+      olur, `apps/app/packages/markdown_forge` silinir; paketin değişiklikleri artık o repoda.
 
 ---
 

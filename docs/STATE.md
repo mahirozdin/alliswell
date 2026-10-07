@@ -9,8 +9,8 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-09-30 — sahibin raporundan kod turu (liste aralığı ve uzantının iş modeli);
-TASKS'a iş yazılmadan, id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te.
+**Last updated:** 2026-10-07 — OPH-274: `markdown_forge` public repo'su açıldı
+(`BubiApps-LTD/markdown_forge`); kalan tek adım sahibin ilk pub.dev yayını.
 
 ## Snapshot
 
@@ -31,7 +31,7 @@ TASKS'a iş yazılmadan, id'ler yalnız commit/CHANGELOG/DEVICE-CHECKS'te.
    secret'ları emekliye, `diagnose.yml` runner'a.
 3. **`main` için branch protection** — Settings › Branches, public depoda ücretsiz tek kural
    (2026-09-26: korumasız).
-4. **OPH-274** — `markdown_forge` public repo + `dart pub publish`.
+4. **OPH-274** — repo hazır (`BubiApps-LTD/markdown_forge`); kalan: ilk `flutter pub publish`.
 5. **OPH-142** — critical-alerts başvurusunun sonucu (onaylanırsa tek entitlement satırı).
 6. **OPH-304** — Play Console `USE_EXACT_ALARM` beyanı (form + video; malzeme
    `docs/store/exact-alarm-declaration.md`). GitHub #11 kod tamam diye kapandı (2026-09-26);
