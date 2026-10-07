@@ -68,7 +68,7 @@ dependencies:
     path: packages/alliswell_docref
   # The markdown renderer and source editor (OPH-274, ADR-0033). Extracted so
   # other Flutter apps can use it; consumed by path until the first pub.dev
-  # release from github.com/bubiapps/markdown_forge. The package cannot see
+  # release from github.com/BubiApps-LTD/markdown_forge. The package cannot see
   # AwTokens, `.tr()` or riverpod — the seams are in
   # `features/notes/markdown/markdown_forge_adapters.dart`.
   markdown_forge:

@@ -349,7 +349,8 @@ Screenshot obligations, gaps and the harness to shoot them are OPH-252.
 
 OPH-274 extracted the renderer and the editor into
 [`apps/app/packages/markdown_forge`](../apps/app/packages/markdown_forge) —
-MIT-licensed, destined for `github.com/bubiapps/markdown_forge` and pub.dev,
+MIT-licensed, published from
+[`github.com/BubiApps-LTD/markdown_forge`](https://github.com/BubiApps-LTD/markdown_forge) to pub.dev,
 because nothing in it is AllisWell-specific once three seams are injected:
 
 | AllisWell had | The package asks for | We hand it |
@@ -365,9 +366,12 @@ or `ProviderScope`, so a change that reaches for them fails to build rather
 than quietly re-coupling. `AwMarkdownScope` mounts the seams once, at the app
 root.
 
-Publishing (owner's two steps, nothing in-repo blocks on them): create the
-`bubiapps` GitHub organisation + `markdown_forge` repo, copy the package
-directory there, `dart pub publish`. Until then the app consumes it by path.
+Publishing: the standalone repo (2026-10-07) carries the package, its
+pure-package tests, an `example/`, CI and a tag-triggered pub.dev workflow
+(OIDC). The first `flutter pub publish` is the owner's (Google sign-in). Until
+it lands the app consumes this directory by path; after it, the app depends
+on the pub.dev version and this directory is deleted — the standalone repo is
+the one source, so the two copies must not drift in between.
 
 ## 11. Round 19: what the page shows, and what the field shows
 
