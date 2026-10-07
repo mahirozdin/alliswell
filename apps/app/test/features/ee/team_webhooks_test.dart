@@ -8,6 +8,7 @@ import 'package:alliswell/src/features/ee/team_webhooks_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_webhooks_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-176 — the management screen, asserted where it would mislead.
 ///
@@ -54,6 +55,8 @@ Future<void> _pump(WidgetTester tester, EeWebhooksData? value) async {
         // The delivery list is a separate round trip; an endpoint with no
         // history is the ordinary case and the one this file draws.
         eeWebhookDeliveriesProvider.overrideWith((ref, id) async => const []),
+        // OPH-356: the "+" waits for a yes.
+        canProvider.overrideWith((ref, id) => true),
       ],
       child: MaterialApp(
         theme: buildAwTheme(Brightness.light),

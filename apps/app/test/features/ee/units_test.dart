@@ -1,15 +1,25 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/features/ee/data/ee_models.dart';
+import 'package:alliswell/src/features/ee/data/new_ticket_api.dart';
+import 'package:alliswell/src/features/ee/data/services_api.dart';
+import 'package:alliswell/src/features/ee/data/team_admin_models.dart';
 import 'package:alliswell/src/features/ee/data/units_api.dart';
+import 'package:alliswell/src/features/ee/new_ticket_providers.dart';
+import 'package:alliswell/src/features/ee/services_providers.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 import 'package:alliswell/src/features/ee/data/units_models.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_units_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import '../auth/test_support.dart';
+import 'support/permissions.dart';
 
 /// EE-057 — the units screens.
 ///
@@ -84,6 +94,9 @@ Widget harness(
       (ref, id) => id == 'units.manage' ? isAdmin : true,
     ),
     eeFeatureProvider.overrideWith((ref, feature) => true),
+    // OPH-356 (#62): the list reads the permission answer first; one from
+    // before EE-302 (no `managedUnitIds`) still asks the list.
+    fixedPermissions(),
   ],
   child: MaterialApp(theme: buildAwTheme(Brightness.light), home: child),
 );
@@ -234,4 +247,129 @@ void main() {
       expect(api.calls, contains('add:U1:O1'));
     });
   });
+
+  // UI-AUDIT #62 (OPH-356, EE-302): a member's Settings asked the units list
+  // and a request's detail asked the admin service list on every open — two
+  // 403s each time, to learn what `/me/permissions` can now say.
+  group('UI-AUDIT #62: no admin endpoint is probed to learn a member\'s '
+      'reach', () {
+    ProviderContainer containerWith(
+      EePermissions permissions, {
+      required _CountingUnits units,
+      List<String>? servicesAsked,
+      bool admin = false,
+    }) {
+      final dio = Dio(BaseOptions(baseUrl: 'https://acme.example.com'));
+      dio.httpClientAdapter = FakeHttpClientAdapter((options, body) async {
+        servicesAsked?.add(options.path);
+        return jsonBody(403, {'code': 'PERM_DENIED', 'message': 'no'});
+      });
+      final container = ProviderContainer(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, feature) => true),
+          fixedPermissions(permissions),
+          eeTeamProvider.overrideWith(
+            (ref) async => EeTeamInfo(
+              id: 'T1',
+              name: 'Acme',
+              slug: 'acme',
+              status: 'active',
+              myRole: admin ? 'admin' : 'member',
+            ),
+          ),
+          eeUnitsApiProvider.overrideWithValue(units),
+          eeServicesApiProvider.overrideWithValue(EeServicesApi(dio)),
+          eeCatalogProvider.overrideWith(
+            (ref) async => const EeCatalog(
+              services: [EeCatalogService(id: 'S1', name: 'Hat 3 PLC')],
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    const member = EePermissions(
+      workspaceId: 'W1',
+      governed: true,
+      permissions: ['tickets.create'],
+      managedUnitIds: [],
+    );
+
+    test('a member who runs no unit: the units list is never asked', () async {
+      final units = _CountingUnits();
+      final c = containerWith(member, units: units);
+      expect(await c.read(eeUnitsProvider.future), isNull);
+      expect(units.listed, 0);
+    });
+
+    test('a delegated manager: the list is asked, and answers', () async {
+      final units = _CountingUnits();
+      final c = containerWith(
+        const EePermissions(
+          workspaceId: 'W1',
+          governed: true,
+          managedUnitIds: ['U-QA'],
+        ),
+        units: units,
+      );
+      expect(await c.read(eeUnitsProvider.future), isNotNull);
+      expect(units.listed, 1);
+    });
+
+    test('a server from before EE-302 (no field): the list is still the '
+        'only way to know', () async {
+      final units = _CountingUnits();
+      final c = containerWith(
+        const EePermissions(workspaceId: 'W1', governed: true),
+        units: units,
+      );
+      await c.read(eeUnitsProvider.future);
+      expect(units.listed, 1);
+    });
+
+    test('an admin is asked even with no delegation of their own', () async {
+      final units = _CountingUnits();
+      final c = containerWith(
+        const EePermissions(
+          workspaceId: 'W1',
+          governed: true,
+          permissions: ['units.manage_members'],
+          managedUnitIds: [],
+        ),
+        units: units,
+        admin: true,
+      );
+      await c.read(eeUnitsProvider.future);
+      expect(units.listed, 1);
+    });
+
+    test('a request\'s services come from the catalogue for a member — the '
+        'admin list is never asked', () async {
+      final asked = <String>[];
+      final c = containerWith(
+        member,
+        units: _CountingUnits(),
+        servicesAsked: asked,
+      );
+      c.listen(eeServiceGlancesProvider, (_, _) {});
+      await c.read(eePermissionsProvider.future);
+      await c.read(eeTeamProvider.future);
+      await c.read(eeCatalogProvider.future);
+      final glances = c.read(eeServiceGlancesProvider);
+      expect(glances['S1']?.name, 'Hat 3 PLC');
+      expect(asked, isEmpty);
+    });
+  });
+}
+
+class _CountingUnits extends FakeUnitsApi {
+  int listed = 0;
+
+  @override
+  Future<List<EeUnit>?> list() {
+    listed += 1;
+    return super.list();
+  }
 }

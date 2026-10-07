@@ -5,6 +5,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 
@@ -30,12 +31,15 @@ class EeTeamRolesScreen extends ConsumerWidget {
     final roles = ref.watch(eeTeamRolesProvider);
     return Scaffold(
       appBar: AppBar(title: Text('ee.team.roles.title'.tr())),
-      floatingActionButton: FloatingActionButton(
-        key: const Key('role-new'),
-        tooltip: 'ee.team.roles.create'.tr(),
-        onPressed: () => _openEditor(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('team.manage_roles'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('role-new'),
+              tooltip: 'ee.team.roles.create'.tr(),
+              onPressed: () => _openEditor(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: roles.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

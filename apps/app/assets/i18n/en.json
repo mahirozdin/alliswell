@@ -604,7 +604,10 @@
     "doneTitle": "You’re all set",
     "doneBody": "Reopen this tour anytime from Settings → App tour.",
     "filesTitle": "Files",
-    "filesBody": "Your whole space’s files: personal folders plus everything attached to projects, tasks and notes."
+    "filesBody": "Your whole space’s files: personal folders plus everything attached to projects, tasks and notes.",
+    "ticketsTitle": "Requests",
+    "ticketsBody": "Report a problem or ask for something, and follow it until it is done. Your requests and their answers live here.",
+    "filesBodyTeam": "Your unit's files: everything attached to projects, tasks and notes, in one place."
   },
   "error": {
     "unknown": "Something went wrong. Please try again.",
@@ -643,7 +646,19 @@
     "TICKET_FIELD_REQUIRED": "A required question is unanswered.",
     "TICKET_NO_FORM": "This request was not filed on a form, so it has no answers to correct.",
     "TICKET_WORK_BOUND": "This task is a request's work, so it cannot be deleted. To give the work back, release the request.",
-    "TICKET_WORK_LOCKED": "This task is a request's work: its project, parent task, repeat and status follow the request."
+    "TICKET_WORK_LOCKED": "This task is a request's work: its project, parent task, repeat and status follow the request.",
+    "INVITE_NOT_FOUND": "This invitation does not exist. Check the link, or ask for a new one.",
+    "INVITE_ALREADY_ACCEPTED": "This invitation has already been used.",
+    "INVITE_REVOKED": "This invitation was cancelled. Ask your team admin for a new one.",
+    "INVITE_EXPIRED": "This invitation has expired. Ask your team admin for a new one.",
+    "INVITE_BURNED": "Too many wrong codes — this invitation no longer works. Ask your team admin for a new one.",
+    "INVITE_CODE_WRONG": "That code is not right. Check the invitation email and try again.",
+    "INVITE_SIGN_IN_REQUIRED": "This address already has an account — sign in, then open the link again.",
+    "INVITE_WRONG_ACCOUNT": "This invitation is for a different account.",
+    "INVITE_PASSWORD_REQUIRED": "Choose a password to finish creating your account.",
+    "INVITE_TEAM_SUSPENDED": "This team is suspended and cannot take new members right now.",
+    "TEAM_MEMBER_EXISTS": "You are already in this team.",
+    "EE_NO_TEAM_HERE": "No team answers on this address."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1496,12 +1511,28 @@
     },
     "join": {
       "title": "Join a team",
-      "pendingTitle": "Invite received",
-      "pendingBody": "This invite cannot be redeemed yet. Ask your team admin to send it again once invites are enabled on this server.",
-      "pendingBodyTeam": "This invite is for {team}. It cannot be redeemed yet — ask your team admin to send it again once invites are enabled.",
       "unavailableTitle": "Invites are not available here",
       "unavailableBody": "This server does not run teams, so an invite link has nothing to join.",
-      "goHome": "Go to Home"
+      "goHome": "Go to Home",
+      "goSignIn": "Go to sign in",
+      "wrongServerTitle": "This link does not belong to this app",
+      "wrongServerBody": "The link wants to take the app to {host}, which is not a team of {server}. Ask the person who invited you for a new link.",
+      "failedTitle": "This invitation cannot be opened",
+      "forTeam": "Join {team}",
+      "hostLine": "Team address: {host}",
+      "invitedAs": "Invitation for {email}",
+      "codeLabel": "Invitation code",
+      "codeHelp": "The 6-digit code from the invitation email",
+      "codeInvalid": "Enter the 6-digit code from the email.",
+      "nameLabel": "Your name",
+      "passwordLabel": "Choose a password",
+      "passwordHelp": "At least 8 characters",
+      "passwordShort": "The password needs at least 8 characters.",
+      "accept": "Join the team",
+      "signInFirst": "This address already has an account. Sign in first — the invitation opens here again afterwards.",
+      "signIn": "Sign in",
+      "wrongAccount": "This invitation is for {email}, and you are signed in as {current}. Sign out, then open the link again.",
+      "joined": "You joined {team}"
     },
     "history": {
       "couldNotLoad": "History could not be loaded.",
@@ -3153,6 +3184,23 @@
       "release": "Give the request back",
       "releaseOffline": "Giving a request back needs a connection — the desk's rules decide it.",
       "released": "You gave {ref} back — it is off your list."
+    },
+    "teamAddress": {
+      "requiredTitle": "Your team's address is needed",
+      "requiredBody": "This screen works on your team's own address. Point the app at it — Settings › Server — to use it.",
+      "requiredBodyTeam": "{team} works on its own address, {host}. Requests, approvals and team settings are there.",
+      "switch": "Switch to {host}",
+      "bannerBody": "Your team {team} works on its own address, {host}. Requests and approvals are there.",
+      "bannerDismiss": "Not now",
+      "settingsRowBody": "Team screens open on your team's own address",
+      "settingsRowHint": "{team} is at {host} — tap to switch",
+      "notInTeamTitle": "Not a member of this team",
+      "notInTeamBody": "This address belongs to a team your account is not in."
+    },
+    "forbidden": {
+      "title": "This screen is for the team's admins",
+      "body": "Your role does not open these settings. If something here needs changing, ask your team admin.",
+      "back": "Go to Home"
     }
   },
   "perm": {

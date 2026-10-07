@@ -9,6 +9,18 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Team invitation links work (OPH-356).** Opening an invitation now shows the invitation itself
+  — which team, which address, for which e-mail — on the team's own server: enter the code from
+  the e-mail, choose a password if you have no account yet, and you are in. A link pointing
+  anywhere other than a team of the server you use is refused, with the address named.
+- **Signed in on the main address, a team member is shown the way to their team (OPH-356).** A
+  banner on Home and one row in Settings name your team's address and switch to it without signing
+  out. Requests, approvals and team screens opened from the wrong address say "Your team's address
+  is needed" instead of an empty list, "you may not" or an error in English.
+- **Team administration screens are locked for people they are not for (OPH-356).** Opening an
+  admin address as a member shows one locked state, with no create button; controls wait until
+  your permissions are known instead of appearing for a moment. The team chip shows the team's real
+  name and colour, and the first-run tour of a team member includes Requests.
 - **Signing out removes your data from the device (OPH-355).** The local copy — tasks, notes,
   requests, notifications and anything not yet sent — and your cached account details are deleted
   when you sign out; if changes have not reached the server yet, the app tells you how many and

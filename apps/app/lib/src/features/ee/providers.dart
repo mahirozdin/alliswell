@@ -150,19 +150,26 @@ class EePermissionsController extends AsyncNotifier<EePermissions> {
 }
 
 /// EE-253: does this person work a desk? The "Talepler" tab reads it to draw
-/// the queue or "my requests". True while unknown, like [canProvider].
+/// the queue or "my requests". True while unknown: it picks between two
+/// lists, it draws no control.
 final eeDeskProvider = Provider<bool>(
   (ref) => ref.watch(eePermissionsProvider).value?.desk ?? true,
 );
 
 /// `ref.watch(canProvider('tasks.create'))` — the one question a screen asks.
 ///
-/// Answers TRUE while loading and while signed out, and that default is
-/// deliberate: this gate exists to remove a button somebody genuinely may not
-/// press, not to make the app unusable for a second on every launch. A wrong
-/// TRUE costs one refused request with a clear message; a wrong FALSE is a
-/// feature that silently is not there.
+/// Answers FALSE while the permissions are loading (OPH-356, UI-AUDIT #61).
+/// It used to answer true, on the theory that a wrong yes costs one refused
+/// request; measured, it cost more — a delegated unit manager was handed
+/// "New unit", a unit menu and "Make member" for the second after every
+/// sign-in, and pressed them. A control may only exist on a yes. The wait is
+/// short: the last answer is cached per user and workspace, so a returning
+/// person has it on the first frame.
+///
+/// Signed out, on a plain build and on a workspace nothing governs, the
+/// LOADED answer is [EePermissions.unknown], which says yes to everything —
+/// so none of those ever lose a button to this.
 final canProvider = Provider.family<bool, String>(
   (ref, permission) =>
-      ref.watch(eePermissionsProvider).value?.can(permission) ?? true,
+      ref.watch(eePermissionsProvider).value?.can(permission) ?? false,
 );

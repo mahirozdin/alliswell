@@ -15,6 +15,7 @@ import '../providers.dart';
 import 'ticket_archive_screen.dart' show EeMyArchivedTicketsScreen;
 import 'ticket_detail_screen.dart';
 import 'ticket_drafts_section.dart';
+import 'team_address_views.dart';
 
 /// "My requests" (EE-087) — what I asked for, and where it got to.
 ///
@@ -80,8 +81,12 @@ class EeMyTicketsScreen extends ConsumerWidget {
                   child: Center(child: CircularProgressIndicator()),
                 ),
               ],
+              // OPH-356 (UI-AUDIT #7): no team on this address used to be
+              // "you have not asked for anything yet".
               error: (error, _) => [
-                AwErrorState(
+                eeTeamErrorView(
+                  ref,
+                  error,
                   message: localizedError(error),
                   onRetry: () => ref.invalidate(eeMyTicketsProvider),
                 ),

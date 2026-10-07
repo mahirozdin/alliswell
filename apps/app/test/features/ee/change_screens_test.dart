@@ -30,6 +30,7 @@ import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_api.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 
 /// EE-269 (AW-E09) — change management on the phone.
 ///
@@ -185,6 +186,13 @@ void main() {
         eeChangesApiProvider.overrideWithValue(EeChangesApi(dio)),
         eeApprovalsApiProvider.overrideWithValue(EeApprovalsApi(dio)),
         eeServicesProvider.overrideWith(_Catalogue.new),
+        // OPH-356 (#62): the admin list is asked only of somebody who
+        // manages services — an answering list here stands for that person.
+        eeHoldsTeamVerbProvider.overrideWith(
+          (ref, id) => id == 'services.manage'
+              ? _adminServices != null
+              : grants.contains(id),
+        ),
         eeCatalogProvider.overrideWith((ref) async => _memberCatalog),
         // The screens poke the engine after a write; there is no engine here.
         syncEngineProvider.overrideWithValue(null),

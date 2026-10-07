@@ -7,6 +7,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/identity_api.dart';
 import '../data/identity_models.dart';
 import '../identity_providers.dart';
@@ -81,7 +82,9 @@ class EeTeamIdentityScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('team.manage_identity'))
           ? null
           : FloatingActionButton(
               key: const Key('identity-add'),

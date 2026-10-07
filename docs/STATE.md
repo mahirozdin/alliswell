@@ -9,8 +9,9 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-355 kapandı (çıkışta yerel veri silinir, hesap değişince replika
-düşer, `/me` geçici hatasında son liste); Epic 34'ün sırası OPH-356'da.
+**Last updated:** 2026-10-07 — OPH-356 kapandı (davet bağlantısı takımın sunucusunda açılır ve
+hesap orada kurulur, varsayılan adreste "Takım adresi gerekiyor" + tek dokunuşla geçiş, yönetim
+rotalarında tek kilitli durum); Epic 34'ün sırası OPH-357'de.
 
 ## Snapshot
 
@@ -18,8 +19,8 @@ düşer, `/me` geçici hatasında son liste); Epic 34'ün sırası OPH-356'da.
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
 | Current epic             | **Epic 34** — 2026-10-07 UI denetimi: çıkışta yerel veri, takım adresi, core hata gövdesi ve hız sınırı, uzantı ekranları (OPH-355…OPH-360). İkiz yok; her iş sunucunun eski ve yeni davranışına dayanıklı. |
-| ➡️ **Next task**         | **OPH-356** — P0: takım adresi istemcide — davet bağlantısının sunucusu, varsayılan adreste takım bağlamı, yönetim rotalarının kapısı |
-| Last completed           | OPH-355 — replika tek kişinin: çıkış replikayı ve kişiye bağlı anahtarları siler (gönderilmemişte sorar), başkasının replikasına giriş onu düşürür, bildirim merkezi kişiye süzülür; `/me` 429/5xx/zaman aşımında son liste (2026-10-07). |
+| ➡️ **Next task**         | **OPH-357** — Core API: 5xx gövdesi iç bilgi taşımaz, kodlu 429, kimliğe göre hız sınırı, Türkçe slug; istemcide kodsuz hata ve ikincil bölüm hataları |
+| Last completed           | OPH-356 — takım adresi istemcide: `/join/:token?server=` yalnız güvenilen apex'in kardeşine (ADR-0046) ve oturumsuz da açılır, kod/hesap/kabul ekranı; apex'te `/ee/me/team` ipucu, tek tip "Takım adresi gerekiyor", 404 boş liste değil; yönetim rotalarına kapı, `canProvider` yüklenirken hayır; `managedUnitIds` ile yoklama yok; takım turu ve takımın gerçek adı (2026-10-07). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

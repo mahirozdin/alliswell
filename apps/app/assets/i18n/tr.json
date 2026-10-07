@@ -603,7 +603,10 @@
     "doneTitle": "Hazırsın",
     "doneBody": "Bu turu Ayarlar → Uygulama turu'ndan istediğin an tekrar aç.",
     "filesTitle": "Dosyalar",
-    "filesBody": "Alanının tüm dosyaları: kişisel klasörler artı projelere, görevlere ve notlara ekli her şey."
+    "filesBody": "Alanının tüm dosyaları: kişisel klasörler artı projelere, görevlere ve notlara ekli her şey.",
+    "ticketsTitle": "Talepler",
+    "ticketsBody": "Bir sorunu bildir ya da bir şey iste, bitene kadar izle. Taleplerin ve yanıtları burada.",
+    "filesBodyTeam": "Biriminin dosyaları: projelere, görevlere ve notlara ekli her şey tek yerde."
   },
   "error": {
     "unknown": "Bir şeyler ters gitti. Lütfen tekrar dene.",
@@ -642,7 +645,19 @@
     "TICKET_FIELD_REQUIRED": "Zorunlu bir soru cevapsız kaldı.",
     "TICKET_NO_FORM": "Bu talep bir formla açılmadı; düzeltilecek cevabı yok.",
     "TICKET_WORK_BOUND": "Bu görev bir talebin işi; silinemez. İşi bırakmak için talebi bırak.",
-    "TICKET_WORK_LOCKED": "Bu görev bir talebin işi: projesi, üst görevi, tekrarı ve durumu talebe bağlı."
+    "TICKET_WORK_LOCKED": "Bu görev bir talebin işi: projesi, üst görevi, tekrarı ve durumu talebe bağlı.",
+    "INVITE_NOT_FOUND": "Böyle bir davet yok. Bağlantıyı kontrol edin ya da yeni bir davet isteyin.",
+    "INVITE_ALREADY_ACCEPTED": "Bu davet zaten kullanılmış.",
+    "INVITE_REVOKED": "Bu davet iptal edilmiş. Takım yöneticinizden yeni bir davet isteyin.",
+    "INVITE_EXPIRED": "Bu davetin süresi dolmuş. Takım yöneticinizden yeni bir davet isteyin.",
+    "INVITE_BURNED": "Çok fazla yanlış kod girildi; bu davet artık çalışmıyor. Takım yöneticinizden yeni bir davet isteyin.",
+    "INVITE_CODE_WRONG": "Kod doğru değil. Davet e-postasını kontrol edip yeniden deneyin.",
+    "INVITE_SIGN_IN_REQUIRED": "Bu adresin zaten bir hesabı var; giriş yapıp bağlantıyı yeniden açın.",
+    "INVITE_WRONG_ACCOUNT": "Bu davet başka bir hesap için.",
+    "INVITE_PASSWORD_REQUIRED": "Hesabınızı oluşturmayı bitirmek için bir parola belirleyin.",
+    "INVITE_TEAM_SUSPENDED": "Bu takım askıya alınmış; şu an yeni üye alamıyor.",
+    "TEAM_MEMBER_EXISTS": "Bu takımdasınız zaten.",
+    "EE_NO_TEAM_HERE": "Bu adreste yanıt veren bir takım yok."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1495,12 +1510,28 @@
     },
     "join": {
       "title": "Takıma katıl",
-      "pendingTitle": "Davet alındı",
-      "pendingBody": "Bu davet henüz kullanılamıyor. Sunucuda davetler açıldığında takım yöneticinden tekrar göndermesini iste.",
-      "pendingBodyTeam": "Bu davet {team} takımı için. Henüz kullanılamıyor — davetler açıldığında takım yöneticinden tekrar göndermesini iste.",
-      "unavailableTitle": "Burada davet kullanılamıyor",
-      "unavailableBody": "Bu sunucuda takım özelliği çalışmıyor, dolayısıyla davet bağlantısının katılacağı bir yer yok.",
-      "goHome": "Ana Sayfa'ya git"
+      "unavailableTitle": "Davetler burada kullanılamıyor",
+      "unavailableBody": "Bu sunucu takım çalıştırmıyor, bu yüzden davet bağlantısının katılacağı bir yer yok.",
+      "goHome": "Ana Sayfa'ya git",
+      "goSignIn": "Girişe git",
+      "wrongServerTitle": "Bu bağlantı bu uygulamaya ait değil",
+      "wrongServerBody": "Bağlantı uygulamayı {host} adresine götürmek istiyor; bu adres {server} sunucusunun bir takımı değil. Sizi davet eden kişiden yeni bir bağlantı isteyin.",
+      "failedTitle": "Bu davet açılamıyor",
+      "forTeam": "{team} takımına katılın",
+      "hostLine": "Takım adresi: {host}",
+      "invitedAs": "{email} için davet",
+      "codeLabel": "Davet kodu",
+      "codeHelp": "Davet e-postasındaki 6 haneli kod",
+      "codeInvalid": "E-postadaki 6 haneli kodu girin.",
+      "nameLabel": "Adınız",
+      "passwordLabel": "Parola belirleyin",
+      "passwordHelp": "En az 8 karakter",
+      "passwordShort": "Parola en az 8 karakter olmalı.",
+      "accept": "Takıma katıl",
+      "signInFirst": "Bu adresin zaten bir hesabı var. Önce giriş yapın; davet ardından burada yeniden açılır.",
+      "signIn": "Giriş yap",
+      "wrongAccount": "Bu davet {email} için; siz {current} olarak giriş yaptınız. Çıkış yapıp bağlantıyı yeniden açın.",
+      "joined": "{team} takımına katıldınız"
     },
     "history": {
       "couldNotLoad": "Geçmiş yüklenemedi.",
@@ -3152,6 +3183,23 @@
       "release": "Talebi bırak",
       "releaseOffline": "Talebi bırakmak bağlantı ister — kararı masanın kuralları verir.",
       "released": "{ref} talebini bıraktın — listenden çıktı."
+    },
+    "teamAddress": {
+      "requiredTitle": "Takım adresi gerekiyor",
+      "requiredBody": "Bu ekran takımınızın kendi adresinde çalışır. Kullanmak için uygulamayı o adrese yöneltin: Ayarlar › Sunucu.",
+      "requiredBodyTeam": "{team} kendi adresinde çalışır: {host}. Talepler, onaylar ve takım ayarları orada.",
+      "switch": "{host} adresine geç",
+      "bannerBody": "Takımınız {team} kendi adresinde çalışıyor: {host}. Talepler ve onaylar orada.",
+      "bannerDismiss": "Şimdi değil",
+      "settingsRowBody": "Takım ekranları takımınızın kendi adresinde açılır",
+      "settingsRowHint": "{team} şu adreste: {host} — geçmek için dokunun",
+      "notInTeamTitle": "Bu takımın üyesi değilsiniz",
+      "notInTeamBody": "Bu adres hesabınızın üyesi olmadığı bir takıma ait."
+    },
+    "forbidden": {
+      "title": "Bu ekran takım yöneticilerine ait",
+      "body": "Rolünüz bu ayarları açmaya izin vermiyor. Burada bir şeyin değişmesi gerekiyorsa takım yöneticinize yazın.",
+      "back": "Ana sayfaya dön"
     }
   },
   "perm": {

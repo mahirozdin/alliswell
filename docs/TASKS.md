@@ -67,42 +67,6 @@ aynı işte.
 
 ---
 
-### OPH-356 — P0: takım adresi istemcide — davet bağlantısının sunucusu, varsayılan adreste takım bağlamı, yönetim rotalarının kapısı
-
-**Bulgular:** #5 (istemci), #7 (istemci), #61, #62 (istemci), #83, #84. **Karşı yarı:** EE-300
-(#5, #7), EE-302 (#62) — sözleşme orada.
-
-- [ ] **#5** `router.dart` `/join/:token` ve `features/ee/ui/join_screen.dart`: bağlantıdaki `server`
-      parametresi okunur; yalnız https ve `teamOriginOf(server, baseDomain)` geçerli bir takım
-      adresiyse kabul edilir (varsayılan sunucunun `/ee/status` `baseDomain`'i), kullanıcıya host
-      gösterilerek sunucu değiştirilir ve kabul ekranı o sunucuyla açılır; parametre yoksa bugünkü
-      davranış. Geçersiz parametre sessizce yok sayılmaz — "bağlantı bu uygulamaya ait değil" durumu.
-- [ ] **#7** `features/ee/team_origin.dart`, `core/server_url.dart`, giriş akışı: takım adresi
-      olmayan sunucuda girişten sonra takım ipucu uçtan okunur (404 ya da uç yok → ipucu yok); ipucu
-      varsa "Takımınızın adresi X — geç" önerisi. `teamOrigin` null iken takım alanı senkronlanmışsa
-      uzantı girişleri (Onaylar, Taleplerim, Ayarlar' takım satırları, portal ekranı) boş liste ya da
-      "izniniz yok" değil, tek tip "Takım adresi gerekiyor" boş durumu + geç düğmesi
-      (`widgets/status_views.dart`); `data/approvals_api.dart` ~44/58, `data/my_tickets_api.dart` ~76
-      404'ü boş liste yapmaz, tipli hata döner; `screens/home_shell.dart` ~200 girişleri
-      `teamOriginProvider`'a bağlar; talep detayı 404'te işlem düğmelerini gizler.
-- [ ] **#61** `router.dart` ~646–720 `/settings/team/*` için redirect + tek `EeForbiddenView`;
-      oluştur FAB'ları `canProvider`'a bağlı; `features/ee/providers.dart` ~165 `canProvider`
-      yüklenirken `false` (kontroller izin gelmeden çizilmez).
-- [ ] **#62** delege tespiti `/me/permissions` yanıtındaki birim listesinden (alan yoksa bugünkü
-      yoklama — eski sunucu), servis bilgisi katalogdan; üye ekranı yönetici ucunu yoklamaz.
-- [ ] **#83** uygulama turu: uzantı açık + takım adresindeyken Talepler adımı; "kişisel klasörler"
-      metni kurum hesabında gösterilmez.
-- [ ] **#84** takım çipi adı ve rengi takımın kendi kaydından (`eeTeamProvider`), slug türetmesi
-      yalnız yedek (`team_origin.dart` ~26/114). Uzantı backlog'undaki "takım çipi" satırı bununla kapanır.
-- [ ] Testler: `test/features/ee/team_origin_test.dart`, yeni `test/features/ee/join_screen_test.dart`
-      (#5: geçerli/geçersiz/eksik `server`), `test/router_redirect_test.dart` (#61),
-      `test/features/ee/permission_gates_test.dart`, `reachable_screens_test.dart`,
-      `approvals_screen_test.dart` (#7 404 ≠ boş), `team_chip_test.dart` (#84), onboarding turu testi (#83).
-
-**Kabul:** davet bağlantısı açılınca kabul ekranı takım sunucusuyla gelir; varsayılan adresle giren
-takım üyesi "Takım adresi gerekiyor" görür (boş liste değil) ve tek dokunuşla geçer; üye
-`#/settings/team/roles`'u açınca tek tip kilitli durum görür, "+" yok.
-
 ### OPH-357 — Core API: 5xx gövdesi iç bilgi taşımaz, kodlu 429, kimliğe göre hız sınırı, Türkçe slug; istemcide kodsuz hata ve ikincil bölüm hataları
 
 **Bulgular:** #16 (core), #24, #25, #26, #81, D3. **Karşı yarı:** EE-302 (#16 tarih), EE-301 (#40 —

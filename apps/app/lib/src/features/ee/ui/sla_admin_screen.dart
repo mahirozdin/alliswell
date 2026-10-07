@@ -5,6 +5,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/sla_admin_models.dart';
 import '../sla_admin_providers.dart';
 
@@ -122,12 +123,15 @@ class _PolicyList extends ConsumerWidget {
       );
     }
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const Key('sla-policy-new'),
-        tooltip: 'ee.slaAdmin.newPolicy'.tr(),
-        onPressed: () => _editPolicy(context, ref, data, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('sla.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('sla-policy-new'),
+              tooltip: 'ee.slaAdmin.newPolicy'.tr(),
+              onPressed: () => _editPolicy(context, ref, data, null),
+              child: const Icon(Icons.add),
+            ),
       body: ListView(
         children: [
           for (final p in data.policies)
@@ -325,12 +329,15 @@ class _CalendarList extends ConsumerWidget {
       );
     }
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const Key('sla-calendar-new'),
-        tooltip: 'ee.slaAdmin.newCalendar'.tr(),
-        onPressed: () => _editCalendar(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('sla.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('sla-calendar-new'),
+              tooltip: 'ee.slaAdmin.newCalendar'.tr(),
+              onPressed: () => _editCalendar(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: ListView(
         children: [
           for (final c in data.calendars)
@@ -505,12 +512,15 @@ class _MonitorList extends ConsumerWidget {
       );
     }
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        key: const Key('sla-monitor-new'),
-        tooltip: 'ee.slaAdmin.newMonitor'.tr(),
-        onPressed: () => _editMonitor(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('sla.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('sla-monitor-new'),
+              tooltip: 'ee.slaAdmin.newMonitor'.tr(),
+              onPressed: () => _editMonitor(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: ListView(
         children: [
           for (final c in data.checks)

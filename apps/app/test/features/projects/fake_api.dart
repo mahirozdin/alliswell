@@ -464,6 +464,25 @@ class FakeApi {
   List<String> eePermissions = [];
   int? eeMePermissionsCode;
 
+  /// OPH-356 / EE-302: `managedUnitIds` in the permission answer. Null leaves
+  /// the field out — a server from before it.
+  List<String>? eeManagedUnitIds;
+
+  // ── The person's team (/ee/me/team, EE-300; /ee/team, EE-018) ────────────
+  /// What `GET /api/v1/ee/me/team` answers: `{slug, name, color, origin}`.
+  /// Null plays an account with no team (404 `TEAM_NONE`) and a server from
+  /// before the endpoint alike — the client cannot and need not tell them
+  /// apart.
+  Map<String, dynamic>? eeMyTeam;
+
+  /// What `GET /api/v1/ee/team` answers on a team host. Null = 404 (no team
+  /// on this address, or not a member) — what the service's own address says.
+  Map<String, dynamic>? eeTeamInfo;
+
+  /// Requests that reached an `/ee/team/*` path, in order — the proof a
+  /// screen did or did not ask a team endpoint.
+  final List<String> eeTeamRequests = [];
+
   // ── AI (Epic 20) — per-user server state, like the calendar accounts ──────
   /// Is AI enabled on the server? Defaults OFF so the many existing feature
   /// flows are unperturbed by a second (AI) FAB; AI tests opt in with
@@ -839,6 +858,24 @@ class FakeApi {
       });
     }
 
+    if (path == '/api/v1/ee/me/team' && options.method == 'GET') {
+      final team = eeMyTeam;
+      if (team == null) {
+        return jsonBody(404, {'code': 'TEAM_NONE', 'message': 'No team'});
+      }
+      return jsonBody(200, team);
+    }
+    if (path.startsWith('/api/v1/ee/team')) {
+      eeTeamRequests.add('${options.method} $path');
+      if (path == '/api/v1/ee/team' &&
+          options.method == 'GET' &&
+          eeTeamInfo != null) {
+        return jsonBody(200, eeTeamInfo!);
+      }
+      // ADR-0004: a team endpoint off the team's host is a bare 404.
+      return jsonBody(404, {'statusCode': 404, 'message': 'Not found'});
+    }
+
     if (path == '/api/v1/ee/me/permissions' && options.method == 'GET') {
       if (eeMePermissionsCode != null) {
         return jsonBody(eeMePermissionsCode!, {
@@ -850,6 +887,7 @@ class FakeApi {
         'workspaceId': workspaceId,
         'governed': eeGoverned,
         'permissions': eePermissions,
+        if (eeManagedUnitIds != null) 'managedUnitIds': eeManagedUnitIds,
       });
     }
 

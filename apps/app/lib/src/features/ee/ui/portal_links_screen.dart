@@ -6,6 +6,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/portal_links_models.dart';
 import '../data/services_models.dart';
 import '../portal_links_providers.dart';
@@ -66,7 +67,9 @@ class EePortalLinksScreen extends ConsumerWidget {
           return _Body(data: value);
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('portal.manage_links'))
           ? null
           : FloatingActionButton(
               key: const Key('portal-create'),

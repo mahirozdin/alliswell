@@ -52,6 +52,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0042](0042-layered-verification-and-the-loop-contract.md) | Layered verification, a machine-picked next task, and the loop contract | Accepted |
 | [0043](0043-the-deploy-runs-on-a-runner-on-the-server.md) | The deploy runs on a runner on the server, started from the overlay's private repository | Accepted |
 | [0044](0044-shared-workspaces-sync-together.md) | Shared workspaces sync together; a person's lists are their own work — `owned`, the task scope, and three seam additions (write refusals, described deletions, reminder audiences) | Accepted |
+| [0046](0046-the-app-follows-a-team-address.md) | The app follows a team's address — an invitation's `server` is trusted only as a sibling of the server already in use, and moving to the team's address keeps the session | Accepted |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

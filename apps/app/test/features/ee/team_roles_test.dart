@@ -9,6 +9,7 @@ import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_roles_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-053 — the role list and its grant matrix.
 ///
@@ -138,7 +139,11 @@ class FakeRolesApi implements EeTeamAdminApi {
 }
 
 Widget harness(FakeRolesApi api) => ProviderScope(
-  overrides: [eeTeamAdminApiProvider.overrideWithValue(api)],
+  overrides: [
+    eeTeamAdminApiProvider.overrideWithValue(api),
+    // OPH-356: the "+" waits for a yes; this file is about an admin.
+    canProvider.overrideWith((ref, id) => true),
+  ],
   child: MaterialApp(
     theme: buildAwTheme(Brightness.light),
     home: const EeTeamRolesScreen(),

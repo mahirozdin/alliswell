@@ -180,7 +180,11 @@ class FakeApi implements EeTeamAdminApi {
 }
 
 Widget harness(FakeApi api, Widget child) => ProviderScope(
-  overrides: [eeTeamAdminApiProvider.overrideWithValue(api)],
+  overrides: [
+    eeTeamAdminApiProvider.overrideWithValue(api),
+    // OPH-356: the create button waits for a yes; this file is an admin's.
+    canProvider.overrideWith((ref, id) => true),
+  ],
   child: MaterialApp(theme: buildAwTheme(Brightness.light), home: child),
 );
 

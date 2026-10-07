@@ -18,6 +18,7 @@ import 'package:alliswell/src/features/ee/ui/team_services_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'support/permissions.dart';
 
 /// EE-228 — the catalogue as the admin arranges it.
 ///
@@ -193,6 +194,8 @@ void main() {
           eeTeamAdminApiProvider.overrideWithValue(_FakeAdmin()),
           eeFeatureProvider.overrideWith((ref, feature) => true),
           canProvider.overrideWith((ref, id) => true),
+          // OPH-356: the units list reads the permission answer first.
+          fixedPermissions(),
         ],
         child: MaterialApp(
           theme: buildAwTheme(Brightness.light),

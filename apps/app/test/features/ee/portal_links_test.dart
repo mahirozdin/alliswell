@@ -11,6 +11,7 @@ import 'package:alliswell/src/features/ee/ui/portal_links_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-106 — the management screen, asserted where it would mislead.
 ///
@@ -69,6 +70,8 @@ Future<void> _pump(
       overrides: [
         eePortalLinksProvider.overrideWith(() => _Fixed(value)),
         eeServicesProvider.overrideWith(() => _FixedServices(_services)),
+        // OPH-356: the create button waits for a yes.
+        canProvider.overrideWith((ref, id) => true),
       ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),

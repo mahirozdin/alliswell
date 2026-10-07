@@ -9,6 +9,8 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/team_origin.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/sections.dart';
 
@@ -197,5 +199,61 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Welcome to AllisWell'), findsNothing);
     expect(find.byKey(const Key('tour-skip')), findsNothing);
+  });
+
+  // UI-AUDIT #83 (OPH-356): a member of an organisation walked through seven
+  // steps of the personal app — nothing about Requests, the one thing they
+  // came for, and Files promising "personal folders" the organisation's own
+  // handbook says do not exist.
+  group('UI-AUDIT #83: the tour in a team\'s window', () {
+    ProviderContainer containerFor({required bool itsm, AwTeamOrigin? team}) {
+      final c = ProviderContainer(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => itsm),
+          teamOriginProvider.overrideWithValue(team),
+        ],
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    final acme = teamOriginOf('https://acme.example.com', 'example.com');
+
+    test('the service desk gets its step, and Files makes no personal '
+        'promise', () {
+      final c = containerFor(itsm: true, team: acme);
+      c.read(tourControllerProvider.notifier).start();
+      final steps = c.read(tourControllerProvider).steps;
+      expect(steps.map((s) => s.section), contains(AppSection.tickets));
+      final files = steps.firstWhere((s) => s.section == AppSection.files);
+      expect(files.body, isNot(contains('personal folders')));
+      expect(files.body, isNot(contains('kişisel')));
+      // Every step still has words, and the shape still welcomes and ends.
+      expect(steps.first.section, isNull);
+      expect(steps.last.section, isNull);
+      for (final s in steps) {
+        expect(s.title, isNotEmpty);
+        expect(s.body, isNotEmpty);
+      }
+    });
+
+    test('the personal app, and a licensed instance off a team\'s address, '
+        'keep the personal tour', () {
+      for (final c in [
+        containerFor(itsm: false, team: acme),
+        containerFor(itsm: true, team: null),
+      ]) {
+        c.read(tourControllerProvider.notifier).start();
+        expect(c.read(tourControllerProvider).steps, same(kTourSteps));
+      }
+    });
+
+    test('a running tour keeps its script when the window changes', () {
+      final c = containerFor(itsm: true, team: acme);
+      final ctl = c.read(tourControllerProvider.notifier);
+      ctl.start();
+      ctl.next();
+      expect(c.read(tourControllerProvider).steps, same(kTeamTourSteps));
+    });
   });
 }

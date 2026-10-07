@@ -15,6 +15,7 @@ import 'features/ee/admin/ui/admin_shell.dart';
 import 'features/ee/admin/ui/admin_teams_screen.dart';
 import 'features/ee/admin/ui/admin_usage_screen.dart';
 import 'features/ee/ui/join_screen.dart';
+import 'features/ee/ui/team_address_views.dart';
 import 'features/files/ui/files_screen.dart';
 import 'features/home/home_create.dart';
 import 'features/home/home_screen.dart';
@@ -89,6 +90,23 @@ const String _kNotFound = '/not-found';
 /// rather than trusted to each screen.
 Widget _page(Widget child) => AwPageBackground(child: child);
 
+/// A team route behind its door (OPH-356, UI-AUDIT #7 and #61): the team's
+/// address first, then — for the administration — who may open it. See
+/// [EeTeamRouteGate].
+Widget _teamPage(
+  Widget child, {
+  required String title,
+  String? permission,
+  bool adminOnly = false,
+}) => _page(
+  EeTeamRouteGate(
+    titleKey: title,
+    permission: permission,
+    adminOnly: adminOnly,
+    child: child,
+  ),
+);
+
 /// A request's two addresses (EE-225, EE-251). **The order is the contract:**
 /// go_router matches in declaration order, so `/tickets/new` must come before
 /// `/tickets/:ticketId` or "new" would be read as an id. A function rather than
@@ -99,7 +117,8 @@ List<RouteBase> eeTicketRoutes() => [
   // (a printed sign by a machine, one day) can land on it.
   GoRoute(
     path: '/tickets/new',
-    builder: (context, state) => _page(
+    builder: (context, state) => _teamPage(
+      title: 'ee.tickets.new.title',
       EeNewTicketScreen(
         // EE-252: a follow-up to a closed request rides in-app, in `extra`;
         // the address itself carries nothing.
@@ -120,7 +139,8 @@ List<RouteBase> eeTicketRoutes() => [
   // was only ever pushed, so nothing arriving from outside could reach it.
   GoRoute(
     path: '/tickets/:ticketId',
-    builder: (context, state) => _page(
+    builder: (context, state) => _teamPage(
+      title: 'ee.tickets.detailTitle',
       EeTicketDetailScreen(ticketId: state.pathParameters['ticketId'] ?? ''),
     ),
   ),
@@ -217,6 +237,11 @@ const String kAdminLogin = '/admin/login';
 bool isAdminLocation(String location) =>
     location == kAdminRoot || location.startsWith('$kAdminRoot/');
 
+/// A team invitation's landing place (OPH-356). Reachable signed OUT: the
+/// person it is for often has no account yet, and the team's address refuses
+/// free registration — the join screen is where that account is made.
+bool isJoinLocation(String location) => location.startsWith('/join/');
+
 /// Pure redirect policy (unit-tested in test/router_redirect_test.dart):
 /// admin locations answer to the operator session ALONE; then restoring →
 /// splash; signed out → login/register only; signed in → keep auth/splash
@@ -233,6 +258,10 @@ String? computeAuthRedirect({
     if (location == kAdminLogin) return isInstanceAdmin ? kAdminRoot : null;
     return isInstanceAdmin ? null : kAdminLogin;
   }
+  // OPH-356: an invitation is reachable in every state — even mid-restore,
+  // where parking it on the splash lost it on a cold start. The join screen
+  // waits for the session itself.
+  if (isJoinLocation(location)) return null;
   if (isRestoring) return location == '/splash' ? null : '/splash';
   if (!isLoggedIn) {
     return _authLocations.contains(location) ? null : '/login';
@@ -339,7 +368,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       // OPH-189: a deep link that arrived signed-out waits, then wins once the
       // session exists. `computeAuthRedirect` stays pure and separately tested;
       // this is the one stateful layer on top of it.
+      // Not while a session is restoring: its previous value is still there,
+      // and replaying then would bounce between the place and the splash.
       if (auth.value != null &&
+          !auth.isLoading &&
           (decision == AppSection.home.path || decision == null)) {
         final pending = ref.read(pendingDeepLinkProvider.notifier).take();
         if (pending != null && pending != state.matchedLocation) return pending;
@@ -352,7 +384,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           !auth.isLoading &&
           !awIsShareCallback(state.uri)) {
         final wanted = awRouteForUri(state.uri) ?? state.matchedLocation;
-        if (!_authLocations.contains(wanted) && wanted != '/splash') {
+        // A join link is reachable signed out (it remembers itself, query
+        // and all, when it sends somebody to sign in).
+        if (!_authLocations.contains(wanted) &&
+            wanted != '/splash' &&
+            !isJoinLocation(wanted)) {
           ref.read(pendingDeepLinkProvider.notifier).remember(wanted);
         }
       }
@@ -421,13 +457,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => _page(const RegisterScreen()),
       ),
       // EE-018: a team invite's landing place. Not in `_authLocations` on
-      // purpose — an invite arriving signed-out is remembered by the pending
-      // deep-link machinery and replayed after sign-in, which is exactly the
-      // flow an invite wants.
+      // purpose — a signed-in person may open one too.
+      //
+      // OPH-356: reachable signed out (`isJoinLocation`), and the link's
+      // `server` — the team's own address (ADR-0021) — rides along.
       GoRoute(
         path: '/join/:token',
-        builder: (context, state) =>
-            _page(JoinTeamScreen(token: state.pathParameters['token'] ?? '')),
+        builder: (context, state) => _page(
+          JoinTeamScreen(
+            token: state.pathParameters['token'] ?? '',
+            server: state.uri.queryParameters['server'],
+          ),
+        ),
       ),
       // EE-033 — the instance-operator console. Outside the shell on purpose:
       // it is not one of the person's five sections, it has its own frame,
@@ -644,39 +685,67 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/settings/team',
-        builder: (context, state) => _page(const EeTeamSettingsScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamSettingsScreen(),
+          title: 'ee.team.settings.title',
+          adminOnly: true,
+        ),
       ),
       GoRoute(
         path: '/settings/team/members',
-        builder: (context, state) => _page(const EeTeamMembersScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamMembersScreen(),
+          title: 'ee.team.members.title',
+          permission: 'team.manage_members',
+        ),
       ),
       GoRoute(
         path: '/settings/team/invites',
-        builder: (context, state) => _page(const EeTeamInvitesScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamInvitesScreen(),
+          title: 'ee.team.invites.title',
+          permission: 'team.manage_invites',
+        ),
       ),
       // EE-053: roles and their grant matrix.
       GoRoute(
         path: '/settings/team/roles',
-        builder: (context, state) => _page(const EeTeamRolesScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamRolesScreen(),
+          title: 'ee.team.roles.title',
+          permission: 'team.manage_roles',
+        ),
       ),
       // EE-082: the service catalogue — what people may ask for, and which
       // unit answers each one.
       GoRoute(
         path: '/settings/team/services',
-        builder: (context, state) => _page(const EeTeamServicesScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamServicesScreen(),
+          title: 'ee.team.services.title',
+          permission: 'services.manage',
+        ),
       ),
       // EE-099: what an admin may edit about a promise — policies, business
       // calendars and health monitors, all behind `sla.manage`.
       GoRoute(
         path: '/settings/team/sla',
-        builder: (context, state) => _page(const EeSlaAdminScreen()),
+        builder: (context, state) => _teamPage(
+          const EeSlaAdminScreen(),
+          title: 'ee.slaAdmin.title',
+          permission: 'sla.manage',
+        ),
       ),
       // EE-106: the public request links — create, pause, extend, revoke,
       // behind `portal.manage_links`. The URL a link carries is shown once at
       // creation and never again, because the server keeps only its digest.
       GoRoute(
         path: '/settings/team/portal',
-        builder: (context, state) => _page(const EePortalLinksScreen()),
+        builder: (context, state) => _teamPage(
+          const EePortalLinksScreen(),
+          title: 'ee.portal.title',
+          permission: 'portal.manage_links',
+        ),
       ),
       // EE-111: the team's AI provider keys and the personal-key policy,
       // behind `team.manage_ai_keys`. A key goes in once and is never shown
@@ -684,7 +753,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // four characters and offers to replace rather than to reveal.
       GoRoute(
         path: '/settings/team/ai-keys',
-        builder: (context, state) => _page(const EeTeamAiKeysScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamAiKeysScreen(),
+          title: 'ee.teamAi.title',
+          permission: 'team.manage_ai_keys',
+        ),
       ),
       // OPH-287: the team's identity sources — connect, TEST, then switch on,
       // behind `team.manage_identity`. Its own row rather than a section of
@@ -693,7 +766,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // different person's job.
       GoRoute(
         path: '/settings/team/identity',
-        builder: (context, state) => _page(const EeTeamIdentityScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamIdentityScreen(),
+          title: 'ee.identity.title',
+          permission: 'team.manage_identity',
+        ),
       ),
       // OPH-290: the team's own mail relay. Its own row for the reason the one
       // above has one — this hands us a credential for the company's mail
@@ -701,7 +778,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // which is not the authority that picks a logo.
       GoRoute(
         path: '/settings/team/mail',
-        builder: (context, state) => _page(const EeTeamMailScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamMailScreen(),
+          title: 'ee.mail.title',
+          permission: 'team.manage_mail',
+        ),
       ),
       // EE-176: the team's outgoing endpoints, behind `webhooks.manage`. Its
       // own row for the reason the mail relay has one: this decides which
@@ -709,7 +790,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // shown exactly once.
       GoRoute(
         path: '/settings/team/webhooks',
-        builder: (context, state) => _page(const EeTeamWebhooksScreen()),
+        builder: (context, state) => _teamPage(
+          const EeTeamWebhooksScreen(),
+          title: 'ee.webhooks.title',
+          permission: 'webhooks.manage',
+        ),
       ),
       // EE-271: the team's whole history (EE-130). The screen was written
       // with its filters and its three honest empties and had no route at
@@ -717,7 +802,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       // server checks; the settings row is drawn only for whoever holds it.
       GoRoute(
         path: '/settings/team/audit',
-        builder: (context, state) => _page(const EeAuditLogScreen()),
+        builder: (context, state) => _teamPage(
+          const EeAuditLogScreen(),
+          title: 'ee.audit.title',
+          permission: 'team.view_audit',
+        ),
       ),
       // EE-184: what is waiting on your decision. Its own route rather than a
       // tab on the queue, because the people who answer approvals are not
@@ -731,13 +820,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       // release pointed at.
       GoRoute(
         path: '/approvals',
-        builder: (context, state) => _page(const EeApprovalsScreen()),
+        builder: (context, state) =>
+            _teamPage(const EeApprovalsScreen(), title: 'ee.approvals.title'),
       ),
       // EE-295: one approval, whole — what a row of the queue and an
       // approval notification open (the approver's window, ADR-0018).
       GoRoute(
         path: '/approvals/:approvalId',
-        builder: (context, state) => _page(
+        builder: (context, state) => _teamPage(
+          title: 'ee.approvals.detailTitle',
           EeApprovalDetailScreen(
             approvalId: state.pathParameters['approvalId'] ?? '',
           ),
@@ -769,7 +860,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       // a unit — receiving something is not an admin act.
       GoRoute(
         path: '/settings/team/shared',
-        builder: (context, state) => _page(const EeSharedWithMeScreen()),
+        builder: (context, state) =>
+            _teamPage(const EeSharedWithMeScreen(), title: 'ee.shared.title'),
       ),
       // EE-069: one task's whole story. A route rather than a tab on the
       // detail screen — see the screen's own header for why.
@@ -809,20 +901,23 @@ final routerProvider = Provider<GoRouter>((ref) {
       // something is the least privileged act in the product.
       GoRoute(
         path: '/settings/team/my-tickets',
-        builder: (context, state) => _page(const EeMyTicketsScreen()),
+        builder: (context, state) =>
+            _teamPage(const EeMyTicketsScreen(), title: 'ee.tickets.mineTitle'),
       ),
       // EE-236: absences and the on-call cover they cause. Reachable by
       // anyone in a team — saying "I am away next week" needs no verb.
       GoRoute(
         path: '/settings/team/absences',
-        builder: (context, state) => _page(const EeAbsencesScreen()),
+        builder: (context, state) =>
+            _teamPage(const EeAbsencesScreen(), title: 'ee.absences.title'),
       ),
       // EE-057: units. The one team route a NON-admin can legitimately reach
       // — a delegated unit manager is an ordinary member everywhere else, so
       // this path is gated by what the server hands back, not by the role.
       GoRoute(
         path: '/settings/team/units',
-        builder: (context, state) => _page(const EeTeamUnitsScreen()),
+        builder: (context, state) =>
+            _teamPage(const EeTeamUnitsScreen(), title: 'ee.team.units.title'),
       ),
       // OPH-220: AI settings — connections, models, the MCP connector URL.
       GoRoute(

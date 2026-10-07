@@ -4,6 +4,7 @@ import '../auth/providers.dart';
 import 'data/units_api.dart';
 import 'data/units_models.dart';
 import 'providers.dart';
+import 'team_admin_providers.dart' show eeTeamProvider;
 
 /// Unit providers (EE-057).
 ///
@@ -35,6 +36,20 @@ class EeUnitsController extends AsyncNotifier<List<EeUnit>?> {
     // No entitlement → the endpoints do not exist; asking would be a 404 on
     // every app start (the house idiom: no entitlement, no capability).
     if (!ref.watch(eeFeatureProvider('teams'))) return null;
+    // OPH-356 (UI-AUDIT #62): the server now says which units this person
+    // runs (`/me/permissions` → `managedUnitIds`). Somebody who runs none and
+    // holds no team-wide unit verb has nothing behind this list, and asking
+    // anyway was a 403 on every Settings open. Where the field is absent (a
+    // server from before EE-302) the list is still the only way to know.
+    final permissions = await ref.watch(eePermissionsProvider.future);
+    final managed = permissions.managedUnitIds;
+    if (managed != null && managed.isEmpty) {
+      final team = await ref.watch(eeTeamProvider.future);
+      final teamWide =
+          permissions.can('units.manage_members') &&
+          ((team?.isAdmin ?? false) || permissions.governed);
+      if (!teamWide) return null;
+    }
     try {
       return await ref.watch(eeUnitsApiProvider).list();
     } catch (_) {

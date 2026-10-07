@@ -2,12 +2,15 @@ import 'package:dio/dio.dart';
 
 import '../../../core/api_exception.dart';
 import 'approvals_models.dart';
+import 'team_address_api.dart';
 
 /// The approvals client (EE-184).
 ///
-/// Shaped after `EeTeamWebhooksApi`: a 403 or 404 on the LIST is an empty
-/// answer rather than an error, because "no team here" and "not yours" are
-/// both things to draw as nothing, not as a red box.
+/// A 403 on the LIST is an empty answer — "not yours" is nothing to draw. A
+/// 404 is NOT (OPH-356, UI-AUDIT #7): it means no team answers on this
+/// address, and drawing that as "nothing is waiting on you" told a person
+/// with two pending approvals that they had none. It travels as
+/// [EeNoTeamHereException] and the screen says what it means.
 ///
 /// A decision is different and its failures travel intact. Three of them are
 /// sentences somebody has to read: you are not the one being asked
@@ -40,23 +43,22 @@ class EeApprovalsApi {
           .map((e) => EeApproval.fromJson(e as Map<String, dynamic>))
           .toList(growable: false);
     } on DioException catch (e) {
-      final code = e.response?.statusCode;
-      if (code == 403 || code == 404) return const [];
-      throw asApiException(e);
+      if (e.response?.statusCode == 403) return const [];
+      throwTeamError(e);
     }
   }
 
-  /// The badge and whether there is a door at all (EE-292). A 403 or 404 is
-  /// "nothing to draw" — no team on this address, or a server that predates
-  /// the door — never a red box on a navigation entry.
+  /// The badge and whether there is a door at all (EE-292). A 403 is
+  /// "nothing to draw"; a 404 is typed ([EeNoTeamHereException]) like the
+  /// list's, and the summary provider — quiet on every failure — draws no
+  /// door for it, never a red box on a navigation entry.
   Future<EeApprovalsSummary> summary() async {
     try {
       final res = await _dio.get<Map<String, dynamic>>('$_base/summary');
       return EeApprovalsSummary.fromJson(res.data ?? const {});
     } on DioException catch (e) {
-      final code = e.response?.statusCode;
-      if (code == 403 || code == 404) return EeApprovalsSummary.none;
-      throw asApiException(e);
+      if (e.response?.statusCode == 403) return EeApprovalsSummary.none;
+      throwTeamError(e);
     }
   }
 

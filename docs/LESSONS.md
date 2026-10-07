@@ -98,19 +98,20 @@
 - **DERS** go_router boş yolu `/`'ye çevirir, `alliswell://add` kök rotaya eşleşip `onException`'a varmaz → şemayı üst düzey `redirect`'te çöz; soğuk açılışta `?add=1` `/splash` parkında kaybolur → niyeti provider bayrağıyla taşı.
 - **DERS** `ref.listen` yalnız değişimde ateşler → açılışta zaten bekleyen yük (paylaşım) hiç işlenmez: ilk kareden sonra bekleyeni süpür; sonradan beliren değeri tek atımlı okuma, akışı izle.
 - **DERS** Hazır olmayan/hatalı async provider "boş" okunur (`.value` null → "anahtarın yok", sahte çevrimdışı) → eylemde `await x.future`; sunucu hakkında iddia eden ekran hatayı fırlatır, boş liste göstermez.
-- **DERS** HomeShell `extendBody:true` + cam çubuk: iç Scaffold FAB'ı ve `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → FAB shell'de, sheet/dialog kök navigator'a; `findsOneWidget` kaçırır → testte dokun.
+- **DERS** HomeShell `extendBody:true` + cam çubuk: iç FAB ve `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → FAB shell'de, sheet/dialog kök navigator'da; `findsOneWidget` kaçırır → dokun.
 - **DERS** `AppSection.values` ↔ shell dal indeksi ↔ rail/bar hedefleri KONUMSAL kimliktir; hedef listesini filtrelemek yanlış ekranı açar → gizleme `visibleSections` ile, golden'la.
 - **DERS** Ertelenmiş closure (geri al, commit) `WidgetRef` yakalarsa satır dispose olunca iş sessizce koşmaz → store'u mount'luyken çöz; autoDispose family'yi akış ortasında `ref.read`'leme.
 - **DERS** `State.mounted` `dispose()` sırasında hâlâ true → dispose'tan tetiklenen `setState` çöker; Notifier dispose sonrası `state` yazımı `UnmountedRefException` → ayrı `_disposed` bayrağı.
 - **DERS** Flutter 3.44'te eylemli `SnackBar` süre dolunca kapanmaz (`persist ?? action != null`) → eylemli snackbar yalnız `showAwActionSnackBar` (`persist:false`).
-- **DERS** Web'de dio 204 gövdesini `''` verir → `as Map` TypeError atar, temizlik atlanır (logout sunucuda öldü, app "girili" kaldı) → `data is Map ? … : {}`.
-- **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da yeniden hesap, saat `nowProvider`'dan; gün aritmetiği `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
+- **DERS** Web'de dio 204 gövdesi `''` → `as Map` TypeError, temizlik atlanır (logout'ta app "girili" kaldı) → `data is Map ? … : {}`.
+- **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da hesap, saat `nowProvider`'dan; `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
 - **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi yeni senkron varlığı push'ta uygulamazsa silinen satır sonraki pull'da geri döner.
-- **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; sürükleme `startGesture`+`moveBy`; gerçek async kurulum `tester.runAsync` içinde.
-- **DERS** Dokunmatik panel kare başına birden çok hareket olayı verir: gesture callback'i `build`'in yereline eklerse (`centre + d.delta`) sonuncusu dışındakiler düşer, `DragStartBehavior.start` da eşiği yutar → state alanına biriktir, `.down`; test aralarında `pump` olmayan art arda `moveBy` ile (#17).
+- **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; gerçek async kurulum `tester.runAsync`'te.
+- **DERS** Kare başına birden çok sürükleme olayı gelir: callback `build` yereline eklerse (`centre + d.delta`) sonuncusu dışındakiler düşer, `DragStartBehavior.start` eşiği yutar → state'e biriktir, `.down`; testte `pump`suz art arda `moveBy` (#17).
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
-- **DERS** Test: elle `currentWorkspaceProvider` veren test `workspacesProvider`'ı (+ `currentUserIdProvider`) da verir, yoksa oturumun 4 sn zamanlayıcısı; `localKv` örneği tutar → anahtarı `setUp`'ta sil.
+- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn zamanlayıcısı; `localKv` örneği tutar → `setUp`'ta sil.
+- **DERS** Oturumda adres değişince örtülü ekranın provider'ları build içinde kurulur → adres geçişi Ana sayfadan (ADR-0046).
 
 ## design-ui — tokenlar, kontrast, yüzeyler
 - **KARAR** Renk yalnız paletten, kullanıcıya hex asla; not rengi ADIYLA saklanır, her tema kendi değerini çözer (tek hex iki temada 4.5 tutmaz); markdown'a renk sözdizimi yok, yalnız `==vurgu==` (DESIGN §33).

@@ -81,6 +81,7 @@ class EePermissions {
     required this.governed,
     this.permissions = const [],
     this.desk = true,
+    this.managedUnitIds,
   });
 
   factory EePermissions.fromJson(Map<String, dynamic> json) => EePermissions(
@@ -90,6 +91,7 @@ class EePermissions {
     // A server from before EE-253 does not say; the answer it would have
     // drawn — the queue — stands until it does.
     desk: (json['desk'] as bool?) ?? true,
+    managedUnitIds: (json['managedUnitIds'] as List?)?.cast<String>(),
   );
 
   final String workspaceId;
@@ -102,6 +104,12 @@ class EePermissions {
   /// True while unknown, for [can]'s reason: a wrong true shows an empty
   /// queue for a moment, a wrong false hides an agent's work.
   final bool desk;
+
+  /// OPH-356 / EE-302 (UI-AUDIT #62): the units this person manages by
+  /// delegation. NULL when the server does not say (before EE-302) — then the
+  /// only way to know is to ask the units list, as before; a list, even an
+  /// empty one, is the answer and nothing is probed.
+  final List<String>? managedUnitIds;
 
   /// The answer a screen asks for before it draws a button.
   bool can(String permission) => !governed || permissions.contains(permission);
@@ -118,5 +126,6 @@ class EePermissions {
     'governed': governed,
     'permissions': permissions,
     'desk': desk,
+    if (managedUnitIds != null) 'managedUnitIds': managedUnitIds,
   };
 }

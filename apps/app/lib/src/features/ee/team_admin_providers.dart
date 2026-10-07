@@ -40,6 +40,25 @@ final eeTeamAdminProvider = Provider<bool>((ref) {
   return team != null && team.isAdmin;
 });
 
+/// Does this person hold a team-administration verb (OPH-356)? NULL while
+/// either answer is still loading — a door and a control wait for a yes.
+///
+/// [canProvider] alone is not the question: it says yes to everything on a
+/// workspace nothing governs, which is the right default for a task button
+/// and the wrong one for a team's administration (EE-282). So the verb counts
+/// when it is the team owner's or admin's, or when a GOVERNED role grants it.
+final eeHoldsTeamVerbProvider = Provider.family<bool?, String>((
+  ref,
+  permission,
+) {
+  final permissions = ref.watch(eePermissionsProvider);
+  final team = ref.watch(eeTeamProvider);
+  if (!permissions.hasValue || !team.hasValue) return null;
+  final granted = permissions.value!;
+  return granted.can(permission) &&
+      ((team.value?.isAdmin ?? false) || granted.governed);
+});
+
 final eeTeamRosterProvider =
     AsyncNotifierProvider<EeRosterController, EeTeamRoster>(
       EeRosterController.new,

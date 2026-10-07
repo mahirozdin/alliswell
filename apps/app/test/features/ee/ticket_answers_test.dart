@@ -24,6 +24,7 @@ import 'package:alliswell/src/features/files/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/team_admin_providers.dart';
 
 /// EE-278 — the desk reads what a request was filed with.
 ///
@@ -105,6 +106,11 @@ void main() {
             _ticketId,
           ).overrideWith((ref) => Stream.value(const [])),
           eeServicesProvider.overrideWith(() => _Catalogue(services)),
+          // OPH-356 (#62): only somebody who manages services is asked the
+          // admin list; an answering list here stands for that person.
+          eeHoldsTeamVerbProvider(
+            'services.manage',
+          ).overrideWith((ref) => services != null),
           // EE-284: what a member who cannot edit the catalogue reads.
           eeCatalogProvider.overrideWith((ref) async => catalog),
           eeTicketActionsProvider(_ticketId).overrideWith((ref) async {

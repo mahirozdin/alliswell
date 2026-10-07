@@ -8,6 +8,7 @@ import 'package:alliswell/src/features/ee/identity_providers.dart';
 import 'package:alliswell/src/features/ee/ui/team_identity_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// OPH-287 — the identity-source screen, asserted where it would mislead.
 ///
@@ -103,6 +104,8 @@ Future<void> _pump(
       overrides: [
         eeIdentityProvidersProvider.overrideWith(() => _Fixed(value)),
         eeIdentityStatusProvider.overrideWith(() => _FixedStatus(status)),
+        // OPH-356: the "+" waits for a yes.
+        canProvider.overrideWith((ref, id) => true),
       ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),

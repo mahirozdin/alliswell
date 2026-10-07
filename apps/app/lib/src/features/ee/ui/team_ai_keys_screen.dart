@@ -5,6 +5,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/team_ai_models.dart';
 import '../team_ai_providers.dart';
 
@@ -62,7 +63,9 @@ class EeTeamAiKeysScreen extends ConsumerWidget {
           return _Body(data: value);
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('team.manage_ai_keys'))
           ? null
           : FloatingActionButton(
               key: const Key('team-ai-add'),

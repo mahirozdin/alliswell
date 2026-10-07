@@ -7,6 +7,7 @@ import 'package:markdown_forge/markdown_forge.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
+import '../core/server_url.dart' show prettyServerUrl;
 import '../features/ai/ui/ai_settings_card.dart';
 import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
@@ -24,6 +25,7 @@ import '../features/settings/server_url_sheet.dart';
 import '../features/widgets/widget_bridge.dart' show widgetsSupportedPlatform;
 import '../features/ee/providers.dart' show canProvider, eeFeatureProvider;
 import '../features/ee/team_admin_providers.dart';
+import '../features/ee/team_origin.dart';
 import '../features/ee/ui/notification_badge.dart';
 import '../features/ee/units_providers.dart';
 import '../i18n/i18n.dart';
@@ -68,8 +70,16 @@ class SettingsScreen extends ConsumerWidget {
         teamAdmin && ref.watch(canProvider(permission));
     // Anyone whose workspace has a roster — the replica's own data, so it is
     // right offline and simply absent on a plain build (EE-068's gate).
+    //
+    // OPH-356 (UI-AUDIT #7): and only where the team answers. On the
+    // service's own address every one of these rows opened a screen that
+    // could only say 404 — "you have not asked for anything", "you may not" —
+    // so they give way to ONE row that says where the team is.
+    final addressRequired = ref.watch(eeTeamAddressRequiredProvider);
     final inTeam =
-        ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false;
+        !addressRequired &&
+        (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false);
+    final teamHint = ref.watch(eeTeamAddressHintProvider);
     return _SettingsPage(
       title: 'settings.title'.tr(),
       children: [
@@ -148,6 +158,30 @@ class SettingsScreen extends ConsumerWidget {
                 subtitleKey: 'settings.group.dataSub',
                 path: '/settings/data',
               ),
+              if (addressRequired)
+                ListTile(
+                  key: const Key('settings-team-address-required'),
+                  leading: const Icon(Icons.domain_outlined),
+                  title: Text('ee.teamAddress.requiredTitle'.tr()),
+                  subtitle: Text(
+                    teamHint?.origin == null
+                        ? 'ee.teamAddress.settingsRowBody'.tr()
+                        : 'ee.teamAddress.settingsRowHint'.tr(
+                            args: {
+                              'team': teamHint!.name,
+                              'host': prettyServerUrl(teamHint.origin!),
+                            },
+                          ),
+                  ),
+                  trailing: const Icon(Icons.swap_horiz),
+                  onTap: teamHint?.origin == null
+                      ? () => showServerUrlSheet(context)
+                      : () => switchToTeamOrigin(
+                          ProviderScope.containerOf(context, listen: false),
+                          teamHint!.origin!,
+                          router: GoRouter.of(context),
+                        ),
+                ),
               // EE-042: present only where there is a team AND the caller
               // runs it. Both halves matter — the entitlement decides whether
               // the capability exists, the role decides whether this person
@@ -714,7 +748,8 @@ class SettingsNotificationsScreen extends ConsumerWidget {
             // somebody looking for notification settings looks first; the
             // guide sent them to a screen with no door. Team-only, by the
             // replica's roster.
-            if (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false)
+            if (!ref.watch(eeTeamAddressRequiredProvider) &&
+                (ref.watch(workspaceRosterProvider).value?.isNotEmpty ?? false))
               ListTile(
                 key: const Key('settings-team-notification-prefs'),
                 leading: const Icon(Icons.forum_outlined),

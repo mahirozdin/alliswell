@@ -6,6 +6,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../catalogue_search.dart';
 import '../data/services_models.dart';
 import '../data/units_models.dart';
@@ -87,12 +88,15 @@ class _EeTeamServicesScreenState extends ConsumerState<EeTeamServicesScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        key: const Key('service-new'),
-        tooltip: 'ee.team.services.create'.tr(),
-        onPressed: () => _editService(context, ref, null),
-        child: const Icon(Icons.add),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('services.manage'))
+          ? null
+          : FloatingActionButton(
+              key: const Key('service-new'),
+              tooltip: 'ee.team.services.create'.tr(),
+              onPressed: () => _editService(context, ref, null),
+              child: const Icon(Icons.add),
+            ),
       body: services.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

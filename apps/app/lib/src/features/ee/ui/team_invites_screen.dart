@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 
@@ -28,14 +29,17 @@ class EeTeamInvitesScreen extends ConsumerWidget {
     final invites = ref.watch(eeInvitesProvider);
     return Scaffold(
       appBar: AppBar(title: Text('ee.team.invites.title'.tr())),
-      floatingActionButton: AwExtendedFab(
-        key: const Key('invite-create'),
-        // The StadiumBorder this screen used to pass by hand now lives in
-        // AwExtendedFab, so it is no longer one call site's private memory.
-        onPressed: () => _create(context, ref),
-        icon: const Icon(Icons.person_add_alt),
-        label: Text('ee.team.invites.new'.tr()),
-      ),
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton: !ref.watch(canProvider('team.manage_invites'))
+          ? null
+          : AwExtendedFab(
+              key: const Key('invite-create'),
+              // The StadiumBorder this screen used to pass by hand now lives in
+              // AwExtendedFab, so it is no longer one call site's private memory.
+              onPressed: () => _create(context, ref),
+              icon: const Icon(Icons.person_add_alt),
+              label: Text('ee.team.invites.new'.tr()),
+            ),
       body: invites.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => AwErrorState(

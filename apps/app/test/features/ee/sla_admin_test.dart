@@ -9,6 +9,7 @@ import 'package:alliswell/src/features/ee/ui/sla_admin_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
 
 /// EE-099 — the three editors, asserted where they would mislead.
 ///
@@ -37,7 +38,11 @@ Future<void> _pump(
 }) async {
   await tester.pumpWidget(
     ProviderScope(
-      overrides: [eeSlaAdminProvider.overrideWith(() => _Fixed(value))],
+      overrides: [
+        eeSlaAdminProvider.overrideWith(() => _Fixed(value)),
+        // OPH-356: the "+" waits for a yes; this file is an admin's.
+        canProvider.overrideWith((ref, id) => true),
+      ],
       child: MaterialApp(
         theme: buildAwTheme(brightness),
         home: const EeSlaAdminScreen(),

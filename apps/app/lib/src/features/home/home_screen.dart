@@ -39,6 +39,7 @@ import 'home_board.dart';
 import 'home_create.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
+import '../ee/ui/team_address_views.dart' show EeTeamAddressBanner;
 
 /// Home (feedback round 1): the one place everything shows. Chronological
 /// task list (overdue → today → tomorrow → this week → later → no date) with
@@ -109,10 +110,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _openCreateFromRequest() {
     if (_createRequestScheduled) return;
     _createRequestScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       _createRequestScheduled = false;
       if (!mounted) return;
       if (!ref.read(homeCreateRequestProvider.notifier).take()) return;
+      // OPH-356: `canProvider` says no until the permissions are known, and a
+      // cold start asks before they are — wait for the answer, not a guess.
+      if (ref.read(eePermissionsProvider).isLoading) {
+        try {
+          await ref.read(eePermissionsProvider.future);
+        } catch (_) {}
+      }
+      if (!mounted) return;
       if (!ref.read(canProvider('tasks.create'))) return;
       showHomeTaskCreateSheet(context, ref);
     });
@@ -360,9 +369,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // can't ring urgent alarms reliably; nothing otherwise. Below it, the
           // alarm that already went unanswered (round 19 #2) — which used to
           // seize the whole screen and ring, days after its moment.
+          // OPH-356 (UI-AUDIT #7): and, for a team member signed in on the
+          // service's own address, where their team actually is.
           const banner = Column(
             mainAxisSize: MainAxisSize.min,
-            children: [AlarmDegradationBanner(), MissedAlarmCard()],
+            children: [
+              EeTeamAddressBanner(),
+              AlarmDegradationBanner(),
+              MissedAlarmCard(),
+            ],
           );
 
           return LayoutBuilder(

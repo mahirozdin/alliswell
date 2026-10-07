@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_riverpod/flutter_riverpod.dart' show ProviderScope;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/core/server_url.dart' show kServerUrlPrefKey;
+import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/data/meeting_models.dart';
 import 'package:alliswell/src/features/ee/data/team_admin_models.dart';
@@ -315,5 +319,101 @@ void main() {
     await openSettings(tester);
     expect(key('settings-group-team-identity'), findsNothing);
     expect(key('settings-group-team-mail'), findsOneWidget);
+  });
+
+  // UI-AUDIT #7 (OPH-356): signed in on the service's own address, a team
+  // member's rows opened screens that could only answer 404 — "you have not
+  // asked for anything", "you may not". One row now says where the team is.
+  FakeApi onApex({Map<String, dynamic>? myTeam}) => FakeApi()
+    ..eeState = 'active'
+    ..eeFeatures = ['teams', 'itsm', 'meetings']
+    ..eeBaseDomain = 'example.com'
+    ..eeMyTeam = myTeam;
+
+  testWidgets('UI-AUDIT #7: off the team\'s address, the team rows give way '
+      'to one that names the address — and switches to it', (tester) async {
+    tall(tester);
+    // The switch persists the address; the next test starts on the default.
+    addTearDown(() => localKv.remove(kServerUrlPrefKey));
+    final api = onApex(
+      myTeam: {
+        'slug': 'acme',
+        'name': 'Demir Çelik Fabrikası',
+        'color': '#16A34A',
+        'origin': 'https://acme.example.com',
+      },
+    );
+    await tester.pumpWidget(
+      await app(
+        api,
+        extra: [
+          workspaceRosterProvider.overrideWith(
+            (ref) => Stream.value(const [_me]),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+
+    expect(key('settings-team-address-required'), findsOneWidget);
+    expect(
+      find.text('Demir Çelik Fabrikası is at acme.example.com — tap to switch'),
+      findsOneWidget,
+    );
+    for (final row in _memberRows) {
+      expect(key(row), findsNothing, reason: '$row would only answer 404');
+    }
+    expect(key('settings-group-meetings'), findsNothing);
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byKey(const Key('settings-team-address-required'))),
+    );
+    await tester.tap(key('settings-team-address-required'));
+    await tester.pumpAndSettle();
+    expect(container.read(apiBaseUrlProvider), 'https://acme.example.com');
+    // Home, where a person on their team's address starts.
+    expect(
+      find.byKey(const Key('settings-team-address-required')),
+      findsNothing,
+    );
+    // Same session, same person — a team host is the same instance.
+    expect(container.read(authControllerProvider).value, isNotNull);
+  });
+
+  testWidgets('UI-AUDIT #7: with no hint from the server, the replica\'s team '
+      'roster is enough to say it — never the 404s behind the rows', (
+    tester,
+  ) async {
+    tall(tester);
+    await tester.pumpWidget(
+      await app(
+        onApex(),
+        extra: [
+          workspaceRosterProvider.overrideWith(
+            (ref) => Stream.value(const [_me]),
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    expect(key('settings-team-address-required'), findsOneWidget);
+    expect(
+      find.text('Team screens open on your team\'s own address'),
+      findsOneWidget,
+    );
+    for (final row in _memberRows) {
+      expect(key(row), findsNothing);
+    }
+  });
+
+  testWidgets('UI-AUDIT #7: somebody in no team on a licensed instance is '
+      'told nothing about team addresses', (tester) async {
+    tall(tester);
+    await tester.pumpWidget(await app(onApex()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    expect(key('settings-team-address-required'), findsNothing);
   });
 }

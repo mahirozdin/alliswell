@@ -20,7 +20,8 @@ class AwTeamChip extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final team = ref.watch(teamOriginProvider);
+    // OPH-356 (UI-AUDIT #84): the team's own name and colour, not the slug's.
+    final team = ref.watch(teamIdentityProvider);
     if (team == null) return const SizedBox.shrink();
 
     final scheme = Theme.of(context).colorScheme;

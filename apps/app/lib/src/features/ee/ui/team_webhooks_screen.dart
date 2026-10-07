@@ -6,6 +6,7 @@ import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../providers.dart' show canProvider;
 import '../data/team_webhooks_models.dart';
 import '../team_webhooks_providers.dart';
 
@@ -74,7 +75,9 @@ class EeTeamWebhooksScreen extends ConsumerWidget {
           );
         },
       ),
-      floatingActionButton: data.value == null
+      // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
+      floatingActionButton:
+          data.value == null || !ref.watch(canProvider('webhooks.manage'))
           ? null
           : FloatingActionButton(
               key: const Key('team-webhooks-add'),

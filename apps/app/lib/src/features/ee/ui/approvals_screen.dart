@@ -12,6 +12,7 @@ import '../data/approvals_models.dart';
 import 'approval_card.dart';
 import 'approval_reason_dialog.dart';
 import 'approval_detail_screen.dart';
+import 'team_address_views.dart';
 
 /// EE-184 / EE-294 — what is waiting on this person's decision.
 ///
@@ -60,7 +61,11 @@ class EeApprovalsScreen extends ConsumerWidget {
     final body = approvals.when(
       skipLoadingOnRefresh: true,
       loading: () => const Center(child: CircularProgressIndicator()),
-      error: (error, _) => AwErrorState(
+      // OPH-356 (UI-AUDIT #7): no team on this address is said, not drawn
+      // as "nothing is waiting on you".
+      error: (error, _) => eeTeamErrorView(
+        ref,
+        error,
         message: localizedError(error),
         onRetry: () => ref.invalidate(eeApprovalsProvider),
       ),

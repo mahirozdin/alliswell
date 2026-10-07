@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Takım adresi (2026-10-07)
+
+- OPH-356 — yönetici yeni davet oluşturur (uzantının EE-300'ü canlıdayken bağlantı `…/app/#/join/<token>?server=…`): bağlantıyı oturumsuz bir tarayıcıda aç → "Takım adresi: <slug>.alliswell.space" + kod/ad/parola → katıl → takım adresinde girişli Ana sayfa. Varsayılan adreste takım üyesiyle gir → Ana sayfada takım bandı, Ayarlar'da tek "Takım adresi gerekiyor" satırı, "Geç" → çıkış yapmadan takım adresinde Talepler + Onaylar. Üye `#/settings/team/roles` → kilitli durum, "+" yok. Açık ve koyu temada bant ve kilitli durum.
+
 ## Çıkışta yerel veri (2026-10-07)
 
 - OPH-355 — web'de bir hesapla gir, talep ve bildirim görün, çıkış yap: DevTools › Application › IndexedDB'de `alliswell` bloklarında önceki metin aranınca bulunmuyor, `alliswell_alerts`'te yalnız `__fallback` kalıyor; aynı tarayıcıda ikinci hesapla gir → ilk hesabın bildirimi yok. Çevrimdışı bir değişiklik yapıp çıkışa bas → "N değişiklik" diyaloğu.
