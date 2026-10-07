@@ -27,6 +27,8 @@ const errorResponseSchema = {
     code: { type: 'string' },
     error: { type: 'string' },
     message: { type: 'string' },
+    // The limiter's RATE_LIMITED 429 (OPH-357) — seconds until the bucket refills.
+    retryAfter: { type: 'integer' },
   },
 };
 

@@ -62,46 +62,9 @@ hedefi ≥ 44 px; test adları `UI-AUDIT #n:` önekli; core API değişikliği d
 değişmiyor — rule 12 gerekçesi: bu epicin core API değişiklikleri hata gövdesi ve hız sınırıdır,
 araç değil). Cihazda bakılacaklar (ekran okuyucu, telefon yerleşimi) DEVICE-CHECKS.md'ye.
 
-**Risk planı (rule 10):** OPH-357 hız sınırının anahtarını değiştirir — güvenlik kararı, ADR-0045
-aynı işte.
+**Risk planı (rule 10):** OPH-357 hız sınırının anahtarını değiştirdi — güvenlik kararı ADR-0045'te.
 
 ---
-
-### OPH-357 — Core API: 5xx gövdesi iç bilgi taşımaz, kodlu 429, kimliğe göre hız sınırı, Türkçe slug; istemcide kodsuz hata ve ikincil bölüm hataları
-
-**Bulgular:** #16 (core), #24, #25, #26, #81, D3. **Karşı yarı:** EE-302 (#16 tarih), EE-301 (#40 —
-anonim formun kendi HTML 429'u kök işleyiciden önce gelir).
-
-- [ ] **#16** `apps/api/src/app.js` kök `setErrorHandler`: ≥500 → `{ statusCode, code: 'INTERNAL_ERROR',
-      error: 'Internal Server Error', message: 'Internal server error' }`, asıl hata loglanır; 4xx
-      gövdeleri değişmez; alt bağlamın kendi işleyicisi kazanır (testle).
-- [ ] **#24 (sunucu)** `@fastify/rate-limit` `errorResponseBuilder`: `{ statusCode: 429, code:
-      'RATE_LIMITED', error, message, retryAfter }` (saniye) + `Retry-After` başlığı.
-- [ ] **#25, D3** `app.js` ~131 `keyGenerator`: kimlikli istek kullanıcı kimliğine (erişim token'ı
-      imzasıyla doğrulanır; geçersizse IP), giriş/kayıt/yenileme IP + e-posta özetine; `config.js`
-      ~267 `RATE_LIMIT_MAX` / yeni `RATE_LIMIT_AUTH_MAX` belgeli (SELF-HOSTING). **ADR-0045** (anahtar
-      seçimi, NAT arkasındaki fabrika, kaba kuvvet koruması korunuyor). D3: 9 birimli hesabın senkron
-      döngüsü dakikada kaç istek atıyor — betikle ölçülür, sayı commit'e; sınırı aşıyorsa döngü toplanır
-      ya da kimlik başı sınır ona göre seçilir.
-- [ ] **#81** `apps/api/src/lib/slug.js` ~13: NFKD'den önce `ı→i`, `İ→i` (`Bakım` → `bakim`).
-- [ ] **#24 (istemci)** `core/api_exception.dart` ~24, `core/error_messages.dart` ~11,
-      `features/auth/data/auth_api.dart` ~88: `error.RATE_LIMITED` (kalan saniyeyle), `error.HTTP_429`,
-      `error.notFound`, `error.server` (5xx) tr+en; kodsuz yanıtın yedeği `error.unknown` (İngilizce
-      ham metin yok); `performance_screen.dart` ~54 ve `sla_dashboard_screen.dart` ~44 `'$error'`
-      basmaz, `AwErrorState(onRetry:)` kullanır — aynı kalıp diğer uzantı ekranlarında taranır.
-- [ ] **#26** `features/ee/approvals_providers.dart` özet hatasında son değeri korur (giriş
-      kaybolmaz); talep detayının alt bölümleri (etkilenen ekipman, problem kartı) ve Üyeler
-      `AsyncError`'ı satır içi hata olarak çizer; boş durum yalnız gerçekten boşken.
-- [ ] Testler: yeni `apps/api/test/unit/error-handler.test.js`, yeni `rate-limit-keys.test.js`, yeni
-      `slug.test.js`; `apps/api/test/integration/{auth,auth-refresh,auth-me}.test.js` (kritik yol);
-      yeni `apps/app/test/core/error_messages_test.dart`; `test/features/ee/approvals_entry_test.dart`
-      (#26), talep detayı alt bölüm testi.
-- [ ] Belgeler: docs/API.md hata bölümü (`INTERNAL_ERROR`, `RATE_LIMITED`, `Retry-After`),
-      SELF-HOSTING ortam değişkenleri, ADR-0045 + indeks.
-
-**Kabul:** strict MySQL hatası 500'ü istemciye SQL taşımaz; aynı NAT'tan 12 kişi aynı dakikada
-girebilir, tek kullanıcının 12 yanlış parolası yine 429; Türkçe arayüzde 429 "Çok fazla istek,
-N sn sonra deneyin" + Tekrar dene.
 
 ### OPH-358 — Talep, onay, bilgi bankası ve ekipman ekranları
 

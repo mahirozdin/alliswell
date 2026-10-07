@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -41,7 +42,12 @@ class EeSlaDashboardScreen extends ConsumerWidget {
       appBar: AppBar(title: Text('ee.slaDash.title'.tr())),
       body: dashboard.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(message: '$error'),
+        // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
+        // again — never the exception's own text.
+        error: (error, _) => AwErrorState(
+          message: localizedError(error),
+          onRetry: () => ref.invalidate(eeSlaDashboardProvider),
+        ),
         data: (data) {
           if (data == null) {
             return AwEmptyState(

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -6,12 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/app.dart';
+import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
+import 'package:alliswell/src/features/ee/data/approvals_api.dart';
 import 'package:alliswell/src/features/ee/data/approvals_models.dart';
 import 'package:alliswell/src/features/ee/ui/approvals_screen.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart';
@@ -44,6 +47,28 @@ class _Fixed extends EeApprovalsController {
   Future<List<EeApproval>> build() async => _items;
 }
 
+/// OPH-357 (UI-AUDIT #26): a summary endpoint that answers, then is refused
+/// the way a busy server refuses (a 429), while the device is online.
+class _FlakySummary extends EeApprovalsApi {
+  _FlakySummary() : super(Dio());
+  bool refuse = false;
+  int asked = 0;
+
+  @override
+  Future<EeApprovalsSummary> summary() async {
+    asked += 1;
+    if (refuse) {
+      throw const ApiException(
+        'RATE_LIMITED',
+        'Rate limit exceeded, retry in 30 seconds',
+        statusCode: 429,
+        retryAfter: 30,
+      );
+    }
+    return _waiting;
+  }
+}
+
 FakeApi _team() => FakeApi()
   ..eeState = 'active'
   ..eeFeatures = ['teams', 'itsm']
@@ -61,6 +86,7 @@ Future<Widget> _app(
   EeApprovalsSummary? summary = _waiting,
   bool bubbleEnabled = true,
   String serverUrl = 'https://acme.example.com',
+  List<Override> more = const [],
 }) async {
   SharedPreferences.setMockInitialValues({});
   await resetQuickAccessPrefs();
@@ -76,6 +102,7 @@ Future<Widget> _app(
     eeApprovalsProvider.overrideWith(() => _Fixed(const [])),
     if (summary != null)
       eeApprovalsSummaryProvider.overrideWith((ref) async => summary),
+    ...more,
   ];
   return ProviderScope(
     retry: awRetry,
@@ -248,5 +275,33 @@ void main() {
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), '/approvals');
     expect(find.byType(EeApprovalsScreen), findsOneWidget);
+  });
+
+  testWidgets('UI-AUDIT #26: a refused summary keeps the entry and its count '
+      '— the last answer, not "nothing to decide"', (tester) async {
+    _size(tester, const Size(1280, 1000));
+    final api = _FlakySummary();
+    await tester.pumpWidget(
+      await _app(
+        _team(),
+        summary: null,
+        more: [eeApprovalsApiProvider.overrideWithValue(api)],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(_entry, findsOneWidget);
+    expect(_badgeText(tester, 'nav-approvals-badge'), '3');
+
+    // The next heartbeat is refused.
+    api.refuse = true;
+    final asked = api.asked;
+    ProviderScope.containerOf(
+      tester.element(find.byType(AllisWellApp)),
+    ).invalidate(eeApprovalsSummaryProvider);
+    await tester.pumpAndSettle();
+    expect(api.asked, asked + 1);
+
+    expect(_entry, findsOneWidget);
+    expect(_badgeText(tester, 'nav-approvals-badge'), '3');
   });
 }

@@ -1,3 +1,4 @@
+import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../data/models.dart';
 
@@ -17,7 +18,14 @@ String friendlyAuthMessage(Object error) {
       case 'NETWORK_ERROR':
         return 'error.NETWORK_ERROR'.tr();
     }
-    return error.message;
+    // Everything else — a 429 with its wait, a codeless 5xx — the way every
+    // other screen says it (OPH-357): never the client's English placeholder.
+    return localizedErrorCode(
+      error.code,
+      error.message,
+      statusCode: error.statusCode,
+      retryAfter: error.retryAfter,
+    );
   }
   return 'error.unknown'.tr();
 }

@@ -9,6 +9,21 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **People behind one office address no longer lock each other out (OPH-357).** Rate limits now
+  count each signed-in person on their own, and sign-in counts per account: a whole shift can sign
+  in from the same network at once, while one account's repeated wrong passwords are still stopped.
+  When a limit is reached the app says how long to wait ("Too many requests — try again in 42 s")
+  in your language, instead of "Unexpected server response".
+- **Errors read in your language, with a way to try again (OPH-357).** A busy server, a missing
+  page or a server failure shows a translated message on every screen; the performance and SLA
+  dashboards offer Retry instead of printing an internal error. Parts of a request's page that
+  fail to load (affected equipment, the known-error card, changes raised from it) say so with a
+  Retry button instead of silently disappearing, and the Approvals entry no longer vanishes when
+  one refresh fails.
+- **A server failure no longer exposes internal details (OPH-357).** An unexpected error answers
+  one generic message; the details stay in the server's log.
+- **Workspace addresses keep the Turkish ı (OPH-357).** "Bakım" becomes `bakim`, not `bak-m`.
+
 - **Team invitation links work (OPH-356).** Opening an invitation now shows the invitation itself
   — which team, which address, for which e-mail — on the team's own server: enter the code from
   the e-mail, choose a password if you have no account yet, and you are in. A link pointing

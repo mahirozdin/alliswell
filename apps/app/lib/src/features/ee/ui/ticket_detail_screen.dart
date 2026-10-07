@@ -100,7 +100,10 @@ class EeTicketDetailScreen extends ConsumerWidget {
         ),
         body: ticket.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => AwErrorState(message: '$error'),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(ticketProvider(ticketId)),
+          ),
           data: (row) {
             // Not an error: the archive sweep drops terminal tickets from the
             // replica (EE-091), so a link somebody kept can legitimately point
@@ -268,7 +271,10 @@ class _Thread extends ConsumerWidget {
         const SizedBox(height: AwSpace.x2),
         comments.when(
           loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => AwErrorState(message: '$error'),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(ticketCommentsProvider(ticket.id)),
+          ),
           data: (rows) => rows.isEmpty
               ? Padding(
                   padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
@@ -335,11 +341,20 @@ class _Relations extends ConsumerWidget {
     final relations = ref.watch(eeTicketRelationsProvider(ticketId));
 
     return relations.when(
-      // Quiet on both: this section is an ADDITION to a screen that already
-      // works. A spinner or a red box here would make a slow network look
-      // like a broken request.
+      // Quiet while loading: this section is an ADDITION to a screen that
+      // already works, and a spinner here would make a slow network look like
+      // a broken request. NOT quiet on failure (OPH-357, UI-AUDIT #26): a
+      // refused read (a 429, a 5xx) used to drop the affected equipment and
+      // the known-error card without a word, which reads as "there are none".
       loading: () => const SizedBox.shrink(),
-      error: (_, _) => const SizedBox.shrink(),
+      error: (error, _) => Padding(
+        padding: const EdgeInsets.only(top: AwSpace.x4),
+        child: AwInlineError(
+          key: const Key('ticket-relations-error'),
+          message: localizedError(error),
+          onRetry: () => ref.invalidate(eeTicketRelationsProvider(ticketId)),
+        ),
+      ),
       data: (data) {
         final canConvert = ref.watch(canProvider('tickets.convert'));
         final canCreate = ref.watch(canProvider('tickets.create'));
@@ -555,14 +570,26 @@ class _Changes extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
-    final changes =
-        ref.watch(eeChangesRaisedFromProvider(ticket.id)).value ??
-        const <EeChange>[];
+    final raised = ref.watch(eeChangesRaisedFromProvider(ticket.id));
+    final changes = raised.value ?? const <EeChange>[];
     final canCreate = ref.watch(canProvider('changes.create'));
-    if (changes.isEmpty && !canCreate) return const SizedBox.shrink();
+    // A refused read is said (UI-AUDIT #26), not drawn as "none came of it".
+    final failed = raised.hasError && !raised.hasValue;
+    if (changes.isEmpty && !canCreate && !failed) {
+      return const SizedBox.shrink();
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        if (failed) ...[
+          const SizedBox(height: AwSpace.x4),
+          AwInlineError(
+            key: const Key('ticket-changes-error'),
+            message: localizedError(raised.error),
+            onRetry: () =>
+                ref.invalidate(eeChangesRaisedFromProvider(ticket.id)),
+          ),
+        ],
         if (changes.isNotEmpty) ...[
           const SizedBox(height: AwSpace.x6),
           Text(

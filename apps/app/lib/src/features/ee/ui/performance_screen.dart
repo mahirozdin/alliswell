@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -51,7 +52,12 @@ class EePerformanceScreen extends ConsumerWidget {
       appBar: AppBar(title: Text('ee.perfPanel.title'.tr())),
       body: panel.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(message: '$error'),
+        // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
+        // again — never the exception's own text.
+        error: (error, _) => AwErrorState(
+          message: localizedError(error),
+          onRetry: () => ref.invalidate(eePerformanceProvider),
+        ),
         data: (data) {
           if (data == null) {
             return AwEmptyState(

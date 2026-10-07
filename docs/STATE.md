@@ -9,9 +9,9 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-07 — OPH-356 kapandı (davet bağlantısı takımın sunucusunda açılır ve
-hesap orada kurulur, varsayılan adreste "Takım adresi gerekiyor" + tek dokunuşla geçiş, yönetim
-rotalarında tek kilitli durum); Epic 34'ün sırası OPH-357'de.
+**Last updated:** 2026-10-07 — OPH-357 kapandı (kök hata işleyicisi 5xx'te `INTERNAL_ERROR`,
+kodlu 429 + `retryAfter`, hız sınırı kimliğe göre — ADR-0045, Türkçe slug, istemcide kodsuz hata
+ve ikincil bölüm hataları); Epic 34'ün sırası OPH-358'de.
 
 ## Snapshot
 
@@ -19,8 +19,8 @@ rotalarında tek kilitli durum); Epic 34'ün sırası OPH-357'de.
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`) — ADR-0044'ün uygulaması ve uzantının atanan-iş özelliği; uzantının CI'ı da artık sunucudaki runner'da (ADR-0043 revizyonu). |
 | Current epic             | **Epic 34** — 2026-10-07 UI denetimi: çıkışta yerel veri, takım adresi, core hata gövdesi ve hız sınırı, uzantı ekranları (OPH-355…OPH-360). İkiz yok; her iş sunucunun eski ve yeni davranışına dayanıklı. |
-| ➡️ **Next task**         | **OPH-357** — Core API: 5xx gövdesi iç bilgi taşımaz, kodlu 429, kimliğe göre hız sınırı, Türkçe slug; istemcide kodsuz hata ve ikincil bölüm hataları |
-| Last completed           | OPH-356 — takım adresi istemcide: `/join/:token?server=` yalnız güvenilen apex'in kardeşine (ADR-0046) ve oturumsuz da açılır, kod/hesap/kabul ekranı; apex'te `/ee/me/team` ipucu, tek tip "Takım adresi gerekiyor", 404 boş liste değil; yönetim rotalarına kapı, `canProvider` yüklenirken hayır; `managedUnitIds` ile yoklama yok; takım turu ve takımın gerçek adı (2026-10-07). |
+| ➡️ **Next task**         | **OPH-358** — Talep, onay, bilgi bankası ve ekipman ekranları |
+| Last completed           | OPH-357 — core: kök `setErrorHandler` (beklenmeyen ≥500 → sabit `INTERNAL_ERROR`, kasıtlı `HttpError` ve 4xx değişmez, alt bağlamın işleyicisi kazanır), `RATE_LIMITED` 429 + `retryAfter` + `Retry-After`, kova = API anahtarı / doğrulanmış kullanıcı / IP, kimlik bilgisi uçlarında IP + hesap ve yeni `RATE_LIMIT_AUTH_IP_MAX` tavanı (ADR-0045), slug'da ı/İ → i; istemci: `ApiException.statusCode/retryAfter`, kodsuz yanıtlar duruma göre çevrilir (`error.RATE_LIMITED/HTTP_429/notFound/server`), panolar `AwErrorState(onRetry)`, talep detayında ilişkiler/değişiklikler satır içi hata, Onaylar özeti son canlı değeri korur; D3: dokuz birim ilk girişte 27 pull, döngü ~2,6/dk (2026-10-07). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

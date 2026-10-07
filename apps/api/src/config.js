@@ -264,8 +264,18 @@ export function loadConfig(env = process.env) {
     logLevel: env.LOG_LEVEL ?? 'info',
     corsOrigin: parseCorsOrigin(env.CORS_ORIGIN),
     trustProxy: parseTrustProxy(env.TRUST_PROXY),
+    // Per minute, per WHO (ADR-0045): a signed-in user, else an IP.
     rateLimitMax: toInt(env.RATE_LIMIT_MAX, 300, 'RATE_LIMIT_MAX'),
+    // Credential endpoints, per minute, per IP + account named in the body
+    // (ADR-0045 §2) — one person's wrong passwords, not their whole office.
     rateLimitAuthMax: toInt(env.RATE_LIMIT_AUTH_MAX, 10, 'RATE_LIMIT_AUTH_MAX'),
+    // ...and the per-IP ceiling across all of them, which keeps spraying many
+    // accounts from one address bounded. Scales with the per-account limit.
+    rateLimitAuthIpMax: toInt(
+      env.RATE_LIMIT_AUTH_IP_MAX,
+      10 * toInt(env.RATE_LIMIT_AUTH_MAX, 10, 'RATE_LIMIT_AUTH_MAX'),
+      'RATE_LIMIT_AUTH_IP_MAX',
+    ),
     // Per KEY, not per IP (OPH-264, ADR-0032 §5). Same ceiling as the global
     // per-IP limit: a key is one client, and this is what one client gets.
     apiKeyRateLimitMax: toInt(env.API_KEY_RATE_LIMIT_MAX, 300, 'API_KEY_RATE_LIMIT_MAX'),

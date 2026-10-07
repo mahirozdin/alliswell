@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ee/data/sla_dashboard_models.dart';
 import 'package:alliswell/src/features/ee/sla_dashboard_providers.dart';
 import 'package:alliswell/src/features/ee/ui/sla_dashboard_screen.dart';
@@ -44,6 +46,24 @@ class _Fixed extends EeSlaDashboardController {
   final EeSlaDashboard? _value;
   @override
   Future<EeSlaDashboard?> build() async => _value;
+}
+
+/// OPH-357 (UI-AUDIT #24): fails once the way a busy server does, then
+/// answers.
+class _FailsOnce extends EeSlaDashboardController {
+  static int calls = 0;
+  @override
+  Future<EeSlaDashboard?> build() async {
+    calls += 1;
+    if (calls == 1) {
+      throw const ApiException(
+        'HTTP_503',
+        'Unexpected server response',
+        statusCode: 503,
+      );
+    }
+    return _dash(compliance: 100.0, total: 5);
+  }
 }
 
 Future<void> _pump(
@@ -117,6 +137,31 @@ void main() {
       expect(_complianceColour(tester), isNot(context.awTokens.warning));
     },
   );
+
+  testWidgets('UI-AUDIT #24: a failed load is translated, never the '
+      "exception's own text, and Retry asks again", (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    _FailsOnce.calls = 0;
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: awRetry,
+        overrides: [eeSlaDashboardProvider.overrideWith(_FailsOnce.new)],
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: const EeSlaDashboardScreen(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('ApiException'), findsNothing);
+    expect(find.text('error.server'.tr()), findsOneWidget);
+
+    await tester.tap(find.text('common.retry'.tr()));
+    await tester.pumpAndSettle();
+    expect(_FailsOnce.calls, 2);
+    expect(find.byKey(const Key('sla-no-breaches')), findsOneWidget);
+  });
 
   testWidgets('GOOD NEWS GETS A SENTENCE, not an empty list', (tester) async {
     await _pump(tester, _dash(compliance: 100.0, total: 5));

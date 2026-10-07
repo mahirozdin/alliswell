@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ee/data/performance_api.dart';
 import 'package:alliswell/src/features/ee/performance_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
@@ -40,6 +41,10 @@ class _Server implements HttpClientAdapter {
   List<Map<String, dynamic>> processTypes = [];
   final List<RequestOptions> asked = [];
 
+  /// OPH-357: answer like the limiter of an older server — a 429 with no
+  /// `code`, only a Retry-After header — until switched off.
+  bool limited = false;
+
   @override
   Future<ResponseBody> fetch(
     RequestOptions options,
@@ -47,6 +52,20 @@ class _Server implements HttpClientAdapter {
     Future<void>? cancelFuture,
   ) async {
     asked.add(options);
+    if (limited) {
+      return ResponseBody.fromString(
+        jsonEncode({
+          'statusCode': 429,
+          'error': 'Too Many Requests',
+          'message': 'Rate limit exceeded, retry in 42 seconds',
+        }),
+        429,
+        headers: {
+          Headers.contentTypeHeader: [Headers.jsonContentType],
+          'retry-after': ['42'],
+        },
+      );
+    }
     return ResponseBody.fromString(
       jsonEncode({
         'from': '2026-08-27',
@@ -85,6 +104,7 @@ void main() {
       ..httpClientAdapter = server;
     await tester.pumpWidget(
       ProviderScope(
+        retry: awRetry,
         overrides: [
           eePerformanceApiProvider.overrideWithValue(EePerformanceApi(dio)),
           eeFeatureProvider.overrideWith((ref, name) => entitled),
@@ -157,6 +177,28 @@ void main() {
     ];
     await pump(tester);
     expect(inRow('none', 'ee.perfPanel.processTypeNone'.tr()), findsOneWidget);
+  });
+
+  testWidgets('UI-AUDIT #24: a refused read says so in Turkish, with the '
+      'wait, and Retry asks again', (tester) async {
+    server.limited = true;
+    await pump(tester);
+
+    expect(find.textContaining('ApiException'), findsNothing);
+    expect(find.textContaining('Unexpected server response'), findsNothing);
+    expect(
+      find.text('error.RATE_LIMITED'.tr(args: {'seconds': '42'})),
+      findsOneWidget,
+    );
+    expect(find.textContaining('42 sn'), findsOneWidget);
+
+    server.limited = false;
+    server.processTypes = [_row('incident', resolved: 3, mttr: 60)];
+    final before = server.asked.length;
+    await tester.tap(find.text('common.retry'.tr()));
+    await tester.pumpAndSettle();
+    expect(server.asked.length, before + 1);
+    expect(find.byKey(const Key('perf-row-incident')), findsOneWidget);
   });
 
   testWidgets('without the entitlement nothing is asked', (tester) async {

@@ -178,11 +178,21 @@ class AwErrorState extends StatelessWidget {
 
 /// Inline form error: icon + message on an error-container band, placed
 /// right above the submit action (never color-only, never top-of-page).
+///
+/// With [onRetry] it is also the way a SECTION of a screen says it failed
+/// (OPH-357, UI-AUDIT #26): a part that loads on its own must not vanish
+/// silently or read as empty when its request was refused.
 class AwInlineError extends StatelessWidget {
-  const AwInlineError({super.key, required this.message, this.textKey});
+  const AwInlineError({
+    super.key,
+    required this.message,
+    this.textKey,
+    this.onRetry,
+  });
 
   final String message;
   final Key? textKey;
+  final VoidCallback? onRetry;
 
   @override
   Widget build(BuildContext context) {
@@ -197,7 +207,9 @@ class AwInlineError extends StatelessWidget {
         borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: onRetry == null
+            ? CrossAxisAlignment.start
+            : CrossAxisAlignment.center,
         children: [
           Icon(Icons.error_outline, size: 20, color: scheme.onErrorContainer),
           const SizedBox(width: AwSpace.x2),
@@ -210,6 +222,17 @@ class AwInlineError extends StatelessWidget {
               ).textTheme.bodyMedium?.copyWith(color: scheme.onErrorContainer),
             ),
           ),
+          if (onRetry != null) ...[
+            const SizedBox(width: AwSpace.x2),
+            TextButton(
+              onPressed: onRetry,
+              style: TextButton.styleFrom(
+                foregroundColor: scheme.onErrorContainer,
+                minimumSize: const Size(44, 44),
+              ),
+              child: Text('common.retry'.tr()),
+            ),
+          ],
         ],
       ),
     );

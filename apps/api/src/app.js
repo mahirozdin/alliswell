@@ -7,6 +7,8 @@ import rateLimit from '@fastify/rate-limit';
 import sensible from '@fastify/sensible';
 import { loadConfig } from './config.js';
 import { apiKeyRateBucket } from './lib/api-keys.js';
+import { rootErrorHandler } from './lib/error-handler.js';
+import { credentialIpCeiling, identityRateKey, rateLimitedError } from './lib/rate-limit.js';
 import mysqlPlugin from './plugins/mysql.js';
 import redisPlugin from './plugins/redis.js';
 import authPlugin from './plugins/auth.js';
@@ -103,6 +105,10 @@ export async function buildApp({
 
   app.decorate('config', config);
   app.decorate('pkg', { name: pkg.name, version: pkg.version });
+  // Root error handler (OPH-357): no 5xx body carries a driver message, SQL or
+  // a stack. Set before any plugin so every child context inherits it; a
+  // plugin that sets its own (the extension's HTML portals) keeps its own.
+  app.setErrorHandler(rootErrorHandler);
 
   // Before everything: the last point at which a route-collecting hook can
   // still be installed ahead of the routes it needs to see.
@@ -123,16 +129,22 @@ export async function buildApp({
     // round 3, item 1 — web task edits never reached the server).
     methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   });
-  // Key-authenticated requests get their own bucket and their own ceiling
-  // (ADR-0032 §5): a script must not spend its user's per-IP budget, and one
-  // runaway key must not throttle every other client of the instance. Both
-  // callbacks read the header rather than `request.apiKeyAuth`, because the
-  // limiter runs before authentication has decided anything.
+  // Buckets are WHO is asking (ADR-0045): an API key gets its own bucket and
+  // ceiling (ADR-0032 §5), a request with a valid access token counts against
+  // its user, everything else against its IP. Before ADR-0045 everything but
+  // keys was per IP, so a factory behind one NAT shared a single budget. The
+  // limiter runs before authentication, so the key generator verifies the
+  // token's signature itself — a forged token buys no fresh bucket.
   await app.register(rateLimit, {
     max: (request) => (apiKeyRateBucket(request) ? config.apiKeyRateLimitMax : config.rateLimitMax),
     timeWindow: '1 minute',
-    keyGenerator: (request) => apiKeyRateBucket(request) ?? request.ip,
+    keyGenerator: (request) => identityRateKey(app, request),
+    // A stable code + the wait in seconds (OPH-357): the clients translate
+    // `RATE_LIMITED`; the default body had neither and read as raw English.
+    errorResponseBuilder: (_request, context) => rateLimitedError(app, context.ttl),
   });
+  // The per-IP ceiling shared by every credential endpoint (ADR-0045 §2).
+  app.decorate('credentialIpCeiling', credentialIpCeiling(app));
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
   await app.register(storagePlugin, { storage });

@@ -248,7 +248,7 @@
 - **KARAR** Doğrulanan sır anahtarlı özet, kullandığımız sır şifreli + `last4`; her sır sınıfı kendi anahtarıyla (`AUTH_TOTP_KEY`…); TOTP bağımlılıksız (`node:crypto`); parola değişimi tüm oturumları kapatır (ADR-0006).
 - **KARAR** Web oturumu localStorage'da (`LocalKvSecretStore`) — XSS ödünü self-host v1 için kabul, httpOnly refresh-cookie park (OPH-025); "web token yalnız bellekte" diyen metin bayattır.
 - **DERS** `app.rejectApiKeys` preHandler'dır (authenticate'ten SONRA); `/ai/*` kapısı plugin-seviyesi hook (yeni rota unutamaz); rate limiter kimlikten ÖNCE koşar → `keyGenerator` başlığa bakar.
-- **DERS** Rate limit app seviyesinde (`request.ip`) → ikinci limitleyici yazma, rotayı `config.rateLimit`'le daralt; `TRUST_PROXY` varsayılan kapalı → proxy arkasında herkes 127.0.0.1 tek kova.
+- **DERS** Rate limit app seviyesinde → rotayı `config.rateLimit`'le daralt; kova kimlik, IP değil (ADR-0045); kasıtlı 5xx `app.httpErrors.*` ile (gerisi `INTERNAL_ERROR`).
 - **DERS** Kullanıcıya özel akış (AI sohbeti) `user:{userId}` soket odasına gider; `ws:*` workspace odası onu tüm üyelere yayınlar.
 - **DERS** `routes/oauth.js` `renderPage` title'ı kaçırır, body'yi HAM basar; helmet CSP kapalı → kullanıcı içeriği basan HTML sayfası her enterpolasyonu kaçırır, CSP seçer, payload'lı test.
 - **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP için OAuth 2.1 SUNUCUSU, `lib/oauth-identity.js` yalnız Google/Apple ID token; harici kimlik ayrı uçtan — `/auth/login`'i dallandırmak dummy verify'ı bozar.

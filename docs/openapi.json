@@ -197,6 +197,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -221,6 +224,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -391,6 +397,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -415,6 +424,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -467,6 +479,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -542,6 +557,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -566,6 +584,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -590,6 +611,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11118,6 +11142,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11142,6 +11169,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11166,6 +11196,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11190,6 +11223,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11214,6 +11250,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11278,6 +11317,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11401,6 +11443,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11573,6 +11618,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11597,6 +11645,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11621,6 +11672,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11645,6 +11699,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11778,6 +11835,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11802,6 +11862,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11826,6 +11889,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11850,6 +11916,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11874,6 +11943,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -11898,6 +11970,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -12031,6 +12106,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -12055,6 +12133,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -12079,6 +12160,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -12103,6 +12187,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
@@ -12181,6 +12268,9 @@
                     },
                     "message": {
                       "type": "string"
+                    },
+                    "retryAfter": {
+                      "type": "integer"
                     }
                   }
                 }
