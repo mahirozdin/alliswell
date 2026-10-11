@@ -466,6 +466,9 @@ export function loadConfig(env = process.env) {
       accessTtlSec: toInt(env.MCP_ACCESS_TTL_SEC, 3600, 'MCP_ACCESS_TTL_SEC'),
       refreshTtlDays: toInt(env.MCP_REFRESH_TTL_DAYS, 30, 'MCP_REFRESH_TTL_DAYS'),
       codeTtlSec: 60,
+      // ADR-0047: accept https-URL client ids (client ID metadata documents)
+      // beside dynamic registration. Off = registration only, as before.
+      cimdEnabled: toBool(env.MCP_CIMD_ENABLED, true, 'MCP_CIMD_ENABLED'),
       rateLimitMax: toInt(env.MCP_RATE_LIMIT_MAX, 120, 'MCP_RATE_LIMIT_MAX'),
     }),
     // Enterprise overlay seam (EE-002). The overlay is a sibling checkout the

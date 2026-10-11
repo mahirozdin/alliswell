@@ -164,7 +164,7 @@
       "notifications": "Bildirimler",
       "notificationsSub": "Alarmlar, gizli bildirimler, hatırlatıcılar",
       "integrations": "Entegrasyonlar",
-      "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ",
+      "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ, Claude / ChatGPT",
       "developer": "API erişimi ve yönetimi",
       "developerSub": "API anahtarların ve onları kullanmanın dokümantasyonu",
       "data": "Veri",

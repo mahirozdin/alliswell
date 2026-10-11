@@ -48,12 +48,43 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | **🍎 App Store**   | **Live now**      | **[Download on the App Store](https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494)** — the iPhone app, on the store.  |
 | 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                                      |
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
+| 🧠 **Claude / ChatGPT** | **Live now** | MCP connector at **`https://api.alliswell.space/mcp`** — [setup below](#-use-it-from-claude-or-chatgpt-mcp). |
 
 > **Project status — `v1.15.0`, live.** Everything on this page is built, tested
 > (**1,200+ app tests · 700+ backend unit · 70+ integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
 > ⭐ Star the repo to follow along.
+
+---
+
+## 🧠 Use it from Claude or ChatGPT (MCP)
+
+AllisWell is a **remote MCP server**. Add it to the Claude or ChatGPT account you
+already pay for, sign in once, and ask about your day from inside the assistant.
+
+| You use… | Connector URL |
+| --- | --- |
+| **alliswell.space** | **`https://api.alliswell.space/mcp`** |
+| Your own server | `<API_PUBLIC_URL>/mcp`, e.g. `https://api.your-domain.example/mcp` |
+
+The URL is on the **API** host — `alliswell.space/mcp` is the website.
+
+- **Claude** (Free / Pro / Max): Settings → Connectors → **Add custom connector** →
+  paste the URL → **Connect** → sign in with your AllisWell email and password.
+- **Claude Team / Enterprise:** an Owner adds it once under Organization settings →
+  Connectors (any OAuth option works, no client ID or secret); each member presses
+  **Connect** under Settings → Connectors.
+- **ChatGPT** (Plus / Pro / Business): Settings → Apps & Connectors → Advanced
+  settings → Developer mode → create a connector with the URL.
+- **Claude Code:** `claude mcp add --transport http alliswell https://api.alliswell.space/mcp`
+
+Twenty-four tools over tasks, checklists, reminders, notes, projects, tags and
+search. Every write asks for your approval, every AI change is logged, and there
+is **no delete tool**. OAuth 2.1 with PKCE; dynamic client registration and client
+ID metadata documents are both supported. Full guide, tool list and
+troubleshooting: **[alliswell.space/docs/mcp](https://alliswell.space/docs/mcp)**
+([docs/MCP.md](docs/MCP.md)).
 
 ---
 

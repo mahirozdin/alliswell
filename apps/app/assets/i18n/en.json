@@ -165,7 +165,7 @@
       "notifications": "Notifications",
       "notificationsSub": "Alarms, private notifications, reminders",
       "integrations": "Integrations",
-      "integrationsSub": "Google Calendar, Apple Calendar, AI",
+      "integrationsSub": "Google Calendar, Apple Calendar, AI, Claude / ChatGPT",
       "developer": "API access and management",
       "developerSub": "Your API keys, and the reference for using them",
       "data": "Data",

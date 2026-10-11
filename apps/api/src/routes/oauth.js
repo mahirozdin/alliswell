@@ -13,11 +13,19 @@ import {
   revokeFamily,
   rotateRefreshToken,
   revokeToken,
+  upsertMetadataClient,
 } from '../db/oauth.js';
+import {
+  isClientMetadataUrl,
+  clientMetadataHost,
+  fetchClientMetadata,
+  validateClientMetadata,
+} from '../lib/oauth-cimd.js';
 
 /**
  * The MCP track's OAuth 2.1 authorization server (OPH-218, ADR-0022):
- * discovery documents, RFC 7591 dynamic client registration, a PKCE-S256-only
+ * discovery documents, RFC 7591 dynamic client registration and client ID
+ * metadata documents (ADR-0047), a PKCE-S256-only
  * authorization-code flow with a server-rendered login+consent page, token
  * rotation with family revocation, and RFC 7009 revocation.
  *
@@ -69,6 +77,18 @@ function renderPage(title, body) {
   button{flex:1;padding:10px;border-radius:8px;border:0;font-size:14px;cursor:pointer}
   .approve{background:#2563eb;color:#fff} .deny{background:#334155;color:#cbd5e1}
 </style></head><body><div class="card">${body}</div></body></html>`;
+}
+
+/**
+ * What the consent page calls a client. A metadata client chose its own name
+ * in a document anyone can publish, so the host that published it is shown
+ * beside the name — "Claude (claude.ai)" — and a look-alike name cannot hide
+ * where it really comes from.
+ */
+function clientDisplayName(client) {
+  const name = client.name ?? 'AI connector';
+  const host = client.metadata_url ? clientMetadataHost(client.metadata_url) : null;
+  return host ? `${name} (${host})` : name;
 }
 
 function renderAuthorizePage({ clientName, formToken, scope, error, email, workspaces }) {
@@ -159,6 +179,7 @@ export default async function oauthRoutes(app) {
     code_challenge_methods_supported: ['S256'],
     token_endpoint_auth_methods_supported: ['none', 'client_secret_post', 'client_secret_basic'],
     scopes_supported: MCP_SCOPES,
+    ...(mcp.cimdEnabled ? { client_id_metadata_document_supported: true } : {}),
   });
   const protectedResourceMetadata = () => ({
     resource: `${publicUrl}/mcp`,
@@ -240,12 +261,48 @@ export default async function oauthRoutes(app) {
     },
   );
 
+  // ── Clients: a registered ULID, or a metadata document URL (ADR-0047) ─────
+  /**
+   * The client row `clientId` names. A metadata URL maps to its own row; with
+   * `fresh`, an expired (or never fetched) document is fetched first, and a
+   * document that cannot be fetched or does not validate is an error, never
+   * a stale fallback — its owner may have withdrawn a redirect URI on purpose.
+   * Returns `{ client }` or `{ error }`.
+   */
+  async function resolveClient(clientId, { fresh = false } = {}) {
+    if (!clientId) return { error: 'Unknown client_id' };
+    if (!isClientMetadataUrl(clientId)) {
+      const client = await app.db('oauth_clients').where({ id: clientId }).first();
+      return client ? { client } : { error: 'Unknown client_id' };
+    }
+    if (!mcp.cimdEnabled) return { error: 'Unknown client_id' };
+    const cached = await app.db('oauth_clients').where({ metadata_url: clientId }).first();
+    const expired =
+      !cached?.metadata_expires_at || new Date(cached.metadata_expires_at).getTime() <= Date.now();
+    if (cached && !(fresh && expired)) return { client: cached };
+    if (!fresh) return { error: 'Unknown client_id' };
+    let fetched;
+    try {
+      fetched = await fetchClientMetadata(clientId);
+    } catch (err) {
+      app.log.warn({ err: err.message, code: err.code, clientId }, 'client metadata fetch failed');
+      return { error: 'The client’s metadata document could not be loaded' };
+    }
+    const checked = validateClientMetadata(clientId, fetched.document, { redirectUriAllowed });
+    if (checked.error) return { error: `Client metadata rejected: ${checked.error}` };
+    const client = await upsertMetadataClient(app.db, {
+      url: clientId,
+      name: checked.name,
+      redirectUris: checked.redirectUris,
+      expiresAt: new Date(Date.now() + fetched.ttlSec * 1000),
+    });
+    return { client };
+  }
+
   // ── Authorize: validate STRICTLY before rendering anything ────────────────
   async function validateAuthorizeParams(query) {
-    const client = query.client_id
-      ? await app.db('oauth_clients').where({ id: query.client_id }).first()
-      : null;
-    if (!client) return { fatal: 'Unknown client_id' };
+    const { client, error } = await resolveClient(query.client_id, { fresh: true });
+    if (!client) return { fatal: error };
     const redirectUri = query.redirect_uri;
     if (!redirectUri || !clientRedirectUris(client).includes(redirectUri)) {
       // Mismatch → a 400 PAGE, never a redirect to an unregistered address.
@@ -302,7 +359,7 @@ export default async function oauthRoutes(app) {
     );
     return reply.type('text/html').send(
       renderAuthorizePage({
-        clientName: checked.client.name ?? 'AI connector',
+        clientName: clientDisplayName(checked.client),
         formToken,
         scope: checked.scope,
         error: null,
@@ -334,7 +391,7 @@ export default async function oauthRoutes(app) {
     const rerender = (error, workspaces = null) =>
       reply.type('text/html').send(
         renderAuthorizePage({
-          clientName: client.name ?? 'AI connector',
+          clientName: clientDisplayName(client),
           formToken: body.formToken,
           scope: params.s,
           error,
@@ -420,7 +477,9 @@ export default async function oauthRoutes(app) {
     }
     if (!id)
       return { error: () => oauthError(reply, 400, 'invalid_request', 'client_id required') };
-    const client = await app.db('oauth_clients').where({ id }).first();
+    // A metadata client's row exists once /oauth/authorize has seen it; the
+    // token endpoint never fetches — there is nothing to fetch for.
+    const { client } = await resolveClient(id);
     if (!client) return { error: () => oauthError(reply, 401, 'invalid_client', 'unknown client') };
     if (client.token_endpoint_auth_method !== 'none') {
       const expected = client.client_secret_hash;

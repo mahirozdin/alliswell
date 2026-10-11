@@ -307,6 +307,8 @@ export function fakeDb({
       token_endpoint_auth_method: 'none',
       client_secret_hash: null,
       last_used_at: null,
+      metadata_url: null,
+      metadata_expires_at: null,
     }),
     oauth_codes: () => ({ resource: null, consumed_at: null }),
     oauth_tokens: () => ({ rotated_at: null, revoked_at: null, last_used_at: null }),

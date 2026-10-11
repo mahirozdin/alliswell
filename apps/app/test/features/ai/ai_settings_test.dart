@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ai/ui/ai_settings_card.dart';
 import 'package:alliswell/src/features/ai/ui/ai_settings_screen.dart';
+import 'package:alliswell/src/features/ai/ui/mcp_connector_card.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
@@ -58,6 +59,26 @@ Future<Widget> cardWith(FakeApi api) async {
       home: const Scaffold(
         body: SingleChildScrollView(child: AiSettingsCard()),
       ),
+    ),
+  );
+}
+
+Future<Widget> mcpCardWith(FakeApi api) async {
+  SharedPreferences.setMockInitialValues({});
+  final store = InMemorySecretStore();
+  await TokenStorage(store).save(fakeSession());
+  return ProviderScope(
+    retry: awRetry,
+    overrides: [
+      ...syncTestOverrides(),
+      secretStoreProvider.overrideWithValue(store),
+      apiClientProvider.overrideWithValue(
+        fakeDio(FakeHttpClientAdapter(api.handle)),
+      ),
+    ],
+    child: MaterialApp(
+      theme: buildAwTheme(Brightness.light),
+      home: const Scaffold(body: McpConnectorCard()),
     ),
   );
 }
@@ -190,8 +211,10 @@ void main() {
     expect(api.aiConnections, hasLength(1));
   });
 
+  // OPH-364: the card stands on its own — it used to live inside the AI
+  // screen, which a server with AI off never shows.
   testWidgets(
-    'the MCP connector card shows the instance /mcp URL and copies it',
+    'the MCP connector card shows the /mcp URL and copies it, with AI off',
     (tester) async {
       final copied = <String>[];
       tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(
@@ -210,8 +233,8 @@ void main() {
         ),
       );
 
-      final api = FakeApi()..aiEnabled = true;
-      await tester.pumpWidget(await screenWith(api));
+      final api = FakeApi()..aiEnabled = false;
+      await tester.pumpWidget(await mcpCardWith(api));
       await tester.pumpAndSettle();
       expect(find.textContaining('/mcp'), findsOneWidget);
       await tester.tap(find.byKey(const Key('ai-mcp-copy')));

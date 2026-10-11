@@ -407,6 +407,13 @@ jobs:
           test -f apps/landing/dist/.htaccess  || { echo "::error::no .htaccess — /app routing would break"; exit 1; }
           grep -q 'RewriteRule \^app' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost its /app rule"; exit 1; }
+          # OPH-364: the connector's two signposts — llms.txt for agents, and
+          # the forward that stops a guessed alliswell.space/mcp from serving
+          # the homepage.
+          grep -q 'https://api.alliswell.space/mcp' apps/landing/dist/llms.txt \
+            || { echo "::error::llms.txt is missing or does not name the connector URL"; exit 1; }
+          grep -q 'R=308' apps/landing/dist/.htaccess \
+            || { echo "::error::.htaccess lost the /mcp and OAuth forward to the API"; exit 1; }
 
           # EE-154. The sitemap is EMITTED from the route list rather than
           # written by hand, so "it exists" is not the interesting assertion —

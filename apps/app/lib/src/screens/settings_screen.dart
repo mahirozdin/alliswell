@@ -9,6 +9,7 @@ import '../core/date_format.dart';
 import '../core/persisted_prefs.dart';
 import '../core/server_url.dart' show prettyServerUrl;
 import '../features/ai/ui/ai_settings_card.dart';
+import '../features/ai/ui/mcp_connector_card.dart';
 import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/sign_out.dart';
@@ -805,9 +806,12 @@ class SettingsIntegrationsScreen extends ConsumerWidget {
         const AppleCalendarCard(),
       ],
       const SizedBox(height: AwSpace.x3),
-      // OPH-220: AI — hides itself when the server has AI disabled. The MCP
-      // connector card lives inside it and stays there.
+      // OPH-220: AI — hides itself when the server has AI disabled.
       const AiSettingsCard(),
+      // OPH-364: the MCP connector URL does NOT hide with it — the connector
+      // rides its own switch (ADR-0022), and alliswell.space runs with AI off.
+      const SizedBox(height: AwSpace.x3),
+      const McpConnectorCard(),
       // OPH-292: API access used to sit here. It moved up to its own
       // top-level group — see the Developer row on the root screen.
     ],

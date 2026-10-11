@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../core/error_messages.dart';
-import '../../../core/server_url.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -16,8 +14,8 @@ import 'ai_settings_card.dart';
 import '../../../widgets/route_leading.dart';
 
 /// The full AI settings screen (OPH-220): connections list, add flow (provider
-/// → consent → key → test → connect), model pickers, and the MCP connector
-/// card (BLUEPRINT §12.16).
+/// → consent → key → test → connect) and model pickers (BLUEPRINT §12.16).
+/// The MCP connector card moved to Settings ▸ Integrations (OPH-364).
 class AiSettingsScreen extends ConsumerStatefulWidget {
   const AiSettingsScreen({super.key});
   @override
@@ -61,11 +59,7 @@ class _AiSettingsScreenState extends ConsumerState<AiSettingsScreen> {
               constraints: const BoxConstraints(maxWidth: 720),
               child: ListView(
                 padding: awListPadding(context, top: AwSpace.x2),
-                children: [
-                  _connectionsCard(),
-                  const SizedBox(height: AwSpace.x3),
-                  const _McpConnectorCard(),
-                ],
+                children: [_connectionsCard()],
               ),
             ),
           );
@@ -340,45 +334,6 @@ class _ConnectionRow extends ConsumerWidget {
         ).showSnackBar(SnackBar(content: Text('ai.settings.removed'.tr())));
       }
     });
-  }
-}
-
-/// The instance's MCP connector URL, for "Add AllisWell to Claude/ChatGPT".
-class _McpConnectorCard extends ConsumerWidget {
-  const _McpConnectorCard();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final base = ref.watch(apiBaseUrlProvider);
-    final mcpUrl = '${base.replaceAll(RegExp(r'/+$'), '')}/mcp';
-    return Card(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          ListTile(
-            leading: const Icon(Icons.hub_outlined),
-            title: Text('ai.settings.mcpTitle'.tr()),
-            subtitle: Text('ai.settings.mcpSub'.tr()),
-          ),
-          ListTile(
-            title: Text(mcpUrl, style: Theme.of(context).textTheme.bodySmall),
-            trailing: IconButton(
-              key: const Key('ai-mcp-copy'),
-              tooltip: 'ai.settings.copy'.tr(),
-              icon: const Icon(Icons.copy_outlined),
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: mcpUrl));
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('ai.settings.copied'.tr())),
-                  );
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 
