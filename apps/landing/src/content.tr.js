@@ -20,6 +20,8 @@ import {
   APP_STORE_URL,
   APP_URL,
   DOCS_URL,
+  MCP_GUIDE_URL,
+  MCP_URL,
   PLAY_URL,
   REPO_URL,
   VERSION,
@@ -47,6 +49,7 @@ export default {
     links: [
       { label: 'Özellikler', href: '/tr#features' },
       { label: 'Yapay zekâ', href: '/tr#ai' },
+      { label: 'MCP', href: '/tr#mcp' },
       { label: 'Karşılaştırma', href: '/tr#compare' },
       { label: 'Kendi sunucunuz', href: '/tr#self-host' },
       { label: 'Kurumsal', href: '/enterprise/tr' },
@@ -350,11 +353,11 @@ export default {
           'AllisWell uzak bir MCP sunucusudur. Zaten ödediğiniz aboneliğe bağlayın ve gününüzü ' +
           'zaten kullandığınız asistanın içinden sorun.',
         points: [
-          'PKCE ve dinamik istemci kaydıyla OAuth 2.1: kendi kurulumunuz, kendi onayınız',
+          'PKCE ile OAuth 2.1: dinamik kayıt ve istemci metadata belgeleri, Claude’un her seçeneği çalışır',
           'Önce-oku araçları; silme aracı yok, hiç olmayacak',
           'Kendi sunucusuna kuranlar dizin listesi gerektirmeyen kendi bağlayıcı adresini alır',
         ],
-        link: { label: 'Bağlayıcı nasıl çalışır', href: `${DOCS_URL}/MCP.md` },
+        link: { label: 'Bağlayıcı adresi ve kurulum', href: '/tr#mcp' },
       },
       {
         title: 'Kendi anahtarınızı getirin',
@@ -373,6 +376,61 @@ export default {
     foot:
       'İlgilenmiyor musunuz? Kapalı bırakın. AllisWell’in yapay zekâ hesabı yoktur, varsayılan ' +
       'olarak hiçbir yere hiçbir şey göndermez ve her kayıt yüzeyi modelsiz çalışır.',
+  },
+
+  mcp: {
+    eyebrow: 'MCP bağlayıcısı',
+    title: 'Gününüzü Claude’a ya da ChatGPT’ye sorun',
+    lede:
+      'AllisWell uzak bir MCP sunucusudur. Zaten ödediğiniz asistana tek bir adres ' +
+      'yapıştırın, bir kez giriş yapın; görevlerinizi ve notlarınızı okuyabilir, onayınızla ' +
+      'yenilerini ekleyip bitirebilir.',
+    urlLabel: 'alliswell.space hesapları için bağlayıcı adresi',
+    url: MCP_URL,
+    selfHost:
+      'Kendi sunucunuz mu var? Adresiniz API_PUBLIC_URL değerinizin sonuna /mcp eklenmiş ' +
+      'hâlidir; uygulama onu Ayarlar → Entegrasyonlar altında kopyalama düğmesiyle gösterir.',
+    clients: [
+      {
+        name: 'Claude',
+        note: 'Free, Pro ve Max',
+        steps: [
+          'Ayarlar (Settings) → Connectors → Add custom connector',
+          'Yukarıdaki adresi yapıştırın, Add ve ardından Connect deyin',
+          'AllisWell e-posta adresiniz ve parolanızla giriş yapın',
+        ],
+      },
+      {
+        name: 'Claude Team ve Enterprise',
+        note: 'Bir Owner bir kez ekler',
+        steps: [
+          'Owner: Organization settings → Connectors → Add custom connector, yukarıdaki adresle',
+          'Her OAuth seçeneği çalışır; girilecek bir client ID ya da secret yoktur',
+          'Her üye: Settings → Connectors → Connect, kendi hesabıyla',
+        ],
+      },
+      {
+        name: 'ChatGPT',
+        note: 'Plus, Pro ve Business',
+        steps: [
+          'Ayarlar → Apps & Connectors → Advanced settings → Developer mode',
+          'Yukarıdaki adresle ve OAuth ile bir bağlayıcı oluşturun',
+          'Giriş yapıp onaylayın; Claude’dakiyle aynı',
+        ],
+      },
+    ],
+    promptsTitle: 'Sonra sadece sorun',
+    prompts: [
+      'Bugün gecikmiş neyim var?',
+      'Önümüzdeki cumaya Ayak işleri projesine acil bir pasaport yenileme görevi ekle',
+      'Tadilat notlarımı özetle ve açık görevleri listele',
+    ],
+    safety:
+      'Her yazma işlemi önce onayınızı ister, yapay zekânın her değişikliği işlem günlüğüne ' +
+      'düşer ve hiç silme aracı yoktur.',
+    link: { label: 'Kurulum rehberi ve sorun giderme', href: MCP_GUIDE_URL },
+    copyLabel: 'Kopyala',
+    copiedLabel: 'Kopyalandı',
   },
 
   api: {
@@ -540,6 +598,15 @@ docker compose -f docker-compose.selfhost.yml up -d`,
           'aboneliğinize bağlarsınız, ya da kendi sağlayıcı anahtarınızı yapıştırırsınız.',
       },
       {
+        q: 'AllisWell’i Claude’a ya da ChatGPT’ye nasıl bağlarım?',
+        a:
+          'https://api.alliswell.space/mcp adresiyle özel bir bağlayıcı (custom connector) ' +
+          'ekleyin (kendi sunucunuzda: API adresinizin sonuna /mcp) ve AllisWell hesabınızla ' +
+          'giriş yapın. Claude Team ve Enterprise’da bağlayıcıyı bir Owner bir kez ekler, her ' +
+          'üye Connect der. Sorun gidermeyle birlikte tam rehber alliswell.space/docs/mcp ' +
+          'adresinde (İngilizce).',
+      },
+      {
         q: 'Verimi dışarı taşıyabilir miyim?',
         a:
           'Veritabanı sizin MySQL veritabanınız. Notlar Markdown olarak dışa aktarılır, şema ' +
@@ -583,7 +650,7 @@ docker compose -f docker-compose.selfhost.yml up -d`,
         title: 'Yapay zekâ',
         links: [
           { label: 'Yapay zekâ nasıl çalışır', href: `${DOCS_URL}/AI.md` },
-          { label: 'MCP bağlayıcısı', href: `${DOCS_URL}/MCP.md` },
+          { label: 'MCP bağlayıcısı', href: MCP_GUIDE_URL },
           { label: 'REST API referansı', href: '/docs/api' },
           { label: 'Güvenlik politikası', href: `${REPO_URL}/blob/main/SECURITY.md` },
           { label: 'Gizlilik politikası', href: '/privacy/tr' },

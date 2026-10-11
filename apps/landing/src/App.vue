@@ -8,6 +8,7 @@ import DownloadSection from './components/DownloadSection.vue';
 import FaqSection from './components/FaqSection.vue';
 import FeatureSection from './components/FeatureSection.vue';
 import HeroSection from './components/HeroSection.vue';
+import McpSection from './components/McpSection.vue';
 import MobileShowcase from './components/MobileShowcase.vue';
 import PillarGrid from './components/PillarGrid.vue';
 import RecurrenceProof from './components/RecurrenceProof.vue';
@@ -61,6 +62,7 @@ const featureList = computed(() => props.content.features.filter((f) => f.id !==
 
     <MobileShowcase :mobile="content.mobile" />
     <AiSection :ai="content.ai" />
+    <McpSection :mcp="content.mcp" />
     <ApiSection :api="content.api" />
     <ComparisonTable :table="content.comparison" />
     <SelfHostSection

@@ -921,6 +921,34 @@ jobs:
             esac
           done
 
+          # OPH-364: the MCP connector, found the way a person or an agent
+          # finds it. The guide page and llms.txt must name the API-host URL;
+          # the website's own /mcp must FORWARD there (308) rather than answer
+          # 200 with the homepage — that silent 200 is what broke a Claude
+          # Team connector; and the API's discovery must be JSON that offers
+          # both registration paths (ADR-0047).
+          guide=$(curl -fsSL --max-time 20 "$site/docs/mcp/" || true)
+          case "$guide" in
+            *'https://api.alliswell.space/mcp'*) echo "✓ /docs/mcp names the connector URL" ;;
+            *) echo "::error::$site/docs/mcp did not serve the connector guide"; fail=1 ;;
+          esac
+          llms=$(curl -fsS --max-time 15 "$site/llms.txt" || true)
+          case "$llms" in
+            '# AllisWell'*'https://api.alliswell.space/mcp'*) echo "✓ llms.txt names the connector URL" ;;
+            *) echo "::error::$site/llms.txt is missing (or is the homepage)"; fail=1 ;;
+          esac
+          forward=$(curl -sS -o /dev/null -w '%{http_code} %{redirect_url}' --max-time 15 "$site/mcp" || true)
+          case "$forward" in
+            '308 https://api.alliswell.space/mcp') echo "✓ $site/mcp forwards to the API" ;;
+            *) echo "::error::$site/mcp answered '$forward', not a 308 to the API — check .htaccess"; fail=1 ;;
+          esac
+          meta=$(curl -fsS --max-time 15 "$API_URL/.well-known/oauth-authorization-server" || true)
+          case "$meta" in
+            *'"registration_endpoint"'*'"client_id_metadata_document_supported":true'*)
+              echo "✓ OAuth discovery offers registration and metadata documents" ;;
+            *) echo "::error::$API_URL/.well-known/oauth-authorization-server is not the expected JSON"; fail=1 ;;
+          esac
+
           exit $fail
 
       # DNS, certificate and proxy for the wildcard, proved on a name that has

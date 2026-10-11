@@ -114,6 +114,23 @@ export const STATIC_PAGES = [
     lang: 'en',
     styles: [...BASE_STYLES, '/api-docs-1.css'],
   },
+  {
+    // OPH-364: the connector guide, as a page on this domain that reads with
+    // JavaScript off. The homepage is a Vue app, so an agent or a crawler that
+    // fetched it saw a two-line fallback and no connector URL; the guide lived
+    // only as markdown on GitHub. English only, like the API reference —
+    // docs/MCP.md is the one source, and the homepage carries the Turkish
+    // summary.
+    route: 'docs/mcp',
+    file: 'docs/MCP.md',
+    title: 'Connect AllisWell to Claude or ChatGPT — MCP connector URL and setup',
+    description:
+      'The AllisWell MCP connector: the URL (https://api.alliswell.space/mcp), ' +
+      'step-by-step setup for Claude, Claude Team and Enterprise, ChatGPT and ' +
+      'Claude Code, the tools it offers, and troubleshooting.',
+    lang: 'en',
+    styles: [...BASE_STYLES, '/api-docs-1.css'],
+  },
 ];
 
 /**

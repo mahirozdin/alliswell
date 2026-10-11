@@ -33,7 +33,13 @@ defineProps({
           <ul>
             <li v-for="p in track.points" :key="p">{{ p }}</li>
           </ul>
-          <a :href="track.link.href" rel="noopener" target="_blank">{{ track.link.label }} →</a>
+          <!-- OPH-364: the connector card now points at #mcp on this page. -->
+          <a
+            :href="track.link.href"
+            :rel="track.link.href.startsWith('http') ? 'noopener' : undefined"
+            :target="track.link.href.startsWith('http') ? '_blank' : undefined"
+            >{{ track.link.label }} →</a
+          >
         </article>
       </div>
 

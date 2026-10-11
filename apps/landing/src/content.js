@@ -13,6 +13,13 @@ export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
 export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
 export const VERSION = '1.15.0';
+/**
+ * OPH-364 — the hosted connector URL, said once. It is on the API host, not
+ * this one: an agent that guessed `alliswell.space/mcp` from the marketing
+ * domain got this site's HTML back and a Claude Team owner a failed connector.
+ */
+export const MCP_URL = 'https://api.alliswell.space/mcp';
+export const MCP_GUIDE_URL = '/docs/mcp';
 
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
@@ -198,11 +205,11 @@ export const aiSection = {
       title: 'Add AllisWell to Claude or ChatGPT',
       body: 'AllisWell is a remote MCP server. Connect it to the subscription you already pay for and ask about your day, from inside the assistant you already use.',
       points: [
-        'OAuth 2.1 with PKCE and dynamic client registration — your own instance, your own consent',
+        'OAuth 2.1 with PKCE — dynamic registration and client metadata documents, so every Claude option works',
         'Read-first tools; there is no delete tool, and there never will be',
         'Self-hosters get their own connector URL with no directory listing needed',
       ],
-      link: { label: 'How the connector works', href: `${DOCS_URL}/MCP.md` },
+      link: { label: 'Connector URL and setup', href: '/#mcp' },
     },
     {
       title: 'Bring your own key',
@@ -215,6 +222,59 @@ export const aiSection = {
       link: { label: 'How AI works here', href: `${DOCS_URL}/AI.md` },
     },
   ],
+};
+
+/**
+ * OPH-364 — the connector, with its URL on the page. The AI section names the
+ * track; this one is what somebody who wants to CONNECT needs: the address,
+ * where to paste it in each assistant, and what to ask once it is in.
+ */
+export const mcp = {
+  eyebrow: 'MCP connector',
+  title: 'Ask Claude or ChatGPT about your day',
+  lede: 'AllisWell is a remote MCP server. Paste one URL into the assistant you already pay for, sign in once, and it can read your tasks and notes — and add or finish them with your approval.',
+  urlLabel: 'Connector URL for alliswell.space accounts',
+  url: MCP_URL,
+  selfHost:
+    'Self-hosting? Your URL is your API_PUBLIC_URL followed by /mcp — the app shows it, with a copy button, under Settings → Integrations.',
+  clients: [
+    {
+      name: 'Claude',
+      note: 'Free, Pro and Max',
+      steps: [
+        'Settings → Connectors → Add custom connector',
+        'Paste the URL above, press Add, then Connect',
+        'Sign in with your AllisWell email and password',
+      ],
+    },
+    {
+      name: 'Claude Team & Enterprise',
+      note: 'An Owner adds it once',
+      steps: [
+        'Owner: Organization settings → Connectors → Add custom connector, with the URL above',
+        'Any OAuth option works; there is no client ID or secret to enter',
+        'Each member: Settings → Connectors → Connect, with their own account',
+      ],
+    },
+    {
+      name: 'ChatGPT',
+      note: 'Plus, Pro and Business',
+      steps: [
+        'Settings → Apps & Connectors → Advanced settings → Developer mode',
+        'Create a connector with the URL above and OAuth',
+        'Sign in and approve, exactly as in Claude',
+      ],
+    },
+  ],
+  promptsTitle: 'Then just ask',
+  prompts: [
+    'What is overdue today?',
+    'Add “renew passport” to Errands for next Friday, urgent',
+    'Summarise my renovation notes and list the open tasks',
+  ],
+  safety:
+    'Every write asks for your approval first, every AI change lands in the action log, and there is no delete tool at all.',
+  link: { label: 'Full setup guide & troubleshooting', href: MCP_GUIDE_URL },
 };
 
 export const comparison = {
@@ -338,6 +398,10 @@ export const faq = [
     a: 'No. They are off until you turn them on, capture works with zero AI, and there is no AllisWell AI account — you either connect AllisWell to your own Claude/ChatGPT subscription over MCP, or you paste your own provider key.',
   },
   {
+    q: 'How do I connect AllisWell to Claude or ChatGPT?',
+    a: 'Add a custom connector with the URL https://api.alliswell.space/mcp (self-hosted: your API address followed by /mcp) and sign in with your AllisWell account. On Claude Team and Enterprise an Owner adds the connector once and every member presses Connect. The full guide, with troubleshooting, is at alliswell.space/docs/mcp.',
+  },
+  {
     q: 'Can I move my data out?',
     a: 'It is your MySQL database. Notes export as Markdown, and the whole schema is documented and open. There is no lock-in to leave.',
   },
@@ -358,7 +422,10 @@ export const faq = [
  */
 export const siteLinks = [
   { label: 'Features', href: '/#features' },
-  { label: 'AI & MCP', href: '/#ai' },
+  { label: 'AI', href: '/#ai' },
+  // OPH-364: the connector gets its own entry — "where do I paste the URL" is
+  // the question people arrive with, and it was two clicks deep.
+  { label: 'MCP', href: '/#mcp' },
   { label: 'Compare', href: '/#compare' },
   { label: 'Self-host', href: '/#self-host' },
   // The only nav entry that leaves this page. /enterprise ships in the SAME
@@ -399,7 +466,7 @@ export const siteColumns = [
     title: 'AI',
     links: [
       { label: 'How AI works', href: `${DOCS_URL}/AI.md` },
-      { label: 'MCP connector', href: `${DOCS_URL}/MCP.md` },
+      { label: 'MCP connector', href: MCP_GUIDE_URL },
       // OPH-296: the REST API sat in this repo undocumented on the site for
       // two releases. It belongs beside the MCP connector — they are the two
       // ways something other than the app reaches your data.
@@ -513,6 +580,8 @@ export default {
     ...aiSection,
     foot: 'Not interested? Leave it off. AllisWell has no AI account, sends nothing anywhere by default, and every capture surface works without a model.',
   },
+
+  mcp: { ...mcp, copyLabel: 'Copy', copiedLabel: 'Copied' },
 
   api: { ...api, terminalTitle: 'your cron job', copyLabel: 'Copy', copiedLabel: 'Copied' },
 

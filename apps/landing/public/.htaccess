@@ -30,6 +30,16 @@ Options -Indexes
   RewriteEngine On
   RewriteBase /
 
+  # OPH-364: the MCP connector and its OAuth endpoints live on the API host.
+  # Without this, `alliswell.space/mcp` — the address anyone guesses from the
+  # domain — answered 200 with the marketing page's HTML, and so did every
+  # OAuth discovery document under it: a Claude connector given that URL
+  # failed with "Couldn't register with AllisWell's sign-in service" and
+  # nothing on the wire said why. 308 keeps the method and the body, so a
+  # POST to /mcp arrives at the API as a POST. The docs still give the api.
+  # address; this is the net under the guess, not the way in.
+  RewriteRule ^(mcp|oauth/.*|\.well-known/oauth-authorization-server(/.*)?|\.well-known/oauth-protected-resource(/.*)?|\.well-known/openid-configuration)$ https://api.alliswell.space/$1 [R=308,L]
+
   # The Flutter app keeps its slash. It is built with --base-href /app/ and has
   # always been reached at /app/; serving its index in place at /app would hand
   # the router a path the base href does not cover. This is the one directory

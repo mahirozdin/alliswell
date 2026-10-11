@@ -237,7 +237,7 @@
 - **KARAR** AI iki hat: uzak MCP (kullanıcının aboneliği) + uygulama içi BYOK (`fetch` adaptörleri, SDK yok, anahtar `AI_TOKEN_KEY`'le şifreli, arayüzde `key_last4`); abonelik-OAuth kapalı (ADR-0019).
 - **KARAR** Onay kartı atlanamaz, kabul `TaskStore` outbox'undan yazılır (tek istisna ✨ hızlı ekleme: anında düz görev, zenginleştirme sonra UPDATE); modele yazma aracı yok; silme AI'ya/MCP'ye kalıcı kapalı (ADR-0019, ADR-0022).
 - **KARAR** Sohbet geçmişi cihaz-yerel, STT cihaz-üstü; onam ekranı sağlayıcı gerçeğini söyler (Gemini ücretsizi veriyle eğitir); proje eşleme LLM'e bırakılmaz; basılı-konuş kilitli sürer, transkript otomatik gönderilmez.
-- **KARAR** Uzak MCP elle yazılmış stateless Streamable HTTP + kendi OAuth 2.1 AS (PKCE S256 zorunlu, opak token); `MCP_ENABLED`+`API_PUBLIC_URL` ayrı kapı, eksikse 404, boot hatası asla (ADR-0022).
+- **KARAR** Uzak MCP stateless Streamable HTTP + kendi OAuth 2.1 AS (PKCE S256, opak token, DCR+CIMD ADR-0047); adres `api.`'da; `MCP_ENABLED`+`API_PUBLIC_URL` ayrı kapı, eksikse 404 (ADR-0022).
 - **KARAR** MCP'ye girmez: `delete_*` (API anahtarında var), dosya baytı, proje arşivleme, toplu içe/dışa aktarma; `update_task` `parentTaskId`/`sortOrder`/`colorRgb`/`alarmsMutedAt`/`seriesScope` almaz (ADR-0022).
 - **KARAR** MCP hata politikası: domain 4xx + stabil `code` modelin okuduğu tool sonucu, 5xx opak; Ajv hatası `isError:true`; metni ezebilen araç `destructiveHint:true`; belirsiz proje → yaratmaz, aday listesi döner.
 - **DERS** Yeni MCP yazma aracı: önce `findMcpReplay()`, sonra `recordMcpAction()` (ledger LAST) + `requireScope('mcp:write')` + TAM annotation dörtlüsü (eksik hint = bilinmiyor, host sessizce koşar).

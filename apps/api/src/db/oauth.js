@@ -45,6 +45,38 @@ export async function registerClient(db, secret, { name, redirectUris, tokenEndp
   return { row, clientSecret };
 }
 
+/**
+ * A metadata-document client (ADR-0047): the row its URL maps to, created on
+ * first sight and refreshed whenever the document is fetched again. A racing
+ * first authorization loses the unique key and simply reads the winner's row.
+ */
+export async function upsertMetadataClient(db, { url, name, redirectUris, expiresAt }) {
+  const patch = {
+    name: name ?? null,
+    redirect_uris: JSON.stringify(redirectUris),
+    metadata_expires_at: expiresAt,
+    updated_at: new Date(),
+  };
+  const existing = await db('oauth_clients').where({ metadata_url: url }).first();
+  if (existing) {
+    await db('oauth_clients').where({ id: existing.id }).update(patch);
+    return db('oauth_clients').where({ id: existing.id }).first();
+  }
+  try {
+    await db('oauth_clients').insert({
+      id: newId(),
+      metadata_url: url,
+      token_endpoint_auth_method: 'none',
+      client_secret_hash: null,
+      ...patch,
+    });
+  } catch (err) {
+    if (err?.code !== 'ER_DUP_ENTRY') throw err;
+    await db('oauth_clients').where({ metadata_url: url }).update(patch);
+  }
+  return db('oauth_clients').where({ metadata_url: url }).first();
+}
+
 /** Mints a single-use authorization code (60 s TTL). Returns the raw code. */
 export async function issueCode(
   db,

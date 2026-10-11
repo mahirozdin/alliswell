@@ -321,8 +321,16 @@ against their workspace on their subscription — AllisWell spends no model mone
 Set **`API_PUBLIC_URL`** to your instance's public origin (HTTPS in production);
 it is the OAuth issuer and MCP resource identity. **`MCP_ENABLED=false`**
 withdraws the connector (every `/mcp` and `/oauth/*` route answers 404). This
-switch is **independent of `AI_ENABLED`**. Full setup and the tool list:
-[MCP.md](MCP.md).
+switch is **independent of `AI_ENABLED`**.
+
+Your users' **connector URL is `<API_PUBLIC_URL>/mcp`** — on the API's origin,
+not the web app's (the app shows it under Settings → Integrations). Check it
+from outside before you hand it out: `curl -i https://<your-api>/mcp` must
+answer **401** with a `www-authenticate: Bearer resource_metadata=…` header; an
+HTML page means the request reached a website instead of the API. Clients may
+register dynamically or name themselves by a metadata URL
+(`MCP_CIMD_ENABLED`, on by default). Full setup, troubleshooting and the tool
+list: [MCP.md](MCP.md).
 
 ## 6d. Optional: push (and why reminders work without it)
 

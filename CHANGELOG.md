@@ -7,6 +7,22 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Added
+
+- **Connecting AllisWell to Claude or ChatGPT is findable now (OPH-364).** The connector URL,
+  `https://api.alliswell.space/mcp`, is on the homepage in a section of its own with a copy
+  button and the steps for Claude, Claude Team and Enterprise, and ChatGPT; on a new guide page at
+  alliswell.space/docs/mcp that reads without JavaScript; in `llms.txt` for AI agents; and at the
+  top of the README. `alliswell.space/mcp`, the address people guess, forwards to the API instead
+  of quietly serving the homepage. In the app the URL is under Settings → Integrations, and it is
+  shown even on servers that have the in-app AI switched off — alliswell.space among them, where
+  it was hidden until now.
+- **Claude's default connector option works (OPH-364, ADR-0047).** "Use Claude's published
+  identity" no longer fails with "Couldn't register with AllisWell's sign-in service": the sign-in
+  server accepts clients that name themselves by an https metadata URL, beside the automatic
+  registration it already supported. The approval page shows where such a client comes from
+  ("Claude (claude.ai)"). Self-hosters can turn it off with `MCP_CIMD_ENABLED=false`.
+
 ### Fixed
 
 - **The "new" button no longer covers a list's last row (OPH-363).** On a phone, Units, a unit's

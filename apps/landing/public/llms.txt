@@ -1,0 +1,31 @@
+# AllisWell
+
+> Source-available, self-hostable tasks, projects, notes, files and alarm-grade reminders,
+> with two-way Google & Apple Calendar sync. One Flutter app for iOS, Android, Web, macOS,
+> Windows and Linux. Free for personal use. Made by BubiApps (info@bubiapps.com).
+
+## MCP connector (Claude, ChatGPT, any MCP client)
+
+- Connector URL for alliswell.space accounts: https://api.alliswell.space/mcp
+- Self-hosted instances: <API_PUBLIC_URL>/mcp, e.g. https://api.your-domain.example/mcp
+- The URL is on the API host. https://alliswell.space/mcp is the website, not the MCP server.
+- Transport: Streamable HTTP. Auth: OAuth 2.1 with PKCE (S256); dynamic client registration
+  (RFC 7591) and OAuth client ID metadata documents are both supported.
+- OAuth discovery: https://api.alliswell.space/.well-known/oauth-protected-resource and
+  https://api.alliswell.space/.well-known/oauth-authorization-server
+- Claude: Settings → Connectors → Add custom connector → paste the URL → Connect → sign in
+  with the AllisWell email and password.
+- Claude Team / Enterprise: an Owner adds it under Organization settings → Connectors; each
+  member then presses Connect under Settings → Connectors. No client ID or secret needed.
+- Claude Code: `claude mcp add --transport http alliswell https://api.alliswell.space/mcp`
+- Tools: tasks, checklists, reminders, notes, projects, tags, search, file metadata. Write
+  tools ask for approval; there is no delete tool.
+
+## Docs
+
+- [MCP connector guide](https://alliswell.space/docs/mcp): URL, setup per client, tools, troubleshooting
+- [REST API reference](https://alliswell.space/docs/api): personal API keys, every endpoint
+- [Web app](https://alliswell.space/app)
+- [Source code](https://github.com/mahirozdin/alliswell)
+- [Self-hosting guide](https://github.com/mahirozdin/alliswell/blob/main/docs/SELF-HOSTING.md)
+- [Privacy policy](https://alliswell.space/privacy) · [Support](https://alliswell.space/support)

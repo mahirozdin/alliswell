@@ -9,17 +9,16 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-08 — OPH-363 kapandı (UI denetiminin üçüncü yeniden testinden core'da
-kalanlar); backlog boş.
+**Last updated:** 2026-10-12 — OPH-364 kapandı (MCP bulunabilirliği + CIMD, ADR-0047); backlog boş.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
+| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-363 — sayfanın kendi FAB'ı olan her Scaffold liste sonu dolgusunda onu ister (`awListPadding`/`awPagePadding`/`awScrollEndPadding` `fab:`; Birimler, birim kadrosu, Webhook'lar, Herkese açık bağlantılar, Roller, Davetler, Firmalar, API anahtarları, SLA, yönetim Takımlar…; `page_fab_clearance_test` kaynak taraması); yuvadaki Hızlı erişim düğmesinin semantiği yalnız 56 px'lik düğme ve dokunma (sürükleme duyurulmaz); "İletildi — talebin aşağıda" satırı alttaki liste aynı konulu talebi gösterince çekilir, "Kapat" ile de kapanır. |
+| Last completed           | OPH-364 — MCP bağlayıcısı bulunur: adres (`https://api.alliswell.space/mcp`) landing'de kendi bölümünde (`#mcp`, EN+TR), JS'siz `/docs/mcp` sayfası (`docs/MCP.md`'den), `llms.txt`, README, SSS ve JSON-LD'de; `alliswell.space/mcp` + OAuth yolları `.htaccess`'te 308 ile API'ye; uygulamada MCP kartı AI anahtarından bağımsız (Ayarlar ▸ Entegrasyonlar); OAuth AS CIMD kabul eder (ADR-0047, `MCP_CIMD_ENABLED`); deploy smoke'u adresi ve yönlendirmeyi doğrular. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -41,11 +40,15 @@ kalanlar); backlog boş.
 7. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
    `VITE_SALES_CAPTCHA_SITE_KEY`, sunucu yarısıyla birlikte (uzantının belgeleri); tek yarı her
    gönderimi reddeder.
-8. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
+8. **Yalnız Google/Apple ile kayıtlı hesap MCP'ye bağlanamaz** (OPH-364'te ölçüldü): onay sayfası
+   e-posta + parola ister, bu hesapların parolası yok ve parola belirleme yolu yok
+   (`POST /auth/password` `AUTH_NO_PASSWORD` der). Karar sahibin: parola belirleme akışı mı, onay
+   sayfasında Google/Apple ile giriş mi.
+9. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
    (`docs/store/directories.md`, önkoşulları boş).
-9. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
+10. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
    doğrulama 2026-07-29) — ilki **~2026-10**.
-10. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
+11. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
     canlıda; APNs yoksa iOS'a hiçbir push teslim edilmez ve hiçbir test yakalamaz) · OpenAI "Sign in
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.

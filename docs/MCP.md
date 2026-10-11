@@ -1,28 +1,89 @@
-# Add AllisWell to Claude or ChatGPT
+# Connect AllisWell to Claude or ChatGPT (MCP)
 
 AllisWell ships a **remote MCP server** — a connector you add to your *own*
-Claude or ChatGPT account. The AI then reads and updates your AllisWell
+Claude or ChatGPT account. The assistant then reads and updates your AllisWell
 workspace using **your** subscription; AllisWell spends nothing on model calls.
 This is Track A of the AI design ([AI.md](AI.md); [ADR-0022](adr/0022-remote-mcp-server.md)).
 
-Every self-hosted instance is its own connector at `https://<your-instance>/mcp`.
+## The connector URL
+
+| You use… | Connector URL |
+| --- | --- |
+| **alliswell.space** (the hosted app) | **`https://api.alliswell.space/mcp`** |
+| Your own server | `https://<API_PUBLIC_URL>/mcp` — e.g. `https://api.your-domain.example/mcp` |
+
+The URL lives on the **API** host, not the website. `https://alliswell.space/mcp`
+is the marketing site; it forwards to the address above, but paste the `api.`
+address so nothing depends on the forward. The app shows the exact URL for your
+server under **Settings → Integrations → Add to Claude / ChatGPT**, with a copy button.
+
+- Transport: Streamable HTTP · Auth: OAuth 2.1 with PKCE (S256)
+- Client registration: dynamic (RFC 7591) **and** client ID metadata documents
+  ([ADR-0047](adr/0047-oauth-client-id-metadata-documents.md)) — every option
+  Claude offers works
+- Discovery: `https://api.alliswell.space/.well-known/oauth-protected-resource`
+  and `https://api.alliswell.space/.well-known/oauth-authorization-server`
 
 Writing a script rather than asking an assistant? That is the REST API and a
 personal key instead: [API.md](API.md).
 
-## Add it to Claude
+## Add it to Claude (Free, Pro, Max)
 
-1. In Claude (Free ×1 / Pro / Max) open **Settings → Connectors → Add custom connector**.
-2. Paste your instance's MCP URL: `https://api.your-instance.example/mcp`.
-3. Claude opens AllisWell's sign-in page. Log in with your AllisWell account,
-   pick a workspace, and approve the scopes.
-4. The connector's tools now appear in Claude.
+1. Open **Settings → Connectors → Add custom connector**.
+2. Name it `AllisWell` and paste `https://api.alliswell.space/mcp`.
+3. Leave the advanced OAuth settings as they are and press **Add**, then **Connect**.
+4. AllisWell's sign-in page opens: log in with your AllisWell email and
+   password, pick a workspace if you have several, and approve.
+5. In a chat, open the tools menu and make sure AllisWell is switched on.
+
+## Add it to Claude Team or Enterprise
+
+On Team and Enterprise plans only an **Owner** can add a custom connector, and
+each member then connects with their own AllisWell account.
+
+1. **Owner:** **Organization settings → Connectors → Add → Add custom connector**,
+   name `AllisWell`, URL `https://api.alliswell.space/mcp`, save. Any OAuth client
+   option works — *Use Claude's published identity* (the default) or *Register
+   automatically*; there is no client ID or secret to enter.
+2. **Every member:** **Settings → Connectors**, find AllisWell (tagged *Custom*),
+   press **Connect** and sign in with their own AllisWell account.
+
+Each member's connection reaches only that member's own workspace.
 
 ## Add it to ChatGPT
 
-1. In ChatGPT (Plus / Pro) enable **Settings → Connectors → Advanced → Developer mode**.
-2. **Add a connector** and paste the same `https://…/mcp` URL.
+1. In ChatGPT (Plus / Pro / Business) enable **Settings → Apps & Connectors →
+   Advanced settings → Developer mode**.
+2. **Create** a connector, paste `https://api.alliswell.space/mcp`, choose OAuth.
 3. Sign in and approve, exactly as above.
+
+## Add it to Claude Code or another MCP client
+
+```bash
+claude mcp add --transport http alliswell https://api.alliswell.space/mcp
+```
+
+Then run `/mcp` inside Claude Code to sign in. Any client that speaks Streamable
+HTTP with OAuth (Cursor, VS Code, the MCP Inspector) takes the same URL.
+
+## Things to ask
+
+- "What is overdue today?"
+- "Add 'renew passport' to my Errands project for next Friday, urgent."
+- "Summarise my notes on the kitchen renovation and list the open tasks."
+- "Snooze the dentist reminder until tomorrow morning."
+
+## Troubleshooting
+
+| What you see | Why, and what to do |
+| --- | --- |
+| *Couldn't register with AllisWell's sign-in service* | The URL is not the API's. Use `https://api.alliswell.space/mcp` (or your own `API_PUBLIC_URL` + `/mcp`), remove the connector and add it again. |
+| The sign-in page says *The client's metadata document could not be loaded* | The AI app's identity document was unreachable for a moment. Try again; if it persists, re-add the connector with *Register automatically*. |
+| *Email or password is wrong* | Use the email and password of your AllisWell account. The sign-in page asks for a password, so an account created only with Google or Apple sign-in cannot connect yet — it has no password, and setting one is not built. |
+| The connector is listed but has no tools | Open a new chat and switch AllisWell on in the tools menu. On Team/Enterprise, an Owner may have disabled it or some of its tools. |
+| Self-hosted: every request fails | `curl -i https://<your-api>/mcp` must answer **401** with a `www-authenticate: Bearer resource_metadata=…` header. HTML means the request reached a website, not the API; 404 means `API_PUBLIC_URL` is unset, is not https, or `MCP_ENABLED=false`. |
+
+Still stuck? Write to info@bubiapps.com — we answer within two working days.
 
 ## What the AI can do
 
@@ -87,7 +148,12 @@ Deliberate limits, so nothing here surprises you:
 
 - Set **`API_PUBLIC_URL`** to your instance's public origin (e.g.
   `https://api.your-instance.example`) — it is the OAuth issuer and the MCP
-  resource identity. In production it must be **HTTPS**.
+  resource identity, and `<API_PUBLIC_URL>/mcp` is your connector URL. In
+  production it must be **HTTPS**.
+- **`MCP_CIMD_ENABLED=false`** turns off client ID metadata documents and leaves
+  dynamic registration as the only way in ([ADR-0047](adr/0047-oauth-client-id-metadata-documents.md)).
+  The metadata fetch refuses private and loopback addresses, follows no
+  redirects and gives up after 5 s or 5 KB.
 - **`MCP_ENABLED=false`** withdraws the connector entirely (every `/mcp` and
   `/oauth/*` route answers 404). It is **independent of `AI_ENABLED`** — the
   MCP track spends no model money and stores no provider keys.
