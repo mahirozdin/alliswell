@@ -12,7 +12,7 @@ export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
 export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
-export const VERSION = '1.16.0';
+export const VERSION = '1.17.0';
 /**
  * OPH-364 — the hosted connector URL, said once. It is on the API host, not
  * this one: an agent that guessed `alliswell.space/mcp` from the marketing

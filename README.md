@@ -50,7 +50,7 @@ One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own
 | 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
 | 🧠 **Claude / ChatGPT** | **Live now** | MCP connector at **`https://api.alliswell.space/mcp`** — [setup below](#-use-it-from-claude-or-chatgpt-mcp). |
 
-> **Project status — `v1.16.0`, live.** Everything on this page is built, tested
+> **Project status — `v1.17.0`, live.** Everything on this page is built, tested
 > (**1,200+ app tests · 700+ backend unit · 70+ integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
