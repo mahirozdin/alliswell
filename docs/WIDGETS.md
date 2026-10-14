@@ -31,6 +31,7 @@
 | Per-widget list | ✅ **both platforms, built (OPH-336):** each placed widget shows the whole list (the default — unconfigured widgets are unchanged) or one project. The app writes every list into the snapshot (`lists` + `views`, §3.1) and the filter is Dart's (`filterTasksForWidgetList`); native code only picks an id. iOS 17+/macOS 14+: `AppIntentConfiguration` (`AWWidgetConfigIntent`, a searchable project list); iOS 16 keeps the unconfigurable widget under the same kind. Android: `TasksWidgetConfigureActivity`, `configuration_optional` on 12+ (long-press → reconfigure) |
 | Lock screen (iOS 16+) | ✅ **built (OPH-336):** `accessoryRectangular` — the next task (`next` in the snapshot: overdue first, dateless last) with its bucket and time in words; `accessoryCircular` — today's open count, a tick at zero. They follow the widget's list setting. iOS only — the families do not exist on macOS |
 | Density, private widget | ✅ **built (OPH-337):** Settings › General › Widget. **Compact** tightens the gaps and the type (iOS: 4 → 1 pt between rows, `.footnote` → `.caption`, one more row on large/extraLarge; Android: row padding 2 → 0 dp, 14 → 13 sp) — the circle you tap keeps its size (DESIGN §8 W4). **Private widget** is applied in the snapshot, not in native code: no task title is written to the App Group / SharedPreferences at all — rows, the lock screen's `next` and every project view carry "Private task" instead (§9) |
+| Calendar events (snapshot v5) | ✅ **built, both platforms (+ macOS by the shared Swift):** the whole list carries the user's own calendar events beside the tasks, under Home's rules (§3.1 v5). An event row has no circle — a calendar glyph instead — and its tap opens Home with the event's day selected (`alliswell://day/<yyyy-MM-dd>`). Android: `ACTION_ROW` → `openDay`, never `complete`; iOS: `AWEventRowView`, a `Link`, no `AWWidgetCompleteIntent`. Device pass on the owner's list (DEVICE-CHECKS) |
 | Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design. Like every Android background turn it is a broadcast to `home_widget`'s receiver, which only exists since OPH-341 |
 | Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android, the other families, and every Epic 32 surface are on the owner's device list (STATE, "Kullanıcıdan bekleyen") |
 
@@ -131,13 +132,13 @@ Keep it **small** (single-digit KB — App-Group `UserDefaults` is memory-mapped
 the widget extension has a ~30 MB budget). Serialize only what renders, with
 **already-localized** strings (Epic 11):
 
-The shape as built (`v: 4`, `WidgetSnapshot.toJson()` in `widget_snapshot.dart`;
+The shape as built (`v: 5`, `WidgetSnapshot.toJson()` in `widget_snapshot.dart`;
 the Swift `AWSnapshot` and the Kotlin readers mirror it). The revisions below say
 when each field arrived and why:
 
 ```jsonc
 {
-  "v": 4,                                   // schema version
+  "v": 5,                                   // schema version
   "generatedAt": "2026-07-17T09:00:00Z",
   "locale": "tr",
   "date": { "weekday": "Cuma", "day": "17", "month": "Temmuz" },
@@ -150,7 +151,9 @@ when each field arrived and why:
   "buckets": [
     { "key": "overdue", "label": "Gecikmiş", "count": 14,
       "items": [ { "id": "01H…", "title": "Teklifi bitir", "done": false,
-                   "priority": "high", "time": "11:30", "projectColor": "#2563EB" } ],
+                   "priority": "high", "time": "11:30", "projectColor": "#2563EB" },
+                 { "id": "evt…", "title": "Standup", "done": false, "priority": "none",
+                   "time": "09:00–09:15", "kind": "event", "day": "2026-07-17" } ], // v5
       "more": 2 }                           // "+N" — count minus the rows carried (12 max)
     // … noDate, today, thisWeek, thisMonth; empty buckets are omitted …
   ],
@@ -217,6 +220,34 @@ they read before:
 - **`density`** (OPH-337): `"compact"` when the user chose tighter rows, absent for
   the default. The "Private widget" setting is NOT a field — it changes what the title
   fields hold (§9).
+
+**Rev. 2026-10-15: schema `v: 5` — calendar events.** The whole list (top-level
+`buckets`) carries the user's own calendar events, as Home does. An event is an
+ordinary item with two optional fields: `"kind": "event"` (absent = a task, so every
+v4 row reads unchanged) and `"day": "yyyy-MM-dd"`, the day its tap opens
+(`alliswell://day/<day>` → Home with that day selected; the router turns it into a
+one-shot selection, like `add`, written a microtask later because go_router may re-run
+`redirect` during a build and Riverpod forbids writes then). `done` is always false,
+`priority` is `"none"`, no `projectColor`. Android: a widget tap after process death
+(activity kept in recents) arrives in `MainActivity.onNewIntent` before Dart has a router;
+the link is kept and re-pushed in `onFlutterUiDisplayed` (task and day links alike).
+
+- **Home's rules, from Home's helper** (`groupTasksForWidget(events:)`, `daysOfEvent`):
+  never Overdue, never No date; a finished event is dropped; a running one is filed
+  under the first day it touches that has not passed (today); the same 30-day horizon.
+  All-day events — and ones already running — sit at the start of their day.
+- **`time`:** today — "All day" (localized) or the range ("14:00–15:00"; "–11:00"
+  for one that began before today). Later — a short date with the start time; an
+  all-day one just the short date. The user's date format, like a task's.
+- **Events are the whole list's only.** Project views, `openToday` and `next` stay
+  task-based (an event belongs to no project and is not open work). A bucket's
+  `count` and `more` include them, because they are rows.
+- **Private widget hides event titles too** — an event row carries "Private event" ("Gizli etkinlik"), a task row "Private task".
+- **Shared workspaces draw no calendar**: the live app reads `externalEventsProvider`
+  (empty there), and the background redraw reads `ExternalEvents` only for a
+  one-workspace personal scope, never for a `mine` (organisation) scope.
+- **Old readers:** a v4 widget ignores `kind` and draws the event as a task row; its
+  circle would queue a completion for an id no task has, which completes nothing.
 
 - **N per bucket is per-size** (§5): medium shows few, large ~8–10, extraLarge
   more. Truncation is honest — show a "+N more" affordance, never silently drop
@@ -440,7 +471,7 @@ shouldn't leak content by default for users who care. Setting is device-local.
 
 **Built in OPH-337 — and where it is applied is the whole design.** The switch lives
 in Settings › General › Widget. When it is on, `buildWidgetSnapshot(hideTitles:)`
-never writes a task's title: every row, the lock screen's `next` and every project's
+never writes a task's title (nor, since v5, a calendar event's): every row, the lock screen's `next` and every project's
 view carry the placeholder ("Private task" / "Gizli görev") while ids, times, counts
 and project colors stay, so the widget still works. A title written to the App Group
 with a "do not show" flag for native code would already have left the app.

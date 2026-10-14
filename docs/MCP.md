@@ -141,7 +141,9 @@ Deliberate limits, so nothing here surprises you:
 - **Archiving a project stays in the app**, because it cascades over that
   project's tasks and notes and deserves your confirmation.
 - **File contents never leave through the connector** — no download links, no
-  bytes, only metadata.
+  bytes, only metadata. That covers exports too: PDF and Word (`.docx`) files
+  are made in the app on the device ([ADR-0048](adr/0048-docx-export-own-ooxml-writer.md)),
+  and an assistant reads the note's markdown with `get_note` instead.
 - Colours and icons are not settable by the AI: those are yours to pick.
 
 ## Self-hosting notes

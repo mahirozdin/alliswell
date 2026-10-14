@@ -1,8 +1,10 @@
 import 'package:intl/intl.dart';
 
 import '../../core/date_format.dart';
+import '../../core/deep_link.dart';
 
 import '../../i18n/i18n.dart';
+import '../calendar/data/external_event.dart';
 import '../projects/data/project.dart';
 import '../tasks/data/task.dart';
 import 'widget_clock.dart';
@@ -32,11 +34,24 @@ import 'widget_grouping.dart';
 /// optional. (Both tasks landed before any release, so one version covers
 /// both.) The "Private widget" setting is not a field at all: it changes what
 /// the title fields HOLD — see [buildWidgetSnapshot]'s `hideTitles`.
-const int kWidgetSnapshotVersion = 4;
+///
+/// **v5:** the whole list carries the user's calendar events beside the tasks,
+/// as Home does. An event row is an ordinary item with two extra fields:
+/// `"kind": "event"` (absent = a task, so every v4 row reads unchanged) and
+/// `"day": "yyyy-MM-dd"` (the day its tap opens — `alliswell://day/<day>`).
+/// Events never enter a project's view, the open count or `next`: those are
+/// about work. A v4 widget that ignores `kind` draws an event as a task row —
+/// a tap opens nothing and a circle press completes nothing (no task has
+/// that id), so the fallback is harmless.
+const int kWidgetSnapshotVersion = 5;
 
 /// How many rows per bucket the snapshot carries; the native layer trims further
 /// per widget size. The largest tier shows the most, so keep this generous.
 const int kWidgetRowsPerBucket = 12;
+
+/// The `kind` an event row carries (v5). Spelled once — the Swift and Kotlin
+/// readers are pinned to it by widget_lists_test.dart.
+const String kWidgetKindEvent = 'event';
 
 class WidgetTaskRow {
   const WidgetTaskRow({
@@ -46,6 +61,8 @@ class WidgetTaskRow {
     required this.priority,
     this.time,
     this.projectColor,
+    this.kind,
+    this.day,
   });
 
   final String id;
@@ -59,6 +76,14 @@ class WidgetTaskRow {
   /// The task's project color as `#RRGGBB`, or null. Native computes readable ink.
   final String? projectColor;
 
+  /// v5: [kWidgetKindEvent] for a calendar event; null (absent) for a task.
+  final String? kind;
+
+  /// v5: an event row's day as `yyyy-MM-dd` — what its tap opens.
+  final String? day;
+
+  bool get isEvent => kind == kWidgetKindEvent;
+
   Map<String, dynamic> toJson() => {
     'id': id,
     'title': title,
@@ -66,6 +91,8 @@ class WidgetTaskRow {
     'priority': priority,
     if (time != null) 'time': time,
     if (projectColor != null) 'projectColor': projectColor,
+    if (kind != null) 'kind': kind,
+    if (day != null) 'day': day,
   };
 }
 
@@ -316,6 +343,62 @@ WidgetTaskRow _rowFor(
   );
 }
 
+/// An event row's short label (v5): "All day" on today's all-day event; the
+/// range ("14:00–15:00") on today's timed one; elsewhere a short date — with
+/// the start time when the event has one. Same format preference as a task's.
+String _eventTimeLabel(
+  ExternalEvent event,
+  DateTime day,
+  WidgetBucket bucket,
+  String localeTag,
+  String dateFormat,
+) {
+  String time(DateTime t) =>
+      awFormatTime(t, format: dateFormat, locale: localeTag);
+  if (bucket == WidgetBucket.today) {
+    if (event.isAllDay) return 'widget.allDay'.tr();
+    final start = event.startsAt.toLocal();
+    final end = event.endsAt.toLocal();
+    final startsToday = DateTime(start.year, start.month, start.day) == day;
+    final endsToday = DateTime(end.year, end.month, end.day) == day;
+    if (startsToday && endsToday) return '${time(start)}–${time(end)}';
+    // Began before today (a running trip) or runs past midnight: the end is
+    // what the person needs, the start alone when it is still ahead.
+    if (startsToday) return time(start);
+    return '–${time(end)}';
+  }
+  if (event.isAllDay) {
+    return awFormatShort(
+      day,
+      format: dateFormat,
+      locale: localeTag,
+      withTime: false,
+    );
+  }
+  // Outside today an event is filed under the day it starts, so the start is
+  // the whole answer.
+  return awFormatShort(event.startsAt, format: dateFormat, locale: localeTag);
+}
+
+/// One calendar event as a widget row (v5). Never done, never ranked, no
+/// project color — and under "Private widget" no title either: a meeting's
+/// name says as much as a task's.
+WidgetTaskRow _eventRowFor(
+  WidgetEventEntry entry,
+  WidgetBucket bucket,
+  String dateFormat,
+  String localeTag, {
+  required bool hideTitles,
+}) => WidgetTaskRow(
+  id: entry.event.id,
+  title: hideTitles ? 'widget.privateEvent'.tr() : entry.event.title,
+  done: false,
+  priority: 'none',
+  time: _eventTimeLabel(entry.event, entry.day, bucket, localeTag, dateFormat),
+  kind: kWidgetKindEvent,
+  day: awDayParam(entry.day),
+);
+
 /// The projects a widget can be set to (OPH-336), after the whole list: the
 /// ones a task can be filed under — not the archived ones, which is the task
 /// picker's rule too (`project_picker.dart`) — in the order given, which is
@@ -336,6 +419,7 @@ List<WidgetListChoice> widgetListChoices(Iterable<Project> projects) => [
 ({List<WidgetBucketData> buckets, int openToday, WidgetNextTask? next})
 _listData(
   List<Task> tasks, {
+  List<ExternalEvent> events = const [],
   required DateTime now,
   required Map<String, String> projectColorById,
   required int rowsPerBucket,
@@ -343,27 +427,36 @@ _listData(
   required String localeTag,
   required bool hideTitles,
 }) {
-  final groups = groupTasksForWidget(tasks, now: now);
+  final groups = groupTasksForWidget(tasks, now: now, events: events);
 
   final buckets = [
     for (final group in groups)
       WidgetBucketData(
         key: group.bucket.name,
         label: 'widget.bucket.${group.bucket.name}'.tr(),
-        count: group.tasks.length,
+        count: group.entries.length,
         items: [
-          for (final task in group.tasks.take(rowsPerBucket))
-            _rowFor(
-              task,
-              group.bucket,
-              dateFormat,
-              localeTag,
-              projectColorById,
-              hideTitles: hideTitles,
-            ),
+          for (final entry in group.entries.take(rowsPerBucket))
+            switch (entry) {
+              WidgetTaskEntry(:final task) => _rowFor(
+                task,
+                group.bucket,
+                dateFormat,
+                localeTag,
+                projectColorById,
+                hideTitles: hideTitles,
+              ),
+              WidgetEventEntry() => _eventRowFor(
+                entry,
+                group.bucket,
+                dateFormat,
+                localeTag,
+                hideTitles: hideTitles,
+              ),
+            },
         ],
-        more: group.tasks.length > rowsPerBucket
-            ? group.tasks.length - rowsPerBucket
+        more: group.entries.length > rowsPerBucket
+            ? group.entries.length - rowsPerBucket
             : 0,
       ),
   ];
@@ -404,7 +497,12 @@ _listData(
 /// [projects] are the workspace's projects in the app's order; each one a
 /// widget can be set to gets its own view (OPH-336).
 ///
-/// [hideTitles] is the "Private widget" setting (OPH-337): no task's title is
+/// [events] are the user's calendar events (v5). They join the WHOLE list
+/// only — a project view is that project's work, and an event belongs to no
+/// project. The open count and the lock screen's `next` stay task-only.
+///
+/// [hideTitles] is the "Private widget" setting (OPH-337): no task's (nor,
+/// since v5, any event's) title is
 /// written — not in a row, not in the lock screen's `next`, not in a project's
 /// view. Counts, times and placeholders are. It is applied HERE, before the
 /// JSON exists, because a title handed to the native side with a "do not
@@ -412,6 +510,7 @@ _listData(
 /// name the list a widget was set to, and the picker offers them.
 WidgetSnapshot buildWidgetSnapshot(
   List<Task> tasks, {
+  List<ExternalEvent> events = const [],
   required DateTime now,
   Map<String, String> projectColorById = const {},
   Iterable<Project> projects = const [],
@@ -427,6 +526,7 @@ WidgetSnapshot buildWidgetSnapshot(
 
   final all = _listData(
     tasks,
+    events: events,
     now: now,
     projectColorById: projectColorById,
     rowsPerBucket: rowsPerBucket,

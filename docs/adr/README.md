@@ -55,6 +55,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0045](0045-rate-limits-count-who-is-asking.md) | Rate limits count who is asking — a verified access token is its user, credential endpoints count per IP + account under a per-IP ceiling, and every 429 carries `RATE_LIMITED` + `retryAfter` | Accepted |
 | [0046](0046-the-app-follows-a-team-address.md) | The app follows a team's address — an invitation's `server` is trusted only as a sibling of the server already in use, and moving to the team's address keeps the session | Accepted |
 | [0047](0047-oauth-client-id-metadata-documents.md) | The MCP authorization server accepts client ID metadata documents beside registration — an https `client_id` is fetched behind an SSRF fence, mapped to an ordinary client row, and shown with its host on the consent page | Accepted |
+| [0048](0048-docx-export-own-ooxml-writer.md) | Word export is our own OOXML writer, drawn with the PDF's style — `note_docx.dart` zips hand-written parts with `archive`; colours, sizes and margins live once in `note_print_style.dart` for both writers; exports stay client-side | Accepted |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

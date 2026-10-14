@@ -257,12 +257,14 @@ Future<void> _exportRow(
   BuildContext context,
   WidgetRef ref,
   NoteRow note,
+  NoteExportFormat format,
 ) async {
   final detail = await ref.read(noteStoreProvider).watchDetail(note.id).first;
   if (!context.mounted) return;
-  await exportNoteAsPdf(
+  await exportNote(
     context,
     ref,
+    format: format,
     title: detail.title.trim().isEmpty
         ? 'note.untitled'.tr()
         : detail.title.trim(),
@@ -287,7 +289,9 @@ class _NoteMenu extends ConsumerWidget {
         // OPH-272: the export existed only inside the editor's overflow, and
         // the owner went looking for it "where archive and delete are" — which
         // is here. The row carries no body, so it loads the note first.
-        if (action == 'export-pdf') unawaited(_exportRow(context, ref, note));
+        if (noteExportMenuValues[action] case final format?) {
+          unawaited(_exportRow(context, ref, note, format));
+        }
         if (action == 'quick') {
           toggleQuickAccess(
             context,
@@ -299,14 +303,10 @@ class _NoteMenu extends ConsumerWidget {
         }
       },
       itemBuilder: (context) => [
-        PopupMenuItem(
-          key: Key('note-row-export-${note.id}'),
-          value: 'export-pdf',
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.picture_as_pdf_outlined),
-            title: Text('note.exportPdf'.tr()),
-          ),
+        ...noteExportMenuItems(
+          pdfKey: Key('note-row-export-${note.id}'),
+          mdKey: Key('note-row-export-md-${note.id}'),
+          docxKey: Key('note-row-export-docx-${note.id}'),
         ),
         quickAccessMenuItem(
           value: 'quick',

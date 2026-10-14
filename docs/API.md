@@ -171,6 +171,10 @@ CURSOR=$(jq -r '.nextCursor' notes-page-1.json)
 There is no zip archive in v1: this is JSON, and one note at a time already
 exports as markdown at `/notes/:id/export`.
 
+PDF and Word (`.docx`) exports are made in the app, not here: both are laid out
+on the device from the note's markdown plus its pictures and drawn diagrams,
+which the API never renders (rule 12 reason, [ADR-0048](adr/0048-docx-export-own-ooxml-writer.md)).
+
 ### Bring notes or tasks in
 
 Up to **500 items per request**. Imported notes are markdown documents, and

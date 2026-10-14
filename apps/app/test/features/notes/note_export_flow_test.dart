@@ -1,4 +1,7 @@
+import 'dart:convert';
 import 'dart:typed_data';
+
+import 'package:archive/archive.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show rootBundle;
@@ -12,6 +15,7 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/notes/data/note_blocks.dart';
+import 'package:alliswell/src/features/notes/data/note_markdown_file.dart';
 import 'package:alliswell/src/features/notes/data/note_pdf.dart';
 import 'package:alliswell/src/features/notes/ui/note_figure_raster.dart';
 import 'package:alliswell/src/features/notes/ui/note_export.dart';
@@ -22,19 +26,28 @@ import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
 
 /// Records what the export handed to the OS instead of opening a share sheet.
-class _RecordingSink implements NotePdfSink {
+class _RecordingSink implements NoteFileSink {
   final shared = <String>[];
   final printed = <String>[];
   final saved = <String>[];
+  final formats = <NoteExportFormat>[];
   Uint8List? lastBytes;
 
   /// `null` mimics the user backing out of the save dialog.
   String? savePath = '/tmp/note.pdf';
 
   @override
-  Future<void> share(Uint8List bytes, String filename) async {
+  bool canShare(NoteExportFormat format) => true;
+
+  @override
+  Future<void> share(
+    Uint8List bytes,
+    String filename,
+    NoteExportFormat format,
+  ) async {
     lastBytes = bytes;
     shared.add(filename);
+    formats.add(format);
   }
 
   @override
@@ -44,9 +57,14 @@ class _RecordingSink implements NotePdfSink {
   }
 
   @override
-  Future<String?> saveToFiles(Uint8List bytes, String filename) async {
+  Future<String?> saveToFiles(
+    Uint8List bytes,
+    String filename,
+    NoteExportFormat format,
+  ) async {
     lastBytes = bytes;
     saved.add(filename);
+    formats.add(format);
     return savePath;
   }
 }
@@ -181,7 +199,7 @@ Future<Widget> _app(
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
       ),
-      notePdfSinkProvider.overrideWithValue(sink),
+      noteFileSinkProvider.overrideWithValue(sink),
       if (rasterizer != null)
         noteFigureRasterizerProvider.overrideWithValue(rasterizer),
       // In a test the whole export resolves in microtasks, so the progress
@@ -212,10 +230,14 @@ Future<void> _openTheNote(WidgetTester tester, String title) async {
 /// Not `pumpAndSettle` while it runs: the dialog holds a `CircularProgress`
 /// indicator, which never settles — and not a single `pump` either, because the
 /// popup route has to pop before the dialog route can push.
-Future<bool> _chooseExport(WidgetTester tester) async {
-  await tester.tap(find.byKey(const Key('note-quick-menu')));
+Future<bool> _chooseExport(
+  WidgetTester tester, {
+  Key item = const Key('note-export-pdf'),
+  Key menu = const Key('note-quick-menu'),
+}) async {
+  await tester.tap(find.byKey(menu));
   await tester.pumpAndSettle();
-  await tester.tap(find.byKey(const Key('note-export-pdf')));
+  await tester.tap(find.byKey(item));
 
   var sawProgress = false;
   for (var frame = 0; frame < 40; frame++) {
@@ -223,7 +245,8 @@ Future<bool> _chooseExport(WidgetTester tester) async {
     if (find.byKey(const Key('note-export-progress')).evaluate().isNotEmpty) {
       sawProgress = true;
     }
-    if (find.byKey(const Key('note-export-print')).evaluate().isNotEmpty) break;
+    // Save is offered for every format; Print only for a PDF.
+    if (find.byKey(const Key('note-export-save')).evaluate().isNotEmpty) break;
   }
   await tester.pumpAndSettle();
   return sawProgress;
@@ -338,5 +361,131 @@ void main() {
     await tester.tap(find.byKey(const Key('note-export-share')));
     await tester.pumpAndSettle();
     expect(String.fromCharCodes(sink.lastBytes!.take(5)), '%PDF-');
+  });
+
+  testWidgets('Markdown export: the body with its title, no Print', (
+    tester,
+  ) async {
+    final api = FakeApi()
+      ..seedNote(title: 'Yayla planı', contentMarkdown: 'Gövde **ığüşöç**');
+    final sink = _RecordingSink();
+
+    await tester.pumpWidget(await _app(api, sink));
+    await _openTheNote(tester, 'Yayla planı');
+    await _chooseExport(tester, item: const Key('note-export-md'));
+
+    expect(find.byKey(const Key('note-export-share')), findsOneWidget);
+    expect(find.byKey(const Key('note-export-save')), findsOneWidget);
+    // A markdown file cannot be printed from here.
+    expect(find.byKey(const Key('note-export-print')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('note-export-share')));
+    await tester.pumpAndSettle();
+
+    expect(sink.shared, ['Yayla planı.md']);
+    expect(sink.formats, [NoteExportFormat.md]);
+    expect(utf8.decode(sink.lastBytes!), '# Yayla planı\n\nGövde **ığüşöç**\n');
+  });
+
+  testWidgets('Word export: a real .docx through the same pipeline', (
+    tester,
+  ) async {
+    final api = FakeApi()
+      ..seedNote(
+        title: 'Akış',
+        contentMarkdown:
+            '## Bölüm\n\n- [x] bitti\n\n```mermaid\ngraph TD\nA-->B\n```',
+      );
+    final sink = _RecordingSink()..savePath = '/tmp/Akış.docx';
+    final rasterizer = _FakeRasterizer();
+
+    await tester.pumpWidget(await _app(api, sink, rasterizer: rasterizer));
+    await _openTheNote(tester, 'Akış');
+    await _chooseExport(tester, item: const Key('note-export-docx'));
+
+    // The figure was drawn for the Word file just as for the PDF.
+    expect(rasterizer.asked, ['aw-figure:mermaid:0']);
+    expect(find.byKey(const Key('note-export-print')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('note-export-save')));
+    await tester.pumpAndSettle();
+
+    expect(sink.saved, ['Akış.docx']);
+    expect(sink.formats, [NoteExportFormat.docx]);
+    final archive = ZipDecoder().decodeBytes(sink.lastBytes!);
+    final document = utf8.decode(
+      archive.findFile('word/document.xml')!.readBytes()!,
+    );
+    expect(document, contains('Bölüm'));
+    expect(document, contains('\u2611'));
+    expect(
+      archive.files.where((f) => f.name.startsWith('word/media/')),
+      hasLength(1),
+    );
+  });
+
+  testWidgets('the notes list offers all three formats on a row', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedNote(title: 'Liste', plainText: 'gövde');
+    final sink = _RecordingSink();
+
+    await tester.pumpWidget(await _app(api, sink));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Notes').last);
+    await tester.pumpAndSettle();
+
+    final menu = find.byWidgetPredicate(
+      (w) =>
+          w is PopupMenuButton &&
+          (w.key as ValueKey?)?.value.toString().startsWith('note-menu-') ==
+              true,
+    );
+    final id = (tester.widget(menu.first).key! as ValueKey<String>).value
+        .substring('note-menu-'.length);
+    await tester.tap(find.byKey(Key('note-menu-$id')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(Key('note-row-export-$id')), findsOneWidget);
+    expect(find.byKey(Key('note-row-export-docx-$id')), findsOneWidget);
+    expect(find.text('Export as Word (DOCX)'), findsOneWidget);
+    await tester.tap(find.byKey(Key('note-row-export-md-$id')));
+
+    // The row reads the body from the replica first — a real async read the
+    // fake clock alone does not advance.
+    for (var i = 0; i < 50; i++) {
+      await tester.runAsync(
+        () => Future<void>.delayed(const Duration(milliseconds: 10)),
+      );
+      await tester.pump(const Duration(milliseconds: 16));
+      if (find.byKey(const Key('note-export-share')).evaluate().isNotEmpty) {
+        break;
+      }
+    }
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('note-export-share')));
+    await tester.pumpAndSettle();
+    expect(sink.shared, ['Liste.md']);
+    expect(utf8.decode(sink.lastBytes!), startsWith('# Liste\n'));
+  });
+
+  group('the markdown file', () {
+    test('adds the title as a heading, once', () {
+      expect(noteMarkdownFile('Plan', 'gövde'), '# Plan\n\ngövde\n');
+      expect(noteMarkdownFile('Plan', '# Zaten\n\nx'), '# Zaten\n\nx\n');
+      expect(noteMarkdownFile('Plan', ''), '# Plan\n');
+      expect(noteMarkdownFile('  ', 'gövde'), 'gövde\n');
+    });
+
+    test('keeps front matter first', () {
+      expect(
+        noteMarkdownFile('Plan', '---\ntags: [a]\n---\n\ngövde'),
+        '---\ntags: [a]\n---\n\n# Plan\n\ngövde\n',
+      );
+    });
+
+    test('names the file after the title with the format extension', () {
+      expect(noteFileName('Yayla planı', 'md'), 'Yayla planı.md');
+      expect(noteFileName('a/b', 'docx'), 'a b.docx');
+    });
   });
 }

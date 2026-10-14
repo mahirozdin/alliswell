@@ -30,6 +30,9 @@ class TasksWidgetProvider : HomeWidgetProvider() {
 
   companion object {
     const val ACTION_ROW = "com.alliswell.alliswell.WIDGET_ROW"
+
+    /// `yyyy-MM-dd` — the only shape an event row's day may take.
+    private val WIDGET_DAY_PATTERN = Regex("^\\d{4}-\\d{2}-\\d{2}$")
   }
 
   /// A row tap. "open" launches the app at that task; "complete" runs the Dart
@@ -37,6 +40,20 @@ class TasksWidgetProvider : HomeWidgetProvider() {
   /// the write is an ordinary outbox mutation and syncs like any other
   /// (WIDGETS §4: the widget must not have its own write path).
   override fun onReceive(context: Context, intent: Intent) {
+    if (intent.action == ACTION_ROW && intent.getStringExtra(EXTRA_ACTION) == "openDay") {
+      // v5: a calendar-event row. It opens Home on that day and never reaches
+      // the "complete" branch below — an event is not a task. The day is
+      // re-checked here; the app validates it again (a URL is input).
+      val day = intent.getStringExtra(EXTRA_DAY).orEmpty()
+      if (WIDGET_DAY_PATTERN.matches(day)) {
+        context.startActivity(
+          Intent(context, MainActivity::class.java)
+            .setData(Uri.parse("alliswell://day/" + day))
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+      }
+      return
+    }
     if (intent.action == ACTION_ROW) {
       val taskId = intent.getStringExtra(EXTRA_TASK_ID).orEmpty()
       if (taskId.isNotEmpty()) {

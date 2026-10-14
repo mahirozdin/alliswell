@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/deep_link.dart';
 import 'core/modal_observer.dart';
+import 'core/persisted_prefs.dart' show homeCalendarVisibleProvider;
 import 'features/auth/providers.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
@@ -24,6 +27,7 @@ import 'features/notes/ui/note_editor_screen.dart';
 import 'features/notes/ui/notes_screen.dart';
 import 'features/projects/ui/project_detail_screen.dart';
 import 'features/projects/ui/projects_screen.dart';
+import 'features/tasks/providers.dart' show selectedDayProvider;
 import 'features/tasks/ui/completed_screen.dart';
 import 'features/tasks/ui/task_detail_screen.dart';
 import 'features/tasks/ui/task_list_screen.dart';
@@ -341,6 +345,16 @@ final pendingDeepLinkProvider = NotifierProvider<PendingDeepLink, String?>(
   PendingDeepLink.new,
 );
 
+/// Runs a redirect's provider write after the current synchronous work.
+///
+/// go_router may re-run `redirect` while the widget tree is building (a
+/// refresh re-parses the stored location), and Riverpod forbids writes then:
+/// the redirect threw, go_router reported it as a routing error, and a widget
+/// link landed on `/not-found` (measured on Android, `alliswell://day/…` tapped
+/// after the process had died). The navigation itself stays synchronous; only
+/// the flag Home reacts to arrives a microtask later.
+void _outsideBuild(void Function() write) => scheduleMicrotask(write);
+
 /// The root navigator, exposed so surfaces that live ABOVE the router — the
 /// quick-access bubble (OPH-200) — can still open a sheet. They have no
 /// `Navigator` ancestor of their own; `Navigator.of` resolves this context to
@@ -403,7 +417,27 @@ final routerProvider = Provider<GoRouter>((ref) {
           !auth.isLoading &&
           state.matchedLocation == AppSection.home.path &&
           state.uri.queryParameters[kAwAddParam] == '1') {
-        ref.read(homeCreateRequestProvider.notifier).request();
+        _outsideBuild(ref.read(homeCreateRequestProvider.notifier).request);
+        return AppSection.home.path;
+      }
+      // v5 widget event rows: `alliswell://day/<yyyy-MM-dd>` → `?day=` → the
+      // day selected on Home, the month grid's own gesture. Same shape as
+      // `?add=1` and for the same reason: a request, not a place. The grid is
+      // shown too — a selection whose grid is hidden would dim Home with a
+      // filter nobody can see (the rule the calendar toggle keeps).
+      if (auth.value != null &&
+          !auth.isLoading &&
+          state.matchedLocation == AppSection.home.path &&
+          state.uri.queryParameters.containsKey(kAwDayParam)) {
+        final day = awParseDayParam(state.uri.queryParameters[kAwDayParam]);
+        if (day != null) {
+          _outsideBuild(() {
+            ref.read(selectedDayProvider.notifier).select(day);
+            if (!ref.read(homeCalendarVisibleProvider)) {
+              ref.read(homeCalendarVisibleProvider.notifier).set(true);
+            }
+          });
+        }
         return AppSection.home.path;
       }
       final decision = computeAuthRedirect(

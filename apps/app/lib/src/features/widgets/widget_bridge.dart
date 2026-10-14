@@ -8,6 +8,8 @@ import '../../core/day_boundary.dart';
 import '../../core/kv/local_kv.dart';
 import '../../core/persisted_prefs.dart';
 import '../../sync/db/database.dart';
+import '../calendar/data/external_event.dart';
+import '../calendar/providers.dart';
 import '../projects/data/project.dart';
 import '../projects/data/project_store.dart';
 import '../projects/providers.dart';
@@ -32,6 +34,7 @@ class WidgetBridge {
   /// [compact] are the widget settings (OPH-337).
   Future<void> publish(
     List<Task> tasks, {
+    List<ExternalEvent> events = const [],
     required DateTime now,
     Map<String, String> projectColorById = const {},
     Iterable<Project> projects = const [],
@@ -45,6 +48,7 @@ class WidgetBridge {
     }
     final snapshot = buildWidgetSnapshot(
       tasks,
+      events: events,
       now: now,
       projectColorById: projectColorById,
       projects: projects,
@@ -97,12 +101,23 @@ Future<bool> publishWidgetFromReplica(
     ).watchAllIn(scope.workspaceIds).first;
     // Read from localKv directly, as the rest of the turn does: in a process
     // this short a `PersistedChoice` answers its fallback, not the user's pick.
+    // v5: the calendar, under the rule `externalEventsProvider` keeps — one
+    // workspace's own calendar, and none at all in an organisation's shared
+    // workspaces (a person's calendar must not reach everyone there). A
+    // `mine` scope IS the shared case (`taskScopeProvider` builds it only
+    // there).
+    final events = scope.mineFor != null || scope.workspaceIds.length != 1
+        ? const <ExternalEvent>[]
+        : await ExternalEventStore(
+            db,
+          ).watchAll(scope.workspaceIds.single).first;
     final dateFormat =
         await localKv.get(kDateFormatPrefKey) ?? kAwSystemDateFormat;
     final hideTitles = await localKv.get(kWidgetPrivatePrefKey) == 'true';
     final compact = await localKv.get(kWidgetCompactPrefKey) == 'true';
     await WidgetBridge(host ?? defaultWidgetHost()).publish(
       tasks,
+      events: events,
       now: now,
       projectColorById: {
         for (final project in projects) project.id: project.colorRgb,
@@ -152,11 +167,15 @@ final widgetSyncProvider = Provider<void>((ref) {
   // Watched, not read: changing the date format republishes the snapshot, so
   // the widget never shows yesterday's format (OPH-174).
   final dateFormat = ref.watch(dateFormatProvider);
+  // v5: the user's calendar rides along, as on Home. Empty until it loads, and
+  // always empty in a shared workspace (the provider's own rule).
+  final events = ref.watch(externalEventsProvider).value ?? const [];
   // Fire-and-forget: a widget push must never block the UI.
   ref
       .read(widgetBridgeProvider)
       .publish(
         tasks,
+        events: events,
         now: DateTime.now(),
         projectColorById: colors,
         // The map keeps the list's order (sort order, then creation) — the

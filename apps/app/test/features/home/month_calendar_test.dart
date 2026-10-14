@@ -55,6 +55,32 @@ void main() {
     expect(find.text('Mon'), findsOneWidget);
   });
 
+  testWidgets('a day selected from outside shows its own month', (
+    tester,
+  ) async {
+    // A widget event row (`alliswell://day/…`) can select a day in another
+    // month; the grid follows it, or the selection would be invisible.
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    Widget grid(DateTime? selected) => MaterialApp(
+      theme: buildAwTheme(Brightness.light),
+      home: Scaffold(
+        body: SingleChildScrollView(
+          child: MonthCalendar(
+            markedDays: const {},
+            selectedDay: selected,
+            onDaySelected: (_) {},
+            initialMonth: DateTime(2026, 10),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(grid(null));
+    expect(find.text('October 2026'), findsOneWidget);
+    await tester.pumpWidget(grid(DateTime(2026, 12, 3)));
+    await tester.pumpAndSettle();
+    expect(find.text('December 2026'), findsOneWidget);
+  });
+
   testWidgets('UI-AUDIT #60: a day is read in the app\'s language, once', (
     tester,
   ) async {

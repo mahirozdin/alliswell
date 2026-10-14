@@ -52,6 +52,36 @@ void main() {
       );
     });
 
+    test('a widget event row opens Home on its day', () {
+      expect(
+        awRouteForUri(Uri.parse('alliswell://day/2026-10-20')),
+        '/home?day=2026-10-20',
+      );
+      expect(awParseDayParam('2026-10-20'), DateTime(2026, 10, 20));
+      expect(awDayParam(DateTime(2026, 1, 5, 13)), '2026-01-05');
+      // A URL is untrusted input: only a real date in one spelling routes.
+      for (final bad in [
+        '2026-02-31',
+        '2026-13-01',
+        '20261020',
+        '2026-1-5',
+        '../home',
+        '',
+      ]) {
+        expect(
+          awRouteForUri(Uri.parse('alliswell://day/$bad')),
+          isNull,
+          reason: '"$bad" must not become a day',
+        );
+      }
+      expect(awRouteForUri(Uri.parse('alliswell://day')), isNull);
+      expect(awRouteForUri(Uri.parse('alliswell://day/2026-10-20/x')), isNull);
+      expect(
+        awRouteForUri(Uri.parse('alliswell://day/2026-10-20?add=1')),
+        isNull,
+      );
+    });
+
     test('refuses ids that are not ULIDs', () {
       // A URL is untrusted input — it can arrive from a synced calendar event
       // written by somebody else's client (ADR-0016).
@@ -254,7 +284,7 @@ void main() {
       expect(snapshot.toJson().containsKey('openToday'), isFalse);
     });
 
-    test('the snapshot declares v4 and carries the localized phrase', () {
+    test('the snapshot declares v5 and carries the localized phrase', () {
       final snapshot = buildWidgetSnapshot([
         _task(title: 'Bugun', due: DateTime(2026, 7, 29, 17)),
       ], now: now);
@@ -262,8 +292,9 @@ void main() {
       // because a new field means an older widget is about to read a snapshot
       // it does not fully understand (v3 = OPH-253's `clockFormat`; v4 =
       // OPH-336's `next`, `lists` and `views` — added BESIDE the v3 fields,
-      // which stay where they were, so a v3 widget still draws the whole list).
-      expect(snapshot.toJson()['v'], 4);
+      // which stay where they were, so a v3 widget still draws the whole list;
+      // v5 = calendar event rows, `kind` and `day` on an item, both optional).
+      expect(snapshot.toJson()['v'], 5);
       // Native code carries no translations (W-rule) — the wording ships here.
       expect(snapshot.strings['openToday'], contains('1'));
     });

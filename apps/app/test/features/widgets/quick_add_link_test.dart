@@ -11,6 +11,8 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/home/home_screen.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/features/tasks/ui/task_create_sheet.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
@@ -101,6 +103,89 @@ void main() {
     Navigator.of(tester.element(find.byType(TaskCreateSheet))).pop();
     await tester.pumpAndSettle();
     expect(routerOf().state.uri.toString(), '/home');
+  });
+
+  testWidgets('a widget event row opens Home with its day selected', (
+    tester,
+  ) async {
+    // v5: `alliswell://day/<yyyy-MM-dd>` — the day is a REQUEST like `add`:
+    // it selects the day and the location becomes plain Home.
+    wide(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(await _app(api));
+    await tester.pumpAndSettle();
+
+    routerOf().go('alliswell://day/2026-10-20');
+    await tester.pumpAndSettle();
+
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomeScreen)),
+    );
+    expect(container.read(selectedDayProvider), DateTime(2026, 10, 20));
+    expect(routerOf().state.uri.toString(), '/home');
+    expect(find.text('error.routeNotFound'.tr()), findsNothing);
+    expect(api.tasks, isEmpty);
+
+    // A day that does not exist selects nothing and strands nobody.
+    container.read(selectedDayProvider.notifier).select(null);
+    routerOf().go('alliswell://day/2026-02-31');
+    await tester.pumpAndSettle();
+    expect(container.read(selectedDayProvider), isNull);
+    expect(routerOf().state.uri.toString(), '/home');
+  });
+
+  testWidgets('a day link parsed while the tree builds still selects', (
+    tester,
+  ) async {
+    // Measured on Android: after a process death the link was re-parsed while
+    // the tree was building, and a provider write inside `redirect` threw
+    // there ("Tried to modify a provider while the widget tree was
+    // building") — go_router reported a routing error and the tap landed on
+    // /not-found. Here a sibling's build parses the link.
+    wide(tester);
+    final api = FakeApi();
+    final parseNow = ValueNotifier<bool>(false);
+    addTearDown(parseNow.dispose);
+    Future<RouteMatchList>? parsed;
+    await tester.pumpWidget(
+      Directionality(
+        textDirection: TextDirection.ltr,
+        child: Stack(
+          children: [
+            await _app(api),
+            ValueListenableBuilder<bool>(
+              valueListenable: parseNow,
+              builder: (context, now, _) {
+                // What Router.didChangeDependencies does with the stored
+                // link: parse it again, mid-build.
+                if (now && parsed == null) {
+                  parsed = routerOf().routeInformationParser
+                      .parseRouteInformationWithDependencies(
+                        RouteInformation(
+                          uri: Uri.parse('alliswell://day/2026-10-21'),
+                        ),
+                        context,
+                      );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    parseNow.value = true;
+    await tester.pumpAndSettle();
+
+    final matches = await parsed!;
+    expect(matches.isError, isFalse, reason: '${matches.error}');
+    expect(matches.uri.toString(), '/home');
+    final container = ProviderScope.containerOf(
+      tester.element(find.byType(HomeScreen)),
+    );
+    expect(container.read(selectedDayProvider), DateTime(2026, 10, 21));
   });
 
   testWidgets('a role without tasks.create lands on Home, not in a sheet', (

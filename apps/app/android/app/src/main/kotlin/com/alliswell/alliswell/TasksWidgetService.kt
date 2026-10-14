@@ -14,6 +14,11 @@ import org.json.JSONObject
 /// Extras the row's fill-in intent carries to the provider (OPH-188).
 const val EXTRA_ACTION = "aw_action"
 const val EXTRA_TASK_ID = "aw_task_id"
+/// v5: an event row's day (`yyyy-MM-dd`), opened as `alliswell://day/<day>`.
+const val EXTRA_DAY = "aw_day"
+
+/// v5: the `kind` of a calendar-event row — `kWidgetKindEvent` in Dart.
+const val WIDGET_KIND_EVENT = "event"
 
 class TasksWidgetService : RemoteViewsService() {
   // OPH-336: the factory is per widget (the provider makes each widget's
@@ -34,7 +39,12 @@ private data class Row(
   val time: String?,
   val done: Boolean,
   val color: String?,
-)
+  // v5: "event" for a calendar event (no circle, opens its day), else a task.
+  val kind: String? = null,
+  val day: String? = null,
+) {
+  val isEvent: Boolean get() = kind == WIDGET_KIND_EVENT
+}
 
 class TasksRemoteViewsFactory(
   private val context: Context,
@@ -74,7 +84,17 @@ class TasksRemoteViewsFactory(
     views.setTextViewTextSize(R.id.aw_title, TypedValue.COMPLEX_UNIT_SP, if (compact) 13f else 14f)
     views.setTextViewTextSize(R.id.aw_time, TypedValue.COMPLEX_UNIT_SP, if (compact) 11f else 12f)
 
-    views.setTextViewText(R.id.aw_check, if (row.done) "●" else "○") // ● / ○
+    // v5: an event is not something to tick off — a calendar glyph stands
+    // where the circle would, and the circle is GONE (so nothing on the row
+    // can complete it). Set in both directions: rows are recycled.
+    if (row.isEvent) {
+      views.setViewVisibility(R.id.aw_check, View.GONE)
+      views.setViewVisibility(R.id.aw_event_icon, View.VISIBLE)
+    } else {
+      views.setViewVisibility(R.id.aw_event_icon, View.GONE)
+      views.setViewVisibility(R.id.aw_check, View.VISIBLE)
+      views.setTextViewText(R.id.aw_check, if (row.done) "●" else "○") // ● / ○
+    }
     views.setTextViewText(R.id.aw_title, row.title)
 
     if (!row.time.isNullOrEmpty()) {
@@ -98,6 +118,15 @@ class TasksRemoteViewsFactory(
     // the provider's PendingIntent template, which is why the data has to be
     // an intent-extra rather than a second PendingIntent (RemoteViews can hold
     // only one template per collection).
+    if (row.isEvent) {
+      // v5: an event row opens Home on its day. No completion fill-in exists
+      // for it at all — the circle above is GONE and is never wired.
+      views.setOnClickFillInIntent(
+        R.id.aw_row,
+        Intent().putExtra(EXTRA_ACTION, "openDay").putExtra(EXTRA_DAY, row.day.orEmpty()),
+      )
+      return views
+    }
     views.setOnClickFillInIntent(
       R.id.aw_row,
       Intent().putExtra(EXTRA_ACTION, "open").putExtra(EXTRA_TASK_ID, row.id),
@@ -135,6 +164,8 @@ class TasksRemoteViewsFactory(
               time = task.optString("time"),
               done = task.optBoolean("done", false),
               color = task.optString("projectColor"),
+              kind = task.optString("kind"),
+              day = task.optString("day"),
             ),
           )
         }

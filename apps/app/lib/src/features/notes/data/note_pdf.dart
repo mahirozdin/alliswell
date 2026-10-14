@@ -29,6 +29,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'note_blocks.dart';
+import 'note_print_style.dart';
 
 /// The four faces the exporter draws with.
 ///
@@ -94,45 +95,25 @@ class NotePdfDocument {
   final String? mediaPlaceholderLabel;
 }
 
-// Palette — the print equivalents of the app tokens. Print is always "light":
-// a dark-theme PDF would waste ink and read badly on paper.
-const _ink = PdfColor.fromInt(0xFF0F1B2E);
-const _muted = PdfColor.fromInt(0xFF44536F);
-const _accent = PdfColor.fromInt(0xFF0A5CFF);
-const _rule = PdfColor.fromInt(0xFFD8DEEA);
-const _codeBg = PdfColor.fromInt(0xFFF2F4F9);
+// Palette and metrics live in `note_print_style.dart`, shared with the Word
+// writer (ADR-0048) — the two exports must draw the same page.
+const _ink = PdfColor.fromInt(NotePrintPalette.ink);
+const _muted = PdfColor.fromInt(NotePrintPalette.muted);
+const _accent = PdfColor.fromInt(NotePrintPalette.accent);
+const _rule = PdfColor.fromInt(NotePrintPalette.rule);
+const _codeBg = PdfColor.fromInt(NotePrintPalette.codeBg);
+const _success = PdfColor.fromInt(NotePrintPalette.success);
+const _markBg = PdfColor.fromInt(NotePrintPalette.markBg);
+const _tableRule = PdfColor.fromInt(NotePrintPalette.tableRule);
 
-// Round 19b: the reading view's own roles, copied VALUE FOR VALUE from the
-// app's LIGHT theme rather than eyeballed — the whole point of this round is
-// that the page and the screen agree, and an approximate green would have been
-// the same class of mismatch in a smaller size. Light, because print is
-// (`_ink` and friends above say so).
-//
-//   _success  = AwTokens.light.success   (theme/tokens.dart)
-//   _warning  = AwTokens.light.warning
-//   _secondary/_error = the light ColorScheme (theme/theme.dart)
-//   _accent   = the light primary, already here since round 16
-const _success = PdfColor.fromInt(0xFF0D7A33);
-const _warning = PdfColor.fromInt(0xFFC77700);
-const _secondary = PdfColor.fromInt(0xFF5A50E0);
-const _error = PdfColor.fromInt(0xFFD70015);
+/// The edge colour of a GFM alert, by its kind (see
+/// [NotePrintPalette.calloutEdge]).
+PdfColor _calloutEdge(String? kind) =>
+    PdfColor.fromInt(NotePrintPalette.calloutEdge(kind));
 
-/// A highlight's tint. `AwTokens.warning` at the same alpha the source editor
-/// uses, pre-blended onto white — a PDF text background cannot carry alpha.
-const _markBg = PdfColor.fromInt(0xFFFDF0D5);
+typedef _M = NotePrintMetrics;
 
-/// The edge colour of a GFM alert, by its kind — the same five roles
-/// `MdStyles.alertAccent` maps on screen. An unknown kind takes the neutral
-/// one rather than vanishing.
-PdfColor _calloutEdge(String? kind) => switch (kind) {
-  'tip' => _success,
-  'important' => _secondary,
-  'warning' => _warning,
-  'caution' => _error,
-  _ => _accent, // `note`, and anything the parser invents later
-};
-
-const _bodySize = 11.0;
+const _bodySize = _M.body;
 
 /// Builds the PDF. Async only because `pdf`'s own `save()` is — no platform
 /// channel is involved, so this still runs in a plain `flutter test`.
@@ -151,21 +132,21 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
   pdf.addPage(
     pw.MultiPage(
       pageFormat: PdfPageFormat.a4.copyWith(
-        marginLeft: 2.2 * PdfPageFormat.cm,
-        marginRight: 2.2 * PdfPageFormat.cm,
-        marginTop: 2.0 * PdfPageFormat.cm,
-        marginBottom: 2.0 * PdfPageFormat.cm,
+        marginLeft: _M.marginSideCm * PdfPageFormat.cm,
+        marginRight: _M.marginSideCm * PdfPageFormat.cm,
+        marginTop: _M.marginTopBottomCm * PdfPageFormat.cm,
+        marginBottom: _M.marginTopBottomCm * PdfPageFormat.cm,
       ),
       header: (context) => context.pageNumber == 1
           ? pw.SizedBox.shrink()
           : pw.Container(
               alignment: pw.Alignment.centerLeft,
-              margin: const pw.EdgeInsets.only(bottom: 12),
+              margin: const pw.EdgeInsets.only(bottom: _M.headerGap),
               child: pw.Text(
                 doc.title,
                 style: pw.TextStyle(
                   fontFallback: fonts.fallback,
-                  fontSize: 9,
+                  fontSize: _M.meta,
                   color: _muted,
                 ),
                 maxLines: 1,
@@ -174,10 +155,10 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
             ),
       footer: (context) => pw.Container(
         alignment: pw.Alignment.centerRight,
-        margin: const pw.EdgeInsets.only(top: 12),
+        margin: const pw.EdgeInsets.only(top: _M.headerGap),
         child: pw.Text(
           '${context.pageNumber} / ${context.pagesCount}',
-          style: pw.TextStyle(fontSize: 9, color: _muted),
+          style: pw.TextStyle(fontSize: _M.meta, color: _muted),
         ),
       ),
       build: (context) => [
@@ -188,25 +169,25 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
           style: pw.TextStyle(
             font: fonts.bold,
             fontFallback: fonts.fallback,
-            fontSize: 24,
+            fontSize: _M.title,
             color: _ink,
-            letterSpacing: -0.4,
+            letterSpacing: _M.titleLetterSpacing,
           ),
         ),
         if (doc.updatedLabel case final label?) ...[
-          pw.SizedBox(height: 4),
+          pw.SizedBox(height: _M.titleToLabel),
           pw.Text(
             label,
             style: pw.TextStyle(
               fontFallback: fonts.fallback,
-              fontSize: 9,
+              fontSize: _M.meta,
               color: _muted,
             ),
           ),
         ],
-        pw.SizedBox(height: 10),
-        pw.Divider(color: _rule, thickness: 0.7, height: 1),
-        pw.SizedBox(height: 14),
+        pw.SizedBox(height: _M.titleToRule),
+        pw.Divider(color: _rule, thickness: _M.titleRuleWidth, height: 1),
+        pw.SizedBox(height: _M.ruleToBody),
         for (final block in doc.blocks) _block(block, doc, fonts),
       ],
     ),
@@ -216,19 +197,31 @@ Future<Uint8List> buildNotePdf(NotePdfDocument doc, NotePdfFonts fonts) async {
 }
 
 pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
-  pw.Widget padded(pw.Widget child, {double top = 0, double bottom = 6}) =>
-      pw.Padding(
-        padding: pw.EdgeInsets.only(top: top, bottom: bottom),
-        child: child,
-      );
+  pw.Widget padded(
+    pw.Widget child, {
+    double top = 0,
+    double bottom = _M.blockAfter,
+  }) => pw.Padding(
+    padding: pw.EdgeInsets.only(top: top, bottom: bottom),
+    child: child,
+  );
 
   switch (block.kind) {
     case NoteBlockKind.heading1:
-      return padded(_rich(block, fonts, size: 19, bold: true), top: 8);
+      return padded(
+        _rich(block, fonts, size: _M.heading1, bold: true),
+        top: _M.heading1Before,
+      );
     case NoteBlockKind.heading2:
-      return padded(_rich(block, fonts, size: 15.5, bold: true), top: 7);
+      return padded(
+        _rich(block, fonts, size: _M.heading2, bold: true),
+        top: _M.heading2Before,
+      );
     case NoteBlockKind.heading3:
-      return padded(_rich(block, fonts, size: 13, bold: true), top: 6);
+      return padded(
+        _rich(block, fonts, size: _M.heading3, bold: true),
+        top: _M.heading3Before,
+      );
 
     // OPH-274: `indent` is markdown's gift — Delta's block attributes were
     // flat, so a nested list printed as a flat one and the structure was lost
@@ -236,7 +229,7 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
     case NoteBlockKind.bullet:
       return padded(
         _indented(block, _marker('•', _rich(block, fonts), fonts)),
-        bottom: 3,
+        bottom: _M.listAfter,
       );
     case NoteBlockKind.ordered:
       return padded(
@@ -244,7 +237,7 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
           block,
           _marker('${block.ordinal ?? 1}.', _rich(block, fonts), fonts),
         ),
-        bottom: 3,
+        bottom: _M.listAfter,
       );
 
     // A drawn box, not a "☑"/"☐" character: those glyphs are not in Roboto, so
@@ -253,7 +246,7 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
     case NoteBlockKind.unchecked:
       return padded(
         _checkItem(block, fonts, done: block.kind == NoteBlockKind.checked),
-        bottom: 3,
+        bottom: _M.listAfter,
       );
 
     // Round 19b (OPH-281). A GFM alert: tinted panel, coloured edge, localized
@@ -265,14 +258,25 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
       return padded(
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.fromLTRB(10, 8, 10, 8),
+          padding: const pw.EdgeInsets.symmetric(
+            horizontal: _M.calloutPaddingH,
+            vertical: _M.calloutPaddingV,
+          ),
           decoration: pw.BoxDecoration(
-            color: PdfColor(edge.red, edge.green, edge.blue, 0.08),
-            border: pw.Border(left: pw.BorderSide(color: edge, width: 3)),
+            // Pre-blended onto white, not `PdfColor(r, g, b, 0.08)`: the
+            // `pdf` package drops a fill's alpha, so the panel printed as a
+            // SOLID block of the edge colour with the text sunk into it
+            // (caught by the DOCX comparison, ADR-0048).
+            color: PdfColor.fromInt(
+              NotePrintPalette.calloutTint(block.calloutKind),
+            ),
+            border: pw.Border(
+              left: pw.BorderSide(color: edge, width: _M.calloutEdge),
+            ),
           ),
           child: _rich(block, fonts),
         ),
-        top: 4,
+        top: _M.calloutBefore,
       );
 
     // Front matter is the document's metadata, not its first paragraph — the
@@ -281,30 +285,32 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
       return padded(
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.all(8),
+          padding: const pw.EdgeInsets.all(_M.panelPadding),
           decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: _rule, width: 0.7),
+            border: pw.Border.all(color: _rule, width: _M.hairline),
           ),
           child: pw.Text(
             block.text,
             style: pw.TextStyle(
               font: fonts.regular,
               fontFallback: fonts.fallback,
-              fontSize: 9,
+              fontSize: _M.meta,
               color: _muted,
-              lineSpacing: 2,
+              lineSpacing: _M.codeLineGap,
             ),
           ),
         ),
-        bottom: 10,
+        bottom: _M.frontMatterAfter,
       );
 
     case NoteBlockKind.quote:
       return padded(
         pw.Container(
-          padding: const pw.EdgeInsets.only(left: 10),
+          padding: const pw.EdgeInsets.only(left: _M.quotePadding),
           decoration: const pw.BoxDecoration(
-            border: pw.Border(left: pw.BorderSide(color: _rule, width: 2.5)),
+            border: pw.Border(
+              left: pw.BorderSide(color: _rule, width: _M.quoteEdge),
+            ),
           ),
           child: _rich(block, fonts, color: _muted, italic: true),
         ),
@@ -314,16 +320,16 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
       return padded(
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.all(8),
+          padding: const pw.EdgeInsets.all(_M.panelPadding),
           decoration: const pw.BoxDecoration(color: _codeBg),
           child: pw.Text(
             block.text,
             style: pw.TextStyle(
               font: fonts.regular,
               fontFallback: fonts.fallback,
-              fontSize: 9.5,
+              fontSize: _M.code,
               color: _ink,
-              lineSpacing: 2,
+              lineSpacing: _M.codeLineGap,
             ),
           ),
         ),
@@ -337,12 +343,12 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
       return padded(
         pw.Center(
           child: pw.ConstrainedBox(
-            constraints: const pw.BoxConstraints(maxHeight: 320),
+            constraints: const pw.BoxConstraints(maxHeight: _M.imageMaxHeight),
             child: pw.Image(pw.MemoryImage(bytes), fit: pw.BoxFit.contain),
           ),
         ),
-        top: 4,
-        bottom: 10,
+        top: _M.imageBefore,
+        bottom: _M.mediaAfter,
       );
 
     // Round 19 #1 (ADR-0034). The bytes are made by the exporter's off-screen
@@ -354,12 +360,14 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
         return padded(
           pw.Center(
             child: pw.ConstrainedBox(
-              constraints: const pw.BoxConstraints(maxHeight: 420),
+              constraints: const pw.BoxConstraints(
+                maxHeight: _M.figureMaxHeight,
+              ),
               child: pw.Image(pw.MemoryImage(drawn), fit: pw.BoxFit.contain),
             ),
           ),
-          top: 6,
-          bottom: 10,
+          top: _M.figureBefore,
+          bottom: _M.mediaAfter,
         );
       }
       // No picture: print the SOURCE, not an apology. A reader holding a
@@ -367,16 +375,16 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
       return padded(
         pw.Container(
           width: double.infinity,
-          padding: const pw.EdgeInsets.all(8),
+          padding: const pw.EdgeInsets.all(_M.panelPadding),
           decoration: const pw.BoxDecoration(color: _codeBg),
           child: pw.Text(
             block.text,
             style: pw.TextStyle(
               font: fonts.regular,
               fontFallback: fonts.fallback,
-              fontSize: 9.5,
+              fontSize: _M.code,
               color: _muted,
-              lineSpacing: 2,
+              lineSpacing: _M.codeLineGap,
             ),
           ),
         ),
@@ -389,15 +397,18 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
     // rule node and `flutter_quill` 11.5.1 has no table node at all, so a
     // table in a note simply could not reach a PDF.
     case NoteBlockKind.divider:
-      return padded(pw.Divider(height: 1, color: PdfColors.grey400), top: 4);
+      return padded(
+        pw.Divider(height: 1, thickness: _M.dividerWidth, color: _tableRule),
+        top: _M.dividerBefore,
+      );
 
     case NoteBlockKind.table:
-      return padded(_table(block, fonts), top: 4);
+      return padded(_table(block, fonts), top: _M.tableBefore);
 
     case NoteBlockKind.paragraph:
       // An intentional blank line keeps its air; it just must not be a full
       // paragraph's worth.
-      if (block.text.trim().isEmpty) return pw.SizedBox(height: 6);
+      if (block.text.trim().isEmpty) return pw.SizedBox(height: _M.blankLine);
       return padded(_rich(block, fonts));
   }
 }
@@ -407,7 +418,9 @@ pw.Widget _block(NoteBlock block, NotePdfDocument doc, NotePdfFonts fonts) {
 pw.Widget _indented(NoteBlock block, pw.Widget child) => block.indent <= 0
     ? child
     : pw.Padding(
-        padding: pw.EdgeInsets.only(left: (block.indent.clamp(0, 6)) * 16.0),
+        padding: pw.EdgeInsets.only(
+          left: block.indent.clamp(0, _M.maxIndentLevel) * _M.indentPerLevel,
+        ),
         child: child,
       );
 
@@ -418,19 +431,19 @@ pw.Widget _table(NoteBlock block, NotePdfFonts fonts) {
   final rows = block.rows ?? const <List<String>>[];
   if (rows.isEmpty) return pw.SizedBox();
   return pw.Table(
-    border: pw.TableBorder.all(color: PdfColors.grey400, width: 0.5),
+    border: pw.TableBorder.all(color: _tableRule, width: _M.tableBorder),
     children: [
       for (final (index, row) in rows.indexed)
         pw.TableRow(
           children: [
             for (final cell in row)
               pw.Padding(
-                padding: const pw.EdgeInsets.all(4),
+                padding: const pw.EdgeInsets.all(_M.tableCellPadding),
                 child: pw.Text(
                   cell,
                   style: pw.TextStyle(
                     font: index == 0 ? fonts.bold : fonts.regular,
-                    fontSize: 10,
+                    fontSize: _M.table,
                   ),
                 ),
               ),
@@ -444,7 +457,7 @@ pw.Widget _marker(String marker, pw.Widget child, NotePdfFonts fonts) => pw.Row(
   crossAxisAlignment: pw.CrossAxisAlignment.start,
   children: [
     pw.SizedBox(
-      width: 18,
+      width: _M.markerWidth,
       child: pw.Text(
         marker,
         style: pw.TextStyle(
@@ -525,14 +538,19 @@ pw.Widget _missingMedia(
   NotePdfFonts fonts,
 ) => pw.Container(
   width: double.infinity,
-  padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-  decoration: pw.BoxDecoration(border: pw.Border.all(color: _rule, width: 0.7)),
+  padding: const pw.EdgeInsets.symmetric(
+    horizontal: _M.placeholderPaddingH,
+    vertical: _M.placeholderPaddingV,
+  ),
+  decoration: pw.BoxDecoration(
+    border: pw.Border.all(color: _rule, width: _M.hairline),
+  ),
   child: pw.Text(
     doc.mediaPlaceholderLabel ?? block.source ?? '',
     style: pw.TextStyle(
       font: fonts.italic,
       fontFallback: fonts.fallback,
-      fontSize: 9,
+      fontSize: _M.meta,
       color: _muted,
     ),
     maxLines: 2,
@@ -566,7 +584,7 @@ pw.Widget _rich(
                   ? size * 0.75
                   : (span.code ? size - 0.5 : size),
               color: span.link != null ? _accent : color,
-              lineSpacing: 2.4,
+              lineSpacing: _M.bodyLineGap,
               // `==highlight==` (round 19b): a tint behind the ink, never a
               // change to the ink itself — the same rule the screen follows, so
               // the text keeps its contrast in both places.

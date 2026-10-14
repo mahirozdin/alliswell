@@ -1,7 +1,9 @@
-/// Note → PDF, the impure edge (round 16 #3).
+/// Note → PDF / Markdown / Word, the impure edge (round 16 #3, ADR-0048).
 ///
-/// The layout lives in `data/note_pdf.dart` and the delta mapping in
-/// `data/note_blocks.dart`; neither touches a platform channel, so both are
+/// The layouts live in `data/note_pdf.dart` and `data/note_docx.dart` (both
+/// drawing with `data/note_print_style.dart`), the markdown file in
+/// `data/note_markdown_file.dart` and the block mapping in
+/// `data/markdown_blocks.dart`; none touches a platform channel, so all are
 /// testable in a plain `flutter test`. This file owns
 /// only what needs a platform: reading the fonts out of the asset bundle,
 /// fetching embedded media, showing the progress dialog, and handing the bytes
@@ -18,6 +20,7 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
@@ -28,8 +31,11 @@ import '../../files/ui/note_media.dart' show fileIdFromEmbedSource;
 import '../markdown/markdown_forge_adapters.dart' show awMarkdownStrings;
 import '../data/markdown_blocks.dart';
 import '../data/note_blocks.dart';
+import '../data/note_docx.dart';
+import '../data/note_markdown_file.dart';
 import '../data/note_pdf.dart';
 import 'note_figure_raster.dart';
+import 'note_file_download.dart';
 
 /// How long we wait for ONE embedded image before exporting without it. An
 /// export that hangs on a dead attachment is worse than one that prints an
@@ -52,41 +58,101 @@ final notePdfFontsProvider = FutureProvider<NotePdfFonts>((ref) async {
   );
 });
 
+/// The file types a note exports to.
+enum NoteExportFormat {
+  pdf('pdf', 'application/pdf'),
+  md('md', markdownMimeType),
+  docx('docx', docxMimeType);
+
+  const NoteExportFormat(this.extension, this.mimeType);
+
+  final String extension;
+  final String mimeType;
+
+  /// The localized name the progress dialog and the sheet use.
+  String get label => switch (this) {
+    NoteExportFormat.pdf => 'note.exportFormatPdf'.tr(),
+    NoteExportFormat.md => 'note.exportFormatMd'.tr(),
+    NoteExportFormat.docx => 'note.exportFormatDocx'.tr(),
+  };
+}
+
 /// Seam so tests can drive the export without a plugin. The default sends the
 /// bytes to the OS; a fake records them.
-class NotePdfSink {
-  const NotePdfSink();
+class NoteFileSink {
+  const NoteFileSink();
 
-  Future<void> share(Uint8List bytes, String filename) =>
-      Printing.sharePdf(bytes: bytes, filename: filename);
+  /// Whether this platform can hand a [format] file to a share sheet. A PDF
+  /// goes through `printing`, which can everywhere; anything else goes through
+  /// `share_plus`, whose Linux build cannot share a file at all.
+  bool canShare(NoteExportFormat format) =>
+      format == NoteExportFormat.pdf ||
+      kIsWeb ||
+      defaultTargetPlatform != TargetPlatform.linux;
 
+  /// The share sheet — or, on the web, a download.
+  ///
+  /// A PDF keeps the `printing` route it has always had. MD and DOCX need
+  /// `share_plus`, because `Printing.sharePdf` can only say application/pdf
+  /// and a share target that is told "PDF" about a Word file opens it wrong.
+  Future<void> share(
+    Uint8List bytes,
+    String filename,
+    NoteExportFormat format,
+  ) async {
+    if (format == NoteExportFormat.pdf) {
+      await Printing.sharePdf(bytes: bytes, filename: filename);
+      return;
+    }
+    if (kIsWeb) return downloadNoteFile(bytes, filename, format.mimeType);
+    // `unavailable` is NOT a failure: it is share_plus saying the sheet opened
+    // but the platform cannot report what the user picked (Android without an
+    // activity result, Windows). A real failure throws.
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile.fromData(bytes, mimeType: format.mimeType)],
+        fileNameOverrides: [filename],
+      ),
+    );
+  }
+
+  /// PDF only — the sheet does not offer it for anything else.
   Future<void> print(Uint8List bytes, String name) =>
       Printing.layoutPdf(onLayout: (_) async => bytes, name: name);
 
   /// Returns the chosen path, or null when the user backed out.
-  Future<String?> saveToFiles(Uint8List bytes, String filename) =>
-      FilePicker.saveFile(
-        fileName: filename,
-        bytes: bytes,
-        type: FileType.custom,
-        allowedExtensions: const ['pdf'],
-      );
+  Future<String?> saveToFiles(
+    Uint8List bytes,
+    String filename,
+    NoteExportFormat format,
+  ) => FilePicker.saveFile(
+    fileName: filename,
+    bytes: bytes,
+    type: FileType.custom,
+    allowedExtensions: [format.extension],
+  );
 }
 
-final notePdfSinkProvider = Provider<NotePdfSink>((ref) => const NotePdfSink());
+final noteFileSinkProvider = Provider<NoteFileSink>(
+  (ref) => const NoteFileSink(),
+);
 
-/// A filesystem-safe name derived from the note title.
+/// A filesystem-safe name derived from the note title, ending in [extension].
 @visibleForTesting
-String pdfFileName(String title) {
+String noteFileName(String title, String extension) {
   final cleaned = title
       .replaceAll(RegExp(r'[\\/:*?"<>|\n\r\t]'), ' ')
       .replaceAll(RegExp(r'\s+'), ' ')
       .trim();
   final base = cleaned.isEmpty ? 'note' : cleaned;
-  // Keep well under every filesystem's limit once ".pdf" is appended.
+  // Keep well under every filesystem's limit once the extension is appended.
   final clipped = base.length <= 80 ? base : base.substring(0, 80).trimRight();
-  return '$clipped.pdf';
+  return '$clipped.$extension';
 }
+
+/// [noteFileName] for a PDF.
+@visibleForTesting
+String pdfFileName(String title) => noteFileName(title, 'pdf');
 
 /// Fetches the bytes for every image embed in [blocks].
 ///
@@ -133,14 +199,36 @@ Future<Map<String, Uint8List>> _resolveImages(
   return out;
 }
 
-/// Builds the PDF for one note and offers it to the user.
-///
-/// Shows a blocking progress dialog while the document is produced (fonts,
-/// media fetches and layout), then a sheet with the ways out: share, save, or
-/// print. Returns when the sheet closes.
+/// Builds the PDF for one note and offers it to the user — [exportNote] with
+/// [NoteExportFormat.pdf], kept under its old name for its callers.
 Future<void> exportNoteAsPdf(
   BuildContext context,
   WidgetRef ref, {
+  required String title,
+  required String markdown,
+  DateTime? updatedAt,
+}) => exportNote(
+  context,
+  ref,
+  format: NoteExportFormat.pdf,
+  title: title,
+  markdown: markdown,
+  updatedAt: updatedAt,
+);
+
+/// Builds one note as a [format] file and offers it to the user.
+///
+/// Shows a blocking progress dialog while the document is produced (fonts,
+/// media fetches and layout), then a sheet with the ways out: share, save, or
+/// — for a PDF — print. Returns when the sheet closes.
+///
+/// PDF and DOCX share everything up to the writer: the same blocks, the same
+/// fetched media and the same drawn figures, so the two files show the same
+/// pictures. Markdown needs none of it — the body already IS the file.
+Future<void> exportNote(
+  BuildContext context,
+  WidgetRef ref, {
+  required NoteExportFormat format,
   required String title,
   required String markdown,
   DateTime? updatedAt,
@@ -152,7 +240,7 @@ Future<void> exportNoteAsPdf(
       context: context,
       useRootNavigator: true,
       barrierDismissible: false,
-      builder: (_) => const _ExportingDialog(),
+      builder: (_) => _ExportingDialog(format: format),
     ).then((_) => dialogOpen = false),
   );
 
@@ -165,48 +253,17 @@ Future<void> exportNoteAsPdf(
 
   Uint8List bytes;
   try {
-    // OPH-274: the last delta dependency outside the tests. Round 19 narrowed
-    // `placeholderFor` to raw HTML alone — diagrams and formulas are now drawn
-    // (ADR-0034) rather than named. What is still named is named, because
-    // silence is indistinguishable from a bug (DESIGN §10 F3).
-    final blocks = markdownToBlocks(
-      markdown,
-      placeholderFor: (_) => 'note.exportUnsupportedBlock'.tr(),
-      // The SAME strings the reading view labels its alerts with (round 19b):
-      // two sources would be two chances for the page to call a box something
-      // the screen does not.
-      alertLabelFor: awMarkdownStrings().alert,
-    );
-    final fonts = await ref.read(notePdfFontsProvider.future);
-    // Two sources of pictures, one map. Fetched media and drawn figures are the
-    // same thing to the layout engine — bytes under a key — which is what keeps
-    // `note_pdf.dart` free of both the network and the widget tree.
-    final images = {
-      ...await _resolveImages(ref, blocks),
-      if (context.mounted)
-        ...await ref
-            .read(noteFigureRasterizerProvider)
-            .rasterize(context, blocks),
-    };
-    bytes = await buildNotePdf(
-      NotePdfDocument(
+    bytes = switch (format) {
+      NoteExportFormat.md => noteMarkdownBytes(title, markdown),
+      NoteExportFormat.pdf || NoteExportFormat.docx => await _buildLaidOut(
+        context,
+        ref,
+        format: format,
         title: title,
-        blocks: blocks,
-        updatedLabel: updatedAt == null
-            ? null
-            : 'note.edited'.tr(
-                args: {
-                  'date': awFormatDateTime(
-                    updatedAt,
-                    format: ref.read(dateFormatProvider),
-                  ),
-                },
-              ),
-        images: images,
-        mediaPlaceholderLabel: 'note.exportMediaMissing'.tr(),
+        markdown: markdown,
+        updatedAt: updatedAt,
       ),
-      fonts,
-    );
+    };
   } on Object {
     closeDialog();
     if (!context.mounted) return;
@@ -220,13 +277,87 @@ Future<void> exportNoteAsPdf(
   if (!context.mounted) return;
   await showAwSheet<void>(
     context,
-    builder: (_) =>
-        _ExportReadySheet(bytes: bytes, filename: pdfFileName(title)),
+    builder: (_) => _ExportReadySheet(
+      bytes: bytes,
+      filename: noteFileName(title, format.extension),
+      format: format,
+    ),
+  );
+}
+
+/// The PDF or the DOCX: one pipeline into either writer.
+Future<Uint8List> _buildLaidOut(
+  BuildContext context,
+  WidgetRef ref, {
+  required NoteExportFormat format,
+  required String title,
+  required String markdown,
+  DateTime? updatedAt,
+}) async {
+  // OPH-274: the last delta dependency outside the tests. Round 19 narrowed
+  // `placeholderFor` to raw HTML alone — diagrams and formulas are now drawn
+  // (ADR-0034) rather than named. What is still named is named, because
+  // silence is indistinguishable from a bug (DESIGN §10 F3).
+  final blocks = markdownToBlocks(
+    markdown,
+    placeholderFor: (_) => 'note.exportUnsupportedBlock'.tr(),
+    // The SAME strings the reading view labels its alerts with (round 19b):
+    // two sources would be two chances for the page to call a box something
+    // the screen does not.
+    alertLabelFor: awMarkdownStrings().alert,
+  );
+  final fonts = format == NoteExportFormat.pdf
+      ? await ref.read(notePdfFontsProvider.future)
+      : null;
+  // Two sources of pictures, one map. Fetched media and drawn figures are the
+  // same thing to the layout engines — bytes under a key — which is what keeps
+  // both writers free of the network and the widget tree.
+  final images = {
+    ...await _resolveImages(ref, blocks),
+    if (context.mounted)
+      ...await ref
+          .read(noteFigureRasterizerProvider)
+          .rasterize(context, blocks),
+  };
+  final updatedLabel = updatedAt == null
+      ? null
+      : 'note.edited'.tr(
+          args: {
+            'date': awFormatDateTime(
+              updatedAt,
+              format: ref.read(dateFormatProvider),
+            ),
+          },
+        );
+  final placeholder = 'note.exportMediaMissing'.tr();
+
+  if (fonts == null) {
+    return buildNoteDocx(
+      NoteDocxDocument(
+        title: title,
+        blocks: blocks,
+        updatedLabel: updatedLabel,
+        images: images,
+        mediaPlaceholderLabel: placeholder,
+      ),
+    );
+  }
+  return buildNotePdf(
+    NotePdfDocument(
+      title: title,
+      blocks: blocks,
+      updatedLabel: updatedLabel,
+      images: images,
+      mediaPlaceholderLabel: placeholder,
+    ),
+    fonts,
   );
 }
 
 class _ExportingDialog extends StatelessWidget {
-  const _ExportingDialog();
+  const _ExportingDialog({required this.format});
+
+  final NoteExportFormat format;
 
   @override
   Widget build(BuildContext context) => AlertDialog(
@@ -239,17 +370,27 @@ class _ExportingDialog extends StatelessWidget {
           child: CircularProgressIndicator(strokeWidth: 2.5),
         ),
         const SizedBox(width: 16),
-        Expanded(child: Text('note.exporting'.tr())),
+        Expanded(
+          child: Text('note.exporting'.tr(args: {'format': format.label})),
+        ),
       ],
     ),
   );
 }
 
 class _ExportReadySheet extends ConsumerWidget {
-  const _ExportReadySheet({required this.bytes, required this.filename});
+  const _ExportReadySheet({
+    required this.bytes,
+    required this.filename,
+    required this.format,
+  });
 
   final Uint8List bytes;
   final String filename;
+
+  /// Decides what the sheet offers: Print exists only for a PDF, and Share
+  /// only where this platform can share a file of this type.
+  final NoteExportFormat format;
 
   Future<void> _run(
     BuildContext context,
@@ -272,7 +413,7 @@ class _ExportReadySheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final sink = ref.watch(notePdfSinkProvider);
+    final sink = ref.watch(noteFileSinkProvider);
     final theme = Theme.of(context);
     // On the web the OS has no share sheet — the browser downloads the file —
     // and there is no "Files" to save into. Saying "Share" there would name a
@@ -289,7 +430,7 @@ class _ExportReadySheet extends ConsumerWidget {
             Padding(
               padding: const EdgeInsets.only(bottom: 4),
               child: Text(
-                'note.exportReady'.tr(),
+                'note.exportReady'.tr(args: {'format': format.label}),
                 style: theme.textTheme.titleLarge,
               ),
             ),
@@ -310,34 +451,38 @@ class _ExportReadySheet extends ConsumerWidget {
                 icon: Icons.download_outlined,
                 title: 'note.exportDownload'.tr(),
                 subtitle: 'note.exportDownloadHint'.tr(),
-                onTap: () => _run(context, () => sink.share(bytes, filename)),
+                onTap: () =>
+                    _run(context, () => sink.share(bytes, filename, format)),
               )
             else ...[
-              _ExportAction(
-                actionKey: const Key('note-export-share'),
-                icon: Icons.ios_share,
-                title: 'note.exportShare'.tr(),
-                subtitle: 'note.exportShareHint'.tr(),
-                onTap: () => _run(context, () => sink.share(bytes, filename)),
-              ),
+              if (sink.canShare(format))
+                _ExportAction(
+                  actionKey: const Key('note-export-share'),
+                  icon: Icons.ios_share,
+                  title: 'note.exportShare'.tr(),
+                  subtitle: 'note.exportShareHint'.tr(),
+                  onTap: () =>
+                      _run(context, () => sink.share(bytes, filename, format)),
+                ),
               _ExportAction(
                 actionKey: const Key('note-export-save'),
                 icon: Icons.folder_outlined,
                 title: 'note.exportSave'.tr(),
                 subtitle: 'note.exportSaveHint'.tr(),
                 onTap: () => _run(context, () async {
-                  final path = await sink.saveToFiles(bytes, filename);
+                  final path = await sink.saveToFiles(bytes, filename, format);
                   if (path == null) throw const _Cancelled();
                 }, successMessage: 'note.exportSaved'.tr()),
               ),
             ],
-            _ExportAction(
-              actionKey: const Key('note-export-print'),
-              icon: Icons.print_outlined,
-              title: 'note.exportPrint'.tr(),
-              subtitle: 'note.exportPrintHint'.tr(),
-              onTap: () => _run(context, () => sink.print(bytes, filename)),
-            ),
+            if (format == NoteExportFormat.pdf)
+              _ExportAction(
+                actionKey: const Key('note-export-print'),
+                icon: Icons.print_outlined,
+                title: 'note.exportPrint'.tr(),
+                subtitle: 'note.exportPrintHint'.tr(),
+                onTap: () => _run(context, () => sink.print(bytes, filename)),
+              ),
           ],
         ),
       ),
@@ -387,4 +532,51 @@ class _ExportAction extends StatelessWidget {
       ),
     );
   }
+}
+
+/// The popup-menu values of the three export entries — shared by the editor's
+/// overflow and the notes list's row menu, so both offer the same formats.
+const noteExportMenuValues = {
+  'export-pdf': NoteExportFormat.pdf,
+  'export-md': NoteExportFormat.md,
+  'export-docx': NoteExportFormat.docx,
+};
+
+/// "Export as PDF / Markdown / Word" as popup-menu entries, values from
+/// [noteExportMenuValues].
+List<PopupMenuEntry<String>> noteExportMenuItems({
+  Key? pdfKey,
+  Key? mdKey,
+  Key? docxKey,
+}) {
+  PopupMenuItem<String> item(
+    Key? key,
+    String value,
+    IconData icon,
+    String label,
+  ) => PopupMenuItem(
+    key: key,
+    value: value,
+    child: ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: Icon(icon),
+      title: Text(label),
+    ),
+  );
+
+  return [
+    item(
+      pdfKey,
+      'export-pdf',
+      Icons.picture_as_pdf_outlined,
+      'note.exportPdf'.tr(),
+    ),
+    item(mdKey, 'export-md', Icons.description_outlined, 'note.exportMd'.tr()),
+    item(
+      docxKey,
+      'export-docx',
+      Icons.article_outlined,
+      'note.exportDocx'.tr(),
+    ),
+  ];
 }
