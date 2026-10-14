@@ -35,6 +35,20 @@ class _MonthCalendarState extends State<MonthCalendar> {
     _month = DateTime(base.year, base.month);
   }
 
+  @override
+  void didUpdateWidget(MonthCalendar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // A day selected from OUTSIDE the grid (a widget's event row,
+    // `alliswell://day/…`) may sit in another month: show the month it is in,
+    // or the selection would be invisible.
+    final day = widget.selectedDay;
+    if (day != null &&
+        day != oldWidget.selectedDay &&
+        (day.year != _month.year || day.month != _month.month)) {
+      setState(() => _month = DateTime(day.year, day.month));
+    }
+  }
+
   void _shiftMonth(int delta) =>
       setState(() => _month = DateTime(_month.year, _month.month + delta));
 

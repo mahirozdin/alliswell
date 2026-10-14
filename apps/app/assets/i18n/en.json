@@ -428,6 +428,7 @@
   "note": {
     "untitled": "Untitled",
     "deleteTitle": "Delete note?",
+    "deleteBody": "This note will be deleted from all your devices.",
     "detailTitle": "Note",
     "pin": "Pin",
     "unpin": "Unpin",
@@ -456,8 +457,13 @@
     "deleted": "“{title}” deleted",
     "deleteFromList": "Delete",
     "exportPdf": "Export as PDF",
-    "exporting": "Preparing the PDF…",
-    "exportReady": "PDF ready",
+    "exportMd": "Export as Markdown",
+    "exportDocx": "Export as Word (DOCX)",
+    "exportFormatPdf": "PDF",
+    "exportFormatMd": "Markdown",
+    "exportFormatDocx": "Word document",
+    "exporting": "Preparing the {format}…",
+    "exportReady": "{format} ready",
     "exportFile": "{name} · {size} KB",
     "exportShare": "Share",
     "exportShareHint": "Opens the share sheet — Save to Files, Mail, AirDrop…",
@@ -465,7 +471,7 @@
     "exportSaveHint": "Pick a folder on this device",
     "exportSaved": "Saved",
     "exportDownload": "Download",
-    "exportDownloadHint": "Saves the PDF to your downloads folder",
+    "exportDownloadHint": "Saves the file to your downloads folder",
     "exportPrint": "Print",
     "exportPrintHint": "Opens the print preview",
     "exportFailed": "Couldn't export the note.",
@@ -869,7 +875,9 @@
     "list": {
       "all": "All tasks"
     },
-    "privateTitle": "Private task"
+    "privateTitle": "Private task",
+    "privateEvent": "Private event",
+    "allDay": "All day"
   },
   "file": {
     "add": "Add file",

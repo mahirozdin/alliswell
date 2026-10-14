@@ -34,6 +34,15 @@
             android:textColor="@color/aw_widget_secondary"
             android:textSize="15sp" />
 
+        <!-- v5: a calendar event's glyph, where a task's circle would be. -->
+        <ImageView
+            android:id="@+id/aw_event_icon"
+            android:layout_width="15dp"
+            android:layout_height="15dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_widget_event"
+            android:visibility="gone" />
+
         <TextView
             android:id="@+id/aw_dot"
             android:layout_width="wrap_content"

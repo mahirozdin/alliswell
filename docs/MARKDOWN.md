@@ -31,6 +31,8 @@ question that decides everything else: **what is a note actually made of?**
 | Import viewer | `features/notes/ui/markdown_import_screen.dart` | the file's own markdown, rendered by the one renderer — byte-faithful, stored as-is |
 | OS registration | Android `ACTION_VIEW` (mime + `pathPattern`), iOS/macOS `CFBundleDocumentTypes` | shipped in v1.3.0 |
 | Export | `note_export.dart` → `markdown_blocks.dart` → `note_pdf.dart`; `GET /notes/:id/export` | PDF (Roboto + DejaVu fallback) and `.md` |
+| Export — Word | `note_export.dart` → `markdown_blocks.dart` → `note_docx.dart` | `.docx` from our own OOXML writer (ADR-0048), drawn with the PDF's style (`note_print_style.dart`): same page, margins, sizes, colours, list indents, pictures and drawn figures. Checkboxes are ☐/☑ glyphs; Word picks the face where Roboto is missing |
+| Export — Markdown (app) | `note_export.dart` → `note_markdown_file.dart` | the body plus a `# title` heading unless it already opens with one (under the front matter if there is one) — the API's rule. Pictures stay links: a `.md` has nowhere to put bytes |
 
 **The two limits §1 used to open with are gone**, and they are worth naming
 because they were the argument for this change:

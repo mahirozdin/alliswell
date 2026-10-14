@@ -427,6 +427,7 @@
   "note": {
     "untitled": "Başlıksız",
     "deleteTitle": "Not silinsin mi?",
+    "deleteBody": "Bu not tüm cihazlarınızdan silinecek.",
     "detailTitle": "Not",
     "pin": "Sabitle",
     "unpin": "Sabitlemeyi kaldır",
@@ -455,8 +456,13 @@
     "deleted": "“{title}” silindi",
     "deleteFromList": "Sil",
     "exportPdf": "PDF olarak dışa aktar",
-    "exporting": "PDF hazırlanıyor…",
-    "exportReady": "PDF hazır",
+    "exportMd": "Markdown olarak dışa aktar",
+    "exportDocx": "Word (DOCX) olarak dışa aktar",
+    "exportFormatPdf": "PDF",
+    "exportFormatMd": "Markdown",
+    "exportFormatDocx": "Word belgesi",
+    "exporting": "{format} hazırlanıyor…",
+    "exportReady": "{format} hazır",
     "exportFile": "{name} · {size} KB",
     "exportShare": "Paylaş",
     "exportShareHint": "Paylaşım menüsünü açar — Dosyalara Kaydet, Mail, AirDrop…",
@@ -464,7 +470,7 @@
     "exportSaveHint": "Bu cihazda bir klasör seç",
     "exportSaved": "Kaydedildi",
     "exportDownload": "İndir",
-    "exportDownloadHint": "PDF'i indirilenler klasörüne kaydeder",
+    "exportDownloadHint": "Dosyayı indirilenler klasörüne kaydeder",
     "exportPrint": "Yazdır",
     "exportPrintHint": "Yazdırma önizlemesini açar",
     "exportFailed": "Not dışa aktarılamadı.",
@@ -868,7 +874,9 @@
     "list": {
       "all": "Tüm görevler"
     },
-    "privateTitle": "Gizli görev"
+    "privateTitle": "Gizli görev",
+    "privateEvent": "Gizli etkinlik",
+    "allDay": "Tüm gün"
   },
   "file": {
     "add": "Dosya ekle",

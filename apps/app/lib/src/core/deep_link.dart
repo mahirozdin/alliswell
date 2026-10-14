@@ -29,6 +29,35 @@ const String kAwAddParam = 'add';
 /// Home (see the router's redirect and `homeCreateRequestProvider`).
 const String kAwQuickAddLocation = '/home?$kAwAddParam=1';
 
+/// The query parameter that asks Home to select a calendar day (v5 widget
+/// event rows): `/home?day=2026-10-20`.
+const String kAwDayParam = 'day';
+
+/// `yyyy-MM-dd` of a local calendar day — the one spelling a widget event
+/// row's `day` field and `alliswell://day/<day>` share.
+String awDayParam(DateTime day) =>
+    '${day.year.toString().padLeft(4, '0')}-'
+    '${day.month.toString().padLeft(2, '0')}-'
+    '${day.day.toString().padLeft(2, '0')}';
+
+final RegExp _dayParam = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$');
+
+/// The local day [raw] names, or null unless it is a REAL `yyyy-MM-dd` date.
+/// A URL is untrusted input: `2026-02-31` is not "March 3rd", it is nothing.
+DateTime? awParseDayParam(String? raw) {
+  if (raw == null) return null;
+  final match = _dayParam.firstMatch(raw);
+  if (match == null) return null;
+  final year = int.parse(match.group(1)!);
+  final month = int.parse(match.group(2)!);
+  final dayOfMonth = int.parse(match.group(3)!);
+  final day = DateTime(year, month, dayOfMonth);
+  if (day.year != year || day.month != month || day.day != dayOfMonth) {
+    return null;
+  }
+  return day;
+}
+
 /// Crockford base32 (ULID) — no I, L, O or U, so a typo cannot masquerade as a
 /// valid id. Anything that fails this is not routed.
 final RegExp _ulid = RegExp(r'^[0-9ABCDEFGHJKMNPQRSTVWXYZ]{26}$');
@@ -62,6 +91,13 @@ String? awRouteForUri(Uri uri) {
       return segments.length == 1 && uri.query.isEmpty
           ? kAwQuickAddLocation
           : null;
+    case 'day':
+      // v5 widget event rows: Home with that day selected. A NAVIGATION only —
+      // the date is validated and re-spelled, never passed through.
+      if (segments.length != 2 || uri.query.isNotEmpty) return null;
+      final day = awParseDayParam(segments[1]);
+      if (day == null) return null;
+      return '/home?$kAwDayParam=${awDayParam(day)}';
     case 'task':
       if (segments.length != 2 || !_ulid.hasMatch(segments[1])) return null;
       return '/tasks/${segments[1]}';

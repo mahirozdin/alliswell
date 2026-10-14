@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-12 — OPH-364 kapandı (MCP bulunabilirliği + CIMD, ADR-0047); backlog boş.
+**Last updated:** 2026-10-15 — sahip isteği: notu Markdown/Word (DOCX) dışa aktarma (ADR-0048), widget'ta takvim etkinlikleri + `alliswell://day/<gün>`, editör ⋮ menüsünde "Notu sil"; backlog boş.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-364 — MCP bağlayıcısı bulunur: adres (`https://api.alliswell.space/mcp`) landing'de kendi bölümünde (`#mcp`, EN+TR), JS'siz `/docs/mcp` sayfası (`docs/MCP.md`'den), `llms.txt`, README, SSS ve JSON-LD'de; `alliswell.space/mcp` + OAuth yolları `.htaccess`'te 308 ile API'ye; uygulamada MCP kartı AI anahtarından bağımsız (Ayarlar ▸ Entegrasyonlar); OAuth AS CIMD kabul eder (ADR-0047, `MCP_CIMD_ENABLED`); deploy smoke'u adresi ve yönlendirmeyi doğrular. |
+| Last completed           | Sahip isteği (id'siz, 2026-10-15): not ⋮ ve not listesi menüsünde PDF'in yanında Markdown (.md, API'nin başlık kuralıyla) ve Word (.docx — kendi OOXML yazıcımız, PDF ile ortak `note_print_style.dart`, ADR-0048) dışa aktarma; Android/iOS/macOS ana ekran widget'ı Home'un dış takvim etkinliklerini gösterir (snapshot v5, `kind: event`), etkinlik satırı `alliswell://day/<yyyy-MM-dd>` ile Home'u o günde açar; not editörünün ⋮ menüsünde onaylı "Notu sil". Cihazda bakılacak: iOS widget Swift'i Linux'ta derlenmedi, .docx Word'de açılmadı, mobilde MD/DOCX paylaşımı ([DEVICE-CHECKS.md](DEVICE-CHECKS.md)). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

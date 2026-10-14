@@ -149,6 +149,15 @@ dependencies:
   # six targets we ship.
   pdf: ^3.11.3
   printing: ^5.14.2
+  # Note → Word (DOCX) export (ADR-0048). Our own OOXML writer zips its parts
+  # with `archive` (already transitive through `pdf`/`image`; declared because
+  # lib/ imports it). `image` (also transitive) only re-encodes an embedded
+  # picture Word cannot show (WebP, GIF, BMP) into PNG.
+  archive: ^4.0.9
+  image: ^4.9.1
+  # Hands MD/DOCX bytes to the OS share sheet with the RIGHT MIME type —
+  # `Printing.sharePdf` can only say application/pdf.
+  share_plus: ^13.3.0
 
   # The markdown workspace (round 17, ADR-0028 — OPH-247).
   #
@@ -210,6 +219,8 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
+  # Parses the generated DOCX parts in note_docx_test.dart (already transitive).
+  xml: ^7.0.1
   drift_dev: ^2.34.0
   build_runner: ^2.15.1
 

@@ -100,7 +100,7 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   `[[wikilink]]`'ler + geri bağlantılar (bir bağlantı indeksi ister — kendi başına bir
   özellik); graf görünümü, PDF üzerine not alma, atıf/BibTeX (**reddedildi** — başka bir
   ürün); yazma hedefleri (Ulysses); editör içi AI ("devam ettir", "yeniden yaz" — Epic 20'nin
-  altyapısı hazır, ürün kararı); DOCX/ePub dışa aktarma; klasör/vault izleme (**reddedildi** —
+  altyapısı hazır, ürün kararı); ePub dışa aktarma (DOCX kapandı — ADR-0048); klasör/vault izleme (**reddedildi** —
   biz markdown'ı iyi okuyan bir görev uygulamasıyız, Obsidian değiliz); Vim/Emacs kısayolları
   ve özel CSS temaları (**reddedildi** — Rule 11, tek tasarım sistemi); göreli yollu görseller
   (`./x.png` bugün sebepli yer tutucuyla çiziliyor — OPH-247); bölünmüş görünümde satır eşlemeli

@@ -89,7 +89,7 @@ struct AWSnapshot: Codable {
   let density: String?
 
   static let empty = AWSnapshot(
-    v: 4, generatedAt: "", locale: "en",
+    v: 5, generatedAt: "", locale: "en",
     date: AWDate(weekday: "", day: "", month: ""), strings: nil, openToday: nil,
     clockFormat: nil, buckets: [], next: nil, lists: nil, views: nil, density: nil)
 
@@ -118,6 +118,22 @@ struct AWTaskRow: Codable, Identifiable {
   let priority: String
   let time: String?
   let projectColor: String?
+  // v5: a calendar event rides in the same list. Optional like every field
+  // after v1 — a v4 row has neither and decodes as the task it is.
+  let kind: String?
+  let day: String?
+
+  /// `kWidgetKindEvent` in widget_snapshot.dart.
+  var isEvent: Bool { kind == "event" }
+
+  /// Where an event row's tap goes: Home with its day selected. Nil for a
+  /// task, or for a day that is not `yyyy-MM-dd` (a URL is input).
+  var dayURL: URL? {
+    guard isEvent, let day = day,
+      day.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
+    else { return nil }
+    return URL(string: "alliswell://day/\(day)")
+  }
 }
 
 /// The lock screen's one row (OPH-336) — `WidgetNextTask` in Dart.
@@ -660,6 +676,14 @@ struct AWTaskRowView: View {
   /// its hit target is W4's, and density is not a reason to miss it.
   var compact = false
   var body: some View {
+    if row.isEvent {
+      AWEventRowView(row: row, compact: compact)
+    } else {
+      taskRow
+    }
+  }
+
+  private var taskRow: some View {
     HStack(spacing: 8) {
       // OPH-188: the circle is a BUTTON on iOS 17+. WidgetKit performs the
       // intent in the background — no app launch — and the press lands in the
@@ -699,6 +723,38 @@ struct AWTaskRowView: View {
     // OPH-188/189: the row opens ITS task, not just the app. Needs the routing
     // OPH-189 added — before that this URL produced "No route for …".
     .widgetURL(URL(string: "alliswell://task/\(row.id)"))
+  }
+}
+
+/// v5: one calendar event. No complete button — `AWWidgetCompleteIntent` is
+/// never attached here, because an event is not a task — but a calendar glyph
+/// where the circle would be, and a Link that opens Home on the event's day.
+struct AWEventRowView: View {
+  let row: AWTaskRow
+  var compact = false
+
+  private var content: some View {
+    HStack(spacing: 8) {
+      Image(systemName: "calendar")
+        .foregroundStyle(Color.secondary)
+        .imageScale(.medium)
+        .frame(width: 28, height: 28)
+      Text(row.title)
+        .font(compact ? .caption : .footnote)
+        .lineLimit(1)
+      Spacer(minLength: 4)
+      if let time = row.time {
+        Text(time).font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+      }
+    }
+  }
+
+  var body: some View {
+    if let url = row.dayURL {
+      Link(destination: url) { content }
+    } else {
+      content
+    }
   }
 }
 

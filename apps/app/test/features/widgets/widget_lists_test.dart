@@ -144,7 +144,7 @@ void main() {
         (withLists['buckets'] as List).expand((b) => b['items'] as List),
         hasLength(tasks.length),
       );
-      expect(withLists['v'], 4);
+      expect(withLists['v'], 5);
     });
 
     test('the picker offers the whole list, then the live projects', () {
@@ -275,6 +275,54 @@ void main() {
       expect(
         swift,
         contains('if #available(iOS 17.0, macOS 14.0, *) { return [] }'),
+      );
+    });
+
+    test('v5: both read an event row by the Dart spelling', () {
+      // `kind: "event"` and `day` — Dart writes them (widget_snapshot.dart),
+      // the readers must spell them the same or an event becomes a task row.
+      expect(kWidgetKindEvent, 'event');
+      expect(swift, contains('let kind: String?'));
+      expect(swift, contains('let day: String?'));
+      expect(
+        swift,
+        contains('var isEvent: Bool { kind == "$kWidgetKindEvent" }'),
+      );
+      expect(swift, contains('alliswell://day/'));
+      expect(
+        kotlin,
+        contains('const val WIDGET_KIND_EVENT = "$kWidgetKindEvent"'),
+      );
+      expect(kotlin, contains('kind = task.optString("kind")'));
+      expect(kotlin, contains('day = task.optString("day")'));
+      expect(kotlin, contains('"alliswell://day/"'));
+    });
+
+    test('v5: an event row is never wired to the complete action', () {
+      // iOS: the event view is a separate struct with no intent in it.
+      final eventView = swift.substring(
+        swift.indexOf('struct AWEventRowView'),
+        swift.indexOf('struct AWBucketView'),
+      );
+      expect(eventView, isNot(contains('AWWidgetCompleteIntent')));
+      expect(eventView, contains('Link(destination: url)'));
+      // Android: the event branch returns before the circle's fill-in, and
+      // the provider handles "openDay" before it can reach "complete".
+      final service = File(
+        '$kotlinDir/TasksWidgetService.kt',
+      ).readAsStringSync();
+      final eventBranch = service.substring(
+        service.indexOf('if (row.isEvent) {\n      // v5: an event row opens'),
+        service.indexOf('return views\n    }'),
+      );
+      expect(eventBranch, contains('"openDay"'));
+      expect(eventBranch, isNot(contains('"complete"')));
+      final provider = File(
+        '$kotlinDir/TasksWidgetProvider.kt',
+      ).readAsStringSync();
+      expect(
+        provider.indexOf('== "openDay"'),
+        lessThan(provider.indexOf('"complete" ->')),
       );
     });
 

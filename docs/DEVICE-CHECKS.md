@@ -5,6 +5,14 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Widget'ta takvim etkinlikleri (2026-10-15)
+
+- Snapshot v5 — Google Takvim bağlı hesapta bugüne bir etkinlik ve tüm gün etkinliği koy. **iOS** (systemMedium/Large) ve **Android** widget'ında etkinlik satırı: daire yok, takvim ikonu var, saat "14:00–15:00" / "Tüm gün"; görevlerle saat sırasına göre karışık. Etkinlik satırına dokun → uygulama açılıyor, Ana sayfada o gün seçili (ay ızgarası o ayda). Android'de satırın sol ucuna dokunmak hiçbir şeyi tamamlamıyor. Ayarlar › Genel › Widget › Gizli widget açıkken etkinlik başlığı "Gizli görev". Bir proje listesine ayarlı widget'ta etkinlik yok. Açık ve koyu temada.
+
+## Notu Markdown / Word olarak dışa aktarma (2026-10-15)
+
+- ADR-0048 — iOS ve Android'de bir notun ⋮ menüsü → "Word (DOCX) olarak dışa aktar" ve "Markdown olarak dışa aktar" → paylaşım sayfası doğru dosya adıyla açılıyor (.docx / .md), Dosyalar'a kaydedilebiliyor. .docx Microsoft Word'de (masaüstü ya da mobil) onarım uyarısı vermeden açılıyor; başlıklar, listeler, onay kutuları, callout, tablo ve görseller PDF'teki gibi. Web'de üçü de doğrudan indiriliyor.
+
 ## Kabuk, gezinme, erişilebilirlik (2026-10-07)
 
 - OPH-363 — telefonda (390 px) Ayarlar › Takım › Birimler'de sona kaydır → son birimin ⋮'si "+ Yeni birim"in üstünde, dokununca menü açılıyor (birim kadrosu, Webhook'lar, Herkese açık bağlantılar, Roller, Davetler'de aynı). TalkBack/VoiceOver ya da web'de ekran okuyucuyla Hızlı erişim düğmesine odaklan → odak çerçevesi yalnız 56 px'lik düğme. Çevrimdışı taslak gönderilince "İletildi — talebin aşağıda" liste o talebi gösterince kayboluyor; "Kapat" da kapatıyor. Açık ve koyu temada.

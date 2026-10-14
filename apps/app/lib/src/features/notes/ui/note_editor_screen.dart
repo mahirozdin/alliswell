@@ -28,6 +28,7 @@ import 'note_conflict_banner.dart';
 import 'note_versions_screen.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
+import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 
 /// The note editor (OPH-044, rebuilt for three modes in OPH-248).
 ///
@@ -309,27 +310,15 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
 
   Future<void> _delete() async {
     final id = _noteId;
-    final confirmed = await showDialog<bool>(
-      context: context,
-      // Round 13 #2: dialogs go to the ROOT navigator for the same
-      // reason sheets do (OPH-212) — inside a shell branch the
-      // Scaffold's own bar and FAB paint over them.
-      useRootNavigator: true,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('note.deleteTitle'.tr()),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('common.cancel'.tr()),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('common.delete'.tr()),
-          ),
-        ],
-      ),
+    // The app-bar trash and the overflow's "Delete note"
+    // share this one confirmation — destructive action in the error role.
+    final confirmed = await awConfirmDelete(
+      context,
+      title: 'note.deleteTitle'.tr(),
+      body: 'note.deleteBody'.tr(),
+      confirmKey: const Key('note-delete-confirm'),
     );
-    if (confirmed != true || !mounted) return;
+    if (!confirmed || !mounted) return;
     _debounce?.cancel();
     _dirty = false;
     if (id != null) {
@@ -416,11 +405,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
               key: const Key('note-quick-menu'),
               tooltip: 'note.actions'.tr(),
               onSelected: (value) {
-                if (value == 'export-pdf') {
+                if (noteExportMenuValues[value] case final format?) {
                   unawaited(
-                    exportNoteAsPdf(
+                    exportNote(
                       context,
                       ref,
+                      format: format,
                       title: _titleText,
                       markdown: _doc.markdown,
                       updatedAt: widget.note?.updatedAt,
@@ -438,6 +428,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   }
                   return;
                 }
+                if (value == 'delete') {
+                  unawaited(_delete());
+                  return;
+                }
                 if (_noteId case final id?) {
                   toggleQuickAccess(
                     context,
@@ -449,14 +443,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                 }
               },
               itemBuilder: (context) => [
-                PopupMenuItem(
-                  key: const Key('note-export-pdf'),
-                  value: 'export-pdf',
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.picture_as_pdf_outlined),
-                    title: Text('note.exportPdf'.tr()),
-                  ),
+                ...noteExportMenuItems(
+                  pdfKey: const Key('note-export-pdf'),
+                  mdKey: const Key('note-export-md'),
+                  docxKey: const Key('note-export-docx'),
                 ),
                 if (_noteId != null)
                   PopupMenuItem(
@@ -473,6 +463,28 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                     value: 'quick',
                     isSaved: isInQuickAccess(ref, QuickKind.note, id),
                   ),
+                // Last, behind a divider: the one destructive entry stays
+                // away from the everyday ones and always asks first.
+                if (_noteId != null) ...[
+                  const PopupMenuDivider(),
+                  PopupMenuItem(
+                    key: const Key('note-delete'),
+                    value: 'delete',
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: Icon(
+                        Icons.delete_outline,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      title: Text(
+                        'note.deleteTooltip'.tr(),
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
         ],
