@@ -233,6 +233,8 @@ const steps = [
   {
     name: 'native-ios',
     where: 'local',
+    host: 'darwin',
+    hostNote: 'build it on a Mac (docs/DEVICE-CHECKS.md)',
     cwd: 'apps/app',
     modes: ['batch'],
     heavy: true,
@@ -243,6 +245,8 @@ const steps = [
   {
     name: 'native-macos',
     where: 'local',
+    host: 'darwin',
+    hostNote: 'build it on a Mac (docs/DEVICE-CHECKS.md)',
     cwd: 'apps/app',
     modes: ['batch'],
     heavy: true,

@@ -466,6 +466,7 @@ export async function runCli(config) {
 
   const plan = [];
   const skipped = [];
+  const hostSkipped = [];
   const candidates = [...config.steps.filter((s) => s.modes.includes(mode))];
   if (mode === 'task') candidates.push(...config.targets(targets));
   for (const step of candidates) {
@@ -484,6 +485,14 @@ export async function runCli(config) {
       (step.when ? step.when(files, mode, targets) : true);
     if (!relevant) {
       skipped.push([step.name, 'nothing it checks changed']);
+      continue;
+    }
+    // A step only one OS can run (an Xcode build) is never green or red elsewhere: it is
+    // skipped with its reason, and the verdict says the change is not verified there.
+    if (step.host && step.host !== process.platform) {
+      const why = `needs ${step.host}, this host is ${process.platform}: ${step.hostNote}`;
+      skipped.push([step.name, why]);
+      hostSkipped.push(step.name);
       continue;
     }
     // A command may depend on the change (lint the changed files); settle it once, here —
@@ -588,6 +597,8 @@ export async function runCli(config) {
   }
   const verdict = failed.length ? 'FAIL' : 'PASS';
   const partial = only.length > 0 || skip.length > 0;
+  if (hostSkipped.length)
+    console.log(`\n  NOT VERIFIED on this host: ${hostSkipped.join(', ')} (see the SKIP lines).`);
   console.log(
     `\n${layer} ${verdict} in ${fmtSecs(total)}` +
       (failed.length
