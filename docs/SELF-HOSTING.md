@@ -73,6 +73,10 @@ Terminate TLS in front of the containers. Any proxy works; the two rules that
 matter are **WebSocket upgrade** (live sync uses Socket.IO over WebSocket only)
 and forwarding the client IP.
 
+Also let request bodies up to **10 MB** through to the API. The import wizard
+sends a Todoist or TickTick export in one request, and nginx's default limit
+(1 MB) answers a larger backup with `413`. Caddy has no limit by default.
+
 <details>
 <summary>Caddy (simplest — automatic certificates)</summary>
 
@@ -95,6 +99,7 @@ Caddy proxies WebSockets and sets `X-Forwarded-*` on its own.
 ```nginx
 server {
     server_name api.alliswell.example;
+    client_max_body_size 10m;   # imports from Todoist/TickTick send up to 10 MB
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;

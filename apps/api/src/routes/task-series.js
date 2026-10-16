@@ -1,15 +1,14 @@
-import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
 import { recordSyncWrite } from '../db/sync.js';
 import {
-  adoptTaskIntoSeries,
+  assertMaterializable as assertSeriesMaterializable,
+  createTaskSeries,
   listLiveSeries,
-  materializeSeries,
   normalizeTemplate,
   parseJsonColumn,
-  plannedDays,
   rebuildFuture,
+  seriesError,
   softDeleteSeries,
   validateSeriesInput,
 } from '../db/task-series.js';
@@ -73,19 +72,8 @@ export function serializeTaskSeries(row) {
 export default async function taskSeriesRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
-  const CODE_STATUS = {
-    TASK_SERIES_RULE_INVALID: 'badRequest',
-    TASK_SERIES_TEMPLATE_INVALID: 'badRequest',
-    TASK_SERIES_TOO_DENSE: 'unprocessableEntity',
-  };
-
-  const CODE_MESSAGE = {
-    TASK_SERIES_TOO_DENSE: 'This repeat rule would create too many tasks',
-  };
-
   function fail(code, message) {
-    const status = CODE_STATUS[code] ?? 'badRequest';
-    return coded(app.httpErrors[status](message ?? CODE_MESSAGE[code] ?? 'Invalid series'), code);
+    return seriesError(app, code, message);
   }
 
   /** Loads a live series and proves the caller is in its workspace. */
@@ -111,13 +99,8 @@ export default async function taskSeriesRoutes(app) {
     return { rule, template: normalizeTemplate(template), timezone, anchorAt: new Date(anchorAt) };
   }
 
-  /** Refuses an impossible rule BEFORE any row is written (ADR-0020 §4). */
   function assertMaterializable(series, now) {
-    try {
-      return plannedDays(series, now);
-    } catch (err) {
-      throw fail(err.code ?? 'TASK_SERIES_RULE_INVALID', err.message);
-    }
+    return assertSeriesMaterializable(app, series, now);
   }
 
   // ── Create ────────────────────────────────────────────────────────────────
@@ -168,46 +151,14 @@ export default async function taskSeriesRoutes(app) {
         timezone: request.body.timezone ?? (await timezoneOf(request.user.id)),
       });
 
-      const now = new Date();
-      const id = newId();
-      const series = {
-        id,
-        workspace_id: workspaceId,
+      const { stored, created, adoptedTaskId } = await createTaskSeries(app, {
+        workspaceId,
+        userId: request.user.id,
         rule: input.rule,
         template: input.template,
         timezone: input.timezone,
-        anchor_at: input.anchorAt,
-        created_by: request.user.id,
-      };
-      assertMaterializable(series, now);
-
-      let created = 0;
-      let adoptedTaskId = null;
-      let stored;
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'task_series',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('task_series').insert({
-          ...series,
-          rule: JSON.stringify(input.rule),
-          template: JSON.stringify(input.template),
-          revision,
-        });
-        stored = await trx('task_series').where({ id }).first();
-
-        if (request.body.fromTaskId) {
-          adoptedTaskId = await adoptTaskIntoSeries(trx, {
-            workspaceId,
-            series: stored,
-            taskId: request.body.fromTaskId,
-            now,
-          });
-        }
-        ({ created } = await materializeSeries(trx, { workspaceId, series: stored, now }));
+        anchorAt: input.anchorAt,
+        fromTaskId: request.body.fromTaskId ?? null,
       });
 
       return reply.code(201).send({

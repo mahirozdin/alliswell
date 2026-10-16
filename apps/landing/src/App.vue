@@ -13,6 +13,7 @@ import MobileShowcase from './components/MobileShowcase.vue';
 import PillarGrid from './components/PillarGrid.vue';
 import RecurrenceProof from './components/RecurrenceProof.vue';
 import SelfHostSection from './components/SelfHostSection.vue';
+import SwitchSection from './components/SwitchSection.vue';
 import TheFooter from './components/TheFooter.vue';
 import TheHeader from './components/TheHeader.vue';
 import home from './content.js';
@@ -64,6 +65,7 @@ const featureList = computed(() => props.content.features.filter((f) => f.id !==
     <AiSection :ai="content.ai" />
     <McpSection :mcp="content.mcp" />
     <ApiSection :api="content.api" />
+    <SwitchSection :block="content.switchFrom" />
     <ComparisonTable :table="content.comparison" />
     <SelfHostSection
       :block="content.selfHost"

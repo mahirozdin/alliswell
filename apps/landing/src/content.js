@@ -346,13 +346,42 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
   points: [
     'Every endpoint documented with its parameters, an example request and an example response — generated from the server’s own schemas, so it cannot drift',
     'A key is bound to one workspace, and can never delete your account, touch your AI provider keys, mint more keys or change your password',
-    'Bulk import and export for notes and tasks, so moving in or out is a script rather than a support ticket',
+    'Bulk import and export for notes and tasks, plus Todoist and TickTick exports read as they are, so moving in or out is a script rather than a support ticket',
   ],
   link: { label: 'Read the API documentation', href: '/docs/api' },
   secondary: {
     label: 'Postman collection',
     href: '/downloads/alliswell.postman_collection.json',
   },
+};
+
+/** OPH-371 — moving in from another app, said plainly (ADR-0052). */
+export const switchFrom = {
+  eyebrow: 'Moving in',
+  title: 'Switch from Todoist or TickTick',
+  lede: 'Bring your tasks with you. Export from the app you are leaving, choose the file in Settings › Data › Import, and look at what will come in before anything is written.',
+  steps: [
+    {
+      title: 'Export',
+      body: 'Todoist: Settings › Backups, or a project’s Export as CSV. TickTick: Settings › Backup & Import › Generate backup, on the web.',
+    },
+    {
+      title: 'Preview',
+      body: 'Tasks, repeating tasks, sub-items, projects and tags are counted, and anything that cannot come over exactly is listed with the row it came from.',
+    },
+    {
+      title: 'Import',
+      body: 'Run the same file again later and nothing is duplicated. A task you deleted stays deleted.',
+    },
+  ],
+  mapping: [
+    'Projects and lists become projects; labels, sections and board columns become tags',
+    'Sub-tasks become checklist items; priorities p1–p4 become high, medium, low and none',
+    'Due dates keep their time and time zone; repeats become AllisWell repeats when the rule is exact, and stay in the description when it is not',
+    'Imported tasks never ring as urgent alarms; completed tasks are optional',
+  ],
+  note: 'Apple Reminders has no export file, so there is no importer for it.',
+  link: { label: 'The same import as one API call', href: '/docs/api' },
 };
 
 export const download = {
@@ -603,6 +632,8 @@ export default {
   mcp: { ...mcp, copyLabel: 'Copy', copiedLabel: 'Copied' },
 
   api: { ...api, terminalTitle: 'your cron job', copyLabel: 'Copy', copiedLabel: 'Copied' },
+
+  switchFrom,
 
   comparison: comparisonTable,
 

@@ -455,7 +455,7 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
     points: [
       'Her uç nokta parametreleri, örnek istek ve örnek yanıtıyla belgelenmiş; sunucunun kendi şemalarından üretildiği için sapamaz',
       'Bir anahtar tek bir çalışma alanına bağlıdır; hesabınızı asla silemez, yapay zekâ sağlayıcı anahtarlarınıza dokunamaz, yeni anahtar üretemez, şifrenizi değiştiremez',
-      'Notlar ve görevler için toplu içe ve dışa aktarma; taşınmak bir destek talebi değil, bir betiktir',
+      'Notlar ve görevler için toplu içe ve dışa aktarma, üstelik Todoist ve TickTick dışa aktarımları olduğu gibi okunur; taşınmak bir destek talebi değil, bir betiktir',
     ],
     link: { label: 'API belgelerini okuyun', href: '/docs/api' },
     secondary: {
@@ -465,6 +465,43 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
     terminalTitle: 'cron işiniz',
     copyLabel: 'Kopyala',
     copiedLabel: 'Kopyalandı',
+  },
+
+  // OPH-371 — başka bir uygulamadan taşınmak (ADR-0052).
+  switchFrom: {
+    eyebrow: 'Taşınmak',
+    title: 'Todoist ya da TickTick’ten geçin',
+    lede:
+      'Görevlerinizi yanınızda getirin. Bıraktığınız uygulamadan dışa aktarın, dosyayı ' +
+      'Ayarlar › Veri › İçe aktar’da seçin ve hiçbir şey yazılmadan önce neyin geleceğine bakın.',
+    steps: [
+      {
+        title: 'Dışa aktarın',
+        body:
+          'Todoist: Ayarlar › Yedekler ya da bir projenin CSV olarak dışa aktarımı. TickTick: ' +
+          'web’de Ayarlar › Yedekleme ve İçe Aktarma › Yedek oluştur.',
+      },
+      {
+        title: 'Önizleyin',
+        body:
+          'Görevler, tekrarlayan görevler, alt maddeler, projeler ve etiketler sayılır; tam ' +
+          'taşınamayan her şey geldiği satırla birlikte listelenir.',
+      },
+      {
+        title: 'İçe aktarın',
+        body:
+          'Aynı dosyayı sonra yeniden içe aktarsanız da hiçbir şey çoğalmaz. Sildiğiniz görev ' +
+          'silinmiş kalır.',
+      },
+    ],
+    mapping: [
+      'Projeler ve listeler proje olur; etiketler, bölümler ve pano sütunları etiket olur',
+      'Alt görevler kontrol listesi maddesi olur; p1–p4 öncelikleri yüksek, orta, düşük ve yok olur',
+      'Bitiş tarihleri saatini ve saat dilimini korur; kural birebir karşılanıyorsa tekrarlar AllisWell tekrarına dönüşür, karşılanmıyorsa açıklamada kalır',
+      'İçe aktarılan görevler asla acil alarm olarak çalmaz; tamamlanmış görevler isteğe bağlıdır',
+    ],
+    note: 'Apple Anımsatıcılar’ın dışa aktarma dosyası yok, bu yüzden onun için içe aktarıcı yok.',
+    link: { label: 'Aynı içe aktarma tek bir API çağrısıyla', href: '/docs/api' },
   },
 
   comparison: {

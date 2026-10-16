@@ -149,6 +149,9 @@ Deliberate limits, so nothing here surprises you:
   are made in the app on the device ([ADR-0048](adr/0048-docx-export-own-ooxml-writer.md)),
   and an assistant reads the note's markdown with `get_note` instead.
 - Colours and icons are not settable by the AI: those are yours to pick.
+- **Importing from Todoist or TickTick stays in the app and the API**
+  ([ADR-0052](adr/0052-importing-from-other-apps.md)): an export file is a file,
+  and the assistant already has `create_task` for one thing at a time.
 
 ## Self-hosting notes
 

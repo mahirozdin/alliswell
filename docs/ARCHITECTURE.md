@@ -165,6 +165,11 @@ No screen or route consults it yet.
   Capture is one function called from the note domain layer and, for the offline path, from the
   sync engine's own `afterCreate`/`afterUpdate` seam; the head coalesces inside a 10-minute
   window and identical bodies do not stack. A daily sweep applies the retention tiers.
+- **Imports from other apps** (OPH-371, ADR-0052): `src/lib/importers/` are pure parsers
+  (CSV records, dates, recurrences, Todoist, TickTick → one normalized plan), and
+  `src/db/app-import.js` writes the plan through the domain layer. `import_ledger` is
+  server-only (never synced): `UNIQUE(workspace_id, source, external_key)` is what makes a
+  re-import skip instead of duplicating.
 - Migrations: knex, append-only, ESM `up`/`down`. Full table list: the migrations themselves (`apps/api/migrations/`).
 
 ## 5. Sync engine (live end to end)

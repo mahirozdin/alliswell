@@ -86,6 +86,13 @@ const UNIQUE_INDEXES = {
   // OPH-264: one secret is one row, forever — a revoked key's digest keeps
   // occupying the tuple so the same secret can never be re-registered.
   api_keys: [{ name: 'api_keys.uq_api_keys_hash', cols: ['key_hash'] }],
+  // OPH-371: re-importing the same export must not duplicate (ADR-0052).
+  import_ledger: [
+    {
+      name: 'import_ledger.uq_import_ledger_key',
+      cols: ['workspace_id', 'source', 'external_key'],
+    },
+  ],
 };
 
 const OPS = {
@@ -154,6 +161,8 @@ export function fakeDb({
     // unit-level login a 500 — which is how this line got written.
     user_totp: [],
     user_totp_recovery_codes: [],
+    // OPH-371 — the import ledger (ADR-0052).
+    import_ledger: [],
   };
   // Extension-owned tables (the EE-002 seam tests, future overlay suites):
   // the fixed list above stays the contract for core code — an unknown-table

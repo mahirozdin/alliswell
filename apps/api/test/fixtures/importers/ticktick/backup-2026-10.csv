@@ -1,0 +1,20 @@
+﻿"Date: 2026-10-16+0000"
+"Version: 7.1"
+"Status: 
+0 Normal
+1 Completed
+2 Archived"
+"Folder Name","List Name","Title","Kind","Tags","Content","Is Check list","Start Date","Due Date","Reminder","Repeat","Priority","Status","Created Time","Completed Time","Order","Timezone","Is All Day","Is Floating","Column Name","Column Order","View Mode","taskId","parentId"
+"","Inbox","Alt görev önce gelir","TEXT","","alt açıklama","N","","","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","t-child","t-parent"
+"İş","Proje Alpha","Rapor yaz","TEXT","iş, acil","Raporun taslağı","N","2030-11-02T07:00:00+0000","2030-11-02T09:00:00+0000","-PT15M","","5","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","Yapılacak","","list","t-parent",""
+"Ev","Alışveriş","Market","CHECKLIST","","Not satırı▫Süt▪Ekmek▫Yumurta","Y","2023-03-28T22:00:00+0000","2023-03-28T22:00:00+0000","","","3","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Berlin","true","false","Not Sectioned","","list","t-check",""
+"","Notlar","Fikir defteri","NOTE","fikir","# Başlık
+metin","N","","","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","t-note",""
+"Ev","Alışveriş","Eski görev","TEXT","","","N","","2026-09-30T10:00:00+0000","","","1","1","2026-10-01T08:00:00+0000","2026-10-01T10:00:00+0000","-1099511627776","Europe/Istanbul","false","false","","","list","t-done",""
+"İş","Alışveriş","Arşivlenmiş","TEXT","","","N","","","","","0","2","2026-10-01T08:00:00+0000","2026-09-01T10:00:00+0000","-1099511627776","Europe/Istanbul","false","false","","","list","t-archived",""
+"İş","Proje Alpha","Haftalık toplantı","TEXT","","","N","","2030-11-05T07:00:00+0000","TRIGGER:-PT1H","RRULE:FREQ=WEEKLY;INTERVAL=1;BYDAY=TU","1","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","t-weekly",""
+"İş","Proje Alpha","Ay sonu iş günü","TEXT","","","N","","2030-11-29T14:00:00+0000","","RRULE:FREQ=MONTHLY;BYSETPOS=-1;BYDAY=MO,TU,WE,TH,FR","0","0","2026-10-01T08:00:00+0000","","-1099511627776","America/New_York","false","false","","","list","t-setpos",""
+"","Inbox","Yüzen saat","TEXT","","","N","","2030-11-05 10:00:00","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","America/New_York","false","true","","","list","t-float",""
+"","Inbox","Saat dilimi yok","TEXT","","","N","","2030-11-06T00:00:00+0000","PT0S","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","","","false","","","list","t-notz",""
+"","Inbox","Çok uzun başlık ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ğüşıöçİ ","TEXT","","","N","","","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","t-long",""
+"","Inbox","Yetim alt görev","TEXT","","","N","","","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","t-orphan","t-missing"

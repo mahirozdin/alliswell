@@ -9,6 +9,11 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Import from Todoist or TickTick: Settings › Data › Import.** Choose a Todoist backup or
+  project CSV, or a TickTick backup; the wizard shows what will come in (tasks, repeats,
+  sub-items as checklist items, projects, tags, and anything it could not carry over exactly)
+  before writing anything. Importing the same file again creates no duplicates. Also one API
+  call (`POST /workspaces/:id/import/apps`).
 - **Windows and Linux desktop apps on every release.** A Windows zip and a Linux tar.gz are
   attached to each GitHub release; download links are in the README and on alliswell.space.
 - **Apple Calendar on iPhone and Mac: moving or resizing a task's event now reschedules the

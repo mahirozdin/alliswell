@@ -79,6 +79,7 @@ import 'features/ee/ui/tickets_home.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
+import 'features/import/ui/import_wizard_screen.dart';
 import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
@@ -742,6 +743,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings/share-log',
         builder: (context, state) => _contentPage(const ShareLogScreen()),
+      ),
+      // OPH-371: moving in from Todoist or TickTick (DESIGN §37).
+      GoRoute(
+        path: '/settings/import',
+        builder: (context, state) => _contentPage(const ImportWizardScreen()),
       ),
       // OPH-179: how insistent alarms are — one destination (DESIGN §18 N1).
       GoRoute(

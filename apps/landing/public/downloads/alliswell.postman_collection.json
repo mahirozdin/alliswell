@@ -2066,6 +2066,47 @@
       ]
     },
     {
+      "name": "Import & export",
+      "item": [
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/import/apps",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/import/apps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "import",
+                "apps"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"todoist\",\n  \"files\": [\n    {\n      \"name\": \"Pay the electricity bill\",\n      \"content\": \"string\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Notes",
       "item": [
         {

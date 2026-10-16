@@ -26,7 +26,7 @@ AllisWell puts it on the 28th, and shows you the next five dates before you save
 [**🐳 Self-host in one command**](#-self-hosting-your-server-your-data) &nbsp;·&nbsp;
 [**🧠 Add to Claude or ChatGPT (MCP)**](#-use-it-from-claude-or-chatgpt-mcp)
 
-<sub>One Flutter codebase for iOS, Android, the web, macOS, Windows and Linux · [how it compares, honestly](#-why-alliswell--and-where-it-isnt-better)</sub>
+<sub>One Flutter codebase for iOS, Android, the web, macOS, Windows and Linux · [moving from Todoist or TickTick](#-switch-from-todoist-or-ticktick) · [how it compares, honestly](#-why-alliswell--and-where-it-isnt-better)</sub>
 
 [![CI](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml/badge.svg)](https://github.com/mahirozdin/alliswell/actions/workflows/ci.yml)
 [![Stars](https://img.shields.io/github/stars/mahirozdin/alliswell?style=flat&logo=github&color=2563EB)](https://github.com/mahirozdin/alliswell/stargazers)
@@ -170,6 +170,36 @@ rows** (so they show up in search, the calendar and the widget), and an
   <img src="screenshots/ios/07-task-detail-repeat.png" width="31%" alt="Task detail: Urgent alarm on, Repeat on with the sentence Every month on day 31, and a due date of 30 September — the clamp in action">
   &nbsp;
   <img src="screenshots/ios/08-repeat-dialog.png" width="31%" alt="The Repeat dialog with a Next 5 preview listing the exact upcoming dates">
+</p>
+
+## 📦 Switch from Todoist or TickTick
+
+Bring your tasks with you: **Settings › Data › Import**.
+
+1. **Export** from the app you are leaving. Todoist: Settings › Backups (a ZIP), or a
+   project's menu › Export as CSV. TickTick: on the web, Settings › Backup & Import ›
+   Generate backup.
+2. **Choose the file.** The wizard shows what will come in before anything is written:
+   how many tasks, repeating tasks, sub-items, projects and tags, and every item it could
+   not carry over exactly.
+3. **Import.** Run the same file again later and nothing is duplicated: what is already
+   here is skipped, and a task you deleted stays deleted.
+
+What maps to what: projects and lists → projects, labels, sections and columns → tags,
+sub-tasks → checklist items, priorities p1–p4 → high / medium / low / none, due dates with
+their time and time zone, repeats → AllisWell repeats where the rule is exact (anything
+else stays in the task's description with a note), comments → the description. Completed
+tasks are optional (TickTick; Todoist's exports leave them out). Imported tasks never ring
+as urgent alarms. The same import is one API call
+([docs/API.md](docs/API.md#moving-in-from-todoist-or-ticktick)).
+
+Apple Reminders has no export file, so there is no importer for it.
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/import-preview-dark.png">
+    <img src="docs/screenshots/import-preview-light.png" width="40%" alt="The import wizard's preview step: counts of tasks, repeating tasks, sub-items as checklist items, notes, new and existing projects, tags and already imported items, and the priority mapping P1 to P4">
+  </picture>
 </p>
 
 ## 📸 What it looks like
@@ -316,7 +346,7 @@ certificate and no backups to think about.
 
 **Already self-hosting?** Then Vikunja, Super Productivity, Tasks.org and Nextcloud
 Tasks are the real alternatives, and some of them beat us — sharing, CalDAV, a public
-demo, importers, years of maturity. The side-by-side, checked against their own docs,
+demo, more importers (we read Todoist and TickTick), years of maturity. The side-by-side, checked against their own docs,
 is in [docs/COMPARISON.md §7](docs/COMPARISON.md#7-self-hosted-alternatives-checked-2026-10).
 
 **The full analysis** — every claim above, the things they do better, and the

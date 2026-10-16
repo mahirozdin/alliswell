@@ -605,7 +605,7 @@ Deliberately out of scope for v1 — schema-ready or designed, not built:
   a single global search screen (per-screen search shipped in Phase 9);
   search v2 (FTS5/bm25, server-side fold columns); OG link previews on task
   descriptions; tag merge/usage counts; desktop drag-to-move into folders.
-- Attachments v2 (multipart >5 GB, thumbnails, quotas, offline binary cache — v1 shipped in Phase 8); import from Todoist / TickTick / Apple Reminders; ICS export.
+- Attachments v2 (multipart >5 GB, thumbnails, quotas, offline binary cache — v1 shipped in Phase 8); ICS export (import from Todoist / TickTick shipped in OPH-371; Apple Reminders has no export file).
 - CalDAV connector for iCloud ([design](docs/CALDAV.md)); the inbound half of the Apple mirror.
 - Metrics endpoint (Prometheus), audit-log UI, admin panel.
 - E2E tests (Patrol / integration_test), web httpOnly refresh-cookie hardening.

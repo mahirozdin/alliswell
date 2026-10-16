@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-370: her sürüme Windows zip + Linux tar.gz masaüstü indirmeleri (ADR-0051); README/landing/SELF-HOSTING bağlantıları.
+**Last updated:** 2026-10-16 — OPH-371: Todoist/TickTick içe aktarma sihirbazı (Ayarlar › Veri), sunucu ayrıştırır, `import_ledger` (ADR-0052); README/landing "Switch from" bölümü.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-370: `release.yml`'e `desktop` (ubuntu-24.04 + windows-2025) ve `desktop-attach` işleri — etiketten sürümlü, imzasız `alliswell-windows-x64.zip` / `alliswell-linux-x64.tar.gz` her GitHub sürümüne; deploy zincirinin dışında (ADR-0051). Windows bildirim ayarı, masaüstünde Google düğmesi gizli, home_widget yalnız android/iOS, kabuk markası. Windows bu makinede derlenmedi; ilk derlemesi sonraki etiket. |
+| Last completed           | OPH-371: `POST /workspaces/:id/import/apps` (dryRun = önizleme, `maxItems` parti, `remaining`) — `lib/importers/` saf ayrıştırıcılar, `db/app-import.js` domain yazımı, `import_ledger` tekrar içe aktarmayı atlar ve silineni geri getirmez (ADR-0052). Uygulamada Ayarlar › Veri › İçe aktar sihirbazı (DESIGN §37); MCP aracı yok (yazılı gerekçe). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -72,6 +72,14 @@
     Sonra DEVICE-CHECKS "Masaüstü indirmeleri". İsteğe bağlı: Authenticode sertifikası (ya da Azure
     Trusted Signing) + Windows işine signtool adımı → SmartScreen uyarısı kalkar.
 
+15. **OPH-371 gerçek dışa aktarımlar (K4)** — gerçek bir Todoist yedeği (ZIP, ücretli plan) ya da
+    proje CSV'si ve gerçek bir TickTick yedeği ile Ayarlar › Veri › İçe aktar: önizleme sayıları
+    kaynakla tutuyor mu, tekrarlar doğru mu, ikinci içe aktarma 0 oluşturuyor mu. "Açıklamada
+    duruyor" uyarısına düşen Todoist DATE metinlerini ayrıştırıcıya eklemek için ilet.
+    Google Takvim bağlıysa ~20 görevlik denemeden sonra tarihsiz görevlerin içe aktarma gününe
+    düşmesi büyük içe aktarmada kabul edilebilir mi — değilse ayrı karar. DEVICE-CHECKS
+    "İçe aktarma sihirbazı".
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
@@ -104,6 +112,10 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 - **Masaüstü indirmeleri (2026-10-16, ADR-0051):** yalnız Windows zip + Linux tar.gz, imzasız;
   macOS yok, kurulum paketi/AppImage/deb yok. Dosya adları sürümsüz (`latest/download` bağlantısı
   kalıcı), sürüm klasör adında ve ikilide.
+- **İçe aktarma (2026-10-16, ADR-0052):** yalnız Todoist + TickTick (Apple Anımsatıcılar'ın dosyası
+  yok, vaat edilmez); sunucu ayrıştırır; alt görev → kontrol listesi, bölüm/sütun → etiket, p1 →
+  yüksek; içe aktarılan görev asla acil alarm değil; tamamlananlar isteğe bağlı; tekrar içe aktarma
+  atlar, güncellemez, silineni geri getirmez; MCP'ye araç yok.
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

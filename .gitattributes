@@ -7,3 +7,5 @@
 *.jar binary
 *.ttf binary
 *.otf binary
+# OPH-371: exports are kept byte for byte (CRLF, BOM) — the parser is tested on them
+apps/api/test/fixtures/importers/** -text

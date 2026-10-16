@@ -77,11 +77,15 @@ export async function openTaskCounts(app, projectIds) {
   return counts;
 }
 
-export async function createProject(app, { workspaceId, userId, body, toRowPatch }) {
+/**
+ * `trx` (optional): run inside the caller's transaction — the Todoist/TickTick
+ * importer (OPH-371) creates a project together with its ledger row.
+ */
+export async function createProject(app, { workspaceId, userId, body, toRowPatch, trx = null }) {
   if (body.readmeNoteId) await assertReadmeNoteUsable(app, body.readmeNoteId, workspaceId);
 
   const id = newId();
-  await app.db.transaction(async (trx) => {
+  const work = async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId,
       entityType: 'project',
@@ -96,7 +100,8 @@ export async function createProject(app, { workspaceId, userId, body, toRowPatch
       updated_by: userId,
       revision,
     });
-  });
+  };
+  await (trx ? work(trx) : app.db.transaction(work));
   return id;
 }
 

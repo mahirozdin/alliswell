@@ -122,7 +122,7 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   inceltmesinden muafiyet mekanizması hazır, UI ürün kararı bekler); not etiketlerinin not
   push protokolüne girmesi (v1 bilinçli sınır: etiket yalnız REST `PUT /notes/:id/tags` ile
   yazılır, pull okur — OPH-261).
-- Import from Todoist/TickTick/Apple Reminders; ICS export.
+- ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), F-Droid/TestFlight packaging.
 - **İstemci yüklemelerinin taranması** (2026-09-24 incelemesi) — sunucunun kendi aldığı

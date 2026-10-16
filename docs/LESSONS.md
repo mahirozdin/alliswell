@@ -39,15 +39,16 @@
 - **KARAR** Hata kodu ailesi: 400 biçim · 404 sana görünmez (403 değil) · 409 tekillik · 422 iş kuralı (gövde şemaya uyar, kural reddeder); her hata stabil `code` taşır.
 - **KARAR** Periyodik iş `setInterval`+`unref()`+`env!=='test'` ev kalıbıyla (`series-gc.js`), BullMQ repeatable değil — self-host Redis'siz de koşmalı; çok replikada dedupe + idempotens.
 - **DERS** Kuralı route'a yazma, ikinci yol atlar (MCP'nin etiket-yalnız yazımı arşiv kuralını atladı) → kural domain fonksiyonunda (`db/tasks.js`), REST ve MCP onu çağırır.
-- **DERS** Fastify Ajv bilinmeyen gövde anahtarını reddetmez SİLER → yalnız bilinmeyen alanlı PATCH sessiz 200 alır: boş patch'i kodla reddet (`*_EMPTY_PATCH`); hata serileştiricisi yalnız `{statusCode,code,error,message}` yayar.
-- **DERS** Aynı milisaniyedeki düz `ulid()` sıralanmaz → `orderBy('id')` sayfası iki kaydı ters verir (aralıklı flake) → `ids.js` `monotonicFactory`.
+- **DERS** Fastify Ajv bilinmeyen gövde anahtarını reddetmez SİLER → yalnız bilinmeyen alanlı PATCH sessiz 200: boş patch'i kodla reddet (`*_EMPTY_PATCH`); hata gövdesi yalnız `{statusCode,code,error,message}`.
+- **DERS** Aynı milisaniyedeki düz `ulid()` sıralanmaz → `orderBy('id')` sayfası ters verir (flake) → `ids.js` `monotonicFactory`.
 - **DERS** Yalnız yapılandırılınca kaydedilen rota OpenAPI üretecine görünmez → üreteç özelliği tek kullanımlık kimlikle açar; "yapılandırılmamışken 404" testi rota yokken de geçer → koşulsuz kayıtla kırmızıyı gör.
-- **DERS** `fakedb.js` MySQL değil: rollback, aggregate/subquery yok; benzersizlik `===` (datetime'lı unique tutmadı), `Date`'i referansla sıraladı → bu davranışlar entegrasyonla kanıtlanır; tuhaflıkta önce fakedb'den şüphelen.
+- **DERS** `fakedb.js` MySQL değil: rollback, aggregate/subquery yok, benzersizlik/sıralama bir kez referansla karşılaştırdı → bu davranışlar entegrasyonla kanıtlanır; tuhaflıkta önce fakedb'den şüphelen.
 - **DERS** MySQL NULL'lu UNIQUE tekilliği zorlamaz → kök seviye (parent NULL) ad tekilliği API guard'ında; `deleted_at`'li aktif tekillik VIRTUAL `active_flag` + unique. ENUM tanım sırasıyla sıralanır.
-- **DERS** Toplu yazımda `ER_LOCK_DEADLOCK` kalem kaybettirir → `transactionWithRetry` (`src/db/tx.js`, 1205 denenmez); entegrasyon dosyaları tek MySQL'e sıralı koşar (`fileParallelism` kapalı).
-- **DERS** Eşzamanlılık ardışık testle/SQLite'la kanıtlanmaz → gerçek MySQL'de paralel test; "bir kez" etkisi (bildirim, süpürge) koşullu tek `UPDATE … AND status=…` + `affectedRows===1` ile.
-- **DERS** BullMQ varsayılan `bull:` keyspace'i: aynı Redis'i paylaşan iki kurulum birbirinin işini tüketir, iş sessizce kaybolur → her dağıtıma ayrı `REDIS_KEY_PREFIX`.
+- **DERS** Toplu yazımda `ER_LOCK_DEADLOCK` kalem kaybettirir → `transactionWithRetry` (`db/tx.js`, 1205 denenmez); entegrasyon dosyaları sıralı koşar (`fileParallelism` kapalı).
+- **DERS** Eşzamanlılık ardışık testle kanıtlanmaz → gerçek MySQL'de paralel test; "bir kez" etkisi koşullu tek `UPDATE … AND status=…` + `affectedRows===1` ile.
+- **DERS** BullMQ varsayılan `bull:` keyspace'i: Redis'i paylaşan iki kurulum birbirinin işini sessizce tüketir → her dağıtıma ayrı `REDIS_KEY_PREFIX`.
 - **DERS** Kod sabiti ile migration ENUM'u ikizdir, REST şemasına elle yazılan enum kayar → şemayı sabitten türet, pin testi; ENUM'u ALTER'la genişlet, canlıda daraltma. Tekillik/zorunluluk şemada (importer modeli atlar).
+- **DERS** Todoist CSV'sinde id yok → anahtar tarihsiz parmak izi; TickTick ön sözü çok satırlı → kayıt oku, satır değil.
 - **NOT** Ölü kolonlar yazılmaz: `tasks.repeat_rule` (tekrar `task_series`'te), `calendar_mirror_enabled` (bastırma `calendar_mirror_suppressed_at`), `notes.content_delta` (okunur kaçış ambarı).
 - **NOT** Tek kopya zemin, ikincisini yazma: `queue/runner.js`, `plugins/storage.js`, `lib/crypto.js`, `lib/tokens.js`, `lib/time.js`, `calendar-sync.js` süpürge idiomu, `db/sync.js` `publishEntityChanged` (commit sonrası).
 

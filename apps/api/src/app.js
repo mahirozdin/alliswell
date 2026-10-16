@@ -43,6 +43,7 @@ import folderRoutes from './routes/folders.js';
 import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
 import importExportRoutes from './routes/import-export.js';
+import importAppsRoutes from './routes/import-apps.js';
 import noteVersionRoutes from './routes/note-versions.js';
 import { corsOriginAllowed, loadEeOverlay } from './lib/ee.js';
 import entitlementsPlugin from './plugins/entitlements.js';
@@ -225,6 +226,8 @@ export async function buildApp({
   await app.register(taskSeriesRoutes, { prefix: '/api/v1' });
   // OPH-266: the bulk surface an API key exists for (issue #3).
   await app.register(importExportRoutes, { prefix: '/api/v1' });
+  // OPH-371: moving in from Todoist or TickTick (ADR-0052).
+  await app.register(importAppsRoutes, { prefix: '/api/v1' });
   // ALWAYS registered (EE-003): /ee/status is capability discovery, and a CE
   // instance answering 404 here would be indistinguishable from an old server.
   await app.register(eeRoutes, { prefix: '/api/v1' });

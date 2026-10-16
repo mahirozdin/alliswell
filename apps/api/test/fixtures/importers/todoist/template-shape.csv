@@ -1,0 +1,8 @@
+TYPE,CONTENT,DESCRIPTION,PRIORITY,INDENT,AUTHOR,RESPONSIBLE,DATE,DATE_LANG,TIMEZONE,DURATION,DURATION_UNIT,DEADLINE,DEADLINE_LANG
+meta,view_style=list,,,,,,,,,,,,
+,,,,,,,,,,,,,
+task,Welcome to your project,,4,1,,,today at 11:00,en,Europe/London,,,,
+note,Here is a comment,,,,,,,,,,,,
+section,Getting started,,,,,,,,,,,,
+task,Recurring check-in,,1,1,,,every month @ 13:00,en,,,,,
+task,Subtask example,,4,2,,,,,,,,,

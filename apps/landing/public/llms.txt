@@ -14,6 +14,13 @@
 - Linux (64-bit tar.gz): https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-linux-x64.tar.gz
 - macOS: build from source.
 
+## Moving from another app
+
+- Todoist and TickTick: Settings › Data › Import. Upload a Todoist backup ZIP or project CSV,
+  or a TickTick backup CSV; a preview shows what will come in; re-importing creates no
+  duplicates. API: POST /api/v1/workspaces/{id}/import/apps. Apple Reminders has no export
+  file, so it cannot be imported.
+
 ## MCP connector (Claude, ChatGPT, any MCP client)
 
 - Connector URL for alliswell.space accounts: https://api.alliswell.space/mcp

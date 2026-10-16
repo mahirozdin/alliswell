@@ -220,6 +220,54 @@ curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/import/tasks" \
 Your devices converge on their own afterwards — imported rows are ordinary
 rows, so the usual sync brings them down with no import-aware client code.
 
+### Moving in from Todoist or TickTick
+
+The app's import wizard (Settings › Data › Import) is this one call, and a key
+can make it too. Send the export **as text**, one entry per CSV file; the
+server reads it ([ADR-0052](adr/0052-importing-from-other-apps.md)). A Todoist
+backup is a ZIP: unzip it first and send each CSV as its own file (the file
+name is the project name; `Inbox` means no project).
+
+```bash
+jq -n --rawfile csv "TickTick-backup.csv" \
+  '{source: "ticktick", dryRun: true, files: [{name: "TickTick-backup.csv", content: $csv}]}' |
+curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/import/apps" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' --data-binary @-
+```
+
+`dryRun: true` writes nothing and returns the plan: counts (`tasks`, `series`,
+`checklistItems`, `notes`, `projects`, `tags`, `completed`, `alreadyImported`),
+the priority mapping, and `warnings` grouped by code with examples (a repeat
+that could not be converted, a date that could not be read…). Nothing is
+dropped silently: what cannot be represented is kept in the task's description.
+
+Send the same body with `dryRun: false` to import. Each call writes at most
+`options.maxItems` new items (default 250, max 500) and says how many are
+`remaining`. Call again until it is 0:
+
+```json
+{ "total": 412, "created": { "tasks": 230, "series": 12, "checklistItems": 88, "notes": 8,
+                              "projects": 6, "tags": 14 },
+  "errors": [], "remaining": 162 }
+```
+
+Re-importing is safe. Every item is recorded in an import ledger, so the same
+file a second time creates nothing (`alreadyImported` counts it), and a task you
+deleted after importing it is not brought back. TickTick items are matched by
+their own id. Todoist's CSV has no ids, so a task is matched by project, section
+and title. Rename one in Todoist and re-export it, and it imports again.
+
+`options`: `includeCompleted` (TickTick; Todoist exports have no completed
+tasks), `defaultTaskTime` (`HH:MM` for date-only tasks, default `23:59`),
+`timezone` (default: your profile's), `locale` (`en`/`tr`, the language of the
+notes the importer writes), `maxItems`. Imported tasks never become urgent
+alarms. A request body may be up to 10 MB; behind nginx that needs
+`client_max_body_size 10m` ([SELF-HOSTING.md](SELF-HOSTING.md)). Refusals:
+`422 IMPORT_SOURCE_MISMATCH` (with `detected`), `IMPORT_FORMAT_UNRECOGNIZED`,
+`IMPORT_EMPTY`, `IMPORT_INVALID_TIMEZONE`, and `413` for an oversized file.
+Apple Reminders has no export file, so there is no importer for it.
+
 ### Editing a note two places at once
 
 `PATCH /notes/:id` accepts an optional **`baseRevision`** — the note revision
@@ -267,7 +315,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_114 operations across 82 paths, generated from
+_115 operations across 83 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -282,6 +330,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **Files** — [`GET /api/v1/files/{fileId}`](#get-api-v1-files-fileid) · [`PATCH /api/v1/files/{fileId}`](#patch-api-v1-files-fileid) · [`DELETE /api/v1/files/{fileId}`](#delete-api-v1-files-fileid) · [`POST /api/v1/files/{fileId}/complete`](#post-api-v1-files-fileid-complete) · [`PATCH /api/v1/folders/{folderId}`](#patch-api-v1-folders-folderid) · [`DELETE /api/v1/folders/{folderId}`](#delete-api-v1-folders-folderid) · [`GET /api/v1/storage`](#get-api-v1-storage) · [`GET /api/v1/workspaces/{workspaceId}/files`](#get-api-v1-workspaces-workspaceid-files) · [`POST /api/v1/workspaces/{workspaceId}/files`](#post-api-v1-workspaces-workspaceid-files) · [`GET /api/v1/workspaces/{workspaceId}/files/usage`](#get-api-v1-workspaces-workspaceid-files-usage) · [`GET /api/v1/workspaces/{workspaceId}/folders`](#get-api-v1-workspaces-workspaceid-folders) · [`POST /api/v1/workspaces/{workspaceId}/folders`](#post-api-v1-workspaces-workspaceid-folders)
 - **Google Calendar** — [`PATCH /api/v1/integrations/google/accounts/{accountId}`](#patch-api-v1-integrations-google-accounts-accountid) · [`DELETE /api/v1/integrations/google/accounts/{accountId}`](#delete-api-v1-integrations-google-accounts-accountid) · [`GET /api/v1/integrations/google/accounts/{accountId}/calendars`](#get-api-v1-integrations-google-accounts-accountid-calendars) · [`GET /api/v1/integrations/google/callback`](#get-api-v1-integrations-google-callback) · [`POST /api/v1/integrations/google/webhook`](#post-api-v1-integrations-google-webhook) · [`GET /api/v1/workspaces/{workspaceId}/integrations/google`](#get-api-v1-workspaces-workspaceid-integrations-google) · [`POST /api/v1/workspaces/{workspaceId}/integrations/google/connect`](#post-api-v1-workspaces-workspaceid-integrations-google-connect)
 - **Health** — [`GET /health/live`](#get-health-live) · [`GET /health/ready`](#get-health-ready)
+- **Import & export** — [`POST /api/v1/workspaces/{workspaceId}/import/apps`](#post-api-v1-workspaces-workspaceid-import-apps)
 - **Notes** — [`GET /api/v1/notes/{noteId}`](#get-api-v1-notes-noteid) · [`PATCH /api/v1/notes/{noteId}`](#patch-api-v1-notes-noteid) · [`DELETE /api/v1/notes/{noteId}`](#delete-api-v1-notes-noteid) · [`GET /api/v1/notes/{noteId}/export`](#get-api-v1-notes-noteid-export) · [`POST /api/v1/notes/{noteId}/links`](#post-api-v1-notes-noteid-links) · [`DELETE /api/v1/notes/{noteId}/links/{linkId}`](#delete-api-v1-notes-noteid-links-linkid) · [`PUT /api/v1/notes/{noteId}/tags`](#put-api-v1-notes-noteid-tags) · [`GET /api/v1/notes/{noteId}/versions`](#get-api-v1-notes-noteid-versions) · [`GET /api/v1/notes/{noteId}/versions/{versionId}`](#get-api-v1-notes-noteid-versions-versionid) · [`GET /api/v1/notes/{noteId}/versions/{versionId}/diff`](#get-api-v1-notes-noteid-versions-versionid-diff) · [`POST /api/v1/notes/{noteId}/versions/{versionId}/restore`](#post-api-v1-notes-noteid-versions-versionid-restore) · [`GET /api/v1/projects/{projectId}/notes`](#get-api-v1-projects-projectid-notes) · [`GET /api/v1/workspaces/{workspaceId}/export/notes`](#get-api-v1-workspaces-workspaceid-export-notes) · [`POST /api/v1/workspaces/{workspaceId}/import/notes`](#post-api-v1-workspaces-workspaceid-import-notes) · [`GET /api/v1/workspaces/{workspaceId}/notes`](#get-api-v1-workspaces-workspaceid-notes) · [`POST /api/v1/workspaces/{workspaceId}/notes`](#post-api-v1-workspaces-workspaceid-notes)
 - **Projects** — [`GET /api/v1/projects/{projectId}`](#get-api-v1-projects-projectid) · [`PATCH /api/v1/projects/{projectId}`](#patch-api-v1-projects-projectid) · [`DELETE /api/v1/projects/{projectId}`](#delete-api-v1-projects-projectid) · [`POST /api/v1/projects/{projectId}/archive`](#post-api-v1-projects-projectid-archive) · [`POST /api/v1/projects/{projectId}/unarchive`](#post-api-v1-projects-projectid-unarchive) · [`GET /api/v1/workspaces/{workspaceId}/projects`](#get-api-v1-workspaces-workspaceid-projects) · [`POST /api/v1/workspaces/{workspaceId}/projects`](#post-api-v1-workspaces-workspaceid-projects)
 - **Quick links** — [`PATCH /api/v1/quick-links/{quickLinkId}`](#patch-api-v1-quick-links-quicklinkid) · [`DELETE /api/v1/quick-links/{quickLinkId}`](#delete-api-v1-quick-links-quicklinkid) · [`GET /api/v1/workspaces/{workspaceId}/quick-links`](#get-api-v1-workspaces-workspaceid-quick-links) · [`POST /api/v1/workspaces/{workspaceId}/quick-links`](#post-api-v1-workspaces-workspaceid-quick-links) · [`PUT /api/v1/workspaces/{workspaceId}/quick-links/order`](#put-api-v1-workspaces-workspaceid-quick-links-order)
@@ -2650,6 +2699,134 @@ curl -X GET 'https://api.alliswell.space/health/ready'
       "error": "string"
     }
   }
+}
+```
+
+
+### Import & export
+
+#### <a name="post-api-v1-workspaces-workspaceid-import-apps"></a>`POST /api/v1/workspaces/{workspaceId}/import/apps`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `workspaceId` | ULID | 26-character identifier |
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `source` | `todoist` · `ticktick` | **yes** | — |
+| `files` | array of object | **yes** | up to 200 items |
+| `dryRun` | boolean | no | default `false` |
+| `options` | object | no | — |
+
+**Request**
+
+```bash
+curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/import/apps' \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"source":"todoist","files":[{"name":"Pay the electricity bill","content":"string"}]}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `413` | Too large. |
+| `422` | Well-formed, but refused by a business rule. |
+
+**Example response** (`200`)
+
+```json
+{
+  "source": "todoist",
+  "dryRun": false,
+  "timezone": "Europe/Istanbul",
+  "total": 1,
+  "projects": {
+    "new": 1,
+    "existing": 1
+  },
+  "tags": {
+    "new": 1,
+    "existing": 1
+  },
+  "tasks": 1,
+  "series": 1,
+  "checklistItems": 1,
+  "notes": 1,
+  "completed": {
+    "included": 1,
+    "skipped": 1
+  },
+  "alreadyImported": 1,
+  "googleMirror": {
+    "connected": false,
+    "tasks": 1,
+    "undated": 1
+  },
+  "projectList": [
+    {
+      "name": "Pay the electricity bill",
+      "existing": false,
+      "tasks": 1
+    }
+  ],
+  "tagList": [
+    {
+      "name": "Pay the electricity bill",
+      "existing": false
+    }
+  ],
+  "mapping": {
+    "priority": [
+      {
+        "from": "string",
+        "to": "string"
+      }
+    ],
+    "sectionsAs": "string",
+    "subItemsAs": "string"
+  },
+  "warnings": [
+    {
+      "code": "string",
+      "count": 1,
+      "examples": [
+        {
+          "file": null,
+          "row": null,
+          "title": null,
+          "value": null
+        }
+      ]
+    }
+  ],
+  "created": {
+    "projects": 1,
+    "tags": 1,
+    "tasks": 1,
+    "checklistItems": 1,
+    "notes": 1,
+    "series": 1
+  },
+  "errors": [
+    {
+      "file": "string",
+      "row": 1,
+      "code": "string",
+      "message": "string"
+    }
+  ],
+  "remaining": 1
 }
 ```
 

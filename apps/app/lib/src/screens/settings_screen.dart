@@ -863,6 +863,16 @@ class SettingsDataScreen extends StatelessWidget {
       Card(
         child: Column(
           children: [
+            // OPH-371 (DESIGN §37): moving in from Todoist or TickTick — the
+            // first row, the place §32 S2 kept for it.
+            ListTile(
+              key: const Key('settings-import'),
+              leading: const Icon(Icons.move_down_outlined),
+              title: Text('import.title'.tr()),
+              subtitle: Text('import.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/import'),
+            ),
             // OPH-186 (DESIGN §20 C4): the archive of finished work. Home
             // keeps today's; everything older lives here.
             ListTile(

@@ -169,7 +169,7 @@
       "developer": "API access and management",
       "developerSub": "Your API keys, and the reference for using them",
       "data": "Data",
-      "dataSub": "Completed work, share log",
+      "dataSub": "Import, completed work, share log",
       "account": "Account",
       "team": "Team",
       "teamSub": "Settings, members and invitations",
@@ -679,7 +679,13 @@
     "CUSTOMER_NAME_TAKEN": "A company with that name already exists.",
     "CUSTOMER_USER_TAKEN": "That address already belongs to a contact here.",
     "CUSTOMER_EMAIL_INVALID": "That is not an e-mail address.",
-    "CUSTOMER_USER_DEACTIVATED": "That contact is switched off. Switch them back on instead."
+    "CUSTOMER_USER_DEACTIVATED": "That contact is switched off. Switch them back on instead.",
+    "IMPORT_FORMAT_UNRECOGNIZED": "This file is not a Todoist or TickTick export.",
+    "IMPORT_EMPTY": "There is nothing to import in this file.",
+    "IMPORT_INVALID_TIMEZONE": "Your profile's time zone is not valid; set it again in Settings.",
+    "IMPORT_FILE_TOO_LARGE": "This file has too many rows or columns to import at once.",
+    "IMPORT_ITEM_FAILED": "This item could not be imported.",
+    "TASK_SERIES_TOO_DENSE": "This repeat rule would create too many tasks."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -3694,6 +3700,110 @@
       "minutes": "{n} min ago",
       "hours": "{n} h ago",
       "days": "{n} days ago"
+    }
+  },
+  "import": {
+    "title": "Import",
+    "sub": "Move in from Todoist or TickTick",
+    "stepOf": "Step {n} of {total}",
+    "step": {
+      "source": "Where are you moving from?",
+      "file": "Choose your {app} export",
+      "preview": "Check what will come in",
+      "importing": "Importing",
+      "done": "Imported"
+    },
+    "intro": "Bring your tasks with you. Nothing is written until you have seen the preview, and importing the same file again never creates duplicates.",
+    "how": {
+      "todoist": "Use a backup ZIP or a project's CSV export.",
+      "ticktick": "Use the CSV backup from TickTick's web app."
+    },
+    "export": {
+      "todoist": "In Todoist, open Settings › Backups and download the latest backup (a ZIP), or open a project's menu and choose Export as CSV. You can choose several CSV files at once.",
+      "ticktick": "On ticktick.com, open Settings › Backup & Import › Generate backup and save the CSV file."
+    },
+    "todoistNoCompleted": "Todoist leaves completed tasks out of its exports, so only open tasks come over.",
+    "appleNote": "Apple Reminders has no export file, so it cannot be imported.",
+    "pick": "Choose file",
+    "pickAgain": "Choose other files",
+    "previewButton": "Preview",
+    "back": "Back",
+    "fromFiles": "Files: {count}",
+    "count": {
+      "tasks": "tasks",
+      "series": "repeating tasks",
+      "checklist": "sub-items as checklist items",
+      "notes": "notes",
+      "projectsNew": "new projects",
+      "projectsExisting": "existing projects",
+      "tags": "tags",
+      "already": "already imported"
+    },
+    "includeCompleted": "Include completed tasks ({count})",
+    "includeCompletedSub": "They arrive completed, with their completion date.",
+    "mapping": {
+      "title": "How things map",
+      "sectionsTodoist": "Labels and sections become tags.",
+      "sectionsTicktick": "Tags and board columns become tags; lists become projects.",
+      "subItems": "Sub-tasks become checklist items on their task.",
+      "noAlarms": "Imported tasks never ring as urgent alarms; a reminder is kept only when the export has one."
+    },
+    "warnings": {
+      "title": "Carried over with a note",
+      "count": "Items: {count}"
+    },
+    "warning": {
+      "other": "Something in this file needed attention",
+      "IMPORT_FILE_SKIPPED": "A file was skipped because it is not from this app",
+      "IMPORT_TITLE_TRUNCATED": "A very long title was shortened to 500 characters",
+      "IMPORT_ATTACHMENT_LINKED": "Attachments stay as links in the description",
+      "IMPORT_COMMENT_WITHOUT_TASK": "A comment without a task was skipped",
+      "IMPORT_ROW_SKIPPED": "A row of an unknown type was skipped",
+      "IMPORT_EMPTY_TITLE": "A task without a title was skipped",
+      "IMPORT_DEEP_SUBTASK_FLATTENED": "Deeper sub-tasks were moved up to the top-level checklist",
+      "IMPORT_SUBTASK_DETAILS_MOVED": "A sub-task's own notes or date were moved into the task description",
+      "IMPORT_ORPHAN_SUBTASK": "A sub-task whose parent is not in the file came in as a task",
+      "IMPORT_RECURRENCE_KEPT_IN_NOTE": "A repeat could not be converted; it is kept in the description",
+      "IMPORT_DATE_KEPT_IN_NOTE": "A date could not be read; it is kept in the description",
+      "IMPORT_RELATIVE_DATE": "A date like “today” was read relative to today",
+      "IMPORT_DATE_YEAR_GUESSED": "A date without a year was placed on its next occurrence",
+      "IMPORT_DEADLINE_KEPT_IN_NOTE": "A deadline next to a due date is kept in the description",
+      "IMPORT_FOLDER_FLATTENED": "Lists with the same name keep their folder in the project name",
+      "IMPORT_MULTIDAY_FLATTENED": "A multi-day task now ends on its last day",
+      "IMPORT_EXTRA_REMINDERS_DROPPED": "Only the first reminder of a task was kept",
+      "IMPORT_REMINDER_NOT_CONVERTED": "A reminder could not be converted; it is kept in the description",
+      "IMPORT_RECURRING_CHECKLIST_MOVED": "A repeating task's checklist is kept in its description"
+    },
+    "google": {
+      "plain": "Google Calendar is connected: these {count} tasks will appear there too.",
+      "withUndated": "Google Calendar is connected: these {count} tasks will appear there too, and the {undated} without a date will appear on today."
+    },
+    "nothingNew": "Everything in this file has already been imported.",
+    "run": "Import {count} items",
+    "progress": "{done} of {total} imported",
+    "progressNote": "You can keep this screen open; a large file is sent in parts.",
+    "result": {
+      "headline": "{count} items imported.",
+      "tasks": "Tasks",
+      "series": "Repeating tasks",
+      "checklist": "Checklist items",
+      "notes": "Notes",
+      "projects": "New projects",
+      "tags": "New tags",
+      "already": "Already imported, skipped",
+      "completedSkipped": "Completed, left out",
+      "errors": "Not imported: {count}"
+    },
+    "openHome": "Open Home",
+    "done": "Done",
+    "error": {
+      "tooLarge": "These files are larger than 9 MB. Import one project at a time.",
+      "noCsv": "No CSV file was found. Choose the export's CSV file or the backup ZIP.",
+      "looksTicktick": "This looks like a TickTick backup. Go back and choose TickTick.",
+      "looksTodoist": "This looks like a Todoist export. Go back and choose Todoist.",
+      "proxyLimit": "The server refused a file this large. Its proxy needs a higher upload limit (client_max_body_size 10m), or import one project at a time.",
+      "offline": "Could not reach the server. Importing needs a connection.",
+      "read": "This file could not be read."
     }
   }
 }

@@ -1,4 +1,5 @@
 import { newId } from '../lib/ids.js';
+import { coded } from '../lib/errors.js';
 import {
   MAX_OCCURRENCES,
   WEEKDAYS,
@@ -261,6 +262,105 @@ export async function materializeSeries(trx, { workspaceId, series, now = new Da
   }
 
   return { created: created.length, days: created };
+}
+
+const SERIES_CODE_STATUS = {
+  TASK_SERIES_RULE_INVALID: 'badRequest',
+  TASK_SERIES_TEMPLATE_INVALID: 'badRequest',
+  TASK_SERIES_TOO_DENSE: 'unprocessableEntity',
+};
+const SERIES_CODE_MESSAGE = {
+  TASK_SERIES_TOO_DENSE: 'This repeat rule would create too many tasks',
+};
+
+/** The HTTP error a series refusal becomes, on every door that creates one. */
+export function seriesError(app, code, message) {
+  const status = SERIES_CODE_STATUS[code] ?? 'badRequest';
+  return coded(
+    app.httpErrors[status](message ?? SERIES_CODE_MESSAGE[code] ?? 'Invalid series'),
+    code,
+  );
+}
+
+/** Refuses an impossible rule BEFORE any row is written (ADR-0020 §4). */
+export function assertMaterializable(app, series, now) {
+  try {
+    return plannedDays(series, now);
+  } catch (err) {
+    throw seriesError(app, err.code ?? 'TASK_SERIES_RULE_INVALID', err.message);
+  }
+}
+
+/**
+ * Creates a series, adopts `fromTaskId` when its day is part of the pattern,
+ * and materializes the window — ONE transaction (the caller's, when `trx` is
+ * given). Extracted from the REST route in OPH-371 so the Todoist/TickTick
+ * importer creates a repeating task through the same door.
+ *
+ * `timezone` is required here: the route fills it from the user's profile.
+ *
+ * @returns {Promise<{stored: object, created: number, adoptedTaskId: string|null}>}
+ */
+export async function createTaskSeries(
+  app,
+  {
+    workspaceId,
+    userId,
+    rule,
+    template,
+    timezone,
+    anchorAt,
+    fromTaskId = null,
+    trx: outer = null,
+    now = new Date(),
+  },
+) {
+  const problem = validateSeriesInput({ rule, template, timezone, anchorAt });
+  if (problem) throw seriesError(app, problem.code, problem.message);
+  const normalized = normalizeTemplate(template);
+
+  const id = newId();
+  const series = {
+    id,
+    workspace_id: workspaceId,
+    rule,
+    template: normalized,
+    timezone,
+    anchor_at: new Date(anchorAt),
+    created_by: userId,
+  };
+  assertMaterializable(app, series, now);
+
+  let created = 0;
+  let adoptedTaskId = null;
+  let stored;
+  const work = async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task_series',
+      entityId: id,
+      operation: 'create',
+    });
+    await trx('task_series').insert({
+      ...series,
+      rule: JSON.stringify(rule),
+      template: JSON.stringify(normalized),
+      revision,
+    });
+    stored = await trx('task_series').where({ id }).first();
+
+    if (fromTaskId) {
+      adoptedTaskId = await adoptTaskIntoSeries(trx, {
+        workspaceId,
+        series: stored,
+        taskId: fromTaskId,
+        now,
+      });
+    }
+    ({ created } = await materializeSeries(trx, { workspaceId, series: stored, now }));
+  };
+  await (outer ? work(outer) : app.db.transaction(work));
+  return { stored, created, adoptedTaskId };
 }
 
 /**

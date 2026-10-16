@@ -308,7 +308,7 @@ Writing these down is what makes §4 trustworthy.
 | **Ecosystem reach** — Siri, Gmail side panel, Watch complications | Apple, Google | Widgets ship; Siri/Watch integration is designed (OPH-183), not delivered. |
 | **Design polish over years** | Things 3 | We took their model and our own design system is strict — but they have had ten years to sand the corners. |
 | **Localisation breadth** | all of them | Two languages. Adding one is a JSON file, which is the point, but the file has to be written. |
-| **Sharing, CalDAV, importers, a public demo** | Vikunja, Nextcloud Tasks, Tasks.org | Not built — see §7. |
+| **Sharing, CalDAV, a public demo, importers beyond Todoist/TickTick** | Vikunja, Nextcloud Tasks, Tasks.org | Not built — see §7. We import Todoist and TickTick exports (OPH-371). |
 
 Two more, said plainly: **self-hosting is work.** A managed app has no
 `docker compose`, no TLS certificate, no backups to think about. And
@@ -440,7 +440,7 @@ Legend: ● yes · ◐ partly (the cell says how) · ○ no · — not checked.
 | Two-way Google Calendar | ● | ○ | — | ○ (Google Tasks, not Calendar) | ○ |
 | CalDAV | ○ designed, not built | ● | ◐ basic | ◐ name-your-price tier | ● native |
 | Sharing | ○ no sharing UI | ● users · teams · link shares | ○ | ◐ Cloud tier, Friends & Family | ● via Nextcloud calendar sharing |
-| Import from other apps | ◐ API bulk import only | ● Todoist · Trello · MS To Do · TickTick · Planka · WeKan · CSV | — | ◐ connects to Google Tasks / MS To Do | — |
+| Import from other apps | ◐ Todoist · TickTick (wizard) + API bulk import | ● Todoist · Trello · MS To Do · TickTick · Planka · WeKan · CSV | — | ◐ connects to Google Tasks / MS To Do | — |
 | Public demo | ○ | ● try.vikunja.io | ● web app, no account | ○ | ○ |
 | Time tracking · focus mode | ○ | — | ● | — | ○ |
 | Issue-tracker integrations | ○ | — | ● Jira · GitHub · GitLab · … | ○ | ○ |
@@ -455,8 +455,8 @@ Legend: ● yes · ◐ partly (the cell says how) · ○ no · — not checked.
   [designed](CALDAV.md) and not built.
 - **Trying before installing.** Vikunja has a public demo and Super Productivity runs in
   the browser without an account. We have neither.
-- **Importers.** Vikunja imports from seven sources. We have a bulk import in the API, and
-  nothing in the app.
+- **Importers.** Vikunja imports from seven sources. We read two (Todoist and TickTick, a
+  wizard in Settings › Data plus the same call in the API) and a bulk JSON import.
 - **Time tracking and issue trackers** — Super Productivity's whole reason to exist.
 - **Location reminders and no account** — Tasks.org.
 - **Maturity and community.** 700 to 23,000 stars and eight to thirteen years each,

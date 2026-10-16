@@ -168,7 +168,7 @@
       "developer": "API erişimi ve yönetimi",
       "developerSub": "API anahtarların ve onları kullanmanın dokümantasyonu",
       "data": "Veri",
-      "dataSub": "Tamamlananlar, paylaşım günlüğü",
+      "dataSub": "İçe aktarma, tamamlanan işler, paylaşım günlüğü",
       "account": "Hesap",
       "team": "Takım",
       "teamSub": "Ayarlar, üyeler ve davetler",
@@ -678,7 +678,13 @@
     "CUSTOMER_NAME_TAKEN": "Bu adla bir firma zaten var.",
     "CUSTOMER_USER_TAKEN": "Bu adres burada zaten bir kişiye ait.",
     "CUSTOMER_EMAIL_INVALID": "Bu bir e-posta adresi değil.",
-    "CUSTOMER_USER_DEACTIVATED": "Bu kişinin erişimi kapalı. Yeniden eklemek yerine erişimini açın."
+    "CUSTOMER_USER_DEACTIVATED": "Bu kişinin erişimi kapalı. Yeniden eklemek yerine erişimini açın.",
+    "IMPORT_FORMAT_UNRECOGNIZED": "Bu dosya bir Todoist ya da TickTick dışa aktarımı değil.",
+    "IMPORT_EMPTY": "Bu dosyada içe aktarılacak bir şey yok.",
+    "IMPORT_INVALID_TIMEZONE": "Profilinizdeki saat dilimi geçersiz; Ayarlar'da yeniden seçin.",
+    "IMPORT_FILE_TOO_LARGE": "Bu dosyada bir kerede aktarılamayacak kadar çok satır ya da sütun var.",
+    "IMPORT_ITEM_FAILED": "Bu öğe içe aktarılamadı.",
+    "TASK_SERIES_TOO_DENSE": "Bu tekrar kuralı çok fazla görev oluştururdu."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -3693,6 +3699,110 @@
       "minutes": "{n} dk önce",
       "hours": "{n} saat önce",
       "days": "{n} gün önce"
+    }
+  },
+  "import": {
+    "title": "İçe aktar",
+    "sub": "Todoist veya TickTick'ten taşının",
+    "stepOf": "Adım {n} / {total}",
+    "step": {
+      "source": "Nereden taşınıyorsunuz?",
+      "file": "{app} dışa aktarımınızı seçin",
+      "preview": "Neyin geleceğine bakın",
+      "importing": "İçe aktarılıyor",
+      "done": "İçe aktarıldı"
+    },
+    "intro": "Görevlerinizi yanınızda getirin. Önizlemeyi görmeden hiçbir şey yazılmaz; aynı dosyayı yeniden içe aktarmak hiçbir zaman kopya oluşturmaz.",
+    "how": {
+      "todoist": "Yedek ZIP'ini ya da bir projenin CSV dışa aktarımını kullanın.",
+      "ticktick": "TickTick web uygulamasındaki CSV yedeğini kullanın."
+    },
+    "export": {
+      "todoist": "Todoist'te Ayarlar › Yedekler'i açıp son yedeği (ZIP) indirin ya da bir projenin menüsünden CSV olarak dışa aktar'ı seçin. Birden çok CSV dosyasını birlikte seçebilirsiniz.",
+      "ticktick": "ticktick.com'da Ayarlar › Yedekleme ve İçe Aktarma › Yedek oluştur'u açıp CSV dosyasını kaydedin."
+    },
+    "todoistNoCompleted": "Todoist tamamlanmış görevleri dışa aktarıma koymaz; yalnız açık görevler gelir.",
+    "appleNote": "Apple Anımsatıcılar'ın dışa aktarma dosyası yok, bu yüzden içe aktarılamaz.",
+    "pick": "Dosya seç",
+    "pickAgain": "Başka dosyalar seç",
+    "previewButton": "Önizle",
+    "back": "Geri",
+    "fromFiles": "Dosya: {count}",
+    "count": {
+      "tasks": "görev",
+      "series": "tekrarlayan görev",
+      "checklist": "kontrol listesine giren alt madde",
+      "notes": "not",
+      "projectsNew": "yeni proje",
+      "projectsExisting": "mevcut proje",
+      "tags": "etiket",
+      "already": "zaten aktarılmış"
+    },
+    "includeCompleted": "Tamamlanmış görevleri de al ({count})",
+    "includeCompletedSub": "Tamamlanma tarihleriyle, tamamlanmış olarak gelirler.",
+    "mapping": {
+      "title": "Neyin neye dönüştüğü",
+      "sectionsTodoist": "Etiketler ve bölümler etiket olur.",
+      "sectionsTicktick": "Etiketler ve pano sütunları etiket olur; listeler proje olur.",
+      "subItems": "Alt görevler, görevlerinin kontrol listesine girer.",
+      "noAlarms": "İçe aktarılan görevler asla acil alarm olarak çalmaz; hatırlatıcı yalnız dışa aktarımda varsa korunur."
+    },
+    "warnings": {
+      "title": "Notla birlikte taşınanlar",
+      "count": "Öğe: {count}"
+    },
+    "warning": {
+      "other": "Bu dosyada dikkat isteyen bir şey var",
+      "IMPORT_FILE_SKIPPED": "Bu uygulamaya ait olmayan bir dosya atlandı",
+      "IMPORT_TITLE_TRUNCATED": "Çok uzun bir başlık 500 karaktere kısaltıldı",
+      "IMPORT_ATTACHMENT_LINKED": "Ekler açıklamada bağlantı olarak kalır",
+      "IMPORT_COMMENT_WITHOUT_TASK": "Görevi olmayan bir yorum atlandı",
+      "IMPORT_ROW_SKIPPED": "Türü bilinmeyen bir satır atlandı",
+      "IMPORT_EMPTY_TITLE": "Başlığı olmayan bir görev atlandı",
+      "IMPORT_DEEP_SUBTASK_FLATTENED": "Daha derin alt görevler üst görevin kontrol listesine alındı",
+      "IMPORT_SUBTASK_DETAILS_MOVED": "Bir alt görevin kendi notu ya da tarihi görev açıklamasına taşındı",
+      "IMPORT_ORPHAN_SUBTASK": "Üst görevi dosyada olmayan bir alt görev ayrı görev olarak geldi",
+      "IMPORT_RECURRENCE_KEPT_IN_NOTE": "Bir tekrar dönüştürülemedi; açıklamada duruyor",
+      "IMPORT_DATE_KEPT_IN_NOTE": "Bir tarih okunamadı; açıklamada duruyor",
+      "IMPORT_RELATIVE_DATE": "“Bugün” gibi bir tarih bugüne göre okundu",
+      "IMPORT_DATE_YEAR_GUESSED": "Yılı olmayan bir tarih bir sonraki gelişine kondu",
+      "IMPORT_DEADLINE_KEPT_IN_NOTE": "Bitiş tarihinin yanındaki son tarih açıklamada duruyor",
+      "IMPORT_FOLDER_FLATTENED": "Aynı adlı listeler klasör adını proje adında taşıyor",
+      "IMPORT_MULTIDAY_FLATTENED": "Birkaç güne yayılan bir görev artık son gününde bitiyor",
+      "IMPORT_EXTRA_REMINDERS_DROPPED": "Bir görevin yalnız ilk hatırlatıcısı korundu",
+      "IMPORT_REMINDER_NOT_CONVERTED": "Bir hatırlatıcı dönüştürülemedi; açıklamada duruyor",
+      "IMPORT_RECURRING_CHECKLIST_MOVED": "Tekrarlayan bir görevin kontrol listesi açıklamasında duruyor"
+    },
+    "google": {
+      "plain": "Google Takvim bağlı: bu {count} görev orada da görünecek.",
+      "withUndated": "Google Takvim bağlı: bu {count} görev orada da görünecek; tarihi olmayan {undated} görev bugüne düşecek."
+    },
+    "nothingNew": "Bu dosyadaki her şey zaten içe aktarılmış.",
+    "run": "{count} öğeyi içe aktar",
+    "progress": "{done} / {total} aktarıldı",
+    "progressNote": "Bu ekranı açık tutabilirsiniz; büyük bir dosya parça parça gönderilir.",
+    "result": {
+      "headline": "{count} öğe içe aktarıldı.",
+      "tasks": "Görevler",
+      "series": "Tekrarlayan görevler",
+      "checklist": "Kontrol listesi maddeleri",
+      "notes": "Notlar",
+      "projects": "Yeni projeler",
+      "tags": "Yeni etiketler",
+      "already": "Zaten aktarılmış, atlandı",
+      "completedSkipped": "Tamamlanmış, dışarıda bırakıldı",
+      "errors": "İçe aktarılamayan: {count}"
+    },
+    "openHome": "Ana sayfayı aç",
+    "done": "Bitti",
+    "error": {
+      "tooLarge": "Bu dosyalar 9 MB'tan büyük. Projeleri tek tek içe aktarın.",
+      "noCsv": "CSV dosyası bulunamadı. Dışa aktarımın CSV dosyasını ya da yedek ZIP'ini seçin.",
+      "looksTicktick": "Bu bir TickTick yedeğine benziyor. Geri dönüp TickTick'i seçin.",
+      "looksTodoist": "Bu bir Todoist dışa aktarımına benziyor. Geri dönüp Todoist'i seçin.",
+      "proxyLimit": "Sunucu bu büyüklükte bir dosyayı reddetti. Vekil sunucunun yükleme sınırı yükseltilmeli (client_max_body_size 10m) ya da projeleri tek tek içe aktarın.",
+      "offline": "Sunucuya ulaşılamadı. İçe aktarma bağlantı ister.",
+      "read": "Bu dosya okunamadı."
     }
   }
 }

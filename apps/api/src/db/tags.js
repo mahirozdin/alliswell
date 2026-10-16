@@ -54,14 +54,20 @@ export async function listTags(app, workspaceId) {
     .select();
 }
 
-export async function createTag(app, { workspaceId, body }) {
+/**
+ * `slug` and `trx` are internal options (never on the REST schema): the
+ * importer (OPH-371) passes a suffixed slug when only a soft-deleted tag holds
+ * the plain one — the unique index covers deleted rows too.
+ */
+export async function createTag(app, { workspaceId, body, slug: slugOverride, trx: outer = null }) {
   const name = body.name.trim();
-  const slug = slugify(name, 'tag');
+  const slug = slugOverride ?? slugify(name, 'tag');
   await assertSlugFree(app, workspaceId, slug);
 
   const id = newId();
+  const run = (work) => (outer ? work(outer) : app.db.transaction(work));
   try {
-    await app.db.transaction(async (trx) => {
+    await run(async (trx) => {
       const revision = await recordSyncWrite(trx, {
         workspaceId,
         entityType: 'tag',
