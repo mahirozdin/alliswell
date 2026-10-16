@@ -301,6 +301,21 @@ void main() {
     final orb = tester.getRect(find.byKey(const Key('global-search-orb')));
     expect(orb.left, greaterThanOrEqualTo(bar.right));
     expect((orb.center.dy - bar.center.dy).abs(), lessThan(8));
+    // The selected label stays on one line in a slot narrower than the
+    // word (TR "Ana Sayfa" wrapped under the pill and was clipped).
+    final label = tester.widget<RichText>(
+      find
+          .descendant(
+            of: find.descendant(
+              of: find.byType(NavigationBar),
+              matching: find.text('Home'),
+            ),
+            matching: find.byType(RichText),
+          )
+          .first,
+    );
+    expect(label.softWrap, isFalse);
+    expect(label.maxLines, 1);
 
     await tester.tap(find.byKey(const Key('global-search-orb')));
     await tester.pumpAndSettle();

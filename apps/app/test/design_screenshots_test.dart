@@ -710,7 +710,9 @@ void main() {
         navigate: (t) async {
           await t.tap(find.text('Review contrast report').first);
           await t.pumpAndSettle();
-          await t.pageBack();
+          // By type, not `pageBack()`: that finds the tooltip 'Back', which
+          // is "Geri" under shotLocale=tr.
+          await t.tap(find.byType(BackButton));
           await t.pumpAndSettle();
           await t.tap(find.byKey(const Key('global-search-rail')));
         },

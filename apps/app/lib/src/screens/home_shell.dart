@@ -441,17 +441,29 @@ class HomeShell extends ConsumerWidget {
                                 _goVisible(visibleSections, i),
                             destinations: [
                               for (final section in visibleSections)
-                                NavigationDestination(
-                                  icon: KeyedSubtree(
-                                    key: _navKeys[section]!.icon,
-                                    child: Icon(section.icon),
+                                // A tab narrower than its label (TR "Ana
+                                // Sayfa" in a ~54 px slot beside the search
+                                // button) must not wrap the selected label
+                                // onto a second, clipped line. One line; in
+                                // `onlyShowSelected` the neighbours carry no
+                                // label for it to run into. Per destination:
+                                // the bar's Material resets any style above.
+                                DefaultTextStyle.merge(
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.visible,
+                                  child: NavigationDestination(
+                                    icon: KeyedSubtree(
+                                      key: _navKeys[section]!.icon,
+                                      child: Icon(section.icon),
+                                    ),
+                                    selectedIcon: KeyedSubtree(
+                                      key: _navKeys[section]!.selected,
+                                      child: Icon(section.selectedIcon),
+                                    ),
+                                    label: section.title,
+                                    tooltip: section.title,
                                   ),
-                                  selectedIcon: KeyedSubtree(
-                                    key: _navKeys[section]!.selected,
-                                    child: Icon(section.selectedIcon),
-                                  ),
-                                  label: section.title,
-                                  tooltip: section.title,
                                 ),
                             ],
                           ),

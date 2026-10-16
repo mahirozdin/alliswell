@@ -119,32 +119,39 @@ class SearchRecents extends Notifier<List<SearchRecent>> {
   List<SearchRecent> build() {
     // Rebuilt for every person: sign-out wipes the stored list, and the one
     // held in memory must not carry over to whoever signs in next.
-    _hydrated = false;
-    if (ref.watch(currentUserIdProvider) == null) return const [];
-    unawaited(_hydrate());
+    final generation = ++_generation;
+    if (ref.watch(currentUserIdProvider) == null) {
+      _hydration = null;
+      return const [];
+    }
+    _hydration = _hydrate(generation);
     return const [];
   }
 
-  bool _hydrated = false;
+  /// Bumped on every rebuild (a person change): a read that started for the
+  /// previous person must not land in the next one's list.
+  int _generation = 0;
 
-  Future<void> _hydrate() async {
+  /// The stored list's read. [record] waits for it, so a visit recorded at
+  /// start-up (a deep link to a task) goes ON TOP of the stored list instead
+  /// of overwriting it with a list of one.
+  Future<void>? _hydration;
+
+  Future<void> _hydrate(int generation) async {
     final parsed = parseSearchRecents(await localKv.get(kSearchRecentsKey));
-    if (_hydrated) {
-      // A visit recorded before the stored list arrived goes on top of it.
-      var merged = parsed;
-      for (final recent in state.reversed) {
-        merged = pushSearchRecent(merged, recent);
-      }
-      state = merged;
-    } else if (parsed.isNotEmpty) {
-      state = parsed;
-    }
-    _hydrated = true;
+    if (generation != _generation) return;
+    state = parsed;
   }
 
   Future<void> record(SearchRecent recent) async {
+    final generation = _generation;
+    try {
+      await _hydration;
+    } catch (_) {
+      // An unreadable stored list starts a fresh one (parse already drops junk).
+    }
+    if (generation != _generation) return;
     if (state.isNotEmpty && state.first == recent) return;
-    _hydrated = true;
     state = pushSearchRecent(state, recent);
     await localKv.set(kSearchRecentsKey, encodeSearchRecents(state));
   }

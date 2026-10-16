@@ -3,6 +3,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/quick_access/data/quick_link.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_navigation.dart';
 import 'package:alliswell/src/features/tasks/providers.dart';
@@ -21,6 +22,7 @@ void main() {
   group('recents', () {
     const t1 = SearchRecent(GlobalSearchKind.task, 'T1');
     const p1 = SearchRecent(GlobalSearchKind.project, 'P1');
+    const n1 = SearchRecent(GlobalSearchKind.note, 'N1');
 
     test('parse tolerates junk and drops what does not parse', () {
       expect(parseSearchRecents(null), isEmpty);
@@ -82,6 +84,27 @@ void main() {
 
     test('they belong to the person: sign-out wipes them', () {
       expect(kUserBoundKvPrefixes.any(kSearchRecentsKey.startsWith), isTrue);
+    });
+
+    test('a visit recorded before the stored list is read goes on top of '
+        'it, never over it', () async {
+      await localKv.set(kSearchRecentsKey, encodeSearchRecents([p1, n1]));
+      final container = ProviderContainer(
+        overrides: [currentUserIdProvider.overrideWithValue('U1')],
+      );
+      addTearDown(container.dispose);
+
+      // A deep link at start-up: the tracker records before hydration.
+      container.read(searchRecentsProvider);
+      await container.read(searchRecentsProvider.notifier).record(t1);
+
+      expect(container.read(searchRecentsProvider), [t1, p1, n1]);
+      expect(parseSearchRecents(await localKv.get(kSearchRecentsKey)), [
+        t1,
+        p1,
+        n1,
+      ]);
+      await localKv.remove(kSearchRecentsKey);
     });
   });
 
