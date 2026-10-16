@@ -38,6 +38,17 @@ export const CAPABILITIES = Object.freeze([
     tr: 'Birim talep listeleri: durum, öncelik, atama, yanıt, iç not ve toplu işlem',
     en: 'Unit request queues: status, priority, assignment, replies, internal notes and bulk actions',
   },
+  // OPH-367: the list said "none" while ticket_composer.dart (OPH-358) uploads
+  // files onto the new reply (`ticket_comment`) and requester_ticket_screen.dart
+  // shows a visible reply's files to the requester. A reply that leaves by
+  // e-mail carries no attachment, so the row names that limit.
+  {
+    key: 'replyFiles',
+    level: 'app',
+    packages: all,
+    tr: 'Masanın yanıtına dosya: talep sahibi dosyayı talebinden açar, iç notun dosyası masada kalır (e-postayla giden yanıt yalnız metni taşır)',
+    en: 'Files on the desk’s replies: the requester opens them from the request, and an internal note’s files stay with the desk (a reply sent by e-mail carries the text only)',
+  },
   // EE-272: Phase C of the review (EE-266…EE-270) moved these into the app; the
   // list said "api" or "none" about three of them until the last measurement.
   {
@@ -65,11 +76,11 @@ export const CAPABILITIES = Object.freeze([
     key: 'sla',
     level: 'app',
     packages: all,
-    // EE-272: the app edits a policy's name, calendar, threshold and default,
-    // and a calendar's name and zone; target durations, shifts and holidays
-    // are entered through the API (measured against sla_admin_screen.dart).
-    tr: 'SLA politikaları, çalışma takvimleri, eskalasyon, SLA panosu ve sistem sağlığı izleme (hedef süreler, vardiya ve tatiller şimdilik API ile)',
-    en: 'SLA policies, working calendars, escalation, the SLA dashboard and system health monitoring (target durations, shifts and holidays are API only for now)',
+    // OPH-367: target durations per priority are edited in the app now
+    // (sla_admin_screen.dart `_TargetRow`, UI-AUDIT #46); shifts and holidays
+    // still go through the API (saveHours/saveHolidays have no UI caller).
+    tr: 'SLA politikaları ve öncelik başına hedef süreler, çalışma takvimleri, eskalasyon, SLA panosu ve sistem sağlığı izleme (vardiya ve tatiller şimdilik API ile)',
+    en: 'SLA policies with target durations per priority, working calendars, escalation, the SLA dashboard and system health monitoring (shifts and holidays are API only for now)',
   },
   {
     key: 'catalog',
@@ -103,8 +114,10 @@ export const CAPABILITIES = Object.freeze([
     key: 'assets',
     level: 'app',
     packages: all,
-    tr: 'Varlık (envanter) yönetimi, QR etiket ve toplu içe aktarma',
-    en: 'Asset (inventory) register, QR labels and bulk import',
+    // OPH-367: QR labels print from assets_screen.dart; bulk import
+    // (`/asset-imports`) has no caller in the app.
+    tr: 'Varlık (envanter) yönetimi ve QR etiket (toplu içe aktarma şimdilik API ile)',
+    en: 'Asset (inventory) register and QR labels (bulk import is API only for now)',
   },
   {
     key: 'kb',
@@ -182,13 +195,23 @@ export const CAPABILITIES = Object.freeze([
   },
   {
     key: 'partners',
-    level: 'api',
+    level: 'app',
     packages: all,
     // EE-272: nothing — app, REST or MCP — attaches a policy to a customer
     // (only tests write `ee_customers.sla_policy_id`), so the row no longer
     // sells a per-customer SLA.
-    tr: 'Kurumsal müşteri kaydı, müşteri portalı ve tedarikçi hedef süreleri (müşteriye özel SLA henüz bağlanamıyor)',
-    en: 'Corporate customer records, the customer portal and supplier response targets (a per-customer SLA cannot be attached yet)',
+    // OPH-367: customers_screen.dart (OPH-360) creates, renames and archives
+    // companies, lists their people and sends portal invitations; supplier
+    // targets have no screen, so they are their own `api` row below.
+    tr: 'Kurumsal müşteri kaydı ve müşteri portalı: firmalar, çalışanları ve portal davetleri (müşteriye özel SLA henüz bağlanamıyor)',
+    en: 'Corporate customer records and the customer portal: companies, their people and portal invitations (a per-customer SLA cannot be attached yet)',
+  },
+  {
+    key: 'suppliers',
+    level: 'api',
+    packages: all,
+    tr: 'Tedarikçi kaydı, hedef süreleri ve tedarikçi raporu',
+    en: 'Supplier records, their response targets and the supplier report',
   },
   {
     key: 'meetings',
@@ -245,12 +268,6 @@ export const CAPABILITIES = Object.freeze([
     level: 'none',
     tr: 'masanın bir talebi başka bir hizmete ya da birime aktarması',
     en: 'the desk moving a request to another service or unit',
-  },
-  {
-    key: 'replyFiles',
-    level: 'none',
-    tr: 'masanın yanıtına dosya eklemek',
-    en: 'attaching a file to the desk’s reply',
   },
   {
     key: 'whatsappReplies',

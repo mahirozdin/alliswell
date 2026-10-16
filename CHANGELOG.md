@@ -22,6 +22,10 @@ This file holds the unreleased changes and the latest release; at each release t
   Calendar sync two-way. Google Calendar syncs both ways; on iPhone and Mac your tasks are
   mirrored into Apple Calendar, one way for now.
 
+- **The enterprise page now lists what the desk does today.** Files on desk replies, SLA target
+  times and customer records with portal invitations are shown as in the app; bulk asset import
+  and supplier targets are marked API only.
+
 ## [1.17.0] — 2026-10-15
 
 ### Added

@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-366: MCP onay sayfasında Google/Apple ile devam (form_post yönlendirmesi, imzalı state + nonce, sabit audience; hesap açmaz) ve iki onay yolunda da ikinci faktör + uzantı giriş politikası (ADR-0049).
+**Last updated:** 2026-10-16 — OPH-367: kurumsal sayfanın yetenek listesi (`apps/landing/src/enterprise/capabilities.js`) koda göre denetlendi; yanıt dosyaları ve müşteri kaydı uygulamada, SLA hedef süreleri uygulamada, varlık toplu içe aktarma ve tedarikçi kaydı yalnız API.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-366: MCP onay sayfası Google/Apple girişi — `POST /oauth/authorize/{social,callback,continue}`, `db/identities.js` (ADR-0026 kural merdiveni `/auth/oauth` ile ortak), `verifyIdentityToken` `nonce` + `audience` seçenekleri; parola yolu artık TOTP + `signInRequirements` soruyor (güvenlik düzeltmesi); ADR-0049, MCP.md. Konsol adımları "Kullanıcıdan bekleyen" 8'de. |
+| Last completed           | OPH-367: kurumsal yetenek listesi denetimi — `replyFiles` none→app (e-postayla giden yanıt yalnız metin), `partners` api→app (müşteri ekranı, OPH-360) ve tedarikçiler ayrı `suppliers` api satırı, `sla` parantezinden "hedef süreler" çıktı, `assets` "toplu içe aktarma şimdilik API ile"; `transfer`/`rules` OPH-378/379'a kadar aynı. check:copy 32 yetenek. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
