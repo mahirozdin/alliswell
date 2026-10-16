@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-367: kurumsal sayfanın yetenek listesi (`apps/landing/src/enterprise/capabilities.js`) koda göre denetlendi; yanıt dosyaları ve müşteri kaydı uygulamada, SLA hedef süreleri uygulamada, varlık toplu içe aktarma ve tedarikçi kaydı yalnız API.
+**Last updated:** 2026-10-16 — OPH-368: README ilk ekranı (tek cümle + iki dakikada doğrulanır kanıt + hero + hızlı bağlantılar) ve `docs/COMPARISON.md` §7 dürüst self-hosted karşılaştırması (Vikunja, Super Productivity, Tasks.org, Nextcloud Tasks; 2026-10-16 tarihli).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-367: kurumsal yetenek listesi denetimi — `replyFiles` none→app (e-postayla giden yanıt yalnız metin), `partners` api→app (müşteri ekranı, OPH-360) ve tedarikçiler ayrı `suppliers` api satırı, `sla` parantezinden "hedef süreler" çıktı, `assets` "toplu içe aktarma şimdilik API ile"; `transfer`/`rules` OPH-378/379'a kadar aynı. check:copy 32 yetenek. |
+| Last completed           | OPH-368: README ilk ekranı yeniden yazıldı; COMPARISON §7 self-hosted rakipler (resmî kaynaklı, tarihli, doğrulanamayan hücre '—'); "tek self-host edilebilen" iddiası kaldırıldı; uygulamada olmayan subtask iddiası düştü; `check:docs` artık README + docs/*.md göreli link/anchor'larını GitHub slug'ıyla denetliyor (API.md başlıklarına açık `name`). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

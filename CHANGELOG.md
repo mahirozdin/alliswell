@@ -26,6 +26,13 @@ This file holds the unreleased changes and the latest release; at each release t
   times and customer records with portal invitations are shown as in the app; bulk asset import
   and supplier targets are marked API only.
 
+### Changed
+
+- **README and comparison, straight to the point.** The README now opens with what AllisWell is,
+  one thing you can check in two minutes and the links to get it; `docs/COMPARISON.md` adds an
+  honest side-by-side with the self-hosted alternatives (Vikunja, Super Productivity, Tasks.org,
+  Nextcloud Tasks), including where they beat us.
+
 ## [1.17.0] — 2026-10-15
 
 ### Added

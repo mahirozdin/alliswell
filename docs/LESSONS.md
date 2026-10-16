@@ -24,15 +24,16 @@
 ## docs-gates-process — kapılar, enjeksiyon, belge doğruluğu
 - **KARAR** Her düzeltmenin yanına aynı kusur SINIFINI yakalayan kapı ya da değişmez testi konur; kapı sahte ihlalle kırmızıya düşürülerek kanıtlanır.
 - **KARAR** İnsanın dokunamadığı yetenek (şema alanı, store metodu, uç) özellik değildir: iş yüzeyini adıyla yazar, uygulamada koşturularak kapanır (DESIGN §22).
-- **DERS** Kapının ölçmediği yeşil okunur: yeni kapı sahte ihlalle exit 1, kaldırınca 0 vermeli; boş kümede kırmızı; iki yönde enjekte et; eşanlamlı (`AnimatedOpacity`) kapsanır, yorum satırı ihlal değil.
+- **DERS** Kapının ölçmediği yeşil okunur: sahte ihlalle exit 1, kaldırınca 0; boş kümede kırmızı; iki yönde enjekte et; eşanlamlı (`AnimatedOpacity`) kapsanır, yorum satırı ihlal değil.
 - **DERS** Üretilmiş fixture'ı üreten kodla kıyaslayan kapı döngüseldir → bir taraf POLİTİKA: elle onaylı allowlist + bilinçli `--write` (`allowed-payload-keys.txt` kalıbı); liste bağımsız kaynakla (şema) doğrulanır.
-- **DERS** Enjeksiyon yanlış sebepten geçebilir (örtüşen savunmalar birbirini maskeler) → kuralı çıplak testle çivile, savunmaları ayrı enjekte et; ardışık test eşzamanlılığı kanıtlamaz.
-- **DERS** "Bu işi geri alsam hangi kapı kırmızı?" Hiçbiriyse iş bitmedi: okunmayan bayrak, çağrılmayan adaptör hep yeşildir → çağıran + test yaz.
-- **DERS** Davranış değişince doğru olan docstring/kullanıcı metni yalana döner, `check:docs` görmez → davranışı değiştiren tur yorumu ve metni aynı turda düzeltir.
-- **DERS** `docs/adr/README.md` dizininin kapısı yok (iki kez bayatladı) → ADR'nin dizin satırı aynı commit'te.
-- **NOT** `check:docs` sürüm iddialarını kök `package.json`'a kapılar (kaçış `docs-check-ignore`); test sayıları bilerek kapısız → belgede çürümeyen biçim ("1,200+").
-- **NOT** İkiz uygulamalar ortak fikstürle çivili, biri değişirse öteki + fikstür aynı değişiklikte: fold `fold_parity.json`, proje eşleme `project_match_parity.json`, takvim bloğu `calendar_block_parity.json`, tekrar motoru.
-- **DERS** Görev kimliği kalıbı `\d{3}\b` dört haneli kimliği hiç görmez (OPH-1000'de üçüncü haneden sonra kelime sınırı yok): iş hem `next`'ten hem kapıdan sessizce düşer → `\d{3,}`; TASKS'ı yalnız `scripts/tasks/tasks.mjs` okur, kapı ve `next` ondan (enjeksiyonla ölçüldü).
+- **DERS** Enjeksiyon yanlış sebepten geçebilir (örtüşen savunmalar maskeler) → kuralı çıplak testle çivile, savunmaları ayrı enjekte et; ardışık test eşzamanlılığı kanıtlamaz.
+- **DERS** "Bu işi geri alsam hangi kapı kırmızı?" Hiçbiriyse iş bitmedi: okunmayan bayrak, çağrılmayan adaptör yeşildir → çağıran + test.
+- **DERS** Davranış değişince doğru olan docstring/kullanıcı metni yalana döner, `check:docs` görmez → davranışı değiştiren tur metni de düzeltir.
+- **DERS** `docs/adr/README.md` dizini kapısız (2× bayatladı) → ADR'nin dizin satırı aynı commit'te.
+- **NOT** `check:docs` sürüm iddialarını kök `package.json`'a kapılar (kaçış `docs-check-ignore`); test sayıları bilerek kapısız → çürümeyen biçim ("1,200+").
+- **NOT** İkiz uygulamalar ortak fikstürle çivili, biri değişirse öteki + fikstür aynı değişiklikte: `fold_parity.json`, `project_match_parity.json`, `calendar_block_parity.json`, tekrar motoru.
+- **DERS** GitHub slug'ı U+FE0F'u tutar, ` — ` çift tire bırakır; README'de 3 ölü anchor → `check:docs` link+anchor'ı github-slugger'la denetler (OPH-368).
+- **DERS** Görev kimliği kalıbı `\d{3}\b` dört haneli kimliği hiç görmez: iş `next`'ten ve kapıdan sessizce düşer → `\d{3,}`; TASKS'ı yalnız `scripts/tasks/tasks.mjs` okur.
 
 ## api-db — Fastify rotaları, MySQL, kuyruk, test DB
 - **KARAR** Hata kodu ailesi: 400 biçim · 404 sana görünmez (403 değil) · 409 tekillik · 422 iş kuralı (gövde şemaya uyar, kural reddeder); her hata stabil `code` taşır.
@@ -231,7 +232,7 @@
 - **DERS** Cloudflare Email Address Obfuscation JS'siz legal sayfalardaki e-postayı uçuşta bozar → `<!--email_off-->`; deploy build edileni değil servis edileni doğrular.
 - **DERS** Landing `public/` hash'lenmez, `.htaccess` her `.css`'e `immutable, max-age=1y` verir → içerik değişince dosya adındaki tutamağı artır (`api-docs-1.css`); `.json` bilerek immutable değil.
 - **DERS** `String.fromEnvironment` derlemede gömülür, hazır web imajı başka domaine bağlanamaz → çalışma anı `alliswell-config.js` (env'den, `no-store`); `apiBaseUrlProvider` sırası runtime → dart-define → localhost.
-- **NOT** `/privacy` ve `/support` build'de `docs/PRIVACY*.md`/`docs/SUPPORT*.md`'den üretilir → md'yi düzenle. İki karşılaştırma tablosu var (`docs/COMPARISON.md`, `content.js` `comparison`) — birlikte güncelle.
+- **NOT** `/privacy` ve `/support` build'de `docs/PRIVACY*.md`/`docs/SUPPORT*.md`'den üretilir → md'yi düzenle. İki karşılaştırma tablosu (`docs/COMPARISON.md`, `content.js` `comparison`) birlikte güncellenir; §7 rakipleri tarihli: sürümde yeniden doğrula, kanıtsız '—'.
 
 ## ai-mcp — BYOK AI, uzak MCP, araç politikası
 - **KARAR** AI iki hat: uzak MCP (kullanıcının aboneliği) + uygulama içi BYOK (`fetch` adaptörleri, SDK yok, anahtar `AI_TOKEN_KEY`'le şifreli, arayüzde `key_last4`); abonelik-OAuth kapalı (ADR-0019).

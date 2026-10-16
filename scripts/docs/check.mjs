@@ -211,6 +211,127 @@ function appleClaimProblems() {
   return problems;
 }
 
+// ── Relative links and anchors resolve ────────────────────────────────────────
+//
+// OPH-368: README's feature list linked `#4-ai-on-your-terms--including-none`,
+// a heading that had been renamed away long before, and nothing noticed — the
+// README is the page a stranger reads first, and a dead "see above" is the
+// cheapest way to look abandoned. GitHub renders a dead anchor silently, so the
+// only place it can fail is here.
+//
+// Offline on purpose: every relative path (markdown link, `href`, `src`,
+// `srcset`, reference definition) must exist, and every `#anchor` — in the same
+// file or in another .md in the repo — must be the GitHub slug of a heading
+// there (or an explicit `id`/`name`). External URLs are not fetched; a network
+// check here would fail CI for somebody else's outage. Fenced blocks and inline
+// code are skipped. Escape hatch: `docs-check-ignore` on the line.
+const LINK_SKIP = /^(?:[a-z][a-z0-9+.-]*:|\/\/)/i; // http:, https:, mailto:, data:, //host
+
+/**
+ * GitHub's heading slug (github-slugger's rule, checked against the ids on
+ * github.com): rendered text, lowercased, punctuation and emoji dropped, spaces
+ * to `-`. Marks survive — so `⚖️` leaves its invisible U+FE0F behind, and
+ * `## ⚖️ Licence…` is not `#-licence…` on GitHub (README carries an explicit id).
+ */
+function githubSlug(heading) {
+  const text = heading
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, '') // images
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1') // links keep their text
+    .replace(/<[^>]+>/g, '') // inline html
+    .replace(/`([^`]*)`/g, '$1')
+    .replace(/(^|\s)[*_]+|[*_]+(?=\s|$)/g, '$1') // emphasis markers at word edges
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&#?\w+;/g, '');
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/[^\p{L}\p{M}\p{N}\p{Pc}\- ]/gu, '')
+    .replace(/ /g, '-');
+}
+
+/** Lines outside fenced code blocks; inline code blanked out unless `keepCode`. */
+function proseLines(text, keepCode = false) {
+  let fence = null;
+  return text.split('\n').map((line) => {
+    const open = /^\s*(```+|~~~+)/.exec(line);
+    if (fence) {
+      if (open && open[1][0] === fence[0] && open[1].length >= fence.length) fence = null;
+      return '';
+    }
+    if (open) {
+      fence = open[1];
+      return '';
+    }
+    return keepCode ? line : line.replace(/`[^`]*`/g, (m) => ' '.repeat(m.length));
+  });
+}
+
+const anchorCache = new Map();
+function anchorsOf(file) {
+  if (anchorCache.has(file)) return anchorCache.get(file);
+  const anchors = new Set();
+  const seen = new Map();
+  for (const line of proseLines(read(file), true)) {
+    const heading = /^ {0,3}#{1,6}\s+(.*?)\s*#*\s*$/.exec(line);
+    if (heading) {
+      const base = githubSlug(heading[1]);
+      const n = seen.get(base) ?? 0;
+      seen.set(base, n + 1);
+      anchors.add(n === 0 ? base : `${base}-${n}`);
+    }
+    for (const m of line.matchAll(/\s(?:id|name)="([^"]+)"/g)) anchors.add(m[1]);
+  }
+  anchorCache.set(file, anchors);
+  return anchors;
+}
+
+/** README.md + docs/*.md (the same set the version gate reads, minus the landing tree). */
+function linkFiles() {
+  return claimFiles().filter((f) => f.endsWith('.md'));
+}
+
+let linksChecked = 0;
+function linkProblems() {
+  const problems = [];
+  for (const file of linkFiles()) {
+    proseLines(read(file)).forEach((line, i) => {
+      if (line.includes('docs-check-ignore')) return;
+      const targets = [];
+      for (const m of line.matchAll(/\]\(\s*([^)\s]+)(?:\s+"[^"]*")?\s*\)/g)) targets.push(m[1]);
+      for (const m of line.matchAll(/\s(?:href|src)="([^"]+)"/g)) targets.push(m[1]);
+      for (const m of line.matchAll(/\ssrcset="([^"]+)"/g)) {
+        for (const part of m[1].split(',')) targets.push(part.trim().split(/\s+/)[0]);
+      }
+      const ref = /^ {0,3}\[[^\]]+\]:\s*(\S+)/.exec(line);
+      if (ref) targets.push(ref[1]);
+
+      for (const raw of targets) {
+        const target = raw.replace(/^<|>$/g, '');
+        if (!target || LINK_SKIP.test(target)) continue;
+        linksChecked += 1;
+        const hash = target.indexOf('#');
+        const pathPart = (hash === -1 ? target : target.slice(0, hash)).split('?')[0];
+        const anchor = hash === -1 ? null : decodeURIComponent(target.slice(hash + 1));
+        const dest = pathPart ? resolve(dirname(file), decodeURIComponent(pathPart)) : file;
+        if (!existsSync(dest)) {
+          problems.push(`${rel(file)}:${i + 1}: ${raw} — no such file`);
+          continue;
+        }
+        if (anchor && dest.endsWith('.md') && !anchorsOf(dest).has(anchor.toLowerCase())) {
+          problems.push(`${rel(file)}:${i + 1}: ${raw} — no heading with that anchor in ${rel(dest)}`);
+        }
+      }
+    });
+  }
+  // A gate that checked nothing must not pass: a broken regex would look green.
+  if (linksChecked === 0) problems.push('no relative links found at all — the link scan is broken');
+  return problems;
+}
+
 // ── The working docs stay small ───────────────────────────────────────────────
 //
 // STATE.md and TASKS.md are read at the start of every agent session. By
@@ -312,6 +433,7 @@ function workingDocProblems() {
 const problems = [...manifestProblems(), ...docProblems()];
 const appleClaims = appleClaimProblems();
 const working = workingDocProblems();
+const links = linkProblems();
 
 if (problems.length > 0) {
   console.error(`✗ docs: ${problems.length} stale version claim(s) — repo is ${VERSION}\n`);
@@ -331,10 +453,17 @@ if (working.length > 0) {
   console.error(`✗ docs: ${working.length} working-doc problem(s)\n`);
   for (const p of working) console.error(`  ${p}`);
 }
-if (problems.length > 0 || appleClaims.length > 0 || working.length > 0) process.exit(1);
+if (links.length > 0) {
+  console.error(`✗ docs: ${links.length} broken relative link(s) or anchor(s)\n`);
+  for (const p of links) console.error(`  ${p}`);
+}
+if (problems.length > 0 || appleClaims.length > 0 || working.length > 0 || links.length > 0) {
+  process.exit(1);
+}
 
 console.log(
   `✓ docs: version claims agree with package.json (${VERSION}); ` +
     'no surface calls Apple Calendar two-way; ' +
-    'STATE/TASKS/LESSONS within their rules, STATE points where `npm run next` does',
+    'STATE/TASKS/LESSONS within their rules, STATE points where `npm run next` does; ' +
+    `${linksChecked} relative links and anchors resolve`,
 );
