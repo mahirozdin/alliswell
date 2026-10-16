@@ -148,6 +148,15 @@ export async function runAppImport(
   }
   const allTags = await app.db('tags').where({ workspace_id: workspaceId }).select();
   const tagBySlug = new Map(allTags.map((t) => [t.slug, t]));
+  // A live tag found by its NAME too: when only a soft-deleted tag held the
+  // plain slug, an earlier import (or an earlier batch of this one) created
+  // the tag under a suffixed slug — reuse it instead of minting another.
+  const liveTagByName = new Map();
+  for (const t of allTags) {
+    if (t.deleted_at != null) continue;
+    const key = slugify(t.name, 'tag');
+    if (!liveTagByName.has(key)) liveTagByName.set(key, t);
+  }
 
   const projectsByKey = new Map(parsed.projects.map((p) => [p.key, p]));
   const neededProjectKeys = [...new Set(eligible.map((i) => i.projectKey).filter(Boolean))];
@@ -169,7 +178,8 @@ export async function runAppImport(
   }
   const tagPlan = [...tagNames.entries()].map(([slug, name]) => {
     const row = tagBySlug.get(slug);
-    return { slug, name, existing: row && row.deleted_at == null ? row : null, held: Boolean(row) };
+    const live = row && row.deleted_at == null ? row : (liveTagByName.get(slug) ?? null);
+    return { slug, name, existing: live, held: Boolean(row) };
   });
 
   const google = await app

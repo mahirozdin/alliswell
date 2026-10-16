@@ -238,6 +238,40 @@ describe.runIf(enabled)('integration: import from Todoist / TickTick (OPH-371)',
     expect(a.json().created.tasks + b.json().created.tasks).toBe(10);
   });
 
+  it('a tag whose slug only a deleted tag holds is created once, not once per batch', async () => {
+    const me = await register('deleted-tag');
+    const ws = me.workspace.id;
+    const made = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${ws}/tags`,
+      headers: me.headers,
+      payload: { name: 'ev' },
+    });
+    expect(made.statusCode).toBe(201);
+    // Today's delete paths free the slug; a row deleted before they did still
+    // holds it — the case the importer's suffixed slug exists for.
+    await app.db('tags').where({ id: made.json().id }).update({ deleted_at: new Date() });
+    for (let call = 0; call < 2; call += 1) {
+      let remaining = Infinity;
+      for (let i = 0; i < 10 && remaining > 0; i += 1) {
+        const res = await run(me, {
+          source: 'todoist',
+          files: todoistFiles(),
+          options: { maxItems: 2 },
+        });
+        expect(res.statusCode).toBe(200);
+        remaining = res.json().remaining;
+      }
+    }
+    const live = await app
+      .db('tags')
+      .where({ workspace_id: ws, name: 'ev' })
+      .whereNull('deleted_at')
+      .select('slug');
+    expect(live).toHaveLength(1);
+    expect(live[0].slug).not.toBe('ev');
+  });
+
   it('an API key drives the same call, and the workspace cascade removes the ledger', async () => {
     const me = await register('key');
     const ws = me.workspace.id;

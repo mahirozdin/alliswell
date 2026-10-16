@@ -3796,7 +3796,7 @@
     "openHome": "Ana sayfayı aç",
     "done": "Bitti",
     "error": {
-      "tooLarge": "Bu dosyalar 9 MB'tan büyük. Projeleri tek tek içe aktarın.",
+      "tooLarge": "Bu dosyalar 8 MB'tan büyük. Projeleri tek tek içe aktarın.",
       "noCsv": "CSV dosyası bulunamadı. Dışa aktarımın CSV dosyasını ya da yedek ZIP'ini seçin.",
       "looksTicktick": "Bu bir TickTick yedeğine benziyor. Geri dönüp TickTick'i seçin.",
       "looksTodoist": "Bu bir Todoist dışa aktarımına benziyor. Geri dönüp Todoist'i seçin.",

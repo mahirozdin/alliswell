@@ -13,9 +13,11 @@ import 'import_models.dart';
 /// decode UTF-8. Everything else — CSV, dates, recurrences — happens on the
 /// server, so there is one parser for the app, the API and curl (ADR-0052).
 
-/// What the server accepts in one request (its body limit is 10 MiB; the
-/// JSON envelope needs a little room).
-const kImportMaxBytes = 9 * 1024 * 1024;
+/// What the server accepts in one request. Its body limit is 10 MiB, and the
+/// JSON envelope is not free: every quote and line break in a CSV is escaped,
+/// which grows a fully quoted TickTick backup by about 16 % — so the files
+/// themselves stop at 8 MiB, never at a size the server would then refuse.
+const kImportMaxBytes = 8 * 1024 * 1024;
 
 class ImportTooLarge implements Exception {
   const ImportTooLarge(this.bytes);

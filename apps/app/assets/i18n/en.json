@@ -3797,7 +3797,7 @@
     "openHome": "Open Home",
     "done": "Done",
     "error": {
-      "tooLarge": "These files are larger than 9 MB. Import one project at a time.",
+      "tooLarge": "These files are larger than 8 MB. Import one project at a time.",
       "noCsv": "No CSV file was found. Choose the export's CSV file or the backup ZIP.",
       "looksTicktick": "This looks like a TickTick backup. Go back and choose TickTick.",
       "looksTodoist": "This looks like a Todoist export. Go back and choose Todoist.",
