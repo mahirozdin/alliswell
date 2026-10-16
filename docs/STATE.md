@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-371: Todoist/TickTick içe aktarma sihirbazı (Ayarlar › Veri), sunucu ayrıştırır, `import_ledger` (ADR-0052); README/landing "Switch from" bölümü.
+**Last updated:** 2026-10-16 — OPH-372: görevde "Ne zaman" (gün, `start_at`) ve "Süre" (`estimated_minutes`); Bugün başlamış görevleri de alır, takvim bloğu süre kadar (ADR-0053).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-371: `POST /workspaces/:id/import/apps` (dryRun = önizleme, `maxItems` parti, `remaining`) — `lib/importers/` saf ayrıştırıcılar, `db/app-import.js` domain yazımı, `import_ledger` tekrar içe aktarmayı atlar ve silineni geri getirmez (ADR-0052). Uygulamada Ayarlar › Veri › İçe aktar sihirbazı (DESIGN §37); MCP aracı yok (yazılı gerekçe). |
+| Last completed           | OPH-372: oluşturma sayfası + detayda Ne zaman (yalnız gün, Bitiş'in üstünde, hatırlatıcıya dokunmaz, seride tek oluşum) ve Süre (hazır seçenek + 1–1440 dk, seri alanı); Ana sayfa/widget/AI bağlamı/MCP today `taskPlanDay` kuralıyla dosyalar (gecikme yalnız bitişten); Google/Apple bloğu `estimated_minutes` uzunluğunda (yoksa 30, güne kenetli); MCP iki alanı taşır, REST zaten taşıyordu (ADR-0053, DESIGN §38). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

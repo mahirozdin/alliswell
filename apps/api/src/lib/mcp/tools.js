@@ -258,6 +258,10 @@ function leanTask(row) {
     priority: row.priority,
     dueAt: isoOrNull(row.due_at),
     remindAt: isoOrNull(row.remind_at),
+    // OPH-372 (ADR-0053): "when" — the day the task enters Today — and how
+    // long it takes. Neither is the deadline; `dueAt` keeps that job.
+    startAt: isoOrNull(row.start_at),
+    estimatedMinutes: row.estimated_minutes ?? null,
     isUrgent: Boolean(row.is_urgent),
     projectId: row.project_id ?? null,
     updatedAt: isoOrNull(row.updated_at),
@@ -296,8 +300,19 @@ function createTaskInputSchema() {
   delete schema.properties.ambiguities;
   schema.required = ['title'];
   schema.properties.idempotencyKey = IDEMPOTENCY_KEY_SCHEMA;
+  // OPH-372: added HERE, not to TASK_ITEM — that one is also the in-app AI
+  // extraction schema and the provider variants, which stay as they are.
+  schema.properties.startAt = TIMESTAMP_SCHEMA;
+  schema.properties.estimatedMinutes = ESTIMATED_MINUTES_SCHEMA;
   return schema;
 }
+
+/** The server's own bounds for a duration (routes/sync.js, routes/tasks.js). */
+const ESTIMATED_MINUTES_SCHEMA = { type: 'integer', minimum: 1, maximum: 60000 };
+
+/** What `startAt` and `estimatedMinutes` mean — said once, to both write tools. */
+const WHEN_AND_DURATION_NOTE =
+  "`startAt` = 'when': the day the task should show in Today (only its date in the user's timezone matters); it never moves the deadline (`dueAt`) or the alarm. `estimatedMinutes` = how long it takes; calendar blocks use it.";
 
 async function queryOverdue(app, workspaceId, now) {
   return app
@@ -312,8 +327,15 @@ async function queryOverdue(app, workspaceId, now) {
     .select();
 }
 
+/**
+ * Today = due today, OR its "when" day has come and it is not overdue
+ * (OPH-372, ADR-0053 — the app's Home and widget rule). Two plain queries
+ * merged here rather than one nested `where`: a started task due next week
+ * belongs to today, a started task whose deadline already passed belongs to
+ * Overdue alone.
+ */
 async function queryToday(app, workspaceId, { start, end }) {
-  return app
+  const due = await app
     .db('tasks')
     .where({ workspace_id: workspaceId })
     .whereNull('deleted_at')
@@ -324,6 +346,33 @@ async function queryToday(app, workspaceId, { start, end }) {
     .orderBy('due_at', 'asc')
     .limit(60)
     .select();
+  const started = await app
+    .db('tasks')
+    .where({ workspace_id: workspaceId })
+    .whereNull('deleted_at')
+    .whereIn('status', OPEN_STATUSES)
+    .whereNotNull('start_at')
+    .where('start_at', '<', end)
+    .orderBy('id', 'asc')
+    .limit(120)
+    .select();
+  const seen = new Set(due.map((row) => row.id));
+  const merged = [...due];
+  for (const row of started) {
+    if (seen.has(row.id)) continue;
+    if (row.due_at != null && new Date(row.due_at) < start) continue; // overdue
+    seen.add(row.id);
+    merged.push(row);
+  }
+  merged.sort((a, b) => {
+    if (a.due_at == null && b.due_at == null) return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    if (a.due_at == null) return 1;
+    if (b.due_at == null) return -1;
+    const byDue = new Date(a.due_at) - new Date(b.due_at);
+    if (byDue !== 0) return byDue;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+  return merged.slice(0, 60);
 }
 
 /**
@@ -475,7 +524,7 @@ export const MCP_TOOLS = [
   {
     name: 'list_tasks',
     title: 'List tasks',
-    description: `List tasks with filters. \`today\`/\`overdue\` use the account owner's timezone. ${DATA_NOTE}`,
+    description: `List tasks with filters. \`today\`/\`overdue\` use the account owner's timezone. \`today\` = due today, or its 'when' day (\`startAt\`) has come and it is not overdue. ${DATA_NOTE}`,
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
@@ -709,8 +758,7 @@ export const MCP_TOOLS = [
   {
     name: 'create_task',
     title: 'Create task',
-    description:
-      'Create ONE task. `projectName` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name creates NOTHING and returns candidates instead. Tags resolve to existing tags only. Pass `idempotencyKey` to make retries safe.',
+    description: `Create ONE task. \`projectName\` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name creates NOTHING and returns candidates instead. Tags resolve to existing tags only. Pass \`idempotencyKey\` to make retries safe. ${WHEN_AND_DURATION_NOTE}`,
     annotations: WRITE_ANNOTATIONS,
     inputSchema: createTaskInputSchema(),
     async handler(app, auth, args) {
@@ -744,6 +792,10 @@ export const MCP_TOOLS = [
           ...(projectId ? { projectId } : {}),
           ...(args.dueAt !== undefined ? { dueAt: args.dueAt } : {}),
           ...(args.reminderAt !== undefined ? { remindAt: args.reminderAt } : {}),
+          ...(args.startAt !== undefined ? { startAt: args.startAt } : {}),
+          ...(args.estimatedMinutes !== undefined
+            ? { estimatedMinutes: args.estimatedMinutes }
+            : {}),
           ...(args.priority !== undefined ? { priority: args.priority } : {}),
           ...(args.urgent !== undefined ? { isUrgent: args.urgent } : {}),
           tagIds,
@@ -804,8 +856,7 @@ export const MCP_TOOLS = [
   {
     name: 'update_task',
     title: 'Update task',
-    description:
-      'Change fields of ONE existing task. `projectName` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name changes NOTHING and returns candidates instead. `tags` REPLACES the task’s tags and resolves to existing tags only. Pass `idempotencyKey` to make retries safe. Scheduling fields are ISO-8601 with an offset; `null` clears them.',
+    description: `Change fields of ONE existing task. \`projectName\` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name changes NOTHING and returns candidates instead. \`tags\` REPLACES the task’s tags and resolves to existing tags only. Pass \`idempotencyKey\` to make retries safe. Scheduling fields are ISO-8601 with an offset; \`null\` clears them. ${WHEN_AND_DURATION_NOTE}`,
     annotations: OVERWRITING_WRITE,
     inputSchema: {
       type: 'object',
@@ -820,6 +871,7 @@ export const MCP_TOOLS = [
         dueAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
         remindAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
         startAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
+        estimatedMinutes: { type: ['integer', 'null'], minimum: 0, maximum: 60000 },
         isUrgent: { type: 'boolean' },
         requiresAcknowledgement: { type: 'boolean' },
         // The name the user SAID — never an id (AI.md §4).
@@ -858,6 +910,7 @@ export const MCP_TOOLS = [
         'dueAt',
         'remindAt',
         'startAt',
+        'estimatedMinutes',
         'isUrgent',
         'requiresAcknowledgement',
         'timezone',

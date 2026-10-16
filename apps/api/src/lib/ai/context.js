@@ -64,6 +64,9 @@ export function buildTaskViewResource({ view, rows, now, timezone }) {
       status: row.status,
       priority: row.priority,
       dueAt: row.due_at ? new Date(row.due_at).toISOString() : null,
+      // OPH-372: the today view holds started tasks too — say why one is here.
+      startAt: row.start_at ? new Date(row.start_at).toISOString() : null,
+      estimatedMinutes: row.estimated_minutes ?? null,
       isUrgent: Boolean(row.is_urgent),
       projectId: row.project_id ?? null,
     })),

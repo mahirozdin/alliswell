@@ -194,10 +194,16 @@ class FakeApi {
     String? colorRgb,
     String? seriesId,
     String? occurrenceDate,
+
+    /// "When" and duration (OPH-372).
+    String? startAt,
+    int? estimatedMinutes,
     List<String> tagIds = const [],
     List<Map<String, dynamic>> checklist = const [],
   }) {
     final task = _task({
+      'startAt': startAt,
+      'estimatedMinutes': estimatedMinutes,
       'title': title,
       'description': description,
       'projectId': projectId,
@@ -1588,7 +1594,9 @@ class FakeApi {
       // puts the repeat badge on a tile.
       'seriesId': body['seriesId'],
       'occurrenceDate': body['occurrenceDate'],
-      'startAt': null,
+      // OPH-372: echoed like every field the client writes — a hardcoded
+      // null here made a push+pull erase the user's "when" in every test.
+      'startAt': body['startAt'],
       'dueAt': body['dueAt'],
       'scheduledStartAt': body['scheduledStartAt'],
       'scheduledEndAt': body['scheduledEndAt'],
@@ -1600,7 +1608,7 @@ class FakeApi {
       // OPH-081: mirrors routes/tasks.js — snapshots carry it, push accepts it.
       'calendarMirrorEnabled': body['calendarMirrorEnabled'] ?? false,
       'repeatRule': null,
-      'estimatedMinutes': null,
+      'estimatedMinutes': body['estimatedMinutes'],
       'actualMinutes': null,
       'sortOrder': 0,
       'completedAt': body['completedAt'],

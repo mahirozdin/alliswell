@@ -163,6 +163,13 @@ void main() {
       find.byKey(const Key('task-sheet-title')),
       'Panodan doğan iş',
     );
+    // The sheet grew When and Duration rows (OPH-372): scroll first — twice,
+    // because on this wide surface one pass leaves the button just below the
+    // fold while the sheet is still settling its height.
+    for (var i = 0; i < 2; i++) {
+      await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+      await tester.pumpAndSettle();
+    }
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 

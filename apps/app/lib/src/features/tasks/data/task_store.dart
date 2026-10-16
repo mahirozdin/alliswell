@@ -10,6 +10,7 @@ import '../../quick_access/data/quick_access_store.dart';
 import '../../quick_access/data/quick_link.dart';
 import 'task.dart';
 import 'task_scope.dart';
+import 'task_when.dart';
 
 /// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
 /// (`inbox`) are excluded — they live only in the Inbox until triaged (OPH-107);
@@ -20,6 +21,12 @@ const kPlanningStatuses = ['open', 'scheduled', 'in_progress', 'waiting'];
 /// replica; writes change the replica optimistically AND enqueue the same
 /// patch in the outbox (OPH-055) inside one transaction, then poke the sync
 /// engine. The server stays canonical — pulled snapshots overwrite rows.
+///
+/// A create/update body may carry "when" and duration (OPH-372, ADR-0053):
+/// `'startAt': awWhenIso(day)` (a day, stored as its local midnight) and
+/// `'estimatedMinutes': int` (1..[kAwMaxEstimatedMinutes] from the UI); `null`
+/// clears either. Neither touches `dueAt`, `remindAt` or the calendar block's
+/// `scheduled*` — the three times are never merged.
 class TaskStore {
   TaskStore(this._db, this._poke, {this.userId});
 
@@ -274,8 +281,11 @@ class TaskStore {
     }
     // A capture created WITH a date or project isn't a capture — promote it so
     // it lands on planning lists, not the Inbox (OPH-107 parity with update).
+    // A "when" is a date too (OPH-372).
     if (patch['status'] == 'inbox' &&
-        (patch['dueAt'] != null || patch['projectId'] != null)) {
+        (patch['dueAt'] != null ||
+            patch['startAt'] != null ||
+            patch['projectId'] != null)) {
       patch['status'] = 'open';
     }
     final tagIds = ((patch['tagIds'] as List?) ?? const []).cast<String>();
@@ -304,6 +314,7 @@ class TaskStore {
               dueAt: _dateValue(patch, 'dueAt'),
               remindAt: _dateValue(patch, 'remindAt'),
               startAt: _dateValue(patch, 'startAt'),
+              estimatedMinutes: Value(patch['estimatedMinutes'] as int?),
               isUrgent: Value((patch['isUrgent'] as bool?) ?? false),
               requiresAcknowledgement: Value(
                 (patch['requiresAcknowledgement'] as bool?) ?? false,
@@ -344,7 +355,8 @@ class TaskStore {
     // mutation (OPH-107) — unless the caller set status explicitly.
     if (record.status == 'inbox' && !effective.containsKey('status')) {
       final gainsDate =
-          effective.containsKey('dueAt') && effective['dueAt'] != null;
+          (effective.containsKey('dueAt') && effective['dueAt'] != null) ||
+          (effective.containsKey('startAt') && effective['startAt'] != null);
       final gainsProject =
           effective.containsKey('projectId') && effective['projectId'] != null;
       if (gainsDate || gainsProject) effective['status'] = 'open';
@@ -407,6 +419,11 @@ class TaskStore {
     if (effective.containsKey('startAt')) {
       companion = companion.copyWith(startAt: _dateValue(effective, 'startAt'));
     }
+    if (effective.containsKey('estimatedMinutes')) {
+      companion = companion.copyWith(
+        estimatedMinutes: Value(effective['estimatedMinutes'] as int?),
+      );
+    }
     if (effective.containsKey('scheduledStartAt')) {
       companion = companion.copyWith(
         scheduledStartAt: _dateValue(effective, 'scheduledStartAt'),
@@ -458,6 +475,25 @@ class TaskStore {
     });
     _poke();
   }
+
+  /// Set or clear a task's "when" (OPH-372, ADR-0053) — a DAY, stored as its
+  /// local midnight. Only `startAt` is written: the deadline, the reminder and
+  /// the calendar block stay where they are. The OPH-373 parser writes the
+  /// same body key (`'startAt': awWhenIso(day)`) through [create]/[update].
+  Future<void> setWhen(String taskId, DateTime? day) =>
+      update(taskId, {'startAt': day == null ? null : awWhenIso(day)});
+
+  /// Set or clear how long a task takes, in minutes (OPH-372). The calendar
+  /// block follows it. [seriesScope] is the series question's answer for a
+  /// recurring task (duration is a series template field).
+  Future<void> setDuration(
+    String taskId,
+    int? minutes, {
+    String? seriesScope,
+  }) => update(taskId, {
+    'estimatedMinutes': minutes,
+    'seriesScope': ?seriesScope,
+  });
 
   Future<void> complete(String taskId) =>
       update(taskId, {'status': 'completed'});
@@ -702,6 +738,7 @@ class TaskStore {
     priority: r.priority,
     colorRgb: r.colorRgb,
     startAt: r.startAt,
+    estimatedMinutes: r.estimatedMinutes,
     dueAt: r.dueAt,
     scheduledStartAt: r.scheduledStartAt,
     scheduledEndAt: r.scheduledEndAt,

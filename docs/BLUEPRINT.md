@@ -619,7 +619,8 @@ yüzey OPH-210'da ölür.)_
 
 - `scheduled_start/end` doluysa blok ODUR (takvimden sürükleme kazanır — OPH-192
   davranışı aynen).
-- Değilse, tarihli görev = görev saatinde başlayan **30 dakikalık blok**; blok gece
+- Değilse, tarihli görev = görev saatinde başlayan **30 dakikalık blok** (görevin
+  `estimated_minutes`'ı varsa o uzunlukta, en çok 1440 — ADR-0053); blok gece
   yarısını aşacaksa güne kenetlenir → 23:59 vadeli (saatsiz) görev **23:29–23:59**.
 - Tarihsiz görev = **ekleniş gününe** aynı yarım-saat kuralıyla girer ("ekleniş
   tarihi baz alınır" — kullanıcının açık kuralı).

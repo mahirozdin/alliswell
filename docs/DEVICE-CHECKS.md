@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Ne zaman ve Süre (2026-10-16)
+
+- OPH-372 / ADR-0053 — **iPhone ve Mac**, Apple Takvim aynası açık: bugün 14:00'te bitişi olan göreve Süre 90 dk → Apple Takvim'de etkinlik 14:00–15:30; süreyi temizle → 14:00–14:30; Ne zaman'ı yarın yap → etkinlik YERİNDEN OYNAMIYOR. **Google Takvim** bağlı canlı sunucuda: tarihli göreve Süre 45 dk → Google etkinliği 45 dk; etkinliği Google'da sürükle → görevin Ne zaman'ı ve Süre'si değişmiyor, detayda "Takvimde taşındı" görünüyor. **iOS ve Android widget'ı**: Ne zaman = dün, bitiş 3 gün sonra olan görev Bugün altında, saat yerine bitiş günüyle ("20 Eki"), Bugün sayısı onu sayıyor. **Claude/ChatGPT MCP bağlayıcısı**: `create_task` (startAt + estimatedMinutes) → `list_tasks today` görevi listeliyor, iki alan dönüyor. Açık ve koyu temada, 390 px telefonda Ne zaman/Süre satırlarında taşma yok.
+
 ## İçe aktarma sihirbazı (2026-10-16)
 
 - OPH-371 / ADR-0052 — **iPhone** ve **Android**: Ayarlar › Veri › İçe aktar › Todoist › Dosya seç → Dosyalar/İndirilenler'den Safari'de ya da Chrome'da indirilmiş bir Todoist yedek ZIP'i ve tek bir proje CSV'si seçilebiliyor; iOS'ta iCloud Drive'daki dosya okunmadan önce iniyor (ilerleme göstergesi takılmıyor). TickTick › tek CSV seçimi. Önizlemede sayılar gerçek dışa aktarımla tutuyor (projeler, görevler, kontrol listesine giren alt görevler, etiketler); "Notla birlikte taşınanlar" grubu açılınca dosya:satır örnekleri görünüyor. İçe aktar → ilerleme çubuğu → sonuç; Ana sayfada görevler, tekrarlayanların "sonraki 5" tarihi doğru. Aynı dosyayı ikinci kez içe aktar → "her şey zaten içe aktarılmış", düğme kapalı. TickTick'te tüm gün görevler Europe/Istanbul'da doğru günde, işaretli kontrol maddeleri işaretli, "Tamamlanmışları da al" sayıyı değiştiriyor. Uçak modunda önizle → "İçe aktarma bağlantı ister". Açık ve koyu temada; 390 px telefonda taşma yok.

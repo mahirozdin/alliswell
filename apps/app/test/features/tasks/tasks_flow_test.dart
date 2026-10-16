@@ -345,6 +345,8 @@ void main() {
       'bağlam: https://x.dev/spec',
     );
     // Pick a due date via the date + time dialogs (defaults accepted).
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
@@ -353,6 +355,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Round 14: urgent is ON and priority is medium out of the box — no taps.
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -450,6 +455,9 @@ void main() {
     // Back in the task sheet with the NEW project selected in the field.
     expect(find.text('Anında Proje'), findsOneWidget);
 
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -705,11 +713,16 @@ void main() {
       'Yarına iş',
     );
     // Accept both pickers untouched: whatever they OPENED on is what lands.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
@@ -762,6 +775,8 @@ void main() {
       opensOn.month,
       opensOn.day == 15 ? 16 : 15,
     );
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('${target.day}').last);
@@ -772,11 +787,16 @@ void main() {
     await tester.pumpAndSettle();
 
     // …and the reminder picker, accepted untouched, lands on THAT day.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-remind')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-remind')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
@@ -832,11 +852,16 @@ void main() {
     expect(find.text('Plan task'), findsOneWidget);
 
     // Give it a due date (accept picker defaults) and save.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();

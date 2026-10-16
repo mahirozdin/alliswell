@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../calendar/providers.dart';
 import '../../projects/providers.dart';
 import '../../tasks/data/task.dart';
+import '../../tasks/data/task_when.dart';
 import '../../tasks/providers.dart';
 import 'ai_context_builder.dart';
 
@@ -52,11 +53,19 @@ AiContextBundle buildLiveAiContext({
   final upcoming = <TaskLite>[];
   for (final task in tasks) {
     final due = task.dueAt?.toLocal();
-    if (due == null) continue;
+    // OPH-372 (ADR-0053): a task whose "when" day has come is on today too,
+    // even when its deadline is later — Home and the widget say the same.
+    // Overdue still goes by the deadline alone.
+    final whenDay = taskWhenDay(task);
+    final started = whenDay != null && !whenDay.isAfter(startOfToday);
+    if (due == null) {
+      if (started) today.add(TaskLite(title: task.title));
+      continue;
+    }
     final lite = TaskLite(title: task.title, dueLabel: dueLabel(due));
     if (due.isBefore(now)) {
       overdue.add(lite);
-    } else if (due.isBefore(startOfTomorrow)) {
+    } else if (due.isBefore(startOfTomorrow) || started) {
       today.add(lite);
     } else if (due.isBefore(upcomingHorizon)) {
       upcoming.add(lite);

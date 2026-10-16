@@ -289,10 +289,25 @@
     "priorityLabel": "Priority",
     "statusLabel": "Status",
     "notSet": "Not set",
+    "when": "When",
+    "clearWhen": "Clear when",
     "due": "Due",
     "clearDue": "Clear due date",
     "remind": "Remind",
     "clearReminder": "Clear reminder",
+    "duration": "Duration",
+    "clearDuration": "Clear duration",
+    "durationValue": {
+      "minutes": "{m} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
+    },
+    "durationDialog": {
+      "title": "How long will it take?",
+      "custom": "Minutes",
+      "invalid": "Enter 1 to 1440 minutes."
+    },
+    "durationSemantic": "Takes {duration}",
     "clearField": "Clear {field}",
     "urgentAlarm": "Urgent alarm",
     "urgentAlarmSub": "Insistent reminder that must be acknowledged",

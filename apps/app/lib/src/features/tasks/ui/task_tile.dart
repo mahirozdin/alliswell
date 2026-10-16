@@ -16,6 +16,7 @@ import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
+import '../data/task_when.dart';
 import '../providers.dart';
 import 'repeat_row.dart';
 import 'task_visuals.dart';
@@ -118,6 +119,11 @@ class TaskTile extends ConsumerWidget {
     // DESIGN §25 R6: one occurrence of a series says so — quietly, and never on
     // a finished row (a completed occurrence does not repeat; §20 C2).
     final recurring = !completed && task.isRecurring;
+    // OPH-372 (DESIGN §38 W3): how long it takes, while there is still work.
+    // No "when" chip: the row is already filed under its "when" day, and the
+    // due chip keeps saying the deadline.
+    final duration = completed ? null : task.estimatedMinutes;
+    final showDuration = duration != null && duration > 0;
     final isOverdue =
         due != null && !task.isCompleted && due.isBefore(DateTime.now());
     final priorityColor = taskPriorityColorOf(context, task.priority);
@@ -197,6 +203,7 @@ class TaskTile extends ConsumerWidget {
                 !snoozed &&
                 !muted &&
                 !recurring &&
+                !showDuration &&
                 assignees.isEmpty &&
                 unit == null &&
                 work == null)
@@ -318,6 +325,31 @@ class TaskTile extends ConsumerWidget {
                               color: scheme.onSurfaceVariant,
                             )
                           : null,
+                    ),
+                  if (showDuration)
+                    Semantics(
+                      label: 'task.durationSemantic'.tr(
+                        args: {'duration': awFormatDuration(duration)},
+                      ),
+                      excludeSemantics: true,
+                      child: Row(
+                        key: Key('task-duration-${task.id}'),
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.timelapse_outlined,
+                            size: 14,
+                            color: scheme.onSurfaceVariant,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            awFormatDuration(duration),
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   for (final tag in rowTags.take(2))
                     _InlineTag(tag: tag, onTap: onTagTap),

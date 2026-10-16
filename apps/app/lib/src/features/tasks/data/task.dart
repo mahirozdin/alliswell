@@ -20,6 +20,7 @@ class Task {
     this.description,
     this.colorRgb,
     this.startAt,
+    this.estimatedMinutes,
     this.dueAt,
     this.scheduledStartAt,
     this.scheduledEndAt,
@@ -49,6 +50,7 @@ class Task {
     priority: json['priority'] as String,
     colorRgb: json['colorRgb'] as String?,
     startAt: _date(json['startAt']),
+    estimatedMinutes: json['estimatedMinutes'] as int?,
     dueAt: _date(json['dueAt']),
     scheduledStartAt: _date(json['scheduledStartAt']),
     scheduledEndAt: _date(json['scheduledEndAt']),
@@ -83,7 +85,17 @@ class Task {
   final String status;
   final String priority;
   final String? colorRgb;
+
+  /// "When" (OPH-372, ADR-0053): the DAY the user plans to do it — stored as
+  /// that day's local midnight (`awWhenIso`). It puts the task on Today from
+  /// that day; it never moves the deadline, the alarm or the calendar block.
   final DateTime? startAt;
+
+  /// How long it takes, in minutes (OPH-372). The calendar block is this long
+  /// (30 when unset). A series template field: editing it asks the scope.
+  final int? estimatedMinutes;
+
+  /// The deadline: owns the alarm and Overdue.
   final DateTime? dueAt;
 
   /// When you plan to actually DO it — the calendar block (§7.1). Dragging the

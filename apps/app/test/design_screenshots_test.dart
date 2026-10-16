@@ -226,10 +226,15 @@ FakeApi _seededApi() {
     tagIds: [health],
   );
   // Next 30 days.
+  // OPH-372: started yesterday ("when"), due next week, 90 minutes long — so
+  // the Home shot shows a Today row whose deadline is later, with its
+  // duration chip.
   api.seedTask(
     title: 'Draft the Q3 planning doc',
     priority: 'medium',
     dueAt: day(8, 12, 0),
+    startAt: iso(DateTime(now.year, now.month, now.day - 1)),
+    estimatedMinutes: 90,
     projectId: launch,
     tagIds: [writing],
   );
@@ -512,6 +517,111 @@ void main() {
       navigate: (t) => t.tap(find.byType(FloatingActionButton)),
     );
   });
+
+  // OPH-372 (DESIGN §38 W5): the When / Due / Remind / Duration rows, filled,
+  // in the create sheet and on the detail screen, and the duration dialog —
+  // both themes. `--dart-define=shotLocale=tr` renders the longer language.
+  Future<void> withShotLocale() async {
+    await AwI18n.instance.setLocale(screenshotLocale('en'));
+    addTearDown(() => AwI18n.instance.setLocale(const Locale('en')));
+  }
+
+  Future<void> fillSheetDates(WidgetTester t) async {
+    await t.tap(find.byType(FloatingActionButton));
+    await t.pumpAndSettle();
+    await t.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Prepare the launch demo',
+    );
+    await t.ensureVisible(find.byKey(const Key('task-sheet-when')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('task-sheet-when')));
+    await t.pumpAndSettle();
+    await t.tap(
+      find.text(
+        MaterialLocalizations.of(
+          t.element(find.byType(DatePickerDialog)),
+        ).okButtonLabel,
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('task-sheet-duration')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('task-sheet-duration')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('duration-preset-45')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('duration-save')));
+    await t.pumpAndSettle();
+    // Unfocus the title so no caret or keyboard inset sits in the shot.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('task-sheet-duration')));
+  }
+
+  Future<void> openSeededDetail(WidgetTester t) async {
+    final row = find.text('Draft the Q3 planning doc');
+    await t.scrollUntilVisible(
+      row,
+      300,
+      scrollable: find
+          .ancestor(
+            of: find.text('Review contrast report'),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await t.pumpAndSettle();
+    await t.tap(row);
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('duration-row')));
+  }
+
+  for (final (brightness, suffix) in [
+    (Brightness.light, 'light'),
+    (Brightness.dark, 'dark'),
+  ]) {
+    testWidgets('phone create sheet dates — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_sheet_dates_$suffix',
+        navigate: fillSheetDates,
+      );
+    });
+
+    testWidgets('phone task detail — $suffix', skip: !_enabled, (tester) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_task_detail_$suffix',
+        navigate: openSeededDetail,
+      );
+    });
+
+    testWidgets('phone duration dialog — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_duration_dialog_$suffix',
+        navigate: (t) async {
+          await openSeededDetail(t);
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(const Key('duration-row')));
+        },
+      );
+    });
+  }
 
   testWidgets('desktop home — light', skip: !_enabled, (tester) async {
     await _shoot(

@@ -66,7 +66,7 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 - **Round 10 park kuyruğu (kararı OPH-195 verir):** alt görevler (`parent_task_id` —
   şema, API ve kaskadlı silme hazır, arayüz yok), görev rengi (`tasks.color_rgb` — widget
   kullanıyor, kullanıcı seçemiyor), **elle sıralama** (`sort_order` sıralamada kullanılıyor ama
-  sürükleme yok), süre alanları (`estimated_minutes`/`actual_minutes`), `tasks.start_at`,
+  sürükleme yok), gerçek süre (`actual_minutes`),
   proje ikonu/başlangıç-bitiş tarihi; Tamamlananlar ekranında arama + `cancelled`/`archived`
   sekmesi; Pano kartlarında kaydırarak silme (yatay pager jest çakışması); sunucu tarafı
   "tamamlananlar" ucu (bugün tamamen yerel replikadan okunuyor); geri alma olmayan silmeler

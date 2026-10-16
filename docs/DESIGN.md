@@ -655,6 +655,9 @@ ayarlardan kullanıcı seçebilecek".)_
   shared, not necessarily the function: the alarm ring screen's custom snooze
   keeps its own picker because its constraints differ (no past instants, "+30
   min" default) — it already asks for a time, which is what D5 requires.
+  _Amended 2026-10-16 (OPH-372):_ "When" stores a DAY, not an instant, so it asks for a
+  day only (`awPickDate`, same bounds and the same tomorrow opening). D5 is about fields
+  that store a time.
 
 ## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
 
@@ -1572,4 +1575,17 @@ has no export file, and the first step says so.
 | I4 | **Never ring.** Imported tasks are never urgent and need no acknowledgement. A reminder comes in only from a TickTick reminder in the future. The mapping card says so. | Moving 500 tasks in must not turn into 500 alarms. |
 | I5 | **Refuse honestly.** Over 8 MB (the JSON escaping of a CSV must still fit the 10 MiB body), a ZIP without CSVs, the other app's file ("this looks like a TickTick backup"), a proxy 413 (with the `client_max_body_size` hint) and offline each have their own sentence in an `AwInlineError`. A file where everything is already imported says so and disables the button. If Google Calendar is connected, a notice says how many tasks will appear there and how many undated ones land on today. | §28 M7. A blank preview reads as "your file was empty". |
 | I6 | **Glass only on the app bar; cards, tokens, both themes.** Count tiles and notes use `onSurfaceVariant`, warning icons use `AwTokens.warning` (never as text colour, LESSONS design-ui), priority flags use `taskPriorityColorOf`, buttons stay at ≥ 44 px. Every step is shot in light and dark (`test/features/import/import_wizard_screenshot_test.dart`). | Rule 11. |
+
+## 38. When and duration (OPH-372)
+
+A task has a deadline (Due), and now also a day you plan to do it (When) and how long it takes
+(Duration). They are separate fields and never merged (ADR-0053).
+
+| # | Rule | Why |
+| --- | --- | --- |
+| W1 | **When is a day, and it sits above Due**, in the create sheet (`task-sheet-when`) and on the detail screen (`when-row`): ☀ icon, a date with no time, ✕ to clear. | First the day you will do it, then the day it is due. A clock on a day field would be a value nobody reads (§17 D5 as amended). |
+| W2 | **When never touches the reminder.** Setting or clearing it leaves Due, Remind and the round-14 auto-reminder alone. On a recurring task it asks no scope question, because it belongs to this occurrence. | Pulling a Friday deadline's "when" to Monday must not move the Friday alarm. |
+| W3 | **Duration: presets plus a custom value.** The dialog offers 15/30/45 min, 1/1.5/2/3 h as `ChoiceChip`s and a minutes field (1–1440, an inline error outside that range). Rows read "1 h 30 min" / "1 sa 30 dk". A small ◔ chip on task rows shows it while the task is open. On a recurring task the scope question follows, as for a rename. | One tap for the common case, exact when needed. The calendar block is this long. |
+| W4 | **Filing.** Overdue is decided by the deadline alone, first. Otherwise a task sits on its When day, rolled forward to Today once it arrives and never later than its deadline (`taskPlanDay`). Home, the month-grid dots, the widget buckets and count, the AI context and the MCP today view all use this. A task with When yesterday and Due Friday is on Today. Its widget row shows the due day ("Oct 20"), not a time. | One rule in one helper, so no two surfaces disagree. |
+| W5 | **Both themes are shot:** `phone_sheet_dates_*`, `phone_task_detail_*` and `phone_duration_dialog_*` in `test/design_screenshots_test.dart` (use `shotLocale=tr` for the longer labels). Only existing tokens are used: onSurfaceVariant icons and solid dialog and card surfaces. | Rule 11. |
 

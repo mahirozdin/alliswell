@@ -154,6 +154,80 @@ describe.runIf(enabled)('integration: sync revision generator + pull/push', () =
     expect(row.priority).toBe('high');
   });
 
+  it('OPH-372: "when" and duration cross push and pull, and clear with null', async () => {
+    const clientId = newId();
+    const taskId = newId();
+    const base = Number(
+      (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+    );
+    const push = (mutations) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/sync/push',
+        headers: owner.headers,
+        payload: { clientId, workspaceId: owner.workspace.id, baseRevision: base, mutations },
+      });
+    // The client's own body: "when" is the chosen day's local midnight in UTC
+    // (awWhenIso), the deadline a separate instant.
+    const startAt = '2030-06-02T21:00:00.000Z';
+    const created = await push([
+      {
+        clientMutationId: newId(),
+        entityType: 'task',
+        entityId: taskId,
+        operation: 'create',
+        patch: {
+          title: 'Ne zaman ve süre',
+          startAt,
+          estimatedMinutes: 90,
+          dueAt: '2030-06-06T20:59:00.000Z',
+        },
+      },
+    ]);
+    expect(created.statusCode).toBe(200);
+    expect(created.json().results.map((r) => r.status)).toEqual(['applied']);
+    let row = await app.db('tasks').where({ id: taskId }).first();
+    expect(new Date(row.start_at).toISOString()).toBe(startAt);
+    expect(row.estimated_minutes).toBe(90);
+    expect(new Date(row.due_at).toISOString()).toBe('2030-06-06T20:59:00.000Z');
+
+    const updated = await push([
+      {
+        clientMutationId: newId(),
+        entityType: 'task',
+        entityId: taskId,
+        operation: 'update',
+        patch: { estimatedMinutes: 45, startAt: null },
+      },
+    ]);
+    expect(updated.json().results.map((r) => r.status)).toEqual(['applied']);
+    row = await app.db('tasks').where({ id: taskId }).first();
+    expect(row.start_at).toBeNull();
+    expect(row.estimated_minutes).toBe(45);
+    // The deadline was not part of the patch and did not move.
+    expect(new Date(row.due_at).toISOString()).toBe('2030-06-06T20:59:00.000Z');
+
+    const revisions = await app
+      .db('sync_revisions')
+      .where({ workspace_id: owner.workspace.id, entity_id: taskId })
+      .orderBy('revision', 'asc')
+      .select('operation');
+    expect(revisions.map((r) => r.operation)).toEqual(['create', 'update']);
+
+    const pullRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${base}`,
+      headers: owner.headers,
+    });
+    const snapshot = pullRes.json().changes.find((c) => c.entityId === taskId);
+    expect(snapshot.data).toMatchObject({
+      id: taskId,
+      startAt: null,
+      estimatedMinutes: 45,
+      dueAt: '2030-06-06T20:59:00.000Z',
+    });
+  });
+
   it('OPH-057: a live client hears committed writes (redis adapter attached)', async () => {
     await app.listen({ port: 0, host: '127.0.0.1' });
     const url = `http://127.0.0.1:${app.server.address().port}`;

@@ -9,6 +9,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **When and Duration on tasks.** Pick the day you plan to do a task. It shows in Today from
+  that day while the deadline and alarm stay put. Add how long it takes, and its Google/Apple
+  calendar block uses that length instead of 30 minutes. Also on MCP
+  (`create_task`/`update_task`) and the API.
 - **Import from Todoist or TickTick: Settings › Data › Import.** Choose a Todoist backup or
   project CSV, or a TickTick backup; the wizard shows what will come in (tasks, repeats,
   sub-items as checklist items, projects, tags, and anything it could not carry over exactly)

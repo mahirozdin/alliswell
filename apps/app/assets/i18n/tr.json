@@ -288,10 +288,25 @@
     "priorityLabel": "Öncelik",
     "statusLabel": "Durum",
     "notSet": "Ayarlanmadı",
+    "when": "Ne zaman",
+    "clearWhen": "Ne zamanı temizle",
     "due": "Bitiş",
     "clearDue": "Bitiş tarihini temizle",
     "remind": "Hatırlat",
     "clearReminder": "Hatırlatıcıyı temizle",
+    "duration": "Süre",
+    "clearDuration": "Süreyi temizle",
+    "durationValue": {
+      "minutes": "{m} dk",
+      "hours": "{h} sa",
+      "hoursMinutes": "{h} sa {m} dk"
+    },
+    "durationDialog": {
+      "title": "Ne kadar sürer?",
+      "custom": "Dakika",
+      "invalid": "1 ile 1440 arasında dakika girin."
+    },
+    "durationSemantic": "Süre: {duration}",
     "clearField": "{field} temizle",
     "urgentAlarm": "Acil alarm",
     "urgentAlarmSub": "Onaylanması gereken ısrarlı hatırlatıcı",

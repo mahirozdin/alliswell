@@ -9,7 +9,22 @@ import '../../tasks/data/task.dart';
 /// the same time whether it reaches the calendar through Google (server) or
 /// EventKit (device).
 
-const _slot = Duration(minutes: 30);
+/// The block length of a task with no duration.
+const int kAppleDefaultSlotMinutes = 30;
+
+/// A block never outgrows the day it sits on (server: MAX_BLOCK_MINUTES).
+const int kAppleMaxBlockMinutes = 1440;
+
+/// How long a task's block is (OPH-372, ADR-0053): its own duration when it
+/// has one (capped at a day), else 30 minutes — `blockMinutes` in mirror.js.
+int appleBlockMinutes(int? estimatedMinutes) {
+  if (estimatedMinutes == null || estimatedMinutes <= 0) {
+    return kAppleDefaultSlotMinutes;
+  }
+  return estimatedMinutes > kAppleMaxBlockMinutes
+      ? kAppleMaxBlockMinutes
+      : estimatedMinutes;
+}
 
 /// Work withdrawn loses its block; work DONE keeps it, marked (ADR-0021 §2).
 const _goneStatuses = {'cancelled', 'archived'};
@@ -51,6 +66,9 @@ class DesiredAppleEvent {
 /// Completed tasks KEEP their block, marked `✓`; cancelled and archived ones
 /// lose it. The opt-in switch is gone.
 ///
+/// OPH-372 (ADR-0053): the block is as long as the task's duration
+/// ([appleBlockMinutes]); "when" (`startAt`) never moves it.
+///
 /// This is the SECOND implementation of that rule (the server's is
 /// `apps/api/src/lib/mirror.js`), so the two are pinned to each other by
 /// `test/fixtures/calendar_block_parity.json`, which both suites assert — two
@@ -59,6 +77,7 @@ class DesiredAppleEvent {
 /// the server does the same arithmetic against the task's stored timezone.
 DesiredAppleEvent? desiredAppleEvent(Task task) {
   if (_goneStatuses.contains(task.status)) return null;
+  final minutes = appleBlockMinutes(task.estimatedMinutes);
 
   DateTime start;
   DateTime end;
@@ -70,11 +89,11 @@ DesiredAppleEvent? desiredAppleEvent(Task task) {
     // guard added for the same reason).
     end = (scheduledEnd != null && scheduledEnd.isAfter(start))
         ? scheduledEnd
-        : start.add(_slot);
+        : start.add(Duration(minutes: minutes));
   } else {
     final anchor = task.dueAt ?? task.createdAt;
     if (anchor == null) return null;
-    final block = appleBlockFor(anchor);
+    final block = appleBlockFor(anchor, minutes: minutes);
     start = block.$1;
     end = block.$2;
   }
@@ -88,14 +107,19 @@ DesiredAppleEvent? desiredAppleEvent(Task task) {
   );
 }
 
-/// A 30-minute block that cannot spill into tomorrow. Exported for the parity
-/// fixture — a block on the wrong day is a task on the wrong day.
-(DateTime, DateTime) appleBlockFor(DateTime instant) {
+/// A [minutes]-long block (30 when not given) that cannot spill into
+/// tomorrow, and — when it is longer than what is left of the day — starts no
+/// earlier than 00:00. Exported for the parity fixture — a block on the wrong
+/// day is a task on the wrong day.
+(DateTime, DateTime) appleBlockFor(DateTime instant, {int? minutes}) {
+  final length = Duration(minutes: appleBlockMinutes(minutes));
   final local = instant.toLocal();
   final endOfDay = DateTime(local.year, local.month, local.day, 23, 59);
-  final naturalEnd = local.add(_slot);
+  final naturalEnd = local.add(length);
   if (!naturalEnd.isAfter(endOfDay)) return (local, naturalEnd);
-  return (endOfDay.subtract(_slot), endOfDay);
+  final startOfDay = DateTime(local.year, local.month, local.day);
+  final pulledBack = endOfDay.subtract(length);
+  return (pulledBack.isBefore(startOfDay) ? startOfDay : pulledBack, endOfDay);
 }
 
 /// What the engine should do about one task, given what EventKit already holds

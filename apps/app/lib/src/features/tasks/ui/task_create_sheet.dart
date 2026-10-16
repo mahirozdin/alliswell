@@ -20,9 +20,11 @@ import '../../ee/providers.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../data/task_defaults.dart';
+import '../data/task_when.dart';
 import '../providers.dart';
 import '../../../core/recurrence.dart';
 import '../../../core/recurrence_text.dart';
+import 'duration_picker.dart';
 import 'repeat_dialog.dart';
 import 'task_visuals.dart';
 
@@ -99,6 +101,14 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
   DateTime? _remindAt;
   bool _isUrgent = false;
 
+  /// "When" (OPH-372, ADR-0053) — a local DAY, never an instant. Independent
+  /// of the deadline: setting it never touches [_dueAt], [_remindAt] or the
+  /// auto-reminder (DESIGN §38 W2).
+  DateTime? _whenDay;
+
+  /// How long it takes, in minutes (OPH-372). Null = not set.
+  int? _estimatedMinutes;
+
   /// Round 14: true while the reminder is merely DERIVED from the deadline
   /// (1 h before, [kAwAutoReminderGap]) — a derived value follows the due date
   /// around; one the user touched never gets overwritten.
@@ -124,6 +134,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       _dueAt = task.dueAt?.toLocal();
       _remindAt = task.remindAt?.toLocal();
       _isUrgent = task.isUrgent;
+      _whenDay = taskWhenDay(task);
+      _estimatedMinutes = task.estimatedMinutes;
     } else {
       _dueAt = widget.initialDue;
       // OPH-243: text shared from another app arrives already split into a
@@ -207,6 +219,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           'priority': _priority,
           'dueAt': _dueAt?.toUtc().toIso8601String(),
           'remindAt': _remindAt?.toUtc().toIso8601String(),
+          'startAt': _whenDay == null ? null : awWhenIso(_whenDay!),
+          'estimatedMinutes': _estimatedMinutes,
           'isUrgent': _isUrgent,
           'tagIds': _tagIds,
         });
@@ -221,6 +235,8 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
           if (_priority != 'none') 'priority': _priority,
           'dueAt': ?_dueAt?.toUtc().toIso8601String(),
           'remindAt': ?_remindAt?.toUtc().toIso8601String(),
+          if (_whenDay != null) 'startAt': awWhenIso(_whenDay!),
+          'estimatedMinutes': ?_estimatedMinutes,
           if (_isUrgent) 'isUrgent': true,
           if (_tagIds.isNotEmpty) 'tagIds': _tagIds,
         });
@@ -243,6 +259,10 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   'priority': _priority,
                   'isUrgent': _isUrgent,
                   'tagIds': _tagIds,
+                  // Duration is a series template field (server
+                  // TEMPLATE_FIELDS); "when" is not — it belongs to one
+                  // occurrence (ADR-0053).
+                  'estimatedMinutes': ?_estimatedMinutes,
                 },
                 anchorAt: _dueAt?.toLocal() ?? DateTime.now(),
                 fromTaskId: taskId,
@@ -446,6 +466,26 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 ],
               ),
               const SizedBox(height: 12),
+              // OPH-372 (DESIGN §38 W1): "When" sits ABOVE the deadline — the
+              // day you will do it, then the day it is due. A day only.
+              _SheetTile(
+                tileKey: const Key('task-sheet-when'),
+                icon: Icons.wb_sunny_outlined,
+                title: 'task.when'.tr(),
+                subtitle: _whenDay == null
+                    ? 'task.notSet'.tr()
+                    : awFormatDate(_whenDay!, format: dateFormat),
+                isSet: _whenDay != null,
+                clearTooltip: 'task.clearWhen'.tr(),
+                onClear: () => setState(() => _whenDay = null),
+                onTap: () async {
+                  final picked = await awPickDate(context, current: _whenDay);
+                  if (picked != null && mounted) {
+                    setState(() => _whenDay = picked);
+                  }
+                },
+              ),
+              const SizedBox(height: 8),
               _SheetTile(
                 tileKey: const Key('task-sheet-due'),
                 icon: Icons.flag_outlined,
@@ -488,6 +528,29 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                       _remindAuto = false;
                     }
                   });
+                },
+              ),
+              const SizedBox(height: 8),
+              // OPH-372 (DESIGN §38 W3): how long it takes — the calendar
+              // block is this long instead of 30 minutes.
+              _SheetTile(
+                tileKey: const Key('task-sheet-duration'),
+                icon: Icons.timelapse_outlined,
+                title: 'task.duration'.tr(),
+                subtitle: _estimatedMinutes == null
+                    ? 'task.notSet'.tr()
+                    : awFormatDuration(_estimatedMinutes!),
+                isSet: _estimatedMinutes != null,
+                clearTooltip: 'task.clearDuration'.tr(),
+                onClear: () => setState(() => _estimatedMinutes = null),
+                onTap: () async {
+                  final picked = await showDurationPicker(
+                    context,
+                    current: _estimatedMinutes,
+                  );
+                  if (picked != null && mounted) {
+                    setState(() => _estimatedMinutes = picked);
+                  }
                 },
               ),
               const SizedBox(height: 8),

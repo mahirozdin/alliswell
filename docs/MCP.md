@@ -97,10 +97,10 @@ Twenty-four tools, no delete tool — by design (loosening it needs a new ADR):
 
 | Tool | What it does |
 | --- | --- |
-| `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone |
+| `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone. `today` = due today, or its "when" day has come and it is not overdue. Every task read returns `startAt` ("when") and `estimatedMinutes` |
 | `get_task` | One task in full — checklist, tags, project, alarms and its notes |
-| `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks |
-| `update_task` | Change title, description, status, priority, dates, urgency, project or tags |
+| `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks. Takes `startAt` ("when": the day it shows in Today, never the deadline or the alarm) and `estimatedMinutes` (the calendar block length) |
+| `update_task` | Change title, description, status, priority, dates (incl. `startAt` "when"), duration (`estimatedMinutes`, `null` clears), urgency, project or tags |
 | `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open |
 | `snooze_task` | Push a task's alarms out (5 min / 30 min / 1 hour / tomorrow morning, or a time you name) |
 | `add_checklist_item` / `set_checklist_item` | Add a checklist item, tick it, or rename it |

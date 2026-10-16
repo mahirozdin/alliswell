@@ -108,7 +108,7 @@
 - **DERS** Flutter 3.44'te eylemli `SnackBar` süre dolunca kapanmaz (`persist ?? action != null`) → eylemli snackbar yalnız `showAwActionSnackBar` (`persist:false`).
 - **DERS** Web'de dio 204 gövdesi `''` → `as Map` TypeError, temizlik atlanır → `data is Map ? … : {}`.
 - **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da hesap, saat `nowProvider`'dan; `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
-- **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi yeni senkron varlığı push'ta uygulamazsa silinen satır sonraki pull'da geri döner.
+- **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi push'u yansıtmazsa (yeni varlık, null alan) pull geri getirir/siler.
 - **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; gerçek async kurulum `tester.runAsync`'te.
 - **DERS** Kare başına çok sürükleme olayı: `build` yereline eklenen delta (`centre + d.delta`) düşer, `DragStartBehavior.start` eşiği yutar → state'e biriktir, `.down`; testte `pump`suz `moveBy`.
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
@@ -158,7 +158,7 @@
 - **DERS** Yükleme guard'ı (tavan/kota) iki fazda: beyan edilen boyutla erken, HeadObject'le ÖLÇÜLEN boyutla commit'te — tek faz eşzamanlı yüklemelerle tavanı aştırır.
 
 ## calendar — takvim aynası, Google/EventKit, tekrar, DST
-- **KARAR** Ayna seçeneksiz: her görev 30 dk blok, güne kenetli (23:59 → 23:29–23:59), tarihsiz → ekleniş günü; tamamlanan `✓` ile kalır, iptal/silinen gider; backfill −30g→+12ay (ADR-0021).
+- **KARAR** Ayna seçeneksiz: her görev süre (yoksa 30 dk) blok, güne kenetli (23:59 → 23:29–23:59), tarihsiz → ekleniş günü; tamamlanan `✓` ile kalır, iptal/silinen gider; backfill −30g→+12ay (ADR-0021).
 - **KARAR** Blok önce `scheduled_start_at`'ten türer; Google'da sürükleme `due_at`'i değil `scheduled_*`'ı yazar; "Planlanan tarih" alanı yok, yalnız doluyken "Takvimde taşındı — Sıfırla" (ADR-0007).
 - **KARAR** Tekrar: RFC 5545 alt kümesi + RFC 7529 kırpma (31 → ay sonu); occurrence gerçek görev satırı, yalnız sunucu üretir (+12 ay, günlük süpürme); istemci/widget/alarm tekrarı bilmez (ADR-0020).
 - **DERS** Echo bastırma etag'le: giden her yazımda dönen etag `calendar_event_links.etag`'e yazılmazsa kendi değişikliğimiz kullanıcı düzenlemesi sanılır → ayna ⇄ inbound döngüsü.

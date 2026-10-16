@@ -918,3 +918,114 @@ describe('acknowledge_reminder', () => {
     expect(log).toHaveLength(2); // both calls are on the record, no-op or not
   });
 });
+
+// OPH-372 (ADR-0053): "when" (startAt) and duration (estimatedMinutes) reach
+// MCP — written by create/update, returned by every read, and "today" includes
+// a task whose "when" day has come while its deadline is still ahead.
+describe('when and duration (OPH-372)', () => {
+  async function pinMidday() {
+    // Same pinning as the today/overdue test above: a safe local hour, so
+    // ±1 day stays on the right side of midnight.
+    const offset = Math.max(-12, Math.min(12, 12 - new Date().getUTCHours()));
+    const middayTz = offset >= 0 ? `Etc/GMT-${offset}` : `Etc/GMT+${-offset}`;
+    await app.db('users').where({ id: owner.user.id }).update({ timezone: middayTz });
+  }
+  const day = 86400000;
+  const at = (ms) => new Date(Date.now() + ms).toISOString();
+
+  it('create_task writes startAt and estimatedMinutes, and the result carries both', async () => {
+    const startAt = at(day);
+    const result = await callTool(app, access, 'create_task', {
+      title: 'Sunum provası',
+      startAt,
+      estimatedMinutes: 90,
+    });
+    expect(result.isError).toBeFalsy();
+    const task = result.structuredContent.task;
+    expect(task.startAt).toBe(startAt);
+    expect(task.estimatedMinutes).toBe(90);
+    expect(task.dueAt).toBeNull(); // "when" is not the deadline
+    const row = tables.tasks.find((t) => t.id === task.id);
+    expect(new Date(row.start_at).toISOString()).toBe(startAt);
+    expect(row.estimated_minutes).toBe(90);
+    expect(row.due_at ?? null).toBeNull();
+
+    // The schema bounds hold (a zero duration is "clear", which create has
+    // nothing to clear).
+    const zero = await callTool(app, access, 'create_task', {
+      title: 'Sıfır',
+      estimatedMinutes: 0,
+    });
+    expect(zero.isError).toBe(true);
+    expect(zero.structuredContent.code).toBe('INVALID_ARGUMENTS');
+  });
+
+  it('update_task sets and clears estimatedMinutes; get_task and list_tasks return both', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Rapor' });
+    const set = await callTool(app, access, 'update_task', {
+      taskId: task.id,
+      estimatedMinutes: 45,
+    });
+    expect(set.isError).toBeFalsy();
+    expect(set.structuredContent.task.estimatedMinutes).toBe(45);
+    expect(tables.tasks.find((t) => t.id === task.id).estimated_minutes).toBe(45);
+
+    const got = await callTool(app, access, 'get_task', { taskId: task.id });
+    expect(got.structuredContent.task.estimatedMinutes).toBe(45);
+    expect(got.structuredContent.task).toHaveProperty('startAt', null);
+    const listed = await callTool(app, access, 'list_tasks', { status: ['open'] });
+    const row = listed.structuredContent.tasks.find((t) => t.id === task.id);
+    expect(row.estimatedMinutes).toBe(45);
+    expect(row).toHaveProperty('startAt', null);
+
+    const cleared = await callTool(app, access, 'update_task', {
+      taskId: task.id,
+      estimatedMinutes: null,
+    });
+    expect(cleared.structuredContent.task.estimatedMinutes).toBeNull();
+    expect(tables.tasks.find((t) => t.id === task.id).estimated_minutes ?? null).toBeNull();
+  });
+
+  it('today includes a started task due later, never a future or overdue one, once', async () => {
+    await pinMidday();
+    const ws = owner.workspace.id;
+    await seed(owner.headers, ws, 'tasks', {
+      title: 'Başladı, süresi var',
+      startAt: at(-day),
+      dueAt: at(3 * day),
+    });
+    await seed(owner.headers, ws, 'tasks', { title: 'Yarın başlar', startAt: at(day) });
+    await seed(owner.headers, ws, 'tasks', {
+      title: 'Bugün başladı ama gecikti',
+      startAt: at(-3600000),
+      dueAt: at(-day),
+    });
+    await seed(owner.headers, ws, 'tasks', {
+      title: 'İkisi de bugün',
+      startAt: at(-3600000),
+      dueAt: at(2 * 3600000),
+    });
+    await seed(owner.headers, ws, 'tasks', { title: 'Tarihsiz başladı', startAt: at(-day) });
+
+    const today = await callTool(app, access, 'list_tasks', { today: true });
+    const titles = today.structuredContent.tasks.map((t) => t.title);
+    expect(titles).toContain('Başladı, süresi var');
+    expect(titles).toContain('Tarihsiz başladı');
+    expect(titles).not.toContain('Yarın başlar');
+    expect(titles).not.toContain('Bugün başladı ama gecikti');
+    expect(titles.filter((t) => t === 'İkisi de bugün')).toHaveLength(1);
+    // Due-today first, then by deadline, the undated last.
+    expect(titles).toEqual(['İkisi de bugün', 'Başladı, süresi var', 'Tarihsiz başladı']);
+
+    const overdue = await callTool(app, access, 'list_tasks', { overdue: true });
+    expect(overdue.structuredContent.tasks.map((t) => t.title)).toEqual([
+      'Bugün başladı ama gecikti',
+    ]);
+
+    // The resource view is the same query.
+    const res = await rpc(app, access, 'resources/read', { uri: 'alliswell://views/today' });
+    const payload = JSON.parse(res.json().result.contents[0].text);
+    expect(payload.tasks.map((t) => t.title)).toEqual(titles);
+    expect(payload.tasks[1].startAt).not.toBeNull();
+  });
+});

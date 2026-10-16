@@ -22,6 +22,8 @@ Task _task(
   DateTime? due,
   DateTime? remind,
   DateTime? created,
+  DateTime? start,
+  int? minutes,
 }) => Task(
   id: id,
   workspaceId: 'W1',
@@ -39,6 +41,8 @@ Task _task(
   dueAt: due,
   remindAt: remind,
   createdAt: created,
+  startAt: start,
+  estimatedMinutes: minutes,
 );
 
 /// Records what the engine asked EventKit to do, and hands back canned ids —
@@ -148,6 +152,45 @@ void main() {
       expect(e.end, DateTime.utc(2030, 6, 1, 14, 30));
     });
 
+    test('the block is as long as the task (OPH-372, ADR-0053)', () {
+      final e = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 14), minutes: 90),
+      )!;
+      expect(e.start, DateTime(2030, 6, 1, 14));
+      expect(e.end, DateTime(2030, 6, 1, 15, 30));
+      // Clearing the duration gives the 30-minute slot back — and a different
+      // signature, so the engine updates the event.
+      final cleared = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 14)),
+      )!;
+      expect(cleared.end, DateTime(2030, 6, 1, 14, 30));
+      expect(cleared.signature, isNot(e.signature));
+      expect(appleBlockMinutes(0), 30);
+      expect(appleBlockMinutes(60000), 1440);
+    });
+
+    test('a scheduled start without an end uses the task duration', () {
+      final e = desiredAppleEvent(
+        _task('T', scheduledStart: DateTime.utc(2030, 6, 1, 9), minutes: 45),
+      )!;
+      expect(e.end, DateTime.utc(2030, 6, 1, 9, 45));
+    });
+
+    test('"when" never moves the block', () {
+      final withWhen = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 14), start: DateTime(2030, 5, 28)),
+      )!;
+      expect(withWhen.start, DateTime(2030, 6, 1, 14));
+      final undated = desiredAppleEvent(
+        _task(
+          'T',
+          created: DateTime(2030, 5, 20, 9, 15),
+          start: DateTime(2030, 5, 25),
+        ),
+      )!;
+      expect(undated.start, DateTime(2030, 5, 20, 9, 15));
+    });
+
     test('no event for withdrawn work, or a task with no time at all', () {
       expect(desiredAppleEvent(_task('T')), isNull); // no date, no created_at
       // `completed` left this list in round 12 — done work keeps its block.
@@ -179,7 +222,10 @@ void main() {
           '${d.minute.toString().padLeft(2, '0')}';
       for (final raw in (fixture['cases'] as List)) {
         final testCase = raw as Map<String, dynamic>;
-        final block = appleBlockFor(DateTime.parse(testCase['at'] as String));
+        final block = appleBlockFor(
+          DateTime.parse(testCase['at'] as String),
+          minutes: testCase['minutes'] as int?,
+        );
         expect(
           wall(block.$1),
           testCase['start'],
