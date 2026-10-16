@@ -122,4 +122,15 @@ void main() {
     expect(iso, startsWith('2026-08-05T16:30:00'));
     expect(iso, matches(RegExp(r'[+-]\d{2}:\d{2}$')));
   });
+
+  test('OPH-377: the automatic packer never emits an attached segment', () {
+    final bundle = buildAiContext(
+      meta: meta,
+      projects: const [ProjectLite(id: 'P1', name: 'Ev', openCount: 2)],
+      today: const [TaskLite(title: 'Kira')],
+      excerpts: const [SearchExcerpt(source: 'task', id: 'T1', text: 'Kira')],
+      sharedBlock: const SharedPayload(text: 'paylaşılan'),
+    );
+    expect(bundle.segments.map((s) => s.tier), isNot(contains('attached')));
+  });
 }

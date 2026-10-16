@@ -19,9 +19,10 @@ import 'ai_context_builder.dart';
 ///
 /// T0 meta+projects always · T1 overdue/today/upcoming tasks (lean rows) and
 /// the user's own calendar events · T2 fold-matched task excerpts for the
-/// current input. Notes excerpts are a deliberate follow-up (the notes list
-/// provider is query-coupled; wiring it here would drag UI filter state into
-/// the packer).
+/// current input. Notes and files NEVER enter this automatic bundle: they
+/// reach the model only when the user attaches them with "@" in the composer
+/// (OPH-377, ADR-0058 — ai_attachments.dart). The automatic packer stays
+/// tasks, projects and events.
 ///
 /// `read` is a tear-off (`ref.read`) so both widgets (WidgetRef) and
 /// providers (Ref) can call this without caring which ref family they hold.

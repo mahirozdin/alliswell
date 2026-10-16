@@ -1,3 +1,4 @@
+import '../data/ai_attachments.dart';
 import '../data/ai_context_builder.dart';
 
 /// The bubble's states (OPH-221, DESIGN §24 AI4). Every state has a face; none
@@ -15,10 +16,31 @@ enum AiBubblePhase {
 }
 
 class AiChatEntry {
-  const AiChatEntry({required this.role, required this.text, this.context});
+  const AiChatEntry({
+    required this.role,
+    required this.text,
+    this.context,
+    this.attachments = const [],
+    this.droppedAttachments = const [],
+  });
   final String role; // user | assistant
   final String text;
   final AiContextBundle? context;
+
+  /// OPH-377: what the user picked with "@" for THIS turn (ready items only).
+  /// They ride along on every later turn of the conversation too.
+  final List<AiAttachment> attachments;
+
+  /// Items the conversation cap left out of the request sent for this turn.
+  final List<AiAttachmentRef> droppedAttachments;
+
+  AiChatEntry withDropped(List<AiAttachmentRef> dropped) => AiChatEntry(
+    role: role,
+    text: text,
+    context: context,
+    attachments: attachments,
+    droppedAttachments: dropped,
+  );
 }
 
 class AiBubbleState {
@@ -31,6 +53,7 @@ class AiBubbleState {
     this.errorCode,
     this.history = const [],
     this.sharedBlock,
+    this.pending = const [],
   });
 
   final AiBubblePhase phase;
@@ -41,6 +64,15 @@ class AiBubbleState {
   final String? errorCode;
   final List<AiChatEntry> history;
   final SharedPayload? sharedBlock;
+
+  /// OPH-377: attachments picked for the message being composed — chips
+  /// above the field until it is sent or they are removed.
+  final List<AiAttachment> pending;
+
+  bool get attachLoading =>
+      pending.any((a) => a.status == AiAttachmentStatus.loading);
+
+  bool get hasReadyPending => pending.any((a) => a.isReady);
 
   bool get canSend => input.trim().isNotEmpty || partial.trim().isNotEmpty;
 
@@ -53,6 +85,7 @@ class AiBubbleState {
     String? errorCode,
     List<AiChatEntry>? history,
     SharedPayload? sharedBlock,
+    List<AiAttachment>? pending,
     bool clearRequestId = false,
     bool clearError = false,
     bool clearShared = false,
@@ -66,6 +99,7 @@ class AiBubbleState {
       errorCode: clearError ? null : (errorCode ?? this.errorCode),
       history: history ?? this.history,
       sharedBlock: clearShared ? null : (sharedBlock ?? this.sharedBlock),
+      pending: pending ?? this.pending,
     );
   }
 }
@@ -98,6 +132,31 @@ class AiBubbleMachine {
   AiBubbleState finalizeTranscript(AiBubbleState s, String text) =>
       s.copyWith(phase: AiBubblePhase.reviewing, input: text, partial: '');
 
+  /// OPH-377: a picked item joins the composer's chips — once per item, at
+  /// most [kAiAttachPerMessage] per message.
+  AiBubbleState attachPending(AiBubbleState s, AiAttachment a) {
+    if (s.pending.any((p) => p.ref == a.ref)) return s;
+    if (s.pending.length >= kAiAttachPerMessage) return s;
+    return s.copyWith(pending: [...s.pending, a]);
+  }
+
+  /// The loaded (or refused) result replaces its loading chip; a chip the user
+  /// already removed stays removed.
+  AiBubbleState updatePending(AiBubbleState s, AiAttachment a) {
+    if (!s.pending.any((p) => p.ref == a.ref)) return s;
+    return s.copyWith(
+      pending: [
+        for (final p in s.pending)
+          if (p.ref == a.ref) a else p,
+      ],
+    );
+  }
+
+  AiBubbleState removePending(AiBubbleState s, AiAttachmentRef ref) =>
+      s.copyWith(pending: [...s.pending.where((p) => p.ref != ref)]);
+
+  /// Commits the user turn. READY chips move onto it (refused ones are
+  /// dropped — their reason was on screen); the composer starts empty.
   AiBubbleState send(AiBubbleState s, String requestId) {
     final text = s.input.trim();
     return s.copyWith(
@@ -105,9 +164,14 @@ class AiBubbleMachine {
       requestId: requestId,
       streamed: '',
       input: '',
+      pending: const [],
       history: [
         ...s.history,
-        AiChatEntry(role: 'user', text: text),
+        AiChatEntry(
+          role: 'user',
+          text: text,
+          attachments: [...s.pending.where((a) => a.isReady)],
+        ),
       ],
       clearError: true,
     );

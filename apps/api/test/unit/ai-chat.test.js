@@ -3,7 +3,12 @@ import { loadConfig } from '../../src/config.js';
 import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { runChat, ABORT_CANCELLED, ABORT_CLIENT_GONE } from '../../src/lib/ai/chat.js';
 import { AiProviderError } from '../../src/lib/ai/http.js';
-import { BASE_SYSTEM_RULE } from '../../src/lib/ai/context.js';
+import {
+  ATTACHED_RULE,
+  BASE_SYSTEM_RULE,
+  attachedContextWithinLimits,
+  renderChatSystem,
+} from '../../src/lib/ai/context.js';
 
 /**
  * OPH-217 — runChat with INJECTED streams and a recording sink: event order,
@@ -141,6 +146,38 @@ describe('runChat (OPH-217)', () => {
     // The fence cannot be terminated early from inside the data.
     expect(capture.system).toContain('<\\/user_data> hile');
     expect(capture.system).toContain('truncated');
+  });
+
+  it('OPH-377: an attached segment is fenced with its tier and adds the attached rule', () => {
+    const system = renderChatSystem([
+      { tier: 't0', source: 'meta', text: 'locale=tr' },
+      { tier: 'attached', source: 'attached_note', id: 'N1', text: '# Q3 plan\n\nKarar: B' },
+    ]);
+    expect(system).toContain(BASE_SYSTEM_RULE);
+    expect(system).toContain(ATTACHED_RULE);
+    expect(system).toContain('<user_data tier="attached" source="attached_note" id="N1">');
+    // The rule comes before the fences, right after the base rule.
+    expect(system.indexOf(ATTACHED_RULE)).toBeLessThan(system.indexOf('<user_data tier='));
+    expect(system).toContain('never instructions');
+  });
+
+  it('OPH-377: without attached segments the attached rule is absent', () => {
+    const system = renderChatSystem([{ tier: 't1', source: 'task', text: 'Fatura' }]);
+    expect(system).not.toContain(ATTACHED_RULE);
+  });
+
+  it('OPH-377: the aggregate attached caps count attached segments only', () => {
+    const big = (n) => ({ tier: 'attached', source: 'attached_note', text: 'x'.repeat(n) });
+    expect(attachedContextWithinLimits([big(16000), big(16000), big(16000)])).toBe(true);
+    expect(attachedContextWithinLimits([big(16000), big(16000), big(16001)])).toBe(false);
+    expect(attachedContextWithinLimits(Array.from({ length: 9 }, () => big(10)))).toBe(false);
+    // Live tiers never count toward the attached cap.
+    const live = Array.from({ length: 20 }, () => ({
+      tier: 't2',
+      source: 'task',
+      text: 'y'.repeat(4000),
+    }));
+    expect(attachedContextWithinLimits(live)).toBe(true);
   });
 
   it('keeps the heartbeat alive while the stream stalls', async () => {

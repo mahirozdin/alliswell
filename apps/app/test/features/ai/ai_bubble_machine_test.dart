@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/features/ai/data/ai_attachments.dart';
 import 'package:alliswell/src/features/ai/ui/ai_bubble_state.dart';
 
 /// OPH-221 — the bubble machine is a pure transition table.
@@ -73,5 +74,49 @@ void main() {
     expect(s.input, isEmpty);
     expect(s.history.map((e) => e.role).toList(), ['user', 'assistant']);
     expect(s.history.last.text, 'Üç görevin var.');
+  });
+
+  group('OPH-377 attachments', () {
+    AiAttachmentRef ref(String id) =>
+        AiAttachmentRef(kind: AiAttachmentKind.note, id: id, title: id);
+
+    test('attachPending ignores a duplicate and the sixth item', () {
+      var s = const AiBubbleState();
+      for (var i = 0; i < kAiAttachPerMessage; i++) {
+        s = m.attachPending(s, AiAttachment.loading(ref('N$i')));
+      }
+      expect(s.pending, hasLength(5));
+      s = m.attachPending(s, AiAttachment.loading(ref('N0')));
+      s = m.attachPending(s, AiAttachment.loading(ref('N9')));
+      expect(s.pending, hasLength(5));
+      expect(s.attachLoading, isTrue);
+    });
+
+    test('updatePending replaces by ref; a removed chip stays removed', () {
+      var s = m.attachPending(
+        const AiBubbleState(),
+        AiAttachment.loading(ref('N1')),
+      );
+      s = m.updatePending(s, AiAttachment.ready(ref('N1'), 'metin'));
+      expect(s.pending.single.isReady, isTrue);
+      expect(s.attachLoading, isFalse);
+      s = m.removePending(s, ref('N1'));
+      expect(s.pending, isEmpty);
+      s = m.updatePending(s, AiAttachment.ready(ref('N1'), 'geç geldi'));
+      expect(s.pending, isEmpty);
+    });
+
+    test('send moves only READY chips onto the user turn and clears them', () {
+      var s = const AiBubbleState().copyWith(input: 'özetle');
+      s = m.attachPending(s, AiAttachment.ready(ref('N1'), 'metin'));
+      s = m.attachPending(
+        s,
+        AiAttachment.refused(ref('F1'), AiAttachmentRefusal.notText),
+      );
+      expect(s.hasReadyPending, isTrue);
+      s = m.send(s, 'R');
+      expect(s.pending, isEmpty);
+      expect(s.history.last.attachments.map((a) => a.ref.id), ['N1']);
+    });
   });
 }

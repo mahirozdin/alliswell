@@ -269,6 +269,14 @@ PAIRS = [
     ('D palette active row title', '#EAF0FD', '#26345E', 4.5),
     ('L search rail entry ink', '#44536F', '#E7EEFA', 4.5),
     ('D search rail entry ink', '#AAB6D6', '#1F2C51', 4.5),
+    # OPH-377 (DESIGN §41): the AI chat's "@" picker is a solid
+    # `surfaceContainerHigh` panel; headers, context lines and a DISABLED row's
+    # title are variant ink on it (the active row reuses the palette pairs).
+    # A refused chip's icon is `error` on the chip's `surfaceContainerLow`.
+    ('L ai attach panel variant ink', '#44536F', '#E7EEFA', 4.5),
+    ('D ai attach panel variant ink', '#AAB6D6', '#1F2C51', 4.5),
+    ('L ai attach refused chip icon', '#D70015', '#F6F9FF', 3.0),
+    ('D ai attach refused chip icon', '#FF5147', '#121B36', 3.0),
 
     # ── Note conflict banner (OPH-269, DESIGN §35) ──
     # This whole block exists because the banner shipped with a real failure

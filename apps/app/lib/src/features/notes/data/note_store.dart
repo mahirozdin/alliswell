@@ -224,6 +224,19 @@ class NoteStore {
     (record, links) => record == null ? null : _detail(record, links),
   ).where((n) => n != null).map((n) => n!);
 
+  /// One read of a note's detail, null when it is gone — [watchDetail] drops
+  /// nulls, so its `.first` would hang on a deleted row (OPH-377).
+  Future<NoteDetail?> detailOnce(String noteId) async {
+    final record = await (_db.select(
+      _db.notes,
+    )..where((n) => n.id.equals(noteId))).getSingleOrNull();
+    if (record == null) return null;
+    final links = await (_db.select(
+      _db.noteLinkRows,
+    )..where((l) => l.noteId.equals(noteId))).get();
+    return _detail(record, links);
+  }
+
   Future<String> create(String workspaceId, Map<String, dynamic> body) async {
     final id = newUlid();
     // ADR-0033: one canonical field, so one derivation. `contentDelta` is not

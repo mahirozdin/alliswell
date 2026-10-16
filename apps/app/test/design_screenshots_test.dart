@@ -8,17 +8,21 @@
 //
 // Skipped without the dart-define (goldens are generated output, not
 // committed, so plain CI runs must not try to compare against them).
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/retry.dart';
+import 'package:alliswell/src/features/ai/data/ai_attachment_loader.dart';
+import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
@@ -32,6 +36,7 @@ import 'package:alliswell/src/widgets/glass.dart';
 
 import 'features/auth/test_support.dart';
 import 'features/projects/fake_api.dart';
+import 'support/fake_ai.dart';
 import 'support/sync_overrides.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
@@ -121,14 +126,21 @@ class _ScreenshotApp extends ConsumerWidget {
   }
 }
 
-Future<Widget> _signedInScreenshotApp(FakeApi api) async {
+/// [aiStreamClient] and [overrides] are for shots that need a seam the
+/// default app leaves empty (OPH-377: the AI chat's stream and file bytes).
+Future<Widget> _signedInScreenshotApp(
+  FakeApi api, {
+  AiStreamClient? aiStreamClient,
+  List<Override> overrides = const [],
+}) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(),
+      ...syncTestOverrides(aiStreamClient: aiStreamClient),
+      ...overrides,
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -384,6 +396,8 @@ Future<void> _shoot(
   required String name,
   Future<void> Function(WidgetTester tester)? navigate,
   FakeApi Function() seed = _seededApi,
+  AiStreamClient? aiStreamClient,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = size * 2;
   tester.view.devicePixelRatio = 2.0;
@@ -404,7 +418,13 @@ Future<void> _shoot(
   await localKv.remove(kSearchRecentsKey);
   debugDisableShadows = false;
   try {
-    await tester.pumpWidget(await _signedInScreenshotApp(seed()));
+    await tester.pumpWidget(
+      await _signedInScreenshotApp(
+        seed(),
+        aiStreamClient: aiStreamClient,
+        overrides: overrides,
+      ),
+    );
     await tester.pumpAndSettle();
     if (navigate != null) {
       await navigate(tester);
@@ -804,6 +824,84 @@ void main() {
       );
     });
 
+    // OPH-377 (DESIGN §41): "@" attachments in the AI chat — the picker with
+    // a disabled PDF row, and the chips (pending + sent, one shortened).
+    for (final (label, size) in [
+      ('phone', const Size(390, 844)),
+      ('desktop', const Size(1280, 800)),
+    ]) {
+      testWidgets('ai attach picker $label — $suffix', skip: !_enabled, (
+        tester,
+      ) async {
+        await withShotLocale();
+        await _shoot(
+          tester,
+          size: size,
+          brightness: brightness,
+          name: '${label}_ai_attach_picker_$suffix',
+          seed: _aiAttachSeed,
+          aiStreamClient: ScriptedAiStreamClient(),
+          overrides: _aiAttachOverrides,
+          navigate: (t) async {
+            await t.tap(find.byKey(const Key('ai-fab')));
+            await t.pumpAndSettle();
+            await t.enterText(
+              find.byKey(const Key('ai-input')),
+              'Summarize @quote',
+            );
+            await t.pump(const Duration(milliseconds: 400));
+            await t.pumpAndSettle();
+            await t.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+          },
+        );
+      });
+
+      testWidgets('ai attach chips $label — $suffix', skip: !_enabled, (
+        tester,
+      ) async {
+        await withShotLocale();
+        await _shoot(
+          tester,
+          size: size,
+          brightness: brightness,
+          name: '${label}_ai_attach_chips_$suffix',
+          seed: _aiAttachSeed,
+          aiStreamClient: ScriptedAiStreamClient(
+            script: const [
+              AiTextDelta(
+                'Two of three quotes are in; the worktop line is still '
+                'missing from the third. The log shows the cabinets are '
+                'measured.',
+              ),
+            ],
+          ),
+          overrides: _aiAttachOverrides,
+          navigate: (t) async {
+            final input = find.byKey(const Key('ai-input'));
+            Future<void> pick(String query, String rowText) async {
+              await t.enterText(input, '@$query');
+              await t.pump(const Duration(milliseconds: 400));
+              await t.pumpAndSettle();
+              await t.tap(find.text(rowText).last);
+              await t.pumpAndSettle();
+            }
+
+            await t.tap(find.byKey(const Key('ai-fab')));
+            await t.pumpAndSettle();
+            await pick('supplier', 'Kitchen supplier quotes');
+            await pick('kitchen-log', 'kitchen-log.txt');
+            await t.enterText(input, 'What is still open here?');
+            await t.pump();
+            await t.tap(find.byKey(const Key('ai-send')));
+            await t.pumpAndSettle();
+            await pick('measure', 'kitchen-measurements.md');
+            await pick('Renovation', 'Renovation measurements');
+            FocusManager.instance.primaryFocus?.unfocus();
+          },
+        );
+      });
+    }
+
     testWidgets('phone duration dialog — $suffix', skip: !_enabled, (
       tester,
     ) async {
@@ -874,3 +972,36 @@ void main() {
     );
   });
 }
+
+/// The design seed plus an AI connection (the FAB) and two text files — one
+/// long enough to be shortened (OPH-377).
+FakeApi _aiAttachSeed() {
+  final api = _seededApi()..seedAiConnection(provider: 'anthropic');
+  final md = api.seedFile(
+    name: 'kitchen-measurements.md',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    mime: 'text/markdown',
+    sizeBytes: 900,
+  );
+  final log = api.seedFile(
+    name: 'kitchen-log.txt',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    mime: 'text/plain',
+    sizeBytes: 53120,
+  );
+  api.downloadUrls[md['id'] as String] = 'https://files.test/md';
+  api.downloadUrls[log['id'] as String] = 'https://files.test/log';
+  return api;
+}
+
+final List<Override> _aiAttachOverrides = [
+  aiFileBytesFetcherProvider.overrideWithValue(
+    (url) async => utf8.encode(
+      url.endsWith('/log')
+          ? 'Cabinets measured. ' * 2800
+          : '# Kitchen\n\nWall A 3.2 m, wall B 4.1 m.',
+    ),
+  ),
+];

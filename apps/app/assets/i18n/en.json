@@ -1273,6 +1273,26 @@
     },
     "quickAdd": {
       "enriching": "AI is filling this in…"
+    },
+    "attach": {
+      "button": "Attach a note, file, task or project (@)",
+      "panelTitle": "Attach to this message",
+      "emptyHint": "Type to find a note, file, task or project",
+      "noResults": "Nothing called “{query}”",
+      "remove": "Remove",
+      "truncated": "shortened",
+      "truncatedNotice": "Only the first {shown} of {total} characters of “{title}” were sent.",
+      "droppedNotice": "“{title}” was left out: attachments are limited to about 40,000 characters per conversation.",
+      "limit": "Up to 5 attachments per message",
+      "loading": "Attaching…",
+      "attached": "Already attached",
+      "sentLabel": "Attached: {title}",
+      "refused": {
+        "notText": "Only text files can be attached (PDF, images and Office files are not read)",
+        "tooLarge": "Too large to attach (over 1 MB)",
+        "unavailable": "Couldn't load it, check your connection",
+        "empty": "The file is empty"
+      }
     }
   },
   "markdown": {

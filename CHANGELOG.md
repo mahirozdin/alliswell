@@ -9,6 +9,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Ask the AI about a note or file.** Type @ in the AI chat to attach a note, a text file, a
+  task or a project; only what you pick is sent, and long items are shortened with a notice.
+  PDFs, images and Office files cannot be attached.
 - **Add tasks by voice with Siri and Shortcuts on iPhone and Mac.** "Hey Siri, add a task in
   AllisWell" (TR "AllisWell'e görev ekle"), the Shortcuts app and Spotlight add a task; dates
   in what you say are understood ("yarın 9'da kira"), and it works offline. "Show today" opens

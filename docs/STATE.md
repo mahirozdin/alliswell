@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — OPH-376: Siri/Kestirmeler ile görev ekleme (iOS/macOS App Intents, uygulama öne gelir, metin OPH-373 ayrıştırıcısından geçer) + Android başlatıcı kısayolları "Yeni görev" / "Bugün" (ADR-0057).
+**Last updated:** 2026-10-17 — OPH-377: AI sohbetinde "@" ile not, metin dosyası, görev ya da proje ekleme (yalnız seçilen gönderilir, uzunlar kısaltılır ve söylenir; ADR-0058).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-376: `ios/Shared/AWAppShortcuts.swift` (`AWAddTaskIntent`, `AWShowTodayIntent`, `AWAppShortcuts`, `openAppWhenRun`, iOS 16 / macOS 13) iOS ve macOS Runner'da (`wire_app_shortcuts.rb`), EN/TR `.strings`, `INAlternativeAppNames`; istek `aw_capture_pending` posta kutusunda, `alliswell/capture` kanalıyla `capture_inbox.dart`'a; Fikirler hızlı ekleme kuralı `createCapture`'a çıktı (ses ve çubuk aynı kural); HomeShell SnackBar + Aç, "Bugün" `/home?day=`; Android `shortcuts.xml` + `values-tr`; MCP/API değişikliği yok (rule 12: `create_task` / `POST /tasks` zaten var). |
+| Last completed           | OPH-377: `ai_mention.dart` (saf "@" ayrıştırıcı), `ai_attachments.dart` (saf ek modeli + `packAttachedSegments`, `tier: attached`, 12K/öğe, 40K/sohbet, 5/mesaj, dosya ≤1 MiB), `ai_attachment_loader.dart` (replika + presigned GET → çözülmüş metin; URL dışarı çıkmaz), `ai_attach_widgets.dart` (satır içi panel, çipler, gönderilen mesaj çipleri + kısaltma notu), `NoteStore/TaskStore.detailOnce`; sunucu `tier` enum + `attached`, segment metni 16K, ek toplamı 48K/8 → `AI_CONTEXT_TOO_LARGE`, ek kural satırı; MCP/API değişikliği yok (rule 12, ADR-0058). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -134,6 +134,9 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   Fikirler hızlı ekleme kuralı uygulanır (tarihsiz → Fikirler); "Bugün" Ana sayfayı bugünle açar,
   Siri sesli özet okumaz. Android'de yalnız iki statik başlatıcı kısayolu; App Actions, AppFunctions,
   AUTO_SEND, CREATE_NOTE yok (2026'da işleyen bir asistan yolu yok).
+- **AI'ya ek (2026-10-17, ADR-0058):** yalnız "@" ile seçilen gönderilir (otomatik bağlamda not ve
+  dosya yok); not/metin dosyası/görev/proje; PDF/görsel/Office eklenmez (çıkarım yolu yok); ekler
+  sohbet boyunca kalır; ekli turda görev kapısı atlanır (ekten görev çıkarılmaz).
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

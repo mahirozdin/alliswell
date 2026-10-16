@@ -296,7 +296,10 @@ word, `additionalProperties:false`, one repair round). **All context fencing liv
 MCP resources render through it, so the app's context chip is an honest view of what was packed.
 The app side is `features/ai/**` — a pure bubble state machine + controller (impure stream/STT
 edges), `AiText` inert rendering (no HTML, external links non-tappable), on-device STT and the
-share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/ai/*` entirely;
+share target behind nullable-provider seams (ADR-0023). Notes, text files, tasks and projects
+reach a chat turn only when picked with "@": a pure packer (`ai_attachments.dart`) turns them
+into `tier: attached` segments placed before the live T0–T2 bundle, and its loader reads the
+replica or a text file's presigned GET and keeps only decoded text (OPH-377, ADR-0058). `AI_ENABLED` removes `/ai/*` entirely;
 `MCP_ENABLED` + `API_PUBLIC_URL` gate MCP independently. Full threat model: [AI.md](AI.md),
 [SECURITY.md](../SECURITY.md) "AI surfaces".
 

@@ -269,6 +269,39 @@ class TaskStore {
           ),
   ).where((task) => task != null).map((task) => task!);
 
+  /// One read of a task's detail (row + tags + checklist), null when it is
+  /// gone — [watchDetail] drops nulls, so its `.first` would hang (OPH-377).
+  Future<Task?> detailOnce(String taskId) async {
+    final record = await (_db.select(
+      _db.tasks,
+    )..where((t) => t.id.equals(taskId))).getSingleOrNull();
+    if (record == null) return null;
+    final tagRows = await (_db.select(
+      _db.taskTagRows,
+    )..where((r) => r.taskId.equals(taskId))).get();
+    final checklist =
+        await (_db.select(_db.checklistItems)
+              ..where((c) => c.taskId.equals(taskId))
+              ..orderBy([
+                (c) => OrderingTerm.asc(c.sortOrder),
+                (c) => OrderingTerm.asc(c.createdAt),
+              ]))
+            .get();
+    return _task(
+      record,
+      tagIds: [for (final r in tagRows) r.tagId]..sort(),
+      checklist: [
+        for (final c in checklist)
+          ChecklistItem(
+            id: c.id,
+            title: c.title,
+            isDone: c.isDone,
+            sortOrder: c.sortOrder,
+          ),
+      ],
+    );
+  }
+
   // ── Writes (optimistic + outbox) ───────────────────────────────────────────
 
   Future<String> create(String workspaceId, Map<String, dynamic> body) async {

@@ -11128,7 +11128,8 @@
                               "enum": [
                                 "t0",
                                 "t1",
-                                "t2"
+                                "t2",
+                                "attached"
                               ]
                             },
                             "source": {
@@ -11143,7 +11144,7 @@
                             "text": {
                               "type": "string",
                               "minLength": 1,
-                              "maxLength": 4000
+                              "maxLength": 16000
                             }
                           }
                         }

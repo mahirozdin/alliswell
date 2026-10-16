@@ -1272,6 +1272,26 @@
     },
     "quickAdd": {
       "enriching": "Yapay zekâ dolduruyor…"
+    },
+    "attach": {
+      "button": "Not, dosya, görev ya da proje ekle (@)",
+      "panelTitle": "Bu mesaja ekle",
+      "emptyHint": "Not, dosya, görev ya da proje bulmak için yaz",
+      "noResults": "“{query}” bulunamadı",
+      "remove": "Kaldır",
+      "truncated": "kısaltıldı",
+      "truncatedNotice": "“{title}” için {total} karakterin yalnız ilk {shown} karakteri gönderildi.",
+      "droppedNotice": "“{title}” eklenmedi: ekler sohbet başına yaklaşık 40.000 karakterle sınırlı.",
+      "limit": "Mesaj başına en fazla 5 ek",
+      "loading": "Ekleniyor…",
+      "attached": "Zaten eklendi",
+      "sentLabel": "Eklendi: {title}",
+      "refused": {
+        "notText": "Yalnız metin dosyaları eklenebilir (PDF, görsel ve Office dosyaları okunmaz)",
+        "tooLarge": "Eklemek için çok büyük (1 MB üstü)",
+        "unavailable": "Yüklenemedi, bağlantını kontrol et",
+        "empty": "Dosya boş"
+      }
     }
   },
   "markdown": {

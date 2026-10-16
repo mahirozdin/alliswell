@@ -136,6 +136,63 @@ describe('SSE transport', () => {
   });
 });
 
+describe('OPH-377: "@" attachments on the chat body', () => {
+  const attached = (text, id = 'N1') => ({
+    tier: 'attached',
+    source: 'attached_note',
+    id,
+    text,
+  });
+
+  async function drain(res) {
+    const names = [];
+    for await (const event of parseSseStream(res.body)) names.push(event.event);
+    return names;
+  }
+
+  it('accepts a 16000-char attached segment and streams', async () => {
+    const res = await chatFetch({
+      requestId: newId(),
+      body: { context: { segments: [attached('a'.repeat(16000))], truncated: false } },
+    });
+    expect(res.status).toBe(200);
+    expect(await drain(res)).toContain('done');
+  });
+
+  it('refuses a 16001-char segment and an unknown tier (schema)', async () => {
+    const tooLong = await chatFetch({
+      requestId: newId(),
+      body: { context: { segments: [attached('a'.repeat(16001))] } },
+    });
+    expect(tooLong.status).toBe(400);
+    const bogus = await chatFetch({
+      requestId: newId(),
+      body: { context: { segments: [{ tier: 'bogus', source: 'x', text: 'y' }] } },
+    });
+    expect(bogus.status).toBe(400);
+  });
+
+  it('refuses an attached total over the cap BEFORE the limiter takes a token', async () => {
+    const take = vi.spyOn(app.ai.limiter, 'take');
+    const segments = [1, 2, 3, 4].map((n) => attached('b'.repeat(12500), `N${n}`));
+    const res = await chatFetch({ requestId: newId(), body: { context: { segments } } });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('AI_CONTEXT_TOO_LARGE');
+    // Counts only: the refusal never echoes the content back.
+    expect(JSON.stringify(body)).not.toContain('bbbb');
+    expect(take).not.toHaveBeenCalled();
+    take.mockRestore();
+  });
+
+  it('refuses more than 8 attached segments', async () => {
+    const segments = Array.from({ length: 9 }, (_, n) => attached('c', `N${n}`));
+    const res = await chatFetch({ requestId: newId(), body: { context: { segments } } });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('AI_CONTEXT_TOO_LARGE');
+  });
+});
+
 describe('socket transport', () => {
   function connectSocket(token) {
     const socket = ioClient(baseUrl, {

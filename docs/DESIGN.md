@@ -1097,7 +1097,8 @@ opens I can lift my finger and it stays open.")_
   links route through the ADR-0016 resolver (navigation-only by construction).
 - **AI7 — Provenance is visible.** Every AI message carries a context chip that
   expands to exactly what was packed and sent (T0/T1/T2 tiers, AI.md §7); shared-in
-  text is visually framed as quoted external content. Trust is a UI feature.
+  text is visually framed as quoted external content. Trust is a UI feature. (Not built
+  yet; what the user attached with "@" is shown — §41.)
 - **AI8 — Consent is a screen, not a checkbox.** Per provider, before first use:
   what leaves the device, where the key lives, the provider's retention/training
   stance in one honest sentence — and an amber warning where the truth is
@@ -1637,3 +1638,18 @@ One palette finds tasks, projects, notes, tags and file names from the replica, 
 | P5 | **Empty, no hits, create.** Empty field: "Recent" (≤ 8 things opened last, person-bound) or a one-line hint plus the shortcut tip. No hits: compact `AwEmptyState` naming the query. With text and `tasks.create`, the last row is "Create task “text”", which opens the normal create sheet prefilled — Enter takes it when nothing matched. Debounce 150 ms (faster than S4's ~250: the palette's lists are short), results stay while the next query loads, a 2 px progress line only after a further 150 ms. | No blank void, no spinner flash, no silent write. |
 | P6 | **Opening.** The palette closes first, then: task → detail (pushed), project/note → its page, file → its actions sheet, tag → Home filtered by it (board switches to list). The kind → destination table is the one Quick Access uses. | One place decides where a thing opens. |
 | P7 | **Both themes, both widths are shot:** `desktop_search_palette_*`, `desktop_search_recent_*`, `phone_search_palette_*`, `phone_search_orb_*` in `test/design_screenshots_test.dart`; only existing tokens (contrast pairs in `scripts/design/contrast.py`). | Rule 11. |
+
+## 41. Attaching to the AI chat (OPH-377)
+
+Notes, text files, tasks and projects reach the AI only when the user picks them with "@"
+([ADR-0058](adr/0058-ai-chat-attachments-on-demand.md), AI.md §7). Nothing is attached
+automatically.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| M1 | **Ways in.** Typing "@" at a word boundary (start, after a space or an opening bracket/quote — never inside an e-mail) opens the picker; the query may hold single spaces, ≤ 40 characters. A 44 px `@` icon button (`ai.attach.button` tooltip) beside the mic inserts the "@" and focuses the field. | Discoverable on touch, fast on a keyboard. |
+| M2 | **Surface.** An inline panel between the conversation and the composer, NOT a modal — typing continues in the same field. Solid `surfaceContainerHigh`, radius `m`, `outlineVariant` hairline, height ≤ min(280, 40 % of the sheet); title "Attach to this message" (`labelLarge`, `onSurfaceVariant`). No glass (G1). | Text never sits on glass; the field keeps focus. |
+| M3 | **Rows.** The §40 P3 anatomy over the same search: Notes · Files · Tasks · Projects (tags are not attachable), rows ≥ 48 px, group headers when a query is typed, recents (≤ 8) for a bare "@". A non-text file (PDF, image, Office, audio, video, archive) is drawn disabled — `onSurfaceVariant` title, context line "Only text files can be attached…" — and cannot be picked; an attached row shows a check; at 5 attachments the hint says so and rows are disabled. Keyboard as §40 P4: ↑/↓, Enter picks (also the mobile action key while the panel is open), Esc closes the panel and not the sheet; the same "@" stays closed until it is gone. Debounce 150 ms. | Same reading as the palette; a refusal is explained, not hidden. |
+| M4 | **Chips.** A pick removes "@query" from the field and adds an `InputChip` above it: kind icon (files by type), title ≤ 220 px with ellipsis, a delete button ("Remove"). Loading: a 14 px progress avatar, and send is disabled until it settles. Refused: an `error`-coloured icon and one `bodySmall` `onSurfaceVariant` line "title: reason" under the chips. A shortened item reads "title · shortened". | The user sees exactly what will be sent before sending. |
+| M5 | **The sent message.** Under the user bubble, compact non-interactive chips for what rode along; under them, when an item was cut, "Only the first 12,000 of N characters of “title” were sent.", and when the conversation cap left one out, "“title” was left out…" (`bodySmall`, `onSurfaceVariant`, end-aligned). | Truncation is visible to the user, not only to the model. |
+| M6 | **Both themes, both widths are shot:** `phone_ai_attach_picker_*`, `phone_ai_attach_chips_*`, `desktop_ai_attach_picker_*`, `desktop_ai_attach_chips_*` in `test/design_screenshots_test.dart`; only existing tokens (pairs "ai attach …" in `scripts/design/contrast.py`). | Rule 11. |
