@@ -86,8 +86,9 @@ jobs:
           cache: true
 
       # The web bundle is the artifact a self-hoster actually wants — a static
-      # build they can serve behind their own API. Desktop/mobile packaging is
-      # roadmap (v2).
+      # build they can serve behind their own API. The Windows and Linux desktop
+      # apps come from the `desktop` job below and are attached by
+      # `desktop-attach` (ADR-0051); mobile ships through the stores.
       - name: Build web bundle
         working-directory: apps/app
         run: |
@@ -108,6 +109,167 @@ jobs:
           prerelease: ${{ !startsWith(steps.version.outputs.version, '1.') }}
           files: alliswell-web-${{ steps.version.outputs.version }}.tar.gz
           fail_on_unmatched_files: true
+
+  # Desktop apps for people who will never self-host: a Windows zip and a Linux
+  # tar.gz on every release (ADR-0051). Deliberately outside the deploy chain —
+  # a desktop build failure must never hold back production. Asset names carry
+  # no version so README/landing can link releases/latest/download/<name>; the
+  # version is the archive's top folder and is compiled in with --build-name.
+  desktop:
+    name: Desktop build (${{ matrix.target }})
+    needs: gate
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60 # pdfium and the Firebase C++ SDK download at configure time
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux
+            runner: ubuntu-24.04
+            asset: alliswell-linux-x64.tar.gz
+          - target: windows
+            runner: windows-2025
+            asset: alliswell-windows-x64.zip
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Derive version from the tag
+        id: version
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          app=$(grep -m1 '^version:' apps/app/pubspec.yaml | sed -E 's/version:[[:space:]]*([0-9.]+).*/\1/')
+          shown=$(grep -m1 "^const kAppVersion" apps/app/lib/src/core/app_version.dart \
+                  | sed -E "s/.*'([0-9.]+)'.*/\1/")
+          echo "tag=$version  app=$app  shown=$shown"
+          if [ "$app" != "$version" ] || [ "$shown" != "$version" ]; then
+            echo "::error::Tag v$version does not match app ($app) / kAppVersion ($shown) — no mislabelled desktop build."
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Install Linux build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq clang cmake ninja-build pkg-config libgtk-3-dev \
+            liblzma-dev libstdc++-12-dev libsecret-1-dev libgstreamer1.0-dev \
+            libgstreamer-plugins-base1.0-dev
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.44.0
+          cache: true
+
+      - name: Build the ${{ matrix.target }} release bundle
+        working-directory: apps/app
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          flutter pub get
+          flutter build ${{ matrix.target }} --release --build-name="$VERSION"
+
+      - name: Package the Linux bundle
+        if: matrix.target == 'linux'
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          dir="alliswell-$VERSION-linux-x64"
+          mkdir -p dist/stage
+          cp -a apps/app/build/linux/x64/release/bundle "dist/stage/$dir"
+          test -x "dist/stage/$dir/alliswell"
+          # Every shared library the binary links must resolve — a missing one
+          # here is a missing one on every user's desktop.
+          if ldd "dist/stage/$dir/alliswell" | grep 'not found'; then
+            echo "::error::the Linux bundle links a library that is not shipped"
+            exit 1
+          fi
+          tar -C dist/stage -czf "dist/$ASSET" "$dir"
+          ls -l dist
+
+      # Flutter's Windows bundle does not carry the VC++ runtime; a PC without
+      # the redistributable fails with "MSVCP140.dll was not found". Ship the
+      # three DLLs app-local from the runner's Visual Studio (ADR-0051).
+      - name: Package the Windows bundle
+        if: matrix.target == 'windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          ASSET: ${{ matrix.asset }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rel = 'apps/app/build/windows/x64/runner/Release'
+          if (-not (Test-Path "$rel/alliswell.exe")) { throw "alliswell.exe was not built" }
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -products * -property installationPath
+          $crt = Get-ChildItem "$vs\VC\Redist\MSVC\*\x64\Microsoft.VC*.CRT" -Directory |
+            Where-Object { Test-Path "$($_.FullName)\vcruntime140_1.dll" } |
+            Sort-Object FullName | Select-Object -Last 1
+          if ($null -eq $crt) { throw "no VC++ runtime found under $vs" }
+          Copy-Item "$($crt.FullName)\msvcp140.dll", "$($crt.FullName)\vcruntime140.dll", "$($crt.FullName)\vcruntime140_1.dll" $rel
+          $dir = "alliswell-$env:VERSION-windows-x64"
+          New-Item dist/stage -ItemType Directory -Force | Out-Null
+          Copy-Item $rel "dist/stage/$dir" -Recurse
+          Compress-Archive -Path "dist/stage/$dir" -DestinationPath "dist/$env:ASSET"
+          Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.target }}
+          path: dist/${{ matrix.asset }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # Attaches whatever desktop builds succeeded to the Release `release` created,
+  # then goes red if a leg failed — a half-attached release must not look done.
+  desktop-attach:
+    name: Attach desktop downloads
+    needs: [release, desktop]
+    if: ${{ !cancelled() && needs.release.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # upload release assets
+
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true # both legs failed → nothing to download; the last step says so
+        with:
+          pattern: desktop-*
+          merge-multiple: true
+          path: dist
+
+      - name: Upload to the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          mkdir -p dist
+          files=(dist/alliswell-*-x64.*)
+          echo "### Desktop downloads" >> "$GITHUB_STEP_SUMMARY"
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "No desktop build to attach." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          (cd dist && sha256sum alliswell-*-x64.* > alliswell-desktop-SHA256SUMS.txt)
+          gh release upload "$GITHUB_REF_NAME" "${files[@]}" dist/alliswell-desktop-SHA256SUMS.txt \
+            --clobber --repo "$GITHUB_REPOSITORY"
+          for f in "${files[@]}"; do echo "- \`$(basename "$f")\`" >> "$GITHUB_STEP_SUMMARY"; done
+
+      - name: Fail if a desktop build failed
+        if: ${{ needs.desktop.result != 'success' }}
+        env:
+          RESULT: ${{ needs.desktop.result }}
+        run: |
+          echo "::error::a desktop build did not succeed ($RESULT) — only the files listed in the summary were attached"
+          exit 1
 
   # Self-hosting artifacts: one image per half of the product, so anyone can run
   # AllisWell with `docker compose up` and upgrade by pulling a newer tag

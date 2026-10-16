@@ -13,6 +13,11 @@ export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
 export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
 export const VERSION = '1.17.0';
+// OPH-370 / ADR-0051: every release carries the desktop apps under stable,
+// unversioned names, so these links always fetch the newest one.
+export const RELEASES_URL = `${REPO_URL}/releases/latest`;
+export const WINDOWS_DOWNLOAD_URL = `${RELEASES_URL}/download/alliswell-windows-x64.zip`;
+export const LINUX_DOWNLOAD_URL = `${RELEASES_URL}/download/alliswell-linux-x64.tar.gz`;
 /**
  * OPH-364 — the hosted connector URL, said once. It is on the API host, not
  * this one: an agent that guessed `alliswell.space/mcp` from the marketing
@@ -352,8 +357,8 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
 
 export const download = {
   eyebrow: 'Get it',
-  title: 'In your browser, on Google Play and on the App Store',
-  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is on Google Play and the iPhone app is on the App Store, both free.',
+  title: 'In your browser, on your phone and on your desktop',
+  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is on Google Play and the iPhone app is on the App Store, both free. Windows and Linux builds are attached to every release; macOS builds from source.',
   web: {
     title: 'Web app',
     status: 'Live now',
@@ -374,6 +379,20 @@ export const download = {
       body: 'The iPhone app, on the store — the same alarm-grade reminders, offline-first sync and Home Screen widget.',
       icon: 'apple',
       cta: { label: 'Download on the App Store', href: APP_STORE_URL },
+    },
+    {
+      name: 'Windows',
+      status: 'Download',
+      body: 'Windows 10 and 11, 64-bit: unzip and run alliswell.exe. Not code-signed yet, so SmartScreen asks once: More info › Run anyway.',
+      icon: 'windows',
+      cta: { label: 'Download for Windows (.zip)', href: WINDOWS_DOWNLOAD_URL },
+    },
+    {
+      name: 'Linux',
+      status: 'Download',
+      body: '64-bit: extract and run ./alliswell. Needs GTK 3, libsecret and GStreamer, which most desktops already have.',
+      icon: 'linux',
+      cta: { label: 'Download for Linux (.tar.gz)', href: LINUX_DOWNLOAD_URL },
     },
   ],
   selfHostNote:

@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-368: README ilk ekranı (tek cümle + iki dakikada doğrulanır kanıt + hero + hızlı bağlantılar) ve `docs/COMPARISON.md` §7 dürüst self-hosted karşılaştırması (Vikunja, Super Productivity, Tasks.org, Nextcloud Tasks; 2026-10-16 tarihli).
+**Last updated:** 2026-10-16 — OPH-370: her sürüme Windows zip + Linux tar.gz masaüstü indirmeleri (ADR-0051); README/landing/SELF-HOSTING bağlantıları.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-369: Apple Takvim geri okuma (cihazda, ADR-0050) — takvimde taşınan/boyutlanan ayna etkinliği görevin `scheduled_*`'ına store+outbox ile yazılır, silinen etkinlik o takvimde aynayı durdurur (replika v38 `apple_event_links.suppressed_at`); Swift tek metot `readEvents`, Linux'ta derlenmedi. Kamu metni "tek yön" kalır — sahibin cihaz kontrolüne kadar. |
+| Last completed           | OPH-370: `release.yml`'e `desktop` (ubuntu-24.04 + windows-2025) ve `desktop-attach` işleri — etiketten sürümlü, imzasız `alliswell-windows-x64.zip` / `alliswell-linux-x64.tar.gz` her GitHub sürümüne; deploy zincirinin dışında (ADR-0051). Windows bildirim ayarı, masaüstünde Google düğmesi gizli, home_widget yalnız android/iOS, kabuk markası. Windows bu makinede derlenmedi; ilk derlemesi sonraki etiket. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -65,6 +65,13 @@
     STORE-LISTING, landing `content*.js` + index sayfaları, `llms.txt`, web `index.html`/manifest ve
     `scripts/docs/check.mjs` APPLE_CLAIMS kapısı.
 
+14. **OPH-370 masaüstü indirmeleri** — sonraki etiketten sonra Actions › Release'de "Desktop build
+    (linux)", "Desktop build (windows)" ve "Attach desktop downloads" yeşil; sürümde
+    `alliswell-linux-x64.tar.gz`, `alliswell-windows-x64.zip`, `alliswell-desktop-SHA256SUMS.txt`
+    var ve README'nin `releases/latest/download/…` bağlantıları iniyor (o zamana kadar 404).
+    Sonra DEVICE-CHECKS "Masaüstü indirmeleri". İsteğe bağlı: Authenticode sertifikası (ya da Azure
+    Trusted Signing) + Windows işine signtool adımı → SmartScreen uyarısı kalkar.
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
@@ -94,6 +101,9 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   maili; bir tester/inceleme listesinin tamamı kuyruğun önüne, sıra sorulmadan.
 - **Commit ve CHANGELOG:** co-author satırı yok; mesaj ters tırnaksız ve dosyadan (`-F`) verilir.
   CHANGELOG'a yalnız kullanıcının göreceği değişiklik girer.
+- **Masaüstü indirmeleri (2026-10-16, ADR-0051):** yalnız Windows zip + Linux tar.gz, imzasız;
+  macOS yok, kurulum paketi/AppImage/deb yok. Dosya adları sürümsüz (`latest/download` bağlantısı
+  kalıcı), sürüm klasör adında ve ikilide.
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

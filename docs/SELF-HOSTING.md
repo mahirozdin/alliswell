@@ -11,6 +11,13 @@ database, your own domain — no account with anyone, no data leaving your serve
 Both are published on every release for `linux/amd64` and `linux/arm64`, tagged
 `X.Y.Z`, `X.Y` and `latest`.
 
+Each [release](https://github.com/mahirozdin/alliswell/releases/latest) also carries the
+desktop app: a Windows zip (`alliswell-windows-x64.zip`) and a Linux tar.gz
+(`alliswell-linux-x64.tar.gz`); macOS builds from source. The same binary serves every
+instance: on first start, choose your server on the sign-in screen. The web bundle
+(`alliswell-web-X.Y.Z.tar.gz`) is there too, for serving behind your own API without the
+image.
+
 > **Self-hosting this inside a company?** Two things are worth knowing before you start.
 > The licence draws its line at person versus company — a business running AllisWell for
 > its team needs a commercial licence, at any size ([Licence and commercial

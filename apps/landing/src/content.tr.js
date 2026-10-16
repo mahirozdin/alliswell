@@ -20,11 +20,13 @@ import {
   APP_STORE_URL,
   APP_URL,
   DOCS_URL,
+  LINUX_DOWNLOAD_URL,
   MCP_GUIDE_URL,
   MCP_URL,
   PLAY_URL,
   REPO_URL,
   VERSION,
+  WINDOWS_DOWNLOAD_URL,
   comparison,
   platforms,
 } from './content.js';
@@ -526,10 +528,11 @@ docker compose -f docker-compose.selfhost.yml up -d`,
 
   download: {
     eyebrow: 'Edinin',
-    title: 'Tarayıcınızda, Google Play’de ve App Store’da',
+    title: 'Tarayıcınızda, telefonunuzda ve masaüstünüzde',
     lede:
       'Web uygulaması yayında ve eksiksiz: kaydolun, sahip olduğunuz her cihazda çalışsın. ' +
-      'Android uygulaması Google Play’de, iPhone uygulaması App Store’da; ikisi de ücretsiz.',
+      'Android uygulaması Google Play’de, iPhone uygulaması App Store’da; ikisi de ücretsiz. ' +
+      'Windows ve Linux sürümleri her sürüme ekli; macOS kaynaktan derlenir.',
     web: {
       title: 'Web uygulaması',
       status: 'Yayında',
@@ -556,6 +559,24 @@ docker compose -f docker-compose.selfhost.yml up -d`,
           'eşitleme ve ana ekran widget’ı.',
         icon: 'apple',
         cta: { label: "App Store'dan indir", href: APP_STORE_URL },
+      },
+      {
+        name: 'Windows',
+        status: 'İndir',
+        body:
+          'Windows 10 ve 11, 64 bit: zip’i açın, alliswell.exe’yi çalıştırın. Henüz kod imzalı ' +
+          'değil, bu yüzden SmartScreen bir kez sorar: Daha fazla bilgi › Yine de çalıştır.',
+        icon: 'windows',
+        cta: { label: 'Windows için indir (.zip)', href: WINDOWS_DOWNLOAD_URL },
+      },
+      {
+        name: 'Linux',
+        status: 'İndir',
+        body:
+          '64 bit: arşivi açın, ./alliswell’i çalıştırın. GTK 3, libsecret ve GStreamer ister; ' +
+          'çoğu masaüstünde zaten vardır.',
+        icon: 'linux',
+        cta: { label: 'Linux için indir (.tar.gz)', href: LINUX_DOWNLOAD_URL },
       },
     ],
     selfHostNote:

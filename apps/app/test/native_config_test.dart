@@ -203,4 +203,51 @@ void main() {
       expect(manifest, contains('text/markdown'));
     });
   });
+  // OPH-370 / ADR-0051 — the Windows and Linux downloads carry these shells;
+  // `flutter create` would put Flutter's defaults back without a sound.
+  group('desktop runners', () {
+    test('the Linux window is titled AllisWell', () {
+      final cc = _code(
+        File('linux/runner/my_application.cc').readAsStringSync(),
+      );
+      expect(
+        RegExp(
+          r'gtk_header_bar_set_title\(header_bar, "AllisWell"\)',
+        ).hasMatch(cc),
+        isTrue,
+      );
+      expect(
+        RegExp(r'gtk_window_set_title\(window, "AllisWell"\)').hasMatch(cc),
+        isTrue,
+      );
+      expect(cc.contains('"alliswell")'), isFalse);
+    });
+
+    test('the Windows window is titled AllisWell', () {
+      final cpp = File('windows/runner/main.cpp').readAsStringSync();
+      expect(cpp.contains('window.Create(L"AllisWell"'), isTrue);
+    });
+
+    test('Runner.rc names the product, the binary name is unchanged', () {
+      final rc = File('windows/runner/Runner.rc').readAsStringSync();
+      expect(rc.contains('VALUE "ProductName", "AllisWell"'), isTrue);
+      expect(rc.contains('VALUE "CompanyName", "BubiApps"'), isTrue);
+      expect(rc.contains('VALUE "OriginalFilename", "alliswell.exe"'), isTrue);
+    });
+
+    test('app_icon.ico is the AllisWell mark, not Flutter\'s default', () {
+      final ico = File(
+        'windows/runner/resources/app_icon.ico',
+      ).readAsBytesSync();
+      // Flutter's template icon is exactly 33,772 bytes.
+      expect(ico.length, isNot(33772));
+      expect(ico.sublist(0, 4), [0, 0, 1, 0]); // ICONDIR, type 1 = icon
+      final count = ico[4] | (ico[5] << 8);
+      final widths = [
+        for (var i = 0; i < count; i++) ico[6 + i * 16],
+      ]; // 0 means 256
+      expect(widths, contains(0));
+      expect(widths, containsAll([16, 32, 48]));
+    });
+  });
 }

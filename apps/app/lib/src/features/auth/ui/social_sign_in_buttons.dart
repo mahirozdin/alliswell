@@ -72,14 +72,17 @@ class _SocialSignInButtonsState extends ConsumerState<SocialSignInButtons> {
           busy: _busy == SocialProvider.apple,
           onPressed: busy ? null : () => _start(SocialProvider.apple),
         ),
-      _SocialButton(
-        key: const Key('sign-in-google'),
-        label: 'auth.continueWithGoogle'.tr(),
-        icon: Icons.g_mobiledata,
-        busy: _busy == SocialProvider.google,
-        onPressed: busy ? null : () => _start(SocialProvider.google),
-      ),
+      if (SocialSignIn.googleAvailable)
+        _SocialButton(
+          key: const Key('sign-in-google'),
+          label: 'auth.continueWithGoogle'.tr(),
+          icon: Icons.g_mobiledata,
+          busy: _busy == SocialProvider.google,
+          onPressed: busy ? null : () => _start(SocialProvider.google),
+        ),
     ];
+    // Windows and Linux have neither provider: no orphan "or" divider there.
+    if (buttons.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

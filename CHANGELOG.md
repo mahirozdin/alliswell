@@ -9,6 +9,8 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Windows and Linux desktop apps on every release.** A Windows zip and a Linux tar.gz are
+  attached to each GitHub release; download links are in the README and on alliswell.space.
 - **Apple Calendar on iPhone and Mac: moving or resizing a task's event now reschedules the
   task; deleting the event stops mirroring that task into that calendar.** The task itself is
   never deleted.
@@ -17,6 +19,9 @@ This file holds the unreleased changes and the latest release; at each release t
   so accounts made with Google or Apple sign-in can connect too.
 
 ### Fixed
+
+- **Windows: reminders now reach the notification centre** (they failed to initialise), and the
+  Google sign-in button is hidden on Windows and Linux, where it could not work.
 
 - **Security: the connector sign-in page now asks for your authenticator code when two-factor
   authentication is on.** Before, the password alone was enough to connect an AI app.

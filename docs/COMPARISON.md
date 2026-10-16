@@ -431,7 +431,7 @@ Legend: ● yes · ◐ partly (the cell says how) · ○ no · — not checked.
 | What you run | API + MySQL/MariaDB + Redis (+ S3 for files) | Go server + MySQL/Postgres/SQLite | nothing; optional SuperSync server or WebDAV | nothing; a CalDAV/EteSync server of your choice | a Nextcloud server |
 | Native iOS · Android apps | ● store · ● store | ◐ "very basic features" | ● · ● | ○ · ● | ○ · ○ (any CalDAV client) |
 | Web app | ● | ● | ◐ with limitations | ○ | ● inside Nextcloud |
-| Desktop | ◐ build from source | ● packaged web frontend | ● | ◐ name-your-price tier | ○ browser |
+| Desktop | ◐ Windows/Linux download, macOS from source | ● packaged web frontend | ● | ◐ name-your-price tier | ○ browser |
 | Account needed | ● | ● | ○ | ○ | ● Nextcloud |
 | Views | list · board · month calendar | list · Kanban · Gantt · table | list · Kanban · Eisenhower · schedule | lists + filters | — |
 | Reminders | ● alarm through Silent mode, re-alert until acknowledged | ◐ e-mail, needs a mail server | ● | ● incl. location | ◐ since 0.17 (2025-10) |

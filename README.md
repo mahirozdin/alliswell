@@ -47,8 +47,15 @@ AllisWell puts it on the 28th, and shows you the next five dates before you save
 | **🤖 Google Play** | **Live now**      | **[Get it on Google Play](https://play.google.com/store/apps/details?id=com.alliswell.alliswell)** — the Android app, on the store. |
 | **🍎 App Store**   | **Live now**      | **[Download on the App Store](https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494)** — the iPhone app, on the store.  |
 | 🐳 **Self-host**   | Live now          | One `docker compose up` — [guide below](#-self-hosting-your-server-your-data).                                                      |
-| 💻 **Desktop**     | Build from source | macOS, Windows and Linux targets build from the same codebase.                                                                      |
+| 💻 **Windows · Linux** | **Download** | **[Windows (.zip)](https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-windows-x64.zip)** · **[Linux (.tar.gz)](https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-linux-x64.tar.gz)** — attached to every [release](https://github.com/mahirozdin/alliswell/releases/latest). Unsigned: SmartScreen asks once (More info › Run anyway). macOS builds from source. |
 | 🧠 **Claude / ChatGPT** | **Live now** | MCP connector at **`https://api.alliswell.space/mcp`** — [setup below](#-use-it-from-claude-or-chatgpt-mcp). |
+
+**Desktop downloads.** Unzip (Windows 10/11, 64-bit) or extract (Linux, 64-bit) and run
+`alliswell.exe` / `./alliswell` — nothing to install. On Linux the app needs GTK 3,
+libsecret with a running keyring (GNOME Keyring or KWallet, where your session is stored)
+and GStreamer for the alarm sound; on Debian/Ubuntu that is
+`libgtk-3-0 libsecret-1-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good`. The app talks
+to alliswell.space by default; point it at your own server from the sign-in screen.
 
 > **Project status — `v1.17.0`, live.** Everything on this page is built, tested
 > (**1,200+ app tests · 700+ backend unit · 70+ integration, green**) and deployed to

@@ -84,6 +84,20 @@ defineProps({
   gap: 1.15rem;
 }
 
+/* Five cards (web, two stores, two desktops — OPH-370): three over two on a
+   wide screen instead of four with one orphan below. */
+@media (min-width: 1000px) {
+  .get__grid:has(> :nth-child(5):last-child) {
+    grid-template-columns: repeat(6, 1fr);
+  }
+  .get__grid:has(> :nth-child(5):last-child) > * {
+    grid-column: span 2;
+  }
+  .get__grid:has(> :nth-child(5):last-child) > :nth-child(n + 4) {
+    grid-column: span 3;
+  }
+}
+
 .get__card {
   padding: 1.75rem;
   display: flex;
