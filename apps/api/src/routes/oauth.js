@@ -111,6 +111,7 @@ function renderAuthorizePage({
   workspaces,
   providers,
   socialAction,
+  authorizeAction,
 }) {
   const scopeLines = scopeList(scope);
   const workspaceField = workspaceChoice(workspaces);
@@ -119,7 +120,7 @@ function renderAuthorizePage({
     `<h1>Connect “${escapeHtml(clientName)}”</h1>
 <p>Only continue if you started this from your own AI app (Claude, ChatGPT, …).<br>
 <span style="color:#64748b">Bunu kendi yapay zekâ uygulamandan başlatmadıysan devam etme.</span></p>
-<form method="post" action="">
+<form method="post" action="${escapeHtml(authorizeAction)}">
   <input type="hidden" name="formToken" value="${escapeHtml(formToken)}">
   <label>Email</label><input type="email" name="email" required value="${escapeHtml(email ?? '')}">
   <label>Password <span style="color:#64748b">/ Parola</span></label><input type="password" name="password" required>
@@ -477,12 +478,16 @@ export default async function oauthRoutes(app) {
     ...(providerAudience.google ? ['google'] : []),
     ...(providerAudience.apple && publicUrl?.startsWith('https://') ? ['apple'] : []),
   ];
+  // Absolute, never action="": the consent page is also rendered by the
+  // social callback, and an empty action there would post the password form
+  // back to /oauth/authorize/callback.
+  const authorizeAction = `${publicUrl}/oauth/authorize`;
   const socialAction = `${publicUrl}/oauth/authorize/social`;
   const socialCallback = `${publicUrl}/oauth/authorize/callback`;
   const continueAction = `${publicUrl}/oauth/authorize/continue`;
 
   const consentPage = (fields) =>
-    renderAuthorizePage({ providers: socialProviders, socialAction, ...fields });
+    renderAuthorizePage({ providers: socialProviders, socialAction, authorizeAction, ...fields });
 
   async function memberWorkspaceIds(userId) {
     const rows = await app

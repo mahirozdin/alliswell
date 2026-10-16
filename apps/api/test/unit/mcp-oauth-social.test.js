@@ -324,6 +324,28 @@ describe('verification failures land back on consent, with no code', () => {
     expect(res.body).toContain('Sign-in was cancelled');
     expect(res.body).toContain('name="password"');
   });
+
+  it('the password form re-rendered by the callback still posts to /oauth/authorize', async () => {
+    await registerUser(app, { email: 'owner@example.com' });
+    const { state } = await beginSocial(app);
+    const back = await postCallback(app, { state, error: 'access_denied' });
+    // An empty action would resolve against /oauth/authorize/callback in a
+    // real browser and land on "The form expired".
+    expect(back.body).toContain(`<form method="post" action="${PUBLIC}/oauth/authorize">`);
+    const res = await app.inject({
+      method: 'POST',
+      url: new URL(`${PUBLIC}/oauth/authorize`).pathname,
+      headers: FORM_HEADERS,
+      payload: formEncode({
+        formToken: formTokenFrom(back.body),
+        email: 'owner@example.com',
+        password: 'test-password-1',
+        decision: 'approve',
+      }),
+    });
+    expect(res.statusCode).toBe(302);
+    expect(new URL(res.headers.location).searchParams.get('state')).toBe('st1');
+  });
 });
 
 describe('CSRF / state binding', () => {
