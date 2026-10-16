@@ -56,7 +56,9 @@ CalDAV keep whole seconds.
    all-day.
 6. **Triggers are foreground only:** a full read-back on the first pass and every app
    resume (macOS: window activation), plus a one-event look before every outbound update so
-   a fresh drag is not overwritten by a pulled change (a miss there never suppresses).
+   a fresh drag is not overwritten by a pulled change. A miss there neither suppresses nor
+   writes (saving to a stale id would create a duplicate or resurrect a deleted event); it
+   queues the full read-back, whose url recovery and guards decide.
    Passes are serialised and coalesced in the engine. No `EKEventStoreChanged` channel and
    no background read.
 7. **Native change:** one method, `readEvents(ids)`, in the shared

@@ -109,6 +109,11 @@ class AppleMirrorEngine {
   bool _pendingReadBack = false;
   Future<void>? _running;
 
+  /// Set by the look before an update when the event was not there: the full
+  /// read-back (url recovery, mass guard) must settle it before anything is
+  /// written — an update to a stale id would CREATE a second event.
+  bool _readBackWanted = false;
+
   /// Serialised and coalescing: passes never overlap (two overlapping passes
   /// could each create the same event), and a burst of replica emits collapses
   /// into one pass over the LATEST task list. A read-back request survives the
@@ -133,6 +138,11 @@ class AppleMirrorEngine {
           // old block over the user's drag. The write's own replica emit
           // brings them back with the new times.
           await reconcileAll(tasks, skip: applied, preRead: !readBack);
+          if (_readBackWanted) {
+            _readBackWanted = false;
+            _pending ??= tasks;
+            _pendingReadBack = true;
+          }
         } on EventKitException catch (e) {
           // One failed pass must not wedge the chain; the next emit retries.
           debugPrint('apple mirror: $e');
@@ -355,12 +365,19 @@ class AppleMirrorEngine {
   }
 
   /// The targeted look before an outbound update. True when the update must
-  /// not happen (the user's newer times were adopted instead). A missing event
-  /// here never suppresses: only the full read-back, with its url recovery and
-  /// mass-vanish guard, may decide the user deleted something.
+  /// not happen (the user's newer times were adopted instead, or the event is
+  /// not where the link says). A missing event here never suppresses and is
+  /// never rewritten: saving to a stale id would CREATE an event — a duplicate
+  /// after an iCloud re-identification, a resurrection after a delete. It
+  /// queues the full read-back instead, whose url recovery and mass-vanish
+  /// guard decide; the update follows in that pass if the event is found.
   Future<bool> _readBeforeUpdate(Task task, AppleEventLink link) async {
     final read = await gateway.readEvents([link.eventId]);
-    if (read == null || read.isEmpty) return false;
+    if (read == null) return false; // this build cannot read back
+    if (read.isEmpty) {
+      _readBackWanted = true;
+      return true;
+    }
     final outcome = decideAppleReadBack(
       task: task,
       link: link,

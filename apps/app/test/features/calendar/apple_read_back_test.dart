@@ -800,11 +800,43 @@ void main() {
         );
       });
 
-      test('a missing event alone never suppresses', () async {
+      test('a missing event is never rewritten; the full read-back settles it '
+          '(deleted → suppressed, not resurrected)', () async {
         final e = engine();
         await e.sync([t1()]);
         kit.events.remove('ev-1');
+        // A pull changes the task while the user has just deleted the event
+        // (a Mac with Calendar.app in front): saving to the stale id would
+        // CREATE the event again.
         await e.sync([_task('T1', due: DateTime.utc(2030, 6, 2, 12))]);
+        expect(kit.saved, hasLength(1)); // not recreated
+        expect(kit.events, isEmpty);
+        expect((await links.get('T1'))!.suppressedAt, isNotNull);
+        expect(writes, isEmpty); // and the task is untouched
+      });
+
+      test(
+        'a re-identified event is updated in place, not duplicated',
+        () async {
+          final e = engine();
+          await e.sync([t1()]);
+          kit.reidentify('ev-1', 'ev-icloud');
+          await e.sync([_task('T1', due: DateTime.utc(2030, 6, 2, 12))]);
+          expect(kit.events.keys, ['ev-icloud']); // one event, no duplicate
+          expect(kit.events['ev-icloud']!.start, DateTime.utc(2030, 6, 2, 12));
+          final link = await links.get('T1');
+          expect(link!.eventId, 'ev-icloud');
+          expect(link.suppressedAt, isNull);
+        },
+      );
+
+      test('a build that cannot read back keeps the one-way update', () async {
+        final e = engine();
+        await e.sync([t1()]);
+        kit.events.remove('ev-1');
+        kit.canRead = false;
+        await e.sync([_task('T1', due: DateTime.utc(2030, 6, 2, 12))]);
+        // The old one-way behaviour: no suppression on a build that cannot read.
         expect((await links.get('T1'))!.suppressedAt, isNull);
       });
     });

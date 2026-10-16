@@ -16,8 +16,9 @@ import EventKit
 /// calendar lives.
 ///
 /// Deliberately dumb. It requests access, lists calendars, writes exactly the
-/// event Dart tells it to, and reports what an event it wrote looks like now. Every DECISION (what mirrors, when, which
-/// calendar, conflict handling) stays in Dart, where it is pure and testable.
+/// event Dart tells it to, and reports what an event it wrote looks like now.
+/// Every DECISION (what mirrors, when, which calendar, conflict handling) stays
+/// in Dart, where it is pure and testable.
 /// Native code we cannot easily unit-test holds no policy.
 public class AlliswellEventkitPlugin: NSObject, FlutterPlugin {
   /// One store for the plugin's lifetime: EventKit ties an access grant to the
