@@ -1174,6 +1174,20 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   bare dropdown glyphs), the preview is readable as text rather than as a chart, and
   every control clears the 44 px floor. Contrast is checked in both themes like any
   other surface — the dialog introduces no new colour.
+- **R10 — After completion (OPH-375, ADR-0056).** A two-segment switch tops the
+  dialog: **"Takvime göre / On a schedule"** (everything above, the default) and
+  **"Tamamlanınca / After completion"**. The second mode has no pattern, so the presets
+  and "Sonraki 5" give way to one interval field (labelled above, 1..366) with a
+  full-width **gün / hafta / ay** unit switch under it — beside each other the units
+  wrapped letter by letter at 390 px — and ONE date: **"Bugün tamamlarsan / If you
+  complete it today"**, with the hint that the count runs from the completion, early or
+  late, and the time of day stays. The end condition stays under Gelişmiş. The sentence
+  reads "Tamamlanınca 90 gün sonra · bitiş yok" / "90 days after completion · no end".
+  Such an occurrence asks **no scope question** — the next one is copied from it, so an
+  edit carries forward — and deleting the open one stops the repeat in the same
+  undoable commit (a finished one is deleted alone). EN "After completion" wraps to two
+  centred lines in its segment at 390 px; TR fits on one. Tokens only, no new colour;
+  checked in light and dark, EN and TR.
 
 ## 26. Creation defaults & the quick-add deadline ask (round 14 — Epic 21)
 

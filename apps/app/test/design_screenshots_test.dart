@@ -584,6 +584,33 @@ void main() {
     await t.ensureVisible(find.byKey(const Key('duration-row')));
   }
 
+  // OPH-375 (DESIGN §25 R10): the repeat dialog in its after-completion mode —
+  // basis switch, interval + unit, the one date and the hint.
+  Future<void> openRepeatAfterCompletion(WidgetTester t) async {
+    await openSeededDetail(t);
+    final toggle = find.byKey(const Key('repeat-switch'));
+    await t.ensureVisible(toggle);
+    await t.pumpAndSettle();
+    await t.tap(toggle);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('repeat-basis-completion')));
+    await t.pumpAndSettle();
+    await t.enterText(find.byKey(const Key('repeat-after-interval')), '90');
+    await t.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.pumpAndSettle();
+  }
+
+  // …and the sentence it leaves on the detail once saved.
+  Future<void> saveRepeatAfterCompletion(WidgetTester t) async {
+    await openRepeatAfterCompletion(t);
+    await t.tap(find.byKey(const Key('repeat-save')));
+    await t.pumpAndSettle();
+    // The switch AND the sentence under it in one frame.
+    await t.ensureVisible(find.byKey(const Key('repeat-switch')));
+    await t.pumpAndSettle();
+  }
+
   Future<void> typeQuickAdd(WidgetTester t) async {
     final bar = find.byKey(const Key('home-quick-add'));
     await t.ensureVisible(bar);
@@ -641,6 +668,34 @@ void main() {
         navigate: openSeededDetail,
       );
     });
+
+    testWidgets('phone repeat after completion — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_repeat_after_completion_$suffix',
+        navigate: openRepeatAfterCompletion,
+      );
+    });
+
+    testWidgets(
+      'phone repeat after completion summary — $suffix',
+      skip: !_enabled,
+      (tester) async {
+        await withShotLocale();
+        await _shoot(
+          tester,
+          size: const Size(390, 844),
+          brightness: brightness,
+          name: 'phone_repeat_after_completion_summary_$suffix',
+          navigate: saveRepeatAfterCompletion,
+        );
+      },
+    );
 
     // OPH-373 (DESIGN §39 Q5): the quick-add bar reading a line — highlight
     // in the field, chips under it — and its syntax sheet.

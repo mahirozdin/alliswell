@@ -8070,7 +8070,31 @@
                     },
                     "rule": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": true,
+                      "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                      "properties": {
+                        "freq": {
+                          "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                        },
+                        "interval": {
+                          "description": "Every N periods, 1..366"
+                        },
+                        "basis": {
+                          "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                        },
+                        "byWeekday": {
+                          "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                        },
+                        "byMonthDay": {
+                          "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                        },
+                        "byMonth": {
+                          "description": "calendar only, yearly: 1..12"
+                        },
+                        "end": {
+                          "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                        }
+                      }
                     },
                     "template": {
                       "type": "object",
@@ -8144,7 +8168,31 @@
                 "properties": {
                   "rule": {
                     "type": "object",
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                    "properties": {
+                      "freq": {
+                        "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                      },
+                      "interval": {
+                        "description": "Every N periods, 1..366"
+                      },
+                      "basis": {
+                        "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                      },
+                      "byWeekday": {
+                        "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                      },
+                      "byMonthDay": {
+                        "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                      },
+                      "byMonth": {
+                        "description": "calendar only, yearly: 1..12"
+                      },
+                      "end": {
+                        "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                      }
+                    }
                   },
                   "template": {
                     "type": "object",
@@ -8209,7 +8257,31 @@
                         },
                         "rule": {
                           "type": "object",
-                          "additionalProperties": true
+                          "additionalProperties": true,
+                          "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                          "properties": {
+                            "freq": {
+                              "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                            },
+                            "interval": {
+                              "description": "Every N periods, 1..366"
+                            },
+                            "basis": {
+                              "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                            },
+                            "byWeekday": {
+                              "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                            },
+                            "byMonthDay": {
+                              "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                            },
+                            "byMonth": {
+                              "description": "calendar only, yearly: 1..12"
+                            },
+                            "end": {
+                              "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                            }
+                          }
                         },
                         "template": {
                           "type": "object",
@@ -16171,7 +16243,31 @@
                 "properties": {
                   "rule": {
                     "type": "object",
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                    "properties": {
+                      "freq": {
+                        "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                      },
+                      "interval": {
+                        "description": "Every N periods, 1..366"
+                      },
+                      "basis": {
+                        "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                      },
+                      "byWeekday": {
+                        "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                      },
+                      "byMonthDay": {
+                        "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                      },
+                      "byMonth": {
+                        "description": "calendar only, yearly: 1..12"
+                      },
+                      "end": {
+                        "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                      }
+                    }
                   },
                   "template": {
                     "type": "object",
@@ -16247,7 +16343,31 @@
                         },
                         "rule": {
                           "type": "object",
-                          "additionalProperties": true
+                          "additionalProperties": true,
+                          "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                          "properties": {
+                            "freq": {
+                              "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                            },
+                            "interval": {
+                              "description": "Every N periods, 1..366"
+                            },
+                            "basis": {
+                              "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                            },
+                            "byWeekday": {
+                              "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                            },
+                            "byMonthDay": {
+                              "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                            },
+                            "byMonth": {
+                              "description": "calendar only, yearly: 1..12"
+                            },
+                            "end": {
+                              "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                            }
+                          }
                         },
                         "template": {
                           "type": "object",
@@ -16390,7 +16510,31 @@
                           },
                           "rule": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": true,
+                            "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                            "properties": {
+                              "freq": {
+                                "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                              },
+                              "interval": {
+                                "description": "Every N periods, 1..366"
+                              },
+                              "basis": {
+                                "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                              },
+                              "byWeekday": {
+                                "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                              },
+                              "byMonthDay": {
+                                "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                              },
+                              "byMonth": {
+                                "description": "calendar only, yearly: 1..12"
+                              },
+                              "end": {
+                                "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                              }
+                            }
                           },
                           "template": {
                             "type": "object",

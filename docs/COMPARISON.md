@@ -86,6 +86,7 @@ list every screenshot, the landing page and the store copy draw from.
 | A live **"next 5" preview** in the dialog: the days you are about to get, before you commit                | OPH-207 |
 | Occurrences are **real rows** for 12 rolling months — visible in the calendar, in search and in the widget  | OPH-205 |
 | Editing one occurrence asks how far it reaches: **this / this and future / all**                           | OPH-206 |
+| **Repeat N days / weeks / months after completion** — late or early, it counts from when you did it          | OPH-375 |
 
 ### Notes & files
 

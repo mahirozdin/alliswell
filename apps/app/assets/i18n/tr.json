@@ -1152,6 +1152,26 @@
       "future": "Bu ve gelecektekiler",
       "all": "Tümü",
       "apply": "Uygula"
+    },
+    "basis": {
+      "calendar": "Takvime göre",
+      "completion": "Tamamlanınca"
+    },
+    "after": {
+      "daily": "Tamamlanınca 1 gün sonra",
+      "dailyN": "Tamamlanınca {n} gün sonra",
+      "weekly": "Tamamlanınca 1 hafta sonra",
+      "weeklyN": "Tamamlanınca {n} hafta sonra",
+      "monthly": "Tamamlanınca 1 ay sonra",
+      "monthlyN": "Tamamlanınca {n} ay sonra",
+      "intervalLabel": "Şu kadar sonra",
+      "unit": {
+        "days": "gün",
+        "weeks": "hafta",
+        "months": "ay"
+      },
+      "previewTitle": "Bugün tamamlarsan",
+      "hint": "Tamamladığın andan sayılır, erken ya da geç. Saat aynı kalır."
     }
   },
   "ai": {

@@ -25,6 +25,12 @@ const int _iterationGuard = 20000;
 
 enum AwRepeatFreq { daily, weekly, monthly, yearly }
 
+/// What a rule counts from (OPH-375, ADR-0056): a calendar pattern (the
+/// ADR-0020 default, never written to JSON) or "N days / weeks / months after
+/// I complete it" — no pattern, the next day is the completion day plus the
+/// interval ([awNextAfterCompletion]).
+enum AwRepeatBasis { calendar, completion }
+
 extension AwRepeatFreqName on AwRepeatFreq {
   String get wire => name;
   static AwRepeatFreq? parse(Object? value) {
@@ -114,6 +120,7 @@ class AwRepeatRule {
     this.byMonthDay = const [],
     this.byMonth = const [],
     this.end = const AwRepeatEnd.never(),
+    this.basis = AwRepeatBasis.calendar,
   });
 
   final AwRepeatFreq freq;
@@ -127,6 +134,14 @@ class AwRepeatRule {
   final List<int> byMonth;
   final AwRepeatEnd end;
 
+  /// Calendar pattern or after completion (OPH-375). Modelled — not left to
+  /// a raw map — because [toJson]/[fromJson] drop unknown keys: an edit that
+  /// round-tripped a completion rule through a model without it would quietly
+  /// turn it back into a calendar one.
+  final AwRepeatBasis basis;
+
+  bool get isAfterCompletion => basis == AwRepeatBasis.completion;
+
   AwRepeatRule copyWith({
     AwRepeatFreq? freq,
     int? interval,
@@ -134,6 +149,7 @@ class AwRepeatRule {
     List<int>? byMonthDay,
     List<int>? byMonth,
     AwRepeatEnd? end,
+    AwRepeatBasis? basis,
   }) => AwRepeatRule(
     freq: freq ?? this.freq,
     interval: interval ?? this.interval,
@@ -141,6 +157,7 @@ class AwRepeatRule {
     byMonthDay: byMonthDay ?? this.byMonthDay,
     byMonth: byMonth ?? this.byMonth,
     end: end ?? this.end,
+    basis: basis ?? this.basis,
   );
 
   Map<String, dynamic> toJson() => {
@@ -151,12 +168,27 @@ class AwRepeatRule {
     if (byMonthDay.isNotEmpty) 'byMonthDay': byMonthDay,
     if (byMonth.isNotEmpty) 'byMonth': byMonth,
     'end': end.toJson(),
+    // Only the new basis is written: a calendar rule's JSON stays byte for
+    // byte what every existing series already stores.
+    if (isAfterCompletion) 'basis': 'completion',
   };
 
   static AwRepeatRule? fromJson(Object? value) {
     if (value is! Map) return null;
     final freq = AwRepeatFreqName.parse(value['freq']);
     if (freq == null) return null;
+    final rawBasis = value['basis'];
+    final AwRepeatBasis basis;
+    switch (rawBasis) {
+      case null || 'calendar':
+        basis = AwRepeatBasis.calendar;
+      case 'completion':
+        basis = AwRepeatBasis.completion;
+      default:
+        // A basis this build does not know: refuse it rather than editing it
+        // into something else.
+        return null;
+    }
     final interval = value['interval'];
     return AwRepeatRule(
       freq: freq,
@@ -174,6 +206,7 @@ class AwRepeatRule {
           if (month is int) month,
       ],
       end: AwRepeatEnd.fromJson(value['end']),
+      basis: basis,
     );
   }
 
@@ -183,6 +216,7 @@ class AwRepeatRule {
       other.freq == freq &&
       other.interval == interval &&
       other.end == end &&
+      other.basis == basis &&
       _sameList(other.byWeekday, byWeekday) &&
       _sameList(other.byMonthDay, byMonthDay) &&
       _sameList(other.byMonth, byMonth);
@@ -192,6 +226,7 @@ class AwRepeatRule {
     freq,
     interval,
     end,
+    basis,
     Object.hashAll(byWeekday),
     Object.hashAll(byMonthDay),
     Object.hashAll(byMonth),
@@ -263,6 +298,16 @@ _Day _startOfWeek(_Day day) =>
 String? awValidateRepeatRule(AwRepeatRule rule) {
   if (rule.interval < 1 || rule.interval > 366) {
     return 'interval must be an integer between 1 and 366';
+  }
+  if (rule.isAfterCompletion) {
+    if (rule.freq == AwRepeatFreq.yearly) {
+      return 'basis=completion supports daily, weekly or monthly';
+    }
+    if (rule.byWeekday.isNotEmpty ||
+        rule.byMonthDay.isNotEmpty ||
+        rule.byMonth.isNotEmpty) {
+      return 'basis=completion takes no byWeekday, byMonthDay or byMonth';
+    }
   }
   if (rule.byWeekday.isNotEmpty) {
     if (rule.freq == AwRepeatFreq.daily) {
@@ -454,6 +499,15 @@ List<String> awExpandOccurrences(
   final untilDay = rule.end.type == 'until' ? _parseDay(rule.end.until) : null;
   final limit = rule.end.type == 'count' ? rule.end.count! : null;
 
+  // OPH-375: an after-completion rule has no pattern — its one planned day is
+  // the anchor; every later one is born from a completion.
+  if (rule.isAfterCompletion) {
+    if (untilDay != null && anchorDay.compareTo(untilDay) > 0) return const [];
+    if (anchorDay.compareTo(fromDay) < 0) return const [];
+    if (toDay != null && anchorDay.compareTo(toDay) > 0) return const [];
+    return max > 0 ? [anchorDay.key] : const [];
+  }
+
   final out = <String>[];
   var emitted = 0; // occurrences since the anchor — what end.count counts
 
@@ -476,4 +530,50 @@ List<String> awExpandOccurrences(
     }
   }
   return out;
+}
+
+/// The next day of an after-completion series (OPH-375, ADR-0056): the day the
+/// occurrence was completed plus the interval. Months clamp BACKWARDS like the
+/// rest of the engine — Jan 31 + 1 month is Feb 28 (29 in a leap year).
+///
+/// [emitted] is how many occurrences the series already has; `end.count`
+/// stops it there. Returns null when the series has ended. Pinned to
+/// `nextAfterCompletion` in `apps/api/src/lib/recurrence.js` by the
+/// `afterCompletion` cases of the parity fixture.
+String? awNextAfterCompletion(
+  AwRepeatRule rule,
+  String completedDay, {
+  int emitted = 1,
+}) {
+  final problem = awValidateRepeatRule(rule);
+  if (problem != null) throw ArgumentError(problem);
+  if (!rule.isAfterCompletion) {
+    throw ArgumentError('awNextAfterCompletion needs basis=completion');
+  }
+  final from = _parseDay(completedDay);
+  if (from == null) {
+    throw ArgumentError('completedDay must be a YYYY-MM-DD date');
+  }
+  if (rule.end.type == 'count' && emitted >= (rule.end.count ?? 0)) {
+    return null;
+  }
+
+  final _Day next;
+  switch (rule.freq) {
+    case AwRepeatFreq.daily:
+      next = _addDays(from, rule.interval);
+    case AwRepeatFreq.weekly:
+      next = _addDays(from, rule.interval * 7);
+    case AwRepeatFreq.monthly:
+    case AwRepeatFreq.yearly:
+      final index = from.year * 12 + (from.month - 1) + rule.interval;
+      final year = index ~/ 12;
+      final month = (index % 12) + 1;
+      final last = awLastDayOfMonth(year, month);
+      next = _Day(year, month, from.day < last ? from.day : last);
+  }
+
+  final until = rule.end.type == 'until' ? _parseDay(rule.end.until) : null;
+  if (until != null && next.compareTo(until) > 0) return null;
+  return next.key;
 }

@@ -124,6 +124,7 @@ export const features = [
       'A live “next 5” preview shows the days before you commit',
       'Occurrences are real tasks — they appear in search, the calendar and the widget',
       'Editing one asks how far it reaches: this, this and future, or all',
+      'Or repeat N days, weeks or months after you complete it — the water filter, 90 days after the last change',
     ],
     shot: 'web/home-dark.jpg',
     alt: 'A repeating task in AllisWell, with its repeat badge on the list row',

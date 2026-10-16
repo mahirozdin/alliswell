@@ -203,6 +203,8 @@ export function fakeDb({
       // OPH-205: NULL on every ordinary task — an occurrence fills both.
       series_id: null,
       occurrence_date: null,
+      // OPH-375: the completed occurrence an after-completion row was born from.
+      spawned_from_task_id: null,
     }),
     task_series: () => ({ timezone: 'Europe/Istanbul', created_by: null, revision: 0 }),
     checklist_items: () => ({ is_done: false, sort_order: 0, revision: 0 }),

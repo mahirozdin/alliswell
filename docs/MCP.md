@@ -91,17 +91,18 @@ Still stuck? Write to info@bubiapps.com — we answer within two working days.
 
 ## What the AI can do
 
-Twenty-four tools, no delete tool — by design (loosening it needs a new ADR):
+Twenty-five tools, no delete tool — by design (loosening it needs a new ADR):
 
 **Tasks**
 
 | Tool | What it does |
 | --- | --- |
 | `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone. `today` = due today, or its "when" day has come and it is not overdue. Every task read returns `startAt` ("when") and `estimatedMinutes` |
-| `get_task` | One task in full — checklist, tags, project, alarms and its notes |
+| `get_task` | One task in full — checklist, tags, project, alarms, its notes and how it repeats (`repeat`) |
 | `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks. Takes `startAt` ("when": the day it shows in Today, never the deadline or the alarm) and `estimatedMinutes` (the calendar block length) |
 | `update_task` | Change title, description, status, priority, dates (incl. `startAt` "when"), duration (`estimatedMinutes`, `null` clears), urgency, project or tags |
-| `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open |
+| `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open. For a task that repeats after completion, `complete_task` returns the `next` task it created; reopening withdraws it |
+| `set_task_repeat` | Make a task repeat, or change how: a calendar pattern ("every month on the 31st") or N days/weeks/months **after completion** (`basis: "completion"` — "change the water filter 90 days after I change it") |
 | `snooze_task` | Push a task's alarms out (5 min / 30 min / 1 hour / tomorrow morning, or a time you name) |
 | `add_checklist_item` / `set_checklist_item` | Add a checklist item, tick it, or rename it |
 | `acknowledge_reminder` | Answer an urgent alarm that is waiting for you |
@@ -142,6 +143,9 @@ Deliberate limits, so nothing here surprises you:
   `NOTE_NOT_MARKDOWN` — the assistant could rename a note it was not allowed
   to edit — because writing markdown onto a Delta would have left the body and
   the canonical source disagreeing.
+- **Stopping a repeat stays in the app**: it deletes the future tasks of the
+  series, and deleting is not something the connector does. `set_task_repeat`
+  can start or change a repeat, never end it.
 - **Archiving a project stays in the app**, because it cascades over that
   project's tasks and notes and deserves your confirmation.
 - **File contents never leave through the connector** — no download links, no

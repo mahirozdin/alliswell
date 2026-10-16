@@ -103,6 +103,27 @@ curl -s -X POST "$ALLISWELL_URL/api/v1/tasks/$TASK_ID/snooze" \
 
 Completing an already-completed task is a quiet no-op — safe to retry.
 
+### Repeat a task after you complete it
+
+```bash
+curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/task-series" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "rule": { "freq": "daily", "interval": 90, "basis": "completion" },
+        "template": { "title": "Change the water filter" },
+        "anchorAt": "2026-10-20T09:00:00+03:00",
+        "fromTaskId": "'"$TASK_ID"'"
+      }'
+```
+
+`basis: "completion"` counts from the moment the task is completed, early or
+late: completing it through `POST /tasks/{id}/complete` creates the next task,
+due on the completion day + 90 days at the same time of day; `POST
+/tasks/{id}/reopen` withdraws that next task again. `freq` is `daily`, `weekly`
+or `monthly`; months clamp to the month end (Jan 31 + 1 month = Feb 28). Leave
+`basis` out for a calendar pattern ("every month on the 31st").
+
 ### Create a note and attach it to a task
 
 ```bash
@@ -4348,7 +4369,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/task-series/:seriesId' \
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `rule` | object | no | — |
+| `rule` | object | no | ADR-0020 repeat rule. `basis` "calendar" (default) repeats on a fixed pattern; "completion" (OPH-375) creates the next task N days/weeks/months after the open one is completed. |
 | `template` | object | no | — |
 | `timezone` | string | no | length 1–64 |
 | `anchorAt` | string (date-time) | no | — |
@@ -4489,7 +4510,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/task-ser
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `rule` | object | **yes** | — |
+| `rule` | object | **yes** | ADR-0020 repeat rule. `basis` "calendar" (default) repeats on a fixed pattern; "completion" (OPH-375) creates the next task N days/weeks/months after the open one is completed. |
 | `template` | object | **yes** | — |
 | `timezone` | string | no | length 1–64 |
 | `anchorAt` | string (date-time) | **yes** | — |

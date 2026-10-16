@@ -154,6 +154,18 @@ class RepeatRow extends ConsumerWidget {
   }
 }
 
+/// True when [task] is an occurrence of an after-completion series (OPH-375,
+/// DESIGN §25 R10). Those ask no scope question: the next occurrence is copied
+/// from the one being completed, so an edit to the open one simply carries
+/// forward — there are no siblings for "this / future / all" to choose among.
+/// A series the replica has not pulled yet answers false (the old question).
+Future<bool> isAfterCompletionTask(WidgetRef ref, Task task) async {
+  final seriesId = task.seriesId;
+  if (seriesId == null) return false;
+  final series = await ref.read(seriesStoreProvider).byId(seriesId);
+  return series?.rule.isAfterCompletion ?? false;
+}
+
 /// The scope question (DESIGN §25 R8): which occurrences an edit reaches.
 ///
 /// Preselects **"Bu ve gelecektekiler"** — the owner's rule — except when the

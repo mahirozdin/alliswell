@@ -78,4 +78,38 @@ void main() {
       expect(patch.containsKey('fromTaskId'), isFalse);
     },
   );
+
+  test(
+    'an after-completion rule keeps its basis on the way out (OPH-375)',
+    () async {
+      final workspaceId = 'W3'.padRight(26, '0');
+      final store = SeriesStore(db, () {});
+      const after = AwRepeatRule(
+        freq: AwRepeatFreq.daily,
+        interval: 90,
+        basis: AwRepeatBasis.completion,
+      );
+      final id = await store.create(
+        workspaceId: workspaceId,
+        rule: after,
+        template: const {'title': 'Su filtresi'},
+        anchorAt: DateTime.utc(2030, 6, 5, 9),
+      );
+      await store.updateRule(
+        workspaceId: workspaceId,
+        seriesId: id,
+        rule: after.copyWith(interval: 60),
+      );
+
+      final rows = await db.select(db.pendingMutations).get();
+      final rules = [
+        for (final row in rows)
+          (jsonDecode(row.patchJson!) as Map<String, dynamic>)['rule'] as Map,
+      ];
+      expect(rules.map((r) => r['basis']), ['completion', 'completion']);
+      expect(rules.last['interval'], 60);
+      // …and the local replica reads it back as the same kind of rule.
+      expect((await store.byId(id))!.rule.isAfterCompletion, isTrue);
+    },
+  );
 }

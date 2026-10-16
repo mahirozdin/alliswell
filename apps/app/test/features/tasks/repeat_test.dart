@@ -127,6 +127,12 @@ void main() {
       expect(find.byKey(const Key('repeat-dialog')), findsOneWidget);
       expect(find.byKey(const Key('repeat-preset-monthly')), findsOneWidget);
       expect(find.text('Sonraki 5'), findsOneWidget);
+      // OPH-375: the basis switch is there, and a new repeat starts on the
+      // calendar — the after-completion mode is one tap away, never the default.
+      final basis = tester.widget<SegmentedButton<AwRepeatBasis>>(
+        find.byKey(const Key('repeat-basis')),
+      );
+      expect(basis.selected, {AwRepeatBasis.calendar});
     });
 
     testWidgets('the preview shows the clamp — February reads 28', (

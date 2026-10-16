@@ -161,11 +161,11 @@
 ## calendar — takvim aynası, Google/EventKit, tekrar, DST
 - **KARAR** Ayna seçeneksiz: her görev süre (yoksa 30 dk) blok, güne kenetli (23:59 → 23:29–23:59), tarihsiz → ekleniş günü; tamamlanan `✓` ile kalır, iptal/silinen gider; backfill −30g→+12ay (ADR-0021).
 - **KARAR** Blok önce `scheduled_start_at`'ten türer; Google'da sürükleme `due_at`'i değil `scheduled_*`'ı yazar; "Planlanan tarih" alanı yok, yalnız doluyken "Takvimde taşındı — Sıfırla" (ADR-0007).
-- **KARAR** Tekrar: RFC 5545 alt kümesi + RFC 7529 kırpma (31 → ay sonu); occurrence gerçek görev satırı, yalnız sunucu üretir (+12 ay, günlük süpürme); istemci/widget/alarm tekrarı bilmez (ADR-0020).
+- **KARAR** Tekrar: RFC 5545 alt kümesi + RFC 7529 kırpma (31 → ay sonu); occurrence gerçek görev satırı, yalnız sunucu üretir (+12 ay, süpürme); istemci bilmez (ADR-0020). ADR-0056: her tamamlama kapısı `onTaskStatusChange`; geri çekilenin slotu NULL.
 - **DERS** Echo bastırma etag'le: giden her yazımda dönen etag `calendar_event_links.etag`'e yazılmazsa kendi değişikliğimiz kullanıcı düzenlemesi sanılır → ayna ⇄ inbound döngüsü.
 - **DERS** Google: `nextSyncToken` yalnız son sayfada, 410 → token düş + tam resync; `timeMin/Max` `syncToken`'la kullanılamaz; `singleEvents` iki tüketiciye yetmez (iki akış, iki cursor); webhook gövdesiz POST'tur.
 - **DERS** Yalnız `scheduledStartAt` sıfırlanırsa ters blok türer, Google `end<=start`'a 400, kuyruk takılır → iki alan birlikte null; kenetleme görevin KENDİ diliminde.
-- **DERS** "Yalnız bu" düzenlemesinde `series_id` null'lanmaz (slot boşalır, süpürme aynı güne kopya üretir) → satır seride kalır, zamanı `due_at` söyler; seri `timezone`'u kullanıcı profilinden (cihaz "+03" der).
+- **DERS** "Yalnız bu" düzenlemesi `series_id`'yi null'lamaz (slot boşalır, süpürme kopya üretir); zamanı `due_at` söyler; seri `timezone`'u kullanıcı profilinden (cihaz "+03" der).
 - **DERS** EventKit id'si iCloud taşımasında değişir → `alliswell://` URL'siyle yeniden bağla; `writeOnly` ≠ verildi; izin `EKEventStore` örneğinde; etag yok, iCloud saniyeyi keser → echo ±1 dk, ADR-0050.
 - **DERS** Europe/Istanbul DST'siz → DST testi onunla bir şey kanıtlamaz; `zonedWallTimeToUtc` boşluktaki saati 1 sa ileri kaydırır, örtüşmede GEÇ oluşu seçer → iki vakayı testle.
 

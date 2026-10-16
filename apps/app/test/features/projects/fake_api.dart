@@ -1295,6 +1295,8 @@ class FakeApi {
         _applyChecklistMutation(entityId, operation, patch);
       case 'quick_link':
         _applyQuickLinkMutation(entityId, operation, patch);
+      case 'task_series':
+        _applySeriesMutation(entityId, operation, patch);
       case 'project' || 'task' || 'note' || 'tag' || 'folder':
         final index = collection!.indexWhere((e) => e['id'] == entityId);
         if (operation == 'create') {
@@ -1349,6 +1351,37 @@ class FakeApi {
             'entityId': entityId,
           });
         }
+    }
+  }
+
+  /// Task series (OPH-375): the rule is stored and `fromTaskId` adopted, like
+  /// the server's adoption — so a repeat turned on in a test survives the
+  /// pull that follows. Occurrences are NOT materialized here; tests that need
+  /// them seed them.
+  void _applySeriesMutation(
+    String entityId,
+    String operation,
+    Map<String, dynamic> patch,
+  ) {
+    final index = taskSeries.indexWhere((s) => s['id'] == entityId);
+    if (operation == 'create') {
+      if (index >= 0) return;
+      taskSeries.add({
+        'id': entityId,
+        'workspaceId': workspaceId,
+        'rule': patch['rule'],
+        'template': patch['template'],
+        'timezone': patch['timezone'] ?? 'Europe/Istanbul',
+        'anchorAt': patch['anchorAt'],
+        'revision': 1,
+      });
+      final from = tasks.indexWhere((t) => t['id'] == patch['fromTaskId']);
+      if (from >= 0) tasks[from] = {...tasks[from], 'seriesId': entityId};
+    } else if (operation == 'update' && index >= 0) {
+      taskSeries[index] = {...taskSeries[index], ...patch};
+    } else if (operation == 'delete' && index >= 0) {
+      taskSeries.removeAt(index);
+      deleted.add({'entityType': 'task_series', 'entityId': entityId});
     }
   }
 

@@ -30,6 +30,17 @@ export const WEEKDAYS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
 
 export const FREQUENCIES = ['daily', 'weekly', 'monthly', 'yearly'];
 
+/**
+ * What a rule counts from (OPH-375, ADR-0056). Absent or `calendar` is the
+ * ADR-0020 model — a fixed calendar pattern. `completion` is "N days / weeks /
+ * months after I complete it": no pattern at all, the next day is the
+ * completion day plus the interval ({@link nextAfterCompletion}).
+ */
+export const BASES = ['calendar', 'completion'];
+
+/** The frequencies an after-completion rule may use (the owner's own list). */
+export const COMPLETION_FREQUENCIES = ['daily', 'weekly', 'monthly'];
+
 /** Per-series materialization ceiling (ADR-0020 §4): a guard rail, not a budget. */
 export const MAX_OCCURRENCES = 400;
 
@@ -95,11 +106,23 @@ function invalid(message) {
  */
 export function validateRule(rule) {
   if (!rule || typeof rule !== 'object') return invalid('rule must be an object');
-  const { freq, interval, byWeekday, byMonthDay, byMonth, end } = rule;
+  const { freq, interval, byWeekday, byMonthDay, byMonth, end, basis } = rule;
 
   if (!FREQUENCIES.includes(freq)) return invalid(`freq must be one of ${FREQUENCIES.join(', ')}`);
   if (!Number.isInteger(interval) || interval < 1 || interval > 366) {
     return invalid('interval must be an integer between 1 and 366');
+  }
+  if (basis != null && !BASES.includes(basis)) {
+    return invalid(`basis must be one of ${BASES.join(', ')}`);
+  }
+  if (basis === 'completion') {
+    if (!COMPLETION_FREQUENCIES.includes(freq)) {
+      return invalid('basis=completion supports daily, weekly or monthly');
+    }
+    // "90 days after I finish it" has no calendar pattern to select days in.
+    if (byWeekday != null || byMonthDay != null || byMonth != null) {
+      return invalid('basis=completion takes no byWeekday, byMonthDay or byMonth');
+    }
   }
 
   if (byWeekday != null) {
@@ -317,6 +340,16 @@ export function expandOccurrences(rule, { anchor, from, to, max = MAX_OCCURRENCE
   const untilDay = end.type === 'until' ? parseDay(end.until) : null;
   const limit = end.type === 'count' ? end.count : Infinity;
 
+  // OPH-375: an after-completion series has no pattern to expand. Its one
+  // planned day is the anchor (the first occurrence); every later one is born
+  // from a completion (`nextAfterCompletion`), never from a window.
+  if (isCompletionRule(rule)) {
+    if (untilDay && compareDays(anchorDay, untilDay) > 0) return [];
+    if (compareDays(anchorDay, fromDay) < 0) return [];
+    if (toDay && compareDays(anchorDay, toDay) > 0) return [];
+    return max > 0 ? [toKey(anchorDay)] : [];
+  }
+
   const candidatesFor = CANDIDATES[rule.freq];
   const periodStartFor = PERIOD_START[rule.freq];
   const out = [];
@@ -347,4 +380,49 @@ export function expandOccurrences(rule, { anchor, from, to, max = MAX_OCCURRENCE
  */
 export function countOccurrences(rule, options) {
   return expandOccurrences(rule, { ...options, max: MAX_OCCURRENCES + 1 }).length;
+}
+
+/** True for an OPH-375 "after completion" rule. */
+export function isCompletionRule(rule) {
+  return Boolean(rule) && rule.basis === 'completion';
+}
+
+/**
+ * The next day of an after-completion series (OPH-375, ADR-0056): the day the
+ * occurrence was completed, read on the series' wall clock, plus the interval.
+ *
+ * Months clamp BACKWARDS like the rest of the engine (ADR-0020 §2): completed
+ * on Jan 31, "1 month after" is Feb 28 (29 in a leap year), never March 3.
+ *
+ * @param {object} rule  a validated rule with `basis: 'completion'`
+ * @param {object} options
+ * @param {string} options.completedDay `YYYY-MM-DD` — when it was done
+ * @param {number} [options.emitted]     occurrences the series already has;
+ *   `end.count` stops the series once it reaches the count
+ * @returns {string|null} `YYYY-MM-DD`, or null when the series has ended
+ */
+export function nextAfterCompletion(rule, { completedDay, emitted = 1 } = {}) {
+  const problem = validateRule(rule);
+  if (problem) throw Object.assign(new Error(problem.message), { code: problem.code });
+  if (!isCompletionRule(rule)) throw ruleError('nextAfterCompletion needs basis=completion');
+  const from = parseDay(completedDay);
+  if (!from) throw ruleError('completedDay must be a YYYY-MM-DD date');
+
+  const end = rule.end ?? { type: 'never' };
+  if (end.type === 'count' && emitted >= end.count) return null;
+
+  let next;
+  if (rule.freq === 'daily') {
+    next = addDays(from, rule.interval);
+  } else if (rule.freq === 'weekly') {
+    next = addDays(from, rule.interval * 7);
+  } else {
+    const index = from.year * 12 + (from.month - 1) + rule.interval;
+    const year = Math.floor(index / 12);
+    const month = (index % 12) + 1;
+    next = { year, month, day: Math.min(from.day, lastDayOfMonth(year, month)) };
+  }
+
+  if (end.type === 'until' && compareDays(next, parseDay(end.until)) > 0) return null;
+  return toKey(next);
 }

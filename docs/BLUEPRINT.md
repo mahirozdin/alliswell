@@ -1491,6 +1491,10 @@ modeli + materyalizasyon kararı: ADR-0020; dialog/dil kuralları: DESIGN §25.)
 - **Görünürlük:** satır/detay/Pano kartında ↻ rozeti; tamamlamak kardeşleri
   etkilemez; silme kapsam sorusuna bağlanır; "Tekrarı durdur" gelecekleri siler,
   geçmişi bırakır.
+- **Tamamlanınca tekrar (OPH-375, ADR-0056):** kural `basis: "completion"` alırsa seri
+  takvime değil tamamlamaya bağlıdır — "su filtresini değiştirdikten 90 gün sonra". Tek
+  açık occurrence vardır; tamamlanınca sunucu sıradakini tamamlama günü + aralık, aynı
+  saatte üretir (ay sonu kırpılır); geri açmak onu geri çeker. Gün / hafta / ay.
 - **README sözü:** özellik örnekleriyle tanıtılır ("her ayın son günü", "ayın 2.
   Salı'sı", "22'sinden sonraki ilk Pazartesi") + değişik senaryolu listenin ekran
   görüntüsü (OPH-208).

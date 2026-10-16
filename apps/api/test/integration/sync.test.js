@@ -421,4 +421,95 @@ describe.runIf(enabled)('integration: a write retired in its own transaction', (
     const mine = pull.json().changes.filter((c) => c.entityId === retired);
     expect(mine.at(-1)).toMatchObject({ operation: 'delete', data: null });
   });
+
+  it('OPH-375: an offline completion spawns the next occurrence, dated from the tap', async () => {
+    const clientId = newId();
+    const taskId = newId();
+    const seriesId = newId();
+    const DAY = 86400000;
+    const nine = (ms) => `${new Date(ms).toISOString().slice(0, 10)}T09:00:00.000Z`;
+    const revisionNow = async () =>
+      Number(
+        (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+      );
+    const push = (mutations, baseRevision) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/sync/push',
+        headers: owner.headers,
+        payload: { clientId, workspaceId: owner.workspace.id, baseRevision, mutations },
+      });
+
+    const setup = await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task',
+          entityId: taskId,
+          patch: { title: 'Filtre', dueAt: nine(Date.now() - 4 * DAY), timezone: 'UTC' },
+        },
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task_series',
+          entityId: seriesId,
+          patch: {
+            rule: { freq: 'daily', interval: 5, basis: 'completion' },
+            template: { title: 'Filtre' },
+            timezone: 'UTC',
+            anchorAt: nine(Date.now() - 4 * DAY),
+            fromTaskId: taskId,
+          },
+        },
+      ],
+      await revisionNow(),
+    );
+    expect(setup.json().results.map((r) => r.status)).toEqual(['applied', 'applied']);
+    // The row was created "now" by the push; pretend it has existed for a week.
+    await app
+      .db('tasks')
+      .where({ id: taskId })
+      .update({ created_at: new Date(Date.now() - 7 * DAY) });
+
+    const since = await revisionNow();
+    const tapped = new Date(Date.now() - 2 * DAY);
+    const done = await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'update',
+          entityType: 'task',
+          entityId: taskId,
+          patch: { status: 'completed' },
+          localUpdatedAt: tapped.toISOString(),
+        },
+      ],
+      since,
+    );
+    expect(done.json().results[0].status).toBe('applied');
+
+    const row = await app.db('tasks').where({ id: taskId }).first();
+    expect(new Date(row.completed_at).toISOString()).toBe(tapped.toISOString());
+
+    const pull = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${since}`,
+      headers: owner.headers,
+    });
+    const created = pull
+      .json()
+      .changes.filter(
+        (c) => c.entityType === 'task' && c.operation === 'create' && c.entityId !== taskId,
+      );
+    expect(created).toHaveLength(1);
+    expect(created[0].data).toMatchObject({
+      title: 'Filtre',
+      status: 'open',
+      seriesId,
+      dueAt: nine(tapped.getTime() + 5 * DAY),
+    });
+    // Server-owned: the link to the completed row never reaches a client.
+    expect(created[0].data).not.toHaveProperty('spawnedFromTaskId');
+  });
 });

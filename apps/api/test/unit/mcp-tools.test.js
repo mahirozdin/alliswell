@@ -416,6 +416,7 @@ describe('complete_task and scopes', () => {
       ['complete_task', { taskId: ABSENT_ULID }],
       ['update_task', { taskId: ABSENT_ULID, title: 'Yazamam' }],
       ['reopen_task', { taskId: ABSENT_ULID }],
+      ['set_task_repeat', { taskId: ABSENT_ULID, rule: { freq: 'daily' } }],
       ['snooze_task', { taskId: ABSENT_ULID, preset: '5_min' }],
       ['add_checklist_item', { taskId: ABSENT_ULID, title: 'Yazamam' }],
       ['set_checklist_item', { taskId: ABSENT_ULID, itemId: ABSENT_ULID, isDone: true }],
@@ -1078,5 +1079,93 @@ describe('when and duration (OPH-372)', () => {
     const payload = JSON.parse(res.json().result.contents[0].text);
     expect(payload.tasks.map((t) => t.title)).toEqual(titles);
     expect(payload.tasks[1].startAt).not.toBeNull();
+  });
+});
+
+describe('set_task_repeat (OPH-375)', () => {
+  const tomorrowNine = () =>
+    `${new Date(Date.now() + 86400000).toISOString().slice(0, 10)}T09:00:00.000Z`;
+
+  it('makes a task repeat after completion; complete_task hands back the next one', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', {
+      title: 'Su filtresini değiştir',
+      dueAt: tomorrowNine(),
+      timezone: 'UTC',
+    });
+    const set = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'daily', interval: 90, basis: 'completion' },
+      idempotencyKey: 'repeat-filter-1',
+    });
+    expect(set.isError).toBeFalsy();
+    const { repeat } = set.structuredContent;
+    expect(repeat.rule).toMatchObject({ freq: 'daily', interval: 90, basis: 'completion' });
+    expect(tables.tasks.find((t) => t.id === task.id).series_id).toBe(repeat.seriesId);
+
+    const detail = await callTool(app, access, 'get_task', { taskId: task.id });
+    expect(detail.structuredContent.task.repeat).toEqual(repeat);
+
+    const done = await callTool(app, access, 'complete_task', { taskId: task.id });
+    const { next } = done.structuredContent;
+    const expected = `${new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10)}T09:00:00.000Z`;
+    expect(next).toMatchObject({
+      title: 'Su filtresini değiştir',
+      status: 'open',
+      dueAt: expected,
+    });
+
+    // The replay answers from the ledger instead of building a second series.
+    const replay = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'daily', interval: 90, basis: 'completion' },
+      idempotencyKey: 'repeat-filter-1',
+    });
+    expect(replay.structuredContent.replayed).toBe(true);
+    expect(tables.task_series).toHaveLength(1);
+  });
+
+  it('replaces the rule of a task that already repeats', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', {
+      title: 'Kombi',
+      dueAt: tomorrowNine(),
+      timezone: 'UTC',
+    });
+    const first = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'daily', interval: 1 },
+    });
+    expect(first.isError).toBeFalsy();
+    const seriesId = first.structuredContent.repeat.seriesId;
+    const second = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'monthly', interval: 6, basis: 'completion' },
+    });
+    expect(second.structuredContent.repeat).toEqual({
+      seriesId,
+      rule: { freq: 'monthly', interval: 6, basis: 'completion' },
+    });
+    const open = tables.tasks.filter(
+      (t) => t.series_id === seriesId && !t.deleted_at && t.status === 'open',
+    );
+    expect(open).toHaveLength(1);
+  });
+
+  it('turns an invalid rule into a readable tool error and writes nothing', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Yıllık' });
+    const res = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'yearly', interval: 1, basis: 'completion' },
+    });
+    expect(res.isError).toBe(true);
+    expect(res.structuredContent.code).toBe('TASK_SERIES_RULE_INVALID');
+    expect(tables.task_series).toHaveLength(0);
+  });
+
+  it('get_task says null for a task that does not repeat', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Tek sefer' });
+    const detail = await callTool(app, access, 'get_task', { taskId: task.id });
+    expect(detail.structuredContent.task.repeat).toBeNull();
+    const done = await callTool(app, access, 'complete_task', { taskId: task.id });
+    expect(done.structuredContent.next).toBeNull();
   });
 });

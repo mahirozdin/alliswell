@@ -38,6 +38,7 @@ import {
   adoptTaskIntoSeries,
   materializeSeries,
   normalizeTemplate,
+  onTaskStatusChange,
   parseJsonColumn,
   plannedDays,
   propagateSeriesScope,
@@ -338,6 +339,18 @@ function parseJson(value) {
   } catch {
     return null;
   }
+}
+
+/**
+ * When an offline completion really happened (OPH-375): the client's
+ * `localUpdatedAt`, kept inside [the task's creation, now]. Anything missing or
+ * unparsable falls back to the server clock, as before.
+ */
+export function clientCompletionMoment(localUpdatedAt, row, now = new Date()) {
+  const client = localUpdatedAt ? Date.parse(localUpdatedAt) : Number.NaN;
+  if (!Number.isFinite(client)) return now;
+  const created = row?.created_at ? new Date(row.created_at).getTime() : Number.NEGATIVE_INFINITY;
+  return new Date(Math.min(now.getTime(), Math.max(client, created)));
 }
 
 export default async function syncRoutes(app) {
@@ -1112,6 +1125,18 @@ export default async function syncRoutes(app) {
         if (keptIntents.some((i) => i.name === 'snoozed_until')) {
           await applyReminderSnooze(trx, ctx.workspaceId, fresh);
         }
+        // OPH-375: an offline completion of an after-completion occurrence
+        // spawns the next one HERE, when the push lands — the server stays the
+        // only producer of occurrences (ADR-0020 §4, ADR-0056). Only when the
+        // status intent survived LWW: a losing completion spawns nothing.
+        if (keptIntents.some((i) => i.name === 'status')) {
+          await onTaskStatusChange(trx, {
+            workspaceId: ctx.workspaceId,
+            before: row,
+            after: fresh,
+            userId: ctx.userId,
+          });
+        }
         // OPH-206: the scope question, answered offline. It rides an ordinary
         // `update` because the protocol has no room for a fourth verb — the
         // `orderedIds` idiom, and the same LWW rule: if the scope intent lost,
@@ -1436,6 +1461,15 @@ export default async function syncRoutes(app) {
         keptIntents = prepared.intents.filter((i) => !discardedFields.includes(i.camel));
         if (keptIntents.length === 0) return conflict('SYNC_STALE_MUTATION');
       }
+    }
+
+    // OPH-375 (ADR-0056): a completion that waited in the outbox happened when
+    // the user tapped it, not when the push arrived. The mutation's
+    // `localUpdatedAt` is that moment; it becomes `completed_at` — clamped to
+    // [task created, now], so a wrong device clock cannot date it in the future
+    // or before the task existed. An after-completion series counts from it.
+    if (mutation.entityType === 'task' && prepared.rowPatch.completed_at instanceof Date) {
+      prepared.rowPatch.completed_at = clientCompletionMoment(mutation.localUpdatedAt, row);
     }
 
     const changedFields = [

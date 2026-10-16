@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-374: her yerden arama — ⌘K/Ctrl+K paleti (ray girişi, telefonda çubuğun yanında arama düğmesi) görev/proje/not/etiket/dosya adını replikadan internetsiz bulur; son açılanlar; MCP `search` etiket+dosya (ADR-0055).
+**Last updated:** 2026-10-17 — OPH-375: tamamlanınca tekrar — seri kuralı `basis: "completion"` alır; açık occurrence tamamlanınca sunucu sıradakini tamamlama günü + N gün/hafta/ay, aynı saatte üretir, geri açmak onu geri çeker; MCP `set_task_repeat` (ADR-0056).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-374: arama kaydına `searchNotes/Tags/Files` (tek katmanlı varlık CASE'siz), replika v39 `file_rows.name_fold` (geri doldurmalı); `globalSearchProvider` + `search_recents` (kişiye bağlı, rota ziyaretinden); palet `search/ui/` (kök kısayol, ray `leading`, telefon düğmesi; çubuk etiket kuralı genişliğe göre); etiket sonucu Ana sayfayı süzer (pano→liste); MCP `search` tag/file; API'ye uç nokta yok (gerekçe ADR-0055 §8); DESIGN §40. |
+| Last completed           | OPH-375: kural `basis` (JS+Dart, parity fikstürü `afterCompletion`); `db/task-series.js` `spawnAfterCompletion`/`retractSpawn`/`onTaskStatusChange` üç tamamlama kapısında (updateTask, applyStatusTransition, sync `task.afterUpdate`); göç `20261017120000` `tasks.spawned_from_task_id` (sunucuya özel); çevrimdışı `completed_at` = push'un `localUpdatedAt`'i, [oluşturma, şimdi] aralığına kırpılır; REST PATCH gövdesi `updateTaskSeries`'e çıktı; MCP `set_task_repeat`, `get_task.repeat`, `complete_task.next`; tekrar dialog'unda temel anahtarı, kapsam sorusu yok, açık olanı silmek tekrarı durdurur; DESIGN §25 R10. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -120,6 +120,10 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   giriş alt çubuğun yanındaki yuvarlak düğme, uygulama çubuğuna ikon yok (bu yüzden telefonda
   çoğunlukla yalnız seçili sekmenin etiketi yazılır); tamamlanan görev bulunur, iptal bulunmaz;
   arşivli not bulunmaz; masa eki dosyası bulunmaz; etiket sonucu Ana sayfayı süzer.
+- **Tamamlanınca tekrar (2026-10-17, ADR-0056):** gün/hafta/ay (yıl yok, 12 ay); tamamlama anından
+  sayılır (erken/geç), saat aynı; sıradakini yalnız sunucu üretir — çevrimdışı tamamlamada sıradaki ve
+  alarmı ilk sync'te gelir; yalnız `completed` ilerletir, `cancelled` değil; sıradaki tamamlanan
+  satırdan kopyalanır (kapsam sorusu yok); açık olanı silmek tekrarı durdurur; MCP durduramaz.
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

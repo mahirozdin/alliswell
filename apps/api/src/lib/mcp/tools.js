@@ -37,6 +37,12 @@ import {
   updateProject,
 } from '../../db/projects.js';
 import { createTag, listTags } from '../../db/tags.js';
+import {
+  createTaskSeries,
+  liveSeries,
+  parseJsonColumn,
+  updateTaskSeries,
+} from '../../db/task-series.js';
 import { wallClockParts, zonedWallTimeToUtc } from '../time.js';
 import { findMcpReplay, recordMcpAction } from './actions.js';
 import { McpToolError } from './jsonrpc.js';
@@ -267,6 +273,73 @@ function leanTask(row) {
     updatedAt: isoOrNull(row.updated_at),
   };
 }
+
+/**
+ * OPH-375: how a task repeats, for `get_task` and `set_task_repeat` — the rule
+ * object as stored (ADR-0020, `basis` from ADR-0056), or null.
+ */
+async function repeatOf(app, row) {
+  if (!row.series_id) return null;
+  const series = await liveSeries(app.db, { workspaceId: row.workspace_id, id: row.series_id });
+  return series ? { seriesId: series.id, rule: parseJsonColumn(series.rule) } : null;
+}
+
+/** The occurrence an after-completion completion created (OPH-375), or null. */
+async function nextOccurrenceOf(app, taskId) {
+  const row = await app
+    .db('tasks')
+    .where({ spawned_from_task_id: taskId })
+    .whereNull('deleted_at')
+    .first();
+  return row ? leanTask(row) : null;
+}
+
+const REPEAT_RULE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['freq'],
+  properties: {
+    freq: { enum: ['daily', 'weekly', 'monthly', 'yearly'] },
+    interval: { type: 'integer', minimum: 1, maximum: 366 },
+    basis: { enum: ['calendar', 'completion'] },
+    byWeekday: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 7,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['day'],
+        properties: {
+          day: { enum: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] },
+          ordinal: { type: ['integer', 'null'], minimum: -1, maximum: 5 },
+        },
+      },
+    },
+    byMonthDay: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 31,
+      items: { type: 'integer', minimum: -1, maximum: 31 },
+    },
+    byMonth: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 12,
+      items: { type: 'integer', minimum: 1, maximum: 12 },
+    },
+    end: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['type'],
+      properties: {
+        type: { enum: ['never', 'until', 'count'] },
+        until: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+        count: { type: 'integer', minimum: 1, maximum: 1000 },
+      },
+    },
+  },
+};
 
 function snippet(text, needle) {
   if (!text) return null;
@@ -696,6 +769,8 @@ export const MCP_TOOLS = [
             requiresAcknowledgement: Boolean(alarm.requires_acknowledgement),
           })),
           notes: notes.map((note) => ({ id: note.id, title: note.title })),
+          // OPH-375: how it repeats — calendar pattern or after completion.
+          repeat: await repeatOf(app, detail.row),
         },
       };
     },
@@ -868,7 +943,8 @@ export const MCP_TOOLS = [
   {
     name: 'complete_task',
     title: 'Complete task',
-    description: 'Mark one task completed. Completing an already-completed task is a quiet no-op.',
+    description:
+      'Mark one task completed. Completing an already-completed task is a quiet no-op. When the task repeats AFTER COMPLETION, `next` is the occurrence this completion created (otherwise null).',
     annotations: IDEMPOTENT_WRITE,
     inputSchema: {
       type: 'object',
@@ -886,7 +962,11 @@ export const MCP_TOOLS = [
         proposal: { tool: 'complete_task', taskId: args.taskId },
       });
       const fresh = await loadTask(app, args.taskId);
-      return { task: leanTask(fresh), alreadyCompleted: !changed };
+      return {
+        task: leanTask(fresh),
+        alreadyCompleted: !changed,
+        next: await nextOccurrenceOf(app, args.taskId),
+      };
     },
   },
 
@@ -1019,6 +1099,93 @@ export const MCP_TOOLS = [
         proposal: { tool: 'reopen_task', taskId: args.taskId },
       });
       return { task: leanTask(await loadTask(app, args.taskId)) };
+    },
+  },
+
+  {
+    name: 'set_task_repeat',
+    title: 'Set how a task repeats',
+    description: `Make ONE task repeat, or replace how it repeats. \`basis: "completion"\` repeats N days/weeks/months AFTER the task is completed — "change the water filter 90 days after I change it" is \`{ freq: "daily", interval: 90, basis: "completion" }\`: completing it creates the next task, due the completion day + 90 days at the same time of day; reopening withdraws that next task. Months clamp to month end (Jan 31 + 1 month = Feb 28). Without \`basis\` the rule is a calendar pattern (\`byWeekday\` / \`byMonthDay\` / \`byMonth\`); \`end\` is never, until a date, or a count. Pass \`idempotencyKey\` to make retries safe. Stopping a repeat is not offered here (it deletes future tasks); the user does that in the app.`,
+    annotations: OVERWRITING_WRITE,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['taskId', 'rule'],
+      properties: {
+        taskId: ULID_SCHEMA,
+        rule: REPEAT_RULE_SCHEMA,
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const replayed = await loadTask(app, seen.entity_id).catch(() => null);
+        return {
+          replayed: true,
+          task: replayed ? leanTask(replayed) : null,
+          repeat: replayed ? await repeatOf(app, replayed) : null,
+        };
+      }
+
+      const row = await requireTask(app, auth, args.taskId);
+      const rule = { interval: 1, ...args.rule };
+      const current = row.series_id
+        ? await liveSeries(app.db, { workspaceId: auth.workspaceId, id: row.series_id })
+        : null;
+
+      let stored;
+      if (current) {
+        ({ stored } = await updateTaskSeries(app, { row: current, body: { rule } }));
+      } else {
+        const tags = await app.db('task_tags').where({ task_id: row.id }).select('tag_id');
+        const user = await app.db('users').where({ id: auth.userId }).first('timezone');
+        const remindMinutes =
+          row.due_at && row.remind_at
+            ? Math.round((new Date(row.due_at) - new Date(row.remind_at)) / 60000)
+            : null;
+        ({ stored } = await createTaskSeries(app, {
+          workspaceId: auth.workspaceId,
+          userId: auth.userId,
+          rule,
+          template: {
+            title: row.title,
+            description: row.description ?? null,
+            projectId: row.project_id ?? null,
+            priority: row.priority,
+            colorRgb: row.color_rgb ?? null,
+            isUrgent: Boolean(row.is_urgent),
+            requiresAcknowledgement: Boolean(row.requires_acknowledgement),
+            estimatedMinutes: row.estimated_minutes ?? null,
+            ...(remindMinutes != null && remindMinutes >= 0 && remindMinutes <= 43200
+              ? { remindMinutesBefore: remindMinutes }
+              : {}),
+            tagIds: tags.map((t) => t.tag_id),
+          },
+          // The task's own zone is a real IANA name the server set; the user's
+          // profile is the fallback (LESSONS: never a device offset).
+          timezone: row.timezone ?? user?.timezone ?? 'Europe/Istanbul',
+          anchorAt: new Date(row.due_at ?? row.start_at ?? Date.now()),
+          fromTaskId: row.id,
+        }));
+      }
+
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'task',
+        entityId: args.taskId,
+        proposal: { tool: 'set_task_repeat', ...args },
+      });
+
+      // A calendar pattern the task's own day is not part of leaves the task
+      // outside the series (ADR-0020); the series is still the answer.
+      const fresh = await loadTask(app, args.taskId);
+      return {
+        task: leanTask(fresh),
+        repeat: { seriesId: stored.id, rule: parseJsonColumn(stored.rule) },
+      };
     },
   },
 

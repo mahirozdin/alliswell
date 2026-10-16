@@ -86,7 +86,7 @@ The URL is on the **API** host — `alliswell.space/mcp` is the website.
   settings → Developer mode → create a connector with the URL.
 - **Claude Code:** `claude mcp add --transport http alliswell https://api.alliswell.space/mcp`
 
-Twenty-four tools over tasks, checklists, reminders, notes, projects, tags and
+Twenty-five tools over tasks, checklists, reminders, notes, projects, tags and
 search. Every write asks for your approval, every AI change is logged, and there
 is **no delete tool**. OAuth 2.1 with PKCE; dynamic client registration and client
 ID metadata documents are both supported. Full guide, tool list and

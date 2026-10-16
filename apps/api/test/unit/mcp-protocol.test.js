@@ -115,6 +115,7 @@ describe('protocol negotiation and envelope rules', () => {
       'complete_task',
       'update_task',
       'reopen_task',
+      'set_task_repeat',
       'snooze_task',
       'add_checklist_item',
       'set_checklist_item',

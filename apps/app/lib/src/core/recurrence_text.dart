@@ -18,8 +18,11 @@ String awRepeatSentence(
   required String dateFormat,
   String? locale,
 }) {
-  final parts = <String>[_frequency(rule), ..._selectors(rule, locale: locale)]
-    ..removeWhere((part) => part.isEmpty);
+  // OPH-375: an after-completion rule has no "which days" half at all.
+  final parts = rule.isAfterCompletion
+      ? [_afterCompletion(rule)]
+      : ([_frequency(rule), ..._selectors(rule, locale: locale)]
+          ..removeWhere((part) => part.isEmpty));
   final end = _end(rule, dateFormat: dateFormat, locale: locale);
   final head = parts.join(' ');
   return end.isEmpty ? head : '$head · $end';
@@ -40,6 +43,23 @@ String _frequency(AwRepeatRule rule) {
           : 'repeat.every.monthly'.tr(),
     AwRepeatFreq.yearly =>
       many ? 'repeat.every.yearlyN'.tr(args: args) : 'repeat.every.yearly'.tr(),
+  };
+}
+
+/// "90 days after completion" / "Tamamlanınca 90 gün sonra" (OPH-375).
+String _afterCompletion(AwRepeatRule rule) {
+  final n = rule.interval;
+  final many = n > 1;
+  final args = {'n': '$n'};
+  return switch (rule.freq) {
+    AwRepeatFreq.daily =>
+      many ? 'repeat.after.dailyN'.tr(args: args) : 'repeat.after.daily'.tr(),
+    AwRepeatFreq.weekly =>
+      many ? 'repeat.after.weeklyN'.tr(args: args) : 'repeat.after.weekly'.tr(),
+    AwRepeatFreq.monthly || AwRepeatFreq.yearly =>
+      many
+          ? 'repeat.after.monthlyN'.tr(args: args)
+          : 'repeat.after.monthly'.tr(),
   };
 }
 

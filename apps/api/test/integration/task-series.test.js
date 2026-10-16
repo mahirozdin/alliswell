@@ -143,4 +143,80 @@ describe.runIf(enabled)('task series integration (OPH-205, ADR-0020)', () => {
     const again = await app.db('tasks').where({ series_id: series.id }).count({ n: '*' }).first();
     expect(Number(again.n)).toBe(Number(after.n));
   });
+
+  // ── OPH-375: after completion, on the real unique index ───────────────────
+  describe('repeat after completion (OPH-375, ADR-0056)', () => {
+    const DAY = 86400000;
+    const nineOn = (offset) =>
+      `${new Date(Date.now() + offset * DAY).toISOString().slice(0, 10)}T09:00:00.000Z`;
+
+    async function completionTask(dueAt, interval) {
+      const task = (
+        await app.inject({
+          method: 'POST',
+          url: `/api/v1/workspaces/${workspaceId}/tasks`,
+          headers,
+          payload: { title: 'Su filtresi', dueAt, timezone: 'UTC' },
+        })
+      ).json();
+      const res = await createSeries({
+        rule: { freq: 'daily', interval, basis: 'completion' },
+        template: { title: 'Su filtresi' },
+        timezone: 'UTC',
+        anchorAt: dueAt,
+        fromTaskId: task.id,
+      });
+      expect(res.statusCode).toBe(201);
+      return { taskId: task.id, seriesId: res.json().series.id };
+    }
+
+    const post = (path) => app.inject({ method: 'POST', url: `/api/v1${path}`, headers });
+    const spawnOf = (id) =>
+      app.db('tasks').where({ spawned_from_task_id: id }).whereNull('deleted_at').first();
+
+    it('spawn, reopen and re-complete reuse the freed slot without a duplicate key', async () => {
+      const { taskId, seriesId } = await completionTask(nineOn(-2), 3);
+      expect((await post(`/tasks/${taskId}/complete`)).statusCode).toBe(200);
+      const first = await spawnOf(taskId);
+      expect(new Date(first.due_at).toISOString()).toBe(nineOn(3));
+
+      expect((await post(`/tasks/${taskId}/reopen`)).statusCode).toBe(200);
+      const withdrawn = await app.db('tasks').where({ id: first.id }).first();
+      expect(withdrawn.deleted_at).not.toBeNull();
+      expect(withdrawn.occurrence_date).toBeNull();
+
+      // The same day again, in the same slot: the withdrawn row gave it up
+      // (NULL), so the unique index lets the new one take its own due day.
+      expect((await post(`/tasks/${taskId}/complete`)).statusCode).toBe(200);
+      const second = await spawnOf(taskId);
+      expect(second.id).not.toBe(first.id);
+      expect(new Date(second.due_at).toISOString()).toBe(nineOn(3));
+      expect(new Date(second.occurrence_date).toISOString().slice(0, 10)).toBe(
+        nineOn(3).slice(0, 10),
+      );
+      const open = await app
+        .db('tasks')
+        .where({ series_id: seriesId, status: 'open' })
+        .whereNull('deleted_at')
+        .select('id');
+      expect(open).toHaveLength(1);
+    });
+
+    it('an early completion lands on a taken day and bumps its slot instead of failing', async () => {
+      const { taskId } = await completionTask(nineOn(1), 1);
+      expect((await post(`/tasks/${taskId}/complete`)).statusCode).toBe(200);
+      const next = await spawnOf(taskId);
+      expect(new Date(next.due_at).toISOString()).toBe(nineOn(1));
+      const slot = new Date(next.occurrence_date).toISOString().slice(0, 10);
+      expect(slot).toBe(nineOn(2).slice(0, 10));
+    });
+
+    it('the rule round-trips its basis through the JSON column', async () => {
+      const { seriesId } = await completionTask(nineOn(0), 90);
+      const fetched = (
+        await app.inject({ method: 'GET', url: `/api/v1/task-series/${seriesId}`, headers })
+      ).json();
+      expect(fetched.rule).toMatchObject({ freq: 'daily', interval: 90, basis: 'completion' });
+    });
+  });
 });

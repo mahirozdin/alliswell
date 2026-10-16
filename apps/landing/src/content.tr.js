@@ -190,6 +190,7 @@ export default {
         'Canlı "sonraki 5" önizlemesi günleri siz onaylamadan gösterir',
         'Tekrarlar gerçek görevlerdir: aramada, takvimde ve widget’ta görünür',
         'Birini düzenlemek ne kadar ileri gideceğini sorar: bu, bu ve sonrakiler, ya da hepsi',
+        'Ya da tamamladıktan N gün, hafta veya ay sonra tekrarlar: su filtresi, son değişimden 90 gün sonra',
       ],
       shot: 'web/home-dark.jpg',
       alt: 'AllisWell’de tekrarlayan bir görev, liste satırında tekrar rozetiyle',

@@ -4,7 +4,7 @@ import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from './sync.js';
 import { notifyEntityWrite } from '../lib/ee.js';
 import { reconcileTaskReminder } from './reminders.js';
-import { propagateSeriesScope } from './task-series.js';
+import { onTaskStatusChange, propagateSeriesScope } from './task-series.js';
 import { cascadeDeleteFiles } from './files.js';
 import { cascadeDeleteQuickLinks } from './quick-links.js';
 
@@ -294,6 +294,16 @@ export async function updateTask(app, { row, userId, body, trx: outer = null }) 
       .update({ ...patch, revision, updated_by: userId, updated_at: new Date() });
     const fresh = await trx('tasks').where({ id: row.id }).first();
     await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+    // OPH-375: completing an after-completion occurrence creates the next one;
+    // uncompleting it withdraws that one again.
+    if (body.status !== undefined) {
+      await onTaskStatusChange(trx, {
+        workspaceId: row.workspace_id,
+        before: row,
+        after: fresh,
+        userId,
+      });
+    }
     await propagateSeriesScope(trx, {
       workspaceId: row.workspace_id,
       task: fresh,
@@ -338,6 +348,13 @@ export async function applyStatusTransition(app, { userId, row, toStatus, trx: o
       });
     const fresh = await trx('tasks').where({ id: row.id }).first();
     await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+    // OPH-375: the after-completion hook, as in updateTask.
+    await onTaskStatusChange(trx, {
+      workspaceId: row.workspace_id,
+      before: row,
+      after: fresh,
+      userId,
+    });
     // A status change is the one task edit that reads as an EVENT rather than
     // a revision, so it is described for observers rather than merely counted.
     await notifyEntityWrite(app, trx, {

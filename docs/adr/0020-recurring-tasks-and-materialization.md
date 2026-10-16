@@ -9,6 +9,8 @@
   planner that must keep working without learning about recurrence),
   [ADR-0018](0018-quick-links-user-scoped-sync-entity.md) (the "no new sync verb" finding),
   BLUEPRINT §4.3 / §12.17, DESIGN §22 / §25. Sourced research tables: TASKS.md OPH-204.
+- **Amended by:** [ADR-0056](0056-repeat-after-completion.md) — the `basis: "completion"` flavour
+  ("N days/weeks/months after completion"), additive inside the rule JSON.
 
 ## Context
 

@@ -124,10 +124,11 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     Map<String, dynamic> patch, {
     bool isDateEdit = false,
   }) async {
-    if (!task.isRecurring) {
+    if (!task.isRecurring || await isAfterCompletionTask(ref, task)) {
       await _apply((store, id) => store.update(id, patch));
       return;
     }
+    if (!mounted) return;
     final scope = await showSeriesScopeDialog(context, isDateEdit: isDateEdit);
     if (scope == null) return;
     await _apply(

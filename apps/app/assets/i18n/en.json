@@ -1153,6 +1153,26 @@
       "future": "This and future ones",
       "all": "All of them",
       "apply": "Apply"
+    },
+    "basis": {
+      "calendar": "On a schedule",
+      "completion": "After completion"
+    },
+    "after": {
+      "daily": "1 day after completion",
+      "dailyN": "{n} days after completion",
+      "weekly": "1 week after completion",
+      "weeklyN": "{n} weeks after completion",
+      "monthly": "1 month after completion",
+      "monthlyN": "{n} months after completion",
+      "intervalLabel": "Repeat after",
+      "unit": {
+        "days": "days",
+        "weeks": "weeks",
+        "months": "months"
+      },
+      "previewTitle": "If you complete it today",
+      "hint": "Counted from the moment you complete it, early or late. The time of day stays."
     }
   },
   "ai": {

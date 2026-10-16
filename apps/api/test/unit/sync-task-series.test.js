@@ -266,3 +266,135 @@ describe('sync push — the frozen repeat_rule (OPH-205, ADR-0020 §7)', () => {
     expect(tables.tasks.find((t) => t.id === task.id).repeat_rule ?? null).toBeNull();
   });
 });
+
+describe('sync push — repeat after completion, offline (OPH-375, ADR-0056)', () => {
+  const DAY = 86400000;
+  const nineOn = (ms) => `${new Date(ms).toISOString().slice(0, 10)}T09:00:00.000Z`;
+
+  /** A task in an after-completion series of `interval` days, created 10 days ago. */
+  async function completionTask(interval = 4) {
+    const taskRes = await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${ws}/tasks`,
+      headers: owner.headers,
+      payload: { title: 'Filtre', dueAt: nineOn(Date.now() - 5 * DAY), timezone: 'UTC' },
+    });
+    const task = taskRes.json();
+    tables.tasks.find((t) => t.id === task.id).created_at = new Date(Date.now() - 10 * DAY);
+    const seriesId = newId();
+    await push([
+      {
+        clientMutationId: newId(),
+        operation: 'create',
+        entityType: 'task_series',
+        entityId: seriesId,
+        patch: seriesPatch({
+          rule: { freq: 'daily', interval, basis: 'completion' },
+          template: { title: 'Filtre' },
+          anchorAt: nineOn(Date.now() - 5 * DAY),
+          fromTaskId: task.id,
+        }),
+      },
+    ]);
+    expect(tables.tasks.find((t) => t.id === task.id).series_id).toBe(seriesId);
+    return { taskId: task.id, seriesId };
+  }
+
+  // A device that has pulled since the repeat was set up — the realistic base.
+  const pulledRevision = () => Number(tables.workspaces.find((w) => w.id === ws).revision);
+
+  const completeOffline = (taskId, localUpdatedAt, opts = { baseRevision: pulledRevision() }) =>
+    push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'update',
+          entityType: 'task',
+          entityId: taskId,
+          patch: { status: 'completed' },
+          localUpdatedAt,
+        },
+      ],
+      opts,
+    );
+
+  const spawned = (taskId) =>
+    tables.tasks.filter((t) => t.spawned_from_task_id === taskId && t.deleted_at == null);
+
+  it('counts from when the user completed it offline, not from when the push landed', async () => {
+    const { taskId } = await completionTask(4);
+    const tapped = new Date(Date.now() - 3 * DAY);
+    const res = await completeOffline(taskId, tapped.toISOString());
+    expect(res.json().results[0].status).toBe('applied');
+
+    const row = tables.tasks.find((t) => t.id === taskId);
+    expect(new Date(row.completed_at).toISOString()).toBe(tapped.toISOString());
+    const [next] = spawned(taskId);
+    expect(new Date(next.due_at).toISOString()).toBe(nineOn(tapped.getTime() + 4 * DAY));
+  });
+
+  it('a device clock in the future is clamped to now', async () => {
+    const { taskId } = await completionTask(2);
+    const before = Date.now();
+    await completeOffline(taskId, new Date(Date.now() + 30 * DAY).toISOString());
+    const completedAt = new Date(tables.tasks.find((t) => t.id === taskId).completed_at).getTime();
+    expect(completedAt).toBeGreaterThanOrEqual(before);
+    expect(completedAt).toBeLessThanOrEqual(Date.now());
+    expect(new Date(spawned(taskId)[0].due_at).toISOString()).toBe(nineOn(Date.now() + 2 * DAY));
+  });
+
+  it('a completion that loses last-write-wins spawns nothing', async () => {
+    const { taskId } = await completionTask(2);
+    const base = Number(tables.workspaces.find((w) => w.id === ws).revision);
+    // Someone else moved the status after this client's base…
+    await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/tasks/${taskId}`,
+      headers: owner.headers,
+      payload: { status: 'in_progress' },
+    });
+    // …and this device's completion is older than that edit.
+    const res = await completeOffline(taskId, new Date(Date.now() - DAY).toISOString(), {
+      baseRevision: base,
+    });
+    expect(res.json().results[0].status).toBe('conflict');
+    expect(tables.tasks.find((t) => t.id === taskId).status).toBe('in_progress');
+    expect(spawned(taskId)).toHaveLength(0);
+  });
+
+  it('the same completion pushed from two devices spawns once', async () => {
+    const { taskId, seriesId } = await completionTask(3);
+    await completeOffline(taskId, new Date(Date.now() - DAY).toISOString());
+    await completeOffline(taskId, new Date().toISOString(), {
+      clientId: newId(),
+      baseRevision: pulledRevision(),
+    });
+    expect(spawned(taskId)).toHaveLength(1);
+    expect(
+      tables.tasks.filter((t) => t.series_id === seriesId && t.deleted_at == null),
+    ).toHaveLength(2);
+  });
+
+  it('an offline reopen withdraws the occurrence the completion created', async () => {
+    const { taskId } = await completionTask(3);
+    await completeOffline(taskId, new Date().toISOString());
+    const [next] = spawned(taskId);
+    expect(next).toBeTruthy();
+    await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'update',
+          entityType: 'task',
+          entityId: taskId,
+          patch: { status: 'open' },
+          localUpdatedAt: new Date(Date.now() + 1000).toISOString(),
+        },
+      ],
+      { baseRevision: pulledRevision() },
+    );
+    const gone = tables.tasks.find((t) => t.id === next.id);
+    expect(gone.deleted_at).toBeTruthy();
+    expect(gone.occurrence_date).toBeNull();
+  });
+});

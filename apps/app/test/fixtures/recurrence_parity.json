@@ -183,5 +183,135 @@
       "to": "2026-06-30",
       "expected": ["2026-04-15", "2026-05-15", "2026-06-15"]
     }
+  ],
+  "afterCompletion": [
+    {
+      "name": "OPH-375 — 1 day after completion",
+      "rule": { "freq": "daily", "interval": 1, "basis": "completion" },
+      "completed": "2026-10-17",
+      "expected": "2026-10-18"
+    },
+    {
+      "name": "OPH-375 — 3 days after completion crosses a month end",
+      "rule": { "freq": "daily", "interval": 3, "basis": "completion" },
+      "completed": "2026-10-30",
+      "expected": "2026-11-02"
+    },
+    {
+      "name": "OPH-375 — the water filter: 90 days after completion",
+      "rule": { "freq": "daily", "interval": 90, "basis": "completion" },
+      "completed": "2026-10-17",
+      "expected": "2027-01-15"
+    },
+    {
+      "name": "OPH-375 — 2 weeks after completion",
+      "rule": { "freq": "weekly", "interval": 2, "basis": "completion" },
+      "completed": "2026-12-25",
+      "expected": "2027-01-08"
+    },
+    {
+      "name": "OPH-375 — 1 month after Jan 31 clamps to Feb 28",
+      "rule": { "freq": "monthly", "interval": 1, "basis": "completion" },
+      "completed": "2027-01-31",
+      "expected": "2027-02-28"
+    },
+    {
+      "name": "OPH-375 — 1 month after Jan 31 finds Feb 29 in a leap year",
+      "rule": { "freq": "monthly", "interval": 1, "basis": "completion" },
+      "completed": "2028-01-31",
+      "expected": "2028-02-29"
+    },
+    {
+      "name": "OPH-375 — 1 month after Mar 31 clamps to Apr 30",
+      "rule": { "freq": "monthly", "interval": 1, "basis": "completion" },
+      "completed": "2026-03-31",
+      "expected": "2026-04-30"
+    },
+    {
+      "name": "OPH-375 — 1 month after the 15th is the 15th",
+      "rule": { "freq": "monthly", "interval": 1, "basis": "completion" },
+      "completed": "2026-01-15",
+      "expected": "2026-02-15"
+    },
+    {
+      "name": "OPH-375 — 3 months after Nov 30 crosses the year and clamps",
+      "rule": { "freq": "monthly", "interval": 3, "basis": "completion" },
+      "completed": "2026-11-30",
+      "expected": "2027-02-28"
+    },
+    {
+      "name": "OPH-375 — an until before the next day ends the series",
+      "rule": {
+        "freq": "daily",
+        "interval": 10,
+        "basis": "completion",
+        "end": { "type": "until", "until": "2026-10-20" }
+      },
+      "completed": "2026-10-17",
+      "expected": null
+    },
+    {
+      "name": "OPH-375 — an until on the next day still allows it",
+      "rule": {
+        "freq": "daily",
+        "interval": 3,
+        "basis": "completion",
+        "end": { "type": "until", "until": "2026-10-20" }
+      },
+      "completed": "2026-10-17",
+      "expected": "2026-10-20"
+    },
+    {
+      "name": "OPH-375 — a reached count ends the series",
+      "rule": {
+        "freq": "weekly",
+        "interval": 1,
+        "basis": "completion",
+        "end": { "type": "count", "count": 2 }
+      },
+      "completed": "2026-10-17",
+      "emitted": 2,
+      "expected": null
+    },
+    {
+      "name": "OPH-375 — a count not yet reached continues",
+      "rule": {
+        "freq": "weekly",
+        "interval": 1,
+        "basis": "completion",
+        "end": { "type": "count", "count": 2 }
+      },
+      "completed": "2026-10-17",
+      "emitted": 1,
+      "expected": "2026-10-24"
+    }
+  ],
+  "invalidRules": [
+    {
+      "name": "an unknown basis",
+      "rule": { "freq": "daily", "interval": 1, "basis": "due" }
+    },
+    {
+      "name": "yearly after completion (use 12 months)",
+      "rule": { "freq": "yearly", "interval": 1, "basis": "completion" }
+    },
+    {
+      "name": "weekdays after completion",
+      "rule": {
+        "freq": "weekly",
+        "interval": 1,
+        "basis": "completion",
+        "byWeekday": [{ "day": "MO", "ordinal": null }]
+      }
+    },
+    {
+      "name": "month days after completion",
+      "rule": {
+        "freq": "monthly",
+        "interval": 1,
+        "basis": "completion",
+        "byMonthDay": [31]
+      }
+    }
   ]
 }

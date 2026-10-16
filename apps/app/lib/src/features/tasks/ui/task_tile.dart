@@ -483,7 +483,34 @@ Future<void> deleteTaskWithUndo(
   // completed occurrences are history (DESIGN §20 C3/§25 R7), and a delete
   // that quietly rewrote what the user already did would be the one thing
   // this feature must never do.
-  if (task.isRecurring) {
+  // OPH-375 (DESIGN §25 R10): an after-completion series has one open
+  // occurrence and nothing ahead of it, so there is no scope to ask about.
+  // Deleting the open one stops the repeat in the same undoable commit — a
+  // series without an open occurrence would never produce another. A finished
+  // one is history and goes on its own.
+  final afterCompletion =
+      task.isRecurring && await isAfterCompletionTask(ref, task);
+  if (afterCompletion && !task.isCompleted) {
+    if (!context.mounted) return;
+    final store = ref.read(taskStoreProvider);
+    final seriesStore = ref.read(seriesStoreProvider);
+    return awDeleteWithUndo(
+      context,
+      ref,
+      id: task.id,
+      message: 'task.deleted'.tr(args: {'title': task.title}),
+      commit: () async {
+        await store.delete(task.id);
+        await seriesStore.stop(
+          workspaceId: task.workspaceId,
+          seriesId: task.seriesId!,
+          fromDay: task.occurrenceDate,
+        );
+      },
+    );
+  }
+  if (task.isRecurring && !afterCompletion) {
+    if (!context.mounted) return;
     final scope = await showOccurrenceDeleteScope(context);
     if (scope == null) return;
     if (scope == 'future') {
