@@ -29,6 +29,9 @@
 		33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33CC11122044BFA00003C045 /* MainFlutterWindow.swift */; };
 		399E0DEB54B51FEDA3C0E78E /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7A7C35BA6CA5B6B357FC2948 /* Pods_RunnerTests.framework */; };
 		B71448F7A3E41FDBEAF5B45A /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2A3F1FA5125F5850262D7EDA /* Pods_Runner.framework */; };
+		B9D1C583A8ACCFBA61551332 /* AWAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3039DBE50EC9DAA1FF93D4B /* AWAppShortcuts.swift */; };
+		D36B3255BB647FD40A388499 /* AppShortcuts.strings in Resources */ = {isa = PBXBuildFile; fileRef = F8606FFBCBF558B34E90F39D /* AppShortcuts.strings */; };
+		F031E221D9BD6D7D2B404476 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = D2E46CF6E7579636971F7BD2 /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -81,13 +84,18 @@
 		33E51913231747F40026EE4D /* DebugProfile.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DebugProfile.entitlements; sourceTree = "<group>"; };
 		33E51914231749380026EE4D /* Release.entitlements */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.entitlements; path = Release.entitlements; sourceTree = "<group>"; };
 		33E5194F232828860026EE4D /* AppInfo.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppInfo.xcconfig; sourceTree = "<group>"; };
+		351603530D56DBB7C6182662 /* tr */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
+		3F59D3C88C8FD9F2F910D35E /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		47F5FE44D88AE57AE18DBAD5 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		694C68FF95C691D54EF36A7D /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
+		6F59A6C44A0CF8806DE35E53 /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		7A7C35BA6CA5B6B357FC2948 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		991E5E102A6715189AB85B01 /* tr */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		AD7AEA02932CB58D8F985BC5 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		DECF266C40BA038B8E3ACFFF /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
+		F3039DBE50EC9DAA1FF93D4B /* AWAppShortcuts.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAppShortcuts.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -138,6 +146,7 @@
 				33CC10EE2044A3C60003C045 /* Products */,
 				D73912EC22F37F3D000D13A0 /* Frameworks */,
 				9AAAF2245C86387702C748AC /* Pods */,
+				57117035D5159440F5F65DC8 /* AppShortcutsShared (ios) */,
 			);
 			sourceTree = "<group>";
 		};
@@ -183,6 +192,17 @@
 				33BA886A226E78AF003329D5 /* Configs */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		57117035D5159440F5F65DC8 /* AppShortcutsShared (ios) */ = {
+			isa = PBXGroup;
+			children = (
+				F3039DBE50EC9DAA1FF93D4B /* AWAppShortcuts.swift */,
+				F8606FFBCBF558B34E90F39D /* AppShortcuts.strings */,
+				D2E46CF6E7579636971F7BD2 /* Localizable.strings */,
+			);
+			name = "AppShortcutsShared (ios)";
+			path = ../ios/Shared;
 			sourceTree = "<group>";
 		};
 		9AAAF2245C86387702C748AC /* Pods */ = {
@@ -291,6 +311,7 @@
 			knownRegions = (
 				en,
 				Base,
+				tr,
 			);
 			mainGroup = 33CC10E42044A3C60003C045;
 			productRefGroup = 33CC10EE2044A3C60003C045 /* Products */;
@@ -318,6 +339,8 @@
 			files = (
 				33CC10F32044A3C60003C045 /* Assets.xcassets in Resources */,
 				33CC10F62044A3C60003C045 /* MainMenu.xib in Resources */,
+				D36B3255BB647FD40A388499 /* AppShortcuts.strings in Resources */,
+				F031E221D9BD6D7D2B404476 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -458,6 +481,7 @@
 				33CC11132044BFA00003C045 /* MainFlutterWindow.swift in Sources */,
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
+				B9D1C583A8ACCFBA61551332 /* AWAppShortcuts.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -484,6 +508,24 @@
 			);
 			name = MainMenu.xib;
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		D2E46CF6E7579636971F7BD2 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				6F59A6C44A0CF8806DE35E53 /* en */,
+				991E5E102A6715189AB85B01 /* tr */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		F8606FFBCBF558B34E90F39D /* AppShortcuts.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				3F59D3C88C8FD9F2F910D35E /* en */,
+				351603530D56DBB7C6182662 /* tr */,
+			);
+			name = AppShortcuts.strings;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */

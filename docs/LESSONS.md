@@ -196,19 +196,19 @@
 - **NOT** `EE_PUSH_ENABLED` uzantının push kuyruğa alıp alamayacağını, `config.push` (VAPID/FCM) çekirdeğin gönderebilmesini söyler — iki ayrı soru, iki anahtar.
 
 ## ios-native — Runner, uzantılar, WidgetKit, AlarmKit
-- **KARAR** Native kod in-repo eklenti paketinde (`packages/alliswell_eventkit`; pbxproj cerrahisi yok); App Extension paketle gelemez → hedef + entitlement betikle (`wire_*.rb`); yeni Swift mevcut `AlarmKitBridge.swift`'e.
+- **KARAR** Native kod in-repo eklenti paketinde (`packages/alliswell_eventkit`); paketle gelemeyen (uzantı hedefi, App Intents) betikle (`wire_*.rb`); yeni Runner Swift'i `AlarmKitBridge.swift`'e.
 - **DERS** `flutter analyze/test` Swift/Kotlin derlemez: hedefte olmayan Swift hiç çalışmaz (köprü sessizce "desteklenmiyor"), pod'lar Flutter'ın alt iOS hedefinde derlenir → native işi gerçek `flutter build`'le doğrula.
 - **DERS** Uzantı hedefi eklerken (SETUP.md): base xcconfig yoksa `MARKETING_VERSION` boş → App Store reddi; sanal `Flutter` grubunda tam yol; pod uzantıda → `inherit! :search_paths`; Embed fazı Thin Binary'den önce.
 - **DERS** Share uzantısı dyld'de raporsuz ölüyordu (`@rpath/AppAuth`): Pods runpath vermez → `AllisWellShare*.xcconfig`'teki `@executable_path/../../Frameworks` korunur (`otool -l | grep LC_RPATH`).
 - **DERS** iOS 18+ uzantı ana uygulamayı açamaz, `getInitialMedia()` App Group'u okumaz → açılış/resume'da drain (ADR-0029); iOS 26'da dönüş URL'i rota sanılıp /not-found'a gider → SceneDelegate `super`'e vermez.
 - **DERS** Uzantı sürümü `$(FLUTTER_BUILD_NAME/NUMBER)` olmalı (yeni hedef 1.0/1 doğar); yükseltince `flutter clean && pub get && pod install`. App Group dizesi her yerde bayt-bayt aynı: `group.com.alliswell.alliswell`.
-- **DERS** `LiveActivityIntent` DAİMA ana uygulamada koşar (widget'tan tamamlama Flutter'ı başsız başlatıp çökertti) → widget sürecinde düz `AppIntent` + App Group kuyruğu; Dart her öne gelişte `drainPendingActions`.
+- **DERS** `LiveActivityIntent` DAİMA ana uygulamada koşar (widget'tan başsız Flutter öldü) → widget sürecinde düz `AppIntent` + App Group kuyruğu; Dart her öne gelişte `drainPendingActions`. Siri niyeti `openAppWhenRun`, cümlede String yok (ADR-0057).
 - **DERS** WidgetKit'te canlı saat yok → dakikalık girdiler, ufuk bayttan (~16.6 MB arşivi aşınca chronod hepsini atar, widget placeholder'da kalır); timeline şimdi + 4 gece yarısı, başlık tarihi ENTRY'den.
 - **DERS** Snapshot'a yeni alan: native taraf eksiğe toleranslı (Swift opsiyonel, Kotlin `optInt`), JSONSerialization (Codable yeni alanı düşürür); iki platformun yerleşimi de pariteye tabi.
 - **DERS** Oturum `kSecAttrAccessibleWhenUnlocked` → kilitli iPhone'da başsız yol Keychain'i null okuyup "çıkış yapılmış" sanar → oturum yoksa sessiz çıkış, widget'ı replikadan yine çiz.
 - **DERS** AlarmKit: `Alarm`'da attributes yok (id↔UUID eşlemesi), `.stopped` yok (düğmeler `LiveActivityIntent`), erteleme `.custom` (`.countdown` alarmı ikiler); `NSSupportsLiveActivities` iki Info.plist'te.
 - **DERS** Focus `.active`'i gömer → hatırlatıcı `timeSensitive`; izinsiz iOS onu sessizce `.active`'e düşürür, plugin ayarı vermez → native sonda; `critical` yalnız `isCriticalEnabled`'da; kategori ~4 eylem gösterir.
-- **NOT** iOS ve macOS aynı takımla imzalanır: `WWRZ5CG3DW` (eski `QB8VR32GWN` hiçbir yerde kalmamalı). AlarmKit'in Xcode bağlantısı `ios/scripts/wire_alarmkit.rb`'de (idempotent).
+- **NOT** iOS ve macOS aynı takımla imzalanır: `WWRZ5CG3DW` (eski `QB8VR32GWN` hiçbir yerde kalmamalı). Xcode bağlantıları `ios/scripts/wire_*.rb`'de (idempotent).
 
 ## android-native — manifest, izinler, kanallar, widget
 - **KARAR** Kesin alarm: `USE_EXACT_ALARM` + `SCHEDULE_EXACT_ALARM` (minSdk 24; Play beyanı `docs/store/exact-alarm-declaration.md`); izin yalnız alarmlara — widget'ın gece yarısı tazelemesi bilerek kesin değil (ADR-0037).

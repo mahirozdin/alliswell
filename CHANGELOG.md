@@ -9,6 +9,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Add tasks by voice with Siri and Shortcuts on iPhone and Mac.** "Hey Siri, add a task in
+  AllisWell" (TR "AllisWell'e görev ekle"), the Shortcuts app and Spotlight add a task; dates
+  in what you say are understood ("yarın 9'da kira"), and it works offline. "Show today" opens
+  Home on today. Android: long-press the app icon for New task and Today.
 - **Repeat a task N days, weeks or months after you complete it.** In the Repeat dialog choose
   "After completion": change the water filter 90 days after you last changed it, late or early.
   Completing it creates the next one at the same time of day (a month after Jan 31 is Feb 28);

@@ -15,6 +15,7 @@ import 'package:alliswell/src/features/ai/data/share_inbox.dart';
 import 'package:alliswell/src/features/ai/data/share_intent.dart';
 import 'package:alliswell/src/features/ai/data/stt.dart';
 import 'package:alliswell/src/features/notes/data/markdown_source.dart';
+import 'package:alliswell/src/features/tasks/data/capture_inbox.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_socket.dart';
@@ -67,6 +68,10 @@ List<Override> syncTestOverrides({
   /// what every non-share test wants; a real channel would throw under
   /// `flutter_test` anyway.
   ShareInbox? shareInbox,
+
+  /// The Siri/Shortcuts mailbox (OPH-376, ADR-0057). Defaults to empty; a
+  /// real channel would throw under `flutter_test`.
+  CaptureInbox? captureInbox,
 }) => [
   databaseProvider.overrideWith((ref) {
     // closeStreamsSynchronously: drift otherwise keeps a Timer.run alive per
@@ -119,6 +124,9 @@ List<Override> syncTestOverrides({
   sttProvider.overrideWithValue(stt),
   shareIntentSourceProvider.overrideWithValue(shareIntentSource),
   shareInboxProvider.overrideWithValue(shareInbox ?? const NoShareInbox()),
+  captureInboxProvider.overrideWithValue(
+    captureInbox ?? const NoCaptureInbox(),
+  ),
   markdownSourceProvider.overrideWithValue(
     markdownSource ?? FakeMarkdownSource(),
   ),

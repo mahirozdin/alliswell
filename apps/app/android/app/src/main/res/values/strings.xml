@@ -6,4 +6,10 @@
     <!-- The configure screen's title until the app has written its own
          (`strings.chooseList` in the snapshot, in the app's language) — OPH-336. -->
     <string name="aw_widget_choose_list">Show in this widget</string>
+    <!-- OPH-376 (ADR-0057): launcher shortcuts (res/xml/shortcuts.xml). Short
+         labels fit ~10 characters; values-tr carries the Turkish ones. -->
+    <string name="aw_shortcut_new_task_short">New task</string>
+    <string name="aw_shortcut_new_task_long">Add a new task</string>
+    <string name="aw_shortcut_today_short">Today</string>
+    <string name="aw_shortcut_today_long">Show today</string>
 </resources>

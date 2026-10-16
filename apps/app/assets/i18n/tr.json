@@ -3896,5 +3896,10 @@
       "offline": "Sunucuya ulaşılamadı. İçe aktarma bağlantı ister.",
       "read": "Bu dosya okunamadı."
     }
+  },
+  "capture": {
+    "added": "Eklendi: {title} · {due}",
+    "addedInbox": "Fikirler'e eklendi: {title}",
+    "open": "Aç"
   }
 }

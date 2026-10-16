@@ -354,6 +354,12 @@ share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/a
   foreground `updateWidget` pushes (budget-exempt) + a sparse midnight-rollover timeline. Widget
   extensions are committed Xcode/Gradle targets (pbxproj + entitlements) — a deliberate deviation
   from the "no pbxproj" plugin model, since a plugin package can't vend an app-extension target.
+- **Voice capture (ADR-0057):** Siri / Shortcuts / Spotlight run `AppIntent`s compiled into the
+  iOS and macOS Runner (`ios/Shared/AWAppShortcuts.swift`) with `openAppWhenRun`; `perform()`
+  only parks the words in a standard-defaults mailbox, and `capture_inbox.dart` drains it over
+  `alliswell/capture` (bind, resume, `changed`, workspace arriving) through the Inbox quick-add
+  rule (`createCapture`), so the parser, outbox and alarms stay in Dart. Android has static
+  launcher shortcuts (`res/xml/shortcuts.xml`) onto `alliswell://add` / `alliswell://open`.
 - Feature-first folders: `lib/src/features/<domain>/{data,providers,ui}` as epics land.
 
 ## 8. Quality gates

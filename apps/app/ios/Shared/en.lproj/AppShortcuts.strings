@@ -1,0 +1,8 @@
+/* OPH-376 (ADR-0057): Siri phrases for AWAppShortcuts. Keys are the English
+   phrases in ios/Shared/AWAppShortcuts.swift; every phrase names the app. */
+"Add a task in ${applicationName}" = "Add a task in ${applicationName}";
+"Add a task to ${applicationName}" = "Add a task to ${applicationName}";
+"New task in ${applicationName}" = "New task in ${applicationName}";
+"Add to ${applicationName}" = "Add to ${applicationName}";
+"Show today in ${applicationName}" = "Show today in ${applicationName}";
+"What's on today in ${applicationName}" = "What's on today in ${applicationName}";

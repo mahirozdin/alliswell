@@ -22,6 +22,11 @@ import '../features/ai/providers.dart';
 import '../features/ai/ui/ai_bubble.dart';
 import '../features/ai/ui/ai_bubble_controller.dart';
 import '../features/ai/ui/ai_fab.dart';
+import '../core/date_format.dart';
+import '../core/day_boundary.dart';
+import '../core/deep_link.dart';
+import '../core/persisted_prefs.dart';
+import '../features/tasks/data/capture_inbox.dart';
 import '../features/tasks/data/task_text.dart';
 import '../features/workspaces/workspaces.dart';
 import '../features/onboarding/tour.dart';
@@ -239,6 +244,26 @@ class HomeShell extends ConsumerWidget {
       if (!context.mounted) return;
       final waiting = ref.read(pendingSharePayloadProvider.notifier).take();
       if (waiting != null) unawaited(_routeShare(context, ref, waiting));
+    });
+
+    // Voice capture (OPH-376, ADR-0057): Siri/Shortcuts park a request and
+    // bring the app forward; the binder turns it into a task, this confirms
+    // it. Same two halves as the share target above — a listener for what
+    // arrives while the shell shows, a post-frame sweep for what arrived while
+    // it did not (`take()` is read-and-clear, so they cannot double-deliver).
+    ref.watch(captureBinderProvider);
+    ref.listen(pendingCaptureOutcomesProvider, (_, next) {
+      if (next.isEmpty) return;
+      _showCaptureOutcomes(
+        context,
+        ref,
+        ref.read(pendingCaptureOutcomesProvider.notifier).take(),
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      final waiting = ref.read(pendingCaptureOutcomesProvider.notifier).take();
+      if (waiting.isNotEmpty) _showCaptureOutcomes(context, ref, waiting);
     });
 
     // Round 16 follow-up: the OS opened a .md file with us. The viewer TAKES
@@ -557,6 +582,53 @@ Future<void> _routeShare(
       );
   if (!context.mounted) return;
   await _showNoAiProviderDialog(context);
+}
+
+/// Confirms a voice capture (OPH-376): a SnackBar per added task with an
+/// "Open" action, and Home on today for "Show today" — the location a widget
+/// event row opens (`alliswell://day/<today>`).
+void _showCaptureOutcomes(
+  BuildContext context,
+  WidgetRef ref,
+  List<CaptureOutcome> outcomes,
+) {
+  final router = GoRouter.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  for (final outcome in outcomes) {
+    switch (outcome) {
+      case CaptureShowToday():
+        final today = ref.read(nowProvider)();
+        router.go('/home?$kAwDayParam=${awDayParam(today)}');
+      case CaptureAdded(
+        :final taskId,
+        :final title,
+        :final dueAt,
+        :final inbox,
+      ):
+        // `inbox` is exactly "no deadline", so a dated one always has it.
+        final message = inbox || dueAt == null
+            ? 'capture.addedInbox'.tr(args: {'title': title})
+            : 'capture.added'.tr(
+                args: {
+                  'title': title,
+                  'due': awFormatShort(
+                    dueAt,
+                    format: ref.read(dateFormatProvider),
+                  ),
+                },
+              );
+        messenger?.showSnackBar(
+          SnackBar(
+            key: Key('capture-added-$taskId'),
+            content: Text(message),
+            action: SnackBarAction(
+              label: 'capture.open'.tr(),
+              onPressed: () => router.push('/tasks/$taskId'),
+            ),
+          ),
+        );
+    }
+  }
 }
 
 /// "You need an AI provider" — a dialog, not a snackbar.

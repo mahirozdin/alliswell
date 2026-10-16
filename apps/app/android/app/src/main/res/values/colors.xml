@@ -8,4 +8,9 @@
     <color name="aw_widget_overdue">#FFD70015</color>
     <color name="aw_widget_accent">#FF0A5CFF</color>
 	<color name="ic_launcher_background">#4F63EF</color>
+    <!-- OPH-376: launcher shortcut icons (res/xml/shortcuts.xml). A white disc
+         with the light-theme primary glyph (6:1) in BOTH launcher themes, so no
+         values-night twin: the launcher draws its own popup surface around it. -->
+    <color name="aw_shortcut_disc">#FFFFFFFF</color>
+    <color name="aw_shortcut_glyph">#FF0A5CFF</color>
 </resources>

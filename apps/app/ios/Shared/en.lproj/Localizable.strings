@@ -1,0 +1,11 @@
+/* OPH-376 (ADR-0057): titles the system shows for AllisWell's App Intents
+   (Siri, Shortcuts, Spotlight). Keys are the English strings in
+   ios/Shared/AWAppShortcuts.swift. */
+"Add task" = "Add task";
+"Show today" = "Show today";
+"Today" = "Today";
+"Task" = "Task";
+"What's the task?" = "What's the task?";
+"Adds a task to AllisWell. Dates and times in the text are understood." = "Adds a task to AllisWell. Dates and times in the text are understood.";
+"Opens AllisWell on today." = "Opens AllisWell on today.";
+"Add ${text} to AllisWell" = "Add ${text} to AllisWell";

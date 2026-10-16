@@ -3897,5 +3897,10 @@
       "offline": "Could not reach the server. Importing needs a connection.",
       "read": "This file could not be read."
     }
+  },
+  "capture": {
+    "added": "Added: {title} · {due}",
+    "addedInbox": "Added to Inbox: {title}",
+    "open": "Open"
   }
 }

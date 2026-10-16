@@ -179,3 +179,18 @@ Future<String?> createFromQuickParse(
   }
   return id;
 }
+
+/// A capture — the Inbox bar's Enter and a Siri/Shortcuts request (OPH-376)
+/// share this one rule: it stays a dateless capture (DESIGN §26 C3) unless the
+/// text itself gives a date (OPH-373); then it is born open, with the
+/// quick-add defaults a dated task gets everywhere else (C4). Returns the id,
+/// or null without a workspace.
+Future<String?> createCapture(AwRead read, QuickAddSubmission submission) {
+  final parse = submission.parse;
+  return createFromQuickParse(
+    read,
+    parse: parse,
+    base: const {'status': 'inbox'},
+    withDefaults: parse.dueAt != null,
+  );
+}

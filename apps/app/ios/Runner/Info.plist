@@ -8,6 +8,17 @@
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
 	<string>AllisWell</string>
+	<!-- OPH-376 (ADR-0057): Siri hears "all is well" as three words; this lets
+	     the App Shortcut phrases ("Add a task in AllisWell") still match. -->
+	<key>INAlternativeAppNames</key>
+	<array>
+		<dict>
+			<key>INAlternativeAppName</key>
+			<string>All is well</string>
+			<key>INAlternativeAppNamePronunciationHint</key>
+			<string>all is well</string>
+		</dict>
+	</array>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>

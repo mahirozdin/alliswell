@@ -185,17 +185,10 @@ class InboxTasksController extends StreamNotifier<List<Task>> {
     yield* ref.watch(taskStoreProvider).watchInboxIn(scope);
   }
 
-  /// A capture stays a dateless capture (DESIGN §26 C3) unless the text
-  /// itself gives a date (OPH-373): then it is born open, with the quick-add
-  /// defaults a dated task gets everywhere else (C4).
+  /// The capture rule lives in [createCapture], shared with voice capture
+  /// (OPH-376).
   Future<void> quickAdd(QuickAddSubmission submission) async {
-    final parse = submission.parse;
-    final id = await createFromQuickParse(
-      ref.read,
-      parse: parse,
-      base: const {'status': 'inbox'},
-      withDefaults: parse.dueAt != null,
-    );
+    final id = await createCapture(ref.read, submission);
     if (id == null) throw StateError('No workspace available');
   }
 }

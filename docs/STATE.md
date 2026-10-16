@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — OPH-375: tamamlanınca tekrar — seri kuralı `basis: "completion"` alır; açık occurrence tamamlanınca sunucu sıradakini tamamlama günü + N gün/hafta/ay, aynı saatte üretir, geri açmak onu geri çeker; MCP `set_task_repeat` (ADR-0056).
+**Last updated:** 2026-10-17 — OPH-376: Siri/Kestirmeler ile görev ekleme (iOS/macOS App Intents, uygulama öne gelir, metin OPH-373 ayrıştırıcısından geçer) + Android başlatıcı kısayolları "Yeni görev" / "Bugün" (ADR-0057).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-375: kural `basis` (JS+Dart, parity fikstürü `afterCompletion`); `db/task-series.js` `spawnAfterCompletion`/`retractSpawn`/`onTaskStatusChange` üç tamamlama kapısında (updateTask, applyStatusTransition, sync `task.afterUpdate`); göç `20261017120000` `tasks.spawned_from_task_id` (sunucuya özel); çevrimdışı `completed_at` = push'un `localUpdatedAt`'i, [oluşturma, şimdi] aralığına kırpılır; REST PATCH gövdesi `updateTaskSeries`'e çıktı; MCP `set_task_repeat`, `get_task.repeat`, `complete_task.next`; tekrar dialog'unda temel anahtarı, kapsam sorusu yok, açık olanı silmek tekrarı durdurur; DESIGN §25 R10. |
+| Last completed           | OPH-376: `ios/Shared/AWAppShortcuts.swift` (`AWAddTaskIntent`, `AWShowTodayIntent`, `AWAppShortcuts`, `openAppWhenRun`, iOS 16 / macOS 13) iOS ve macOS Runner'da (`wire_app_shortcuts.rb`), EN/TR `.strings`, `INAlternativeAppNames`; istek `aw_capture_pending` posta kutusunda, `alliswell/capture` kanalıyla `capture_inbox.dart`'a; Fikirler hızlı ekleme kuralı `createCapture`'a çıktı (ses ve çubuk aynı kural); HomeShell SnackBar + Aç, "Bugün" `/home?day=`; Android `shortcuts.xml` + `values-tr`; MCP/API değişikliği yok (rule 12: `create_task` / `POST /tasks` zaten var). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -80,6 +80,10 @@
     düşmesi büyük içe aktarmada kabul edilebilir mi — değilse ayrı karar. DEVICE-CHECKS
     "İçe aktarma sihirbazı".
 
+16. **OPH-376 Siri** — Mac'te Xcode ile derle (`flutter build ios --no-codesign` + `flutter build macos`;
+    `AWAppShortcuts.swift` bu makinede hiç derlenmedi), sonra DEVICE-CHECKS "Siri ve kısayollar"
+    (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
@@ -125,6 +129,11 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   alarmı ilk sync'te gelir; yalnız `completed` ilerletir, `cancelled` değil; sıradaki tamamlanan
   satırdan kopyalanır (kapsam sorusu yok); açık olanı silmek tekrarı durdurur; tekrarı kapatmak açık
   görevi sıradan görev olarak bırakır; MCP durduramaz.
+- **Sesle ekleme (2026-10-17, ADR-0057):** iOS/macOS niyetleri uygulamayı öne getirir, arka planda
+  görev oluşturmaz (alarm Dart'ta kurulur; başsız Flutter çöktü); metin URL'de taşınmaz; sese
+  Fikirler hızlı ekleme kuralı uygulanır (tarihsiz → Fikirler); "Bugün" Ana sayfayı bugünle açar,
+  Siri sesli özet okumaz. Android'de yalnız iki statik başlatıcı kısayolu; App Actions, AppFunctions,
+  AUTO_SEND, CREATE_NOTE yok (2026'da işleyen bir asistan yolu yok).
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

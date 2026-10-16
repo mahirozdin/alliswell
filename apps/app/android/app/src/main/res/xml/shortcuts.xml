@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- OPH-376 (ADR-0057): static launcher shortcuts — long-press the AllisWell
+     icon (or pin one to the home screen). Both are alliswell:// NAVIGATIONS
+     (ADR-0016): "New task" opens the create sheet, "Today" opens Home. No
+     App Actions <capability> here: Google's built-in intents have no task or
+     note creation intent, Assistant is leaving phones for Gemini, and Gemini's
+     use of shortcuts.xml capabilities is unconfirmed — see the ADR.
+     targetPackage is the applicationId; a flavor with another id needs its own
+     copy of this file. -->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="new_task"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_add"
+        android:shortcutShortLabel="@string/aw_shortcut_new_task_short"
+        android:shortcutLongLabel="@string/aw_shortcut_new_task_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="alliswell://add"
+            android:targetPackage="com.alliswell.alliswell"
+            android:targetClass="com.alliswell.alliswell.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="today"
+        android:enabled="true"
+        android:icon="@drawable/ic_shortcut_today"
+        android:shortcutShortLabel="@string/aw_shortcut_today_short"
+        android:shortcutLongLabel="@string/aw_shortcut_today_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="alliswell://open"
+            android:targetPackage="com.alliswell.alliswell"
+            android:targetClass="com.alliswell.alliswell.MainActivity" />
+    </shortcut>
+</shortcuts>

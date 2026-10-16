@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Turkish native strings (OPH-376). Every key of values/strings.xml has its
+     twin here, so a Turkish phone never shows a half-English widget picker or
+     shortcut menu (native_config_test.dart keeps the two in step). -->
+<resources>
+    <string name="aw_widget_description">Görevlerin bir bakışta — gecikenler, bugün ve sonrası.</string>
+    <string name="aw_widget_choose_list">Bu widget\'ta göster</string>
+    <string name="aw_shortcut_new_task_short">Yeni görev</string>
+    <string name="aw_shortcut_new_task_long">Yeni görev ekle</string>
+    <string name="aw_shortcut_today_short">Bugün</string>
+    <string name="aw_shortcut_today_long">Bugünü göster</string>
+</resources>
