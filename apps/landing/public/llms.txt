@@ -1,8 +1,9 @@
 # AllisWell
 
 > Source-available, self-hostable tasks, projects, notes, files and alarm-grade reminders,
-> with two-way Google & Apple Calendar sync. One Flutter app for iOS, Android, Web, macOS,
-> Windows and Linux. Free for personal use. Made by BubiApps (info@bubiapps.com).
+> with two-way Google Calendar sync and tasks mirrored into Apple Calendar. One Flutter app
+> for iOS, Android, Web, macOS, Windows and Linux. Free for personal use. Made by BubiApps
+> (info@bubiapps.com).
 
 ## MCP connector (Claude, ChatGPT, any MCP client)
 

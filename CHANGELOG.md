@@ -7,6 +7,12 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Fixed
+
+- **Honest Apple Calendar wording.** The website, README and store texts no longer call Apple
+  Calendar sync two-way. Google Calendar syncs both ways; on iPhone and Mac your tasks are
+  mirrored into Apple Calendar, one way for now.
+
 ## [1.17.0] — 2026-10-15
 
 ### Added

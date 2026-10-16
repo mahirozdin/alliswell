@@ -5,7 +5,7 @@
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "Tasks, projects, notes and alarm-grade reminders — with two-way Google & Apple Calendar sync. Open source and self-hostable.",
+    "description": "Tasks, projects, notes and alarm-grade reminders — with two-way Google Calendar sync and an Apple Calendar mirror. Open source and self-hostable.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

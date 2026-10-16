@@ -147,6 +147,68 @@ function docProblems() {
   return problems;
 }
 
+// ── No surface calls Apple Calendar two-way ───────────────────────────────────
+//
+// OPH-365: the Apple Calendar mirror is one-way (task → event, on device, via
+// EventKit — `apple_mirror_engine.dart` says so, and the gateway has no way to
+// list events). Only Google syncs both ways, on the server. Yet the hero, the
+// SEO description, the JSON-LD, README, COMPARISON, llms.txt and the web
+// manifest all said "two-way Google & Apple Calendar sync" — twenty-odd
+// surfaces, and the first self-hoster who checks finds a false claim. When
+// OPH-369 brings Apple read-back, the copy and this gate change together.
+//
+// Line-based, like the version gate above: a claim split across two lines (a
+// wrapped .md paragraph, a `'…' +` concatenated JS string) is not seen. Every
+// false claim found so far sat on one line. Escape hatch: `docs-check-ignore`.
+const APPLE_CLAIMS = [
+  // "two-way Google & Apple", "bidirectional sync with Apple", "two-way Apple"
+  /(two-way|2-way|bidirectional|both ways|both directions|two ways)\s+(sync\s+(with|to)\s+)?(Google(\s+Calendar)?\s*(&amp;|&|and|\/|,)\s*)?Apple/i,
+  // "Apple Calendar sync, two-way", "Apple calendars two ways", "Apple Takvim iki yönlü".
+  // Calendar/Takvim is required: "Apple Reminders alternative · two-way Google…" is honest.
+  /Apple\s+(Calendars?|Takvim)[^.;:,—·\n]{0,40}(two-way|two ways|both ways|both directions|bidirectional|iki yönlü|çift yönlü)/i,
+  // "iki yönlü Google ve Apple" — `İ` is listed by hand: /i does not fold it to `i`
+  /(iki|İki|çift|Çift) yönlü\s+Google\s+(ve|&amp;|&)\s+Apple/i,
+  // "Google ve Apple Takvim ile gerçek iki yönlü", "Google and Apple calendars: two-way"
+  /Google\s+(ve|and|&amp;|&)\s+Apple[^.;\n]{0,40}(two-way|both ways|iki yönlü|çift yönlü)/i,
+  // "true two-way calendar sync — in both directions, to two ecosystems", and
+  // the README anchor that pointed at it (#…-two-way-calendar-sync-to-both-ecosystems)
+  /two-way[^.\n]{0,60}(both|two)[\s-]ecosystems/i,
+];
+
+function appleClaimFiles() {
+  const out = claimFiles();
+  const extras = [
+    'apps/landing/public/llms.txt',
+    'apps/app/web/index.html',
+    'apps/app/web/manifest.json',
+    'apps/app/assets/i18n/en.json',
+    'apps/app/assets/i18n/tr.json',
+    'scripts/screenshots/store.mjs',
+  ].map((p) => join(ROOT, p));
+  const store = join(ROOT, 'docs/store');
+  if (existsSync(store)) {
+    for (const entry of readdirSync(store)) {
+      if (entry.endsWith('.md')) extras.push(join(store, entry));
+    }
+  }
+  return [...out, ...extras.filter((p) => existsSync(p))];
+}
+
+function appleClaimProblems() {
+  const problems = [];
+  for (const file of appleClaimFiles()) {
+    read(file)
+      .split('\n')
+      .forEach((line, i) => {
+        if (line.includes('docs-check-ignore')) return;
+        if (APPLE_CLAIMS.some((pattern) => pattern.test(line))) {
+          problems.push(`${rel(file)}:${i + 1}\n    ${line.trim().slice(0, 200)}`);
+        }
+      });
+  }
+  return problems;
+}
+
 // ── The working docs stay small ───────────────────────────────────────────────
 //
 // STATE.md and TASKS.md are read at the start of every agent session. By
@@ -246,6 +308,7 @@ function workingDocProblems() {
 }
 
 const problems = [...manifestProblems(), ...docProblems()];
+const appleClaims = appleClaimProblems();
 const working = workingDocProblems();
 
 if (problems.length > 0) {
@@ -255,13 +318,21 @@ if (problems.length > 0) {
     '\nUpdate the claim, or mark a deliberately historical line with `docs-check-ignore`.',
   );
 }
+if (appleClaims.length > 0) {
+  console.error(
+    `✗ docs: ${appleClaims.length} calendar claim(s) the build does not keep — Apple Calendar ` +
+      'is one-way (task → event); only Google is two-way\n',
+  );
+  for (const p of appleClaims) console.error(`  ${p}`);
+}
 if (working.length > 0) {
   console.error(`✗ docs: ${working.length} working-doc problem(s)\n`);
   for (const p of working) console.error(`  ${p}`);
 }
-if (problems.length > 0 || working.length > 0) process.exit(1);
+if (problems.length > 0 || appleClaims.length > 0 || working.length > 0) process.exit(1);
 
 console.log(
   `✓ docs: version claims agree with package.json (${VERSION}); ` +
+    'no surface calls Apple Calendar two-way; ' +
     'STATE/TASKS/LESSONS within their rules, STATE points where `npm run next` does',
 );

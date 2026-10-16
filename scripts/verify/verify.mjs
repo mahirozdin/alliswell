@@ -82,7 +82,19 @@ const steps = [
   gate(
     'docs',
     'npm run -s check:docs',
-    any(ext(/\.md$/), under('docs/', 'scripts/docs/', 'scripts/tasks/', 'package.json')),
+    any(
+      ext(/\.md$/),
+      under(
+        'docs/',
+        'scripts/docs/',
+        'scripts/tasks/',
+        'package.json',
+        'apps/landing/',
+        'apps/app/web/',
+        'apps/app/assets/i18n/',
+        'scripts/screenshots/',
+      ),
+    ),
   ),
   gate(
     'i18n',

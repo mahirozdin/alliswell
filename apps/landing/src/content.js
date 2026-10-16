@@ -24,7 +24,7 @@ export const MCP_GUIDE_URL = '/docs/mcp';
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
   title: 'Your whole day, in an app you actually own.',
-  lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google & Apple Calendar sync. One app on six platforms, offline-first, storing every byte in your own database.',
+  lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app on six platforms, offline-first, storing every byte in your own database.',
   primary: { label: 'Open the web app', href: APP_URL },
   store: { label: 'Get it on Google Play', href: PLAY_URL },
   storeIos: { label: 'Download on the App Store', href: APP_STORE_URL },
@@ -57,8 +57,8 @@ export const pillars = [
   {
     key: 'sync',
     icon: '📅',
-    title: 'Calendar sync in both directions',
-    body: 'Your tasks become Google events, your edits in Google come back, and your existing events show up next to today’s work. Apple Calendar through EventKit.',
+    title: 'Google Calendar sync in both directions',
+    body: 'Your tasks become Google events, your edits in Google come back, and your existing events show up next to today’s work. On iPhone and Mac, tasks are mirrored into Apple Calendar too — one way, for now.',
   },
   {
     key: 'ai',
@@ -550,7 +550,7 @@ export default {
   seo: {
     title: 'AllisWell — source-available tasks, reminders & notes you can host yourself',
     description:
-      'Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google & Apple Calendar sync. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use.',
+      'Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use.',
     ogImage: '/shots/og/home.jpg',
   },
 

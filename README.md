@@ -6,7 +6,7 @@
 
 ### Tasks, reminders &amp; notes — in an app you actually own.
 
-**Alarms that ring through Silent mode. Two-way Google &amp; Apple Calendar sync.<br>
+**Alarms that ring through Silent mode. Two-way Google Calendar sync, with your tasks in Apple Calendar too.<br>
 One app for iOS, Android, Web, macOS, Windows &amp; Linux. Your data in your own MySQL.**
 
 [**🌐 Try it now — alliswell.space**](https://alliswell.space/app) &nbsp;·&nbsp;
@@ -255,10 +255,10 @@ the traps we measured on the way: [docs/WIDGETS.md](docs/WIDGETS.md).
 - 🗂 **Projects** — colours, favourites, archiving, a Notion-style README note as the overview, and per-project Tasks / Notes / Files tabs.
 - 🏷 **Tags &amp; priorities** — type `#tags` inline (auto-create, colours, fold-matched suggestions) and set `none → urgent` priority. Subtasks and checklists inside a task.
 - 🔔 **Alarm-grade reminders** — exact-minute delivery, **urgent alarms through Silent mode &amp; Focus**, a re-alert-until-acknowledged chain you can tune, snooze presets (5 m / 30 m / 1 h / tomorrow / custom) that each say when they'll ring, **mute one task's alarms** without completing it, your own ringtone, an **alarm log**, and a privacy mode that hides task content on the lock screen.
-- 🔁 **Recurring tasks that survive a short month** — see [§1 above](#1-recurrence-that-doesnt-lie).
+- 🔁 **Recurring tasks that survive a short month** — see [§5 above](#5-recurrence-that-doesnt-lie).
 - 🔎 **Instant search** — case- **and accent-insensitive** across the Latin alphabets ("muller" finds _Müller_, "cafe" finds _café_), ranked title → tag → body, running locally over the on-device replica, so it works **offline**. The folding is the app's own, so results never depend on your database's collation.
 - 📝 **Notes &amp; documents** — Markdown notes with live syntax while you type, a real GFM reading view (tables, task lists, footnotes, KaTeX, Mermaid), inline images, links to tasks and projects, pin/archive, card grid or list, and `.md` / PDF export. The engine is our own [markdown_forge](apps/app/packages/markdown_forge) package (MIT) — extracted so any Flutter app can use it.
-- 📅 **True two-way calendar sync** — see [§2 above](#2-true-two-way-calendar-sync-to-both-ecosystems). Every task is on the calendar, and it is **not a setting**.
+- 📅 **Calendar sync** — **two-way with Google Calendar**: your tasks become events, edits in Google come back, and your Google events show up on Home. On iPhone and Mac, tasks are also mirrored into **Apple Calendar** (one-way for now). Every task is on the calendar, and it is **not a setting**.
 - 📎 **Attachments &amp; Files** — attach any file to tasks, notes and projects, plus a global **Files** section with nestable folders — stored in **Cloudflare R2 / any S3** via presigned URLs (the API never proxies your bytes).
 - 🔄 **Local-first realtime sync** — offline by default: a mutation outbox, a revision log, idempotent push with field-level last-write-wins, and a Socket.IO channel that fans changes to every device within a round-trip.
 - ✅ **Finish things visibly** — a completed task stays on today's list, struck through and calm, until the next midnight; everything older lives in **Settings ▸ Completed**, a day-headed timeline you can scroll back through.
@@ -278,7 +278,7 @@ the traps we measured on the way: [docs/WIDGETS.md](docs/WIDGETS.md).
 
 The tools we love, we can't fully own. AllisWell takes their best ideas and adds
 what none of them give you: **the source in the open, self-hosting you actually
-own, true two-way calendar sync, and a local-first realtime engine.**
+own, true two-way Google Calendar sync, and a local-first realtime engine.**
 
 |                                        | **AllisWell** | Google Calendar | Google Tasks | Apple Reminders | Things 3 |
 | -------------------------------------- | :-----------: | :-------------: | :----------: | :-------------: | :------: |
@@ -574,7 +574,7 @@ accepted under the same terms.
 
 <sub>
 
-**AllisWell** — source-available self-hosted productivity hub · to-do &amp; task manager · Todoist / Things 3 / TickTick / Apple Reminders / Notion alternative · two-way Google Calendar &amp; Apple Calendar sync · offline-first · Flutter (iOS, Android, Web, macOS, Windows, Linux) · Node.js + MySQL · self-hosted &amp; private.
+**AllisWell** — source-available self-hosted productivity hub · to-do &amp; task manager · Todoist / Things 3 / TickTick / Apple Reminders / Notion alternative · two-way Google Calendar sync &amp; Apple Calendar mirror · offline-first · Flutter (iOS, Android, Web, macOS, Windows, Linux) · Node.js + MySQL · self-hosted &amp; private.
 
 </sub>
 </div>

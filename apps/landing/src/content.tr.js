@@ -36,9 +36,10 @@ export default {
     title: 'AllisWell — kendi sunucunuzda barındırabileceğiniz görevler, hatırlatıcılar ve notlar',
     description:
       'Görevler, projeler, notlar, dosyalar ve sessiz moddayken bile çalan alarm gücünde ' +
-      'hatırlatıcılar; Google ve Apple Takvim ile gerçek iki yönlü eşitleme. iOS, Android, ' +
-      'web, macOS, Windows ve Linux için tek uygulama. Kaynağı açık, kendi sunucunuza ' +
-      'kurulabilir, bireysel kullanım için ücretsiz.',
+      'hatırlatıcılar; Google Takvim ile gerçek iki yönlü eşitleme, iPhone ve Mac’te ' +
+      'Apple Takvim’e yansıyan görevler. iOS, Android, web, macOS, Windows ve Linux için ' +
+      'tek uygulama. Kaynağı açık, kendi sunucunuza kurulabilir, bireysel kullanım için ' +
+      'ücretsiz.',
     ogImage: '/shots/og/home-tr.jpg',
   },
 
@@ -65,8 +66,9 @@ export default {
     title: 'Bütün gününüz, gerçekten size ait bir uygulamada.',
     lede:
       'Görevler, projeler, notlar, dosyalar ve sizi yerinizden kaldıracak kadar güçlü ' +
-      'hatırlatıcılar; Google ve Apple Takvim ile gerçek iki yönlü eşitleme. Altı platformda ' +
-      'tek uygulama, internet olmadan da çalışır, her veriyi kendi veritabanınızda tutar.',
+      'hatırlatıcılar; Google Takvim ile gerçek iki yönlü eşitleme, iPhone ve Mac’te Apple ' +
+      'Takvim’e yansıyan görevler. Altı platformda tek uygulama, internet olmadan da çalışır, ' +
+      'her veriyi kendi veritabanınızda tutar.',
     primary: { label: 'Web uygulamasını aç', href: APP_URL },
     store: { label: "Google Play'den indir", href: PLAY_URL },
     storeIos: { label: "App Store'dan indir", href: APP_STORE_URL },
@@ -106,10 +108,11 @@ export default {
     {
       key: 'sync',
       icon: '📅',
-      title: 'İki yönlü takvim eşitlemesi',
+      title: 'İki yönlü Google Takvim eşitlemesi',
       body:
         'Görevleriniz Google etkinliği olur, Google’da yaptığınız düzenlemeler geri gelir, ' +
-        'mevcut etkinlikleriniz bugünün işlerinin yanında görünür. Apple Takvim EventKit ile.',
+        'mevcut etkinlikleriniz bugünün işlerinin yanında görünür. iPhone ve Mac’te ' +
+        'görevleriniz Apple Takvim’e de yazılır; şimdilik tek yönlü.',
     },
     {
       key: 'ai',

@@ -103,7 +103,7 @@ list every screenshot, the landing page and the store copy draw from.
 | ----------------------------------------------------------------------------------------------- | ------- |
 | **Two-way Google Calendar sync** — OAuth, encrypted tokens, push webhooks, incremental sync, etag conflict resolution | Epic 08 |
 | Your own Google events flow **back into Home**, next to your tasks                             | OPH-083 |
-| Apple Calendar via an **EventKit** bridge                                                     | Epic 08 |
+| Apple Calendar via an on-device **EventKit** bridge — one-way for now (tasks → events)        | Epic 08 |
 | **Every task is on the calendar — and it is not a setting.** The mirror stopped being a toggle | OPH-210 |
 | CalDAV — designed, parked for v2                                                              | CALDAV.md |
 
@@ -239,7 +239,7 @@ Legend: ● full · ◐ partial / with caveats · ○ none.
 | **Recurrence clamps (31st → 28 Feb)** | ● | ○ skips | ○ | ● | ○ skips | ● |
 | "This / this and future / all" edits | ● | ● | ○ | ◐ | ● | ◐ |
 | **Two-way Google Calendar sync** | ● | native | native | ○ | ◐ subscribe | ○ read-only |
-| Apple Calendar | ● EventKit | ◐ | ○ | native | native | ◐ read-only |
+| Apple Calendar | ◐ one-way (EventKit) | ◐ | ○ | native | native | ◐ read-only |
 | Accent-insensitive search | ● | ○ | ○ | ○ | ○ | ○ |
 | Home-screen widgets | ● iOS/Android | ● | ● | ● | ● | ● |
 | **MCP connector for Claude / ChatGPT** | ● | ○ | ○ | ○ | ○ | ○ |
@@ -265,10 +265,11 @@ one is a thing a competitor **cannot** do, not merely hasn't yet.
    drops February; we clamp to the 28th, show you the next five days before you
    commit, and materialise 12 months of real rows so the calendar, the search and
    the widget all agree.
-4. **True two-way calendar sync — in both directions, to two ecosystems.** Not
-   an ICS subscription, not read-only import: your tasks become events, edits in
-   Google come back, and your Google events appear on Home. Things 3 reads your
-   calendar; it never writes to it.
+4. **Real two-way Google Calendar sync — and your tasks in Apple Calendar too.**
+   Not an ICS subscription, not read-only import: your tasks become events, edits
+   in Google come back, and your Google events appear on Home. On iPhone and Mac
+   the same tasks are mirrored into Apple Calendar (one-way for now). Things 3
+   reads your calendar; it never writes to it.
 5. **One codebase, six platforms, offline-first.** A local SQLite replica, a
    mutation outbox and a revision log — everything works with the network off,
    and lands everywhere else within a round-trip when it returns. Apple's tools

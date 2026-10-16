@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-15 — sahip isteği: notu Markdown/Word (DOCX) dışa aktarma (ADR-0048), widget'ta takvim etkinlikleri + `alliswell://day/<gün>`, editör ⋮ menüsünde "Notu sil"; backlog boş.
+**Last updated:** 2026-10-16 — OPH-365: Apple Takvim "iki yönlü" iddiası her açık yüzeyde düzeltildi (Google iki yönlü, Apple tek yönlü ayna); `check:docs` iddiayı artık reddediyor.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | Sahip isteği (id'siz, 2026-10-15): not ⋮ ve not listesi menüsünde PDF'in yanında Markdown (.md, API'nin başlık kuralıyla) ve Word (.docx — kendi OOXML yazıcımız, PDF ile ortak `note_print_style.dart`, ADR-0048) dışa aktarma; Android/iOS/macOS ana ekran widget'ı Home'un dış takvim etkinliklerini gösterir (snapshot v5, `kind: event`), etkinlik satırı `alliswell://day/<yyyy-MM-dd>` ile Home'u o günde açar; not editörünün ⋮ menüsünde onaylı "Notu sil". Cihazda bakılacak: iOS widget Swift'i Linux'ta derlenmedi, .docx Word'de açılmadı, mobilde MD/DOCX paylaşımı ([DEVICE-CHECKS.md](DEVICE-CHECKS.md)). |
+| Last completed           | OPH-365: Apple Takvim iki yönlü iddiası düzeltildi — landing EN/TR + kurumsal sayfalar (hero, SEO, og, JSON-LD), README, COMPARISON, STORE-LISTING tanıtım metinleri, exact-alarm beyanı, web manifest, llms.txt; `check:docs`'a Apple takvim iddiası kapısı (K1 `docs` kapısı artık landing/web/i18n değişikliğinde de koşar). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -48,7 +48,9 @@
    (`docs/store/directories.md`, önkoşulları boş).
 10. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
    doğrulama 2026-07-29) — ilki **~2026-10**.
-11. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
+11. **OPH-365 mağaza** — App Store Connect › Promotional Text'e STORE-LISTING §1.3'ün yeni EN/TR
+    satırlarını yapıştır (build gerekmez).
+12. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
     canlıda; APNs yoksa iOS'a hiçbir push teslim edilmez ve hiçbir test yakalamaz) · OpenAI "Sign in
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.
