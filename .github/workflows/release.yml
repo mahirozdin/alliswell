@@ -105,8 +105,10 @@ jobs:
         with:
           name: AllisWell v${{ steps.version.outputs.version }}
           body: ${{ steps.notes.outputs.body }}
-          # A pre-1.0 tag is a preview; promote to a full release at 1.0.0.
-          prerelease: ${{ !startsWith(steps.version.outputs.version, '1.') }}
+          # A pre-1.0 tag is a preview; 1.0.0 and every later major is a full
+          # release — `releases/latest/download/...` (README, landing, ADR-0051)
+          # only ever resolves to a non-prerelease, so 2.x must not be one.
+          prerelease: ${{ startsWith(steps.version.outputs.version, '0.') }}
           files: alliswell-web-${{ steps.version.outputs.version }}.tar.gz
           fail_on_unmatched_files: true
 
