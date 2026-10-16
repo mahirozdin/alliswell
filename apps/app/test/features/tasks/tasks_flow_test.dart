@@ -18,6 +18,7 @@ import 'package:alliswell/src/features/tasks/ui/task_detail_screen.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/nav.dart';
 
 Future<Widget> signedInAppWith(
   FakeApi api, {
@@ -478,7 +479,7 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('quick-add')), 'Yeni fikir');
@@ -834,7 +835,7 @@ void main() {
     expect(find.text('Yakalanan fikir'), findsNothing);
 
     // The Inbox shows the capture with triage actions and no completion box.
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
     expect(find.text('Yakalanan fikir'), findsOneWidget);
     expect(find.byType(Checkbox), findsNothing);
@@ -848,7 +849,7 @@ void main() {
     final api = FakeApi()..seedTask(title: 'Planlanacak', status: 'inbox');
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     // Plan opens the sheet in edit mode.
@@ -874,7 +875,7 @@ void main() {
     // It left the Inbox and now shows on Home as a real 'open' task.
     expect(find.text('Planlanacak'), findsNothing);
     expect(api.tasks.single['status'], 'open');
-    await tester.tap(find.text('Home').last);
+    await tester.tap(navTab('Home'));
     await tester.pumpAndSettle();
     expect(find.text('Planlanacak'), findsOneWidget);
   });
@@ -886,7 +887,7 @@ void main() {
     final api = FakeApi()..seedTask(title: 'Nota gidecek', status: 'inbox');
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('capture-to-note')));
@@ -912,7 +913,7 @@ void main() {
       );
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     // A RenderFlex overflow would have thrown during layout; the three actions

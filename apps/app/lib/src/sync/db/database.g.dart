@@ -7583,6 +7583,17 @@ class $FileRowsTable extends FileRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _nameFoldMeta = const VerificationMeta(
+    'nameFold',
+  );
+  @override
+  late final GeneratedColumn<String> nameFold = GeneratedColumn<String>(
+    'name_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -7629,6 +7640,7 @@ class $FileRowsTable extends FileRows
     status,
     uploadedBy,
     folderId,
+    nameFold,
     revision,
     createdAt,
     updatedAt,
@@ -7721,6 +7733,12 @@ class $FileRowsTable extends FileRows
         folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
       );
     }
+    if (data.containsKey('name_fold')) {
+      context.handle(
+        _nameFoldMeta,
+        nameFold.isAcceptableOrUnknown(data['name_fold']!, _nameFoldMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -7788,6 +7806,10 @@ class $FileRowsTable extends FileRows
         DriftSqlType.string,
         data['${effectivePrefix}folder_id'],
       ),
+      nameFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -7827,6 +7849,10 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
 
   /// Folder membership — workspace-target files only (v7, ADR-0014).
   final String? folderId;
+
+  /// ADR-0013/ADR-0055 (v39): folded shadow of [name] — the global search
+  /// palette finds files by name. Written by `fileCompanion`, the one writer.
+  final String? nameFold;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -7841,6 +7867,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     required this.status,
     this.uploadedBy,
     this.folderId,
+    this.nameFold,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -7861,6 +7888,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     }
     if (!nullToAbsent || folderId != null) {
       map['folder_id'] = Variable<String>(folderId);
+    }
+    if (!nullToAbsent || nameFold != null) {
+      map['name_fold'] = Variable<String>(nameFold);
     }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
@@ -7888,6 +7918,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       folderId: folderId == null && nullToAbsent
           ? const Value.absent()
           : Value(folderId),
+      nameFold: nameFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameFold),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -7914,6 +7947,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       status: serializer.fromJson<String>(json['status']),
       uploadedBy: serializer.fromJson<String?>(json['uploadedBy']),
       folderId: serializer.fromJson<String?>(json['folderId']),
+      nameFold: serializer.fromJson<String?>(json['nameFold']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -7933,6 +7967,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       'status': serializer.toJson<String>(status),
       'uploadedBy': serializer.toJson<String?>(uploadedBy),
       'folderId': serializer.toJson<String?>(folderId),
+      'nameFold': serializer.toJson<String?>(nameFold),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -7950,6 +7985,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     String? status,
     Value<String?> uploadedBy = const Value.absent(),
     Value<String?> folderId = const Value.absent(),
+    Value<String?> nameFold = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -7964,6 +8000,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     status: status ?? this.status,
     uploadedBy: uploadedBy.present ? uploadedBy.value : this.uploadedBy,
     folderId: folderId.present ? folderId.value : this.folderId,
+    nameFold: nameFold.present ? nameFold.value : this.nameFold,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -7986,6 +8023,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           ? data.uploadedBy.value
           : this.uploadedBy,
       folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      nameFold: data.nameFold.present ? data.nameFold.value : this.nameFold,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -8005,6 +8043,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           ..write('status: $status, ')
           ..write('uploadedBy: $uploadedBy, ')
           ..write('folderId: $folderId, ')
+          ..write('nameFold: $nameFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -8024,6 +8063,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     status,
     uploadedBy,
     folderId,
+    nameFold,
     revision,
     createdAt,
     updatedAt,
@@ -8042,6 +8082,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           other.status == this.status &&
           other.uploadedBy == this.uploadedBy &&
           other.folderId == this.folderId &&
+          other.nameFold == this.nameFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -8058,6 +8099,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
   final Value<String> status;
   final Value<String?> uploadedBy;
   final Value<String?> folderId;
+  final Value<String?> nameFold;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -8073,6 +8115,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     this.status = const Value.absent(),
     this.uploadedBy = const Value.absent(),
     this.folderId = const Value.absent(),
+    this.nameFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -8089,6 +8132,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     required String status,
     this.uploadedBy = const Value.absent(),
     this.folderId = const Value.absent(),
+    this.nameFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -8112,6 +8156,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     Expression<String>? status,
     Expression<String>? uploadedBy,
     Expression<String>? folderId,
+    Expression<String>? nameFold,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -8128,6 +8173,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
       if (status != null) 'status': status,
       if (uploadedBy != null) 'uploaded_by': uploadedBy,
       if (folderId != null) 'folder_id': folderId,
+      if (nameFold != null) 'name_fold': nameFold,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -8146,6 +8192,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     Value<String>? status,
     Value<String?>? uploadedBy,
     Value<String?>? folderId,
+    Value<String?>? nameFold,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -8162,6 +8209,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
       status: status ?? this.status,
       uploadedBy: uploadedBy ?? this.uploadedBy,
       folderId: folderId ?? this.folderId,
+      nameFold: nameFold ?? this.nameFold,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -8202,6 +8250,9 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     if (folderId.present) {
       map['folder_id'] = Variable<String>(folderId.value);
     }
+    if (nameFold.present) {
+      map['name_fold'] = Variable<String>(nameFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -8230,6 +8281,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
           ..write('status: $status, ')
           ..write('uploadedBy: $uploadedBy, ')
           ..write('folderId: $folderId, ')
+          ..write('nameFold: $nameFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -26381,6 +26433,7 @@ typedef $$FileRowsTableCreateCompanionBuilder =
       required String status,
       Value<String?> uploadedBy,
       Value<String?> folderId,
+      Value<String?> nameFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -26398,6 +26451,7 @@ typedef $$FileRowsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<String?> uploadedBy,
       Value<String?> folderId,
+      Value<String?> nameFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -26460,6 +26514,11 @@ class $$FileRowsTableFilterComposer
 
   ColumnFilters<String> get folderId => $composableBuilder(
     column: $table.folderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -26538,6 +26597,11 @@ class $$FileRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -26599,6 +26663,9 @@ class $$FileRowsTableAnnotationComposer
   GeneratedColumn<String> get folderId =>
       $composableBuilder(column: $table.folderId, builder: (column) => column);
 
+  GeneratedColumn<String> get nameFold =>
+      $composableBuilder(column: $table.nameFold, builder: (column) => column);
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -26650,6 +26717,7 @@ class $$FileRowsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> uploadedBy = const Value.absent(),
                 Value<String?> folderId = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -26665,6 +26733,7 @@ class $$FileRowsTableTableManager
                 status: status,
                 uploadedBy: uploadedBy,
                 folderId: folderId,
+                nameFold: nameFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -26682,6 +26751,7 @@ class $$FileRowsTableTableManager
                 required String status,
                 Value<String?> uploadedBy = const Value.absent(),
                 Value<String?> folderId = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -26697,6 +26767,7 @@ class $$FileRowsTableTableManager
                 status: status,
                 uploadedBy: uploadedBy,
                 folderId: folderId,
+                nameFold: nameFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

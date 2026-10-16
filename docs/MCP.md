@@ -110,7 +110,7 @@ Twenty-four tools, no delete tool — by design (loosening it needs a new ADR):
 
 | Tool | What it does |
 | --- | --- |
-| `search` | Find tasks, notes and projects (Turkish-aware folding) |
+| `search` | Find tasks, notes, projects, tags and file names (Turkish-aware folding); `types` narrows to any of the five. A file result is metadata (name, mime, target) — no link, no bytes |
 | `list_notes` / `get_note` | Notes with a short summary; one note in full, with its tags and what it is attached to |
 | `create_note` | Write a note — standalone, filed under a project, or attached to a task in the same write |
 | `update_note` | Retitle, rewrite, pin or archive a note (see the rich-text note below) |

@@ -62,6 +62,57 @@ describe('read tools', () => {
     expect(bodyHit).toBeGreaterThan(titleHit);
   });
 
+  it('search finds tags and file names too, metadata only (OPH-374)', async () => {
+    await seed(owner.headers, owner.workspace.id, 'tags', { name: 'Işık' });
+    const fileId = newId();
+    tables.files.push({
+      id: fileId,
+      workspace_id: owner.workspace.id,
+      target_type: 'workspace',
+      target_id: owner.workspace.id,
+      name: 'Işık-plan.pdf',
+      mime: 'application/pdf',
+      size_bytes: 10,
+      storage_key: `ws/${fileId}`,
+      status: 'ready',
+      deleted_at: null,
+      created_at: new Date(),
+    });
+    // A file still uploading is not a result yet.
+    tables.files.push({
+      id: newId(),
+      workspace_id: owner.workspace.id,
+      target_type: 'workspace',
+      target_id: owner.workspace.id,
+      name: 'Işık-taslak.pdf',
+      mime: 'application/pdf',
+      size_bytes: 10,
+      storage_key: 'ws/x',
+      status: 'uploading',
+      deleted_at: null,
+      created_at: new Date(),
+    });
+
+    const result = await callTool(app, access, 'search', { query: 'isik' });
+    expect(result.isError).toBeFalsy();
+    const results = result.structuredContent.results;
+    expect(results.find((r) => r.type === 'tag')?.title).toBe('Işık');
+    const file = results.find((r) => r.type === 'file');
+    expect(file).toMatchObject({
+      id: fileId,
+      title: 'Işık-plan.pdf',
+      mime: 'application/pdf',
+      targetType: 'workspace',
+    });
+    // Never a way to the bytes (AI.md §7).
+    expect(file).not.toHaveProperty('url');
+    expect(JSON.stringify(results)).not.toMatch(/https?:|storage_key|ws\//);
+    expect(results.filter((r) => r.type === 'file')).toHaveLength(1);
+
+    const onlyFiles = await callTool(app, access, 'search', { query: 'isik', types: ['file'] });
+    expect(onlyFiles.structuredContent.results.map((r) => r.type)).toEqual(['file']);
+  });
+
   it('search respects the limit and reports truncation', async () => {
     for (let i = 0; i < 6; i += 1) {
       await seed(owner.headers, owner.workspace.id, 'tasks', { title: `Rapor ${i}` });

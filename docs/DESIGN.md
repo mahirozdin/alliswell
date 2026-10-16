@@ -387,7 +387,8 @@ _(Rules F7…F9 added 2026-07-20, feedback round 8 — the global Files section,
 
 _(Added 2026-07-20; engine architecture in
 [ADR-0013](adr/0013-local-first-search.md). Search is a per-screen capability
-— BLUEPRINT §12.10 — not a separate destination.)_
+— BLUEPRINT §12.10 — not a separate destination; since OPH-374 one global
+palette sits beside it, never instead of it — §40.)_
 
 - **S1 — One search field pattern.** A body-level `TextField` under the app
   bar (the Notes screen shape): `search` prefix icon, clear (×) suffix when
@@ -1605,3 +1606,19 @@ contract.
 | Q3 | **A help sheet, one tap away.** `?` opens `QuickAddHelpSheet` (solid sheet surface, root navigator, above the glass bar): Dates, Times, Deadline or When, Repeat, Tags · project · priority, Undo — examples in the UI language, plus the line that both languages work. The `?` sits in the bar while it is empty and at the end of the chips row while typing, so a phone bar never carries three suffix icons over the text. | Discoverable without stealing the text's width. |
 | Q4 | **Home skips its deadline ask when the text says when** (amends §26 C3). A parsed deadline, When day or repeat is used as typed and the selected calendar day does not override it; otherwise the C3 picker opens exactly as before. Inbox and project captures with a parsed deadline get the C1/C2 defaults (C4). The ✨ rider still receives the raw text. | Asking for a date the user just typed is friction; relative words are relative to the real now. |
 | Q5 | **Both themes are shot:** `phone_quick_add_tokens_*` and `phone_quick_add_help_*` in `test/design_screenshots_test.dart` (`shotLocale=tr` for Turkish). | Rule 11. |
+
+
+## 40. Search everywhere (OPH-374)
+
+One palette finds tasks, projects, notes, tags and file names from the replica, offline
+([ADR-0055](adr/0055-global-search-palette.md)). Per-screen search (§12) stays as it is.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 64 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row; no app-bar icon. | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
+| P2 | **Surface.** A SOLID dialog (`dialogTheme`, G1) on the root navigator: wide (≥ 600) top-aligned 72 px down, ≤ 640 wide and ≤ min(560, 70 %) tall, radius `xl`; phone full screen with a back button beside the field. The field is the theme's filled input (G3) with a search prefix and a clear suffix. | Glass under body text fails contrast; the root navigator keeps it above the glass bar. |
+| P3 | **Groups and rows.** Fixed order Tasks · Projects · Notes · Tags · Files, ≤ 5 rows each; the header (`labelLarge`, `onSurfaceVariant`, `Semantics(header)`) adds "5 of 23" when there are more. Rows ≥ 48 px: kind icon (`onSurfaceVariant`; files by type), one-line title, a context line (`bodySmall`, `onSurfaceVariant`) saying WHERE it hit (S3: `#tag`, body snippet) or the project; a completed task shows a check icon and "Completed", an archived project "Archived"; a tag row says "Shows Home filtered by this tag". | One glance tells what and where; G5 — never colour alone. |
+| P4 | **Keyboard and active row.** The field keeps focus: ↑/↓ move the active row (wrapping, scrolled into view), Enter opens it, Esc closes. The active row has a `surfaceContainerHighest` fill AND a ⏎ glyph, and reports `selected` to screen readers; hover moves it. A live region reads the result count. | Keyboard-only use, and a selection that is not colour-only (G5). |
+| P5 | **Empty, no hits, create.** Empty field: "Recent" (≤ 8 things opened last, person-bound) or a one-line hint plus the shortcut tip. No hits: compact `AwEmptyState` naming the query. With text and `tasks.create`, the last row is "Create task “text”", which opens the normal create sheet prefilled — Enter takes it when nothing matched. Debounce 150 ms (faster than S4's ~250: the palette's lists are short), results stay while the next query loads, a 2 px progress line only after a further 150 ms. | No blank void, no spinner flash, no silent write. |
+| P6 | **Opening.** The palette closes first, then: task → detail (pushed), project/note → its page, file → its actions sheet, tag → Home filtered by it (board switches to list). The kind → destination table is the one Quick Access uses. | One place decides where a thing opens. |
+| P7 | **Both themes, both widths are shot:** `desktop_search_palette_*`, `desktop_search_recent_*`, `phone_search_palette_*`, `phone_search_orb_*` in `test/design_screenshots_test.dart`; only existing tokens (contrast pairs in `scripts/design/contrast.py`). | Rule 11. |

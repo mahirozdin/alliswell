@@ -394,11 +394,14 @@ async function queryInbox(app, workspaceId) {
 
 export const TASK_VIEW_QUERIES = { queryOverdue, queryToday, queryInbox, dayBounds };
 
+/** The kinds `search` answers, and its default — all of them (OPH-374). */
+const SEARCH_TYPES = ['task', 'note', 'project', 'tag', 'file'];
+
 export const MCP_TOOLS = [
   {
     name: 'search',
     title: 'Search the workspace',
-    description: `Search tasks, notes and projects by text. Titles match with Turkish-aware folding (ışık ≈ isik); note/task bodies match by the database engine. ${DATA_NOTE}`,
+    description: `Search tasks, notes, projects, tags and file names by text — the same five kinds the app's "search everywhere" palette finds. Titles and names match with Turkish-aware folding (ışık ≈ isik); note/task bodies match too. A file result is metadata only (name, type, what it hangs off) — never its contents or a link. ${DATA_NOTE}`,
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
@@ -408,15 +411,15 @@ export const MCP_TOOLS = [
         query: { type: 'string', minLength: 1, maxLength: 200 },
         types: {
           type: 'array',
-          maxItems: 3,
-          items: { enum: ['task', 'note', 'project'] },
+          maxItems: 5,
+          items: { enum: SEARCH_TYPES },
         },
         limit: { type: 'integer', minimum: 1, maximum: 20 },
       },
     },
     async handler(app, auth, args) {
       const limit = args.limit ?? 10;
-      const wanted = new Set(args.types ?? ['task', 'note', 'project']);
+      const wanted = new Set(args.types ?? SEARCH_TYPES);
       const query = foldSearchText(args.query);
       const hits = new Map(); // `${type}:${id}` → {tier, entry}
 
@@ -510,6 +513,40 @@ export const MCP_TOOLS = [
             id: row.id,
             title: row.name,
             snippet: snippet(row.description, args.query),
+          });
+        }
+      }
+
+      // OPH-374: tags and file names — the palette's last two groups (rule 12).
+      // Names only, tier 0 on a prefix and 1 otherwise, like the titles above.
+      if (wanted.has('tag')) {
+        for (const row of await listTags(app, auth.workspaceId)) {
+          const folded = foldSearchText(row.name ?? '');
+          if (!folded.includes(query)) continue;
+          consider('tag', row.id, folded.startsWith(query) ? 0 : 1, {
+            type: 'tag',
+            id: row.id,
+            title: row.name,
+          });
+        }
+      }
+      if (wanted.has('file')) {
+        // Metadata only: no URL and no bytes ever leave through MCP (AI.md §7).
+        const rows = await app
+          .db('files')
+          .where({ workspace_id: auth.workspaceId, status: 'ready' })
+          .whereNull('deleted_at')
+          .select('id', 'name', 'mime', 'target_type', 'target_id');
+        for (const row of rows) {
+          const folded = foldSearchText(row.name ?? '');
+          if (!folded.includes(query)) continue;
+          consider('file', row.id, folded.startsWith(query) ? 0 : 1, {
+            type: 'file',
+            id: row.id,
+            title: row.name,
+            mime: row.mime,
+            targetType: row.target_type,
+            targetId: row.target_id,
           });
         }
       }

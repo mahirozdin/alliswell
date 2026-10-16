@@ -8,6 +8,7 @@ import 'package:alliswell/src/features/notes/data/note.dart';
 import 'package:alliswell/src/features/notes/markdown/markdown_forge_adapters.dart';
 import 'package:alliswell/src/features/notes/data/note_document.dart';
 import 'package:markdown_forge/markdown_forge.dart';
+import 'package:alliswell/src/search/ui/global_search_entry.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 /// OPH-250 — writing comfort on the Source surface (DESIGN §29 D17–D23).
@@ -297,8 +298,13 @@ void main() {
   });
 
   group('D18 — the command palette', () {
-    Future<void> openPalette(WidgetTester tester, NoteDocument doc) async {
-      await tester.pumpWidget(host(SourceMode(controller: doc.source)));
+    Future<void> openPalette(
+      WidgetTester tester,
+      NoteDocument doc, {
+      Widget Function(Widget child)? wrap,
+    }) async {
+      final page = host(SourceMode(controller: doc.source));
+      await tester.pumpWidget(wrap == null ? page : wrap(page));
       doc.source.selection = const TextSelection(
         baseOffset: 0,
         extentOffset: 5,
@@ -469,6 +475,32 @@ void main() {
 
       expect(find.byKey(const Key('md-palette-empty')), findsOneWidget);
       expect(find.byKey(const Key('md-palette-list')), findsNothing);
+    });
+
+    testWidgets('the global search shortcut at the app root does not take '
+        'the editor\'s Ctrl+K (OPH-374)', (tester) async {
+      tester.view.physicalSize = const Size(500, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+
+      // The root binding exactly as `AwGlobalSearchHost` mounts it: ABOVE
+      // the field, so the field's own handler meets the key first.
+      var globalOpened = 0;
+      final doc = docWith('hello');
+      await openPalette(
+        tester,
+        doc,
+        wrap: (child) => CallbackShortcuts(
+          bindings: {
+            for (final activator in globalSearchActivators())
+              activator: () => globalOpened++,
+          },
+          child: child,
+        ),
+      );
+
+      expect(find.byKey(const Key('md-palette-field')), findsOneWidget);
+      expect(globalOpened, 0);
     });
   });
 }

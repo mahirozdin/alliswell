@@ -9,6 +9,11 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Search everywhere: ⌘K / Ctrl+K, or the search button.** One box finds tasks, projects,
+  notes, tags and file names, offline, grouped by kind; arrows and Enter open a result, and an
+  empty box lists what you opened last. On phones the search button sits beside the bottom bar.
+  A tag opens Home filtered by it; "Create task" takes the text you typed. Also in the MCP
+  `search` tool (tags and file names).
 - **Quick add understands what you type, offline, in Turkish and English.** "Yarın 9'da kira
   #ev" or "pay rent tomorrow 9am #home" becomes a task due tomorrow at 9, tagged, with no AI key.
   Dates, times, weekdays, repeats ("her pazartesi", "every weekday"), `+Project`, `p1`..`p4`,

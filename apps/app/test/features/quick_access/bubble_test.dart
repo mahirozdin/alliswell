@@ -457,8 +457,15 @@ void main() {
     testWidgets('a place the person chose is theirs: the page is not '
         'shortened for a button that is not in the dock', (tester) async {
       await pumpPhone(tester, storedPosition: 'right:0.300');
-      final bar = tester.getRect(find.byType(GlassSurface).first);
-      expect(bar.right, 390 - AwSpace.x3, reason: 'the bar is whole');
+      // The bar's row — capsule, then the search button (OPH-374) — runs
+      // to the screen's own margin.
+      final row = tester.getRect(
+        find.ancestor(
+          of: find.byKey(const Key('global-search-orb')),
+          matching: find.byType(GlassSurface),
+        ),
+      );
+      expect(row.right, 390 - AwSpace.x3, reason: 'the bar is whole');
       await openSettings(tester);
       expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
       expect(tester.getRect(bubble).top, lessThan(844 / 2));

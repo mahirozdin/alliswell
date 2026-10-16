@@ -45,11 +45,11 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
 - Project documents (block editor) — Phase 5 detail tasks to be expanded when reached.
-- Timeline view; smart lists/filters DSL; global single-screen search (per-screen search
-  shipped in Epic 15; kanban shipped in Epic 15 — OPH-168).
+- Timeline view; smart lists/filters DSL (kanban shipped in Epic 15 — OPH-168).
 - Search v2: FTS5 external-content upgrade (bm25 ranking — ADR-0013 upgrade path),
   server-side fold columns for a first-class API `?q=` (the server's FULLTEXT still folds `I`
-  but not `ı` — OPH-167), file-name search in Dosyalar (OPH-170).
+  but not `ı` — OPH-167), file-name search inside Dosyalar (OPH-170; the global palette
+  already finds files by name — OPH-374).
 - Task description v2: OG link previews (needs a server-side unfurl proxy — OPH-164, OPH-201),
   rich formatting.
 - Tag management v2: merge tags, usage counts, tag colors in board/list filters.

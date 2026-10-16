@@ -45,6 +45,38 @@
     "fileName": "Ad",
     "fileSize": "Boyut"
   },
+  "search": {
+    "global": {
+      "open": "Her yerde ara",
+      "openWithShortcut": "Her yerde ara ({shortcut})",
+      "hint": "Görev, proje, not, etiket ve dosya ara…",
+      "recent": "Son açılanlar",
+      "emptyHint": "Görevlerini, projelerini, notlarını, etiketlerini ve dosyalarını aramak için yaz — internetsiz de çalışır.",
+      "shortcutTip": "İpucu: {shortcut} bunu her yerden açar.",
+      "noResultsTitle": "Sonuç yok",
+      "noResultsBody": "“{query}” ile eşleşen bir şey yok.",
+      "createTask": "“{title}” görevini oluştur",
+      "resultCount": "{count} sonuç",
+      "groupCount": "{total} sonuçtan {shown}",
+      "groups": {
+        "tasks": "Görevler",
+        "projects": "Projeler",
+        "notes": "Notlar",
+        "tags": "Etiketler",
+        "files": "Dosyalar"
+      },
+      "kinds": {
+        "task": "Görev",
+        "project": "Proje",
+        "note": "Not",
+        "tag": "Etiket",
+        "file": "Dosya"
+      },
+      "completed": "Tamamlandı",
+      "archived": "Arşivde",
+      "tagHint": "Ana sayfayı bu etiketle süzer"
+    }
+  },
   "color": {
     "recent": "Son kullanılanlar",
     "more": "Daha fazla renk",

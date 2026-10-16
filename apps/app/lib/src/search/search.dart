@@ -157,6 +157,36 @@ class SearchService {
   Future<List<SearchHit>> searchKbArticles(String workspaceId, String query) =>
       _run(_kbArticles, workspaceId, query);
 
+  /// OPH-374 — notes for the global palette: title (tier 0) and the body's
+  /// plain text (tier 2). Archived notes are out: the notes list hides them
+  /// behind their own filter, and "search everywhere" finding what the person
+  /// put away would be a second, unannounced way of un-archiving. README
+  /// notes stay in — they are notes somebody wrote and will look for by name.
+  ///
+  /// The Notes screen keeps its own in-Dart filter (`NoteStore.watchList`):
+  /// it combines with the screen's filter chips and sort, which this does not.
+  Future<List<SearchHit>> searchNotes(String workspaceId, String query) =>
+      _run(_notes, workspaceId, query, extraWhere: 'n.is_archived = 0');
+
+  /// OPH-374 — tags by name. One tier: a tag IS its name.
+  Future<List<SearchHit>> searchTags(String workspaceId, String query) =>
+      _run(_tags, workspaceId, query);
+
+  /// OPH-374 — files by name (the v39 `name_fold` shadow, ADR-0055).
+  ///
+  /// Only the four core target types: a service-desk reply's attachment
+  /// (`ticket_comment`, EE) belongs to a request the desk reaches through its
+  /// own queue, and a file actions sheet opened on it out of context would
+  /// offer "go to source" with no source this screen can show.
+  Future<List<SearchHit>> searchFiles(String workspaceId, String query) => _run(
+    _files,
+    workspaceId,
+    query,
+    extraWhere:
+        "f.status = 'ready' AND "
+        "f.target_type IN ('workspace', 'project', 'task', 'note')",
+  );
+
   /// One query for every entry in the registry, so the core domains and an
   /// extension's read the same SQL shape and the same fold.
   Future<List<SearchHit>> _run(
@@ -172,10 +202,19 @@ class SearchService {
     // CASE variables bind BEFORE the WHERE ones — order of appearance in SQL.
     final caseVars = <Variable>[];
     final tiers = entity.tiers.keys.toList()..sort();
-    final cases = <String>[
-      for (final tier in tiers.take(tiers.length - 1))
-        'WHEN ${_allWords(entity.tiers[tier]!, words, caseVars)} THEN $tier',
-    ];
+    // OPH-374: a single-tier entity (a tag, a file — a name and nothing else)
+    // has no CASE to write: `CASE ELSE 0 END` is not SQL. Every row that
+    // matched at all matched in that one field, so the tier is a constant.
+    final String tierSql;
+    if (tiers.length == 1) {
+      tierSql = '${tiers.single}';
+    } else {
+      final cases = <String>[
+        for (final tier in tiers.take(tiers.length - 1))
+          'WHEN ${_allWords(entity.tiers[tier]!, words, caseVars)} THEN $tier',
+      ];
+      tierSql = 'CASE ${cases.join(' ')} ELSE ${tiers.last} END';
+    }
     final whereVars = <Variable>[
       Variable.withString(workspaceId),
       ...extraVars,
@@ -186,7 +225,7 @@ class SearchService {
         .customSelect(
           '''
 SELECT ${entity.alias}.id AS id,
-       CASE ${cases.join(' ')} ELSE ${tiers.last} END AS tier
+       $tierSql AS tier
 FROM ${entity.table} ${entity.alias}
 ${entity.join}
 WHERE ${entity.alias}.workspace_id = ?${extraWhere.isEmpty ? '' : ' AND $extraWhere'} AND $match
@@ -228,8 +267,8 @@ int? ticketNumberQuery(String query) {
 /// An entry is (table, alias, tier → folded expression), plus the two things
 /// that genuinely differ per entity: an extra JOIN for text that lives in
 /// another table, and the tie-break order inside a tier. The HIGHEST tier is
-/// the `ELSE` — every row that matched at all lands there — so an entry needs
-/// at least two.
+/// the `ELSE` — every row that matched at all lands there. An entry with ONE
+/// tier (OPH-374: tags, files) gets that tier as a constant instead.
 class SearchEntity {
   const SearchEntity({
     required this.table,
@@ -284,6 +323,31 @@ const _projects = SearchEntity(
   alias: 'p',
   tiers: {0: "IFNULL(p.name_fold, '')", 2: "IFNULL(p.description_fold, '')"},
   order: 'p.sort_order ASC, p.id DESC',
+);
+
+/// OPH-374. Newest edit first inside a tier: the note somebody is looking
+/// for from anywhere is usually the one they were just working in.
+const _notes = SearchEntity(
+  table: 'notes',
+  alias: 'n',
+  tiers: {0: "IFNULL(n.title_fold, '')", 2: "IFNULL(n.body_fold, '')"},
+  order: 'n.updated_at IS NULL, n.updated_at DESC, n.id DESC',
+);
+
+/// OPH-374. Alphabetical, the order every tag picker already uses.
+const _tags = SearchEntity(
+  table: 'tags',
+  alias: 'tg',
+  tiers: {0: "IFNULL(tg.name_fold, '')"},
+  order: 'tg.name ASC',
+);
+
+/// OPH-374. Newest upload first — the order of the Dosyalar screen.
+const _files = SearchEntity(
+  table: 'file_rows',
+  alias: 'f',
+  tiers: {0: "IFNULL(f.name_fold, '')"},
+  order: 'f.created_at IS NULL, f.created_at DESC, f.id DESC',
 );
 
 /// EE-169. The replies join the way tags do — one concatenated blob per

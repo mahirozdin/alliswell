@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Her yerden arama (2026-10-16)
+
+- OPH-374 / ADR-0055 — **Web, Chrome + Firefox (Windows/Linux, Ctrl+K) ve Safari + Chrome (Mac, ⌘K)**: Ana sayfada, bir görev detayında ve Ayarlar'da kısayola bas → AllisWell paleti açılıyor, tarayıcının adres/arama çubuğu ODAKLANMIYOR. "fatura" yaz → Görevler/Projeler/Dosyalar grupları; ↓ ↓ Enter → ikinci satır açılıyor; Esc kapatıyor; açıkken tekrar kısayol kapatıyor. Bir notun kaynak modunda imleç metindeyken ⌘K/Ctrl+K → notun KENDİ komut paleti açılıyor, arama değil. **macOS uygulaması** (⌘K) ve **Windows/Linux masaüstü** (Ctrl+K) aynı turu geçiyor; macOS'ta bir metin alanında Ctrl+K satır sonunu silmeye devam ediyor. **iPad, donanım klavyesi** ⌘K ve **Android tablet, klavye** Ctrl+K paleti açıyor. **iPhone ve Android telefon, 390 px**: arama düğmesi cam alt çubuğun sağında, açık ve koyu temada; Hızlı Erişim balonu sola ve sağa yerleşikken ve + düğmesi görünürken çakışma yok; dokununca tam ekran palet klavye açık geliyor, sonuç dokunuşla açılıyor. **VoiceOver (iOS/macOS) ve TalkBack**: alan, grup başlıkları ("Görevler"), sonuç sayısı ve seçili satır okunuyor. **Sahip incelemesi**: telefonda çubuk artık çoğunlukla yalnız seçili sekmenin etiketini yazıyor (arama düğmesi bir sekme genişliği alıyor); tercih uygulama çubuğunda altıncı ikonsa ADR-0055'i değiştir.
+
 ## Doğal dille hızlı ekleme (2026-10-16)
 
 - OPH-373 / ADR-0054 — **Android telefon, Gboard Türkçe** ve **iPhone, Türkçe klavye**: Ana sayfa hızlı ekleme çubuğuna "Yarın 9'da kira #ev" harf harf yaz (otomatik düzeltme ve öneri dokunuşları dahil). Beklenen: yazarken harf kaybolmuyor/çiftlenmiyor, sözcük tamamlanınca vurgu geliyor, çubuğun altında Bitiş ve #ev çipleri çıkıyor, Enter tarih sorusu açmadan "kira" görevini yarın 09:00, #ev etiketli oluşturuyor. Bir çipin ✕'ine dokun → sözcükleri başlığa dönüyor. **iPhone**: boş çubuktaki ?'e dokun → yardım sayfası cam alt çubuğun ÜSTÜNDE açılıyor, açık ve koyu temada okunuyor. Masaüstünde (Windows/Linux/web) Enter zinciri bozulmuyor: yaz → Enter → yaz → Enter.

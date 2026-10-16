@@ -259,6 +259,15 @@ exactly why folding is app-owned) and it holds
 FULLTEXT indexes (`ft_notes_plain_text` in use; `ft_tasks_title_description` gains a task
 `?q=` param in Epic 15) — for API consumers and future web-scale needs, not the app's path.
 
+**Search everywhere (OPH-374, ADR-0055).** One palette (`lib/src/search/ui/`) over tasks,
+projects, notes, tags and file names, opened by ⌘K/Ctrl+K (bound at the app root in
+`AwGlobalSearchHost`, so a focused field's own ⌘K wins), the rail's leading entry or the phone's
+search button beside the bottom bar. It reads the same `SearchService` registry: notes, tags and
+files joined it as entities (a single-tier entity selects its tier as a constant), and replica
+v39 adds `file_rows.name_fold` (backfilled in the step, written by `fileCompanion`).
+`globalSearchProvider` groups the hits; recents are person-bound `localKv` rows recorded from
+route visits. The MCP `search` tool covers the same five kinds.
+
 ## 6d. AI (Epic 20 — MCP connector + BYOK, ADR-0019/0022/0023)
 
 Two tracks, one rule: **the model gets no write tools; every write goes through the confirm

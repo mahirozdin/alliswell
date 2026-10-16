@@ -65,16 +65,22 @@ QuickDestination quickDestinationFor(QuickAccessRow row) {
   // Broken dominates kind: a missing target has nowhere to go, archived does
   // (archives are reversible — the detail screen shows its own banner).
   if (row.isBroken || link.targetId == null) return QuickBroken(row.id);
-  final id = link.targetId!;
-  return switch (link.kind) {
-    QuickKind.project => QuickGo('/projects/$id'),
-    QuickKind.note => QuickGo('/notes/$id'),
-    QuickKind.folder => QuickGo('/files/folder/$id'),
-    QuickKind.task => QuickPush('/tasks/$id'),
-    QuickKind.file => QuickFileSheet(id),
-    QuickKind.url => QuickBroken(row.id), // unreachable, kept exhaustive
-  };
+  return quickDestinationForTarget(link.kind, link.targetId!);
 }
+
+/// PURE — where an entity of [kind] opens. Shared with the global search
+/// palette (OPH-374), so a result and a shortcut to the same thing can never
+/// open in two different places.
+QuickDestination quickDestinationForTarget(QuickKind kind, String id) =>
+    switch (kind) {
+      QuickKind.project => QuickGo('/projects/$id'),
+      QuickKind.note => QuickGo('/notes/$id'),
+      QuickKind.folder => QuickGo('/files/folder/$id'),
+      QuickKind.task => QuickPush('/tasks/$id'),
+      QuickKind.file => QuickFileSheet(id),
+      // A link has no target id; callers resolve it before reaching here.
+      QuickKind.url => QuickBroken(id),
+    };
 
 /// The one impure step: performs [destination] and, for a broken row, offers
 /// to remove it instead of navigating nowhere.

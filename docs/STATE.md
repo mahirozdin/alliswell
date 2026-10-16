@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-373: hızlı ekleme çubukları Türkçe+İngilizce doğal dili internetsiz okur (tarih/saat/tekrar/#etiket/+proje/öncelik, bitiş vs Ne zaman); çipler + vurgu + ✕ geri alma + yardım sayfası (ADR-0054).
+**Last updated:** 2026-10-16 — OPH-374: her yerden arama — ⌘K/Ctrl+K paleti (ray girişi, telefonda çubuğun yanında arama düğmesi) görev/proje/not/etiket/dosya adını replikadan internetsiz bulur; son açılanlar; MCP `search` etiket+dosya (ADR-0055).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-373: saf Dart ayrıştırıcı `core/quick_parse.dart` (OPH-376 başsız kullanır) + `quick_add_apply.dart`; düz tarih = bitiş, `başla`/`start` = Ne zaman, `son`/`due`/`'e kadar` açık bitiş; `+Proje` yalnız var olana, `p1`=yüksek (içe aktarıcı eşlemesi); tekrar ADR-0020 kuralına, ilk oluşum şimdiden sonra; Ana sayfa metin tarih verince tarih sorusunu atlar (DESIGN §26 C3 değişti, §39); sözleşme `test/fixtures/quick_parse_cases.json`; MCP/REST değişmedi (alanlar zaten var). |
+| Last completed           | OPH-374: arama kaydına `searchNotes/Tags/Files` (tek katmanlı varlık CASE'siz), replika v39 `file_rows.name_fold` (geri doldurmalı); `globalSearchProvider` + `search_recents` (kişiye bağlı, rota ziyaretinden); palet `search/ui/` (kök kısayol, ray `leading`, telefon düğmesi; çubuk etiket kuralı genişliğe göre); etiket sonucu Ana sayfayı süzer (pano→liste); MCP `search` tag/file; API'ye uç nokta yok (gerekçe ADR-0055 §8); DESIGN §40. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -116,6 +116,10 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   yok, vaat edilmez); sunucu ayrıştırır; alt görev → kontrol listesi, bölüm/sütun → etiket, p1 →
   yüksek; içe aktarılan görev asla acil alarm değil; tamamlananlar isteğe bağlı; tekrar içe aktarma
   atlar, güncellemez, silineni geri getirmez; MCP'ye araç yok.
+- **Her yerden arama (2026-10-16, ADR-0055):** ⌘K (Apple) / Ctrl+K, ikisi birden asla; telefonda
+  giriş alt çubuğun yanındaki yuvarlak düğme, uygulama çubuğuna ikon yok (bu yüzden telefonda
+  çoğunlukla yalnız seçili sekmenin etiketi yazılır); tamamlanan görev bulunur, iptal bulunmaz;
+  arşivli not bulunmaz; masa eki dosyası bulunmaz; etiket sonucu Ana sayfayı süzer.
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

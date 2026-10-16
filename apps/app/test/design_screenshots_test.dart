@@ -24,6 +24,8 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
+import 'package:alliswell/src/search/search_recents.dart';
+import 'package:alliswell/src/search/ui/global_search_entry.dart';
 import 'package:alliswell/src/sections.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/widgets/glass.dart';
@@ -109,8 +111,11 @@ class _ScreenshotApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (context, child) =>
-          AuroraBackground(child: child ?? const SizedBox.shrink()),
+      // OPH-374: the palette's host, as app.dart mounts it — the rail and
+      // phone entries only ask it to open.
+      builder: (context, child) => AuroraBackground(
+        child: AwGlobalSearchHost(child: child ?? const SizedBox.shrink()),
+      ),
       routerConfig: router,
     );
   }
@@ -395,6 +400,8 @@ Future<void> _shoot(
   // four of the five committed store goldens ended up byte-identical to their
   // board twin. Same idiom the feature tests use.
   await localKv.remove('alliswell_home_view');
+  // OPH-374: the palette's recents are a process-wide localKv key too.
+  await localKv.remove(kSearchRecentsKey);
   debugDisableShadows = false;
   try {
     await tester.pumpWidget(await _signedInScreenshotApp(seed()));
@@ -665,6 +672,78 @@ void main() {
           await t.pumpAndSettle();
           await t.tap(help);
         },
+      );
+    });
+
+    // OPH-374 (DESIGN §40 P7): search everywhere — the palette with an
+    // active row, the recents, the phone's full-screen palette and the
+    // search button beside the bar.
+    testWidgets('desktop search palette — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(1280, 800),
+        brightness: brightness,
+        name: 'desktop_search_palette_$suffix',
+        navigate: (t) async {
+          await t.tap(find.byKey(const Key('global-search-rail')));
+          await t.pumpAndSettle();
+          await t.enterText(find.byKey(const Key('global-search-field')), 're');
+          await t.pump(const Duration(milliseconds: 400));
+          await t.pumpAndSettle();
+          await t.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        },
+      );
+    });
+
+    testWidgets('desktop search recent — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(1280, 800),
+        brightness: brightness,
+        name: 'desktop_search_recent_$suffix',
+        navigate: (t) async {
+          await t.tap(find.text('Review contrast report').first);
+          await t.pumpAndSettle();
+          await t.pageBack();
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(const Key('global-search-rail')));
+        },
+      );
+    });
+
+    testWidgets('phone search palette — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_search_palette_$suffix',
+        navigate: (t) async {
+          await t.tap(find.byKey(const Key('global-search-orb')));
+          await t.pumpAndSettle();
+          await t.enterText(find.byKey(const Key('global-search-field')), 'pr');
+          await t.pump(const Duration(milliseconds: 400));
+          await t.pumpAndSettle();
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+      );
+    });
+
+    testWidgets('phone search orb — $suffix', skip: !_enabled, (tester) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_search_orb_$suffix',
       );
     });
 

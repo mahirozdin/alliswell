@@ -46,6 +46,38 @@
     "fileName": "Name",
     "fileSize": "Size"
   },
+  "search": {
+    "global": {
+      "open": "Search everywhere",
+      "openWithShortcut": "Search everywhere ({shortcut})",
+      "hint": "Search tasks, projects, notes, tags and files…",
+      "recent": "Recent",
+      "emptyHint": "Type to search your tasks, projects, notes, tags and files — it works offline too.",
+      "shortcutTip": "Tip: {shortcut} opens this from anywhere.",
+      "noResultsTitle": "No results",
+      "noResultsBody": "Nothing matches “{query}”.",
+      "createTask": "Create task “{title}”",
+      "resultCount": "{count} results",
+      "groupCount": "{shown} of {total}",
+      "groups": {
+        "tasks": "Tasks",
+        "projects": "Projects",
+        "notes": "Notes",
+        "tags": "Tags",
+        "files": "Files"
+      },
+      "kinds": {
+        "task": "Task",
+        "project": "Project",
+        "note": "Note",
+        "tag": "Tag",
+        "file": "File"
+      },
+      "completed": "Completed",
+      "archived": "Archived",
+      "tagHint": "Shows Home filtered by this tag"
+    }
+  },
   "color": {
     "recent": "Recently used",
     "more": "More colors",

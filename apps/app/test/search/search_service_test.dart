@@ -320,6 +320,93 @@ void main() {
     expect((await service.searchTickets(ws, 'yorum')).single.id, 'K9');
   });
 
+  // ── OPH-374: notes, tags and files join the registry ──────────────────
+
+  Future<void> applyNote(
+    String id,
+    String title, {
+    String? plainText,
+    bool archived = false,
+    String workspaceId = ws,
+    String updatedAt = '2026-10-01T10:00:00.000Z',
+  }) => db
+      .into(db.notes)
+      .insertOnConflictUpdate(
+        noteCompanion({
+          'id': id,
+          'workspaceId': workspaceId,
+          'title': title,
+          'plainText': plainText,
+          'isArchived': archived,
+          'updatedAt': updatedAt,
+        }),
+      );
+
+  Future<void> applyFile(
+    String id,
+    String name, {
+    String targetType = 'workspace',
+    String status = 'ready',
+    String workspaceId = ws,
+  }) => db
+      .into(db.fileRows)
+      .insertOnConflictUpdate(
+        fileCompanion({
+          'id': id,
+          'workspaceId': workspaceId,
+          'targetType': targetType,
+          'targetId': 'X1',
+          'name': name,
+          'mime': 'application/pdf',
+          'sizeBytes': 10,
+          'status': status,
+        }),
+      );
+
+  test(
+    'notes: title (0) over body (2), archived and other workspaces out',
+    () async {
+      await applyNote('N1', 'Elektrik', plainText: 'ışık faturası burada');
+      await applyNote('N2', 'Işık notu');
+      await applyNote('N3', 'Işık arşivi', archived: true);
+      await applyNote('N4', 'Işık başka alanda', workspaceId: 'W2');
+
+      final hits = await service.searchNotes(ws, 'isik');
+      expect(hits.map((h) => h.id), ['N2', 'N1']);
+      expect(hits.map((h) => h.tier), [0, 2]);
+    },
+  );
+
+  test('tags: one tier, no CASE — the single-tier SQL runs', () async {
+    await applyTag('G1', 'Çay');
+    await applyTag('G2', 'Kahve');
+
+    final hits = await service.searchTags(ws, 'cay');
+    expect(hits.single.id, 'G1');
+    expect(hits.single.tier, 0);
+    expect(await service.searchTags(ws, 'yok'), isEmpty);
+  });
+
+  test(
+    'files: the applier writes the name fold; desk and unready rows are out',
+    () async {
+      await applyFile('F1', 'Fatura_Ekim.PDF');
+      await applyFile('F2', 'Fatura cevabı.pdf', targetType: 'ticket_comment');
+      await applyFile('F3', 'Fatura taslak.pdf', status: 'uploading');
+      await applyFile('F4', 'Fatura başka.pdf', workspaceId: 'W2');
+      await applyFile('F5', 'Proje fatura.pdf', targetType: 'task');
+
+      final raw = await db
+          .customSelect("SELECT name_fold FROM file_rows WHERE id = 'F1'")
+          .getSingle();
+      expect(raw.data['name_fold'], 'fatura_ekim.pdf');
+
+      final hits = await service.searchFiles(ws, 'fatura');
+      expect(hits.map((h) => h.id).toSet(), {'F1', 'F5'});
+      expect(hits.every((h) => h.tier == 0), isTrue);
+    },
+  );
+
   test('searchSnippet windows around the folded match', () {
     const body =
         'Uzun bir açıklamanın ortasında çay servisi geçiyor ve devamında '

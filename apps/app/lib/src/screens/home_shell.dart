@@ -36,6 +36,7 @@ import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
+import '../search/ui/global_search_entry.dart';
 import '../theme/tokens.dart';
 import '../widgets/document_surface.dart';
 import '../widgets/fab_clearance.dart';
@@ -309,6 +310,12 @@ class HomeShell extends ConsumerWidget {
                             _goVisible(visibleSections, i),
                         minWidth: kAwRailMinWidth,
                         groupAlignment: -0.9,
+                        // OPH-374: search everywhere heads the rail — the
+                        // first thing on the left, as in every desktop app
+                        // with a palette (DESIGN §40 P1).
+                        leading: AwGlobalSearchRailEntry(
+                          extended: extendedRail,
+                        ),
                         // OPH-199: the shortcut section sits right under the
                         // destinations. `scrollable` is not optional — a full
                         // rail on a short window would otherwise overflow.
@@ -394,49 +401,67 @@ class HomeShell extends ConsumerWidget {
             child: SafeArea(
               top: false,
               minimum: const EdgeInsets.only(bottom: AwSpace.x3),
-              child: GlassSurface(
-                floating: true,
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AwRadius.pill),
-                ),
-                // OPH-359 (UI-AUDIT #58): the capsule's pill corners clipped
-                // the outermost labels ("Ana Sayfa", "Talepler"), so the bar
-                // sits inside the curve; and six labels do not fit a phone,
-                // so past five only the selected one is written — the rest
-                // keep their icon and tooltip.
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
-                  child: NavigationBar(
-                    // …and the docked Quick Access bubble (OPH-362) takes a
-                    // tab's width of the row, so past four the same applies.
-                    labelBehavior:
-                        visibleSections.length >
-                            (AwBubbleDock.maybeOf(context) == null ? 5 : 4)
-                        ? NavigationDestinationLabelBehavior.onlyShowSelected
-                        : NavigationDestinationLabelBehavior.alwaysShow,
-                    selectedIndex: destinationIndexFor(
-                      visibleSections,
-                      navigationShell.currentIndex,
-                    ).clamp(0, visibleSections.length - 1),
-                    onDestinationSelected: (i) =>
-                        _goVisible(visibleSections, i),
-                    destinations: [
-                      for (final section in visibleSections)
-                        NavigationDestination(
-                          icon: KeyedSubtree(
-                            key: _navKeys[section]!.icon,
-                            child: Icon(section.icon),
-                          ),
-                          selectedIcon: KeyedSubtree(
-                            key: _navKeys[section]!.selected,
-                            child: Icon(section.selectedIcon),
-                          ),
-                          label: section.title,
-                          tooltip: section.title,
+              // OPH-374: the capsule shares its row with the search button
+              // (DESIGN §40 P1) — glass beside glass, one row of chrome.
+              child: Row(
+                children: [
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, bar) => GlassSurface(
+                        floating: true,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(AwRadius.pill),
                         ),
-                    ],
+                        // OPH-359 (UI-AUDIT #58): the capsule's pill corners
+                        // clipped the outermost labels ("Ana Sayfa",
+                        // "Talepler"), so the bar sits inside the curve.
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AwSpace.x3,
+                          ),
+                          child: NavigationBar(
+                            // Every label is written while each tab has room
+                            // for one; below that only the selected one is,
+                            // and the rest keep their icon and tooltip. Width
+                            // rather than count since OPH-374: the search
+                            // button takes a tab's width of the row, as the
+                            // docked Quick Access bubble does (OPH-362).
+                            labelBehavior:
+                                (bar.maxWidth - 2 * AwSpace.x3) /
+                                        visibleSections.length >=
+                                    kAwBarLabelSlot
+                                ? NavigationDestinationLabelBehavior.alwaysShow
+                                : NavigationDestinationLabelBehavior
+                                      .onlyShowSelected,
+                            selectedIndex: destinationIndexFor(
+                              visibleSections,
+                              navigationShell.currentIndex,
+                            ).clamp(0, visibleSections.length - 1),
+                            onDestinationSelected: (i) =>
+                                _goVisible(visibleSections, i),
+                            destinations: [
+                              for (final section in visibleSections)
+                                NavigationDestination(
+                                  icon: KeyedSubtree(
+                                    key: _navKeys[section]!.icon,
+                                    child: Icon(section.icon),
+                                  ),
+                                  selectedIcon: KeyedSubtree(
+                                    key: _navKeys[section]!.selected,
+                                    child: Icon(section.selectedIcon),
+                                  ),
+                                  label: section.title,
+                                  tooltip: section.title,
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: AwSpace.x2),
+                  const AwGlobalSearchOrb(),
+                ],
               ),
             ),
           ),
@@ -596,6 +621,10 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 }
 
 const _shareStatusBudget = Duration(seconds: 2);
+
+/// The narrowest tab that still writes its label (OPH-374): "Ana Sayfa" and
+/// "Projeler" at the bar's label size fit 64 px; below it they ellipsize.
+const double kAwBarLabelSlot = 64;
 
 /// The phone bar's outer margins: [AwSpace.x3] each side, and on the side the
 /// Quick Access bubble docks, the bubble's lane instead (OPH-362).

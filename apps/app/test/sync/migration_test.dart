@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/sync/db/connection_native.dart';
+import 'package:alliswell/src/search/search.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
 
@@ -52,6 +53,10 @@ void main() {
     // v37 (EE-296): who made a task. `tickets` and `task_assignments` go
     // whole below, and their v37 column and index go with them.
     await db.customStatement('ALTER TABLE tasks DROP COLUMN created_by');
+    // v39 (OPH-374): the file-name fold. `file_rows` is kept below (only its
+    // v7 column goes), so a v1 open never reaches the guarded v39 ALTER —
+    // the v38 fixture is the one that proves it.
+    await db.customStatement('ALTER TABLE file_rows DROP COLUMN name_fold');
     // Children before parents: drift opens with foreign keys on.
     for (final drop in [
       'DROP TABLE ticket_drafts', // v32
@@ -398,7 +403,7 @@ void main() {
       await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 38);
+      expect(version.data['user_version'], 39);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -424,6 +429,7 @@ void main() {
   Future<void> seedV24Database() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     for (final drop in [
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       // v37 — an indexed column cannot be dropped, so the index goes first.
       'DROP INDEX idx_tickets_work_task',
@@ -540,7 +546,7 @@ void main() {
       expect(workIndexes, hasLength(2));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 38);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );
@@ -559,6 +565,7 @@ void main() {
     // none of it, and a fixture that kept a later column would have the step
     // that adds it fail the open (OPH-350 found this one).
     for (final drop in [
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       'DROP INDEX idx_tickets_work_task', // v37
       'ALTER TABLE tickets DROP COLUMN work_task_id', // v37
@@ -628,7 +635,7 @@ void main() {
       expect(filled.assetId, 'A1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 38);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );
@@ -639,6 +646,9 @@ void main() {
   /// with a real mapping — the one row whose loss would duplicate an event.
   Future<void> seedV37AppleDatabase() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement(
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
+    );
     await db.customStatement(
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
     );
@@ -684,12 +694,58 @@ void main() {
       );
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 38);
+      expect(version.data['user_version'], 39);
       await db.close();
 
       // A second open is a no-op, not a second ALTER.
       final again = AwDatabase(DatabaseConnection(NativeDatabase(file)));
       expect(await again.select(again.appleEventLinks).get(), hasLength(1));
+      await again.close();
+    },
+  );
+
+  /// A device holding attachments when the v39 step arrives (OPH-374). The
+  /// fixtures above either keep `file_rows` empty or recreate it, so only this
+  /// one meets the guarded ALTER and the backfill with a real row — the row a
+  /// person will type the name of into the global search.
+  Future<void> seedV38FileDatabase() async {
+    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement(
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
+    );
+    await db.customStatement('PRAGMA user_version = 38');
+    await db.customStatement('''
+      INSERT INTO file_rows (id, workspace_id, target_type, target_id, name,
+                             mime, size_bytes, status, revision)
+      VALUES ('F1', 'W1', 'workspace', 'W1', 'Işık Faturası.pdf',
+              'application/pdf', 2048, 'ready', 3)
+    ''');
+    await db.close();
+  }
+
+  test(
+    'v38 → latest: a file already on the device is folded for the global search',
+    () async {
+      await seedV38FileDatabase();
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+
+      // Named in SQL: a typed select reads a MISSING nullable column as null.
+      final raw = await db
+          .customSelect('SELECT name, name_fold FROM file_rows')
+          .getSingle();
+      expect(raw.data['name'], 'Işık Faturası.pdf');
+      expect(raw.data['name_fold'], 'isik faturasi.pdf');
+      // …which is what makes it findable by the palette's ASCII query.
+      final hits = await SearchService(db).searchFiles('W1', 'isik fatura');
+      expect(hits.single.id, 'F1');
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 39);
+      await db.close();
+
+      // A second open is a no-op, not a second ALTER.
+      final again = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+      expect(await again.select(again.fileRows).get(), hasLength(1));
       await again.close();
     },
   );
@@ -726,7 +782,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 38);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );
@@ -773,7 +829,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 38);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );

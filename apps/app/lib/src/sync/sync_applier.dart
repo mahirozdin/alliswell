@@ -387,6 +387,8 @@ FileRowsCompanion fileCompanion(Map<String, dynamic> d) =>
       status: (d['status'] as String?) ?? 'ready',
       uploadedBy: Value(d['uploadedBy'] as String?),
       folderId: Value(d['folderId'] as String?),
+      // OPH-374 (ADR-0055): the global search reads names through this fold.
+      nameFold: _foldValue(d['name']),
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),

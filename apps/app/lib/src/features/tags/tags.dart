@@ -116,6 +116,10 @@ class TagFilter extends Notifier<String?> {
   void toggle(String tagId) => state = state == tagId ? null : tagId;
 
   void clear() => state = null;
+
+  /// Filter by [tagId] whatever was set before — the global search's tag
+  /// result (OPH-374) is "show me this tag", never a toggle that could clear.
+  void select(String tagId) => state = tagId;
 }
 
 final tagFilterProvider = NotifierProvider<TagFilter, String?>(TagFilter.new);

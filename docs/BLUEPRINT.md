@@ -944,7 +944,8 @@ _(Revize 2026-07-20, feedback round 8 — OPH-162/170: **Calendar sekmesi KALDIR
 zaten ay ızgarası + kronolojik listeyi tek görünümde taşıyor, ikinci bir takvim ekranı ölü
 ağırlıktı. Yerine **Files (Dosyalar)** geldi: workspace'in tüm dosyalarını gösteren global
 dosya yöneticisi, §12.12. "Search" ayrı bir sekme DEĞİLDİR — arama her içerik ekranının kendi
-gövdesinde yaşar (§12.10); tek global arama ekranı v2 parking-lot'ta durur.)_
+gövdesinde yaşar (§12.10); her yerden arama bir sekme değil, ⌘K/Ctrl+K paleti olarak geldi —
+DESIGN §40, ADR-0055.)_
 
 _(Revize 2026-07-14, feedback round 1: Today ve Upcoming ayrı sekmeler olmaktan çıktı —
 Home her şeyin göründüğü tek kronolojik görünüm.)_

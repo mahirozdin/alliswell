@@ -5,6 +5,7 @@ import '../features/ee/approvals_providers.dart';
 import '../features/ee/providers.dart';
 import '../features/ee/unit_scope_providers.dart';
 import '../features/workspaces/workspaces.dart';
+import '../search/search_recents.dart' show kSearchRecentsKey;
 import 'db/database.dart';
 import 'providers.dart' show kCreatedByRepullPrefix;
 import 'revocation.dart';
@@ -41,6 +42,7 @@ const List<String> kUserBoundKvPrefixes = [
   kEeMyUnitsCachePrefix,
   kCreatedByRepullPrefix,
   kReplicaOwnerKey,
+  kSearchRecentsKey,
 ];
 
 /// Writes that exist on this device and nowhere else: the outbox, plus what
