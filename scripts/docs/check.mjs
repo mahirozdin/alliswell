@@ -161,8 +161,8 @@ function docProblems() {
 // wrapped .md paragraph, a `'…' +` concatenated JS string) is not seen. Every
 // false claim found so far sat on one line. Escape hatch: `docs-check-ignore`.
 const APPLE_CLAIMS = [
-  // "two-way Google & Apple", "bidirectional sync with Apple", "two-way Apple"
-  /(two-way|2-way|bidirectional|both ways|both directions|two ways)\s+(sync\s+(with|to)\s+)?(Google(\s+Calendar)?\s*(&amp;|&|and|\/|,)\s*)?Apple/i,
+  // "two-way Google & Apple", "bidirectional sync with Apple", "both ways with Apple", "two-way Apple"
+  /(two-way|2-way|bidirectional|both ways|both directions|two ways)\s+((sync\s+)?(with|to)\s+)?(Google(\s+Calendar)?\s*(&amp;|&|and|\/|,)\s*)?Apple/i,
   // "Apple Calendar sync, two-way", "Apple calendars two ways", "Apple Takvim iki yönlü".
   // Calendar/Takvim is required: "Apple Reminders alternative · two-way Google…" is honest.
   /Apple\s+(Calendars?|Takvim)[^.;:,—·\n]{0,40}(two-way|two ways|both ways|both directions|bidirectional|iki yönlü|çift yönlü)/i,
@@ -170,6 +170,8 @@ const APPLE_CLAIMS = [
   /(iki|İki|çift|Çift) yönlü\s+Google\s+(ve|&amp;|&)\s+Apple/i,
   // "Google ve Apple Takvim ile gerçek iki yönlü", "Google and Apple calendars: two-way"
   /Google\s+(ve|and|&amp;|&)\s+Apple[^.;\n]{0,40}(two-way|both ways|iki yönlü|çift yönlü)/i,
+  // the same with Apple named first: "Apple ve Google Takvim ile iki yönlü", "Apple and Google, two-way"
+  /Apple\s+(ve|and|&amp;|&|\/)\s+Google[^.;\n]{0,40}(two-way|two ways|both ways|both directions|bidirectional|iki yönlü|çift yönlü)/i,
   // "true two-way calendar sync — in both directions, to two ecosystems", and
   // the README anchor that pointed at it (#…-two-way-calendar-sync-to-both-ecosystems)
   /two-way[^.\n]{0,60}(both|two)[\s-]ecosystems/i,
