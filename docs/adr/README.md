@@ -56,6 +56,7 @@ API contract change, security-relevant choice, deviation from BLUEPRINT.md.
 | [0046](0046-the-app-follows-a-team-address.md) | The app follows a team's address — an invitation's `server` is trusted only as a sibling of the server already in use, and moving to the team's address keeps the session | Accepted |
 | [0047](0047-oauth-client-id-metadata-documents.md) | The MCP authorization server accepts client ID metadata documents beside registration — an https `client_id` is fetched behind an SSRF fence, mapped to an ordinary client row, and shown with its host on the consent page | Accepted |
 | [0048](0048-docx-export-own-ooxml-writer.md) | Word export is our own OOXML writer, drawn with the PDF's style — `note_docx.dart` zips hand-written parts with `archive`; colours, sizes and margins live once in `note_print_style.dart` for both writers; exports stay client-side | Accepted |
+| [0049](0049-mcp-consent-social-sign-in-and-second-factor.md) | The MCP consent page offers Google / Apple through a server-side OIDC form_post redirect bound by a signed state + nonce and a pinned audience; it never creates an account, and both consent paths now ask for the second factor and run the sign-in policy | Accepted |
 
 > Rows 0024–0027 were missing until 2026-08-10 (OPH-242): four ADRs had landed
 > without an index line. 0028 was held as a **reserved** row while OPH-246 was

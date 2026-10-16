@@ -33,7 +33,9 @@ personal key instead: [API.md](API.md).
 2. Name it `AllisWell` and paste `https://api.alliswell.space/mcp`.
 3. Leave the advanced OAuth settings as they are and press **Add**, then **Connect**.
 4. AllisWell's sign-in page opens: log in with your AllisWell email and
-   password, pick a workspace if you have several, and approve.
+   password, or press **Continue with Google** / **Continue with Apple** if that
+   is how you sign in to the app. Enter your authenticator code if two-factor
+   authentication is on, pick a workspace if you have several, and approve.
 5. In a chat, open the tools menu and make sure AllisWell is switched on.
 
 ## Add it to Claude Team or Enterprise
@@ -79,7 +81,9 @@ HTTP with OAuth (Cursor, VS Code, the MCP Inspector) takes the same URL.
 | --- | --- |
 | *Couldn't register with AllisWell's sign-in service* | The URL is not the API's. Use `https://api.alliswell.space/mcp` (or your own `API_PUBLIC_URL` + `/mcp`), remove the connector and add it again. |
 | The sign-in page says *The client's metadata document could not be loaded* | The AI app's identity document was unreachable for a moment. Try again; if it persists, re-add the connector with *Register automatically*. |
-| *Email or password is wrong* | Use the email and password of your AllisWell account. The sign-in page asks for a password, so an account created only with Google or Apple sign-in cannot connect yet — it has no password, and setting one is not built. |
+| *Email or password is wrong* | Use the email and password of your AllisWell account. If you sign in to the app with Google or Apple, use **Continue with Google / Apple** instead — such an account has no password. |
+| *No AllisWell account uses this Google/Apple account yet* | The provider signed you in with an account AllisWell does not know — usually the wrong one in Google's account chooser. Pick the account you use in the app, or sign up in the app first; the sign-in page never creates an account. |
+| *That code is not right* | Two-factor authentication is on: enter the current code from your authenticator app, or one of your recovery codes (each works once). |
 | The connector is listed but has no tools | Open a new chat and switch AllisWell on in the tools menu. On Team/Enterprise, an Owner may have disabled it or some of its tools. |
 | Self-hosted: every request fails | `curl -i https://<your-api>/mcp` must answer **401** with a `www-authenticate: Bearer resource_metadata=…` header. HTML means the request reached a website, not the API; 404 means `API_PUBLIC_URL` is unset, is not https, or `MCP_ENABLED=false`. |
 
@@ -159,6 +163,13 @@ Deliberate limits, so nothing here surprises you:
 - **`MCP_ENABLED=false`** withdraws the connector entirely (every `/mcp` and
   `/oauth/*` route answers 404). It is **independent of `AI_ENABLED`** — the
   MCP track spends no model money and stores no provider keys.
+- **Continue with Google / Apple** appears on the sign-in page only when
+  `SIGN_IN_GOOGLE_WEB_CLIENT_ID` / `SIGN_IN_APPLE_SERVICE_ID` are set (Apple also
+  needs an https `API_PUBLIC_URL`). Register
+  **`<API_PUBLIC_URL>/oauth/authorize/callback`** as an authorized redirect URI on
+  the Google *Web application* client and as a Return URL on the Apple Services ID
+  (whose primary App ID must be your iOS app's). Accounts are never created from
+  that page ([ADR-0049](adr/0049-mcp-consent-social-sign-in-and-second-factor.md)).
 - One connection maps to **one workspace**; connect twice to reach two.
 - An extension installed on the server may add tools of its own and say which
   connections they are for. A connection is shown only the tools it is

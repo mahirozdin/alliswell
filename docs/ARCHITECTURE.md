@@ -254,7 +254,9 @@ FULLTEXT indexes (`ft_notes_plain_text` in use; `ft_tasks_title_description` gai
 Two tracks, one rule: **the model gets no write tools; every write goes through the confirm
 card / the local-first stores.** Track A is a **remote MCP server** (`/mcp`, hand-rolled
 Streamable HTTP — stateless POST-only JSON-RPC, ADR-0022) behind our **own OAuth 2.1 AS**
-(`/oauth/*`: PKCE, dynamic client registration, opaque rotating tokens with family revocation);
+(`/oauth/*`: PKCE, dynamic client registration, opaque rotating tokens with family revocation;
+its consent page signs in by password or a Google/Apple form_post round trip, then asks for the
+second factor — ADR-0049);
 its tools are an allowlist of **24** (ADR-0022 amendment): readers (`search`, `list_*`, `get_*`),
 the task write wave (`create_task`, `update_task`, `complete_task`, `reopen_task`, `snooze_task`,
 the checklist pair, `acknowledge_reminder`) and the note/project/tag writes (`create_note`,

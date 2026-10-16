@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-365: Apple Takvim "iki yönlü" iddiası her açık yüzeyde düzeltildi (Google iki yönlü, Apple tek yönlü ayna); `check:docs` iddiayı artık reddediyor.
+**Last updated:** 2026-10-16 — OPH-366: MCP onay sayfasında Google/Apple ile devam (form_post yönlendirmesi, imzalı state + nonce, sabit audience; hesap açmaz) ve iki onay yolunda da ikinci faktör + uzantı giriş politikası (ADR-0049).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-365: Apple Takvim iki yönlü iddiası düzeltildi — landing EN/TR + kurumsal sayfalar (hero, SEO, og, JSON-LD), README, COMPARISON, STORE-LISTING tanıtım metinleri, exact-alarm beyanı, web manifest, llms.txt; `check:docs`'a Apple takvim iddiası kapısı (K1 `docs` kapısı artık landing/web/i18n değişikliğinde de koşar). |
+| Last completed           | OPH-366: MCP onay sayfası Google/Apple girişi — `POST /oauth/authorize/{social,callback,continue}`, `db/identities.js` (ADR-0026 kural merdiveni `/auth/oauth` ile ortak), `verifyIdentityToken` `nonce` + `audience` seçenekleri; parola yolu artık TOTP + `signInRequirements` soruyor (güvenlik düzeltmesi); ADR-0049, MCP.md. Konsol adımları "Kullanıcıdan bekleyen" 8'de. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -40,10 +40,13 @@
 7. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
    `VITE_SALES_CAPTCHA_SITE_KEY`, sunucu yarısıyla birlikte (uzantının belgeleri); tek yarı her
    gönderimi reddeder.
-8. **Yalnız Google/Apple ile kayıtlı hesap MCP'ye bağlanamaz** (OPH-364'te ölçüldü): onay sayfası
-   e-posta + parola ister, bu hesapların parolası yok ve parola belirleme yolu yok
-   (`POST /auth/password` `AUTH_NO_PASSWORD` der). Karar sahibin: parola belirleme akışı mı, onay
-   sayfasında Google/Apple ile giriş mi.
+8. **OPH-366 konsolları** — Google Cloud › Credentials › *Web application* istemcisi
+   (`SIGN_IN_GOOGLE_WEB_CLIENT_ID`) › Authorized redirect URIs'e
+   `https://api.alliswell.space/oauth/authorize/callback` ekle. Apple Developer › Identifiers ›
+   Services ID (ör. `space.alliswell.web`) › Sign in with Apple › Primary App ID
+   `com.alliswell.alliswell`, Domain `api.alliswell.space`, Return URL aynı callback; sunucu
+   `.env`'ine `SIGN_IN_APPLE_SERVICE_ID=<o Services ID>`, sonraki deploy'la yeniden başlat.
+   Ardından DEVICE-CHECKS "MCP onayında Google/Apple" satırı.
 9. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
    (`docs/store/directories.md`, önkoşulları boş).
 10. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son

@@ -3,6 +3,7 @@ import { coded } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
 import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
+import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identities.js';
 import { hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
 import { credentialRateLimit } from '../lib/rate-limit.js';
@@ -348,45 +349,25 @@ export default async function authRoutes(app) {
       throw err;
     }
 
-    const existingIdentity = await app
-      .db('user_identities')
-      .where({ provider: identity.provider, subject: identity.subject })
-      .first();
-
-    // Rule 2's candidate — only ever consulted when the provider vouched for
-    // the address.
-    const linkable =
-      !existingIdentity && identity.email && identity.emailVerified
-        ? await app
-            .db('users')
-            .where({ email: identity.email })
-            .whereNull('deleted_at')
-            .first('id', 'email', 'display_name')
-        : null;
+    // The rule ladder above lives in db/identities.js, shared with the MCP
+    // consent page (OPH-366) so the two cannot drift apart.
+    const match = await matchSocialIdentity(app.db, identity);
 
     let user;
     let refresh;
     let created = false;
 
-    if (existingIdentity) {
-      const row = await app
-        .db('users')
-        .where({ id: existingIdentity.user_id })
-        .whereNull('deleted_at')
-        .first('id', 'email', 'display_name');
-      if (!row) {
-        // The account was deleted but its identity row outlived it — only
-        // possible if a cascade was skipped. Refuse rather than resurrect.
-        throw coded(
-          app.httpErrors.unauthorized('This account no longer exists'),
-          'OAUTH_ACCOUNT_GONE',
-        );
-      }
+    if (match.kind === 'gone') {
+      throw coded(
+        app.httpErrors.unauthorized('This account no longer exists'),
+        'OAUTH_ACCOUNT_GONE',
+      );
+    }
+    if (match.kind === 'known') {
+      const row = match.user;
       user = { id: row.id, email: row.email, displayName: row.display_name };
       await app.db.transaction(async (trx) => {
-        await trx('user_identities')
-          .where({ id: existingIdentity.id })
-          .update({ last_used_at: new Date(), updated_at: new Date() });
+        await touchIdentity(trx, match.identityId);
         refresh = await createRefreshRecord(trx, auth, {
           userId: user.id,
           familyId: newId(),
@@ -394,18 +375,11 @@ export default async function authRoutes(app) {
           deviceName: deviceLabel(request),
         });
       });
-    } else if (linkable) {
-      user = { id: linkable.id, email: linkable.email, displayName: linkable.display_name };
+    } else if (match.kind === 'link') {
+      const row = match.user;
+      user = { id: row.id, email: row.email, displayName: row.display_name };
       await app.db.transaction(async (trx) => {
-        await trx('user_identities').insert({
-          id: newId(),
-          user_id: user.id,
-          provider: identity.provider,
-          subject: identity.subject,
-          email: identity.email,
-          email_verified: identity.emailVerified,
-          last_used_at: new Date(),
-        });
+        await linkIdentity(trx, user.id, identity);
         refresh = await createRefreshRecord(trx, auth, {
           userId: user.id,
           familyId: newId(),
@@ -438,15 +412,7 @@ export default async function authRoutes(app) {
             password_hash: null,
             display_name: displayName,
           });
-          await trx('user_identities').insert({
-            id: newId(),
-            user_id: userId,
-            provider: identity.provider,
-            subject: identity.subject,
-            email: identity.email,
-            email_verified: identity.emailVerified,
-            last_used_at: new Date(),
-          });
+          await linkIdentity(trx, userId, identity);
           await trx('workspaces').insert({
             id: workspaceId,
             owner_id: userId,

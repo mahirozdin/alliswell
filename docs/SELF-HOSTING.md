@@ -332,6 +332,12 @@ register dynamically or name themselves by a metadata URL
 (`MCP_CIMD_ENABLED`, on by default). Full setup, troubleshooting and the tool
 list: [MCP.md](MCP.md).
 
+The connector's sign-in page offers **Continue with Google / Apple** when
+`SIGN_IN_GOOGLE_WEB_CLIENT_ID` / `SIGN_IN_APPLE_SERVICE_ID` are set (Apple needs
+an https `API_PUBLIC_URL`). Register `<API_PUBLIC_URL>/oauth/authorize/callback`
+as an authorized redirect URI on the Google *Web application* client and as a
+Return URL on the Apple Services ID ([ADR-0049](adr/0049-mcp-consent-social-sign-in-and-second-factor.md)).
+
 ## 6d. Optional: push (and why reminders work without it)
 
 Reminders are scheduled **on the device**, from its own copy of your data

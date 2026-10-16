@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## MCP onayında Google/Apple (2026-10-16)
+
+- OPH-366 — STATE "Kullanıcıdan bekleyen" 8'deki konsol adımlarından sonra: Claude › Settings › Connectors › `https://api.alliswell.space/mcp` ekle → Connect → AllisWell sayfasında "Continue with Google" → uygulamada Google ile açılmış hesap → "Signed in as …" → Approve → Claude bağlı, araçlar listeleniyor. Aynısını "Continue with Apple" ile iPhone'da Apple ile açılmış hesapla (paylaşılan ve gizli e-posta). 2FA açık hesapta kod soruluyor; yanlış kodda "That code is not right". AllisWell hesabı olmayan Google hesabıyla "Sign up in the app first", hesap açılmıyor. Apple sayfasında İptal → onay sayfası "Sign-in was cancelled". 390 px telefonda düğmeler tam genişlik, parola alanında Enter Approve'u gönderiyor.
+
 ## Widget'ta takvim etkinlikleri (2026-10-15)
 
 - Snapshot v5 — Google Takvim bağlı hesapta bugüne bir etkinlik ve tüm gün etkinliği koy. **iOS** (systemMedium/Large) ve **Android** widget'ında etkinlik satırı: daire yok, takvim ikonu var, saat "14:00–15:00" / "Tüm gün"; görevlerle saat sırasına göre karışık. Etkinlik satırına dokun → uygulama açılıyor, Ana sayfada o gün seçili (ay ızgarası o ayda). Android'de satırın sol ucuna dokunmak hiçbir şeyi tamamlamıyor. Ayarlar › Genel › Widget › Gizli widget açıkken etkinlik başlığı "Gizli görev". Bir proje listesine ayarlı widget'ta etkinlik yok. Açık ve koyu temada.
