@@ -51,6 +51,12 @@ const int kAiAttachTotalChars = 40000;
 /// Attachments the composer holds for one message.
 const int kAiAttachPerMessage = 5;
 
+/// Distinct attachments one request carries for the whole conversation — the
+/// server refuses more than 8 attached segments (`AI_CONTEXT_TOO_LARGE`), so
+/// older items past this are left out with a notice rather than letting a
+/// sticky conversation fail on every later turn.
+const int kAiAttachConversationItems = 8;
+
 /// The largest file that is fetched to be read as text (1 MiB).
 const int kAiAttachFileMaxBytes = 1048576;
 
@@ -242,7 +248,8 @@ class AiAttachedPack {
 /// Turns the conversation's attachments ([attachments] NEWEST FIRST) into
 /// `tier: attached` segments: ready items only, each deduplicated by ref (the
 /// newest wins), each cut to [kAiAttachItemChars] with a visible notice, and
-/// whole items left out once the [kAiAttachTotalChars] cap would be passed.
+/// whole items left out once the [kAiAttachTotalChars] cap would be passed or
+/// [kAiAttachConversationItems] items are already packed.
 AiAttachedPack packAttachedSegments(List<AiAttachment> attachments) {
   final segments = <AiContextSegment>[];
   final dropped = <AiAttachmentRef>[];
@@ -255,7 +262,8 @@ AiAttachedPack packAttachedSegments(List<AiAttachment> attachments) {
     final full = attachment.text!;
     final cut = full.length > kAiAttachItemChars;
     final body = cut ? full.substring(0, kAiAttachItemChars) : full;
-    if (total + body.length > kAiAttachTotalChars) {
+    if (segments.length >= kAiAttachConversationItems ||
+        total + body.length > kAiAttachTotalChars) {
       dropped.add(attachment.ref);
       truncated = true;
       continue;

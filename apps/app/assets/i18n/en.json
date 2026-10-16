@@ -1282,7 +1282,7 @@
       "remove": "Remove",
       "truncated": "shortened",
       "truncatedNotice": "Only the first {shown} of {total} characters of “{title}” were sent.",
-      "droppedNotice": "“{title}” was left out: attachments are limited to about 40,000 characters per conversation.",
+      "droppedNotice": "“{title}” was left out: a conversation carries at most 8 attachments and about 40,000 characters.",
       "limit": "Up to 5 attachments per message",
       "loading": "Attaching…",
       "attached": "Already attached",

@@ -57,6 +57,19 @@ void main() {
       expect(pack.truncated, isTrue);
     });
 
+    test('a sticky conversation never packs more items than the server '
+        'accepts (8 attached segments)', () {
+      // Two turns of five small picks: ten items, well under the char cap.
+      final pack = packAttachedSegments([
+        for (var i = 0; i < 10; i++) AiAttachment.ready(note('N$i'), 'kısa'),
+      ]);
+      expect(pack.segments, hasLength(kAiAttachConversationItems));
+      expect(kAiAttachConversationItems, 8);
+      // Newest first in, so the two OLDEST are the ones left out.
+      expect(pack.dropped.map((r) => r.id), ['N8', 'N9']);
+      expect(pack.truncated, isTrue);
+    });
+
     test('newest first, duplicates deduplicated — the newest copy wins', () {
       final pack = packAttachedSegments([
         AiAttachment.ready(note('N1'), 'yeni'),

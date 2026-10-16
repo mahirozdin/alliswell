@@ -1281,7 +1281,7 @@
       "remove": "Kaldır",
       "truncated": "kısaltıldı",
       "truncatedNotice": "“{title}” için {total} karakterin yalnız ilk {shown} karakteri gönderildi.",
-      "droppedNotice": "“{title}” eklenmedi: ekler sohbet başına yaklaşık 40.000 karakterle sınırlı.",
+      "droppedNotice": "“{title}” eklenmedi: bir sohbet en fazla 8 ek ve yaklaşık 40.000 karakter taşır.",
       "limit": "Mesaj başına en fazla 5 ek",
       "loading": "Ekleniyor…",
       "attached": "Zaten eklendi",

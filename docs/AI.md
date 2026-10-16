@@ -229,7 +229,8 @@ loader. PDF, images, Office files, audio, video and archives are shown disabled 
 added. Limits: 12,000 characters per item (a longer one is cut, and both the model and
 the user are told — "[Truncated: …]" in the segment, a notice under the sent
 message), 40,000 per conversation (an item past it is left out whole, with a notice),
-5 per message; the server refuses more than 48,000 attached characters or 8 attached
+5 per message, at most 8 distinct items per request (the oldest past it are left out
+with the same notice); the server refuses more than 48,000 attached characters or 8 attached
 segments with `400 AI_CONTEXT_TOO_LARGE` before the rate limiter counts the request.
 Attachments stay with the conversation: later turns and a retry re-send them, until
 the in-memory conversation ends (an app restart; nothing is persisted). A turn that
@@ -239,7 +240,11 @@ local models can silently drop part of a ~10K-token attachment (Ollama's default
 `num_ctx` is small); the limits are tuned for the hosted providers. On web, a text
 file needs the bucket CORS rule of ATTACHMENTS.md §8, or the chip says "couldn't load".
 Never sent: attachment BYTES, presigned URLs, storage keys, other members' data — an
-attached file travels only as decoded text the user explicitly picked.
+attached file travels only as decoded text the user explicitly picked. (The one
+deliberate exception to "other members' data": an item the user attaches with "@" from a
+shared workspace carries what that user can already see in it — e.g. a shared project's
+open tasks assigned to a teammate — because the user picked it; nothing of a teammate's
+is ever packed automatically.)
 Server logs carry ids and token counts, never content (the §8.3 notification-privacy
 stance extended). First-use consent per provider states, in one honest sentence each:
 what leaves the device, where the key lives, and that provider's retention/training

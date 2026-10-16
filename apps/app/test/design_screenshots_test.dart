@@ -851,7 +851,8 @@ void main() {
             );
             await t.pump(const Duration(milliseconds: 400));
             await t.pumpAndSettle();
-            await t.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+            // The first row stays active: its fill AND the ⏎ glyph show
+            // beside the disabled PDF row (a disabled row never gets a ⏎).
           },
         );
       });

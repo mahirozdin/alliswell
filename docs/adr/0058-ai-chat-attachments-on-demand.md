@@ -35,7 +35,9 @@ storage keys.
    what you could not see if truncated") only when such a block is present.
 3. **Limits.** Client: 12,000 characters per item (cut with a model-facing
    "[Truncated: …]" notice and a user-facing notice), 40,000 per conversation (items past
-   it are left out whole, with a notice), 5 per message, files ≤1 MiB. Server: segment
+   it are left out whole, with a notice), 5 per message, 8 distinct items per request
+   (the oldest past it are left out with the same notice, so a sticky conversation never
+   trips the server's segment cap), files ≤1 MiB. Server: segment
    text max 16,000 (was 4,000; one cut item plus its notice), and an aggregate cap of
    48,000 attached characters / 8 attached segments → `400 AI_CONTEXT_TOO_LARGE`, checked
    before the rate limiter takes a token, from counts only.
