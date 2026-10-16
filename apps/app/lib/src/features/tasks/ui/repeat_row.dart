@@ -127,13 +127,20 @@ class RepeatRow extends ConsumerWidget {
   Future<void> _stop(BuildContext context, WidgetRef ref) async {
     final seriesId = task.seriesId;
     if (seriesId == null) return;
+    // OPH-375: an after-completion series has nothing ahead of this task —
+    // stopping keeps it as an ordinary task (ADR-0056), and the copy says so.
+    final afterCompletion = await isAfterCompletionTask(ref, task);
+    if (!context.mounted) return;
     final confirmed = await showDialog<bool>(
       context: context,
       useRootNavigator: true,
       builder: (dialogContext) => AlertDialog(
         key: const Key('repeat-stop-dialog'),
         title: Text('repeat.stop'.tr()),
-        content: Text('repeat.stopConfirm'.tr()),
+        content: Text(
+          (afterCompletion ? 'repeat.stopConfirmAfter' : 'repeat.stopConfirm')
+              .tr(),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(false),

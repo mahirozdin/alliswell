@@ -1110,6 +1110,7 @@
     "endUntilLabel": "Bitiş tarihi",
     "stop": "Tekrarı durdur",
     "stopConfirm": "Gelecekteki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
+    "stopConfirmAfter": "Bu görev kalır. Tamamladığında artık yenisi oluşturulmaz.",
     "badgeTooltip": "Tekrarlanıyor",
     "every": {
       "daily": "Her gün",

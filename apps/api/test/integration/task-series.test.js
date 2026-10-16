@@ -211,6 +211,21 @@ describe.runIf(enabled)('task series integration (OPH-205, ADR-0020)', () => {
       expect(slot).toBe(nineOn(2).slice(0, 10));
     });
 
+    it('stopping keeps the open occurrence as an ordinary task', async () => {
+      const { taskId, seriesId } = await completionTask(nineOn(2), 90);
+      const res = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/task-series/${seriesId}`,
+        headers,
+      });
+      expect(res.statusCode).toBe(200);
+      expect(res.json().removed).toBe(0);
+      const row = await app.db('tasks').where({ id: taskId }).first();
+      expect(row.deleted_at).toBeNull();
+      expect(row.series_id).toBeNull();
+      expect(row.occurrence_date).toBeNull();
+    });
+
     it('the rule round-trips its basis through the JSON column', async () => {
       const { seriesId } = await completionTask(nineOn(0), 90);
       const fetched = (

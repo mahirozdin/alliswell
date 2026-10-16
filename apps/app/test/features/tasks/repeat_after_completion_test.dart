@@ -333,6 +333,37 @@ void main() {
       );
     });
 
+    testWidgets('stopping says the task stays and sends no fromDay', (
+      tester,
+    ) async {
+      _phone(tester);
+      final api = FakeApi();
+      _seedAfterCompletion(api);
+      await tester.pumpWidget(await _app(api));
+      await tester.pumpAndSettle();
+      await AwI18n.instance.setLocale(const Locale('en'));
+      await tester.tap(find.text('Su filtresi'));
+      await tester.pumpAndSettle();
+
+      final toggle = find.byKey(const Key('repeat-switch'));
+      await tester.ensureVisible(toggle);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('repeat-stop-dialog')), findsOneWidget);
+      expect(
+        find.text(
+          'This task stays. Completing it no longer creates the next one.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('repeat-stop-confirm')));
+      await tester.pumpAndSettle();
+      final stop = _pushed(api, 'task_series', 'delete');
+      expect(stop, hasLength(1));
+      expect(stop.single.containsKey('fromDay'), isFalse);
+      expect(_pushed(api, 'task', 'delete'), isEmpty);
+    });
+
     testWidgets('deleting the open one asks nothing and stops the repeat', (
       tester,
     ) async {

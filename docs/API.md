@@ -122,7 +122,8 @@ late: completing it through `POST /tasks/{id}/complete` creates the next task,
 due on the completion day + 90 days at the same time of day; `POST
 /tasks/{id}/reopen` withdraws that next task again. `freq` is `daily`, `weekly`
 or `monthly`; months clamp to the month end (Jan 31 + 1 month = Feb 28). Leave
-`basis` out for a calendar pattern ("every month on the 31st").
+`basis` out for a calendar pattern ("every month on the 31st"). `DELETE
+/task-series/{id}` stops it and keeps the open task as an ordinary one.
 
 ### Create a note and attach it to a task
 

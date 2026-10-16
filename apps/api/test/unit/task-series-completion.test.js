@@ -338,6 +338,29 @@ describe('after-completion series — the rest of the series model (OPH-375)', (
     expect(liveRows(series.id)).toHaveLength(0);
   });
 
+  it('stopping the repeat keeps the open occurrence as an ordinary task', async () => {
+    const taskId = await createTask({ title: 'Filtre', dueAt: at(3) });
+    const { series } = await repeat(taskId, DAILY(90));
+    const stopped = await inject('DELETE', `/task-series/${series.id}`);
+    expect(stopped.statusCode).toBe(200);
+    expect(stopped.json().removed).toBe(0);
+    const row = tables.tasks.find((t) => t.id === taskId);
+    expect(row.deleted_at ?? null).toBeNull();
+    // Detached: the Repeat switch reads off and the slot is gone.
+    expect(row.series_id).toBeNull();
+    expect(row.occurrence_date).toBeNull();
+    // Completing it now creates nothing: the series is gone.
+    await complete(taskId);
+    expect(spawnOf(taskId)).toBeUndefined();
+
+    // An explicit fromDay (the app deleting the head and stopping in one
+    // commit) still reaches the open occurrence.
+    const other = await createTask({ title: 'Silinip durdurulan', dueAt: at(3) });
+    const second = await repeat(other, DAILY(90));
+    const res = await inject('DELETE', `/task-series/${second.series.id}?fromDay=${dayAfter(3)}`);
+    expect(res.json().removed).toBe(1);
+  });
+
   it('leaves a calendar series exactly as it was: completing spawns nothing', async () => {
     const res = await inject('POST', `/workspaces/${ws}/task-series`, {
       rule: { freq: 'monthly', interval: 1, byMonthDay: [31] },

@@ -143,8 +143,8 @@ Deliberate limits, so nothing here surprises you:
   `NOTE_NOT_MARKDOWN` — the assistant could rename a note it was not allowed
   to edit — because writing markdown onto a Delta would have left the body and
   the canonical source disagreeing.
-- **Stopping a repeat stays in the app**: it deletes the future tasks of the
-  series, and deleting is not something the connector does. `set_task_repeat`
+- **Stopping a repeat stays in the app**: for a calendar series it deletes the
+  future tasks, and deleting is not something the connector does. `set_task_repeat`
   can start or change a repeat, never end it.
 - **Archiving a project stays in the app**, because it cascades over that
   project's tasks and notes and deserves your confirmation.

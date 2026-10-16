@@ -71,6 +71,12 @@ on Feb 28), must not move by a byte.
    `TASK_SERIES_RULE_INVALID`. MCP: new `set_task_repeat` (create or replace a task's rule,
    either basis), `get_task.repeat`, `complete_task.next`. Stopping a repeat stays out of MCP:
    it deletes future occurrences (ADR-0022's delete class).
+10. **Stopping keeps the task.** A completion series has nothing ahead of its head, so stopping
+    it (Repeat switch off, `DELETE /task-series/{id}` without `fromDay`, a sync delete) removes
+    no row: the open occurrence is detached — `series_id`, `occurrence_date` and
+    `spawned_from_task_id` set to NULL in a synced update — and stays as an ordinary task.
+    Only an explicit `fromDay` (the app deleting the head and stopping in one commit) reaches
+    it. Calendar stops are unchanged.
 
 **Named limitation.** Offline, the next occurrence and its alarm appear only after the device
 next syncs: the device does not create rows. Completing a task offline and staying offline past

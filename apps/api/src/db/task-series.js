@@ -1196,6 +1196,36 @@ export async function rebuildFuture(trx, { workspaceId, series, now = new Date()
  * Soft-deletes a series and its future occurrences in the caller's transaction.
  * Past occurrences keep their `series_id` — they remain part of the history.
  */
+/**
+ * Stopping an after-completion series (OPH-375): its open occurrence becomes
+ * an ordinary task — no series, no slot, no "born from" link, so the Repeat
+ * switch reads off and reopening its predecessor cannot withdraw it.
+ */
+async function detachOpenOccurrences(trx, { workspaceId, seriesId }) {
+  const rows = await trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: seriesId })
+    .whereNull('deleted_at')
+    .whereNotIn('status', FINISHED_STATUSES)
+    .select('id');
+  for (const row of rows) {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['series_id', 'occurrence_date'],
+    });
+    await trx('tasks').where({ id: row.id }).update({
+      series_id: null,
+      occurrence_date: null,
+      spawned_from_task_id: null,
+      revision,
+      updated_at: new Date(),
+    });
+  }
+  return rows.length;
+}
+
 export async function softDeleteSeries(
   trx,
   { workspaceId, series, now = new Date(), fromDay: overrideDay = null },
@@ -1204,11 +1234,19 @@ export async function softDeleteSeries(
   // rather than at today — stopping a series from next March must not take
   // February's rows with it (OPH-208).
   const fromDay = overrideDay ?? materializationWindow(series, now).from;
-  const removed = await deleteFutureOccurrences(trx, {
-    workspaceId,
-    seriesId: series.id,
-    fromDay,
-  });
+  // OPH-375 (ADR-0056): an after-completion series has no future rows — its
+  // one open occurrence IS the task the user is looking at. Stopping the
+  // repeat keeps it as an ordinary task; only an explicit `fromDay` (the app
+  // deleting that occurrence and stopping in one commit) reaches it.
+  const keepHead = isCompletionSeries(series) && overrideDay == null;
+  const removed = keepHead
+    ? 0
+    : await deleteFutureOccurrences(trx, {
+        workspaceId,
+        seriesId: series.id,
+        fromDay,
+      });
+  if (keepHead) await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id });
   const revision = await recordSyncWrite(trx, {
     workspaceId,
     entityType: 'task_series',

@@ -1185,7 +1185,8 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   reads "Tamamlanınca 90 gün sonra · bitiş yok" / "90 days after completion · no end".
   Such an occurrence asks **no scope question** — the next one is copied from it, so an
   edit carries forward — and deleting the open one stops the repeat in the same
-  undoable commit (a finished one is deleted alone). EN "After completion" wraps to two
+  undoable commit (a finished one is deleted alone). Turning Repeat off keeps the open
+  one as an ordinary task, and the stop dialog says so ("Bu görev kalır…"). EN "After completion" wraps to two
   centred lines in its segment at 390 px; TR fits on one. Tokens only, no new colour;
   checked in light and dark, EN and TR.
 

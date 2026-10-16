@@ -123,7 +123,8 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 - **Tamamlanınca tekrar (2026-10-17, ADR-0056):** gün/hafta/ay (yıl yok, 12 ay); tamamlama anından
   sayılır (erken/geç), saat aynı; sıradakini yalnız sunucu üretir — çevrimdışı tamamlamada sıradaki ve
   alarmı ilk sync'te gelir; yalnız `completed` ilerletir, `cancelled` değil; sıradaki tamamlanan
-  satırdan kopyalanır (kapsam sorusu yok); açık olanı silmek tekrarı durdurur; MCP durduramaz.
+  satırdan kopyalanır (kapsam sorusu yok); açık olanı silmek tekrarı durdurur; tekrarı kapatmak açık
+  görevi sıradan görev olarak bırakır; MCP durduramaz.
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 
