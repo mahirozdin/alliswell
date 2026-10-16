@@ -129,9 +129,8 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   dosyalar bir uzantıda taranabiliyor; istemcinin presigned yüklemesi kovaya doğrudan gider
   ve taranmaz. Doğru çözüm kovada asenkron tarama + indirme kapısıdır (`files` satırında
   durum) — kendi turu.
-- **Takvim v2:** Apple aynasının gelen yarısı — takvimde yapılan yabancı düzenlemeyi geri okuma
-  (OPH-076'nın Google analoğu; çatışma politikası + ön plan yoklaması — OPH-078); CalDAV iCloud
-  bağlayıcısı (yalnız tasarım, [CALDAV.md](CALDAV.md), `CALDAV_ENABLED` varsayılan kapalı — OPH-079).
+- **Takvim v2:** CalDAV iCloud bağlayıcısı (yalnız tasarım, [CALDAV.md](CALDAV.md),
+  `CALDAV_ENABLED` varsayılan kapalı — OPH-079).
 
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 

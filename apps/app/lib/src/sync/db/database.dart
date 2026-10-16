@@ -526,6 +526,11 @@ class AppleEventLinks extends Table {
   TextColumn get eventId => text()();
   TextColumn get signature => text()();
 
+  /// v38 (OPH-369): the user deleted this task's event in THIS calendar, so it
+  /// is not recreated here. Device-local on purpose — Google mirroring and the
+  /// other devices' calendars are untouched (ADR-0050).
+  DateTimeColumn get suppressedAt => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {taskId};
 }
@@ -1206,8 +1211,10 @@ class AwDatabase extends _$AwDatabase {
   /// v36 → v37 (EE-296, EE-297): tasks.created_by — who made a task, for the
   /// lists a person shares a workspace through — and tickets.work_task_id, the
   /// task a request is worked through.
+  /// v37 → v38 (OPH-369): apple_event_links.suppressed_at — the Apple event the
+  /// user deleted is not recreated in that calendar (ADR-0050).
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 38;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1479,6 +1486,13 @@ class AwDatabase extends _$AwDatabase {
         if (from >= 1) await m.addColumn(tasks, tasks.createdBy);
         if (from >= 24) await m.addColumn(tickets, tickets.workTaskId);
         await _createWorkIndexes();
+      }
+      // v38 (OPH-369): one nullable, device-local column. Guarded `from >= 4`:
+      // a device from before v4 just got `apple_event_links` CREATED at step 4
+      // with today's definition, column included (LESSONS drift-replica).
+      // Nothing to backfill — no event had been deleted under read-back yet.
+      if (from >= 4 && from < 38) {
+        await m.addColumn(appleEventLinks, appleEventLinks.suppressedAt);
       }
     },
   );

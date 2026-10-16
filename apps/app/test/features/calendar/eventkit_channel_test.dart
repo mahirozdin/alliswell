@@ -178,4 +178,71 @@ void main() {
       isNull,
     );
   });
+
+  // ── Read-back (OPH-369) ─────────────────────────────────────────────────────
+
+  test('readEvents asks for the ids and maps every field', () async {
+    handler = (_) => [
+      {
+        'id': 'ev-1',
+        'calendarId': 'cal-1',
+        'url': 'alliswell://task/T1',
+        'startMs': DateTime.utc(2030, 6, 1, 15).millisecondsSinceEpoch,
+        'endMs': DateTime.utc(2030, 6, 1, 16, 30).millisecondsSinceEpoch,
+        'isAllDay': false,
+        'hasRecurrence': true,
+        'lastModifiedMs': DateTime.utc(2030, 5, 10).millisecondsSinceEpoch,
+      },
+      {
+        // An event in a calendar EventKit cannot name, with no modified date.
+        'id': 'ev-2',
+        'calendarId': null,
+        'url': null,
+        'startMs': DateTime.utc(2030, 6, 2).millisecondsSinceEpoch,
+        'endMs': DateTime.utc(2030, 6, 3).millisecondsSinceEpoch,
+        'isAllDay': true,
+        'hasRecurrence': false,
+        'lastModifiedMs': null,
+      },
+    ];
+    final events = await eventKit.readEvents(['ev-1', 'ev-2', 'ev-gone']);
+
+    expect(calls.single.method, 'readEvents');
+    expect((calls.single.arguments as Map)['ids'], ['ev-1', 'ev-2', 'ev-gone']);
+    // A missing id is simply absent — deciding what that means is Dart's.
+    expect(events!.map((e) => e.id), ['ev-1', 'ev-2']);
+    final first = events.first;
+    expect(first.calendarId, 'cal-1');
+    expect(first.url, 'alliswell://task/T1');
+    expect(first.start, DateTime.utc(2030, 6, 1, 15));
+    expect(first.end, DateTime.utc(2030, 6, 1, 16, 30));
+    expect(first.isAllDay, isFalse);
+    expect(first.hasRecurrence, isTrue);
+    expect(first.lastModified, DateTime.utc(2030, 5, 10));
+    final second = events.last;
+    expect(second.calendarId, isNull);
+    expect(second.url, isNull);
+    expect(second.isAllDay, isTrue);
+    expect(second.lastModified, isNull);
+  });
+
+  test('readEvents with no ids does not cross the channel', () async {
+    handler = (_) => fail('must not be called');
+    expect(await eventKit.readEvents(const []), isEmpty);
+    expect(calls, isEmpty);
+  });
+
+  test('a build that cannot read back says so with null, not []', () async {
+    // [] would read as "every event was deleted" and suppress the mirror.
+    handler = (_) => throw MissingPluginException();
+    expect(await eventKit.readEvents(['ev-1']), isNull);
+  });
+
+  test('a real read failure surfaces as EventKitException', () async {
+    handler = (_) => throw PlatformException(code: 'EKError', message: 'boom');
+    expect(
+      () => eventKit.readEvents(['ev-1']),
+      throwsA(isA<EventKitException>()),
+    );
+  });
 }

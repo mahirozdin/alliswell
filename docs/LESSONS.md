@@ -79,7 +79,7 @@
 ## drift-replica — istemci replikası, göçler, outbox
 - **DERS** drift'in varsayılan `onUpgrade`'i fırlatır: basamaksız `schemaVersion` artışı her replikayı tuğlalar → her sürüm `if (from < n)` basamağı; replika outbox taşır, "sil, yeniden çek" güvenli değil.
 - **DERS** Eski basamaktaki `createTable(x)` GÜNCEL tanımı yaratır → x'e sonra eklenen `addColumn` `from >= <createTable sürümü>` korumalı olmalı (yoksa duplicate column; üç kez oldu).
-- **DERS** Göç testi gerçek dosyalı SQLite'ta (`drift_dev` şema araçları bu zincirde kırık); sürüm fixture'ı sonra eklenen HER şeyi düşürüp gerçek satırla açılır, yoksa korumalı ALTER hiç koşmaz; adımı silip kırmızıyı gör.
+- **DERS** Göç testi gerçek dosyalı SQLite'ta (`drift_dev` şema araçları kırık); sürüm fixture'ı sonra eklenen HER şeyi düşürüp gerçek satırla açılır, yoksa korumalı ALTER hiç koşmaz; adımı silip kırmızıyı gör; tipli `select` eksik kolonu null okur → SQL'de adla.
 - **DERS** `createAll` ad-hoc indeks yaratmaz → indeksi `onUpgrade`'e ek olarak `onCreate`'e de koy (yoksa taze kurulum sessizce tam tarama); Migrator'da `customStatement` yok → `db.customStatement`.
 - **DERS** Türetilmiş kolon (fold gölgesi) eski satırlarda boş kalır, çekme artımlıdır → göçte geri doldur, alanı yazan her yol gölgeyi de yazar; sunucu-sahipli yeni kolon satır değişene dek null.
 - **DERS** Cihazın YAZDIĞI replika tablosuna kolon eklenince applier onu da eşlemeli, yoksa itmeden sonraki çekme ekrandaki değeri siler.
@@ -162,10 +162,10 @@
 - **KARAR** Tekrar: RFC 5545 alt kümesi + RFC 7529 kırpma (31 → ay sonu); occurrence gerçek görev satırı, yalnız sunucu üretir (+12 ay, günlük süpürme); istemci/widget/alarm tekrarı bilmez (ADR-0020).
 - **DERS** Echo bastırma etag'le: giden her yazımda dönen etag `calendar_event_links.etag`'e yazılmazsa kendi değişikliğimiz kullanıcı düzenlemesi sanılır → ayna ⇄ inbound döngüsü.
 - **DERS** Google: `nextSyncToken` yalnız son sayfada, 410 → token düş + tam resync; `timeMin/Max` `syncToken`'la kullanılamaz; `singleEvents` iki tüketiciye yetmez (iki akış, iki cursor); webhook gövdesiz POST'tur.
-- **DERS** Yalnız `scheduledStartAt` sıfırlanırsa ters blok türer, Google `end<=start`'a 400 verir, kuyruk aşamaz → iki alan birlikte null; kenetleme görevin KENDİ diliminde.
+- **DERS** Yalnız `scheduledStartAt` sıfırlanırsa ters blok türer, Google `end<=start`'a 400, kuyruk takılır → iki alan birlikte null; kenetleme görevin KENDİ diliminde.
 - **DERS** "Yalnız bu" düzenlemesinde `series_id` null'lanmaz (slot boşalır, süpürme aynı güne kopya üretir) → satır seride kalır, zamanı `due_at` söyler; seri `timezone`'u kullanıcı profilinden (cihaz "+03" der).
-- **DERS** EventKit: id iCloud taşımasında değişir → yeniden bağlama URL alanındaki `alliswell://task/{id}`'le (ADR-0003); iOS 17 `writeOnly` "verildi" değil; izin `EKEventStore` örneğine bağlı → tek örnek.
-- **DERS** Europe/Istanbul DST'siz → onunla DST testi hiçbir şey kanıtlamaz; `lib/time.js` `zonedWallTimeToUtc` boşluktaki saati 1 sa ileri kaydırır, örtüşmede GEÇ oluşu seçer → politikayı seç, iki vakayı testle.
+- **DERS** EventKit id'si iCloud taşımasında değişir → `alliswell://` URL'siyle yeniden bağla; `writeOnly` ≠ verildi; izin `EKEventStore` örneğinde; etag yok, iCloud saniyeyi keser → echo ±1 dk, ADR-0050.
+- **DERS** Europe/Istanbul DST'siz → DST testi onunla bir şey kanıtlamaz; `zonedWallTimeToUtc` boşluktaki saati 1 sa ileri kaydırır, örtüşmede GEÇ oluşu seçer → iki vakayı testle.
 
 ## notifications-alarm — yerel alarmlar, AlarmKit, başsız tur
 - **KARAR** Görev saati de alarmdır: hatırlatıcı deadline alarmını silmez (`reminders.kind` remind|due); süresiz susturma (`alarms_muted_at`) görevi açık bırakır — susturmak tamamlamak değildir (ADR-0015).

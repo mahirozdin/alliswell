@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-368: README ilk ekranı yeniden yazıldı; COMPARISON §7 self-hosted rakipler (resmî kaynaklı, tarihli, doğrulanamayan hücre '—'); "tek self-host edilebilen" iddiası kaldırıldı; uygulamada olmayan subtask iddiası düştü; `check:docs` artık README + docs/*.md göreli link/anchor'larını GitHub slug'ıyla denetliyor (API.md başlıklarına açık `name`). |
+| Last completed           | OPH-369: Apple Takvim geri okuma (cihazda, ADR-0050) — takvimde taşınan/boyutlanan ayna etkinliği görevin `scheduled_*`'ına store+outbox ile yazılır, silinen etkinlik o takvimde aynayı durdurur (replika v38 `apple_event_links.suppressed_at`); Swift tek metot `readEvents`, Linux'ta derlenmedi. Kamu metni "tek yön" kalır — sahibin cihaz kontrolüne kadar. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -57,6 +57,13 @@
     canlıda; APNs yoksa iOS'a hiçbir push teslim edilmez ve hiçbir test yakalamaz) · OpenAI "Sign in
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.
+
+13. **OPH-369 Apple geri okuma** — Mac'te Xcode ile derle (`flutter build ios --no-codesign` +
+    `flutter build macos`; Swift'in yeni `readEvents`'i bu makinede hiç derlenmedi), sonra
+    DEVICE-CHECKS "Apple Takvim geri okuma" bölümü (iPhone + Mac). Geçerse "iki yönlü Apple"
+    metnine dönüş SAHİBİN kararı; dönülürse aynı değişiklikte: README, COMPARISON, SUPPORT(.tr),
+    STORE-LISTING, landing `content*.js` + index sayfaları, `llms.txt`, web `index.html`/manifest ve
+    `scripts/docs/check.mjs` APPLE_CLAIMS kapısı.
 
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 

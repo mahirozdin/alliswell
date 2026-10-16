@@ -31,6 +31,9 @@ class Task {
     // (BLUEPRINT §7.1) — so the Apple mirror needs this, and it was simply
     // never carried across before.
     this.createdAt,
+    // OPH-369: the Apple read-back settles a both-sides edit by last-write-wins
+    // (BLUEPRINT §6.5), which needs to know when the task last changed.
+    this.updatedAt,
     this.tagIds = const [],
     this.checklist = const [],
   });
@@ -61,6 +64,7 @@ class Task {
     createdAt: json['createdAt'] == null
         ? null
         : DateTime.parse(json['createdAt'] as String),
+    updatedAt: _date(json['updatedAt']),
     occurrenceDate: json['occurrenceDate'] as String?,
     sortOrder: json['sortOrder'] as int,
     revision: json['revision'] as int,
@@ -119,6 +123,10 @@ class Task {
   final int sortOrder;
   final int revision;
   final DateTime? createdAt;
+
+  /// Last change, by this device or (after a pull) by the server — the
+  /// "local" side of the Apple read-back's last-write-wins (OPH-369).
+  final DateTime? updatedAt;
   final List<String> tagIds;
   final List<ChecklistItem> checklist;
 

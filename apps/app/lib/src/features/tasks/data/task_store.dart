@@ -716,6 +716,7 @@ class TaskStore {
     seriesId: r.seriesId,
     occurrenceDate: r.occurrenceDate,
     createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
     sortOrder: r.sortOrder,
     revision: r.revision,
     tagIds: tagIds,

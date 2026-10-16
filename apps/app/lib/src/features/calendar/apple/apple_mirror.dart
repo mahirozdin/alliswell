@@ -118,13 +118,14 @@ enum AppleMirrorDecision {
 }
 
 /// The mapping we persist per task (mirrors the server's `calendar_event_links`,
-/// trimmed to what a one-way device mirror needs).
+/// trimmed to what a device mirror and its read-back need).
 class AppleEventLink {
   const AppleEventLink({
     required this.taskId,
     required this.calendarId,
     required this.eventId,
     required this.signature,
+    this.suppressedAt,
   });
 
   final String taskId;
@@ -135,8 +136,16 @@ class AppleEventLink {
   final String calendarId;
   final String eventId;
 
-  /// The [DesiredAppleEvent.signature] last written — the basis for `noop`.
+  /// The [DesiredAppleEvent.signature] last written — the basis for `noop`,
+  /// and (OPH-369) the read-back's echo baseline: the times in it are the
+  /// times WE put on the event, so an event still showing them is our own
+  /// write, not the user's edit (EventKit has no etag).
   final String signature;
+
+  /// OPH-369: the user deleted this event, so mirroring this task into THIS
+  /// calendar stopped — the Apple analogue of `calendar_mirror_suppressed_at`
+  /// (ADR-0021 §3), kept on the device (ADR-0050). Null = mirroring.
+  final DateTime? suppressedAt;
 }
 
 /// Decide, given the task's desired event, its existing link, and the calendar
@@ -149,6 +158,14 @@ AppleMirrorDecision decideAppleMirror({
 }) {
   if (desired == null) {
     return link == null ? AppleMirrorDecision.none : AppleMirrorDecision.remove;
+  }
+  if (link?.suppressedAt != null) {
+    // The user deleted the event (OPH-369): never resurrect it there. Picking
+    // a DIFFERENT calendar is a fresh request to mirror, so it starts over —
+    // the dead row goes and the engine creates in the new calendar.
+    return targetCalendarId != null && link!.calendarId != targetCalendarId
+        ? AppleMirrorDecision.remove
+        : AppleMirrorDecision.noop;
   }
   if (targetCalendarId == null) {
     // Wanted, but nowhere to put it. If one already exists (calendar was later

@@ -149,13 +149,14 @@ function docProblems() {
 
 // ── No surface calls Apple Calendar two-way ───────────────────────────────────
 //
-// OPH-365: the Apple Calendar mirror is one-way (task → event, on device, via
-// EventKit — `apple_mirror_engine.dart` says so, and the gateway has no way to
-// list events). Only Google syncs both ways, on the server. Yet the hero, the
+// OPH-365: the Apple Calendar mirror was one-way (task → event, on device, via
+// EventKit). Only Google synced both ways, on the server. Yet the hero, the
 // SEO description, the JSON-LD, README, COMPARISON, llms.txt and the web
 // manifest all said "two-way Google & Apple Calendar sync" — twenty-odd
-// surfaces, and the first self-hoster who checks finds a false claim. When
-// OPH-369 brings Apple read-back, the copy and this gate change together.
+// surfaces, and the first self-hoster who checks finds a false claim.
+// OPH-369 built the Apple read-back (ADR-0050), but no device has confirmed it
+// yet: the copy and this gate change together, after the owner's device check
+// (docs/DEVICE-CHECKS.md, STATE "Kullanıcıdan bekleyen").
 //
 // Line-based, like the version gate above: a claim split across two lines (a
 // wrapped .md paragraph, a `'…' +` concatenated JS string) is not seen. Every

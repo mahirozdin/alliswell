@@ -188,7 +188,7 @@ rooms after commits; clients respond by pulling — the socket never carries ent
 (keeps ordering and authz in one place: the pull endpoint). The app's periodic pull remains
 as the fallback for missed sockets.
 
-## 6. Calendar sync (Phase 4 — Google live, Apple pending)
+## 6. Calendar sync (Phase 4 — Google on the server, Apple on the device)
 
 Per BLUEPRINT §7, `calendar_event_links` maps tasks↔events per account. Both directions are
 BullMQ queues with an inline fallback when Redis is down (`src/queue/runner.js`), and both
@@ -204,8 +204,13 @@ converge on current state so duplicate jobs are harmless:
   task's `scheduled_*` fields, and disagreements are recorded in `conflict_status`. A sweep
   renews channels and polls installs with no public webhook address.
 
-Apple: EventKit bridge on-device (platform channel), URL-field marker `alliswell://task/{id}`;
-CalDAV connector deferred to v2 (ADR-0003).
+Apple: EventKit bridge on-device (platform channel, `packages/alliswell_eventkit`), URL-field
+marker `alliswell://task/{id}` (ADR-0003); the map is the device-local `apple_event_links`
+table. `AppleMirrorEngine` runs both directions in one serialised queue: outbound on every
+replica emit, and read-back (OPH-369, ADR-0050) on the first pass, every resume and before
+each outbound update — `apple_read_back.dart` decides with `inbound.js`'s semantics (time
+onto `scheduled_*` through the task store, echo from the link signature, a deleted event
+suppresses that task in that calendar). CalDAV connector deferred to v2 (ADR-0003).
 
 ## 6b. File storage (Epic 14 — Cloudflare R2 / S3-compatible)
 

@@ -7144,12 +7144,24 @@ class $AppleEventLinksTable extends AppleEventLinks
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _suppressedAtMeta = const VerificationMeta(
+    'suppressedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> suppressedAt = GeneratedColumn<DateTime>(
+    'suppressed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     taskId,
     calendarId,
     eventId,
     signature,
+    suppressedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7195,6 +7207,15 @@ class $AppleEventLinksTable extends AppleEventLinks
     } else if (isInserting) {
       context.missing(_signatureMeta);
     }
+    if (data.containsKey('suppressed_at')) {
+      context.handle(
+        _suppressedAtMeta,
+        suppressedAt.isAcceptableOrUnknown(
+          data['suppressed_at']!,
+          _suppressedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7220,6 +7241,10 @@ class $AppleEventLinksTable extends AppleEventLinks
         DriftSqlType.string,
         data['${effectivePrefix}signature'],
       )!,
+      suppressedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}suppressed_at'],
+      ),
     );
   }
 
@@ -7235,11 +7260,17 @@ class AppleEventLinkRow extends DataClass
   final String calendarId;
   final String eventId;
   final String signature;
+
+  /// v38 (OPH-369): the user deleted this task's event in THIS calendar, so it
+  /// is not recreated here. Device-local on purpose — Google mirroring and the
+  /// other devices' calendars are untouched (ADR-0050).
+  final DateTime? suppressedAt;
   const AppleEventLinkRow({
     required this.taskId,
     required this.calendarId,
     required this.eventId,
     required this.signature,
+    this.suppressedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7248,6 +7279,9 @@ class AppleEventLinkRow extends DataClass
     map['calendar_id'] = Variable<String>(calendarId);
     map['event_id'] = Variable<String>(eventId);
     map['signature'] = Variable<String>(signature);
+    if (!nullToAbsent || suppressedAt != null) {
+      map['suppressed_at'] = Variable<DateTime>(suppressedAt);
+    }
     return map;
   }
 
@@ -7257,6 +7291,9 @@ class AppleEventLinkRow extends DataClass
       calendarId: Value(calendarId),
       eventId: Value(eventId),
       signature: Value(signature),
+      suppressedAt: suppressedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(suppressedAt),
     );
   }
 
@@ -7270,6 +7307,7 @@ class AppleEventLinkRow extends DataClass
       calendarId: serializer.fromJson<String>(json['calendarId']),
       eventId: serializer.fromJson<String>(json['eventId']),
       signature: serializer.fromJson<String>(json['signature']),
+      suppressedAt: serializer.fromJson<DateTime?>(json['suppressedAt']),
     );
   }
   @override
@@ -7280,6 +7318,7 @@ class AppleEventLinkRow extends DataClass
       'calendarId': serializer.toJson<String>(calendarId),
       'eventId': serializer.toJson<String>(eventId),
       'signature': serializer.toJson<String>(signature),
+      'suppressedAt': serializer.toJson<DateTime?>(suppressedAt),
     };
   }
 
@@ -7288,11 +7327,13 @@ class AppleEventLinkRow extends DataClass
     String? calendarId,
     String? eventId,
     String? signature,
+    Value<DateTime?> suppressedAt = const Value.absent(),
   }) => AppleEventLinkRow(
     taskId: taskId ?? this.taskId,
     calendarId: calendarId ?? this.calendarId,
     eventId: eventId ?? this.eventId,
     signature: signature ?? this.signature,
+    suppressedAt: suppressedAt.present ? suppressedAt.value : this.suppressedAt,
   );
   AppleEventLinkRow copyWithCompanion(AppleEventLinksCompanion data) {
     return AppleEventLinkRow(
@@ -7302,6 +7343,9 @@ class AppleEventLinkRow extends DataClass
           : this.calendarId,
       eventId: data.eventId.present ? data.eventId.value : this.eventId,
       signature: data.signature.present ? data.signature.value : this.signature,
+      suppressedAt: data.suppressedAt.present
+          ? data.suppressedAt.value
+          : this.suppressedAt,
     );
   }
 
@@ -7311,13 +7355,15 @@ class AppleEventLinkRow extends DataClass
           ..write('taskId: $taskId, ')
           ..write('calendarId: $calendarId, ')
           ..write('eventId: $eventId, ')
-          ..write('signature: $signature')
+          ..write('signature: $signature, ')
+          ..write('suppressedAt: $suppressedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(taskId, calendarId, eventId, signature);
+  int get hashCode =>
+      Object.hash(taskId, calendarId, eventId, signature, suppressedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7325,7 +7371,8 @@ class AppleEventLinkRow extends DataClass
           other.taskId == this.taskId &&
           other.calendarId == this.calendarId &&
           other.eventId == this.eventId &&
-          other.signature == this.signature);
+          other.signature == this.signature &&
+          other.suppressedAt == this.suppressedAt);
 }
 
 class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
@@ -7333,12 +7380,14 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
   final Value<String> calendarId;
   final Value<String> eventId;
   final Value<String> signature;
+  final Value<DateTime?> suppressedAt;
   final Value<int> rowid;
   const AppleEventLinksCompanion({
     this.taskId = const Value.absent(),
     this.calendarId = const Value.absent(),
     this.eventId = const Value.absent(),
     this.signature = const Value.absent(),
+    this.suppressedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AppleEventLinksCompanion.insert({
@@ -7346,6 +7395,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     required String calendarId,
     required String eventId,
     required String signature,
+    this.suppressedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
        calendarId = Value(calendarId),
@@ -7356,6 +7406,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     Expression<String>? calendarId,
     Expression<String>? eventId,
     Expression<String>? signature,
+    Expression<DateTime>? suppressedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7363,6 +7414,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
       if (calendarId != null) 'calendar_id': calendarId,
       if (eventId != null) 'event_id': eventId,
       if (signature != null) 'signature': signature,
+      if (suppressedAt != null) 'suppressed_at': suppressedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7372,6 +7424,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     Value<String>? calendarId,
     Value<String>? eventId,
     Value<String>? signature,
+    Value<DateTime?>? suppressedAt,
     Value<int>? rowid,
   }) {
     return AppleEventLinksCompanion(
@@ -7379,6 +7432,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
       calendarId: calendarId ?? this.calendarId,
       eventId: eventId ?? this.eventId,
       signature: signature ?? this.signature,
+      suppressedAt: suppressedAt ?? this.suppressedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7398,6 +7452,9 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     if (signature.present) {
       map['signature'] = Variable<String>(signature.value);
     }
+    if (suppressedAt.present) {
+      map['suppressed_at'] = Variable<DateTime>(suppressedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7411,6 +7468,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
           ..write('calendarId: $calendarId, ')
           ..write('eventId: $eventId, ')
           ..write('signature: $signature, ')
+          ..write('suppressedAt: $suppressedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -15252,7 +15310,10 @@ class NotificationRecord extends DataClass
   final String id;
   final String workspaceId;
 
-  /// Always this device's owner (see above). Kept for diagnosis, not filtering.
+  /// The person it is addressed to — this device's owner while the replica
+  /// is wiped on every change of person (OPH-355). The centre filters on it
+  /// anyway (UI-AUDIT #3): a row that outlived a sign-out must not reach the
+  /// next person.
   final String userId;
 
   /// 'task.assigned', 'sla.breached', … — the routing vocabulary, shared with
@@ -26104,6 +26165,7 @@ typedef $$AppleEventLinksTableCreateCompanionBuilder =
       required String calendarId,
       required String eventId,
       required String signature,
+      Value<DateTime?> suppressedAt,
       Value<int> rowid,
     });
 typedef $$AppleEventLinksTableUpdateCompanionBuilder =
@@ -26112,6 +26174,7 @@ typedef $$AppleEventLinksTableUpdateCompanionBuilder =
       Value<String> calendarId,
       Value<String> eventId,
       Value<String> signature,
+      Value<DateTime?> suppressedAt,
       Value<int> rowid,
     });
 
@@ -26141,6 +26204,11 @@ class $$AppleEventLinksTableFilterComposer
 
   ColumnFilters<String> get signature => $composableBuilder(
     column: $table.signature,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get suppressedAt => $composableBuilder(
+    column: $table.suppressedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -26173,6 +26241,11 @@ class $$AppleEventLinksTableOrderingComposer
     column: $table.signature,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get suppressedAt => $composableBuilder(
+    column: $table.suppressedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppleEventLinksTableAnnotationComposer
@@ -26197,6 +26270,11 @@ class $$AppleEventLinksTableAnnotationComposer
 
   GeneratedColumn<String> get signature =>
       $composableBuilder(column: $table.signature, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get suppressedAt => $composableBuilder(
+    column: $table.suppressedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$AppleEventLinksTableTableManager
@@ -26240,12 +26318,14 @@ class $$AppleEventLinksTableTableManager
                 Value<String> calendarId = const Value.absent(),
                 Value<String> eventId = const Value.absent(),
                 Value<String> signature = const Value.absent(),
+                Value<DateTime?> suppressedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AppleEventLinksCompanion(
                 taskId: taskId,
                 calendarId: calendarId,
                 eventId: eventId,
                 signature: signature,
+                suppressedAt: suppressedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -26254,12 +26334,14 @@ class $$AppleEventLinksTableTableManager
                 required String calendarId,
                 required String eventId,
                 required String signature,
+                Value<DateTime?> suppressedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AppleEventLinksCompanion.insert(
                 taskId: taskId,
                 calendarId: calendarId,
                 eventId: eventId,
                 signature: signature,
+                suppressedAt: suppressedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

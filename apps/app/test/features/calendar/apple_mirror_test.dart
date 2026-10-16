@@ -81,6 +81,11 @@ class FakeAppleGateway implements AppleCalendarGateway {
     required DateTime from,
     required DateTime to,
   }) async => preexistingByUrl;
+
+  // Read-back (OPH-369) is exercised in apple_read_back_test.dart; here the
+  // fake answers "cannot read", so the outbound behaviour is what is tested.
+  @override
+  Future<List<AppleEventSnapshot>?> readEvents(List<String> ids) async => null;
 }
 
 void main() {

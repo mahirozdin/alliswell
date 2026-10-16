@@ -1,8 +1,10 @@
 import 'dart:async';
 
+import 'package:flutter/widgets.dart' show AppLifecycleListener;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/persisted_prefs.dart';
+import '../../tasks/data/task.dart';
 import '../../tasks/providers.dart';
 import '../../../sync/providers.dart';
 import 'apple_calendar_gateway.dart';
@@ -36,14 +38,27 @@ final appleMirrorEngineProvider = Provider<AppleMirrorEngine>((ref) {
     gateway: ref.watch(appleCalendarGatewayProvider),
     links: ref.watch(appleEventLinkStoreProvider),
     calendarId: chosen.isEmpty ? null : chosen,
+    // OPH-369: a drag in Apple Calendar lands where a drag in Google does —
+    // the scheduled block — through the store, so it is an ordinary local
+    // write (replica row + outbox) that the server then mirrors to Google.
+    writeTaskTimes: (taskId, start, end) =>
+        ref.read(taskStoreProvider).update(taskId, {
+          'scheduledStartAt': start.toUtc().toIso8601String(),
+          'scheduledEndAt': end.toUtc().toIso8601String(),
+        }),
   );
 });
 
-/// Keeps EventKit in step with the replica (OPH-078). Watches the open-task
-/// stream — which emits on both local writes and pulls — and reconciles the
-/// whole set each time; the engine's signature guard makes an unchanged pass a
-/// batch of cheap no-ops. Only active once access is granted AND a calendar is
-/// chosen, so it never prompts on its own or writes nowhere.
+/// Keeps EventKit in step with the replica (OPH-078), both ways (OPH-369).
+/// Watches the open-task stream — which emits on both local writes and pulls —
+/// and reconciles the whole set each time; the engine's signature guard makes
+/// an unchanged pass a batch of cheap no-ops, and its queue keeps passes from
+/// overlapping. Only active once access is granted AND a calendar is chosen,
+/// so it never prompts on its own or writes nowhere.
+///
+/// Read-back (ADR-0050) runs on the first pass and on every return to the
+/// foreground — on a Mac, when the window becomes active again after the user
+/// dragged an event in Calendar.app. EventKit has no push to wait for.
 ///
 /// This is the device-side analogue of the server's post-commit mirror queue;
 /// there is no server for Apple, so the app itself is the worker.
@@ -53,9 +68,24 @@ final appleMirrorProvider = Provider<void>((ref) {
   if (access == null || !access.canMirror || calendarId.isEmpty) return;
 
   final engine = ref.watch(appleMirrorEngineProvider);
+  List<Task>? latest;
+  var readBackDone = false;
   final sub = ref.listen(openTasksProvider, (_, next) {
     final tasks = next.value;
-    if (tasks != null) unawaited(engine.reconcileAll(tasks));
+    if (tasks == null) return;
+    latest = tasks;
+    final readBack = !readBackDone;
+    readBackDone = true;
+    unawaited(engine.sync(tasks, readBack: readBack));
   }, fireImmediately: true);
-  ref.onDispose(sub.close);
+  final lifecycle = AppLifecycleListener(
+    onResume: () {
+      final tasks = latest;
+      if (tasks != null) unawaited(engine.sync(tasks, readBack: true));
+    },
+  );
+  ref.onDispose(() {
+    sub.close();
+    lifecycle.dispose();
+  });
 });
