@@ -341,7 +341,31 @@
     "deleted": "“{title}” silindi",
     "movedInCalendar": "Takvimde taşındı — {date}",
     "movedInCalendarSub": "Bu görevin etkinliğini takvimde sürüklediğin için bitiş tarihini izlemek yerine o saatte duruyor.",
-    "resetSchedule": "Sıfırla"
+    "resetSchedule": "Sıfırla",
+    "quickParse": {
+      "due": "Bitiş {date}",
+      "when": "Ne zaman {date}",
+      "repeat": "{rule} · ilk {date}",
+      "priority": "Öncelik: {label}",
+      "keepAsText": "Metin olarak bırak",
+      "helpTooltip": "Hızlı ekleme neyi anlar",
+      "help": {
+        "title": "Hızlı ekleme neyi anlar",
+        "intro": "Doğal yazın. Tarih, saat, etiket ve fazlası siz yazarken, internetsiz tanınır. Uygulama dili ne olursa olsun Türkçe de İngilizce de çalışır.",
+        "datesTitle": "Tarihler",
+        "dates": "bugün · yarın · öbür gün\ncuma · cumaya · haftaya cuma · 3 gün sonra\n15 Kasım · 15.11 · ay sonu · hafta sonu",
+        "timesTitle": "Saatler",
+        "times": "9'da · 14'te · saat 14:30 · akşam 7 · öğlen\n\"yarın 9'da kira\"",
+        "dueWhenTitle": "Bitiş mi, ne zaman mı",
+        "dueWhen": "Tek başına bir tarih bitiş tarihidir: \"rapor cuma\".\nAçıkça söylemek için \"son\" ya da \"…'e kadar\": \"son cuma\", \"cumaya kadar\".\n\"başla\" Ne zaman gününü, yani yapmayı planladığınız günü koyar: \"başla pazartesi son cuma\".",
+        "repeatTitle": "Tekrar",
+        "repeat": "her gün · her pazartesi · hafta içi her gün\niki haftada bir · her ayın 15'i · her ayın son günü",
+        "marksTitle": "Etiket, proje, öncelik",
+        "marks": "#ev etiket ekler (yoksa oluşturur)\n+İş projelerinizden birine koyar\np1 yüksek · p2 orta · p3 düşük · p4 yok · !acil",
+        "undoTitle": "Yanlış mı anladı?",
+        "undo": "Tanınan sözcükler vurgulanır ve çubuğun altında çip olarak görünür.\nÇipteki ✕'e dokunun, sözcükleri başlıkta kalır."
+      }
+    }
   },
   "tag": {
     "inputHint": "Etiket ekle…",

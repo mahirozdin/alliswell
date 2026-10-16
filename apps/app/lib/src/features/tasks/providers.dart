@@ -7,6 +7,7 @@ import '../../core/day_boundary.dart';
 import '../../sync/providers.dart';
 import '../ee/assignments_providers.dart';
 import '../workspaces/workspaces.dart';
+import 'data/quick_add_apply.dart';
 import 'data/series_store.dart';
 import 'data/task.dart';
 import 'data/task_scope.dart';
@@ -184,11 +185,17 @@ class InboxTasksController extends StreamNotifier<List<Task>> {
     yield* ref.watch(taskStoreProvider).watchInboxIn(scope);
   }
 
-  Future<void> quickAdd(String title) async {
-    final id = await createOwnTask(ref.read, {
-      'title': title.trim(),
-      'status': 'inbox',
-    });
+  /// A capture stays a dateless capture (DESIGN §26 C3) unless the text
+  /// itself gives a date (OPH-373): then it is born open, with the quick-add
+  /// defaults a dated task gets everywhere else (C4).
+  Future<void> quickAdd(QuickAddSubmission submission) async {
+    final parse = submission.parse;
+    final id = await createFromQuickParse(
+      ref.read,
+      parse: parse,
+      base: const {'status': 'inbox'},
+      withDefaults: parse.dueAt != null,
+    );
     if (id == null) throw StateError('No workspace available');
   }
 }

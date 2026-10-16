@@ -9,6 +9,11 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Quick add understands what you type, offline, in Turkish and English.** "Yarın 9'da kira
+  #ev" or "pay rent tomorrow 9am #home" becomes a task due tomorrow at 9, tagged, with no AI key.
+  Dates, times, weekdays, repeats ("her pazartesi", "every weekday"), `+Project`, `p1`..`p4`,
+  and deadline vs When ("başla pazartesi son cuma", "start mon due fri"). The recognized words
+  are highlighted and shown as chips you can undo; the ? next to the bar lists the syntax.
 - **When and Duration on tasks.** Pick the day you plan to do a task. It shows in Today from
   that day while the deadline and alarm stay put. Add how long it takes, and its Google/Apple
   calendar block uses that length instead of 30 minutes. Also on MCP

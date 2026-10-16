@@ -1197,7 +1197,9 @@ at capture time, not at 02:00 when nothing rang.)_
   lands instantly — on the selected day at the default task time when one is
   picked (the bar's own promise), dateless otherwise. Inbox capture stays a
   dateless capture box (§10) — the ask exists only where the user is planning,
-  not where they are unloading.
+  not where they are unloading. _(Amended by §39 Q4, OPH-373: when the typed
+  text already gives a deadline, a When day or a repeat, the ask is skipped and
+  the text wins.)_
 - **C4 — Defaults apply at every birth point identically.** Sheet, quick add and
   ✨ rider share `task_defaults.dart`; a surface that creates tasks and skips it
   is a bug (§22 reachability logic applied to behavior parity).
@@ -1589,3 +1591,17 @@ A task has a deadline (Due), and now also a day you plan to do it (When) and how
 | W4 | **Filing.** Overdue is decided by the deadline alone, first. Otherwise a task sits on its When day, rolled forward to Today once it arrives and never later than its deadline (`taskPlanDay`). Home, the month-grid dots, the widget buckets and count, the AI context and the MCP today view all use this. A task with When yesterday and Due Friday is on Today. Its widget row shows the due day ("Oct 20"), not a time. | One rule in one helper, so no two surfaces disagree. |
 | W5 | **Both themes are shot:** `phone_sheet_dates_*`, `phone_task_detail_*` and `phone_duration_dialog_*` in `test/design_screenshots_test.dart` (use `shotLocale=tr` for the longer labels). Only existing tokens are used: onSurfaceVariant icons and solid dialog and card surfaces. | Rule 11. |
 
+
+## 39. Quick add that reads (OPH-373)
+
+The quick-add bars (Home, Inbox, a project's Tasks tab) understand Turkish and English offline,
+without an AI key. The grammar is ADR-0054; `test/fixtures/quick_parse_cases.json` is its
+contract.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| Q1 | **One grammar, both languages, every bar.** Relative days, weekdays (with Turkish suffixes), dates, times, `#tag`, `+Project` (existing projects only), `p1`..`p4` / `!acil`, and repeats ("her pazartesi", "every weekday"). A plain date is the deadline; `başla`/`start` makes it the When day; `son`/`due`/`…'e kadar` say deadline explicitly. The project tab does not read `+Project`. | A sentence means the same thing wherever it is typed. |
+| Q2 | **You see it before you save it.** Recognized words are painted in `tokens.link`, semibold (the measured "link on raised container" pair, ≥ 4.5 in both themes), and listed as `InputChip`s under the field — one per deadline (with its time), When, repeat, tag, project and priority, each with a kind icon (priority tinted by `taskPriorityColor`). ✕ ("Keep as text") gives the words back to the title. The chips row grows with `AnimatedSize` (`AwMotion.base`); chips keep the padded 48 px tap target. While the IME is composing, the field draws plain text. | No hidden magic: a misread "pazar" is visible and one tap undoes it. |
+| Q3 | **A help sheet, one tap away.** `?` opens `QuickAddHelpSheet` (solid sheet surface, root navigator, above the glass bar): Dates, Times, Deadline or When, Repeat, Tags · project · priority, Undo — examples in the UI language, plus the line that both languages work. The `?` sits in the bar while it is empty and at the end of the chips row while typing, so a phone bar never carries three suffix icons over the text. | Discoverable without stealing the text's width. |
+| Q4 | **Home skips its deadline ask when the text says when** (amends §26 C3). A parsed deadline, When day or repeat is used as typed and the selected calendar day does not override it; otherwise the C3 picker opens exactly as before. Inbox and project captures with a parsed deadline get the C1/C2 defaults (C4). The ✨ rider still receives the raw text. | Asking for a date the user just typed is friction; relative words are relative to the real now. |
+| Q5 | **Both themes are shot:** `phone_quick_add_tokens_*` and `phone_quick_add_help_*` in `test/design_screenshots_test.dart` (`shotLocale=tr` for Turkish). | Rule 11. |

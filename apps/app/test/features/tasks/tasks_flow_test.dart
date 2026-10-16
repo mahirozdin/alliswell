@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/persisted_prefs.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
@@ -300,6 +301,10 @@ void main() {
       listen: false,
     );
     await container.read(defaultTaskTimeProvider.notifier).set('07:15');
+    // `localKv` caches its instance across tests (LESSONS flutter-app): the
+    // quick-add bar reads this preference from the first frame (OPH-373), so
+    // a leaked 07:15 would reach every later test's pickers.
+    addTearDown(() => localKv.remove('alliswell_default_task_time'));
 
     await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();

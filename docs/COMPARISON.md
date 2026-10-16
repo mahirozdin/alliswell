@@ -32,7 +32,8 @@ list every screenshot, the landing page and the store copy draw from.
 | One-tap quick add; dated or dateless                                                                      | Epic 04     |
 | **Inbox ("capture box")** — unplanned thoughts stay out of the day until promoted                          | Epic 10     |
 | Detailed create sheet: project, priority, tags, description, attachments, date **and time** in one pass    | 15/16       |
-| **"Magic parse"** in quick-add — plain text becomes a dated, tagged, projected task                        | OPH-222     |
+| **Natural-language quick add, offline, TR + EN** — "yarın 9'da kira #ev" becomes a dated, tagged task; chips show what was read | OPH-373     |
+| Optional ✨ AI parse in quick-add on top — several tasks out of one sentence                               | OPH-222     |
 | **Share target** — share any text or link from any app straight into the capture bubble                    | OPH-225     |
 | **Press-and-hold to talk** — on-device speech, becomes a proposed task                                     | OPH-223/224 |
 | Default task time (23:59) as a preference, not a hard-coded assumption                                    | OPH-161     |
@@ -302,7 +303,7 @@ Writing these down is what makes §4 trustworthy.
 | **Location-based reminders** ("when I get home") | Apple Reminders | Not built. Real gap; geofencing is a v2 candidate. |
 | **Reminders when messaging a person** | Apple Reminders | Not built, and iOS-only by nature. |
 | **Invitations, RSVPs, free/busy, rooms** | Google & Apple Calendar | Out of scope — we mirror to your calendar and let it do this. |
-| **Natural-language date entry, everywhere** | Todoist, Things 3 | Partial: magic-parse exists in quick-add, and it currently leans on AI. |
+| **Natural-language date entry, everywhere** | Todoist, Things 3 | Built in, Turkish and English, offline, in every quick-add bar (OPH-373); the AI parse is an optional extra. The grammar is younger than Todoist's: no durations or repeat ends in the text yet, and no parsing in the detailed create sheet. |
 | **Real collaboration** — assignees, comments, shared lists | Todoist, Apple Reminders, Google | Workspaces exist in the model; the sharing UI is not built. Single-user today. |
 | **Maturity** — a decade of edge cases, App Store trust, an ecosystem | all of them | We are at 1.17.0. This is a young product. |
 | **Ecosystem reach** — Siri, Gmail side panel, Watch complications | Apple, Google | Widgets ship; Siri/Watch integration is designed (OPH-183), not delivered. |

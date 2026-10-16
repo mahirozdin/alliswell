@@ -342,7 +342,31 @@
     "deleted": "“{title}” deleted",
     "movedInCalendar": "Moved in your calendar — {date}",
     "movedInCalendarSub": "You dragged this task’s event, so it stays at that time instead of following the deadline.",
-    "resetSchedule": "Reset"
+    "resetSchedule": "Reset",
+    "quickParse": {
+      "due": "Due {date}",
+      "when": "When {date}",
+      "repeat": "{rule} · first {date}",
+      "priority": "Priority: {label}",
+      "keepAsText": "Keep as text",
+      "helpTooltip": "What quick add understands",
+      "help": {
+        "title": "What quick add understands",
+        "intro": "Type naturally. Dates, times, tags and more are recognized as you type, offline. Turkish and English both work, whatever the app language.",
+        "datesTitle": "Dates",
+        "dates": "today · tomorrow · day after tomorrow\nfriday · next friday · in 3 days · next week\nNov 15 · 15.11 · 2026-11-15 · end of month",
+        "timesTitle": "Times",
+        "times": "9am · 3:30pm · at 15:00 · noon\n\"pay rent tomorrow 9am\"",
+        "dueWhenTitle": "Deadline or When",
+        "dueWhen": "A date on its own is the deadline: \"report friday\".\nSay \"due\" or \"by\" to be explicit: \"by tomorrow\".\n\"start\" sets When, the day you plan to do it: \"start mon due fri\".",
+        "repeatTitle": "Repeat",
+        "repeat": "every day · every monday · every weekday\nevery other week · every 15th · every last day of the month",
+        "marksTitle": "Tags, project, priority",
+        "marks": "#home adds a tag (created if it is new)\n+Work files it in one of your projects\np1 high · p2 medium · p3 low · p4 none · !urgent",
+        "undoTitle": "Not what you meant?",
+        "undo": "Recognized words are highlighted and shown as chips under the bar.\nTap ✕ on a chip and its words stay in the title."
+      }
+    }
   },
   "tag": {
     "inputHint": "Add tag…",

@@ -577,6 +577,36 @@ void main() {
     await t.ensureVisible(find.byKey(const Key('duration-row')));
   }
 
+  Future<void> typeQuickAdd(WidgetTester t) async {
+    final bar = find.byKey(const Key('home-quick-add'));
+    await t.ensureVisible(bar);
+    await t.pumpAndSettle();
+    await t.enterText(
+      bar,
+      screenshotLocale('en').languageCode == 'tr'
+          ? "Yarın 9'da kira #ev p1 her ayın 31'i"
+          : 'Pay rent tomorrow 9am #home p1 every month on the 31st',
+    );
+    await t.pump(const Duration(milliseconds: 300));
+    // Caret to the start so the field shows the title and the first marks,
+    // then unfocus: no caret blinking in the shot.
+    final field = t.widget<EditableText>(
+      find.descendant(of: bar, matching: find.byType(EditableText)),
+    );
+    field.controller.selection = const TextSelection.collapsed(offset: 0);
+    await t.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.pumpAndSettle();
+    t
+        .state<ScrollableState>(
+          find.descendant(of: bar, matching: find.byType(Scrollable)),
+        )
+        .position
+        .jumpTo(0);
+    await t.pump();
+    await t.ensureVisible(bar);
+  }
+
   for (final (brightness, suffix) in [
     (Brightness.light, 'light'),
     (Brightness.dark, 'dark'),
@@ -602,6 +632,39 @@ void main() {
         brightness: brightness,
         name: 'phone_task_detail_$suffix',
         navigate: openSeededDetail,
+      );
+    });
+
+    // OPH-373 (DESIGN §39 Q5): the quick-add bar reading a line — highlight
+    // in the field, chips under it — and its syntax sheet.
+    testWidgets('phone quick add tokens — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_quick_add_tokens_$suffix',
+        navigate: typeQuickAdd,
+      );
+    });
+
+    testWidgets('phone quick add help — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_quick_add_help_$suffix',
+        navigate: (t) async {
+          final help = find.byKey(const Key('quick-add-help')).first;
+          await t.ensureVisible(help);
+          await t.pumpAndSettle();
+          await t.tap(help);
+        },
       );
     });
 

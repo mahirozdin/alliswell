@@ -39,8 +39,8 @@ class InboxScreen extends ConsumerWidget {
           QuickAddBar(
             key: const Key('quick-add'),
             hintText: 'inbox.captureHint'.tr(),
-            onAdd: (title) =>
-                ref.read(inboxTasksProvider.notifier).quickAdd(title),
+            onAdd: (submission) =>
+                ref.read(inboxTasksProvider.notifier).quickAdd(submission),
           ),
           Expanded(
             // OPH-171: the capture box is pullable — including its empty and

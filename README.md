@@ -287,7 +287,7 @@ the traps we measured on the way: [docs/WIDGETS.md](docs/WIDGETS.md).
 <details>
 <summary><h2>✨ Every feature — click to expand</h2></summary>
 
-- ⚡ **Fast capture** — a task in seconds, with or without a date; a dedicated **Inbox** keeps unplanned thoughts out of your day until you're ready. Plus **press-and-hold to talk**, **share any text or link** into the app, and a **"magic parse"** that turns a sentence into a dated, tagged, projected task.
+- ⚡ **Fast capture** — a task in seconds, with or without a date; a dedicated **Inbox** keeps unplanned thoughts out of your day until you're ready. Plus **press-and-hold to talk**, **share any text or link** into the app, and **natural-language quick add, offline, in Turkish and English** — "tomorrow 9am pay rent #home p1" becomes a dated, tagged task, with the recognized words shown as chips you can undo (the optional ✨ AI parse still splits a sentence into several tasks).
 - 🏠 **Home, your way** — one chronological view (overdue · today · this week · next 30 days) with an Apple-style month calendar, **or** flip to a **Board (kanban)** with your own hideable, reorderable status columns and drag-to-move.
 - 🗂 **Projects** — colours, favourites, archiving, a Notion-style README note as the overview, and per-project Tasks / Notes / Files tabs.
 - 🏷 **Tags &amp; priorities** — type `#tags` inline (auto-create, colours, fold-matched suggestions) and set `none → urgent` priority. Checklists inside a task.

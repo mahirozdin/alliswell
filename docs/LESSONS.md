@@ -17,7 +17,7 @@
 - **DERS** `$(printf …)` son satır sonunu siler, `while read` satır sonu olmayan son satırı atlar → dağıtımın `.env`'inin son satırı sessizce düşüyordu; `read … || [ -n "$line" ]` + eklemeden önce satır sonu; sunucu bloğu testte bash'le koşar.
 - **DERS** Sunucunun SSH giriş uyarısı her oturumda stdout'a yanıt basar → public dağıtım kayıtlarına sahibin mesajlaşma kimliği düştü; adres yalnız bir secret'ın değerine eşit olduğu için `***`. Kayıtları okunmayacak sanma, ne bastığını ölç.
 - **KARAR** Uzantılı dağıtım yalnız uzantı CI'ının (`DEPLOY_OVERLAY_CI_WORKFLOW`, varsayılan `EE CI`) en yeni koşusu yeşilse çıkar; sunucuya denetlenen SHA gider, koşu okunamazsa durur — kırmızı uzantı commit'i sunucuya çıkamaz.
-- **DERS** Flutter web adları hash'siz → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; servis edileni ölç. Cloudflare Browser Cache TTL *Respect Existing Headers* olmalı, yoksa `.js` 4 saate yeniden yazılır (OPH-273; `curl --resolve` ile origin'e karşı).
+- **DERS** Flutter web adları hash'siz → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; servis edileni ölç. Cloudflare Browser Cache TTL *Respect Existing Headers* olmalı, yoksa `.js` 4 saate yeniden yazılır (OPH-273; origin'e `curl --resolve`).
 - **DERS** `mysqldump` `--no-tablespaces`'sız "Error:" basar ama 0 ile tam dump üretir; takvim/AI/TOTP sırları `.env` anahtarlarıyla şifreli → başka anahtarla geri yükleme kusursuz görünür, 2FA'lıları kilitler.
 - **NOT** Docroot: landing kökte, Flutter web `/app` (`--base-href /app/`); `.htaccess` build'den gelir (sunucununkini taşıma, /app sessizce ölür); Vite `public/` nokta dosyalarını kopyalamaz → özel plugin.
 
@@ -113,9 +113,10 @@
 - **DERS** Kare başına çok sürükleme olayı: `build` yereline eklenen delta (`centre + d.delta`) düşer, `DragStartBehavior.start` eşiği yutar → state'e biriktir, `.down`; testte `pump`suz `moveBy`.
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
-- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn zamanlayıcısı; `localKv` örneği tutar → `setUp`'ta sil.
+- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn; `localKv` örneği tutar → yazan test siler.
 - **DERS** Oturumda adres değişince örtülü ekranın provider'ları build içinde kurulur → adres geçişi Ana sayfadan (ADR-0046).
 - **DERS** Sheet controller'ını await eden fonksiyon dispose ederse kapanış animasyonu çöker → State'e ver (OPH-360).
+- **DERS** `buildTextSpan` ezen controller IME composing'de `super` döner (OPH-373).
 
 ## design-ui — tokenlar, kontrast, yüzeyler
 - **KARAR** Renk yalnız paletten, kullanıcıya hex asla; not rengi ADIYLA saklanır, her tema kendi değerini çözer (tek hex iki temada 4.5 tutmaz); markdown'a renk sözdizimi yok, yalnız `==vurgu==` (DESIGN §33).
@@ -188,7 +189,7 @@
 - **KARAR** `web/aw_push_sw.js` karar vermez (çeviri/gizlilik/`silent` uygulamanın yazdığı önbellekten), her yol bir bildirimle biter; web modu cihaz-yerel Kapalı/Sessiz (varsayılan)/Sesli, Kapalı aboneliği bırakır (ADR-0039).
 - **DERS** Web Push `userVisibleOnly`: bildirim göstermeyen işleyiciye Chrome jenerik kart basar → "sessiz" web push yok, susturmak = abonelikten çıkmak. Firefox `silent`'ı yok sayar ama true döner → UA kontrolü.
 - **DERS** Web'de izin ≠ ulaşılabilirlik (VAPID yok ya da abonelik iptal) → ayrı `AlarmProblem.webPushOff`; tarayıcı yerel bildirim zamanlayamaz; iOS web push yalnız Ana Ekran uygulamasında; SW `localStorage` göremez.
-- **DERS** `url_launcher` web'de bilinmeyen şemada (`app-settings:`) hata vermez, ölü sekme açar → "best effort + catch" web'de hiç düşmez; web'in reddi üç sorun (istenmemiş / engellenmiş / desteklenmiyor), düzeltme sayfasının aksiyonu `AlarmProblem` üzerinde exhaustive switch (#19).
+- **DERS** `url_launcher` web'de bilinmeyen şemada (`app-settings:`) hata vermez, ölü sekme açar → "best effort + catch" web'de hiç düşmez; web'in reddi üç sorun (istenmemiş/engellenmiş/desteklenmiyor), düzeltme sayfasının aksiyonu `AlarmProblem` üzerinde exhaustive switch (#19).
 - **DERS** iOS'ta `notification` bloğu olmayan FCM mesajı teslim edilmez → görünür yedek `notification` + `aps.sound` taşır. Firebase'e APNs anahtarı yüklenmezse token üretilir, hiçbir şey gitmez, test görmez.
 - **DERS** FCM token bir aboneliktir: geri yüklemede döner → yenilemeyi dinle; çıkışta önce sunucu kaydını, sonra token'ı sil. VAPID anahtarı 65/32 bayt — yer değiştirmiş çift "dolu mu"dan geçer, uzunluğu ölç.
 - **DERS** Ertelenen hatırlatıcı `remind_at`'ini korur, yeni an `snoozed_until`'de → vadesi gelenler iki ayrı sorgu (OR indeksi kullanamaz); idempotenlik `uq_reminder_push`'a INSERT.
@@ -274,4 +275,4 @@
 - **DERS** Enjeksiyonda `cp` hatasında dur ("yeşil kaldı" yalanı); geri alınan dosyayı sandbox'a yeniden gönder + checksum; hedefli tar'a girmeyen dizin sandbox'ta bayat kalıp ölçülür (`apps/app/assets/i18n` her pakette).
 - **DERS** `&&` zinciri eşleşmeyen grep'te (exit 1) sessizce kesilir, "ölçüm yok" "sıfır" görünür → ölçüm zincirinde `;`; zsh'te tırnaksız `--include=*.js` "no matches found" verir.
 - **DERS** Yerelde npm betikleri guard hook'a takılır → kapıları `node scripts/…` ile koş; `apps/app/lib` okuyan core kapıları sandbox'ta ENOENT verir → onları yerelde koş.
-- **KARAR** Süitler `npm run verify:task|batch` ile koşar (ADR-0042): sandbox'a yalnız git'in izlediği/izleyeceği dosyalar gider (`apps/app` yok — fikstür ve i18n var; sır şekli reddedilir), ağaç her koşuda temiz kurulur, `node_modules` lockfile özeti değişmedikçe taşınır. Dışlanan yoldan yeni dosya okuyan test yalnız orada ENOENT verir → yolu `scripts/verify/verify.mjs` `include`'una ekle.
+- **KARAR** Süitler `npm run verify:task|batch` ile koşar (ADR-0042): sandbox'a yalnız git'in izlediği/izleyeceği dosyalar gider (`apps/app` yok — fikstür ve i18n var; sır şekli reddedilir), ağaç her koşu temiz kurulur. Dışlanan yoldan dosya okuyan test yalnız orada ENOENT verir → yolu `scripts/verify/verify.mjs` `include`'una ekle.

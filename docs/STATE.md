@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-16 — OPH-372: görevde "Ne zaman" (gün, `start_at`) ve "Süre" (`estimated_minutes`); Bugün başlamış görevleri de alır, takvim bloğu süre kadar (ADR-0053).
+**Last updated:** 2026-10-16 — OPH-373: hızlı ekleme çubukları Türkçe+İngilizce doğal dili internetsiz okur (tarih/saat/tekrar/#etiket/+proje/öncelik, bitiş vs Ne zaman); çipler + vurgu + ✕ geri alma + yardım sayfası (ADR-0054).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-372: oluşturma sayfası + detayda Ne zaman (yalnız gün, Bitiş'in üstünde, hatırlatıcıya dokunmaz, seride tek oluşum) ve Süre (hazır seçenek + 1–1440 dk, seri alanı); Ana sayfa/widget/AI bağlamı/MCP today `taskPlanDay` kuralıyla dosyalar (gecikme yalnız bitişten); Google/Apple bloğu `estimated_minutes` uzunluğunda (yoksa 30, güne kenetli); MCP iki alanı taşır, REST zaten taşıyordu (ADR-0053, DESIGN §38). |
+| Last completed           | OPH-373: saf Dart ayrıştırıcı `core/quick_parse.dart` (OPH-376 başsız kullanır) + `quick_add_apply.dart`; düz tarih = bitiş, `başla`/`start` = Ne zaman, `son`/`due`/`'e kadar` açık bitiş; `+Proje` yalnız var olana, `p1`=yüksek (içe aktarıcı eşlemesi); tekrar ADR-0020 kuralına, ilk oluşum şimdiden sonra; Ana sayfa metin tarih verince tarih sorusunu atlar (DESIGN §26 C3 değişti, §39); sözleşme `test/fixtures/quick_parse_cases.json`; MCP/REST değişmedi (alanlar zaten var). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

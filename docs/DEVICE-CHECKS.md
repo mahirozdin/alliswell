@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Doğal dille hızlı ekleme (2026-10-16)
+
+- OPH-373 / ADR-0054 — **Android telefon, Gboard Türkçe** ve **iPhone, Türkçe klavye**: Ana sayfa hızlı ekleme çubuğuna "Yarın 9'da kira #ev" harf harf yaz (otomatik düzeltme ve öneri dokunuşları dahil). Beklenen: yazarken harf kaybolmuyor/çiftlenmiyor, sözcük tamamlanınca vurgu geliyor, çubuğun altında Bitiş ve #ev çipleri çıkıyor, Enter tarih sorusu açmadan "kira" görevini yarın 09:00, #ev etiketli oluşturuyor. Bir çipin ✕'ine dokun → sözcükleri başlığa dönüyor. **iPhone**: boş çubuktaki ?'e dokun → yardım sayfası cam alt çubuğun ÜSTÜNDE açılıyor, açık ve koyu temada okunuyor. Masaüstünde (Windows/Linux/web) Enter zinciri bozulmuyor: yaz → Enter → yaz → Enter.
+
 ## Ne zaman ve Süre (2026-10-16)
 
 - OPH-372 / ADR-0053 — **iPhone ve Mac**, Apple Takvim aynası açık: bugün 14:00'te bitişi olan göreve Süre 90 dk → Apple Takvim'de etkinlik 14:00–15:30; süreyi temizle → 14:00–14:30; Ne zaman'ı yarın yap → etkinlik YERİNDEN OYNAMIYOR. **Google Takvim** bağlı canlı sunucuda: tarihli göreve Süre 45 dk → Google etkinliği 45 dk; etkinliği Google'da sürükle → görevin Ne zaman'ı ve Süre'si değişmiyor, detayda "Takvimde taşındı" görünüyor. **iOS ve Android widget'ı**: Ne zaman = dün, bitiş 3 gün sonra olan görev Bugün altında, saat yerine bitiş günüyle ("20 Eki"), Bugün sayısı onu sayıyor. **Claude/ChatGPT MCP bağlayıcısı**: `create_task` (startAt + estimatedMinutes) → `list_tasks today` görevi listeliyor, iki alan dönüyor. Açık ve koyu temada, 390 px telefonda Ne zaman/Süre satırlarında taşma yok.
