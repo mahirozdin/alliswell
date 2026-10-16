@@ -222,7 +222,7 @@ void main() {
     final task = api.tasks.single;
     expect(task['title'], 'rapor');
     expect(task['startAt'], awWhenIso(DateTime(2026, 10, 19)));
-    expect(_wall(_local(task['dueAt'])), '2026-10-16 23:59');
+    expect(_wall(_local(task['dueAt'])), '2026-10-23 23:59');
   });
 
   testWidgets('Home: a recurrence starts a series adopting the new task', (

@@ -341,10 +341,15 @@ class _DateHit {
     this.len, {
     this.dative = false,
     this.weekdayToday = false,
+    this.nearestWeekday = false,
   });
 
   final DateTime day;
   final int len;
+
+  /// A weekday read as "the coming one" ("cuma", "gelecek cuma"): next to a
+  /// later When day it means the one on or after that day instead.
+  final bool nearestWeekday;
 
   /// Its last word carries a Turkish dative ("cumaya") — "kadar" may follow.
   final bool dative;
@@ -707,7 +712,15 @@ class _Parser {
           day = _plusDays(today, delta);
           isToday = delta == 0;
       }
-      out.add(_DateHit(day, len, dative: dative, weekdayToday: isToday));
+      out.add(
+        _DateHit(
+          day,
+          len,
+          dative: dative,
+          weekdayToday: isToday,
+          nearestWeekday: mode != 1,
+        ),
+      );
     }
     return out;
   }
@@ -1216,7 +1229,17 @@ class _Parser {
       }
       dueAt ??= at(anchor);
     } else if (dueCand != null) {
-      dueAt = at(dueCand.date!.day);
+      var dueDay = dueCand.date!.day;
+      // "başla pazartesi son cuma": the deadline is the Friday of that
+      // stretch, never a day before the When day (ADR-0053 files a task
+      // under its When day, capped by the deadline's day).
+      final whenDay = whenCand?.date?.day;
+      if (whenDay != null && dueCand.date!.nearestWeekday) {
+        while (dueDay.isBefore(whenDay)) {
+          dueDay = _plusDays(dueDay, 7);
+        }
+      }
+      dueAt = at(dueDay);
       if (timeCand != null &&
           dueCand.date!.weekdayToday &&
           !dueAt.isAfter(o.now)) {

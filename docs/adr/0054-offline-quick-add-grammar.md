@@ -33,6 +33,8 @@ will need the same reading of a sentence without any UI.
    - "When" (`startAt`, local midnight): TR `başla` / `başlangıç` right before or right after
      the date; EN `start` / `starts` / `starting` before it. A time next to a when-phrase is
      not taken (a when-day has no time).
+   - A weekday deadline next to a later When day counts from that day: "başla pazartesi son
+     cuma" is the Friday after that Monday, never a deadline before the start.
 4. **Marks.** `#tag` (the OPH-165 convention; fold-matched to an existing tag, else created).
    `+Project`, matched only against EXISTING projects (longest exact multi-word name, then a
    unique prefix); an unknown name stays in the title and nothing is auto-created. `@` was not

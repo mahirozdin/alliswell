@@ -1521,7 +1521,7 @@
    "text": "rapor başla pazartesi son cuma",
    "expect": {
     "title": "rapor",
-    "due": "2026-10-16T23:59",
+    "due": "2026-10-23T23:59",
     "when": "2026-10-19",
     "repeat": null,
     "tags": [],
@@ -1700,7 +1700,7 @@
    "text": "başla yarın son cuma 17'de rapor",
    "expect": {
     "title": "rapor",
-    "due": "2026-10-16T17:00",
+    "due": "2026-10-23T17:00",
     "when": "2026-10-17",
     "repeat": null,
     "tags": [],
