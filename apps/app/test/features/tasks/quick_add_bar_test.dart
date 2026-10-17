@@ -1,3 +1,5 @@
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -37,6 +39,37 @@ Future<void> _type(WidgetTester tester, String text) async {
 }
 
 void main() {
+  testWidgets('OPH-384: with semantics on, the field keeps its semantics node '
+      'and focus while chips appear one by one', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _pumpBar(tester);
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+
+    final first = tester.getSemantics(find.byType(EditableText));
+    final firstId = first.id;
+    final firstParent = first.parent?.id;
+    const text = "Yarın 9'da kira #ev";
+    var maxChips = 0;
+    for (var i = 1; i <= text.length; i++) {
+      await _type(tester, text.substring(0, i));
+      final node = tester.getSemantics(find.byType(EditableText));
+      // A new node — or the same node under a new parent — is a new DOM
+      // input on the web, and the browser's focus does not follow it.
+      expect(node.id, firstId, reason: 'after "${text.substring(0, i)}"');
+      expect(node.parent?.id, firstParent);
+      expect(
+        node.getSemanticsData().flagsCollection.isFocused,
+        Tristate.isTrue,
+      );
+      final chips = find.byType(InputChip).evaluate().length;
+      if (chips > maxChips) maxChips = chips;
+    }
+    expect(maxChips, 2, reason: 'the deadline chip, then the tag chip');
+    expect(find.byKey(const Key('quick-add-token-tag-0')), findsOneWidget);
+    semantics.dispose();
+  });
+
   testWidgets('OPH-385: a dismissed chip comes back after the field is '
       'cleared by hand', (tester) async {
     await _pumpBar(tester);
