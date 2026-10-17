@@ -133,6 +133,11 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   VTODO'su ya da AllisWell'in kendisinin CalDAV sunucusu olması (sahip kararı).
 - **İçe aktarma önizlemesinin `googleMirror` uyarısı CalDAV hesaplarını saymıyor** (OPH-380) —
   büyük bir içe aktarma bağlı iCloud/Nextcloud takvimini sessizce doldurur.
+- **Google bağlantısı kesilince önbellekteki kendi etkinlikleri canlı kalıyor** (OPH-082 takibi,
+  2026-10-17 ölçüldü) — `DELETE /integrations/google/accounts/{id}` hesabı soft-delete ediyor,
+  `calendar_external_events` satırlarına dokunmuyor (FK CASCADE yalnız sert silmede); takvim
+  görünümünde kesilmiş hesabın toplantıları kalıyor. CalDAV'ınki düzeltildi (OPH-380): aynı
+  transaction'da `recordSyncWrites` ile mezar taşı.
 
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 

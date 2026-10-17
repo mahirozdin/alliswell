@@ -11,6 +11,7 @@ import {
   caldavUsername,
 } from '../db/calendar.js';
 import { enqueueWorkspaceMirrorSweep } from '../queue/mirror-job.js';
+import { recordSyncWrites } from '../db/sync.js';
 
 /**
  * iCloud / CalDAV calendar (OPH-380, docs/CALDAV.md, ADR-0059).
@@ -536,15 +537,40 @@ export default async function caldavIntegrationRoutes(app) {
       const account = await loadOwnAccount(request, request.params.accountId);
       // We cannot revoke an app-specific password (no API, CALDAV.md §3.6):
       // the ciphertext goes, and the app tells the user the second half of
-      // the job — revoking it — is theirs. Events and links stay; a reconnect
-      // re-adopts them through the deterministic href.
-      await app.db('calendar_accounts').where({ id: account.id }).update({
-        status: 'disconnected',
-        encrypted_app_password: null,
-        sync_token: null,
-        last_error: null,
-        deleted_at: new Date(),
-        updated_at: new Date(),
+      // the job — revoking it — is theirs. Our task events and their links
+      // stay; a reconnect re-adopts them through the deterministic href. The
+      // cached copies of the user's OWN events go in the same transaction —
+      // a disconnected calendar must not keep showing — and a reconnect's
+      // full listing brings them back.
+      await app.db.transaction(async (trx) => {
+        await trx('calendar_accounts').where({ id: account.id }).update({
+          status: 'disconnected',
+          encrypted_app_password: null,
+          sync_token: null,
+          sync_dirty_at: null,
+          last_error: null,
+          deleted_at: new Date(),
+          updated_at: new Date(),
+        });
+        const cached = await trx('calendar_external_events')
+          .where({ calendar_account_id: account.id })
+          .whereNull('deleted_at')
+          .select('id');
+        const revisions = await recordSyncWrites(
+          trx,
+          account.workspace_id,
+          cached.map((row) => ({
+            entityType: 'external_event',
+            entityId: row.id,
+            operation: 'delete',
+          })),
+        );
+        const now = new Date();
+        for (const [i, row] of cached.entries()) {
+          await trx('calendar_external_events')
+            .where({ id: row.id })
+            .update({ deleted_at: now, revision: revisions[i], updated_at: now });
+        }
       });
       return reply.code(204).send();
     },

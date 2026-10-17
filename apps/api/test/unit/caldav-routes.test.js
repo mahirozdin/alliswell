@@ -321,4 +321,49 @@ describe('CalDAV integration routes (OPH-380, CALDAV.md §3)', () => {
     expect(isIcloudServer('generic', 'https://noticloud.com/')).toBe(false);
     expect(isIcloudServer('icloud', 'http://127.0.0.1:1/')).toBe(true);
   });
+
+  it('disconnect clears sync_dirty_at and tombstones the cached events, synced', async () => {
+    await boot();
+    const accountId = (await connect(icloud())).json().account.id;
+    const ws = owner.workspace.id;
+    const cached = (id, account) => ({
+      id: id.padEnd(26, '0'),
+      workspace_id: ws,
+      calendar_account_id: account,
+      provider: 'apple_caldav',
+      provider_calendar_id: '/1234/calendars/home/',
+      provider_event_id: `${id}.ics`,
+      summary: 'Dişçi',
+      starts_at: new Date(),
+      ends_at: new Date(),
+      revision: 1,
+      deleted_at: null,
+    });
+    tables.calendar_external_events.push(
+      cached('A', accountId),
+      cached('B', accountId),
+      cached('C', 'G'.padEnd(26, '1')), // another account's cache stays
+    );
+    tables.calendar_accounts[0].sync_dirty_at = new Date();
+
+    const del = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/integrations/caldav/accounts/${accountId}`,
+      headers: owner.headers,
+    });
+    expect(del.statusCode).toBe(204);
+    expect(tables.calendar_accounts[0].sync_dirty_at).toBeNull();
+    const [a, b, c] = tables.calendar_external_events;
+    expect(a.deleted_at).not.toBeNull();
+    expect(b.deleted_at).not.toBeNull();
+    expect(c.deleted_at).toBeNull();
+    // Every replica hears it: a delete revision per row, stamped on the row.
+    const deletes = tables.sync_revisions.filter(
+      (r) => r.entity_type === 'external_event' && r.operation === 'delete',
+    );
+    expect(deletes.map((r) => r.entity_id).sort()).toEqual([a.id, b.id]);
+    for (const row of [a, b]) {
+      expect(row.revision).toBe(deletes.find((r) => r.entity_id === row.id).revision);
+    }
+  });
 });

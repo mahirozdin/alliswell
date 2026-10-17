@@ -74,7 +74,8 @@ Consequences that are **binding** on the implementation:
 6. **Disconnect must be honest.** We cannot revoke an app-specific password from our side
    (no API). Disconnect NULLs the ciphertext and the UI must tell the user the second half of
    the job is theirs: revoke it at appleid.apple.com. Anything less implies a revocation we
-   did not perform.
+   did not perform. The cached copies of the user's own events are tombstoned (synced) in the
+   same transaction; our task events and their links stay for a reconnect to re-adopt.
 
 **Recommendation:** ship the connector **disabled by default**, behind an explicit
 `CALDAV_ENABLED=true`, so a self-hoster opts into holding this class of secret deliberately.
