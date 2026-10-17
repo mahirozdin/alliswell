@@ -58,6 +58,14 @@ final eePriorityMatrixProvider = FutureProvider.autoDispose<EePriorityMatrix?>((
   return ref.watch(eeTicketWriteApiProvider).priorityMatrix();
 });
 
+/// EE-307 — where one request can be sent: read when the transfer sheet
+/// opens, never with the screen (most visits move nothing).
+final eeTicketTransferTargetsProvider = FutureProvider.autoDispose
+    .family<List<EeTransferTarget>, String>((ref, ticketId) async {
+      if (!ref.watch(eeFeatureProvider('teams'))) return const [];
+      return ref.watch(eeTicketWriteApiProvider).transferTargets(ticketId);
+    });
+
 /// What somebody had typed on a request and not sent yet (EE-223).
 class EeCommentDraft {
   const EeCommentDraft({this.text = '', this.internal = false});

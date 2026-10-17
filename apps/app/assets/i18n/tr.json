@@ -755,7 +755,9 @@
     "IMPORT_INVALID_TIMEZONE": "Profilinizdeki saat dilimi geçersiz; Ayarlar'da yeniden seçin.",
     "IMPORT_FILE_TOO_LARGE": "Bu dosyada bir kerede aktarılamayacak kadar çok satır ya da sütun var.",
     "IMPORT_ITEM_FAILED": "Bu öğe içe aktarılamadı.",
-    "TASK_SERIES_TOO_DENSE": "Bu tekrar kuralı çok fazla görev oluştururdu."
+    "TASK_SERIES_TOO_DENSE": "Bu tekrar kuralı çok fazla görev oluştururdu.",
+    "TICKET_UNIT_REQUIRED": "Bu hizmete birden çok birim bakıyor. Birini seçin.",
+    "TICKET_SERVICE_UNROUTED": "Bu hizmete henüz hiçbir birim bakmıyor."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1757,7 +1759,9 @@
         "note": "İç not yazıldı",
         "reply": "Yanıt yazıldı",
         "worklog": "Süre yazıldı: {duration}",
-        "formCorrected": "Form cevapları düzeltildi: {fields}"
+        "formCorrected": "Form cevapları düzeltildi: {fields}",
+        "transferred": "{from} → {to}",
+        "transferReason": "Gerekçe iç not olarak eklendi"
       }
     },
     "verb": {
@@ -1832,6 +1836,9 @@
       },
       "ee_mail_inbox": {
         "revoked": "bir posta kutusunun bağlantısını kesti"
+      },
+      "ee_ticket": {
+        "transferred": "bu talebi aktardı"
       }
     },
     "perm": {
@@ -1912,7 +1919,8 @@
         "override_priority": "Matrisin üretmeyeceği bir öncelik ver",
         "link": "Talepleri birbirine ve problemlere bağla",
         "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve sürdür",
-        "manage_worklog": "Başkasının yazdığı süreyi düzelt ya da sil"
+        "manage_worklog": "Başkasının yazdığı süreyi düzelt ya da sil",
+        "transfer": "Talebi başka bir hizmete ya da birime aktar"
       },
       "units": {
         "manage": "Birimleri yönet",
@@ -2228,6 +2236,10 @@
         "status_changed": {
           "title": "{ticketRef} artık {statusLabel}",
           "body": "{subject}"
+        },
+        "transferred": {
+          "title": "{ticketRef}, {unitName} birimine aktarıldı",
+          "body": "{subject} · {serviceName}"
         }
       },
       "share": {
@@ -2249,7 +2261,8 @@
           "assigned": "Bir talep size atandığında",
           "status_changed": "İstediğiniz ya da tuttuğunuz bir talebin durumu değiştiğinde",
           "commented": "İzlediğiniz bir talebe yanıt yazıldığında",
-          "rate": "Bir talebi puanlamanız istendiğinde"
+          "rate": "Bir talebi puanlamanız istendiğinde",
+          "transferred": "Açtığınız bir talep başka bir hizmete ya da birime aktarılır"
         },
         "sla": {
           "warned": "Bir SLA süresi yaklaştığında",
@@ -2695,7 +2708,25 @@
         }
       },
       "statusUnknown": "başka bir durumda",
-      "selectRow": "{ticket} talebini seç"
+      "selectRow": "{ticket} talebini seç",
+      "transfer": {
+        "action": "Aktar",
+        "title": "Talebi aktar",
+        "now": "Şu an: {where}",
+        "search": "Hizmet ya da birim ara",
+        "current": "Şu anki",
+        "none": "Bu talebi alabilecek başka bir hizmet ya da birim yok.",
+        "noMatch": "Bununla eşleşen bir şey yok.",
+        "notAllowed": "Rolünüz talep aktaramıyor. Bir takım yöneticisine sorun.",
+        "approvalPending": "Bu talep bir onay bekliyor. Karar verildikten sonra aktarılabilir.",
+        "reason": "Gerekçe (isteğe bağlı)",
+        "reasonHint": "Bunu yalnız masa görür",
+        "crossUnit": "Talebi {unit} alır. Şu an üstünde olan herkes bırakılır ve yeni masaya haber verilir. SLA, talebin açıldığı andan saymaya devam eder.",
+        "sameUnit": "Talep bu masada, başka bir hizmet altında kalır. SLA saymaya devam eder ve yeni hizmete göre yeniden hesaplanır.",
+        "apply": "Aktar",
+        "done": "{where} için aktarıldı",
+        "unchanged": "Talep zaten orada"
+      }
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -3067,7 +3098,8 @@
           "assigned": "Talep atandı",
           "status_changed": "Talebin durumu değişti",
           "commented": "Talebe yanıt yazıldı",
-          "rate": "Puanlama istendi"
+          "rate": "Puanlama istendi",
+          "transferred": "Talep başka bir hizmete ya da birime aktarıldı"
         },
         "sla": {
           "warned": "SLA süresi yaklaşıyor",

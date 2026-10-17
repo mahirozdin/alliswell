@@ -77,6 +77,7 @@ class EeTicketActions {
     this.canOverridePriority = false,
     this.canAssignOthers = false,
     this.canPauseSla = false,
+    this.canTransfer = false,
     this.slaPausable = false,
     this.slaHeld = false,
     this.slaHoldReasons = const [],
@@ -105,6 +106,7 @@ class EeTicketActions {
       canOverridePriority: json['canOverridePriority'] == true,
       canAssignOthers: json['canAssignOthers'] == true,
       canPauseSla: json['canPauseSla'] == true,
+      canTransfer: json['canTransfer'] == true,
       slaPausable: json['slaPausable'] == true,
       slaHeld: hold['held'] == true,
       // One reason per held clock on the wire; the same reason twice is one
@@ -182,6 +184,9 @@ class EeTicketActions {
   final bool canAssignOthers;
   final bool canPauseSla;
 
+  /// EE-307: `tickets.transfer`, on the desk, for a request still open.
+  final bool canTransfer;
+
   /// A pause would stop something: a running promise nobody holds yet.
   final bool slaPausable;
 
@@ -191,6 +196,64 @@ class EeTicketActions {
 
   /// Whether this request's priority comes from the matrix at all.
   bool get usesMatrix => impact != null && urgency != null;
+}
+
+/// One place a request can be sent (EE-307): a live service, on one of the
+/// units that answer it. [current] is where the request is now.
+class EeTransferTarget {
+  const EeTransferTarget({
+    required this.serviceId,
+    required this.serviceName,
+    required this.unitId,
+    required this.unitName,
+    this.current = false,
+  });
+
+  factory EeTransferTarget.fromJson(Map<String, dynamic> json) =>
+      EeTransferTarget(
+        serviceId: json['serviceId'] as String,
+        serviceName: json['serviceName'] as String,
+        unitId: json['unitId'] as String,
+        unitName: json['unitName'] as String,
+        current: json['current'] == true,
+      );
+
+  final String serviceId;
+  final String serviceName;
+  final String unitId;
+  final String unitName;
+  final bool current;
+}
+
+/// What a transfer answered (EE-307). [stillDesk] says whether this person
+/// still staffs the request where it landed; when not, the screen they are
+/// on is about a request they no longer reach.
+class EeTransferResult {
+  const EeTransferResult({
+    required this.changed,
+    required this.moved,
+    required this.stillDesk,
+    this.serviceName,
+    this.unitName,
+  });
+
+  factory EeTransferResult.fromJson(Map<String, dynamic> json) =>
+      EeTransferResult(
+        changed: json['changed'] == true,
+        moved: json['moved'] == true,
+        stillDesk: json['stillDesk'] != false,
+        serviceName: json['serviceName'] as String?,
+        unitName: json['unitName'] as String?,
+      );
+
+  final bool changed;
+  final bool moved;
+  final bool stillDesk;
+  final String? serviceName;
+  final String? unitName;
+
+  /// "Bilgi İşlem · Yazılım sorunu" — the unit first, as the sheet groups.
+  String get where => [unitName, serviceName].whereType<String>().join(' · ');
 }
 
 /// The desk's impact × urgency table (EE-183), as the server hands it out.
@@ -444,6 +507,46 @@ class EeTicketWriteApi {
         data: {'ticketIds': ticketIds, 'action': action},
       );
       return EeBulkResult.fromJson(response.data ?? const <String, dynamic>{});
+    } on DioException catch (error) {
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-307 — where this request can be sent. A 403/404 is "nowhere": a
+  /// request this person does not staff offers no destination.
+  Future<List<EeTransferTarget>> transferTargets(String ticketId) async {
+    try {
+      final response = await _dio.get<Map<String, dynamic>>(
+        '$_tickets/$ticketId/transfer-targets',
+      );
+      final rows = (response.data?['targets'] as List<dynamic>?) ?? const [];
+      return [
+        for (final row in rows.cast<Map<String, dynamic>>())
+          EeTransferTarget.fromJson(row),
+      ];
+    } on DioException catch (error) {
+      final code = error.response?.statusCode;
+      if (code == 403 || code == 404) return const [];
+      throw asApiException(error);
+    }
+  }
+
+  /// EE-307 — sends the request to [serviceId] (on [unitId] when several
+  /// units answer it). The [reason] becomes an internal note for the desk.
+  Future<EeTransferResult> transfer(
+    String ticketId, {
+    required String serviceId,
+    String? unitId,
+    String? reason,
+  }) async {
+    try {
+      final response = await _dio.post<Map<String, dynamic>>(
+        '$_tickets/$ticketId/transfer',
+        data: {'serviceId': serviceId, 'unitId': ?unitId, 'reason': ?reason},
+      );
+      return EeTransferResult.fromJson(
+        response.data ?? const <String, dynamic>{},
+      );
     } on DioException catch (error) {
       throw asApiException(error);
     }

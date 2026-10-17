@@ -63,17 +63,17 @@
 - **DERS** Yeni sync `operation` fiili eklenemez: ENUM'lar ve pull şeması üç fiile kilitli, dispatch `default:` bilinmeyeni `applyDelete`'e düşürür → `update` + virtual alan (`orderedIds`, `seriesScope`).
 - **DERS** Push `guard` create+update'te koşar, DELETE'te ASLA → sahiplik `checkOwnership`'te; `!(await ownershipOk())` dönen hata KODU dizesini geçirir; silinmesi denetlenecek varlığa delete açma.
 - **DERS** Yazma iki dikişten geçer: REST/MCP/import `db/*.js` domain'inden, sync push kendi ENTITIES makinesinden (`afterCreate/afterUpdate`) → her yeni kural (not sürümü, `noteMarkdownFrom`, erteleme) ikisine bağlanır.
-- **DERS** Serileştiriciyi REST ile sync PULL paylaşır → yeni alanı (`tagIds`) pull yükleyicisi yüklemezse her snapshot sessizce boş değer (`[]`) taşır.
+- **DERS** Serileştiriciyi REST ile sync PULL paylaşır → pull yükleyicisi yeni alanı (`tagIds`) yüklemezse snapshot sessizce `[]` olur.
 - **DERS** Not kilidinin base'i notun KENDİ revizyonudur, workspace imleci değil — imleç soket pull'uyla karşı yazımı geçer, gövde sessizce ezilir; kendi başarılı push'u base'i ilerletir.
 - **DERS** LWW intent adı gerçekten yazılan kolon olmalı: emekli kolona bağlı intent hiç eşleşmez, kilit log'suz kilitlemeyi bırakır → kolon emekliye çıkınca intent'i taşı.
 - **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; yerelde de `userId` süz (ADR-0018) (ikinci duvar).
 - **KARAR** Replika tek kişinin (OPH-355): çıkış + başkasının girişi onu ve `kUserBoundKvPrefixes`'i siler, yerinde (`secure_delete`+VACUUM); kişiye ait yeni LocalKv anahtarı → o listeye.
-- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa çekme onu görmez → kaldıran iş aynı txn'de sync yazımı kaydeder, gerçek çekmeyle test; push `present:false` döner (OPH-362).
-- **DERS** Genel push makinesi silmeyi `deleted_at` adıyla yazar ve onunla tombstone'lar → push'lanan her varlığın soft-delete kolonu `deleted_at` olmalı.
+- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa çekme onu görmez → kaldıran iş aynı txn'de sync yazımı kaydeder, gerçek çekmeyle test; push `present:false` döner (OPH-362); taşınan satır eski akışta tombstone, istemci yalnız o akışınkini siler (OPH-378)
+- **DERS** Push makinesi silmeyi `deleted_at` ile yazar ve onunla tombstone'lar → push'lanan varlığın soft-delete kolonu `deleted_at` olmalı.
 - **DERS** `registerSyncEntity` tip başına tek kayıt, tek serileştirici → aynı tabloyu iki kitleye iki alan kümesiyle sunmak ayrı tip ya da server-only REST ister.
 - **DERS** Sunucu patch'teki ilk bilinmeyen alanda mutation'ın TAMAMINI reddeder (reddedilen create yerel satırı bırakır) → testte istemcinin gerçek gövdesini gönder; `enqueueMutation` assert'i yalnız koşulan yolu görür.
-- **DERS** Socket.IO `sync:ready` connect ack'iyle aynı TCP segmentinde gelebilir → istemci dinleyicilerini handshake'ten ÖNCE bağla.
-- **NOT** Soket oda üyeliği bağlantı anında donar (JWT yalnız bağlanırken doğrulanır) → yeni workspace üyeliği yeniden bağlanana dek `sync:changed` almaz; periyodik pull yedektir.
+- **DERS** Socket.IO `sync:ready` connect ack'iyle aynı segmentte gelebilir → dinleyiciyi handshake'ten ÖNCE bağla.
+- **NOT** Soket oda üyeliği bağlanırken donar (JWT yalnız o an doğrulanır) → yeni üyelik yeniden bağlanana dek `sync:changed` almaz; periyodik pull yedek.
 - **KARAR** Paylaşılan alanlar birlikte senkronda: alan başına motor, yazım `pokeSync(ref)` ile hepsini dürter, düşen alan son tur alır; kişisel kullanımda tek motor (ADR-0044).
 - **DERS** Gözlemcinin fırlatması push'u 500'e çevirir, cihaz yazımı sonsuza dek yollar → içeriden ret `syncRefusal(code)` (REST 409, push rejected+rebase).
 

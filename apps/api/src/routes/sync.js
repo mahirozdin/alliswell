@@ -376,6 +376,15 @@ export default async function syncRoutes(app) {
 
   // ══ OPH-051 — incremental pull ═════════════════════════════════════════════
 
+  /**
+   * OPH-378 — a row that moved to another workspace is a tombstone in the
+   * stream it left (pull and the post-write check share this). Only a
+   * row that names a workspace can have left one; `rebaseFor` is stricter still
+   * and refuses any row that does not name this one.
+   */
+  const movedAway = (row, workspaceId) =>
+    typeof row.workspace_id === 'string' && row.workspace_id !== workspaceId;
+
   // Batch snapshot loaders, one per sync entity type: id list → Map(id → row).
   const SNAPSHOT_LOADERS = {
     project: async (ids) => ({
@@ -557,7 +566,14 @@ export default async function syncRoutes(app) {
         const load = typeof entry === 'function' ? entry : entry.load;
         const { rows, serialize } = await load(ids, { userId: request.user.id });
         for (const row of rows) {
-          snapshots.set(`${type}:${row.id}`, row.deleted_at != null ? null : serialize(row));
+          // A row whose workspace_id is not this stream's has MOVED: in the
+          // stream it left it is a tombstone, never a snapshot — the loaders
+          // read by id, so serializing it here would hand the row's current
+          // contents to members of a workspace it no longer belongs to.
+          // `rebaseFor` below already refuses such a row on push. Rows that
+          // carry no workspace_id are untouched by it.
+          const gone = row.deleted_at != null || movedAway(row, workspaceId);
+          snapshots.set(`${type}:${row.id}`, gone ? null : serialize(row));
         }
         if (entry.userScoped) {
           // ADR-0018: rows another member owns are not "deleted for me", they
@@ -1691,9 +1707,12 @@ export default async function syncRoutes(app) {
       for (const i of indexes) {
         const row = byId.get(mutations[i].entityId);
         // The pull rule, word for word: a soft-deleted row is a tombstone,
-        // and so is a missing one — unless the type is per-user, where a row
-        // the loader withholds is somebody else's, not gone.
-        const gone = row ? row.deleted_at != null : !entry.userScoped;
+        // and so is one that moved to another workspace (OPH-378), and so is a
+        // missing one — unless the type is per-user, where a row the loader
+        // withholds is somebody else's, not gone.
+        const gone = row
+          ? row.deleted_at != null || movedAway(row, ctx.workspaceId)
+          : !entry.userScoped;
         if (!gone) continue;
         results[i] = {
           ...results[i],

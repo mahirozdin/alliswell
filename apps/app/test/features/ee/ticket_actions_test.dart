@@ -944,6 +944,9 @@ void main() {
       await pumpDetail(tester);
       expect(key('ticket-status'), findsOneWidget);
       expect(key('ticket-priority'), findsOneWidget);
+      // EE-307: the transfer door too — whether this person may is asked
+      // when its sheet opens, like the other two.
+      expect(key('ticket-transfer'), findsOneWidget);
       // The actions are read when a sheet opens, not with every visit.
       expect(api.reads, 0);
     });
@@ -954,6 +957,7 @@ void main() {
       await pumpDetail(tester, terminalAt: DateTime.utc(2026, 9, 21));
       expect(key('ticket-status'), findsNothing);
       expect(key('ticket-priority'), findsNothing);
+      expect(key('ticket-transfer'), findsNothing);
       expect(find.text('Kapandı'), findsOneWidget);
     });
   });

@@ -313,6 +313,95 @@ describe.runIf(enabled)('integration: sync revision generator + pull/push', () =
       .select();
     expect(logged).toHaveLength(1);
   });
+
+  it('OPH-378: a row moved to another workspace is a tombstone in the one it left', async () => {
+    // A second workspace the owner also belongs to — the device that pulls both.
+    const other = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: `${emailPrefix}-other@example.com`, password: 'integration-pw-6' },
+    });
+    expect(other.statusCode).toBe(201);
+    const wsB = other.json().workspace.id;
+    const wsA = owner.workspace.id;
+    await app.db('workspace_members').insert({
+      id: newId(),
+      workspace_id: wsB,
+      user_id: owner.user.id,
+      role: 'member',
+    });
+    const head = async (ws) =>
+      Number((await app.db('workspaces').where({ id: ws }).first('revision')).revision);
+    const pull = (ws, since) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/sync/pull?workspaceId=${ws}&sinceRevision=${since}`,
+        headers: owner.headers,
+      });
+
+    const movedId = newId();
+    const stayId = newId();
+    const created = await app.db.transaction(async (trx) => {
+      const r1 = await withRevision(trx, wsA, 'task', movedId, 'create');
+      const r2 = await withRevision(trx, wsA, 'task', stayId, 'create');
+      await trx('tasks').insert([
+        { id: movedId, workspace_id: wsA, title: 'secret moved title', revision: r1 },
+        { id: stayId, workspace_id: wsA, title: 'stays in A', revision: r2 },
+      ]);
+      return r1;
+    });
+    const sinceA = created - 1;
+    const sinceB = await head(wsB);
+
+    // The move: delete revision where it left, create revision where it landed.
+    await app.db.transaction(async (trx) => {
+      await withRevision(trx, wsA, 'task', movedId, 'delete');
+      await withRevision(trx, wsA, 'task', stayId, 'update');
+      const rev = await withRevision(trx, wsB, 'task', movedId, 'create');
+      await trx('tasks').where({ id: movedId }).update({ workspace_id: wsB, revision: rev });
+    });
+
+    const fromA = (await pull(wsA, sinceA)).json().changes;
+    const movedInA = fromA.filter((c) => c.entityId === movedId);
+    expect(movedInA).toHaveLength(1);
+    // No snapshot leak: the old stream learns the id is gone and nothing else.
+    expect(movedInA[0]).toMatchObject({ operation: 'delete', data: null });
+    expect(JSON.stringify(fromA)).not.toContain('secret moved title');
+    // A row that never moved still snapshots in its own stream.
+    expect(fromA.find((c) => c.entityId === stayId)).toMatchObject({
+      operation: 'update',
+      data: { id: stayId, workspaceId: wsA, title: 'stays in A' },
+    });
+
+    const fromB = (await pull(wsB, sinceB)).json().changes;
+    expect(fromB.find((c) => c.entityId === movedId)).toMatchObject({
+      operation: 'create',
+      data: { id: movedId, workspaceId: wsB, title: 'secret moved title' },
+    });
+
+    // A late offline edit against the old stream is told the row is not there.
+    const late = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sync/push',
+      headers: owner.headers,
+      payload: {
+        clientId: newId(),
+        workspaceId: wsA,
+        baseRevision: 0,
+        mutations: [
+          {
+            clientMutationId: newId(),
+            entityType: 'task',
+            entityId: movedId,
+            operation: 'update',
+            patch: { title: 'typed offline in A' },
+          },
+        ],
+      },
+    });
+    expect(late.json().results[0].rebase).toMatchObject({ entityId: movedId, present: false });
+    expect((await app.db('tasks').where({ id: movedId }).first()).title).toBe('secret moved title');
+  });
 });
 
 // OPH-362 (UI-AUDIT R2-1): a write the server's own rules retire in the same

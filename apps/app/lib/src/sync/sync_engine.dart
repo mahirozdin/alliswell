@@ -344,6 +344,7 @@ class SyncEngine {
         entityType: settled.entityType,
         entityId: settled.entityId,
         present: false,
+        workspaceId: workspaceId,
       );
     }
 
@@ -407,6 +408,7 @@ class SyncEngine {
       entityId: rebase.entityId,
       present: rebase.present,
       data: rebase.data,
+      workspaceId: workspaceId,
     );
   }
 

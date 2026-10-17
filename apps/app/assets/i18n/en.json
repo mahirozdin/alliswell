@@ -756,7 +756,9 @@
     "IMPORT_INVALID_TIMEZONE": "Your profile's time zone is not valid; set it again in Settings.",
     "IMPORT_FILE_TOO_LARGE": "This file has too many rows or columns to import at once.",
     "IMPORT_ITEM_FAILED": "This item could not be imported.",
-    "TASK_SERIES_TOO_DENSE": "This repeat rule would create too many tasks."
+    "TASK_SERIES_TOO_DENSE": "This repeat rule would create too many tasks.",
+    "TICKET_UNIT_REQUIRED": "Several units answer that service. Pick one.",
+    "TICKET_SERVICE_UNROUTED": "No unit answers that service yet."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1758,7 +1760,9 @@
         "note": "Internal note written",
         "reply": "Reply written",
         "worklog": "Time logged: {duration}",
-        "formCorrected": "Form answers corrected: {fields}"
+        "formCorrected": "Form answers corrected: {fields}",
+        "transferred": "From {from} to {to}",
+        "transferReason": "Reason kept as an internal note"
       }
     },
     "verb": {
@@ -1833,6 +1837,9 @@
       },
       "ee_mail_inbox": {
         "revoked": "disconnected a mail inbox"
+      },
+      "ee_ticket": {
+        "transferred": "moved this request"
       }
     },
     "perm": {
@@ -1913,7 +1920,8 @@
         "override_priority": "Set a priority the impact × urgency matrix would not produce",
         "link": "Link requests to each other and to problems",
         "pause_sla": "Stop and restart a request’s SLA clock without moving it",
-        "manage_worklog": "Correct or remove somebody else’s recorded time"
+        "manage_worklog": "Correct or remove somebody else’s recorded time",
+        "transfer": "Move a request to another service or unit"
       },
       "units": {
         "manage": "Manage units",
@@ -2229,6 +2237,10 @@
         "status_changed": {
           "title": "{ticketRef} is now {statusLabel}",
           "body": "{subject}"
+        },
+        "transferred": {
+          "title": "{ticketRef} moved to {unitName}",
+          "body": "{subject} · {serviceName}"
         }
       },
       "share": {
@@ -2250,7 +2262,8 @@
           "assigned": "A request is assigned to you",
           "status_changed": "A request you asked for or hold changes status",
           "commented": "A request you follow gets a reply",
-          "rate": "You are asked to rate a request"
+          "rate": "You are asked to rate a request",
+          "transferred": "A request you asked for moves to another service or unit"
         },
         "sla": {
           "warned": "An SLA deadline is approaching",
@@ -2696,7 +2709,25 @@
         }
       },
       "statusUnknown": "in another status",
-      "selectRow": "Select {ticket}"
+      "selectRow": "Select {ticket}",
+      "transfer": {
+        "action": "Transfer",
+        "title": "Transfer request",
+        "now": "Now: {where}",
+        "search": "Find a service or unit",
+        "current": "Current",
+        "none": "No other service or unit can take this request.",
+        "noMatch": "Nothing matches that.",
+        "notAllowed": "Your role cannot transfer requests. Ask a team admin.",
+        "approvalPending": "This request is waiting on an approval. It can be transferred once someone decides.",
+        "reason": "Reason (optional)",
+        "reasonHint": "Only the desk sees this",
+        "crossUnit": "{unit} receives it. Everyone on it now is taken off, and the receiving desk is told. The SLA keeps counting from when the request was opened.",
+        "sameUnit": "It stays on this desk, under another service. The SLA keeps counting and is re-aimed on the new service.",
+        "apply": "Transfer",
+        "done": "Transferred to {where}",
+        "unchanged": "It is already there"
+      }
     },
     "sla": {
       "breached": "SLA missed",
@@ -3068,7 +3099,8 @@
           "assigned": "Request assigned",
           "status_changed": "Request status changed",
           "commented": "Reply on a request",
-          "rate": "Rating requested"
+          "rate": "Rating requested",
+          "transferred": "Request moved to another service or unit"
         },
         "sla": {
           "warned": "SLA deadline approaching",

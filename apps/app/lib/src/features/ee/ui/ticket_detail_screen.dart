@@ -224,6 +224,10 @@ class _Thread extends ConsumerWidget {
             if (ticket.terminalAt == null) ...[
               EeTicketStatusAction(ticket: ticket),
               EeTicketPriorityAction(ticket: ticket),
+              // EE-307: hidden only once the server has said no — the
+              // detail is not read for it (EE-224's cold open).
+              if (checked?.canTransfer != false)
+                EeTicketTransferAction(ticket: ticket),
             ] else ...[
               _Chip(label: 'ee.tickets.status.${ticket.status}'.tr()),
               _Chip(label: 'ee.tickets.priority.${ticket.priority}'.tr()),

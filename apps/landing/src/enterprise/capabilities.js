@@ -49,6 +49,14 @@ export const CAPABILITIES = Object.freeze([
     tr: 'Masanın yanıtına dosya: talep sahibi dosyayı talebinden açar, iç notun dosyası masada kalır (e-postayla giden yanıt yalnız metni taşır)',
     en: 'Files on the desk’s replies: the requester opens them from the request, and an internal note’s files stay with the desk (a reply sent by e-mail carries the text only)',
   },
+  // OPH-378: the desk's transfer door — REST, MCP and the request screen.
+  {
+    key: 'transfer',
+    level: 'app',
+    packages: all,
+    tr: 'Masanın talebi başka bir hizmete ya da birime aktarması: isteğe bağlı gerekçe, geçmişin tamamı talep ile gider, yeni birime haber verilir, SLA açılıştan saymaya devam eder',
+    en: 'The desk transfers a request to another service or unit: an optional reason, the whole history goes with it, the receiving unit is told, and the SLA keeps counting from when it was opened',
+  },
   // EE-272: Phase C of the review (EE-266…EE-270) moved these into the app; the
   // list said "api" or "none" about three of them until the last measurement.
   {
@@ -262,12 +270,6 @@ export const CAPABILITIES = Object.freeze([
     level: 'none',
     tr: 'sürükle-bırak süreç ve rapor tasarımcısı',
     en: 'drag-and-drop process and report designers',
-  },
-  {
-    key: 'transfer',
-    level: 'none',
-    tr: 'masanın bir talebi başka bir hizmete ya da birime aktarması',
-    en: 'the desk moving a request to another service or unit',
   },
   {
     key: 'whatsappReplies',

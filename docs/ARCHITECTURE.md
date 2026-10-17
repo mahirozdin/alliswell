@@ -177,7 +177,9 @@ No screen or route consults it yet.
 Per BLUEPRINT §6: workspace-scoped monotonic revision log (`sync_revisions`; the
 `recordSyncWrite`/`withRevision` helper in `apps/api/src/db/sync.js` runs inside every entity
 write's transaction). `GET /api/v1/sync/pull` streams batched snapshots + delete tombstones
-since a revision, coalesced to each entity's latest change. `POST /api/v1/sync/push` applies
+since a revision, coalesced to each entity's latest change; a row whose `workspace_id` is no
+longer the pulled workspace goes out as a tombstone there (it moved), and the client applies a
+tombstone of a movable type only to that workspace's local row. `POST /api/v1/sync/push` applies
 client mutation batches idempotently — `client_mutations` records every outcome per
 (`clientId`, `clientMutationId`), and replays answer from the record. Conflict policy:
 field-level LWW for metadata (foreign changes detected via the changed-fields log with own

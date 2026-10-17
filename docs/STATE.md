@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — OPH-377: AI sohbetinde "@" ile not, metin dosyası, görev ya da proje ekleme (yalnız seçilen gönderilir, uzunlar kısaltılır ve söylenir; ADR-0058).
+**Last updated:** 2026-10-17 — OPH-378: kurumsal masada talebi başka hizmete ya da birime aktarma (uzantı EE-307); sync: başka workspace'e taşınan satır ayrıldığı akışta tombstone.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-377: `ai_mention.dart` (saf "@" ayrıştırıcı), `ai_attachments.dart` (saf ek modeli + `packAttachedSegments`, `tier: attached`, 12K/öğe, 40K/sohbet, 5/mesaj, dosya ≤1 MiB), `ai_attachment_loader.dart` (replika + presigned GET → çözülmüş metin; URL dışarı çıkmaz), `ai_attach_widgets.dart` (satır içi panel, çipler, gönderilen mesaj çipleri + kısaltma notu), `NoteStore/TaskStore.detailOnce`; sunucu `tier` enum + `attached`, segment metni 16K, ek toplamı 48K/8 → `AI_CONTEXT_TOO_LARGE`, ek kural satırı; MCP/API değişikliği yok (rule 12, ADR-0058). |
+| Last completed           | OPH-378: pull'da `workspace_id`'si değişen satır ayrıldığı akışta tombstone (`movedAway`, post-write kontrolü de); istemcide `ee_ticket`/`ee_ticket_comment`/`ee_ticket_assignment`/`file` tombstone'u ve rebase'i yalnız o workspace'in satırını siler; uygulamada talep detayına "Aktar" kapısı + sayfa, geçmişte "nereden → nereye" satırı; landing `transfer` yeteneği `app`. Uzantı tarafı EE-307. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
