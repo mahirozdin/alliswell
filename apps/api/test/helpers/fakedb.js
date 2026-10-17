@@ -455,6 +455,10 @@ export function fakeDb({
         limitCount = n;
         return api;
       },
+      // Row locks mean nothing in a single-threaded fake: chainable no-op.
+      forUpdate() {
+        return api;
+      },
       // Column-selection args are irrelevant to the fake — full rows come back.
       async first() {
         if (name === 'users' && hideUsersFromPrecheck) return undefined;
