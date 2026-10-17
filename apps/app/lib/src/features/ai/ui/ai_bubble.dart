@@ -604,11 +604,17 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
             onPressed: controller.stop,
           )
         else ...[
-          IconButton(
-            key: const Key('ai-attach'),
-            icon: const Icon(Icons.alternate_email),
-            tooltip: 'ai.attach.button'.tr(),
-            onPressed: _insertMentionTrigger,
+          // Part of the field's tap region (OPH-387): a mouse press outside
+          // a text field unfocuses it (desktop, web), and on the web that
+          // closes the DOM input — the requestFocus in onPressed came too late
+          // and the keys typed after the "@" went nowhere.
+          TextFieldTapRegion(
+            child: IconButton(
+              key: const Key('ai-attach'),
+              icon: const Icon(Icons.alternate_email),
+              tooltip: 'ai.attach.button'.tr(),
+              onPressed: _insertMentionTrigger,
+            ),
           ),
           if (!reviewing && micAvailable)
             IconButton(

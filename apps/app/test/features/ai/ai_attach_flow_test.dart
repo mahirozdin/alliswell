@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -301,5 +303,69 @@ void main() {
       ),
       isEmpty,
     );
+  });
+
+  testWidgets('OPH-387: a mouse click on "@" never takes focus off the field, '
+      'so the next keys land in it', (tester) async {
+    // A mouse press outside a text field unfocuses it on desktop and on the
+    // web; on the web that closes the DOM input, and the requestFocus in
+    // onPressed came too late for the keys typed next.
+    debugDefaultTargetPlatformOverride = TargetPlatform.linux;
+    try {
+      await _pump(tester);
+      await tester.tap(_input);
+      await tester.pump();
+      final node = tester
+          .widget<EditableText>(
+            find.descendant(of: _input, matching: find.byType(EditableText)),
+          )
+          .focusNode;
+      expect(node.hasFocus, isTrue);
+      var dropped = 0;
+      void watch() {
+        if (!node.hasFocus) dropped++;
+      }
+
+      node.addListener(watch);
+      addTearDown(() => node.removeListener(watch));
+
+      await tester.tap(
+        find.byKey(const Key('ai-attach')),
+        kind: PointerDeviceKind.mouse,
+      );
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester), '@');
+      expect(dropped, 0, reason: 'focus left the field during the click');
+      expect(node.hasFocus, isTrue);
+      expect(tester.testTextInput.hasAnyClients, isTrue);
+
+      // Typed keys go on after the "@".
+      tester.testTextInput.enterText('@Q3');
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.pumpAndSettle();
+      expect(_fieldText(tester), '@Q3');
+      expect(_panel, findsOneWidget);
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('OPH-387: "@" with the field unfocused focuses it', (
+    tester,
+  ) async {
+    await _pump(tester);
+    final node = tester
+        .widget<EditableText>(
+          find.descendant(of: _input, matching: find.byType(EditableText)),
+        )
+        .focusNode;
+    node.unfocus();
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isFalse);
+    await tester.tap(find.byKey(const Key('ai-attach')));
+    await tester.pumpAndSettle();
+    expect(node.hasFocus, isTrue);
+    expect(_fieldText(tester), '@');
   });
 }

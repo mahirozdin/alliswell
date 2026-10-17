@@ -62,6 +62,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Web: after clicking @ in the AI chat you can type straight away.** The click took the
+  typing cursor out of the message field, so the name you typed after the "@" was lost.
+
 - **Search results show a clean line around the match.** In notes and descriptions with line
   breaks, the preview under a result could start or end on a stray letter ("…r"); it is now
   cut on whole words, on one line.
