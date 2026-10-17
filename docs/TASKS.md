@@ -142,11 +142,6 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 
 - **Görev tarihlerinde 100'den küçük yıllar ve aralık denetimi** (QA 2026-10-17 ölçtü, eski) — `PATCH /tasks/{id}` `startAt: 0001-01-01T00:00:00Z` → yanıt `2001-01-01` (mysql2 iki haneli yılı 19xx/20xx okuyor, `db/knexconfig.js` bağlantısı); `9999-…` sınırsız kabul (`routes/tasks.js` yalnız `format: date-time`).
-- **Takvim serisinde her kural/başlık düzenlemesi geleceği siliyor** (2026-10-17 ölçüldü) — günlük
-  seri (365 satır) + `PATCH /task-series/{id}` `{template:{title}}` → `removed: 364, created: 0`,
-  canlı satır 0. `deleteFutureOccurrences` mezar taşına `occurrence_date`'i bırakıyor,
-  `materializeSeries` silinmiş satırın gününü dolu sayıyor; aynı günlere düşen her yeniden
-  kurma (uygulamanın `updateRule`'u, sync `task_series` update) hiçbir şeyi geri yaratmıyor.
 - **Web teslimatı Kapalı iken alarm bandı** — Kapalı düşürülen aboneliği `webPushOff` diye
   raporluyor: bant dırdır ediyor ve "Tekrar kontrol et" kullanıcının Kapalı seçimine rağmen
   yeniden abone ediyor (`gateway_web.alarmSupport`, OPH-316'nın modu okunmuyor). 2026-09-26'da

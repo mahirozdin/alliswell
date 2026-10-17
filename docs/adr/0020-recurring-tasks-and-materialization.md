@@ -138,6 +138,12 @@ anything completed. Editing scope (`this` / `future` / `all`) rides an ordinary 
 mutation with a **virtual `seriesScope` field** (the `orderedIds` idiom,
 `routes/sync.js:165-176`), because the protocol has no room for a fourth verb.
 
+*Amended 2026-10-17 (OPH-375 follow-up):* "rebuild" keeps the future rows the new rule still
+plans — same ids, the edit carried onto each column the row did not change on its own — and
+retires only the rest. A retired row releases its slot (`occurrence_date = NULL`); only a
+user's own delete keeps its day. Tombstones that kept their day read as taken, and every
+edit whose days overlapped the old ones emptied the series.
+
 ### 5. The daily sweep is an interval, not a BullMQ repeatable
 
 TASKS OPH-205 said "BullMQ repeatable job". We use the house pattern instead —

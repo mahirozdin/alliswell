@@ -139,6 +139,38 @@ describe('task series (OPH-205, ADR-0020)', () => {
     }
   });
 
+  it('an edit whose days overlap the old ones keeps those rows instead of emptying the series', async () => {
+    const { series, created } = (await create({ rule: { freq: 'daily', interval: 1 } })).json();
+    const ids = occurrencesOf(series.id).map((r) => r.id);
+
+    const titled = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/task-series/${series.id}`,
+      headers: owner.headers,
+      payload: { template: template({ title: 'Kira' }) },
+    });
+    expect(titled.json()).toMatchObject({ removed: 0, created: 0 });
+    expect(occurrencesOf(series.id).map((r) => r.id)).toEqual(ids);
+    expect(occurrencesOf(series.id).every((r) => r.title === 'Kira')).toBe(true);
+
+    const everyOther = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/task-series/${series.id}`,
+      headers: owner.headers,
+      payload: { rule: { freq: 'daily', interval: 2 } },
+    });
+    const { removed } = everyOther.json();
+    expect(occurrencesOf(series.id)).toHaveLength(created - removed);
+    const back = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/task-series/${series.id}`,
+      headers: owner.headers,
+      payload: { rule: { freq: 'daily', interval: 1 } },
+    });
+    expect(back.json()).toMatchObject({ removed: 0, created: removed });
+    expect(occurrencesOf(series.id)).toHaveLength(created);
+  });
+
   it('adopts the task the switch was flipped on instead of duplicating it', async () => {
     const taskRes = await app.inject({
       method: 'POST',

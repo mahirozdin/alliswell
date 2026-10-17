@@ -144,6 +144,131 @@ describe.runIf(enabled)('task series integration (OPH-205, ADR-0020)', () => {
     expect(Number(again.n)).toBe(Number(after.n));
   });
 
+  // ── Series edits keep the future (OPH-375 follow-up) ─────────────────────
+  // A rebuild once tombstoned every future row WITH its day, then counted those
+  // tombstones as taken: a daily series' title-only edit left it empty.
+  describe('series edits keep the future the new rule still plans', () => {
+    const WEEKDAYS = { freq: 'weekly', interval: 1, byWeekday: [] };
+    for (const day of ['MO', 'TU', 'WE', 'TH', 'FR'])
+      WEEKDAYS.byWeekday.push({ day, ordinal: null });
+    const DAILY = { freq: 'daily', interval: 1 };
+    const dayOf = (value) => new Date(value).toISOString().slice(0, 10);
+    const isWeekend = (row) => [0, 6].includes(new Date(row.occurrence_date).getUTCDay());
+
+    const live = (seriesId) =>
+      app
+        .db('tasks')
+        .where({ series_id: seriesId })
+        .whereNull('deleted_at')
+        .orderBy('occurrence_date', 'asc')
+        .select();
+    const patchSeries = (id, payload) =>
+      app.inject({ method: 'PATCH', url: `/api/v1/task-series/${id}`, headers, payload });
+    const daily = async (title) => {
+      const res = await createSeries({
+        rule: DAILY,
+        template: { title, priority: 'none', tagIds: [] },
+        timezone: 'UTC',
+        anchorAt: `${today()}T09:00:00.000Z`,
+      });
+      expect(res.statusCode).toBe(201);
+      return res.json();
+    };
+
+    it('a title-only edit keeps every future occurrence, retitled in place', async () => {
+      const { series, created } = await daily('Su iç');
+      expect(created).toBeGreaterThan(360);
+      const before = await live(series.id);
+
+      const res = await patchSeries(series.id, { template: { title: 'Su iç (2 L)' } });
+      expect(res.statusCode).toBe(200);
+      expect(res.json()).toMatchObject({ removed: 0, created: 0 });
+
+      const after = await live(series.id);
+      expect(after.map((r) => r.id)).toEqual(before.map((r) => r.id));
+      expect(new Set(after.map((r) => r.title))).toEqual(new Set(['Su iç (2 L)']));
+    });
+
+    it('daily → weekdays retires only the weekends, and back to daily brings them back', async () => {
+      const { series, created } = await daily('Yürüyüş');
+      const before = await live(series.id);
+      const weekends = before.filter(isWeekend);
+      const weekdays = before.filter((r) => !isWeekend(r));
+
+      const narrowed = await patchSeries(series.id, { rule: WEEKDAYS });
+      expect(narrowed.statusCode).toBe(200);
+      expect(narrowed.json()).toMatchObject({ removed: weekends.length, created: 0 });
+      const kept = await live(series.id);
+      expect(kept.map((r) => r.id)).toEqual(weekdays.map((r) => r.id));
+      // The retired rows gave their day up — they are not the user's deletions.
+      const retired = await app.db('tasks').whereIn(
+        'id',
+        weekends.map((r) => r.id),
+      );
+      for (const row of retired) {
+        expect(row.deleted_at).not.toBeNull();
+        expect(row.occurrence_date).toBeNull();
+      }
+
+      const widened = await patchSeries(series.id, { rule: DAILY });
+      expect(widened.statusCode).toBe(200);
+      expect(widened.json()).toMatchObject({ removed: 0, created: weekends.length });
+      const restored = await live(series.id);
+      expect(restored).toHaveLength(created);
+      expect(restored.filter((r) => !isWeekend(r)).map((r) => r.id)).toEqual(
+        weekdays.map((r) => r.id),
+      );
+    });
+
+    it("an occurrence's own edit, a completion and a deletion all survive the edit", async () => {
+      const { series } = await daily('Kitap oku');
+      const rows = await live(series.id);
+      const [, edited, done, removed] = rows;
+
+      const own = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/tasks/${edited.id}`,
+        headers,
+        payload: { title: 'Kitap oku — 50 sayfa' },
+      });
+      expect(own.statusCode).toBe(200);
+      const completed = await app.inject({
+        method: 'POST',
+        url: `/api/v1/tasks/${done.id}/complete`,
+        headers,
+      });
+      expect(completed.statusCode).toBe(200);
+      const deleted = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/tasks/${removed.id}`,
+        headers,
+      });
+      expect(deleted.statusCode).toBe(204);
+
+      const res = await patchSeries(series.id, {
+        template: { title: 'Kitap', priority: 'high', tagIds: [] },
+        anchorAt: `${today()}T07:30:00.000Z`,
+      });
+      expect(res.statusCode).toBe(200);
+      // The user's deletion keeps its day: nothing comes back on it.
+      expect(res.json()).toMatchObject({ removed: 0, created: 0 });
+
+      const byId = new Map((await live(series.id)).map((r) => [r.id, r]));
+      expect(byId.has(removed.id)).toBe(false);
+      // Its own title stays; the fields it did not touch follow the series.
+      expect(byId.get(edited.id)).toMatchObject({
+        title: 'Kitap oku — 50 sayfa',
+        priority: 'high',
+      });
+      expect(byId.get(done.id)).toMatchObject({ title: 'Kitap oku', status: 'completed' });
+      const untouched = byId.get(rows[4].id);
+      expect(untouched).toMatchObject({ title: 'Kitap', priority: 'high' });
+      expect(new Date(untouched.due_at).toISOString()).toBe(
+        `${dayOf(untouched.occurrence_date)}T07:30:00.000Z`,
+      );
+    });
+  });
+
   // ── OPH-375: after completion, on the real unique index ───────────────────
   describe('repeat after completion (OPH-375, ADR-0056)', () => {
     const DAY = 86400000;

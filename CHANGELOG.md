@@ -62,6 +62,11 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Editing a repeating task no longer deletes its future tasks.** Renaming a daily repeat, or
+  changing its days so that some of the old days stay (every day → weekdays), removed every
+  upcoming task and created none. Now the tasks on days the repeat still has stay as they are —
+  with their own edits, subtasks and links — and only the days it dropped go.
+
 - **Windows: reminders now reach the notification centre** (they failed to initialise), and the
   Google sign-in button is hidden on Windows and Linux, where it could not work.
 

@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — QA düzeltmeleri: tamamlanınca-tekrar serisinde silinen baş geri gelmiyor (OPH-375); iCloud parola reddi uygulamaya özel parolayı söylüyor, CalDAV bağlantısı kesilince önbellek etkinlikleri gidiyor (OPH-380).
+**Last updated:** 2026-10-17 — QA düzeltmeleri: takvim serisinin düzenlemesi geleceği silmiyor, tamamlanınca-tekrar serisinde silinen baş geri gelmiyor (OPH-375); iCloud parola reddi uygulamaya özel parolayı söylüyor, CalDAV bağlantısı kesilince önbellek etkinlikleri gidiyor (OPH-380).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | QA düzeltmeleri: OPH-375 — tamamlanınca-tekrar serisinin silinen başı başlık/kural `PATCH /task-series` ile geri gelmiyor (ADR-0056 §8 eki); OPH-380 — iCloud'da reddedilen parola `CALDAV_AUTH_FAILED` kodunu koruyup account.apple.com'dan uygulamaya özel parola istiyor; CalDAV disconnect `sync_dirty_at`'i temizleyip hesabın `calendar_external_events` önbelleğini senkronlu mezar taşına çeviriyor (Google'ınki TASKS'ta takip). |
+| Last completed           | QA düzeltmeleri: OPH-375 — takvim serisinin başlık/kural düzenlemesi (REST, MCP, sync `updateRule`) yeni kuralın hâlâ planladığı gelecek satırları yerinde tutuyor, düşen günleri slotunu bırakarak (`occurrence_date = NULL`) emekliye ayırıyor (eskiden üst üste binen her düzenleme geleceği boşaltıyordu, OPH-205'ten beri); tamamlanınca-tekrar serisinin silinen başı başlık/kural `PATCH /task-series` ile geri gelmiyor (ADR-0056 §8 eki); OPH-380 — iCloud'da reddedilen parola `CALDAV_AUTH_FAILED` kodunu koruyup account.apple.com'dan uygulamaya özel parola istiyor; CalDAV disconnect `sync_dirty_at`'i temizleyip hesabın `calendar_external_events` önbelleğini senkronlu mezar taşına çeviriyor (Google'ınki TASKS'ta takip). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -548,20 +548,10 @@ async function rebuildCompletionHead(trx, { workspaceId, series, now }) {
     .orderBy('occurrence_date', 'asc')
     .select();
 
-  let removed = 0;
-  for (const row of open.slice(1)) {
-    if ((occurrenceDayOf(row.occurrence_date) ?? fromDay) < fromDay) continue;
-    const revision = await recordSyncWrite(trx, {
-      workspaceId,
-      entityType: 'task',
-      entityId: row.id,
-      operation: 'delete',
-    });
-    await trx('tasks')
-      .where({ id: row.id })
-      .update({ deleted_at: new Date(), revision, updated_at: new Date() });
-    removed += 1;
-  }
+  const extras = open
+    .slice(1)
+    .filter((row) => (occurrenceDayOf(row.occurrence_date) ?? fromDay) >= fromDay);
+  const removed = await retireOccurrences(trx, { workspaceId, rows: extras });
   if (open.length > 0) return { removed, created: 0 };
 
   // A deleted head stopped the series: its tombstone still holds the latest
@@ -742,7 +732,12 @@ export async function updateTaskSeries(app, { row, body, now = new Date() }) {
         updated_at: new Date(),
       });
     stored = await trx('task_series').where({ id: row.id }).first();
-    result = await rebuildFuture(trx, { workspaceId: row.workspace_id, series: stored, now });
+    result = await rebuildFuture(trx, {
+      workspaceId: row.workspace_id,
+      series: stored,
+      previous: row,
+      now,
+    });
   });
   return { stored, ...result };
 }
@@ -838,13 +833,13 @@ function movableOccurrences(trx, { workspaceId, seriesId, fromDay = null, exclud
   return query.select();
 }
 
-async function writeOccurrence(trx, { workspaceId, row, patch, userId }) {
+async function writeOccurrence(trx, { workspaceId, row, patch, userId, changedFields = null }) {
   const revision = await recordSyncWrite(trx, {
     workspaceId,
     entityType: 'task',
     entityId: row.id,
     operation: 'update',
-    changedFields: Object.keys(patch),
+    changedFields: changedFields ?? Object.keys(patch),
   });
   await trx('tasks')
     .where({ id: row.id })
@@ -1043,17 +1038,7 @@ export async function propagateSeriesScope(
         seriesId: series.id,
         excludeId: task.id,
       });
-      for (const row of stale) {
-        const gone = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'task',
-          entityId: row.id,
-          operation: 'delete',
-        });
-        await trx('tasks')
-          .where({ id: row.id })
-          .update({ deleted_at: new Date(), revision: gone, updated_at: new Date() });
-      }
+      await retireOccurrences(trx, { workspaceId, rows: stale });
       const fresh = await trx('task_series').where({ id: series.id }).first();
       await materializeSeries(trx, { workspaceId, series: fresh, now });
     }
@@ -1072,17 +1057,7 @@ export async function propagateSeriesScope(
     fromDay,
     excludeId: task.id,
   });
-  for (const row of moving) {
-    const revision = await recordSyncWrite(trx, {
-      workspaceId,
-      entityType: 'task',
-      entityId: row.id,
-      operation: 'delete',
-    });
-    await trx('tasks')
-      .where({ id: row.id })
-      .update({ deleted_at: new Date(), revision, updated_at: new Date() });
-  }
+  await retireOccurrences(trx, { workspaceId, rows: moving });
 
   const oldRevision = await recordSyncWrite(trx, {
     workspaceId,
@@ -1157,6 +1132,45 @@ export function occurrenceDayOf(value) {
 }
 
 /**
+ * Tombstones occurrences the SYSTEM retires (a rule edit, a scoped move, a
+ * stop) and gives up their slot: `occurrence_date = NULL`, exactly as
+ * `retractSpawn` does. Only a user's own delete keeps its day — that tombstone
+ * is how "I removed this one" survives the sweep. A rebuild's tombstone that
+ * kept its day would read as taken to `materializeSeries`, and every edit whose
+ * new days overlap the old ones would leave the series with no future at all
+ * (a daily series' title-only edit: removed 366, created 0).
+ *
+ * @returns {Promise<number>} rows tombstoned
+ */
+async function retireOccurrences(trx, { workspaceId, rows }) {
+  for (const row of rows) {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'delete',
+    });
+    await trx('tasks').where({ id: row.id }).update({
+      deleted_at: new Date(),
+      occurrence_date: null,
+      revision,
+      updated_at: new Date(),
+    });
+  }
+  return rows.length;
+}
+
+/** Live, unfinished occurrences of a series from `fromDay` on. */
+function futureOccurrences(trx, { workspaceId, seriesId, fromDay }) {
+  return trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: seriesId })
+    .whereNull('deleted_at')
+    .whereNotIn('status', ['completed', 'cancelled'])
+    .where('occurrence_date', '>=', fromDay)
+    .select();
+}
+
+/**
  * Tombstones a series' FUTURE occurrences — everything from `fromDay` onward
  * that is not already finished. The past and anything completed stay: a
  * finished task is a historical fact (DESIGN §20 C4), and a rule change may not
@@ -1165,40 +1179,136 @@ export function occurrenceDayOf(value) {
  * @returns {Promise<number>} rows tombstoned
  */
 export async function deleteFutureOccurrences(trx, { workspaceId, seriesId, fromDay }) {
-  const rows = await trx('tasks')
-    .where({ workspace_id: workspaceId, series_id: seriesId })
-    .whereNull('deleted_at')
-    .whereNotIn('status', ['completed', 'cancelled'])
-    .where('occurrence_date', '>=', fromDay)
-    .select('id');
+  const rows = await futureOccurrences(trx, { workspaceId, seriesId, fromDay });
+  return retireOccurrences(trx, { workspaceId, rows });
+}
 
-  for (const row of rows) {
-    const revision = await recordSyncWrite(trx, {
-      workspaceId,
-      entityType: 'task',
-      entityId: row.id,
-      operation: 'delete',
-    });
-    await trx('tasks')
-      .where({ id: row.id })
-      .update({ deleted_at: new Date(), revision, updated_at: new Date() });
-  }
-  return rows.length;
+/** Template-derived columns a series edit carries onto the rows it keeps. */
+const RESTAMPED_COLUMNS = [
+  'project_id',
+  'title',
+  'description',
+  'priority',
+  'color_rgb',
+  'due_at',
+  'remind_at',
+  'timezone',
+  'is_urgent',
+  'requires_acknowledgement',
+  'estimated_minutes',
+];
+
+/** Column equality across the drivers: Date vs Date, 0/1 vs boolean, null vs undefined. */
+function sameColumn(a, b) {
+  const norm = (v) => {
+    if (v == null) return null;
+    if (v instanceof Date) return v.getTime();
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    return v;
+  };
+  return norm(a) === norm(b);
+}
+
+function sameTagSet(a, b) {
+  const left = [...new Set(a ?? [])].sort();
+  const right = [...new Set(b ?? [])].sort();
+  return left.length === right.length && left.every((tag, i) => tag === right[i]);
 }
 
 /**
- * Rebuilds the future of a series in one pass: drop what is planned but not
- * yet done, then materialize the new rule. Used by "edit all" and by any rule
- * change (OPH-206 owns the scope question itself).
+ * Carries a series edit onto the occurrences it keeps. A column moves only
+ * where the edit changed it AND the row still holds what the old template
+ * stamped there — an occurrence the user edited on its own ("only this one")
+ * keeps that edit, the same way it keeps its id, its subtasks and its links.
  */
-export async function rebuildFuture(trx, { workspaceId, series, now = new Date() }) {
+async function restampOccurrences(trx, { workspaceId, rows, before, after }) {
+  if (rows.length === 0) return;
+  const oldTemplate = parseJsonColumn(before.template) ?? {};
+  const newTemplate = parseJsonColumn(after.template) ?? {};
+  const oldClock = wallClockParts(new Date(before.anchor_at), before.timezone);
+  const newClock = wallClockParts(new Date(after.anchor_at), after.timezone);
+
+  const tagsChanged = !sameTagSet(oldTemplate.tagIds, newTemplate.tagIds);
+  const tagsByTask = new Map();
+  if (tagsChanged) {
+    const links = await trx('task_tags')
+      .whereIn(
+        'task_id',
+        rows.map((row) => row.id),
+      )
+      .select('task_id', 'tag_id');
+    for (const link of links) {
+      if (!tagsByTask.has(link.task_id)) tagsByTask.set(link.task_id, []);
+      tagsByTask.get(link.task_id).push(link.tag_id);
+    }
+  }
+
+  for (const row of rows) {
+    const day = occurrenceDayOf(row.occurrence_date);
+    const oldColumns = templateColumns(
+      before,
+      oldTemplate,
+      atWallTime(day, oldClock, before.timezone),
+    );
+    const newColumns = templateColumns(
+      after,
+      newTemplate,
+      atWallTime(day, newClock, after.timezone),
+    );
+    const patch = {};
+    for (const col of RESTAMPED_COLUMNS) {
+      if (sameColumn(oldColumns[col], newColumns[col])) continue;
+      if (!sameColumn(row[col], oldColumns[col])) continue;
+      patch[col] = newColumns[col];
+    }
+    const retag = tagsChanged && sameTagSet(tagsByTask.get(row.id), oldTemplate.tagIds);
+    if (Object.keys(patch).length === 0 && !retag) continue;
+
+    if (retag) {
+      await trx('task_tags').where({ task_id: row.id }).delete();
+      const tagIds = [...new Set(newTemplate.tagIds ?? [])];
+      if (tagIds.length > 0) {
+        await trx('task_tags').insert(tagIds.map((tagId) => ({ task_id: row.id, tag_id: tagId })));
+      }
+    }
+    await writeOccurrence(trx, {
+      workspaceId,
+      row,
+      patch,
+      changedFields: [...Object.keys(patch), ...(retag ? ['tags'] : [])],
+    });
+  }
+}
+
+/**
+ * Rebuilds the future of a series in one pass. Used by every series edit —
+ * REST, MCP and the sync `task_series` update (the app's `updateRule`).
+ *
+ * The future occurrences the new rule still plans KEEP their rows (and so their
+ * ids, subtasks, links and per-occurrence edits) and take the edit through
+ * `restampOccurrences`; the ones it no longer plans are retired with their slot
+ * released; the days still missing are materialized. A title-only edit
+ * therefore removes nothing, and daily → weekdays removes only the weekends.
+ *
+ * `previous` is the series row before the edit; without it the kept rows are
+ * left as they are.
+ */
+export async function rebuildFuture(
+  trx,
+  { workspaceId, series, previous = null, now = new Date() },
+) {
   if (isCompletionSeries(series)) return rebuildCompletionHead(trx, { workspaceId, series, now });
   const fromDay = materializationWindow(series, now).from;
-  const removed = await deleteFutureOccurrences(trx, {
-    workspaceId,
-    seriesId: series.id,
-    fromDay,
-  });
+  const planned = new Set(plannedDays(series, now));
+  const rows = await futureOccurrences(trx, { workspaceId, seriesId: series.id, fromDay });
+  const keep = [];
+  const drop = [];
+  for (const row of rows)
+    (planned.has(occurrenceDayOf(row.occurrence_date)) ? keep : drop).push(row);
+
+  const removed = await retireOccurrences(trx, { workspaceId, rows: drop });
+  if (previous)
+    await restampOccurrences(trx, { workspaceId, rows: keep, before: previous, after: series });
   const { created } = await materializeSeries(trx, { workspaceId, series, now });
   return { removed, created };
 }

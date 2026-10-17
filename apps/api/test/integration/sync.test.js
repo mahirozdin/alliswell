@@ -601,4 +601,82 @@ describe.runIf(enabled)('integration: a write retired in its own transaction', (
     // Server-owned: the link to the completed row never reaches a client.
     expect(created[0].data).not.toHaveProperty('spawnedFromTaskId');
   });
+  it("OPH-375: an offline rule edit (the app's updateRule) keeps the days the new rule still has", async () => {
+    const clientId = newId();
+    const seriesId = newId();
+    const today = new Date().toISOString().slice(0, 10);
+    const revisionNow = async () =>
+      Number(
+        (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+      );
+    const push = (mutations, baseRevision) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/sync/push',
+        headers: owner.headers,
+        payload: { clientId, workspaceId: owner.workspace.id, baseRevision, mutations },
+      });
+    const live = () =>
+      app.db('tasks').where({ series_id: seriesId }).whereNull('deleted_at').select('id');
+    const ruleUpdate = (rule) => ({
+      clientMutationId: newId(),
+      operation: 'update',
+      entityType: 'task_series',
+      entityId: seriesId,
+      patch: { rule },
+    });
+    const pullTasks = async (since) => {
+      const pull = await app.inject({
+        method: 'GET',
+        url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${since}&limit=500`,
+        headers: owner.headers,
+      });
+      expect(pull.statusCode).toBe(200);
+      expect(pull.json().hasMore).toBe(false);
+      const changes = pull.json().changes.filter((c) => c.entityType === 'task');
+      return {
+        deletes: changes.filter((c) => c.operation === 'delete').length,
+        creates: changes.filter((c) => c.operation === 'create').length,
+      };
+    };
+
+    const created = await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task_series',
+          entityId: seriesId,
+          patch: {
+            rule: { freq: 'daily', interval: 1 },
+            template: { title: 'Esneme' },
+            timezone: 'UTC',
+            anchorAt: `${today}T08:00:00.000Z`,
+          },
+        },
+      ],
+      await revisionNow(),
+    );
+    expect(created.json().results[0].status).toBe('applied');
+    const all = (await live()).length;
+    expect(all).toBeGreaterThan(360);
+
+    const weekdays = ['MO', 'TU', 'WE', 'TH', 'FR'].map((day) => ({ day, ordinal: null }));
+    let since = await revisionNow();
+    const narrowed = await push(
+      [ruleUpdate({ freq: 'weekly', interval: 1, byWeekday: weekdays })],
+      since,
+    );
+    expect(narrowed.json().results[0].status).toBe('applied');
+    const kept = (await live()).length;
+    // Only the weekends leave; the device hears exactly that and nothing else.
+    expect(kept).toBeGreaterThan(250);
+    expect(await pullTasks(since)).toEqual({ deletes: all - kept, creates: 0 });
+
+    since = await revisionNow();
+    const widened = await push([ruleUpdate({ freq: 'daily', interval: 1 })], since);
+    expect(widened.json().results[0].status).toBe('applied');
+    expect((await live()).length).toBe(all);
+    expect(await pullTasks(since)).toEqual({ deletes: 0, creates: all - kept });
+  });
 });

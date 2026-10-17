@@ -966,9 +966,9 @@ export default async function syncRoutes(app) {
         }
         await materializeSeries(trx, { workspaceId: ctx.workspaceId, series });
       },
-      async afterUpdate(trx, ctx, mutation) {
+      async afterUpdate(trx, ctx, mutation, before) {
         const series = await trx('task_series').where({ id: mutation.entityId }).first();
-        await rebuildFuture(trx, { workspaceId: ctx.workspaceId, series });
+        await rebuildFuture(trx, { workspaceId: ctx.workspaceId, series, previous: before });
       },
       // Stopping a series removes its future and keeps its past (DESIGN §25 R7),
       // so the delete cannot be the generic soft-delete patch.
