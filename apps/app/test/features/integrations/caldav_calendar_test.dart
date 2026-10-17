@@ -279,6 +279,18 @@ void main() {
     expect(container.read(serverMirrorsIcloudProvider), '1');
     expect(await localKv.get('caldav_icloud_active'), '1');
 
+    // The admin turns the connector off: the server stops mirroring, so the
+    // device mirror must come back.
+    api.caldavEnabled = false;
+    container.invalidate(caldavIntegrationProvider);
+    await tester.pumpAndSettle();
+    expect(container.read(serverMirrorsIcloudProvider), '');
+
+    api.caldavEnabled = true;
+    container.invalidate(caldavIntegrationProvider);
+    await tester.pumpAndSettle();
+    expect(container.read(serverMirrorsIcloudProvider), '1');
+
     api.caldavAccounts.clear();
     container.invalidate(caldavIntegrationProvider);
     await tester.pumpAndSettle();

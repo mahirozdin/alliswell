@@ -65,9 +65,14 @@ final caldavIntegrationProvider = FutureProvider<CaldavStatus?>((ref) async {
   final status = await ref
       .watch(caldavIntegrationsApiProvider)
       .status(workspace.id);
-  final icloud = status.accounts.any(
-    (a) => a.isIcloud && a.status == 'active' && a.calendarUrl != null,
-  );
+  // Only while the server's connector is ON: an admin switching
+  // CALDAV_ENABLED off stops the server mirror, and the device mirror must
+  // then come back rather than leave Apple Calendar empty.
+  final icloud =
+      status.enabled &&
+      status.accounts.any(
+        (a) => a.isIcloud && a.status == 'active' && a.calendarUrl != null,
+      );
   final flag = ref.read(serverMirrorsIcloudProvider.notifier);
   // Always written (not only when it differs): the stored value hydrates
   // asynchronously, so "differs" could be judged against the fallback. And
