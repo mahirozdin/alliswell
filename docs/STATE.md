@@ -40,11 +40,8 @@
 7. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
    `VITE_SALES_CAPTCHA_SITE_KEY`, sunucu yarısıyla birlikte (uzantının belgeleri); tek yarı her
    gönderimi reddeder.
-8. **OPH-366 konsolları** — Google redirect URI eklendi (2026-10-17). Kalan: Apple Developer › Identifiers ›
-   Services ID (ör. `space.alliswell.web`) › Sign in with Apple › Primary App ID
-   `com.alliswell.alliswell`, Domain `api.alliswell.space`, Return URL aynı callback; sunucu
-   `.env`'ine `SIGN_IN_APPLE_SERVICE_ID=<o Services ID>`, sonraki deploy'la yeniden başlat.
-   Ardından DEVICE-CHECKS "MCP onayında Google/Apple" satırı.
+8. **OPH-366** — Google redirect URI, Apple Services ID ve prod `.env`'deki `SIGN_IN_APPLE_SERVICE_ID`
+   tamam (2026-10-17). Kalan: deploy'dan sonra DEVICE-CHECKS "MCP onayında Google/Apple" satırı.
 9. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
    (`docs/store/directories.md`, önkoşulları boş).
 10. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
@@ -69,18 +66,10 @@
     Sonra DEVICE-CHECKS "Masaüstü indirmeleri". İsteğe bağlı: Authenticode sertifikası (ya da Azure
     Trusted Signing) + Windows işine signtool adımı → SmartScreen uyarısı kalkar.
 
-15. **OPH-371 gerçek dışa aktarımlar (K4)** — gerçek bir Todoist yedeği (ZIP, ücretli plan) ya da
-    proje CSV'si ve gerçek bir TickTick yedeği ile Ayarlar › Veri › İçe aktar: önizleme sayıları
-    kaynakla tutuyor mu, tekrarlar doğru mu, ikinci içe aktarma 0 oluşturuyor mu. "Açıklamada
-    duruyor" uyarısına düşen Todoist DATE metinlerini ayrıştırıcıya eklemek için ilet.
-    Google Takvim bağlıysa ~20 görevlik denemeden sonra tarihsiz görevlerin içe aktarma gününe
-    düşmesi büyük içe aktarmada kabul edilebilir mi — değilse ayrı karar. DEVICE-CHECKS
-    "İçe aktarma sihirbazı".
-
-16. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
+15. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
     (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
 
-17. **OPH-380 CalDAV** — test sunucusunda `CALDAV_ENABLED=true` + gerçek `CALENDAR_TOKEN_KEY`, sonra
+16. **OPH-380 CalDAV** — sahip prod `.env`'de `CALDAV_ENABLED=true` yaptı (2026-10-17, alliswell.space'te açık); kalan
     DEVICE-CHECKS "CalDAV (iCloud / Nextcloud)": gerçek iCloud (uygulamaya özel parola, X-prop
     sağ kalıyor mu → CALDAV.md §4.4) ve gerçek Nextcloud; Apple cihazda çift ayna koruması.
     Onay/bağlantı kesme metinlerini (EN+TR `calendar.caldav.*`) ve PRIVACY(.tr) bölümünü ürün/hukuk
@@ -94,6 +83,8 @@ Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECK
 
 Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. Burada her işi bağlayanlar:
 
+- **İçe aktarma gerçek dosyayla denenmeden yayında (2026-10-17, OPH-371):** sahibin test verisi yok;
+  gerçek bir Todoist/TickTick dosyasında sorun yaşayan kullanıcı GitHub issue açar, iş oradan doğar.
 - **Çalışma belgeleri yalın (2026-09-26):** STATE işaretçidir, TASKS yalnız açık iştir; kapanan iş
   silinir; kalıcı tuzak LESSONS'a, doğrulama kanıtı commit mesajına. Hedef: her oturumun okuduğu
   belge küçük kalsın (`check:docs`).
