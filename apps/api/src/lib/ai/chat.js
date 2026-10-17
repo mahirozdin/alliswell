@@ -143,9 +143,16 @@ export async function runChat({
 
 /** SSE writer over a hijacked reply — backpressure-aware, close-tolerant. */
 export function sseSink(reply) {
+  // Headers the onRequest hooks already set on the reply — @fastify/cors's
+  // access-control-allow-origin, helmet's security headers — live on the
+  // Fastify reply, not on the raw response; a hijacked reply never flushes
+  // them. Carry them into writeHead, or a browser drops the whole stream as a
+  // CORS failure while curl works (OPH-382).
+  const carried = reply.getHeaders();
   reply.hijack();
   const raw = reply.raw;
   raw.writeHead(200, {
+    ...carried,
     'content-type': 'text/event-stream; charset=utf-8',
     'cache-control': 'no-cache',
     // Belt-and-braces for nginx-style proxies; Apache needs the conf checklist.

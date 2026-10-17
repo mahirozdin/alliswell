@@ -62,6 +62,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The AI chat answers in the web app again.** Its streamed reply left out the header that
+  lets the browser read it, so the web app waited forever while phones and desktops worked.
+
 - **Editing a repeating task no longer deletes its future tasks.** Renaming a daily repeat, or
   changing its days so that some of the old days stay (every day → weekdays), removed every
   upcoming task and created none. Now the tasks on days the repeat still has stay as they are —

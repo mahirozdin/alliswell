@@ -4,6 +4,7 @@ import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { startFakeAi } from '../helpers/fakeai.js';
 import { parseSseStream } from '../../src/lib/ai/sse.js';
 import { newId } from '../../src/lib/ids.js';
+import { loadConfig } from '../../src/config.js';
 
 /**
  * OPH-217 — the transports, against a REAL listener: SSE frames arrive
@@ -80,6 +81,65 @@ describe('SSE transport', () => {
     expect(events[0].data.requestId).toBeDefined();
     expect(events[1].data.text).toBe('Merhaba ');
     expect(events.at(-1).data.stopReason).toBe('stop');
+  });
+
+  it('OPH-382: the hijacked stream keeps the CORS and security headers', async () => {
+    const origin = 'https://alliswell.space';
+    const res = await fetch(`${baseUrl}/api/v1/workspaces/${owner.workspace.id}/ai/chat`, {
+      method: 'POST',
+      headers: { ...owner.headers, 'content-type': 'application/json', origin },
+      body: JSON.stringify({
+        requestId: newId(),
+        messages: [{ role: 'user', content: 'merhaba' }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    // A browser drops the whole stream without this header (curl does not care).
+    expect(res.headers.get('access-control-allow-origin')).toBe(origin);
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    await res.text(); // drain the stream
+  });
+
+  it('OPH-382: an origin outside the allow-list gets no CORS grant on the stream', async () => {
+    await app.close();
+    ({ app } = await buildTestApp({
+      config: loadConfig({
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '1000',
+        CORS_ORIGIN: 'https://alliswell.space',
+      }),
+    }));
+    owner = await registerUser(app, { email: 'ai-transport-cors@example.com' });
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${owner.workspace.id}/ai/connections`,
+      headers: owner.headers,
+      payload: {
+        provider: 'anthropic',
+        apiKey: 'sk-transport-123',
+        baseUrl: `${fake.url}/anthropic`,
+        consentAcknowledged: true,
+      },
+    });
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    baseUrl = `http://127.0.0.1:${app.server.address().port}`;
+
+    const send = (origin) =>
+      fetch(`${baseUrl}/api/v1/workspaces/${owner.workspace.id}/ai/chat`, {
+        method: 'POST',
+        headers: { ...owner.headers, 'content-type': 'application/json', origin },
+        body: JSON.stringify({
+          requestId: newId(),
+          messages: [{ role: 'user', content: 'merhaba' }],
+        }),
+      });
+    const allowed = await send('https://alliswell.space');
+    expect(allowed.headers.get('access-control-allow-origin')).toBe('https://alliswell.space');
+    await allowed.text(); // drain the stream
+    const foreign = await send('https://evil.example');
+    expect(foreign.headers.get('access-control-allow-origin')).toBeNull();
+    await foreign.text(); // drain the stream
   });
 
   it('delivers frames INCREMENTALLY and a client abort kills the upstream', async () => {
