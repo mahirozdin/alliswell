@@ -67,7 +67,9 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
   FocusNode? _ownFocus;
   int _inFlight = 0;
 
-  /// Dismissed recognitions ([AwQuickToken.key]); cleared on submit.
+  /// Dismissed recognitions ([AwQuickToken.key]); cleared on submit and
+  /// whenever the field becomes empty — a ✕ belongs to the line it was
+  /// pressed on, not to the next one typed after clearing by hand (OPH-385).
   final Set<String> _ignored = {};
   AwQuickParse? _parsed;
   String? _parsedText;
@@ -110,6 +112,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
 
   void _onText() {
     if (_controller.text == _parsedText) return;
+    if (_controller.text.isEmpty) _ignored.clear();
     _reparse();
   }
 

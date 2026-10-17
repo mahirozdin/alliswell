@@ -62,6 +62,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Quick add forgets a ✕ once you empty the field.** After you dismissed a recognized
+  date or tag and then deleted the text by hand, the same words stayed plain text in the next
+  task you typed; now only sending the task or clearing the field starts fresh.
+
 - **The page that connects an AI app (Claude, ChatGPT) fits a phone screen.** On a narrow phone
   its card was a little wider than the screen and scrolled sideways.
 
