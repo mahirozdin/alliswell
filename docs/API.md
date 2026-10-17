@@ -335,8 +335,10 @@ calendar — Nextcloud, Radicale, Fastmail — two-way, from the server
 ([CALDAV.md](CALDAV.md), [ADR-0059](adr/0059-caldav-connector.md)). Connecting is
 a session-only call (the table above says why); the password is checked
 against the server before anything is stored, kept encrypted, and **never
-returned** by any endpoint. While the connector is off, connecting answers
-`503 CALDAV_NOT_ENABLED`, and status and disconnect still work.
+returned** by any endpoint. A refused password is `422 CALDAV_AUTH_FAILED`; for
+iCloud its message says to use an app-specific password from account.apple.com
+(Apple refuses the account password itself). While the connector is off,
+connecting answers `503 CALDAV_NOT_ENABLED`, and status and disconnect still work.
 
 ### Sync is not the integration surface
 

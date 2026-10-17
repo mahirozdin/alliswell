@@ -118,6 +118,25 @@ const CONNECT_ERRORS = {
   CALDAV_REQUEST_FAILED: ['badGateway', 'The CalDAV server refused the request'],
 };
 
+/**
+ * Apple refuses the Apple Account password itself; only an app-specific one
+ * works. Same code, a message that says so (the app shows its own hint).
+ */
+const ICLOUD_AUTH_FAILED =
+  'Apple did not accept that password. Use an app-specific password made at ' +
+  'account.apple.com (Sign-In and Security → App-Specific Passwords); your ' +
+  'Apple Account password does not work here';
+
+/** iCloud by choice, or a "generic" address that is iCloud's CalDAV host. */
+export function isIcloudServer(server, serverUrl) {
+  if (server === 'icloud') return true;
+  try {
+    return /(^|\.)icloud\.com$/i.test(new URL(serverUrl).hostname);
+  } catch {
+    return false;
+  }
+}
+
 export default async function caldavIntegrationRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
@@ -132,11 +151,13 @@ export default async function caldavIntegrationRoutes(app) {
     }
   }
 
-  function translate(err) {
+  function translate(err, { icloud = false } = {}) {
     const mapped = CONNECT_ERRORS[err?.code];
     if (!mapped) return err;
     const [kind, message] = mapped;
-    return coded(app.httpErrors[kind](message), err.code);
+    // An API/MCP caller sees no app hint: the iCloud refusal names its cure.
+    const text = icloud && err.code === 'CALDAV_AUTH_FAILED' ? ICLOUD_AUTH_FAILED : message;
+    return coded(app.httpErrors[kind](text), err.code);
   }
 
   /** Account visible only to the user who connected it, inside its workspace. */
@@ -353,7 +374,9 @@ export default async function caldavIntegrationRoutes(app) {
         request.log.info({ code: err?.code }, 'caldav connect failed');
         // Anything discovery could not make sense of (a malformed href from
         // a server we have never seen) is "not a CalDAV server", not a 500.
-        throw translate(CONNECT_ERRORS[err?.code] ? err : { code: 'CALDAV_NOT_CALDAV' });
+        throw translate(CONNECT_ERRORS[err?.code] ? err : { code: 'CALDAV_NOT_CALDAV' }, {
+          icloud: isIcloudServer(server, serverUrl),
+        });
       }
       const calendars = found.calendars.filter((c) => c.url.length <= MAX_CALENDAR_PATH);
       if (calendars.length === 0) {

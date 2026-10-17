@@ -6,6 +6,7 @@ import { decryptSecret } from '../../src/lib/crypto.js';
 import {
   serializeCaldavAccount,
   normalizeServerUrl,
+  isIcloudServer,
 } from '../../src/routes/integrations-caldav.js';
 
 const KEY = 'e'.repeat(64);
@@ -293,5 +294,31 @@ describe('CalDAV integration routes (OPH-380, CALDAV.md §3)', () => {
     });
     expect(res.statusCode).toBe(422);
     expect(res.json().code).toBe('CALDAV_BAD_URL');
+  });
+
+  it('a refused iCloud password says to use an app-specific one; a generic server does not', async () => {
+    await boot();
+    const icloudRes = await connect({ ...icloud(), password: 'my-apple-account-password' });
+    expect(icloudRes.statusCode).toBe(422);
+    expect(icloudRes.json().code).toBe('CALDAV_AUTH_FAILED');
+    expect(icloudRes.json().message).toMatch(/app-specific password/);
+    expect(icloudRes.json().message).toMatch(/account\.apple\.com/);
+
+    const genericRes = await connect({
+      server: 'generic',
+      url: fake.url,
+      username: fake.state.username,
+      password: 'wrong',
+    });
+    expect(genericRes.statusCode).toBe(422);
+    expect(genericRes.json().code).toBe('CALDAV_AUTH_FAILED');
+    expect(genericRes.json().message).toBe('The server rejected the user name or password');
+
+    // A "generic" address that is iCloud's own host counts as iCloud.
+    expect(isIcloudServer('generic', 'https://caldav.icloud.com/')).toBe(true);
+    expect(isIcloudServer('generic', 'https://p42-caldav.icloud.com/1/')).toBe(true);
+    expect(isIcloudServer('generic', 'https://cloud.example.org/')).toBe(false);
+    expect(isIcloudServer('generic', 'https://noticloud.com/')).toBe(false);
+    expect(isIcloudServer('icloud', 'http://127.0.0.1:1/')).toBe(true);
   });
 });
