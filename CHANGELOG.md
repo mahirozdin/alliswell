@@ -64,6 +64,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Importing the same Todoist or TickTick file twice at once no longer fails on MariaDB
+  servers.** One of the two imports could answer with an error; both now finish and nothing
+  is duplicated.
+
 - **Web: after clicking @ in the AI chat you can type straight away.** The click took the
   typing cursor out of the message field, so the name you typed after the "@" was lost.
 

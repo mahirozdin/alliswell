@@ -25,6 +25,17 @@ import { transactionWithRetry } from './tx.js';
  * has deleted the task since: a re-import never resurrects anything. Two
  * identical requests at once meet on the unique index and one of them skips.
  *
+ * Lock order: every write transaction here takes the workspace row FOR UPDATE
+ * before anything else (`lockWorkspace`). Without it, the ledger INSERT's
+ * foreign-key check takes a SHARED lock on that row and the domain write's
+ * revision bump then upgrades it to EXCLUSIVE; a second request (or a
+ * createTag) waiting for the same row in between closes a deadlock cycle.
+ * MySQL tended to pick a retried item as the victim; MariaDB 10.11 picks the
+ * cheaper side — the tag transaction, which nothing retried, so one of two
+ * identical requests answered 500 (OPH-371). Taking the exclusive lock first
+ * is the order recordSyncWrite takes anyway, so it serializes nothing new and
+ * the import no longer deadlocks with itself at all.
+ *
  * Batching: at most `maxItems` new items per call; the response says how many
  * remain and the caller calls again, so a big file never meets a proxy
  * timeout and a retry after a failure is safe.
@@ -52,6 +63,11 @@ const PRIORITY_MAPPING = {
     { from: 'none', to: 'none' },
   ],
 };
+
+/** The workspace row, exclusively, before any other lock (see the header). */
+async function lockWorkspace(trx, workspaceId) {
+  await trx('workspaces').where({ id: workspaceId }).forUpdate().first('id');
+}
 
 function isLedgerClash(err) {
   return err?.code === 'ER_DUP_ENTRY' && String(err.message).includes('uq_import_ledger_key');
@@ -270,6 +286,7 @@ export async function runAppImport(
     const key = externalKey(plan.key);
     try {
       const id = await transactionWithRetry(app.db, async (trx) => {
+        await lockWorkspace(trx, workspaceId);
         const ledgerId = newId();
         await trx(LEDGER).insert({
           id: ledgerId,
@@ -318,7 +335,11 @@ export async function runAppImport(
       ? `${plan.slug.slice(0, 40)}-${newId().slice(-6).toLowerCase()}`
       : undefined;
     try {
-      const id = await createTag(app, { workspaceId, body: { name: plan.name }, slug });
+      // Same lock order and the same deadlock retry as every other write here.
+      const id = await transactionWithRetry(app.db, async (trx) => {
+        await lockWorkspace(trx, workspaceId);
+        return createTag(app, { workspaceId, body: { name: plan.name }, slug, trx });
+      });
       tagIdBySlug.set(plan.slug, id);
       created.tags += 1;
     } catch (err) {
@@ -348,6 +369,7 @@ export async function runAppImport(
     const tagIds = tagIdsOf(item);
     try {
       const counts = await transactionWithRetry(app.db, async (trx) => {
+        await lockWorkspace(trx, workspaceId);
         const ledgerId = newId();
         const delta = { tasks: 0, checklistItems: 0, notes: 0, series: 0 };
         await trx(LEDGER).insert({
