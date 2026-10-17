@@ -100,8 +100,13 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 
   /// Throws [AuthException] on failure — screens turn codes into messages.
   /// Success lands in [state] via the repository's change stream.
-  Future<void> login({required String email, required String password}) =>
-      ref.read(authRepositoryProvider).login(email: email, password: password);
+  Future<AuthSession> login({
+    required String email,
+    required String password,
+    String? totpCode,
+  }) => ref
+      .read(authRepositoryProvider)
+      .login(email: email, password: password, totpCode: totpCode);
 
   Future<void> register({
     required String email,

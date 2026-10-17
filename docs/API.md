@@ -1438,6 +1438,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp/recovery-codes' \
 | --- | --- | --- | --- |
 | `provider` | `google` · `apple` | **yes** | — |
 | `idToken` | string | **yes** | length 16–8192 |
+| `totpCode` | string | no | length 6–32 |
 
 **Request**
 

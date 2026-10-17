@@ -479,6 +479,15 @@ export function fakeDb({
         tables[name] = tables[name].filter((row) => !doomed.has(row));
         return doomed.size;
       },
+      // `count({ n: '*' })` → `[{ n }]`, the only shape the code under test uses.
+      async count(spec = { count: '*' }) {
+        const alias = typeof spec === 'object' ? Object.keys(spec)[0] : 'count';
+        return [{ [alias]: matching().length }];
+      },
+      // knex's other spelling, used by db/totp.js.
+      del() {
+        return api.delete();
+      },
       async insert(rowOrRows) {
         const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];
         for (const row of rows) {

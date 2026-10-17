@@ -1653,3 +1653,15 @@ automatically.
 | M4 | **Chips.** A pick removes "@query" from the field and adds an `InputChip` above it: kind icon (files by type), title ≤ 220 px with ellipsis, a delete button ("Remove"). Loading: a 14 px progress avatar, and send is disabled until it settles. Refused: an `error`-coloured icon and one `bodySmall` `onSurfaceVariant` line "title: reason" under the chips. A shortened item reads "title · shortened". | The user sees exactly what will be sent before sending. |
 | M5 | **The sent message.** Under the user bubble, compact non-interactive chips for what rode along; under them, when an item was cut, "Only the first 12,000 of N characters of “title” were sent.", and when the conversation cap left one out, "“title” was left out…" (`bodySmall`, `onSurfaceVariant`, end-aligned). | Truncation is visible to the user, not only to the model. |
 | M6 | **Both themes, both widths are shot:** `phone_ai_attach_picker_*`, `phone_ai_attach_chips_*`, `desktop_ai_attach_picker_*`, `desktop_ai_attach_chips_*` in `test/design_screenshots_test.dart`; only existing tokens (pairs "ai attach …" in `scripts/design/contrast.py`). | Rule 11. |
+
+## 42. The second-factor prompt (OPH-381)
+
+Shown when sign-in (e-mail + password, Google or Apple) answers `AUTH_MFA_REQUIRED`
+(`features/auth/ui/second_factor_prompt.dart`, ADR-0049 amendment).
+
+| # | Rule | Why |
+| --- | --- | --- |
+| T1 | **A solid `AlertDialog`** (G1, radius from `dialogTheme`) on the root navigator, not dismissible by a tap beside it: shield icon in `primary`, title "Enter your verification code", one body line in `onSurfaceVariant`, one filled text field, Cancel (text) and Verify (filled) actions ≥ 44 px. | A half-typed code must not vanish with a stray tap; glass never sits under the field. |
+| T2 | **One field for both kinds of code.** Text keyboard, capitals, no autocorrect, `oneTimeCode` autofill, 32 characters; the helper line says a recovery code works too. | The server tells them apart; asking which one it is would be a question the person cannot answer quickly. |
+| T3 | **A wrong code keeps the dialog open** with an `AwInlineError` ("That code is not right…"); any other refusal (rate limit, policy) uses the shared error sentence in the same place. Cancel closes it and leaves the sign-in screen exactly as it was, with no error. The screen's own spinner stops when the dialog opens; the Verify button carries the progress. | One retype, not a new sign-in; backing out is not a failure. |
+| T4 | **Both themes are shot:** `second-factor-prompt-*` and `second-factor-wrong-code-*` (`test/features/auth/second_factor_screenshot_test.dart`, `shotLocale=tr` for Turkish); only existing tokens. | Rule 11. |

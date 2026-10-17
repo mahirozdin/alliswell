@@ -7,6 +7,7 @@ import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identiti
 import { hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
 import { credentialRateLimit } from '../lib/rate-limit.js';
+import { assertSignInFactors } from '../lib/sign-in-factors.js';
 import {
   createRefreshRecord,
   deviceLabel,
@@ -219,6 +220,11 @@ const oauthSchema = {
       // Providers do not publish a maximum length; 8 KB is far above any real
       // ID token and far below anything worth parsing from a hostile client.
       idToken: { type: 'string', minLength: 16, maxLength: 8192 },
+      // OPH-381 — the same field, bounds and meaning as on /login: the
+      // provider proves the first factor, an enrolled account still owes its
+      // authenticator or recovery code. The app resends the SAME idToken with
+      // it after an AUTH_MFA_REQUIRED, rather than running the provider again.
+      totpCode: { type: 'string', minLength: 6, maxLength: 32 },
     },
   },
   response: {
@@ -331,7 +337,7 @@ export default async function authRoutes(app) {
   // Apple omits the address entirely after the first authorisation — which rule 1
   // already covers.
   app.post('/oauth', { schema: oauthSchema, ...credentialLimit }, async (request, reply) => {
-    const { provider, idToken } = request.body;
+    const { provider, idToken, totpCode } = request.body;
 
     let identity;
     try {
@@ -363,6 +369,15 @@ export default async function authRoutes(app) {
         'OAUTH_ACCOUNT_GONE',
       );
     }
+    // OPH-381 — a provider's token is the FIRST factor, never the whole
+    // sign-in: an existing account clears its second factor and the
+    // extension's policy exactly as /login does (same helper, same codes),
+    // and BEFORE anything is written — a refused attempt must not link an
+    // identity, touch it or leave a refresh row behind.
+    if (match.kind === 'known' || match.kind === 'link') {
+      await assertSignInFactors(app, { user: match.user, request, totpCode });
+    }
+
     if (match.kind === 'known') {
       const row = match.user;
       user = { id: row.id, email: row.email, displayName: row.display_name };
@@ -424,6 +439,15 @@ export default async function authRoutes(app) {
             workspace_id: workspaceId,
             user_id: userId,
             role: 'owner',
+          });
+          // A brand-new account has no second factor, but the policy still
+          // decides whether it may sign in. Inside the transaction, so a
+          // refusal (or a throwing policy) rolls the account back instead of
+          // leaving one nobody can enter, and the policy sees its rows.
+          await assertSignInFactors(app, {
+            user: { id: userId, email, display_name: displayName },
+            request,
+            db: trx,
           });
           refresh = await createRefreshRecord(trx, auth, {
             userId,
@@ -535,39 +559,7 @@ export default async function authRoutes(app) {
     // address would answer a question the caller has not earned, and a policy
     // consulted before the password would let an extension refuse sign-ins for
     // accounts whose credentials were never presented.
-    const factors = await totpStatus(app.db, user.id);
-    let totpVerified = false;
-    if (factors.enrolled) {
-      if (!request.body.totpCode) {
-        throw mfaError(app, 'AUTH_MFA_REQUIRED', 'This account needs its authenticator code');
-      }
-      const check = await verifyUserTotp(app.db, {
-        userId: user.id,
-        code: request.body.totpCode,
-        key: app.config.auth.totpKey,
-      });
-      if (!check.ok) throw mfaError(app, 'AUTH_MFA_INVALID', 'That code is not right');
-      totpVerified = true;
-    }
-
-    for (const requirement of app.ee.signInRequirements) {
-      // No try/catch: a policy that throws refuses the sign-in, which is the
-      // seam's documented contract. Failing open here would make the policy
-      // a suggestion.
-      const refusal = await requirement({
-        db: app.db,
-        user,
-        request,
-        factors: { totpEnrolled: factors.enrolled, totpVerified },
-      });
-      if (refusal) {
-        throw mfaError(
-          app,
-          refusal.code ?? 'AUTH_SIGN_IN_REFUSED',
-          refusal.message ?? 'Sign-in refused',
-        );
-      }
-    }
+    await assertSignInFactors(app, { user, request, totpCode: request.body.totpCode });
 
     const refresh = await createRefreshRecord(app.db, auth, {
       userId: user.id,

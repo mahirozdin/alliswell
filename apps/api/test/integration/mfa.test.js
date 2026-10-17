@@ -2,7 +2,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
+import { resetJwksCacheForTest } from '../../src/lib/oauth-identity.js';
 import { totp } from '../../src/lib/totp.js';
+import { localProviderKeys, signIdToken } from '../helpers/idtoken.js';
 
 // Needs real MySQL + Redis with migrations applied (see integration/ready.test.js).
 const enabled = process.env.INTEGRATION === '1';
@@ -333,5 +335,184 @@ describe.runIf(enabled)('integration: changing your own password', () => {
     } finally {
       app.ee.passwordRequirements.pop();
     }
+  });
+});
+
+/// OPH-381 — Google / Apple sign-in owes the second factor too. Until this
+/// change `POST /auth/oauth` gave a TOTP-enrolled account a session on the
+/// provider's token alone. Real ID tokens (local JWKS) and real MySQL, because
+/// "nothing was written" is a claim about rows.
+describe.runIf(enabled)('integration: second factor on Google / Apple sign-in', () => {
+  const WEB = 'web.apps.googleusercontent.com';
+  const prefix = `${emailPrefix}-social`;
+  let app;
+  let key;
+  let ada; // { id, email, secret, recoveryCodes }
+
+  const oauth = async (claims, extra = {}) =>
+    app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/oauth',
+      payload: {
+        provider: 'google',
+        idToken: await signIdToken(key, { audience: WEB, ...claims }),
+        ...extra,
+      },
+    });
+
+  const asAda = { subject: `${prefix}-g`, email: `${prefix}-ada@example.com`, emailVerified: true };
+
+  const freshCode = async () => {
+    await app.db('user_totp').where({ user_id: ada.id }).update({ last_step: null });
+    return totp(ada.secret);
+  };
+
+  const sessionsOf = async (userId) => {
+    const [{ n }] = await app.db('refresh_tokens').where({ user_id: userId }).count({ n: '*' });
+    return Number(n);
+  };
+
+  beforeAll(async () => {
+    app = await buildApp({
+      config: loadConfig({
+        ...process.env,
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '1000',
+        SIGN_IN_GOOGLE_WEB_CLIENT_ID: WEB,
+      }),
+    });
+    key = await localProviderKeys(['google']);
+
+    const created = await oauth(asAda);
+    expect(created.statusCode).toBe(201);
+    ada = { id: created.json().user.id, email: asAda.email };
+    const bearer = { authorization: `Bearer ${created.json().tokens.accessToken}` };
+    const started = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/mfa/totp',
+      headers: bearer,
+    });
+    ada.secret = started.json().secret;
+    const confirmed = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/mfa/totp/confirm',
+      headers: bearer,
+      payload: { code: await freshCode() },
+    });
+    expect(confirmed.statusCode).toBe(200);
+    ada.recoveryCodes = confirmed.json().recoveryCodes;
+  });
+
+  afterAll(async () => {
+    resetJwksCacheForTest();
+    if (!app) return;
+    const users = await app.db('users').where('email', 'like', `${prefix}%`).select('id');
+    const ids = users.map((u) => u.id);
+    if (ids.length > 0) {
+      await app.db('user_identities').whereIn('user_id', ids).delete();
+      await app.db('user_totp_recovery_codes').whereIn('user_id', ids).delete();
+      await app.db('user_totp').whereIn('user_id', ids).delete();
+      await app.db('refresh_tokens').whereIn('user_id', ids).delete();
+      await app.db('workspace_members').whereIn('user_id', ids).delete();
+      await app.db('workspaces').whereIn('owner_id', ids).delete();
+      await app.db('users').whereIn('id', ids).delete();
+    }
+    await app.close();
+  });
+
+  it('refuses the token alone with AUTH_MFA_REQUIRED and writes no session', async () => {
+    const before = await sessionsOf(ada.id);
+    const res = await oauth(asAda);
+    expect(res.statusCode).toBe(401);
+    expect(res.json().code).toBe('AUTH_MFA_REQUIRED');
+    expect(await sessionsOf(ada.id)).toBe(before);
+  });
+
+  it('refuses a wrong code with AUTH_MFA_INVALID', async () => {
+    const before = await sessionsOf(ada.id);
+    const res = await oauth(asAda, { totpCode: '000000' });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().code).toBe('AUTH_MFA_INVALID');
+    expect(await sessionsOf(ada.id)).toBe(before);
+  });
+
+  it('signs in with the right code, and that code cannot be spent twice', async () => {
+    const code = await freshCode();
+    const first = await oauth(asAda, { totpCode: code });
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toMatchObject({ created: false, user: { id: ada.id } });
+    const second = await oauth(asAda, { totpCode: code });
+    expect(second.statusCode).toBe(401);
+    expect(second.json().code).toBe('AUTH_MFA_INVALID');
+  });
+
+  it('a recovery code signs in exactly once', async () => {
+    const code = ada.recoveryCodes[0];
+    expect((await oauth(asAda, { totpCode: code })).statusCode).toBe(200);
+    const again = await oauth(asAda, { totpCode: code });
+    expect(again.statusCode).toBe(401);
+    expect(again.json().code).toBe('AUTH_MFA_INVALID');
+  });
+
+  it('a new provider identity is not LINKED to an enrolled account without the code', async () => {
+    const other = { subject: `${prefix}-g2`, email: ada.email, emailVerified: true };
+    const refused = await oauth(other);
+    expect(refused.statusCode).toBe(401);
+    expect(refused.json().code).toBe('AUTH_MFA_REQUIRED');
+    const linked = () =>
+      app.db('user_identities').where({ provider: 'google', subject: other.subject }).first();
+    expect(await linked()).toBeUndefined();
+
+    const ok = await oauth(other, { totpCode: await freshCode() });
+    expect(ok.statusCode).toBe(200);
+    expect((await linked()).user_id).toBe(ada.id);
+  });
+
+  it("an extension's refusal is honoured after a right code", async () => {
+    app.ee.signInRequirements.push(async ({ factors }) =>
+      factors.totpVerified ? { code: 'POLICY_NO', message: 'Not today' } : null,
+    );
+    try {
+      const before = await sessionsOf(ada.id);
+      const res = await oauth(asAda, { totpCode: await freshCode() });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe('POLICY_NO');
+      expect(await sessionsOf(ada.id)).toBe(before);
+    } finally {
+      app.ee.signInRequirements.pop();
+    }
+  });
+
+  it('a policy refusal on a brand-new account rolls the account back', async () => {
+    app.ee.signInRequirements.push(async ({ factors }) =>
+      factors.totpEnrolled ? null : { code: 'POLICY_NO', message: 'Second factor required' },
+    );
+    const email = `${prefix}-new@example.com`;
+    try {
+      const res = await oauth({ subject: `${prefix}-new`, email, emailVerified: true });
+      expect(res.statusCode).toBe(401);
+      expect(res.json().code).toBe('POLICY_NO');
+    } finally {
+      app.ee.signInRequirements.pop();
+    }
+    expect(await app.db('users').where({ email }).first()).toBeUndefined();
+    expect(
+      await app
+        .db('user_identities')
+        .where({ subject: `${prefix}-new` })
+        .first(),
+    ).toBeUndefined();
+  });
+
+  it('an account without a factor signs in with the token alone, as before', async () => {
+    const res = await oauth({
+      subject: `${prefix}-plain`,
+      email: `${prefix}-plain@example.com`,
+      emailVerified: true,
+    });
+    expect(res.statusCode).toBe(201);
+    const back = await oauth({ subject: `${prefix}-plain` });
+    expect(back.statusCode).toBe(200);
+    expect(back.json().user.id).toBe(res.json().user.id);
   });
 });

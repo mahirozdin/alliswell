@@ -1167,6 +1167,11 @@
                     "type": "string",
                     "minLength": 16,
                     "maxLength": 8192
+                  },
+                  "totpCode": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 32
                   }
                 }
               }

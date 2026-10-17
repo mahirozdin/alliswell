@@ -91,8 +91,52 @@ public API has no sign-in surface — neither MCP tools, docs/API.md nor openapi
 - Existing 2FA users see one extra step when they connect a client — the security fix.
 - Google discourages the implicit `id_token` response; if a console refuses it, the
   fallback is the code flow with a client secret.
-- Left out, written down as measured gaps in docs/TASKS.md: `POST /auth/oauth` signs
-  TOTP-enrolled users in without a code (fixing it needs app UI), and the Flutter web Google
+- Left out, written down as measured gaps in docs/TASKS.md: `POST /auth/oauth` signed
+  TOTP-enrolled users in without a code (closed by OPH-381, amendment below), and the Flutter web Google
   button calls `authenticate()`, which `google_sign_in_web` does not implement. The consent
   page's password path still does not consult the extension's `credentialVerifiers`
   (existing behaviour, unchanged here).
+
+## Amendment — OPH-381 (2026-10-17): the app's own Google / Apple sign-in
+
+**Context.** The gap left out above was live in production: `POST /auth/oauth` gave a
+TOTP-enrolled account a session on the provider's ID token alone and never consulted
+`signInRequirements`, while `/auth/login` did both (OPH-283). Separately, the Flutter app never
+sent `totpCode` on either route and had no prompt, so an enrolled account could not finish the
+app's normal sign-in at all.
+
+**Decision.**
+
+1. **A provider token is the first factor, never the whole sign-in.** `POST /auth/oauth`
+   accepts an optional `totpCode` with `/login`'s exact bounds (6–32; a recovery code is
+   accepted and spent the same way, by `verifyUserTotp`).
+2. **One helper for every door.** `apps/api/src/lib/sign-in-factors.js`
+   (`checkSignInFactors` / `assertSignInFactors`) checks the factor, then runs
+   `app.ee.signInRequirements` with `{ totpEnrolled, totpVerified }`; a throwing requirement
+   refuses. `/auth/login`, `/auth/oauth` and both consent-page steps call it, so the codes
+   (`AUTH_MFA_REQUIRED`, `AUTH_MFA_INVALID`, the policy's code or `AUTH_SIGN_IN_REFUSED`) and
+   the order cannot drift again. The consent page keeps its own behaviour: `required` there
+   means "show the step page", and an empty code on the step page is a wrong one.
+3. **Before any write.** For a `known` or `link` match the check runs before
+   `touchIdentity`, `linkIdentity` and the refresh record — a refused attempt links no identity
+   and leaves no session row. (The spent TOTP step or recovery code is the only write, and it
+   is the point.)
+4. **A brand-new account still meets the policy.** It has no factor
+   (`totpEnrolled: false`); the requirements run inside the transaction that creates it, with
+   that transaction as `db`, so a refusal (or a throw) rolls the account back instead of
+   leaving one nobody can enter, and the policy can see the new rows.
+5. **The app asks and retries the same request.** On `AUTH_MFA_REQUIRED` from `/login` or
+   `/oauth` a solid dialog (DESIGN §42) takes an authenticator or recovery code and re-sends
+   the identical request with `totpCode`; for Google / Apple that is the SAME ID token, so the
+   native provider sheet is not shown twice. `AUTH_MFA_INVALID` keeps the dialog open with
+   "That code is not right"; Cancel returns to the sign-in screen without an error.
+
+**Alternatives.** A short-lived "MFA pending" ticket instead of resending the ID token: one
+more signed token type and state to expire, for no gain — the ID token is already a signed,
+short-lived proof, and resending it within its lifetime is exactly what the server verifies.
+Refusing social sign-in outright for enrolled accounts: locks out the Google-/Apple-only
+accounts that have no password at all.
+
+**Consequences.** Rate limits are unchanged (`credentialLimit`, as on `/login`). An expired ID
+token on a slow code entry is an ordinary `OAUTH_TOKEN_INVALID`; the person starts the provider
+sign-in again.

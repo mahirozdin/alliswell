@@ -127,7 +127,16 @@
     "or": "or",
     "continueWithGoogle": "Continue with Google",
     "continueWithApple": "Continue with Apple",
-    "socialFailed": "That sign-in did not go through. Please try again."
+    "socialFailed": "That sign-in did not go through. Please try again.",
+    "mfa": {
+      "title": "Enter your verification code",
+      "body": "This account has two-step verification. Open your authenticator app and enter the 6-digit code.",
+      "code": "Verification code",
+      "codeHelp": "Lost your phone? Enter one of your recovery codes instead.",
+      "enterCode": "Enter the code from your authenticator app.",
+      "invalid": "That code is not right. Check it and try again.",
+      "verify": "Verify"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -737,6 +746,9 @@
     "sessionExpired": "Your session has expired. Please sign in again.",
     "AUTH_INVALID_CREDENTIALS": "Email or password is incorrect.",
     "AUTH_EMAIL_TAKEN": "An account with this email already exists.",
+    "AUTH_MFA_REQUIRED": "This account needs its verification code.",
+    "AUTH_MFA_INVALID": "That code is not right. Check it and try again.",
+    "AUTH_SIGN_IN_REFUSED": "Sign-in is not allowed for this account right now.",
     "NETWORK_ERROR": "Could not reach the server. Check your connection and the server address.",
     "server": "The server could not complete this. Try again in a moment.",
     "notFound": "That could not be found — it may have been removed or moved.",

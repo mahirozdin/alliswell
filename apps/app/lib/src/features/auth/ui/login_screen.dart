@@ -7,6 +7,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'auth_messages.dart';
 import 'auth_scaffold.dart';
+import 'second_factor_prompt.dart';
 import 'social_sign_in_buttons.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -38,12 +39,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       _error = null;
     });
     try {
-      await ref
-          .read(authControllerProvider.notifier)
-          .login(email: _email.text.trim(), password: _password.text);
-      // Success: the router redirect leaves this screen.
+      final email = _email.text.trim();
+      final password = _password.text;
+      // An account with an authenticator answers AUTH_MFA_REQUIRED; the
+      // prompt then re-sends this same request with the code (OPH-381).
+      await signInWithSecondFactor(
+        context,
+        (totpCode) => ref
+            .read(authControllerProvider.notifier)
+            .login(email: email, password: password, totpCode: totpCode),
+        onPrompt: () => setState(() => _submitting = false),
+      );
+      // Success: the router redirect leaves this screen. Cancel: stay here.
     } on Object catch (e) {
-      setState(() => _error = friendlyAuthMessage(e));
+      if (mounted) setState(() => _error = friendlyAuthMessage(e));
     } finally {
       if (mounted) setState(() => _submitting = false);
     }

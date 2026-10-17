@@ -256,7 +256,7 @@
 - **DERS** Rate limit app seviyesinde → rotayı `config.rateLimit`'le daralt; kova kimlik, IP değil (ADR-0045); kasıtlı 5xx `app.httpErrors.*` ile (gerisi `INTERNAL_ERROR`).
 - **DERS** Kullanıcıya özel akış (AI sohbeti) `user:{userId}` soket odasına gider; `ws:*` workspace odası onu tüm üyelere yayınlar.
 - **DERS** `routes/oauth.js` `renderPage` title'ı kaçırır, body'yi HAM basar; helmet CSP kapalı → kullanıcı içeriği basan HTML sayfası her enterpolasyonu kaçırır, CSP seçer, payload'lı test.
-- **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP'nin OAuth 2.1 sunucusu, `lib/oauth-identity.js` Google/Apple ID token; `/auth/login`'i dallandırma. Onay sayfası da giriş: TOTP + `signInRequirements` (OPH-366).
+- **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP'nin OAuth 2.1 sunucusu, `lib/oauth-identity.js` Google/Apple ID token. Her giriş kapısı yazmadan önce `lib/sign-in-factors.js` (OPH-381).
 - **DERS** Kullanıcı kontrollü dış URL SSRF'tir: yalnız http/https, IP denetimi DNS'ten SONRA ve her yönlendirmede, gövde tavanı; AI `baseUrl`'inde (`aiFetch`) allowlist yok — bilinçli kabul (SECURITY.md).
 - **DERS** `refresh_tokens` her yenilemede satır yazar: "oturum" = `family_id` ailesi, liste/iptal aile başına; yenileme UA göndermeyebilir → cihaz adı yalnız INSERT'te ("kolon var" ≠ "kolon dolu").
 

@@ -147,8 +147,6 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 - **ADR-0038 §8** — iOS başsız uyanış ertelendi: kilitli iPhone Keychain'i okuyamıyor
   (`WhenUnlocked`); erişilebilirlik değişikliği kendi güvenlik ADR'sini + yeniden anahtarlama
   göçünü ister.
-- **OPH-366 (ölçüldü)** — `POST /auth/oauth` TOTP'li kullanıcıya kod sormadan oturum veriyor
-  (Google/Apple ile giriş ikinci faktörü atlıyor); düzeltmesi uygulamada kod istemi ister.
 - **OPH-366 (ölçüldü)** — Flutter web'de Google düğmesi `google_sign_in` `authenticate()`
   çağırıyor; `google_sign_in_web` bunu desteklemiyor (`renderButton`/GIS gerekir) → web'de
   Google ile giriş bugün çalışmıyor.

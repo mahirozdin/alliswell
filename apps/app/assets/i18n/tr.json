@@ -126,7 +126,16 @@
     "or": "veya",
     "continueWithGoogle": "Google ile devam et",
     "continueWithApple": "Apple ile devam et",
-    "socialFailed": "Giriş tamamlanamadı. Lütfen tekrar deneyin."
+    "socialFailed": "Giriş tamamlanamadı. Lütfen tekrar deneyin.",
+    "mfa": {
+      "title": "Doğrulama kodunu gir",
+      "body": "Bu hesapta iki adımlı doğrulama açık. Doğrulama uygulamanı aç ve 6 haneli kodu gir.",
+      "code": "Doğrulama kodu",
+      "codeHelp": "Telefonunu mu kaybettin? Kurtarma kodlarından birini gir.",
+      "enterCode": "Doğrulama uygulamandaki kodu gir.",
+      "invalid": "Kod doğru değil. Kontrol edip tekrar dene.",
+      "verify": "Doğrula"
+    }
   },
   "settings": {
     "title": "Ayarlar",
@@ -736,6 +745,9 @@
     "sessionExpired": "Oturumun sona erdi. Lütfen tekrar giriş yap.",
     "AUTH_INVALID_CREDENTIALS": "E-posta veya parola yanlış.",
     "AUTH_EMAIL_TAKEN": "Bu e-postayla bir hesap zaten var.",
+    "AUTH_MFA_REQUIRED": "Bu hesap doğrulama kodu istiyor.",
+    "AUTH_MFA_INVALID": "Kod doğru değil. Kontrol edip tekrar dene.",
+    "AUTH_SIGN_IN_REFUSED": "Bu hesapla şu an giriş yapılamıyor.",
     "NETWORK_ERROR": "Sunucuya ulaşılamadı. Bağlantını ve sunucu adresini kontrol et.",
     "server": "Sunucu bu isteği tamamlayamadı. Biraz sonra tekrar dene.",
     "notFound": "Bulunamadı — kaldırılmış ya da taşınmış olabilir.",

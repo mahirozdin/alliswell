@@ -4,7 +4,8 @@ import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { hashMcpToken } from '../lib/tokens.js';
 import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identities.js';
-import { totpStatus, verifyUserTotp } from '../db/totp.js';
+import { totpStatus } from '../db/totp.js';
+import { checkSignInFactors } from '../lib/sign-in-factors.js';
 import {
   MCP_SCOPES,
   normalizeScope,
@@ -529,19 +530,6 @@ export default async function oauthRoutes(app) {
     );
   }
 
-  /**
-   * The extension's sign-in policy, exactly as `/auth/login` consults it. A
-   * refusal comes back as its message; a policy that THROWS propagates and
-   * refuses the request — failing open would make the policy a suggestion.
-   */
-  async function signInRefusal(request, user, factors) {
-    for (const requirement of app.ee.signInRequirements) {
-      const refusal = await requirement({ db: app.db, user, request, factors });
-      if (refusal) return refusal.message ?? 'Sign-in refused';
-    }
-    return null;
-  }
-
   async function grantCode(reply, { client, params, userId, workspaceId }) {
     const code = await issueCode(app.db, auth.refreshSecret, {
       clientId: client.id,
@@ -632,15 +620,14 @@ export default async function oauthRoutes(app) {
     // factor the same as /auth/login. Until then a password alone minted MCP
     // tokens for a TOTP-enrolled account. The password is not asked again:
     // the step page carries the proven first factor in a signed step token.
-    const factors = await totpStatus(app.db, user.id);
-    if (factors.enrolled) {
+    // `checkSignInFactors` is the one /auth/login and /auth/oauth use
+    // (OPH-381); without a code an enrolled account answers `required`
+    // before any policy runs, which here means "show the step page".
+    const outcome = await checkSignInFactors(app, { user, request });
+    if (outcome.reason === 'required') {
       return sendStepPage(reply, { client, params, user, via: 'password' });
     }
-    const refusal = await signInRefusal(request, user, {
-      totpEnrolled: false,
-      totpVerified: false,
-    });
-    if (refusal) return rerender(refusal);
+    if (!outcome.ok) return rerender(outcome.message);
 
     const memberships = await memberWorkspaceIds(user.id);
     if (memberships.length === 0) {
@@ -818,21 +805,16 @@ export default async function oauthRoutes(app) {
 
     // Re-read, never trusted from the token: a factor turned on since the
     // step page was rendered still applies.
-    const factors = await totpStatus(app.db, user.id);
-    let totpVerified = false;
-    if (factors.enrolled) {
-      const code = String(body.totpCode ?? '').trim();
-      const check = code
-        ? await verifyUserTotp(app.db, { userId: user.id, code, key: auth.totpKey })
-        : { ok: false };
-      if (!check.ok) return again('That code is not right / Kod doğru değil');
-      totpVerified = true;
-    }
-    const refusal = await signInRefusal(request, user, {
-      totpEnrolled: factors.enrolled,
-      totpVerified,
+    // On this page a missing code is just a wrong one: the field is there.
+    const outcome = await checkSignInFactors(app, {
+      user,
+      request,
+      totpCode: String(body.totpCode ?? '').trim() || null,
     });
-    if (refusal) return again(refusal);
+    if (outcome.reason === 'required' || outcome.reason === 'invalid') {
+      return again('That code is not right / Kod doğru değil');
+    }
+    if (!outcome.ok) return again(outcome.message);
 
     return grantCode(reply, { client, params, userId: user.id, workspaceId });
   });

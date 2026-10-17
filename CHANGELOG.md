@@ -68,6 +68,12 @@ This file holds the unreleased changes and the latest release; at each release t
 - **Security: the connector sign-in page now asks for your authenticator code when two-factor
   authentication is on.** Before, the password alone was enough to connect an AI app.
 
+- **Security: signing in with Google or Apple now asks for your authenticator code when
+  two-factor authentication is on.** Before, the Google or Apple account alone was enough. The
+  app now shows a code prompt after the password or after Google / Apple — an authenticator
+  code or a recovery code works, a wrong one can be retyped — so accounts with two-factor
+  authentication can sign in to the app at all.
+
 - **Honest Apple Calendar wording.** The website, README and store texts no longer call Apple
   Calendar sync two-way. Google Calendar syncs both ways; on iPhone and Mac your tasks are
   mirrored into Apple Calendar, one way for now.
