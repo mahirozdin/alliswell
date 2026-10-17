@@ -40,9 +40,7 @@
 7. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
    `VITE_SALES_CAPTCHA_SITE_KEY`, sunucu yarısıyla birlikte (uzantının belgeleri); tek yarı her
    gönderimi reddeder.
-8. **OPH-366 konsolları** — Google Cloud › Credentials › *Web application* istemcisi
-   (`SIGN_IN_GOOGLE_WEB_CLIENT_ID`) › Authorized redirect URIs'e
-   `https://api.alliswell.space/oauth/authorize/callback` ekle. Apple Developer › Identifiers ›
+8. **OPH-366 konsolları** — Google redirect URI eklendi (2026-10-17). Kalan: Apple Developer › Identifiers ›
    Services ID (ör. `space.alliswell.web`) › Sign in with Apple › Primary App ID
    `com.alliswell.alliswell`, Domain `api.alliswell.space`, Return URL aynı callback; sunucu
    `.env`'ine `SIGN_IN_APPLE_SERVICE_ID=<o Services ID>`, sonraki deploy'la yeniden başlat.
@@ -58,8 +56,7 @@
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.
 
-13. **OPH-369 Apple geri okuma** — Mac'te Xcode ile derle (`flutter build ios --no-codesign` +
-    `flutter build macos`; Swift'in yeni `readEvents`'i bu makinede hiç derlenmedi), sonra
+13. **OPH-369 Apple geri okuma** — Swift Mac'te derlendi (2026-10-17); kalan
     DEVICE-CHECKS "Apple Takvim geri okuma" bölümü (iPhone + Mac). Geçerse "iki yönlü Apple"
     metnine dönüş SAHİBİN kararı; dönülürse aynı değişiklikte: README, COMPARISON, SUPPORT(.tr),
     STORE-LISTING, landing `content*.js` + index sayfaları, `llms.txt`, web `index.html`/manifest ve
@@ -80,8 +77,7 @@
     düşmesi büyük içe aktarmada kabul edilebilir mi — değilse ayrı karar. DEVICE-CHECKS
     "İçe aktarma sihirbazı".
 
-16. **OPH-376 Siri** — Mac'te Xcode ile derle (`flutter build ios --no-codesign` + `flutter build macos`;
-    `AWAppShortcuts.swift` bu makinede hiç derlenmedi), sonra DEVICE-CHECKS "Siri ve kısayollar"
+16. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
     (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
 
 17. **OPH-380 CalDAV** — test sunucusunda `CALDAV_ENABLED=true` + gerçek `CALENDAR_TOKEN_KEY`, sonra
