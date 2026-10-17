@@ -338,6 +338,36 @@ describe('after-completion series — the rest of the series model (OPH-375)', (
     expect(liveRows(series.id)).toHaveLength(0);
   });
 
+  it('a deleted head stays deleted through a title-only or rule edit of the series', async () => {
+    const taskId = await createTask({ title: 'Durdu', dueAt: at(2) });
+    const { series } = await repeat(taskId, DAILY(3));
+    expect((await inject('DELETE', `/tasks/${taskId}`)).statusCode).toBe(204);
+
+    const titled = await inject('PATCH', `/task-series/${series.id}`, {
+      template: { title: 'Yeni ad' },
+    });
+    expect(titled.statusCode).toBe(200);
+    expect(titled.json().created).toBe(0);
+    const ruled = await inject('PATCH', `/task-series/${series.id}`, { rule: DAILY(5) });
+    expect(ruled.statusCode).toBe(200);
+    expect(ruled.json().created).toBe(0);
+    expect(liveRows(series.id)).toHaveLength(0);
+    expect(tables.tasks.filter((t) => t.series_id === series.id)).toHaveLength(1);
+  });
+
+  it('an ended series still gets a head back when its end is extended', async () => {
+    const taskId = await createTask({ title: 'Uzat', dueAt: at(0) });
+    const { series } = await repeat(taskId, DAILY(1, { end: { type: 'count', count: 1 } }));
+    await complete(taskId);
+    expect(openRows(series.id)).toHaveLength(0);
+    const res = await inject('PATCH', `/task-series/${series.id}`, {
+      rule: DAILY(1, { end: { type: 'count', count: 3 } }),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().created).toBe(1);
+    expect(openRows(series.id)).toHaveLength(1);
+  });
+
   it('stopping the repeat keeps the open occurrence as an ordinary task', async () => {
     const taskId = await createTask({ title: 'Filtre', dueAt: at(3) });
     const { series } = await repeat(taskId, DAILY(90));

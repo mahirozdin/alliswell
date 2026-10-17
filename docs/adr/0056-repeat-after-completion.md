@@ -64,7 +64,10 @@ on Feb 28), must not move by a byte.
    `occurrence_date` is a slot, `due_at` is when it happens (ADR-0020 consequences).
 8. **Rule edits.** Switching a series to completion (or editing one) keeps the earliest open
    occurrence as the head and tombstones other open ones from today on; with none left, one is
-   created at max(anchor, today) unless the rule has ended. A scoped date edit never rewrites a
+   created at max(anchor, today) unless the rule has ended or the head was deleted — a
+   tombstone in the latest slot means the user deleted the open occurrence, and the series
+   stays stopped through any later edit, as it does through the sweep (§2) and as a deleted
+   calendar occurrence keeps its day. A scoped date edit never rewrites a
    completion rule (it names no day), and an "all" edit keeps each row's own due day.
 9. **Surfaces (rule 12).** Public API: the existing `/task-series` endpoints take `basis`; the
    Ajv rule schema documents it without constraining it, so a bad value still returns

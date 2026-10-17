@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — OPH-381: Google/Apple ile giriş ikinci faktörü (TOTP) ve uzantı politikasını soruyor; uygulamada kod istemi.
+**Last updated:** 2026-10-17 — QA düzeltmeleri: tamamlanınca-tekrar serisinde silinen baş düzenlemeyle geri gelmiyor (OPH-375).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-381 (güvenlik, sahip onaylı): `POST /auth/oauth` bilinen/bağlanacak hesapta TOTP + `signInRequirements`'ı `/auth/login` ile aynı ortak yardımcıdan (`lib/sign-in-factors.js`, MCP onay sayfası da kullanıyor) ve HİÇBİR yazmadan önce çalıştırıyor; yeni hesapta politika hesabı açan transaction içinde. Uygulama `AUTH_MFA_REQUIRED`'da kod istemi gösterip aynı isteği (sosyalde aynı ID token'la) tekrar gönderiyor (ADR-0049 ek). |
+| Last completed           | QA düzeltmesi (OPH-375): tamamlanınca-tekrar serisinin açık başı silinince seri durmuş kalıyor — başlık/kural `PATCH /task-series` artık bugüne yeni görev yaratmıyor (son slotta mezar taşı = durdu; ADR-0056 §8 eki). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

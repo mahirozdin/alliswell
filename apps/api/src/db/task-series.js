@@ -536,7 +536,8 @@ export async function onTaskStatusChange(trx, { workspaceId, before, after, user
  * A rule edit on an after-completion series (or a switch to one) keeps ONE
  * open occurrence: the earliest open one stays as the head, any other open
  * one from today on goes. With none left at all, a head is created on the
- * anchor day or today, whichever is later — unless the rule has ended.
+ * anchor day or today, whichever is later — unless the rule has ended or the
+ * user deleted the head (the series then stays stopped).
  */
 async function rebuildCompletionHead(trx, { workspaceId, series, now }) {
   const fromDay = materializationWindow(series, now).from;
@@ -562,6 +563,16 @@ async function rebuildCompletionHead(trx, { workspaceId, series, now }) {
     removed += 1;
   }
   if (open.length > 0) return { removed, created: 0 };
+
+  // A deleted head stopped the series: its tombstone still holds the latest
+  // slot, exactly as a deleted calendar occurrence keeps its day. A rule or
+  // title edit must not bring it back as a fresh task due today (ADR-0056 §8).
+  const latest = await trx('tasks')
+    .where({ series_id: series.id })
+    .whereNotNull('occurrence_date')
+    .orderBy('occurrence_date', 'desc')
+    .first();
+  if (latest?.deleted_at != null) return { removed, created: 0 };
 
   const rule = parseJsonColumn(series.rule);
   const live = await trx('tasks')

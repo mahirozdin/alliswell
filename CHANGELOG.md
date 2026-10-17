@@ -29,7 +29,7 @@ This file holds the unreleased changes and the latest release; at each release t
 - **Repeat a task N days, weeks or months after you complete it.** In the Repeat dialog choose
   "After completion": change the water filter 90 days after you last changed it, late or early.
   Completing it creates the next one at the same time of day (a month after Jan 31 is Feb 28);
-  reopening takes it back. A completion made offline now keeps the moment you tapped it. Also
+  reopening takes it back; deleting the open one ends the repeat. A completion made offline now keeps the moment you tapped it. Also
   on MCP (`set_task_repeat`, `get_task.repeat`, `complete_task.next`) and the API
   (`basis: "completion"` on `/task-series`).
 - **Search everywhere: ⌘K / Ctrl+K, or the search button.** One box finds tasks, projects,
