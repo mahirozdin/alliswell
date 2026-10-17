@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import '../auth/test_support.dart';
 import 'fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/nav.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -32,7 +33,7 @@ Future<Widget> signedInAppWith(FakeApi api) async {
 }
 
 Future<void> openProjects(WidgetTester tester) async {
-  await tester.tap(find.text('Projects').last);
+  await tester.tap(navTab('Projects'));
   await tester.pumpAndSettle();
 }
 
@@ -328,9 +329,9 @@ void main() {
     expect(find.byType(TabBar), findsOneWidget);
 
     // Switch away (Inbox has no name clash) and back to Projects.
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Projects').last);
+    await tester.tap(navTab('Projects'));
     await tester.pumpAndSettle();
 
     // We land on the projects LIST (no detail tabs), not the reopened project.
@@ -357,9 +358,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Leave the project (Inbox has no name clash) and open the Notes section.
-      await tester.tap(find.text('Inbox').last);
+      await tester.tap(navTab('Inbox'));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Notes').last);
+      await tester.tap(navTab('Notes'));
       await tester.pumpAndSettle();
 
       // Default (All) hides the README; the READMEs chip surfaces it.

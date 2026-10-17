@@ -7,6 +7,7 @@ import '../../core/day_boundary.dart';
 import '../../sync/providers.dart';
 import '../ee/assignments_providers.dart';
 import '../workspaces/workspaces.dart';
+import 'data/quick_add_apply.dart';
 import 'data/series_store.dart';
 import 'data/task.dart';
 import 'data/task_scope.dart';
@@ -184,11 +185,10 @@ class InboxTasksController extends StreamNotifier<List<Task>> {
     yield* ref.watch(taskStoreProvider).watchInboxIn(scope);
   }
 
-  Future<void> quickAdd(String title) async {
-    final id = await createOwnTask(ref.read, {
-      'title': title.trim(),
-      'status': 'inbox',
-    });
+  /// The capture rule lives in [createCapture], shared with voice capture
+  /// (OPH-376).
+  Future<void> quickAdd(QuickAddSubmission submission) async {
+    final id = await createCapture(ref.read, submission);
     if (id == null) throw StateError('No workspace available');
   }
 }

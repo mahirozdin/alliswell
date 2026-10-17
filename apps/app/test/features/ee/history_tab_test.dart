@@ -287,6 +287,53 @@ void main() {
   );
 
   testWidgets(
+    'EE-307: a transfer reads as from where to where, with the reason only named',
+    (tester) async {
+      for (final (locale, crossUnit, sameUnit, verb) in [
+        (
+          'en',
+          'From Bakım · Elektrik arızası to Bilgi İşlem · Yazılım sorunu · Reason kept as an internal note',
+          'From Elektrik arızası to Pres bakımı',
+          'moved this request',
+        ),
+        (
+          'tr',
+          'Bakım · Elektrik arızası → Bilgi İşlem · Yazılım sorunu · Gerekçe iç not olarak eklendi',
+          'Elektrik arızası → Pres bakımı',
+          'bu talebi aktardı',
+        ),
+      ]) {
+        AwI18n.instance.setActiveCached(Locale(locale));
+        await tester.pumpWidget(
+          ticketHarness([
+            withPage(
+              EeHistoryPage(
+                items: [
+                  ticketEvent('01EVENT0000000000000000B1', 'transferred', {
+                    'service': ['Elektrik arızası', 'Yazılım sorunu'],
+                    'unit': ['Bakım', 'Bilgi İşlem'],
+                    'released': 2,
+                    'reasonCommentId': [null, '01COMMENT00000000000000000'],
+                  }),
+                  ticketEvent('01EVENT0000000000000000B2', 'transferred', {
+                    'service': ['Elektrik arızası', 'Pres bakımı'],
+                  }),
+                ],
+              ),
+            ),
+          ]),
+        );
+        await tester.pumpAndSettle();
+        expect(find.text(crossUnit), findsOneWidget, reason: locale);
+        expect(find.text(sameUnit), findsOneWidget, reason: locale);
+        expect(find.textContaining(verb, findRichText: true), findsWidgets);
+        expect(find.textContaining('01COMMENT'), findsNothing);
+        await tester.pumpWidget(const SizedBox.shrink());
+      }
+    },
+  );
+
+  testWidgets(
     'UI-AUDIT #6: a request history the server refuses offers a retry, and the retry asks again',
     (tester) async {
       var asked = 0;

@@ -124,16 +124,22 @@ class _ProjectPickerFieldState extends State<ProjectPickerField> {
 
   @override
   Widget build(BuildContext context) {
+    final items = projectDropdownItems(
+      widget.projects,
+      currentValue: widget.value,
+      withCreate: true,
+    );
+    // While the project list is still loading the task's own project is not
+    // among the items yet, and a dropdown whose value matches no item asserts
+    // (a red frame in debug on every project task's detail). Show "none" for
+    // that frame; the key re-seeds the field once the project arrives.
+    final known = items.any((item) => item.value == widget.value);
     return DropdownButtonFormField<String?>(
-      key: ValueKey('aw-project-field-$_epoch-${widget.value}'),
+      key: ValueKey('aw-project-field-$_epoch-${widget.value}-$known'),
       isExpanded: true,
-      initialValue: widget.value,
+      initialValue: known ? widget.value : null,
       decoration: widget.decoration,
-      items: projectDropdownItems(
-        widget.projects,
-        currentValue: widget.value,
-        withCreate: true,
-      ),
+      items: items,
       onChanged: _handle,
     );
   }

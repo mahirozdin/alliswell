@@ -1307,6 +1307,181 @@
       ]
     },
     {
+      "name": "CalDAV calendar",
+      "item": [
+        {
+          "name": "PATCH /api/v1/integrations/caldav/accounts/{accountId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/caldav/accounts/:accountId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "caldav",
+                "accounts",
+                ":accountId"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"calendarUrl\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "DELETE /api/v1/integrations/caldav/accounts/{accountId}",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/caldav/accounts/:accountId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "caldav",
+                "accounts",
+                ":accountId"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/integrations/caldav/accounts/{accountId}/calendars",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/integrations/caldav/accounts/:accountId/calendars",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "integrations",
+                "caldav",
+                "accounts",
+                ":accountId",
+                "calendars"
+              ],
+              "variable": [
+                {
+                  "key": "accountId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "GET /api/v1/workspaces/{workspaceId}/integrations/caldav",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/integrations/caldav",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "integrations",
+                "caldav"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key."
+          }
+        },
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/integrations/caldav",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/integrations/caldav",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "integrations",
+                "caldav"
+              ]
+            },
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"server\": \"icloud\",\n  \"username\": \"string\",\n  \"password\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
       "name": "Capabilities",
       "item": [
         {
@@ -2060,6 +2235,47 @@
             "description": "No credentials required.",
             "auth": {
               "type": "noauth"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Import & export",
+      "item": [
+        {
+          "name": "POST /api/v1/workspaces/{workspaceId}/import/apps",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/workspaces/{{workspaceId}}/import/apps",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workspaces",
+                "{{workspaceId}}",
+                "import",
+                "apps"
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"source\": \"todoist\",\n  \"files\": [\n    {\n      \"name\": \"Pay the electricity bill\",\n      \"content\": \"string\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
             }
           }
         }

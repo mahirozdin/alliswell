@@ -1,16 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../search/global_search.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/sheets.dart';
 import '../../../widgets/status_views.dart';
 import '../../tasks/data/task_text.dart';
+import '../data/ai_attachments.dart';
 import '../data/ai_context_builder.dart';
 import '../data/ai_live_context.dart';
+import '../data/ai_mention.dart';
 import '../data/stt.dart';
+import 'ai_attach_widgets.dart';
 import 'ai_bubble_controller.dart';
 import 'ai_bubble_state.dart';
 import 'ai_confirm_card.dart';
@@ -62,10 +69,150 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
     });
   }
 
+  // ── OPH-377: the "@" picker ────────────────────────────────────────────
+  /// The mention the cursor is in (immediate) and the query the rows are FOR
+  /// (debounced 150 ms — DESIGN §40 P5).
+  AiMentionQuery? _mention;
+  String _mentionQuery = '';
+  Timer? _mentionDebounce;
+  int _mentionActive = 0;
+
+  /// Esc closed the panel for the "@" at this index; it stays closed until
+  /// that mention is gone.
+  int? _mentionDismissedAt;
+
+  /// The last answered rows, kept while the next query loads.
+  List<GlobalSearchItem> _mentionShown = const [];
+
+  static const _mentionDebounceDelay = Duration(milliseconds: 150);
+
+  void _onInputChanged() {
+    final value = _input.value;
+    final cursor = value.selection.isValid
+        ? value.selection.baseOffset
+        : value.text.length;
+    final next = activeMention(value.text, cursor);
+    if (next == null || next.start != _mentionDismissedAt) {
+      _mentionDismissedAt = null;
+    }
+    if (next == _mention) return;
+    final queryChanged = next?.query != _mention?.query;
+    setState(() => _mention = next);
+    if (!queryChanged || next == null) return;
+    _mentionDebounce?.cancel();
+    if (next.query.isEmpty) {
+      setState(() {
+        _mentionQuery = '';
+        _mentionActive = 0;
+      });
+      return;
+    }
+    _mentionDebounce = Timer(_mentionDebounceDelay, () {
+      if (!mounted) return;
+      setState(() {
+        _mentionQuery = next.query;
+        _mentionActive = 0;
+      });
+    });
+  }
+
+  bool _mentionOpen(AiBubbleState state) =>
+      _mention != null &&
+      _mention!.start != _mentionDismissedAt &&
+      (state.phase == AiBubblePhase.composing ||
+          state.phase == AiBubblePhase.reviewing);
+
+  List<GlobalSearchItem> _mentionItems() {
+    final async = ref.watch(aiMentionItemsProvider(_mentionQuery));
+    if (async.hasValue && !async.isLoading) _mentionShown = async.value!;
+    return _mentionShown;
+  }
+
+  void _pickMention(GlobalSearchItem item) {
+    final mention = _mention;
+    if (mention == null) return;
+    final state = ref.read(aiBubbleControllerProvider);
+    final attached = {for (final a in state.pending) a.ref};
+    if (!AiMentionPanel.pickable(
+      item,
+      attached: attached,
+      limitReached: state.pending.length >= kAiAttachPerMessage,
+    )) {
+      return;
+    }
+    final attachment = aiAttachmentRefFor(item)!;
+    final removed = removeMention(_input.text, mention);
+    _input.value = TextEditingValue(
+      text: removed.text,
+      selection: TextSelection.collapsed(offset: removed.cursor),
+    );
+    final controller = ref.read(aiBubbleControllerProvider.notifier);
+    controller.editInput(removed.text);
+    controller.attach(attachment);
+    _inputFocus.requestFocus();
+  }
+
+  /// The "@" button: inserts the trigger at the cursor and focuses the field.
+  void _insertMentionTrigger() {
+    final value = _input.value;
+    final at = value.selection.isValid
+        ? value.selection.baseOffset
+        : value.text.length;
+    final before = value.text.substring(0, at);
+    final insert = before.isEmpty || RegExp(r'\s$').hasMatch(before)
+        ? '@'
+        : ' @';
+    final text = before + insert + value.text.substring(at);
+    _mentionDismissedAt = null;
+    _input.value = TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: at + insert.length),
+    );
+    ref.read(aiBubbleControllerProvider.notifier).editInput(text);
+    _inputFocus.requestFocus();
+  }
+
+  /// Hardware keys while the panel is open: ↑/↓ move, Enter picks, Esc closes
+  /// the panel (not the sheet).
+  KeyEventResult _onInputKey(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+    final state = ref.read(aiBubbleControllerProvider);
+    if (!_mentionOpen(state)) return KeyEventResult.ignored;
+    final items = _mentionShown;
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.escape) {
+      setState(() => _mentionDismissedAt = _mention!.start);
+      return KeyEventResult.handled;
+    }
+    if (items.isEmpty) return KeyEventResult.ignored;
+    if (key == LogicalKeyboardKey.arrowDown) {
+      setState(() => _mentionActive = (_mentionActive + 1) % items.length);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowUp) {
+      setState(
+        () =>
+            _mentionActive = (_mentionActive - 1 + items.length) % items.length,
+      );
+      return KeyEventResult.handled;
+    }
+    if (event is KeyDownEvent &&
+        (key == LogicalKeyboardKey.enter ||
+            key == LogicalKeyboardKey.numpadEnter)) {
+      _pickMention(items[_mentionActive.clamp(0, items.length - 1)]);
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
   @override
   void initState() {
     super.initState();
     _scroll.addListener(_onScrolled);
+    _input.addListener(_onInputChanged);
+    _inputFocus.onKeyEvent = _onInputKey;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // A voice session the FAB started (hold-to-talk) is already live on the
       // shared controller — don't reset it back to composing (OPH-224).
@@ -82,6 +229,7 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
 
   @override
   void dispose() {
+    _mentionDebounce?.cancel();
     _scroll.dispose();
     _input.dispose();
     _inputFocus.dispose();
@@ -152,6 +300,7 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
               ),
             ),
             const Divider(height: 1),
+            if (_mentionOpen(state)) _mentionPanel(state, viewport),
             _composer(state, controller),
           ],
         ),
@@ -180,8 +329,31 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
   );
 
   Widget _messageRow(AiChatEntry entry) => entry.role == 'user'
-      ? _userBubble(entry.text)
+      ? Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            _userBubble(entry.text),
+            AiSentAttachments(entry: entry),
+          ],
+        )
       : _assistantBubble(entry.text);
+
+  Widget _mentionPanel(AiBubbleState state, Size viewport) {
+    final items = _mentionItems();
+    if (_mentionActive >= items.length) _mentionActive = 0;
+    final sheetHeight = (viewport.height * 0.9).clamp(0, viewport.height - 80);
+    return AiMentionPanel(
+      items: items,
+      active: _mentionActive,
+      query: _mention?.query ?? '',
+      loading: _mentionQuery != (_mention?.query ?? ''),
+      attached: {for (final a in state.pending) a.ref},
+      limitReached: state.pending.length >= kAiAttachPerMessage,
+      onPick: _pickMention,
+      onHover: (i) => setState(() => _mentionActive = i),
+      maxHeight: (sheetHeight * 0.4).clamp(120, 280).toDouble(),
+    );
+  }
 
   Widget _userBubble(String text) => Align(
     alignment: Alignment.centerRight,
@@ -366,58 +538,101 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
     final micAvailable = ref.watch(sttProvider) != null;
     return Padding(
       padding: const EdgeInsets.all(AwSpace.x3),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: TextField(
-              key: const Key('ai-input'),
-              controller: _input,
-              focusNode: _inputFocus,
-              minLines: 1,
-              maxLines: 4,
-              // Round 15b: while the model is answering, the field is LOCKED —
-              // the send-turned-stop button was already saying "one turn at a
-              // time"; the field now agrees instead of hoarding the old text.
-              enabled: !streaming,
-              // Enter sends (hardware keyboards and the mobile action key
-              // alike) — the user's report: Enter kept re-submitting the text
-              // the field never cleared.
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _onSend(state, controller),
-              onChanged: controller.editInput,
-              decoration: InputDecoration(
-                hintText: 'ai.bubble.hint'.tr(),
-                border: const OutlineInputBorder(),
-              ),
-            ),
-          ),
-          const SizedBox(width: AwSpace.x2),
-          if (streaming)
-            IconButton.filled(
-              key: const Key('ai-stop'),
-              icon: const Icon(Icons.stop),
-              tooltip: 'ai.bubble.stop'.tr(),
-              onPressed: controller.stop,
-            )
-          else ...[
-            if (!reviewing && micAvailable)
-              IconButton(
-                key: const Key('ai-mic'),
-                icon: const Icon(Icons.mic_none_outlined),
-                tooltip: 'ai.voice.mic'.tr(),
-                onPressed: controller.startListening,
-              ),
-            IconButton.filled(
-              key: const Key('ai-send'),
-              icon: const Icon(Icons.arrow_upward),
-              tooltip: 'ai.bubble.send'.tr(),
-              onPressed: state.canSend
-                  ? () => _onSend(state, controller)
-                  : null,
-            ),
-          ],
+          AiPendingChips(pending: state.pending, onRemove: controller.detach),
+          _composerRow(state, controller, streaming, reviewing, micAvailable),
         ],
       ),
+    );
+  }
+
+  Widget _composerRow(
+    AiBubbleState state,
+    AiBubbleController controller,
+    bool streaming,
+    bool reviewing,
+    bool micAvailable,
+  ) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            key: const Key('ai-input'),
+            controller: _input,
+            focusNode: _inputFocus,
+            minLines: 1,
+            maxLines: 4,
+            // Round 15b: while the model is answering, the field is LOCKED —
+            // the send-turned-stop button was already saying "one turn at a
+            // time"; the field now agrees instead of hoarding the old text.
+            enabled: !streaming,
+            // Enter sends (hardware keyboards and the mobile action key
+            // alike) — the user's report: Enter kept re-submitting the text
+            // the field never cleared.
+            textInputAction: TextInputAction.send,
+            onSubmitted: (_) {
+              // OPH-377: with the "@" panel open, the action key picks the
+              // active row instead of sending.
+              final current = ref.read(aiBubbleControllerProvider);
+              if (_mentionOpen(current) && _mentionShown.isNotEmpty) {
+                _pickMention(
+                  _mentionShown[_mentionActive.clamp(
+                    0,
+                    _mentionShown.length - 1,
+                  )],
+                );
+                return;
+              }
+              _onSend(current, controller);
+            },
+            onChanged: controller.editInput,
+            decoration: InputDecoration(
+              hintText: 'ai.bubble.hint'.tr(),
+              border: const OutlineInputBorder(),
+            ),
+          ),
+        ),
+        const SizedBox(width: AwSpace.x2),
+        if (streaming)
+          IconButton.filled(
+            key: const Key('ai-stop'),
+            icon: const Icon(Icons.stop),
+            tooltip: 'ai.bubble.stop'.tr(),
+            onPressed: controller.stop,
+          )
+        else ...[
+          // Part of the field's tap region (OPH-387): a mouse press outside
+          // a text field unfocuses it (desktop, web), and on the web that
+          // closes the DOM input — the requestFocus in onPressed came too late
+          // and the keys typed after the "@" went nowhere.
+          TextFieldTapRegion(
+            child: IconButton(
+              key: const Key('ai-attach'),
+              icon: const Icon(Icons.alternate_email),
+              tooltip: 'ai.attach.button'.tr(),
+              onPressed: _insertMentionTrigger,
+            ),
+          ),
+          if (!reviewing && micAvailable)
+            IconButton(
+              key: const Key('ai-mic'),
+              icon: const Icon(Icons.mic_none_outlined),
+              tooltip: 'ai.voice.mic'.tr(),
+              onPressed: controller.startListening,
+            ),
+          IconButton.filled(
+            key: const Key('ai-send'),
+            icon: const Icon(Icons.arrow_upward),
+            tooltip: 'ai.bubble.send'.tr(),
+            onPressed: state.canSend && !state.attachLoading
+                ? () => _onSend(state, controller)
+                : null,
+          ),
+        ],
+      ],
     );
   }
 
@@ -566,6 +781,22 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
         Navigator.of(context).pop();
         await showAiConfirmSheet(context, proposal);
       }
+      return;
+    }
+    // OPH-377: a reviewed turn that carries attachments is a question about
+    // them — it goes to the chat, never to the extraction-only answer.
+    if (state.hasReadyPending) {
+      controller.editInput(_input.text.trim());
+      _input.clear();
+      _stick = true;
+      _scrollToBottom();
+      await controller.send(
+        context: buildLiveAiContext(
+          read: ref.read,
+          query: state.input,
+          sharedBlock: state.sharedBlock,
+        ),
+      );
       return;
     }
     final route = await controller.submitReview();

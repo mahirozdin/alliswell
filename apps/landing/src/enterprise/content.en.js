@@ -405,7 +405,7 @@ export default {
     points: [
       'Overdue, today and this week in one list, with a month calendar beside it',
       'Reminders ring even when the phone is on silent, so urgent work is not missed',
-      'Two-way sync with Google and Apple calendars: tasks in the calendar, the calendar next to the tasks',
+      'Two-way Google Calendar sync — tasks in the calendar, the calendar next to the tasks — and tasks mirrored into Apple Calendar on iPhone and Mac',
     ],
     shot: '/shots/ee/work-home-light-en.jpg',
     shotDark: '/shots/ee/work-home-dark-en.jpg',

@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../calendar/providers.dart';
 import '../../projects/providers.dart';
 import '../../tasks/data/task.dart';
+import '../../tasks/data/task_when.dart';
 import '../../tasks/providers.dart';
 import 'ai_context_builder.dart';
 
@@ -18,9 +19,10 @@ import 'ai_context_builder.dart';
 ///
 /// T0 meta+projects always · T1 overdue/today/upcoming tasks (lean rows) and
 /// the user's own calendar events · T2 fold-matched task excerpts for the
-/// current input. Notes excerpts are a deliberate follow-up (the notes list
-/// provider is query-coupled; wiring it here would drag UI filter state into
-/// the packer).
+/// current input. Notes and files NEVER enter this automatic bundle: they
+/// reach the model only when the user attaches them with "@" in the composer
+/// (OPH-377, ADR-0058 — ai_attachments.dart). The automatic packer stays
+/// tasks, projects and events.
 ///
 /// `read` is a tear-off (`ref.read`) so both widgets (WidgetRef) and
 /// providers (Ref) can call this without caring which ref family they hold.
@@ -52,11 +54,19 @@ AiContextBundle buildLiveAiContext({
   final upcoming = <TaskLite>[];
   for (final task in tasks) {
     final due = task.dueAt?.toLocal();
-    if (due == null) continue;
+    // OPH-372 (ADR-0053): a task whose "when" day has come is on today too,
+    // even when its deadline is later — Home and the widget say the same.
+    // Overdue still goes by the deadline alone.
+    final whenDay = taskWhenDay(task);
+    final started = whenDay != null && !whenDay.isAfter(startOfToday);
+    if (due == null) {
+      if (started) today.add(TaskLite(title: task.title));
+      continue;
+    }
     final lite = TaskLite(title: task.title, dueLabel: dueLabel(due));
     if (due.isBefore(now)) {
       overdue.add(lite);
-    } else if (due.isBefore(startOfTomorrow)) {
+    } else if (due.isBefore(startOfTomorrow) || started) {
       today.add(lite);
     } else if (due.isBefore(upcomingHorizon)) {
       upcoming.add(lite);

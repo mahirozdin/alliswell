@@ -65,6 +65,9 @@ import 'features/ee/ui/team_webhooks_screen.dart';
 import 'features/ee/ui/team_identity_screen.dart';
 import 'features/ee/ui/team_mail_screen.dart';
 import 'features/ee/ui/sla_admin_screen.dart';
+import 'features/ee/ui/rules_screen.dart';
+import 'features/ee/ui/automation_rule_editor.dart';
+import 'features/ee/ui/routing_rule_editor.dart';
 import 'features/ee/ui/my_tickets_screen.dart';
 import 'features/ee/ui/absences_screen.dart';
 import 'features/ee/ui/new_ticket_screen.dart';
@@ -79,6 +82,7 @@ import 'features/ee/ui/tickets_home.dart';
 import 'features/ee/ui/team_invites_screen.dart';
 import 'features/api_keys/ui/api_keys_screen.dart';
 import 'features/ai/ui/share_log_screen.dart';
+import 'features/import/ui/import_wizard_screen.dart';
 import 'notifications/alarm_log_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/splash_screen.dart';
@@ -129,6 +133,52 @@ Widget _teamPage(
     child: child,
   ),
 );
+
+/// EE-308 — the rules screen and its two editors. **The order is the
+/// contract**: each `new` comes before its `:ruleId`, or "new" would be read
+/// as an id. A function so a test reads the very list the router uses.
+List<RouteBase> eeRuleRoutes() => [
+  GoRoute(
+    path: '/settings/team/rules',
+    builder: (context, state) => _teamPage(
+      const EeRulesScreen(),
+      title: 'ee.rules.title',
+      permission: 'sla.manage',
+    ),
+  ),
+  GoRoute(
+    path: '/settings/team/rules/automation/new',
+    builder: (context, state) => _teamPage(
+      const EeAutomationRuleEditor(),
+      title: 'ee.rules.newAutomation',
+      permission: 'sla.manage',
+    ),
+  ),
+  GoRoute(
+    path: '/settings/team/rules/automation/:ruleId',
+    builder: (context, state) => _teamPage(
+      EeAutomationRuleEditor(ruleId: state.pathParameters['ruleId']),
+      title: 'ee.rules.editAutomation',
+      permission: 'sla.manage',
+    ),
+  ),
+  GoRoute(
+    path: '/settings/team/rules/routing/new',
+    builder: (context, state) => _teamPage(
+      const EeRoutingRuleEditor(),
+      title: 'ee.rules.newRouting',
+      permission: 'sla.manage',
+    ),
+  ),
+  GoRoute(
+    path: '/settings/team/rules/routing/:ruleId',
+    builder: (context, state) => _teamPage(
+      EeRoutingRuleEditor(ruleId: state.pathParameters['ruleId']),
+      title: 'ee.rules.editRouting',
+      permission: 'sla.manage',
+    ),
+  ),
+];
 
 /// A request's two addresses (EE-225, EE-251). **The order is the contract:**
 /// go_router matches in declaration order, so `/tickets/new` must come before
@@ -743,6 +793,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/share-log',
         builder: (context, state) => _contentPage(const ShareLogScreen()),
       ),
+      // OPH-371: moving in from Todoist or TickTick (DESIGN §37).
+      GoRoute(
+        path: '/settings/import',
+        builder: (context, state) => _contentPage(const ImportWizardScreen()),
+      ),
       // OPH-179: how insistent alarms are — one destination (DESIGN §18 N1).
       GoRoute(
         path: '/settings/reminders',
@@ -834,6 +889,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           permission: 'sla.manage',
         ),
       ),
+      // EE-308 (OPH-379): automation and routing rules — list, order, and the
+      // two editors. `new` BEFORE `:ruleId` (go_router matches in order), and
+      // the same verb as the SLA screen: whoever shapes the promise shapes
+      // what happens automatically.
+      ...eeRuleRoutes(),
       // EE-106: the public request links — create, pause, extend, revoke,
       // behind `portal.manage_links`. The URL a link carries is shown once at
       // creation and never again, because the server keeps only its digest.

@@ -4,6 +4,7 @@ import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { startFakeAi } from '../helpers/fakeai.js';
 import { parseSseStream } from '../../src/lib/ai/sse.js';
 import { newId } from '../../src/lib/ids.js';
+import { loadConfig } from '../../src/config.js';
 
 /**
  * OPH-217 — the transports, against a REAL listener: SSE frames arrive
@@ -82,6 +83,65 @@ describe('SSE transport', () => {
     expect(events.at(-1).data.stopReason).toBe('stop');
   });
 
+  it('OPH-382: the hijacked stream keeps the CORS and security headers', async () => {
+    const origin = 'https://alliswell.space';
+    const res = await fetch(`${baseUrl}/api/v1/workspaces/${owner.workspace.id}/ai/chat`, {
+      method: 'POST',
+      headers: { ...owner.headers, 'content-type': 'application/json', origin },
+      body: JSON.stringify({
+        requestId: newId(),
+        messages: [{ role: 'user', content: 'merhaba' }],
+      }),
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('content-type')).toContain('text/event-stream');
+    // A browser drops the whole stream without this header (curl does not care).
+    expect(res.headers.get('access-control-allow-origin')).toBe(origin);
+    expect(res.headers.get('x-content-type-options')).toBe('nosniff');
+    await res.text(); // drain the stream
+  });
+
+  it('OPH-382: an origin outside the allow-list gets no CORS grant on the stream', async () => {
+    await app.close();
+    ({ app } = await buildTestApp({
+      config: loadConfig({
+        NODE_ENV: 'test',
+        RATE_LIMIT_AUTH_MAX: '1000',
+        CORS_ORIGIN: 'https://alliswell.space',
+      }),
+    }));
+    owner = await registerUser(app, { email: 'ai-transport-cors@example.com' });
+    await app.inject({
+      method: 'POST',
+      url: `/api/v1/workspaces/${owner.workspace.id}/ai/connections`,
+      headers: owner.headers,
+      payload: {
+        provider: 'anthropic',
+        apiKey: 'sk-transport-123',
+        baseUrl: `${fake.url}/anthropic`,
+        consentAcknowledged: true,
+      },
+    });
+    await app.listen({ port: 0, host: '127.0.0.1' });
+    baseUrl = `http://127.0.0.1:${app.server.address().port}`;
+
+    const send = (origin) =>
+      fetch(`${baseUrl}/api/v1/workspaces/${owner.workspace.id}/ai/chat`, {
+        method: 'POST',
+        headers: { ...owner.headers, 'content-type': 'application/json', origin },
+        body: JSON.stringify({
+          requestId: newId(),
+          messages: [{ role: 'user', content: 'merhaba' }],
+        }),
+      });
+    const allowed = await send('https://alliswell.space');
+    expect(allowed.headers.get('access-control-allow-origin')).toBe('https://alliswell.space');
+    await allowed.text(); // drain the stream
+    const foreign = await send('https://evil.example');
+    expect(foreign.headers.get('access-control-allow-origin')).toBeNull();
+    await foreign.text(); // drain the stream
+  });
+
   it('delivers frames INCREMENTALLY and a client abort kills the upstream', async () => {
     fake.state.stall = true; // upstream never finishes on its own
     const ac = new AbortController();
@@ -133,6 +193,63 @@ describe('SSE transport', () => {
   it('cancelling an unknown requestId is a quiet 204', async () => {
     const res = await cancelChat(newId());
     expect(res.status).toBe(204);
+  });
+});
+
+describe('OPH-377: "@" attachments on the chat body', () => {
+  const attached = (text, id = 'N1') => ({
+    tier: 'attached',
+    source: 'attached_note',
+    id,
+    text,
+  });
+
+  async function drain(res) {
+    const names = [];
+    for await (const event of parseSseStream(res.body)) names.push(event.event);
+    return names;
+  }
+
+  it('accepts a 16000-char attached segment and streams', async () => {
+    const res = await chatFetch({
+      requestId: newId(),
+      body: { context: { segments: [attached('a'.repeat(16000))], truncated: false } },
+    });
+    expect(res.status).toBe(200);
+    expect(await drain(res)).toContain('done');
+  });
+
+  it('refuses a 16001-char segment and an unknown tier (schema)', async () => {
+    const tooLong = await chatFetch({
+      requestId: newId(),
+      body: { context: { segments: [attached('a'.repeat(16001))] } },
+    });
+    expect(tooLong.status).toBe(400);
+    const bogus = await chatFetch({
+      requestId: newId(),
+      body: { context: { segments: [{ tier: 'bogus', source: 'x', text: 'y' }] } },
+    });
+    expect(bogus.status).toBe(400);
+  });
+
+  it('refuses an attached total over the cap BEFORE the limiter takes a token', async () => {
+    const take = vi.spyOn(app.ai.limiter, 'take');
+    const segments = [1, 2, 3, 4].map((n) => attached('b'.repeat(12500), `N${n}`));
+    const res = await chatFetch({ requestId: newId(), body: { context: { segments } } });
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.code).toBe('AI_CONTEXT_TOO_LARGE');
+    // Counts only: the refusal never echoes the content back.
+    expect(JSON.stringify(body)).not.toContain('bbbb');
+    expect(take).not.toHaveBeenCalled();
+    take.mockRestore();
+  });
+
+  it('refuses more than 8 attached segments', async () => {
+    const segments = Array.from({ length: 9 }, (_, n) => attached('c', `N${n}`));
+    const res = await chatFetch({ requestId: newId(), body: { context: { segments } } });
+    expect(res.status).toBe(400);
+    expect((await res.json()).code).toBe('AI_CONTEXT_TOO_LARGE');
   });
 });
 

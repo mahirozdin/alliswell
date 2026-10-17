@@ -61,6 +61,18 @@ services:
       timeout: 5s
       retries: 30
 
+  # A real CalDAV server for the CalDAV connector's integration test
+  # (OPH-380, ADR-0059): `docker compose up -d radicale`. Test-only account
+  # alice / alice-app-pw (docker/radicale/users) — never a deployment.
+  radicale:
+    image: tomsquest/docker-radicale:3.8.3.0
+    restart: unless-stopped
+    ports:
+      - '${RADICALE_PORT:-5232}:5232'
+    volumes:
+      - ./docker/radicale:/config:ro
+      - radicale_data:/data
+
   # Run the API in a container too: `docker compose --profile full up`
   # (default dev workflow runs the API on the host with `npm run dev`)
   api:
@@ -101,3 +113,4 @@ volumes:
   mysql_data:
   redis_data:
   minio_data:
+  radicale_data:

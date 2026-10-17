@@ -27,7 +27,7 @@ Future<void> applyPulledChanges(
   await db.transaction(() async {
     for (final change in changes) {
       if (change.isTombstone) {
-        await _applyTombstone(db, change);
+        await _applyTombstone(db, change, workspaceId: workspaceId);
       } else {
         await _applySnapshot(db, change.entityType, change.data!);
       }
@@ -56,6 +56,7 @@ Future<void> applyRebase(
   required String entityId,
   required bool present,
   Map<String, dynamic>? data,
+  String? workspaceId,
 }) async {
   if (present && data != null) {
     await _applySnapshot(db, entityType, data);
@@ -69,11 +70,23 @@ Future<void> applyRebase(
       entityId: entityId,
       operation: 'delete',
     ),
+    workspaceId: workspaceId,
   );
 }
 
-Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
+/// OPH-378: a tombstone is a fact about ONE workspace's stream. A row the
+/// server moved to another workspace is deleted in the stream it left and
+/// created in the one it landed in — and a device in both may pull the new
+/// stream first. For the types that can move, the delete therefore only takes
+/// a local row of the stream that sent it; [workspaceId] null keeps the old
+/// id-only behaviour.
+Future<void> _applyTombstone(
+  AwDatabase db,
+  SyncChange change, {
+  String? workspaceId,
+}) async {
   final id = change.entityId;
+  final ws = workspaceId;
   switch (change.entityType) {
     case 'project':
       await (db.delete(db.projects)..where((p) => p.id.equals(id))).go();
@@ -98,7 +111,12 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
     case 'external_event':
       await (db.delete(db.externalEvents)..where((e) => e.id.equals(id))).go();
     case 'file':
-      await (db.delete(db.fileRows)..where((f) => f.id.equals(id))).go();
+      await (db.delete(db.fileRows)..where(
+            (f) => ws == null
+                ? f.id.equals(id)
+                : f.id.equals(id) & f.workspaceId.equals(ws),
+          ))
+          .go();
     case 'folder':
       await (db.delete(db.folders)..where((f) => f.id.equals(id))).go();
     case 'quick_link':
@@ -131,16 +149,34 @@ Future<void> _applyTombstone(AwDatabase db, SyncChange change) async {
       // comments go WITH it: the server moved the whole thread, and leaving
       // orphaned rows here would keep exactly the weight the sweep exists to
       // remove.
-      await (db.delete(
-        db.ticketComments,
-      )..where((c) => c.ticketId.equals(id))).go();
-      await (db.delete(db.tickets)..where((t) => t.id.equals(id))).go();
+      // OPH-378: a transferred request leaves THIS stream only; the copy the
+      // workspace it moved to delivered stays, with its thread.
+      await (db.delete(db.ticketComments)..where(
+            (c) => ws == null
+                ? c.ticketId.equals(id)
+                : c.ticketId.equals(id) & c.workspaceId.equals(ws),
+          ))
+          .go();
+      await (db.delete(db.tickets)..where(
+            (t) => ws == null
+                ? t.id.equals(id)
+                : t.id.equals(id) & t.workspaceId.equals(ws),
+          ))
+          .go();
     case 'ee_ticket_comment':
-      await (db.delete(db.ticketComments)..where((c) => c.id.equals(id))).go();
+      await (db.delete(db.ticketComments)..where(
+            (c) => ws == null
+                ? c.id.equals(id)
+                : c.id.equals(id) & c.workspaceId.equals(ws),
+          ))
+          .go();
     case 'ee_ticket_assignment':
-      await (db.delete(
-        db.ticketAssignments,
-      )..where((a) => a.id.equals(id))).go();
+      await (db.delete(db.ticketAssignments)..where(
+            (a) => ws == null
+                ? a.id.equals(id)
+                : a.id.equals(id) & a.workspaceId.equals(ws),
+          ))
+          .go();
     case 'ee_change':
       // EE-186: a change leaves the device when the server stops sending it —
       // there is no local authoring, so a tombstone is the whole story.
@@ -387,6 +423,8 @@ FileRowsCompanion fileCompanion(Map<String, dynamic> d) =>
       status: (d['status'] as String?) ?? 'ready',
       uploadedBy: Value(d['uploadedBy'] as String?),
       folderId: Value(d['folderId'] as String?),
+      // OPH-374 (ADR-0055): the global search reads names through this fold.
+      nameFold: _foldValue(d['name']),
       revision: Value((d['revision'] as int?) ?? 0),
       createdAt: _dateValue(d['createdAt']),
       updatedAt: _dateValue(d['updatedAt']),

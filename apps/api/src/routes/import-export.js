@@ -26,6 +26,9 @@ import { createTask, TASK_PRIORITIES } from '../db/tasks.js';
  * is a script-shaped operation on the key surface, and the assistant already
  * has `create_note` / `create_task` for one thing at a time (AGENTS rule 12,
  * written reason).
+ *
+ * Another app's export file (Todoist, TickTick) is read by routes/import-apps.js
+ * (OPH-371), which writes through the same domain layer.
  */
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };

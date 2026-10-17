@@ -6,6 +6,7 @@ import {
   expandOccurrences,
   lastDayOfMonth,
   MAX_OCCURRENCES,
+  nextAfterCompletion,
   validateRule,
 } from '../../src/lib/recurrence.js';
 
@@ -26,6 +27,41 @@ describe('lib/recurrence — cross-stack parity fixture (OPH-205, ADR-0020)', ()
       expect(expandOccurrences(rule, { anchor, from, to, max })).toEqual(testCase.expected);
     });
   }
+});
+
+describe('lib/recurrence — after completion, parity fixture (OPH-375, ADR-0056)', () => {
+  for (const testCase of fixture.afterCompletion) {
+    it(testCase.name, () => {
+      const { rule, completed, emitted } = testCase;
+      expect(nextAfterCompletion(rule, { completedDay: completed, emitted })).toBe(
+        testCase.expected,
+      );
+    });
+  }
+
+  for (const testCase of fixture.invalidRules) {
+    it(`refuses ${testCase.name}`, () => {
+      expect(validateRule(testCase.rule)?.code).toBe('TASK_SERIES_RULE_INVALID');
+    });
+  }
+
+  it('plans only the anchor for a completion rule — there is no window to fill', () => {
+    const rule = { freq: 'daily', interval: 1, basis: 'completion' };
+    expect(
+      expandOccurrences(rule, { anchor: '2026-10-17', from: '2026-10-01', to: '2027-10-17' }),
+    ).toEqual(['2026-10-17']);
+    expect(
+      expandOccurrences(rule, { anchor: '2026-10-17', from: '2026-10-18', to: '2027-10-17' }),
+    ).toEqual([]);
+  });
+
+  it('leaves a calendar rule exactly as it was: basis calendar is the default', () => {
+    const plain = { freq: 'monthly', interval: 1, byMonthDay: [31] };
+    const explicit = { ...plain, basis: 'calendar' };
+    const window = { anchor: '2026-01-31', from: '2026-01-01', to: '2026-06-30' };
+    expect(expandOccurrences(explicit, window)).toEqual(expandOccurrences(plain, window));
+    expect(() => nextAfterCompletion(plain, { completedDay: '2026-01-31' })).toThrow();
+  });
 });
 
 describe('lib/recurrence — clamping (ADR-0020 §2)', () => {

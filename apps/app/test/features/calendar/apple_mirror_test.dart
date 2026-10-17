@@ -3,11 +3,16 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/calendar/apple/apple_calendar_gateway.dart';
 import 'package:alliswell/src/features/calendar/apple/apple_mirror.dart';
 import 'package:alliswell/src/features/calendar/apple/apple_mirror_engine.dart';
+import 'package:alliswell/src/features/calendar/apple/providers.dart';
+import 'package:alliswell/src/core/persisted_prefs.dart';
+import 'package:alliswell/src/features/integrations/providers.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
@@ -22,6 +27,8 @@ Task _task(
   DateTime? due,
   DateTime? remind,
   DateTime? created,
+  DateTime? start,
+  int? minutes,
 }) => Task(
   id: id,
   workspaceId: 'W1',
@@ -39,6 +46,8 @@ Task _task(
   dueAt: due,
   remindAt: remind,
   createdAt: created,
+  startAt: start,
+  estimatedMinutes: minutes,
 );
 
 /// Records what the engine asked EventKit to do, and hands back canned ids —
@@ -81,6 +90,11 @@ class FakeAppleGateway implements AppleCalendarGateway {
     required DateTime from,
     required DateTime to,
   }) async => preexistingByUrl;
+
+  // Read-back (OPH-369) is exercised in apple_read_back_test.dart; here the
+  // fake answers "cannot read", so the outbound behaviour is what is tested.
+  @override
+  Future<List<AppleEventSnapshot>?> readEvents(List<String> ids) async => null;
 }
 
 void main() {
@@ -143,6 +157,45 @@ void main() {
       expect(e.end, DateTime.utc(2030, 6, 1, 14, 30));
     });
 
+    test('the block is as long as the task (OPH-372, ADR-0053)', () {
+      final e = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 14), minutes: 90),
+      )!;
+      expect(e.start, DateTime(2030, 6, 1, 14));
+      expect(e.end, DateTime(2030, 6, 1, 15, 30));
+      // Clearing the duration gives the 30-minute slot back — and a different
+      // signature, so the engine updates the event.
+      final cleared = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 14)),
+      )!;
+      expect(cleared.end, DateTime(2030, 6, 1, 14, 30));
+      expect(cleared.signature, isNot(e.signature));
+      expect(appleBlockMinutes(0), 30);
+      expect(appleBlockMinutes(60000), 1440);
+    });
+
+    test('a scheduled start without an end uses the task duration', () {
+      final e = desiredAppleEvent(
+        _task('T', scheduledStart: DateTime.utc(2030, 6, 1, 9), minutes: 45),
+      )!;
+      expect(e.end, DateTime.utc(2030, 6, 1, 9, 45));
+    });
+
+    test('"when" never moves the block', () {
+      final withWhen = desiredAppleEvent(
+        _task('T', due: DateTime(2030, 6, 1, 14), start: DateTime(2030, 5, 28)),
+      )!;
+      expect(withWhen.start, DateTime(2030, 6, 1, 14));
+      final undated = desiredAppleEvent(
+        _task(
+          'T',
+          created: DateTime(2030, 5, 20, 9, 15),
+          start: DateTime(2030, 5, 25),
+        ),
+      )!;
+      expect(undated.start, DateTime(2030, 5, 20, 9, 15));
+    });
+
     test('no event for withdrawn work, or a task with no time at all', () {
       expect(desiredAppleEvent(_task('T')), isNull); // no date, no created_at
       // `completed` left this list in round 12 — done work keeps its block.
@@ -174,7 +227,10 @@ void main() {
           '${d.minute.toString().padLeft(2, '0')}';
       for (final raw in (fixture['cases'] as List)) {
         final testCase = raw as Map<String, dynamic>;
-        final block = appleBlockFor(DateTime.parse(testCase['at'] as String));
+        final block = appleBlockFor(
+          DateTime.parse(testCase['at'] as String),
+          minutes: testCase['minutes'] as int?,
+        );
         expect(
           wall(block.$1),
           testCase['start'],
@@ -373,6 +429,61 @@ void main() {
       expect(await links.get('T2'), isNull);
       expect(await links.get('T1'), isNotNull); // survivor untouched
     });
+
+    test(
+      'retireAll deletes every event it made and clears the map (OPH-380)',
+      () async {
+        await engine().reconcileTask(
+          _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
+        );
+        await engine().reconcileTask(
+          _task('T2', due: DateTime.utc(2030, 6, 2, 12)),
+        );
+        await engine().retireAll();
+        expect(gateway.deleted, containsAll(['ev-1', 'ev-2']));
+        expect(await links.all(), isEmpty);
+      },
+    );
+
+    test(
+      'the server mirroring iCloud stands the device mirror down (ADR-0059)',
+      () async {
+        await engine().reconcileTask(
+          _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
+        );
+        final saves = gateway.saved.length;
+        final mirror = engine();
+        final container = ProviderContainer(
+          overrides: [
+            appleAccessProvider.overrideWith(
+              (_) async => EventKitAccess.fullAccess,
+            ),
+            appleCalendarIdProvider.overrideWith(
+              () => PersistedChoice('apple_calendar_id', fallback: 'cal-1'),
+            ),
+            serverMirrorsIcloudProvider.overrideWith(
+              () => PersistedChoice('caldav_icloud_active', fallback: '1'),
+            ),
+            caldavIntegrationProvider.overrideWith((_) async => null),
+            appleMirrorEngineProvider.overrideWithValue(mirror),
+            openTasksProvider.overrideWith(
+              (_) => Stream.value([
+                _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
+                _task('T3', due: DateTime.utc(2030, 6, 3, 12)),
+              ]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(appleAccessProvider.future);
+        container.read(appleMirrorProvider);
+        await pumpEventQueue(times: 50);
+        // Nothing new was written, and what the device made is gone.
+        expect(gateway.saved.length, saves);
+        expect(gateway.deleted, contains('ev-1'));
+        expect(await links.all(), isEmpty);
+      },
+    );
 
     test('does nothing on a platform without EventKit', () async {
       final off = AppleMirrorEngine(

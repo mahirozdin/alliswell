@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
+import 'package:alliswell/src/features/tasks/data/task_when.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
 /// OPH-107 — Inbox captures (`status: inbox`) stay off planning lists until a
@@ -95,4 +96,37 @@ void main() {
       expect(patch['projectId'], 'P2'.padRight(26, '0'));
     },
   );
+  // OPH-372: a "when" is a date too — the capture has been planned.
+  test('a "when" promotes a capture to open in the SAME mutation', () async {
+    final id = await capture('Ne zaman');
+    await store.setWhen(id, DateTime(2030, 6, 3));
+    expect(await statusOf(id), 'open');
+    final rows = await (db.select(
+      db.pendingMutations,
+    )..where((m) => m.entityId.equals(id))).get();
+    final updates = rows.where((r) => r.operation == 'update').toList();
+    expect(updates, hasLength(1));
+    final patch = jsonDecode(updates.single.patchJson!) as Map<String, dynamic>;
+    expect(patch['status'], 'open');
+    expect(patch['startAt'], awWhenIso(DateTime(2030, 6, 3)));
+  });
+
+  test('a capture created WITH a "when" is born open', () async {
+    final id = await store.create(ws, {
+      'title': 'Ne zamanlı',
+      'status': 'inbox',
+      'startAt': awWhenIso(DateTime(2030, 6, 3)),
+    });
+    expect(await statusOf(id), 'open');
+  });
+
+  test('a duration alone does not promote, and is kept on the row', () async {
+    final id = await capture('Süreli');
+    await store.setDuration(id, 45);
+    expect(await statusOf(id), 'inbox');
+    final row = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals(id))).getSingle();
+    expect(row.estimatedMinutes, 45);
+  });
 }

@@ -7144,12 +7144,24 @@ class $AppleEventLinksTable extends AppleEventLinks
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _suppressedAtMeta = const VerificationMeta(
+    'suppressedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> suppressedAt = GeneratedColumn<DateTime>(
+    'suppressed_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     taskId,
     calendarId,
     eventId,
     signature,
+    suppressedAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7195,6 +7207,15 @@ class $AppleEventLinksTable extends AppleEventLinks
     } else if (isInserting) {
       context.missing(_signatureMeta);
     }
+    if (data.containsKey('suppressed_at')) {
+      context.handle(
+        _suppressedAtMeta,
+        suppressedAt.isAcceptableOrUnknown(
+          data['suppressed_at']!,
+          _suppressedAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7220,6 +7241,10 @@ class $AppleEventLinksTable extends AppleEventLinks
         DriftSqlType.string,
         data['${effectivePrefix}signature'],
       )!,
+      suppressedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}suppressed_at'],
+      ),
     );
   }
 
@@ -7235,11 +7260,17 @@ class AppleEventLinkRow extends DataClass
   final String calendarId;
   final String eventId;
   final String signature;
+
+  /// v38 (OPH-369): the user deleted this task's event in THIS calendar, so it
+  /// is not recreated here. Device-local on purpose — Google mirroring and the
+  /// other devices' calendars are untouched (ADR-0050).
+  final DateTime? suppressedAt;
   const AppleEventLinkRow({
     required this.taskId,
     required this.calendarId,
     required this.eventId,
     required this.signature,
+    this.suppressedAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7248,6 +7279,9 @@ class AppleEventLinkRow extends DataClass
     map['calendar_id'] = Variable<String>(calendarId);
     map['event_id'] = Variable<String>(eventId);
     map['signature'] = Variable<String>(signature);
+    if (!nullToAbsent || suppressedAt != null) {
+      map['suppressed_at'] = Variable<DateTime>(suppressedAt);
+    }
     return map;
   }
 
@@ -7257,6 +7291,9 @@ class AppleEventLinkRow extends DataClass
       calendarId: Value(calendarId),
       eventId: Value(eventId),
       signature: Value(signature),
+      suppressedAt: suppressedAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(suppressedAt),
     );
   }
 
@@ -7270,6 +7307,7 @@ class AppleEventLinkRow extends DataClass
       calendarId: serializer.fromJson<String>(json['calendarId']),
       eventId: serializer.fromJson<String>(json['eventId']),
       signature: serializer.fromJson<String>(json['signature']),
+      suppressedAt: serializer.fromJson<DateTime?>(json['suppressedAt']),
     );
   }
   @override
@@ -7280,6 +7318,7 @@ class AppleEventLinkRow extends DataClass
       'calendarId': serializer.toJson<String>(calendarId),
       'eventId': serializer.toJson<String>(eventId),
       'signature': serializer.toJson<String>(signature),
+      'suppressedAt': serializer.toJson<DateTime?>(suppressedAt),
     };
   }
 
@@ -7288,11 +7327,13 @@ class AppleEventLinkRow extends DataClass
     String? calendarId,
     String? eventId,
     String? signature,
+    Value<DateTime?> suppressedAt = const Value.absent(),
   }) => AppleEventLinkRow(
     taskId: taskId ?? this.taskId,
     calendarId: calendarId ?? this.calendarId,
     eventId: eventId ?? this.eventId,
     signature: signature ?? this.signature,
+    suppressedAt: suppressedAt.present ? suppressedAt.value : this.suppressedAt,
   );
   AppleEventLinkRow copyWithCompanion(AppleEventLinksCompanion data) {
     return AppleEventLinkRow(
@@ -7302,6 +7343,9 @@ class AppleEventLinkRow extends DataClass
           : this.calendarId,
       eventId: data.eventId.present ? data.eventId.value : this.eventId,
       signature: data.signature.present ? data.signature.value : this.signature,
+      suppressedAt: data.suppressedAt.present
+          ? data.suppressedAt.value
+          : this.suppressedAt,
     );
   }
 
@@ -7311,13 +7355,15 @@ class AppleEventLinkRow extends DataClass
           ..write('taskId: $taskId, ')
           ..write('calendarId: $calendarId, ')
           ..write('eventId: $eventId, ')
-          ..write('signature: $signature')
+          ..write('signature: $signature, ')
+          ..write('suppressedAt: $suppressedAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(taskId, calendarId, eventId, signature);
+  int get hashCode =>
+      Object.hash(taskId, calendarId, eventId, signature, suppressedAt);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -7325,7 +7371,8 @@ class AppleEventLinkRow extends DataClass
           other.taskId == this.taskId &&
           other.calendarId == this.calendarId &&
           other.eventId == this.eventId &&
-          other.signature == this.signature);
+          other.signature == this.signature &&
+          other.suppressedAt == this.suppressedAt);
 }
 
 class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
@@ -7333,12 +7380,14 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
   final Value<String> calendarId;
   final Value<String> eventId;
   final Value<String> signature;
+  final Value<DateTime?> suppressedAt;
   final Value<int> rowid;
   const AppleEventLinksCompanion({
     this.taskId = const Value.absent(),
     this.calendarId = const Value.absent(),
     this.eventId = const Value.absent(),
     this.signature = const Value.absent(),
+    this.suppressedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   AppleEventLinksCompanion.insert({
@@ -7346,6 +7395,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     required String calendarId,
     required String eventId,
     required String signature,
+    this.suppressedAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : taskId = Value(taskId),
        calendarId = Value(calendarId),
@@ -7356,6 +7406,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     Expression<String>? calendarId,
     Expression<String>? eventId,
     Expression<String>? signature,
+    Expression<DateTime>? suppressedAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -7363,6 +7414,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
       if (calendarId != null) 'calendar_id': calendarId,
       if (eventId != null) 'event_id': eventId,
       if (signature != null) 'signature': signature,
+      if (suppressedAt != null) 'suppressed_at': suppressedAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -7372,6 +7424,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     Value<String>? calendarId,
     Value<String>? eventId,
     Value<String>? signature,
+    Value<DateTime?>? suppressedAt,
     Value<int>? rowid,
   }) {
     return AppleEventLinksCompanion(
@@ -7379,6 +7432,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
       calendarId: calendarId ?? this.calendarId,
       eventId: eventId ?? this.eventId,
       signature: signature ?? this.signature,
+      suppressedAt: suppressedAt ?? this.suppressedAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -7398,6 +7452,9 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
     if (signature.present) {
       map['signature'] = Variable<String>(signature.value);
     }
+    if (suppressedAt.present) {
+      map['suppressed_at'] = Variable<DateTime>(suppressedAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -7411,6 +7468,7 @@ class AppleEventLinksCompanion extends UpdateCompanion<AppleEventLinkRow> {
           ..write('calendarId: $calendarId, ')
           ..write('eventId: $eventId, ')
           ..write('signature: $signature, ')
+          ..write('suppressedAt: $suppressedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -7525,6 +7583,17 @@ class $FileRowsTable extends FileRows
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _nameFoldMeta = const VerificationMeta(
+    'nameFold',
+  );
+  @override
+  late final GeneratedColumn<String> nameFold = GeneratedColumn<String>(
+    'name_fold',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _revisionMeta = const VerificationMeta(
     'revision',
   );
@@ -7571,6 +7640,7 @@ class $FileRowsTable extends FileRows
     status,
     uploadedBy,
     folderId,
+    nameFold,
     revision,
     createdAt,
     updatedAt,
@@ -7663,6 +7733,12 @@ class $FileRowsTable extends FileRows
         folderId.isAcceptableOrUnknown(data['folder_id']!, _folderIdMeta),
       );
     }
+    if (data.containsKey('name_fold')) {
+      context.handle(
+        _nameFoldMeta,
+        nameFold.isAcceptableOrUnknown(data['name_fold']!, _nameFoldMeta),
+      );
+    }
     if (data.containsKey('revision')) {
       context.handle(
         _revisionMeta,
@@ -7730,6 +7806,10 @@ class $FileRowsTable extends FileRows
         DriftSqlType.string,
         data['${effectivePrefix}folder_id'],
       ),
+      nameFold: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name_fold'],
+      ),
       revision: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}revision'],
@@ -7769,6 +7849,10 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
 
   /// Folder membership — workspace-target files only (v7, ADR-0014).
   final String? folderId;
+
+  /// ADR-0013/ADR-0055 (v39): folded shadow of [name] — the global search
+  /// palette finds files by name. Written by `fileCompanion`, the one writer.
+  final String? nameFold;
   final int revision;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -7783,6 +7867,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     required this.status,
     this.uploadedBy,
     this.folderId,
+    this.nameFold,
     required this.revision,
     this.createdAt,
     this.updatedAt,
@@ -7803,6 +7888,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     }
     if (!nullToAbsent || folderId != null) {
       map['folder_id'] = Variable<String>(folderId);
+    }
+    if (!nullToAbsent || nameFold != null) {
+      map['name_fold'] = Variable<String>(nameFold);
     }
     map['revision'] = Variable<int>(revision);
     if (!nullToAbsent || createdAt != null) {
@@ -7830,6 +7918,9 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       folderId: folderId == null && nullToAbsent
           ? const Value.absent()
           : Value(folderId),
+      nameFold: nameFold == null && nullToAbsent
+          ? const Value.absent()
+          : Value(nameFold),
       revision: Value(revision),
       createdAt: createdAt == null && nullToAbsent
           ? const Value.absent()
@@ -7856,6 +7947,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       status: serializer.fromJson<String>(json['status']),
       uploadedBy: serializer.fromJson<String?>(json['uploadedBy']),
       folderId: serializer.fromJson<String?>(json['folderId']),
+      nameFold: serializer.fromJson<String?>(json['nameFold']),
       revision: serializer.fromJson<int>(json['revision']),
       createdAt: serializer.fromJson<DateTime?>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime?>(json['updatedAt']),
@@ -7875,6 +7967,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
       'status': serializer.toJson<String>(status),
       'uploadedBy': serializer.toJson<String?>(uploadedBy),
       'folderId': serializer.toJson<String?>(folderId),
+      'nameFold': serializer.toJson<String?>(nameFold),
       'revision': serializer.toJson<int>(revision),
       'createdAt': serializer.toJson<DateTime?>(createdAt),
       'updatedAt': serializer.toJson<DateTime?>(updatedAt),
@@ -7892,6 +7985,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     String? status,
     Value<String?> uploadedBy = const Value.absent(),
     Value<String?> folderId = const Value.absent(),
+    Value<String?> nameFold = const Value.absent(),
     int? revision,
     Value<DateTime?> createdAt = const Value.absent(),
     Value<DateTime?> updatedAt = const Value.absent(),
@@ -7906,6 +8000,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     status: status ?? this.status,
     uploadedBy: uploadedBy.present ? uploadedBy.value : this.uploadedBy,
     folderId: folderId.present ? folderId.value : this.folderId,
+    nameFold: nameFold.present ? nameFold.value : this.nameFold,
     revision: revision ?? this.revision,
     createdAt: createdAt.present ? createdAt.value : this.createdAt,
     updatedAt: updatedAt.present ? updatedAt.value : this.updatedAt,
@@ -7928,6 +8023,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           ? data.uploadedBy.value
           : this.uploadedBy,
       folderId: data.folderId.present ? data.folderId.value : this.folderId,
+      nameFold: data.nameFold.present ? data.nameFold.value : this.nameFold,
       revision: data.revision.present ? data.revision.value : this.revision,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -7947,6 +8043,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           ..write('status: $status, ')
           ..write('uploadedBy: $uploadedBy, ')
           ..write('folderId: $folderId, ')
+          ..write('nameFold: $nameFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -7966,6 +8063,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
     status,
     uploadedBy,
     folderId,
+    nameFold,
     revision,
     createdAt,
     updatedAt,
@@ -7984,6 +8082,7 @@ class FileRecord extends DataClass implements Insertable<FileRecord> {
           other.status == this.status &&
           other.uploadedBy == this.uploadedBy &&
           other.folderId == this.folderId &&
+          other.nameFold == this.nameFold &&
           other.revision == this.revision &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -8000,6 +8099,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
   final Value<String> status;
   final Value<String?> uploadedBy;
   final Value<String?> folderId;
+  final Value<String?> nameFold;
   final Value<int> revision;
   final Value<DateTime?> createdAt;
   final Value<DateTime?> updatedAt;
@@ -8015,6 +8115,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     this.status = const Value.absent(),
     this.uploadedBy = const Value.absent(),
     this.folderId = const Value.absent(),
+    this.nameFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -8031,6 +8132,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     required String status,
     this.uploadedBy = const Value.absent(),
     this.folderId = const Value.absent(),
+    this.nameFold = const Value.absent(),
     this.revision = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -8054,6 +8156,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     Expression<String>? status,
     Expression<String>? uploadedBy,
     Expression<String>? folderId,
+    Expression<String>? nameFold,
     Expression<int>? revision,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -8070,6 +8173,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
       if (status != null) 'status': status,
       if (uploadedBy != null) 'uploaded_by': uploadedBy,
       if (folderId != null) 'folder_id': folderId,
+      if (nameFold != null) 'name_fold': nameFold,
       if (revision != null) 'revision': revision,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -8088,6 +8192,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     Value<String>? status,
     Value<String?>? uploadedBy,
     Value<String?>? folderId,
+    Value<String?>? nameFold,
     Value<int>? revision,
     Value<DateTime?>? createdAt,
     Value<DateTime?>? updatedAt,
@@ -8104,6 +8209,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
       status: status ?? this.status,
       uploadedBy: uploadedBy ?? this.uploadedBy,
       folderId: folderId ?? this.folderId,
+      nameFold: nameFold ?? this.nameFold,
       revision: revision ?? this.revision,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -8144,6 +8250,9 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
     if (folderId.present) {
       map['folder_id'] = Variable<String>(folderId.value);
     }
+    if (nameFold.present) {
+      map['name_fold'] = Variable<String>(nameFold.value);
+    }
     if (revision.present) {
       map['revision'] = Variable<int>(revision.value);
     }
@@ -8172,6 +8281,7 @@ class FileRowsCompanion extends UpdateCompanion<FileRecord> {
           ..write('status: $status, ')
           ..write('uploadedBy: $uploadedBy, ')
           ..write('folderId: $folderId, ')
+          ..write('nameFold: $nameFold, ')
           ..write('revision: $revision, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -15252,7 +15362,10 @@ class NotificationRecord extends DataClass
   final String id;
   final String workspaceId;
 
-  /// Always this device's owner (see above). Kept for diagnosis, not filtering.
+  /// The person it is addressed to — this device's owner while the replica
+  /// is wiped on every change of person (OPH-355). The centre filters on it
+  /// anyway (UI-AUDIT #3): a row that outlived a sign-out must not reach the
+  /// next person.
   final String userId;
 
   /// 'task.assigned', 'sla.breached', … — the routing vocabulary, shared with
@@ -26104,6 +26217,7 @@ typedef $$AppleEventLinksTableCreateCompanionBuilder =
       required String calendarId,
       required String eventId,
       required String signature,
+      Value<DateTime?> suppressedAt,
       Value<int> rowid,
     });
 typedef $$AppleEventLinksTableUpdateCompanionBuilder =
@@ -26112,6 +26226,7 @@ typedef $$AppleEventLinksTableUpdateCompanionBuilder =
       Value<String> calendarId,
       Value<String> eventId,
       Value<String> signature,
+      Value<DateTime?> suppressedAt,
       Value<int> rowid,
     });
 
@@ -26141,6 +26256,11 @@ class $$AppleEventLinksTableFilterComposer
 
   ColumnFilters<String> get signature => $composableBuilder(
     column: $table.signature,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get suppressedAt => $composableBuilder(
+    column: $table.suppressedAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -26173,6 +26293,11 @@ class $$AppleEventLinksTableOrderingComposer
     column: $table.signature,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get suppressedAt => $composableBuilder(
+    column: $table.suppressedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppleEventLinksTableAnnotationComposer
@@ -26197,6 +26322,11 @@ class $$AppleEventLinksTableAnnotationComposer
 
   GeneratedColumn<String> get signature =>
       $composableBuilder(column: $table.signature, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get suppressedAt => $composableBuilder(
+    column: $table.suppressedAt,
+    builder: (column) => column,
+  );
 }
 
 class $$AppleEventLinksTableTableManager
@@ -26240,12 +26370,14 @@ class $$AppleEventLinksTableTableManager
                 Value<String> calendarId = const Value.absent(),
                 Value<String> eventId = const Value.absent(),
                 Value<String> signature = const Value.absent(),
+                Value<DateTime?> suppressedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AppleEventLinksCompanion(
                 taskId: taskId,
                 calendarId: calendarId,
                 eventId: eventId,
                 signature: signature,
+                suppressedAt: suppressedAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -26254,12 +26386,14 @@ class $$AppleEventLinksTableTableManager
                 required String calendarId,
                 required String eventId,
                 required String signature,
+                Value<DateTime?> suppressedAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => AppleEventLinksCompanion.insert(
                 taskId: taskId,
                 calendarId: calendarId,
                 eventId: eventId,
                 signature: signature,
+                suppressedAt: suppressedAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -26299,6 +26433,7 @@ typedef $$FileRowsTableCreateCompanionBuilder =
       required String status,
       Value<String?> uploadedBy,
       Value<String?> folderId,
+      Value<String?> nameFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -26316,6 +26451,7 @@ typedef $$FileRowsTableUpdateCompanionBuilder =
       Value<String> status,
       Value<String?> uploadedBy,
       Value<String?> folderId,
+      Value<String?> nameFold,
       Value<int> revision,
       Value<DateTime?> createdAt,
       Value<DateTime?> updatedAt,
@@ -26378,6 +26514,11 @@ class $$FileRowsTableFilterComposer
 
   ColumnFilters<String> get folderId => $composableBuilder(
     column: $table.folderId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -26456,6 +26597,11 @@ class $$FileRowsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get nameFold => $composableBuilder(
+    column: $table.nameFold,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get revision => $composableBuilder(
     column: $table.revision,
     builder: (column) => ColumnOrderings(column),
@@ -26517,6 +26663,9 @@ class $$FileRowsTableAnnotationComposer
   GeneratedColumn<String> get folderId =>
       $composableBuilder(column: $table.folderId, builder: (column) => column);
 
+  GeneratedColumn<String> get nameFold =>
+      $composableBuilder(column: $table.nameFold, builder: (column) => column);
+
   GeneratedColumn<int> get revision =>
       $composableBuilder(column: $table.revision, builder: (column) => column);
 
@@ -26568,6 +26717,7 @@ class $$FileRowsTableTableManager
                 Value<String> status = const Value.absent(),
                 Value<String?> uploadedBy = const Value.absent(),
                 Value<String?> folderId = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -26583,6 +26733,7 @@ class $$FileRowsTableTableManager
                 status: status,
                 uploadedBy: uploadedBy,
                 folderId: folderId,
+                nameFold: nameFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -26600,6 +26751,7 @@ class $$FileRowsTableTableManager
                 required String status,
                 Value<String?> uploadedBy = const Value.absent(),
                 Value<String?> folderId = const Value.absent(),
+                Value<String?> nameFold = const Value.absent(),
                 Value<int> revision = const Value.absent(),
                 Value<DateTime?> createdAt = const Value.absent(),
                 Value<DateTime?> updatedAt = const Value.absent(),
@@ -26615,6 +26767,7 @@ class $$FileRowsTableTableManager
                 status: status,
                 uploadedBy: uploadedBy,
                 folderId: folderId,
+                nameFold: nameFold,
                 revision: revision,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

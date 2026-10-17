@@ -62,7 +62,10 @@ screen. Delivery strategy researched and documented in
 - **Apple (device-side):** an EventKit bridge — permission, calendar list, and
   a task→event mirror that runs in the app (Apple has no server API). One-way
   in v1.
-- **CalDAV:** [design doc](docs/CALDAV.md) only (v2 scope).
+- **iCloud / CalDAV (OPH-380):** a server-side connector mirrors calendar events two-way
+  to an iCloud calendar (app-specific password) or any CalDAV server — off until the server
+  admin sets `CALDAV_ENABLED`; tested against Radicale ([CALDAV.md](docs/CALDAV.md)). Tasks
+  as CalDAV to-dos (VTODO) are not built.
 
 _Epic 08. ADRs [0006](docs/adr/0006-google-oauth-token-crypto-and-mirror-queue.md),
 [0007](docs/adr/0007-google-inbound-sync-and-conflict-policy.md),
@@ -605,8 +608,8 @@ Deliberately out of scope for v1 — schema-ready or designed, not built:
   a single global search screen (per-screen search shipped in Phase 9);
   search v2 (FTS5/bm25, server-side fold columns); OG link previews on task
   descriptions; tag merge/usage counts; desktop drag-to-move into folders.
-- Attachments v2 (multipart >5 GB, thumbnails, quotas, offline binary cache — v1 shipped in Phase 8); import from Todoist / TickTick / Apple Reminders; ICS export.
-- CalDAV connector for iCloud ([design](docs/CALDAV.md)); the inbound half of the Apple mirror.
+- Attachments v2 (multipart >5 GB, thumbnails, quotas, offline binary cache — v1 shipped in Phase 8); ICS export (import from Todoist / TickTick shipped in OPH-371; Apple Reminders has no export file).
+- Tasks as CalDAV to-dos (VTODO) — through the connector or AllisWell as a CalDAV server; the owner chooses ([CALDAV.md §9](docs/CALDAV.md#9-vtodo-follow-up--tasks-as-caldav-to-dos-not-built-the-owner-chooses)).
 - Metrics endpoint (Prometheus), audit-log UI, admin panel.
 - E2E tests (Patrol / integration_test), web httpOnly refresh-cookie hardening.
 

@@ -152,6 +152,7 @@ const TAG_RULES = [
   [/reminders/, 'Reminders'],
   [/notification-devices/, 'Devices'],
   [/import|export/, 'Import & export'],
+  [/integrations\/caldav/, 'CalDAV calendar'],
   [/sync/, 'Sync'],
   [/integrations\/google/, 'Google Calendar'],
   [/\/ai\/|\/ai$/, 'AI'],

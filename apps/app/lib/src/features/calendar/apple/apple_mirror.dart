@@ -9,7 +9,22 @@ import '../../tasks/data/task.dart';
 /// the same time whether it reaches the calendar through Google (server) or
 /// EventKit (device).
 
-const _slot = Duration(minutes: 30);
+/// The block length of a task with no duration.
+const int kAppleDefaultSlotMinutes = 30;
+
+/// A block never outgrows the day it sits on (server: MAX_BLOCK_MINUTES).
+const int kAppleMaxBlockMinutes = 1440;
+
+/// How long a task's block is (OPH-372, ADR-0053): its own duration when it
+/// has one (capped at a day), else 30 minutes — `blockMinutes` in mirror.js.
+int appleBlockMinutes(int? estimatedMinutes) {
+  if (estimatedMinutes == null || estimatedMinutes <= 0) {
+    return kAppleDefaultSlotMinutes;
+  }
+  return estimatedMinutes > kAppleMaxBlockMinutes
+      ? kAppleMaxBlockMinutes
+      : estimatedMinutes;
+}
 
 /// Work withdrawn loses its block; work DONE keeps it, marked (ADR-0021 §2).
 const _goneStatuses = {'cancelled', 'archived'};
@@ -51,6 +66,9 @@ class DesiredAppleEvent {
 /// Completed tasks KEEP their block, marked `✓`; cancelled and archived ones
 /// lose it. The opt-in switch is gone.
 ///
+/// OPH-372 (ADR-0053): the block is as long as the task's duration
+/// ([appleBlockMinutes]); "when" (`startAt`) never moves it.
+///
 /// This is the SECOND implementation of that rule (the server's is
 /// `apps/api/src/lib/mirror.js`), so the two are pinned to each other by
 /// `test/fixtures/calendar_block_parity.json`, which both suites assert — two
@@ -59,6 +77,7 @@ class DesiredAppleEvent {
 /// the server does the same arithmetic against the task's stored timezone.
 DesiredAppleEvent? desiredAppleEvent(Task task) {
   if (_goneStatuses.contains(task.status)) return null;
+  final minutes = appleBlockMinutes(task.estimatedMinutes);
 
   DateTime start;
   DateTime end;
@@ -70,11 +89,11 @@ DesiredAppleEvent? desiredAppleEvent(Task task) {
     // guard added for the same reason).
     end = (scheduledEnd != null && scheduledEnd.isAfter(start))
         ? scheduledEnd
-        : start.add(_slot);
+        : start.add(Duration(minutes: minutes));
   } else {
     final anchor = task.dueAt ?? task.createdAt;
     if (anchor == null) return null;
-    final block = appleBlockFor(anchor);
+    final block = appleBlockFor(anchor, minutes: minutes);
     start = block.$1;
     end = block.$2;
   }
@@ -88,14 +107,19 @@ DesiredAppleEvent? desiredAppleEvent(Task task) {
   );
 }
 
-/// A 30-minute block that cannot spill into tomorrow. Exported for the parity
-/// fixture — a block on the wrong day is a task on the wrong day.
-(DateTime, DateTime) appleBlockFor(DateTime instant) {
+/// A [minutes]-long block (30 when not given) that cannot spill into
+/// tomorrow, and — when it is longer than what is left of the day — starts no
+/// earlier than 00:00. Exported for the parity fixture — a block on the wrong
+/// day is a task on the wrong day.
+(DateTime, DateTime) appleBlockFor(DateTime instant, {int? minutes}) {
+  final length = Duration(minutes: appleBlockMinutes(minutes));
   final local = instant.toLocal();
   final endOfDay = DateTime(local.year, local.month, local.day, 23, 59);
-  final naturalEnd = local.add(_slot);
+  final naturalEnd = local.add(length);
   if (!naturalEnd.isAfter(endOfDay)) return (local, naturalEnd);
-  return (endOfDay.subtract(_slot), endOfDay);
+  final startOfDay = DateTime(local.year, local.month, local.day);
+  final pulledBack = endOfDay.subtract(length);
+  return (pulledBack.isBefore(startOfDay) ? startOfDay : pulledBack, endOfDay);
 }
 
 /// What the engine should do about one task, given what EventKit already holds
@@ -118,13 +142,14 @@ enum AppleMirrorDecision {
 }
 
 /// The mapping we persist per task (mirrors the server's `calendar_event_links`,
-/// trimmed to what a one-way device mirror needs).
+/// trimmed to what a device mirror and its read-back need).
 class AppleEventLink {
   const AppleEventLink({
     required this.taskId,
     required this.calendarId,
     required this.eventId,
     required this.signature,
+    this.suppressedAt,
   });
 
   final String taskId;
@@ -135,8 +160,16 @@ class AppleEventLink {
   final String calendarId;
   final String eventId;
 
-  /// The [DesiredAppleEvent.signature] last written — the basis for `noop`.
+  /// The [DesiredAppleEvent.signature] last written — the basis for `noop`,
+  /// and (OPH-369) the read-back's echo baseline: the times in it are the
+  /// times WE put on the event, so an event still showing them is our own
+  /// write, not the user's edit (EventKit has no etag).
   final String signature;
+
+  /// OPH-369: the user deleted this event, so mirroring this task into THIS
+  /// calendar stopped — the Apple analogue of `calendar_mirror_suppressed_at`
+  /// (ADR-0021 §3), kept on the device (ADR-0050). Null = mirroring.
+  final DateTime? suppressedAt;
 }
 
 /// Decide, given the task's desired event, its existing link, and the calendar
@@ -149,6 +182,14 @@ AppleMirrorDecision decideAppleMirror({
 }) {
   if (desired == null) {
     return link == null ? AppleMirrorDecision.none : AppleMirrorDecision.remove;
+  }
+  if (link?.suppressedAt != null) {
+    // The user deleted the event (OPH-369): never resurrect it there. Picking
+    // a DIFFERENT calendar is a fresh request to mirror, so it starts over —
+    // the dead row goes and the engine creates in the new calendar.
+    return targetCalendarId != null && link!.calendarId != targetCalendarId
+        ? AppleMirrorDecision.remove
+        : AppleMirrorDecision.noop;
   }
   if (targetCalendarId == null) {
     // Wanted, but nowhere to put it. If one already exists (calendar was later

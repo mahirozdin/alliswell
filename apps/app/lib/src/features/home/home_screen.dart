@@ -29,10 +29,11 @@ import '../calendar/ui/external_event_tile.dart';
 import '../ee/providers.dart';
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
-import '../tasks/data/task_defaults.dart';
+import '../tasks/data/quick_add_apply.dart';
 import '../tasks/data/task_sort.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
+import '../tasks/ui/quick_add_text_controller.dart';
 import '../tasks/ui/task_tile.dart';
 import '../workspaces/workspaces.dart';
 import 'home_board.dart';
@@ -77,7 +78,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// Quick add's text lives HERE, not in the bar (OPH-172/H4): the bar is a
   /// sliver now, and a sliver scrolled past the cache extent is disposed —
   /// which would silently eat what the user had typed.
-  final _quickAddController = TextEditingController();
+  final _quickAddController = QuickAddTextController();
   final _quickAddFocus = FocusNode();
   final _quickAddKey = GlobalKey();
 
@@ -154,9 +155,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// default task time (Settings; factory 23:59 — OPH-161) when one is picked,
   /// otherwise dateless — either way it appears in the list right away
   /// (feedback round 2).
-  Future<void> _quickAdd(String title) async {
+  ///
+  /// OPH-373 (DESIGN §39 Q4): when the text already says when ("yarın 9'da",
+  /// "başla pazartesi", "her cuma"), that wins — no picker, and the selected
+  /// calendar day does not override it (relative words are relative to the
+  /// real now). Tags, project and priority typed in the text apply either way.
+  Future<void> _quickAdd(QuickAddSubmission submission) async {
     final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
     if (workspaceId == null) throw StateError('No workspace available');
+    final parse = submission.parse;
+    if (parse.hasSchedule) {
+      await createFromQuickParse(ref.read, parse: parse, withDefaults: true);
+      return;
+    }
     final selectedDay = ref.read(selectedDayProvider);
     if (!mounted) return;
     // Round 14: quick add asks for the deadline every time — the create
@@ -168,13 +179,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         ? null
         : applyDefaultTaskTime(selectedDay, ref.read(defaultTaskTimeProvider));
     // In the workspace on screen — and, in an organisation's, on the person
-    // who added it: a task added from Home is that person's work.
-    await createOwnTask(ref.read, {
-      'title': title,
-      // Round-14 defaults: medium priority, urgent alarm on, and a reminder
-      // an hour before the deadline whenever one was picked.
-      ...awQuickTaskDefaults(dueAt: dueAt),
-    });
+    // who added it: a task added from Home is that person's work. Round-14
+    // defaults: medium priority, urgent alarm on, and a reminder an hour
+    // before the deadline whenever one was picked.
+    await createFromQuickParse(
+      ref.read,
+      parse: parse,
+      withDefaults: true,
+      dueAt: dueAt,
+    );
   }
 
   /// OPH-222, redone in round 14 — the ✨ rider is optimistic: the task

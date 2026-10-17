@@ -28,7 +28,9 @@ import '../../tags/ui/tag_input.dart';
 import '../../tags/ui/tag_manage_sheet.dart';
 import '../data/task.dart';
 import '../data/task_store.dart';
+import '../data/task_when.dart';
 import '../providers.dart';
+import 'duration_picker.dart';
 import 'task_tile.dart' show deleteTaskWithUndo;
 import 'repeat_row.dart';
 import 'task_visuals.dart';
@@ -122,10 +124,11 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     Map<String, dynamic> patch, {
     bool isDateEdit = false,
   }) async {
-    if (!task.isRecurring) {
+    if (!task.isRecurring || await isAfterCompletionTask(ref, task)) {
       await _apply((store, id) => store.update(id, patch));
       return;
     }
+    if (!mounted) return;
     final scope = await showSeriesScopeDialog(context, isDateEdit: isDateEdit);
     if (scope == null) return;
     await _apply(
@@ -457,6 +460,20 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     // GONE. Every task is on the calendar now — it was never a
                     // choice the user should have had to find, and the default
                     // being off meant an ordinary dated task never got there.
+                    // OPH-372 (ADR-0053, DESIGN §38 W1): "When" — the day it
+                    // enters Today — above the deadline. A day, no clock. It
+                    // belongs to THIS occurrence of a series, so it asks no
+                    // scope question; and like the deadline it is never
+                    // written by a calendar drag (that lands in scheduled*).
+                    _DateRow(
+                      key: const Key('when-row'),
+                      label: 'task.when'.tr(),
+                      icon: Icons.wb_sunny_outlined,
+                      value: task.startAt,
+                      dateOnly: true,
+                      onPicked: (picked) =>
+                          _apply((store, id) => store.setWhen(id, picked)),
+                    ),
                     _DateRow(
                       key: const Key('due-row'),
                       label: 'task.due'.tr(),
@@ -505,6 +522,15 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                           'remindAt': picked?.toUtc().toIso8601String(),
                         }),
                       ),
+                    ),
+                    // OPH-372: how long it takes. A series template field on
+                    // the server (PROPAGATED_FIELDS), so a recurring task asks
+                    // the scope question like a rename does.
+                    _DurationRow(
+                      key: const Key('duration-row'),
+                      minutes: task.estimatedMinutes,
+                      onPicked: (minutes) =>
+                          _applyScoped({'estimatedMinutes': minutes}),
                     ),
                   ],
                 ),
@@ -664,12 +690,17 @@ class _DateRow extends ConsumerWidget {
     required this.value,
     required this.onPicked,
     this.anchor,
+    this.dateOnly = false,
     super.key,
   });
 
   final String label;
   final IconData icon;
   final DateTime? value;
+
+  /// A field that stores a DAY ("When", OPH-372): shown and picked without a
+  /// time (DESIGN §17 D5 as amended).
+  final bool dateOnly;
 
   /// The date this row lives next to — see [awInitialPickerDate]. The deadline
   /// row has none (it opens on tomorrow); a reminder or a planned block opens
@@ -688,6 +719,8 @@ class _DateRow extends ConsumerWidget {
       subtitle: Text(
         local == null
             ? 'task.notSet'.tr()
+            : dateOnly
+            ? awFormatDate(local, format: ref.watch(dateFormatProvider))
             : awFormatDateTime(local, format: ref.watch(dateFormatProvider)),
         style: TextStyle(
           color: local == null ? scheme.onSurfaceVariant : scheme.onSurface,
@@ -706,13 +739,62 @@ class _DateRow extends ConsumerWidget {
       // default task time on it, so editing the day of a 14:30 task silently
       // moved it to 23:59.
       onTap: () async {
-        final picked = await awPickDateTime(
-          context,
-          ref,
-          current: local,
-          anchor: anchor?.toLocal(),
-        );
+        final picked = dateOnly
+            ? await awPickDate(
+                context,
+                current: local,
+                anchor: anchor?.toLocal(),
+              )
+            : await awPickDateTime(
+                context,
+                ref,
+                current: local,
+                anchor: anchor?.toLocal(),
+              );
         if (picked != null) onPicked(picked);
+      },
+    );
+  }
+}
+
+/// The duration row (OPH-372, DESIGN §38 W3) — the dates card's sibling of
+/// [_DateRow]: tap to pick, ✕ to clear.
+class _DurationRow extends StatelessWidget {
+  const _DurationRow({
+    required this.minutes,
+    required this.onPicked,
+    super.key,
+  });
+
+  final int? minutes;
+  final void Function(int?) onPicked;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final label = 'task.duration'.tr();
+    final value = minutes;
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      leading: const Icon(Icons.timelapse_outlined),
+      title: Text(label),
+      subtitle: Text(
+        value == null ? 'task.notSet'.tr() : awFormatDuration(value),
+        style: TextStyle(
+          color: value == null ? scheme.onSurfaceVariant : scheme.onSurface,
+          fontWeight: value == null ? null : FontWeight.w600,
+        ),
+      ),
+      trailing: value == null
+          ? Icon(Icons.chevron_right, color: scheme.onSurfaceVariant)
+          : IconButton(
+              tooltip: 'task.clearField'.tr(args: {'field': label}),
+              icon: const Icon(Icons.close),
+              onPressed: () => onPicked(null),
+            ),
+      onTap: () async {
+        final picked = await showDurationPicker(context, current: value);
+        if (picked != null && picked != value) onPicked(picked);
       },
     );
   }

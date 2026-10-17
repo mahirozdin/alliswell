@@ -28,19 +28,21 @@ import '../../support/sync_overrides.dart';
 /// rule the calendar's dots follow (OPH-185). And the split happens INSIDE the
 /// bucket: the group order, the horizon and OPH-301's recession rule are
 /// untouched, because this is a heading change, not a new way to group.
-Task _task(String id, {DateTime? dueAt}) => Task(
-  id: id,
-  workspaceId: 'W1',
-  title: id,
-  status: 'open',
-  priority: 'none',
-  timezone: 'Europe/Istanbul',
-  isUrgent: false,
-  requiresAcknowledgement: false,
-  sortOrder: 0,
-  revision: 1,
-  dueAt: dueAt,
-);
+Task _task(String id, {DateTime? dueAt, DateTime? startAt, String? status}) =>
+    Task(
+      id: id,
+      workspaceId: 'W1',
+      title: id,
+      status: status ?? 'open',
+      priority: 'none',
+      timezone: 'Europe/Istanbul',
+      isUrgent: false,
+      requiresAcknowledgement: false,
+      sortOrder: 0,
+      revision: 1,
+      dueAt: dueAt,
+      startAt: startAt,
+    );
 
 void main() {
   // Tuesday. "This week" is +2..+6, so Thursday, Friday and Saturday.
@@ -117,6 +119,96 @@ void main() {
     ], selectedDay: DateTime(2026, 7, 14));
     // OPH-301's rule survives the split: these are future groups, all of them.
     expect(groups.every((g) => g.dimmed), isTrue);
+  });
+
+  // OPH-372 (ADR-0053): a not-done task is filed by its plan day — its
+  // "when" rolled forward to today, never later than its deadline; Overdue is
+  // decided by the deadline alone, first.
+  group('"when" (OPH-372)', () {
+    HomeBucket? bucketOf(List<HomeGroup> groups, String id) {
+      for (final group in groups) {
+        for (final item in group.items) {
+          if (item is TaskItem && item.task.id == id) return group.bucket;
+        }
+      }
+      return null;
+    }
+
+    test('a started task due in five days is in Today, not This week', () {
+      final groups = groupTasksForHome([
+        _task(
+          'started',
+          startAt: DateTime(2026, 7, 13),
+          dueAt: DateTime(2026, 7, 19, 17),
+        ),
+      ], now: now);
+      expect(bucketOf(groups, 'started'), HomeBucket.today);
+    });
+
+    test('an undated task with a "when" sits on that day, not No date', () {
+      final groups = groupTasksForHome([
+        _task('thu', startAt: DateTime(2026, 7, 16)),
+      ], now: now);
+      final week = groups.where((g) => g.bucket == HomeBucket.thisWeek);
+      expect(week.single.day, DateTime(2026, 7, 16));
+      expect(bucketOf(groups, 'thu'), HomeBucket.thisWeek);
+    });
+
+    test('a "when" past the horizon drops out, but its day still shows it', () {
+      final far = DateTime(2026, 8, 23); // +40 days
+      final task = _task('far', startAt: far);
+      expect(bucketOf(groupTasksForHome([task], now: now), 'far'), isNull);
+      final selected = groupTasksForHome([task], now: now, selectedDay: far);
+      expect(bucketOf(selected, 'far'), HomeBucket.selectedDay);
+    });
+
+    test('Overdue wins over a "when"', () {
+      final groups = groupTasksForHome([
+        _task(
+          'late',
+          startAt: DateTime(2026, 7, 14),
+          dueAt: DateTime(2026, 7, 13, 9),
+        ),
+      ], now: now);
+      expect(bucketOf(groups, 'late'), HomeBucket.overdue);
+    });
+
+    test('a "when" after the deadline files by the deadline', () {
+      final groups = groupTasksForHome([
+        _task('capped', startAt: DateTime(2026, 7, 25), dueAt: thursday),
+      ], now: now);
+      expect(bucketOf(groups, 'capped'), HomeBucket.thisWeek);
+      final day = groups.firstWhere((g) => g.bucket == HomeBucket.thisWeek).day;
+      expect(day, DateTime(2026, 7, 16));
+    });
+
+    test('the per-day split agrees with the bucket', () {
+      final groups = weekGroups([
+        _task(
+          'when-sat',
+          startAt: DateTime(2026, 7, 18),
+          dueAt: DateTime(2026, 7, 30),
+        ),
+        _task('due-thu', dueAt: thursday),
+      ]);
+      expect(groups.map((g) => g.day), [
+        DateTime(2026, 7, 16),
+        DateTime(2026, 7, 18),
+      ]);
+      expect((groups.last.items.single as TaskItem).task.id, 'when-sat');
+    });
+
+    test('the month grid marks the "when" day of open work only', () {
+      final days = daysWithTasks([
+        _task(
+          'a',
+          startAt: DateTime(2026, 7, 20),
+          dueAt: DateTime(2026, 7, 24),
+        ),
+        _task('done', startAt: DateTime(2026, 7, 21), status: 'completed'),
+      ]);
+      expect(days, {DateTime(2026, 7, 20), DateTime(2026, 7, 24)});
+    });
   });
 
   testWidgets('the heading on screen names the day, not the bucket', (

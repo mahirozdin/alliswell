@@ -226,6 +226,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('silinecek.txt'), findsNothing);
 
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 

@@ -12,6 +12,7 @@ import 'package:alliswell/src/features/notes/ui/notes_screen.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
+import '../../support/nav.dart';
 import '../../support/sync_overrides.dart';
 
 /// Shared harness for the notes screens — the same shape `notes_flow_test`
@@ -34,7 +35,7 @@ Future<Widget> signedInAppWith(FakeApi api) async {
 }
 
 Future<void> openNotes(WidgetTester tester) async {
-  await tester.tap(find.text('Notes').last);
+  await tester.tap(navTab('Notes'));
   await tester.pumpAndSettle();
 }
 

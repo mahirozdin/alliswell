@@ -14,6 +14,7 @@ import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/sign_out.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
+import '../features/integrations/ui/caldav_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/workspaces/workspaces.dart';
 import '../features/notes/providers.dart' show noteSourceStylingChoiceProvider;
@@ -267,6 +268,16 @@ class SettingsScreen extends ConsumerWidget {
                   titleKey: 'settings.group.sla',
                   subtitleKey: 'settings.group.slaSub',
                   path: '/settings/team/sla',
+                ),
+              // EE-308 (OPH-379): automation and routing rules. The SLA row's
+              // gate — the same verb guards both engines' doors.
+              if (may('sla.manage'))
+                _GroupRow(
+                  keyName: 'settings-group-rules',
+                  icon: Icons.rule_outlined,
+                  titleKey: 'settings.group.rules',
+                  subtitleKey: 'settings.group.rulesSub',
+                  path: '/settings/team/rules',
                 ),
               // EE-106: the public request links. Same gate shape as the SLA
               // row above — `portal.manage_links` is a plain role permission,
@@ -804,6 +815,10 @@ class SettingsIntegrationsScreen extends ConsumerWidget {
         const SizedBox(height: AwSpace.x3),
         // OPH-078: the device-side twin — hides itself off Apple platforms.
         const AppleCalendarCard(),
+        // OPH-380: iCloud / any CalDAV server, from the server — hides itself
+        // while the server admin has not turned it on (and nothing is
+        // connected). Brings its own top gap, so a hidden card leaves none.
+        const CaldavCalendarCard(),
       ],
       const SizedBox(height: AwSpace.x3),
       // OPH-220: AI — hides itself when the server has AI disabled.
@@ -863,6 +878,16 @@ class SettingsDataScreen extends StatelessWidget {
       Card(
         child: Column(
           children: [
+            // OPH-371 (DESIGN §37): moving in from Todoist or TickTick — the
+            // first row, the place §32 S2 kept for it.
+            ListTile(
+              key: const Key('settings-import'),
+              leading: const Icon(Icons.move_down_outlined),
+              title: Text('import.title'.tr()),
+              subtitle: Text('import.sub'.tr()),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push('/settings/import'),
+            ),
             // OPH-186 (DESIGN §20 C4): the archive of finished work. Home
             // keeps today's; everything older lives here.
             ListTile(

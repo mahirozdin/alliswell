@@ -4,7 +4,12 @@ import 'package:alliswell_eventkit/alliswell_eventkit.dart';
 import 'package:flutter/foundation.dart';
 
 export 'package:alliswell_eventkit/alliswell_eventkit.dart'
-    show AppleCalendar, AppleEventSpec, EventKitAccess, EventKitException;
+    show
+        AppleCalendar,
+        AppleEventSnapshot,
+        AppleEventSpec,
+        EventKitAccess,
+        EventKitException;
 
 /// The seam between Apple calendar LOGIC and the platform channel (OPH-077) —
 /// the same shape `notifications/gateway.dart` uses, and for the same reason:
@@ -40,6 +45,13 @@ abstract interface class AppleCalendarGateway {
     required DateTime from,
     required DateTime to,
   });
+
+  // ── Read-back (OPH-369) ─────────────────────────────────────────────────────
+
+  /// What the mapped events look like now; an id EventKit no longer resolves
+  /// is absent. Null when this build cannot read back at all — never an empty
+  /// list, which would look like "every event was deleted".
+  Future<List<AppleEventSnapshot>?> readEvents(List<String> ids);
 }
 
 class EventKitCalendarGateway implements AppleCalendarGateway {
@@ -82,4 +94,8 @@ class EventKitCalendarGateway implements AppleCalendarGateway {
     from: from,
     to: to,
   );
+
+  @override
+  Future<List<AppleEventSnapshot>?> readEvents(List<String> ids) =>
+      isSupported ? _eventKit.readEvents(ids) : Future.value(null);
 }

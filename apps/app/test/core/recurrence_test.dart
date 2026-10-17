@@ -32,6 +32,63 @@ void main() {
     }
   });
 
+  group('recurrence — after completion, parity fixture (OPH-375)', () {
+    for (final entry
+        in (fixture['afterCompletion'] as List).cast<Map<String, dynamic>>()) {
+      test(entry['name'] as String, () {
+        final rule = AwRepeatRule.fromJson(entry['rule']);
+        expect(rule, isNotNull, reason: 'rule must parse');
+        expect(rule!.isAfterCompletion, isTrue);
+        expect(
+          awNextAfterCompletion(
+            rule,
+            entry['completed'] as String,
+            emitted: (entry['emitted'] as int?) ?? 1,
+          ),
+          entry['expected'],
+        );
+      });
+    }
+
+    for (final entry
+        in (fixture['invalidRules'] as List).cast<Map<String, dynamic>>()) {
+      test('refuses ${entry['name']}', () {
+        final rule = AwRepeatRule.fromJson(entry['rule']);
+        expect(rule == null || awValidateRepeatRule(rule) != null, isTrue);
+      });
+    }
+
+    test('plans only the anchor — there is no window to fill', () {
+      const rule = AwRepeatRule(
+        freq: AwRepeatFreq.daily,
+        basis: AwRepeatBasis.completion,
+      );
+      expect(awExpandOccurrences(rule, anchor: '2026-10-17', max: 5), [
+        '2026-10-17',
+      ]);
+    });
+
+    test('round-trips the basis; a calendar rule writes no basis key', () {
+      const after = AwRepeatRule(
+        freq: AwRepeatFreq.monthly,
+        interval: 3,
+        basis: AwRepeatBasis.completion,
+        end: AwRepeatEnd.count(4),
+      );
+      final json = after.toJson();
+      expect(json['basis'], 'completion');
+      expect(AwRepeatRule.fromJson(jsonDecode(jsonEncode(json))), after);
+
+      const calendar = AwRepeatRule(freq: AwRepeatFreq.daily);
+      expect(calendar.toJson().containsKey('basis'), isFalse);
+      expect(
+        AwRepeatRule.fromJson({'freq': 'daily', 'basis': 'calendar'}),
+        calendar,
+      );
+      expect(after == after.copyWith(basis: AwRepeatBasis.calendar), isFalse);
+    });
+  });
+
   group('recurrence — the rule model', () {
     test('round-trips through JSON without losing a field', () {
       const rule = AwRepeatRule(

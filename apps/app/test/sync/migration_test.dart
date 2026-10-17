@@ -5,6 +5,7 @@ import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/sync/db/connection_native.dart';
+import 'package:alliswell/src/search/search.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
 
@@ -52,6 +53,10 @@ void main() {
     // v37 (EE-296): who made a task. `tickets` and `task_assignments` go
     // whole below, and their v37 column and index go with them.
     await db.customStatement('ALTER TABLE tasks DROP COLUMN created_by');
+    // v39 (OPH-374): the file-name fold. `file_rows` is kept below (only its
+    // v7 column goes), so a v1 open never reaches the guarded v39 ALTER —
+    // the v38 fixture is the one that proves it.
+    await db.customStatement('ALTER TABLE file_rows DROP COLUMN name_fold');
     // Children before parents: drift opens with foreign keys on.
     for (final drop in [
       'DROP TABLE ticket_drafts', // v32
@@ -113,6 +118,10 @@ void main() {
     ]) {
       await db.customStatement(drop);
     }
+    // v4 (OPH-078): the Apple map. Dropped so step 4 really creates it — with
+    // today's definition, v38's `suppressed_at` included, which is why the
+    // v38 ALTER is guarded `from >= 4` (proved by the v37 fixture below).
+    await db.customStatement('DROP TABLE apple_event_links'); // v4
     await db.customStatement('DROP TABLE external_events'); // v3
     await db.customStatement(
       'ALTER TABLE tasks DROP COLUMN calendar_mirror_enabled', // v2
@@ -166,8 +175,12 @@ void main() {
 
       // v3 (OPH-083): a brand new table, empty until the next pull fills it.
       expect(await db.select(db.externalEvents).get(), isEmpty);
-      // v4 (OPH-078): the device-local Apple map, likewise created empty.
+      // v4 (OPH-078): the device-local Apple map, likewise created empty —
+      // and with v38's column, from step 4's `createTable`.
       expect(await db.select(db.appleEventLinks).get(), isEmpty);
+      await db
+          .customSelect('SELECT suppressed_at FROM apple_event_links')
+          .get();
       // v5 (OPH-153): attachment metadata, created empty — pull-only.
       expect(await db.select(db.fileRows).get(), isEmpty);
       // v7 (OPH-170): the folder tree, created empty — push-pull fills it.
@@ -390,7 +403,7 @@ void main() {
       await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 37);
+      expect(version.data['user_version'], 39);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -416,6 +429,8 @@ void main() {
   Future<void> seedV24Database() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     for (final drop in [
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
+      'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       // v37 — an indexed column cannot be dropped, so the index goes first.
       'DROP INDEX idx_tickets_work_task',
       'ALTER TABLE tickets DROP COLUMN work_task_id',
@@ -531,7 +546,7 @@ void main() {
       expect(workIndexes, hasLength(2));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 37);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );
@@ -550,6 +565,8 @@ void main() {
     // none of it, and a fixture that kept a later column would have the step
     // that adds it fail the open (OPH-350 found this one).
     for (final drop in [
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
+      'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       'DROP INDEX idx_tickets_work_task', // v37
       'ALTER TABLE tickets DROP COLUMN work_task_id', // v37
       'DROP INDEX idx_task_assignments_task_user', // v37
@@ -618,8 +635,118 @@ void main() {
       expect(filled.assetId, 'A1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 37);
+      expect(version.data['user_version'], 39);
       await db.close();
+    },
+  );
+
+  /// A device that mirrors into Apple Calendar when the v38 step arrives
+  /// (OPH-369). Every fixture above either recreates `apple_event_links` at
+  /// step 4 or never had a row in it, so only this one meets the guarded ALTER
+  /// with a real mapping — the one row whose loss would duplicate an event.
+  Future<void> seedV37AppleDatabase() async {
+    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement(
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
+    );
+    await db.customStatement(
+      'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
+    );
+    await db.customStatement('PRAGMA user_version = 37');
+    await db.customStatement('''
+      INSERT INTO apple_event_links (task_id, calendar_id, event_id, signature)
+      VALUES ('T1', 'CAL-1', 'EV-1',
+              '[Task] İş|2030-06-01T12:00:00.000Z|2030-06-01T12:30:00.000Z')
+    ''');
+    await db.close();
+  }
+
+  test(
+    'v37 → latest: an Apple mapping survives and starts unsuppressed',
+    () async {
+      await seedV37AppleDatabase();
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+
+      final link = await db.select(db.appleEventLinks).getSingle();
+      expect(link.taskId, 'T1');
+      expect(link.eventId, 'EV-1');
+      expect(
+        link.signature,
+        '[Task] İş|2030-06-01T12:00:00.000Z|2030-06-01T12:30:00.000Z',
+      );
+      // Nothing was deleted under read-back before it existed. Named in SQL:
+      // drift's typed select is `SELECT *` and reads a MISSING nullable
+      // column as null, so `link.suppressedAt` alone proves nothing.
+      final raw = await db
+          .customSelect('SELECT suppressed_at FROM apple_event_links')
+          .getSingle();
+      expect(raw.data['suppressed_at'], null);
+      expect(link.suppressedAt, equals(null));
+      // And the read-back can record a deletion on the upgraded row.
+      await (db.update(
+        db.appleEventLinks,
+      )..where((l) => l.taskId.equals('T1'))).write(
+        AppleEventLinksCompanion(suppressedAt: Value(DateTime.utc(2030, 6, 2))),
+      );
+      expect(
+        (await db.select(db.appleEventLinks).getSingle()).suppressedAt,
+        DateTime.utc(2030, 6, 2),
+      );
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 39);
+      await db.close();
+
+      // A second open is a no-op, not a second ALTER.
+      final again = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+      expect(await again.select(again.appleEventLinks).get(), hasLength(1));
+      await again.close();
+    },
+  );
+
+  /// A device holding attachments when the v39 step arrives (OPH-374). The
+  /// fixtures above either keep `file_rows` empty or recreate it, so only this
+  /// one meets the guarded ALTER and the backfill with a real row — the row a
+  /// person will type the name of into the global search.
+  Future<void> seedV38FileDatabase() async {
+    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement(
+      'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
+    );
+    await db.customStatement('PRAGMA user_version = 38');
+    await db.customStatement('''
+      INSERT INTO file_rows (id, workspace_id, target_type, target_id, name,
+                             mime, size_bytes, status, revision)
+      VALUES ('F1', 'W1', 'workspace', 'W1', 'Işık Faturası.pdf',
+              'application/pdf', 2048, 'ready', 3)
+    ''');
+    await db.close();
+  }
+
+  test(
+    'v38 → latest: a file already on the device is folded for the global search',
+    () async {
+      await seedV38FileDatabase();
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+
+      // Named in SQL: a typed select reads a MISSING nullable column as null.
+      final raw = await db
+          .customSelect('SELECT name, name_fold FROM file_rows')
+          .getSingle();
+      expect(raw.data['name'], 'Işık Faturası.pdf');
+      expect(raw.data['name_fold'], 'isik faturasi.pdf');
+      // …which is what makes it findable by the palette's ASCII query.
+      final hits = await SearchService(db).searchFiles('W1', 'isik fatura');
+      expect(hits.single.id, 'F1');
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 39);
+      await db.close();
+
+      // A second open is a no-op, not a second ALTER.
+      final again = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+      expect(await again.select(again.fileRows).get(), hasLength(1));
+      await again.close();
     },
   );
 
@@ -655,7 +782,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 37);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );
@@ -702,7 +829,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 37);
+      expect(version.data['user_version'], 39);
       await db.close();
     },
   );

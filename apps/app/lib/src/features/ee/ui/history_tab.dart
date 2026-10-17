@@ -231,6 +231,38 @@ class _TicketChange {
   static _TicketChange? of(EeHistoryEvent event) {
     final diff = event.diff;
     if (diff == null) return null;
+    // EE-307: where the request was moved from and to — unit · service when
+    // it changed desks, the service alone when it stayed. The reason is an
+    // internal note in the thread; the row only says one was written.
+    if (event.verb == 'transferred' && diff['service'] is List) {
+      String? side(int i) {
+        final unit = diff['unit'] is List && (diff['unit'] as List).length == 2
+            ? (diff['unit'] as List)[i]
+            : null;
+        final service = (diff['service'] as List).length == 2
+            ? (diff['service'] as List)[i]
+            : null;
+        final parts = [unit, service].whereType<String>().toList();
+        return parts.isEmpty ? null : parts.join(' · ');
+      }
+
+      final from = side(0);
+      final to = side(1);
+      if (to != null) {
+        return _TicketChange(
+          line: [
+            'ee.history.ticket.transferred'.tr(
+              args: {
+                'from': from ?? 'ee.history.ticket.unknownValue'.tr(),
+                'to': to,
+              },
+            ),
+            if (diff['reasonCommentId'] != null)
+              'ee.history.ticket.transferReason'.tr(),
+          ].join(' · '),
+        );
+      }
+    }
     final answers = diff['answersChanged'];
     if (answers is List && answers.isNotEmpty) {
       return _TicketChange(answerKeys: answers.whereType<String>().toList());

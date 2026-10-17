@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-15 — sahip isteği: notu Markdown/Word (DOCX) dışa aktarma (ADR-0048), widget'ta takvim etkinlikleri + `alliswell://day/<gün>`, editör ⋮ menüsünde "Notu sil"; backlog boş.
+**Last updated:** 2026-10-17 — tarayıcı QA düzeltmeleri: web'de AI sohbet akışı CORS başlığını taşıyor (OPH-382), OAuth onay kartı 390 px'e sığıyor (OPH-383), hızlı eklemede ✕ alan boşalınca unutuluyor (OPH-385), arama parçacığı kelimede kesiliyor (OPH-386), web'de @ düğmesi alanın odağını bırakmıyor (OPH-387).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | Sahip isteği (id'siz, 2026-10-15): not ⋮ ve not listesi menüsünde PDF'in yanında Markdown (.md, API'nin başlık kuralıyla) ve Word (.docx — kendi OOXML yazıcımız, PDF ile ortak `note_print_style.dart`, ADR-0048) dışa aktarma; Android/iOS/macOS ana ekran widget'ı Home'un dış takvim etkinliklerini gösterir (snapshot v5, `kind: event`), etkinlik satırı `alliswell://day/<yyyy-MM-dd>` ile Home'u o günde açar; not editörünün ⋮ menüsünde onaylı "Notu sil". Cihazda bakılacak: iOS widget Swift'i Linux'ta derlenmedi, .docx Word'de açılmadı, mobilde MD/DOCX paylaşımı ([DEVICE-CHECKS.md](DEVICE-CHECKS.md)). |
+| Last completed           | Tarayıcı QA düzeltmeleri: OPH-382 — `sseSink` hijack'ten önce `reply.getHeaders()`'ı writeHead'e taşıyor (cors + helmet; web'de AI sohbeti hiç cevap vermiyordu); OPH-383 — MCP onay kartı border-box, 420 px altı 20 px dolgu; OPH-384 — hızlı eklemede `#` sonrası odak kaybı headless Chromium'da yeniden üretilemedi, semantik düğüm kararlılığı testle sabitlendi; OPH-385 — ✕ ile bırakılan tanımalar alan boşalınca temizleniyor; OPH-386 — `searchSnippet` boşluğu katlayıp aynı metinde, kelime sınırında kesiyor; OPH-387 — AI sohbetindeki @ düğmesi `TextFieldTapRegion` içinde (web'de fare tıklaması DOM girdisini kapatıyordu). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -40,18 +40,42 @@
 7. **Landing captcha (isteğe bağlı)** — derlemede `VITE_SALES_CAPTCHA_PROVIDER` +
    `VITE_SALES_CAPTCHA_SITE_KEY`, sunucu yarısıyla birlikte (uzantının belgeleri); tek yarı her
    gönderimi reddeder.
-8. **Yalnız Google/Apple ile kayıtlı hesap MCP'ye bağlanamaz** (OPH-364'te ölçüldü): onay sayfası
-   e-posta + parola ister, bu hesapların parolası yok ve parola belirleme yolu yok
-   (`POST /auth/password` `AUTH_NO_PASSWORD` der). Karar sahibin: parola belirleme akışı mı, onay
-   sayfasında Google/Apple ile giriş mi.
+8. **OPH-366** — Google redirect URI, Apple Services ID ve prod `.env`'deki `SIGN_IN_APPLE_SERVICE_ID`
+   tamam (2026-10-17). Kalan: deploy'dan sonra DEVICE-CHECKS "MCP onayında Google/Apple" satırı.
 9. **OPH-227** — Claude Connectors Directory + ChatGPT app dizin başvuruları
    (`docs/store/directories.md`, önkoşulları boş).
 10. **Üç ayda bir AI sağlayıcı politika kontrolü** (abonelik-OAuth duruşu; `docs/AI.md` §1 son
    doğrulama 2026-07-29) — ilki **~2026-10**.
-11. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
+11. **OPH-365 mağaza** — App Store Connect › Promotional Text'e STORE-LISTING §1.3'ün yeni EN/TR
+    satırlarını yapıştır (build gerekmez).
+12. **Kayıtsız — ölç:** Firebase'e iOS APNs anahtarı yüklendi mi (VAPID + FCM 2026-09-19'dan beri
     canlıda; APNs yoksa iOS'a hiçbir push teslim edilmez ve hiçbir test yakalamaz) · OpenAI "Sign in
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.
+
+13. **OPH-369 Apple geri okuma** — Swift Mac'te derlendi (2026-10-17); kalan
+    DEVICE-CHECKS "Apple Takvim geri okuma" bölümü (iPhone + Mac). Geçerse "iki yönlü Apple"
+    metnine dönüş SAHİBİN kararı; dönülürse aynı değişiklikte: README, COMPARISON, SUPPORT(.tr),
+    STORE-LISTING, landing `content*.js` + index sayfaları, `llms.txt`, web `index.html`/manifest ve
+    `scripts/docs/check.mjs` APPLE_CLAIMS kapısı.
+
+14. **OPH-370 masaüstü indirmeleri** — sonraki etiketten sonra Actions › Release'de "Desktop build
+    (linux)", "Desktop build (windows)" ve "Attach desktop downloads" yeşil; sürümde
+    `alliswell-linux-x64.tar.gz`, `alliswell-windows-x64.zip`, `alliswell-desktop-SHA256SUMS.txt`
+    var ve README'nin `releases/latest/download/…` bağlantıları iniyor (o zamana kadar 404).
+    Sonra DEVICE-CHECKS "Masaüstü indirmeleri". İsteğe bağlı: Authenticode sertifikası (ya da Azure
+    Trusted Signing) + Windows işine signtool adımı → SmartScreen uyarısı kalkar.
+
+15. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
+    (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
+
+16. **OPH-380 CalDAV** — sahip prod `.env`'de `CALDAV_ENABLED=true` yaptı (2026-10-17, alliswell.space'te açık); kalan
+    DEVICE-CHECKS "CalDAV (iCloud / Nextcloud)": gerçek iCloud (uygulamaya özel parola, X-prop
+    sağ kalıyor mu → CALDAV.md §4.4) ve gerçek Nextcloud; Apple cihazda çift ayna koruması.
+    Onay/bağlantı kesme metinlerini (EN+TR `calendar.caldav.*`) ve PRIVACY(.tr) bölümünü ürün/hukuk
+    metni olarak gözden geçir. alliswell.space'te açmak SAHİBİN kararı; açılana dek kamu metni
+    "sunucu yöneticisi açtığında" der. VTODO yönü (CALDAV.md §9: A bağlayıcı / B AllisWell CalDAV
+    sunucusu) sahibin kararı.
 
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
@@ -59,6 +83,8 @@ Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECK
 
 Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. Burada her işi bağlayanlar:
 
+- **İçe aktarma gerçek dosyayla denenmeden yayında (2026-10-17, OPH-371):** sahibin test verisi yok;
+  gerçek bir Todoist/TickTick dosyasında sorun yaşayan kullanıcı GitHub issue açar, iş oradan doğar.
 - **Çalışma belgeleri yalın (2026-09-26):** STATE işaretçidir, TASKS yalnız açık iştir; kapanan iş
   silinir; kalıcı tuzak LESSONS'a, doğrulama kanıtı commit mesajına. Hedef: her oturumun okuduğu
   belge küçük kalsın (`check:docs`).
@@ -82,6 +108,36 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   maili; bir tester/inceleme listesinin tamamı kuyruğun önüne, sıra sorulmadan.
 - **Commit ve CHANGELOG:** co-author satırı yok; mesaj ters tırnaksız ve dosyadan (`-F`) verilir.
   CHANGELOG'a yalnız kullanıcının göreceği değişiklik girer.
+- **Masaüstü indirmeleri (2026-10-16, ADR-0051):** yalnız Windows zip + Linux tar.gz, imzasız;
+  macOS yok, kurulum paketi/AppImage/deb yok. Dosya adları sürümsüz (`latest/download` bağlantısı
+  kalıcı), sürüm klasör adında ve ikilide.
+- **İçe aktarma (2026-10-16, ADR-0052):** yalnız Todoist + TickTick (Apple Anımsatıcılar'ın dosyası
+  yok, vaat edilmez); sunucu ayrıştırır; alt görev → kontrol listesi, bölüm/sütun → etiket, p1 →
+  yüksek; içe aktarılan görev asla acil alarm değil; tamamlananlar isteğe bağlı; tekrar içe aktarma
+  atlar, güncellemez, silineni geri getirmez; MCP'ye araç yok.
+- **Her yerden arama (2026-10-16, ADR-0055):** ⌘K (Apple) / Ctrl+K, ikisi birden asla; telefonda
+  giriş alt çubuğun yanındaki yuvarlak düğme, uygulama çubuğuna ikon yok (bu yüzden telefonda
+  çoğunlukla yalnız seçili sekmenin etiketi yazılır); tamamlanan görev bulunur, iptal bulunmaz;
+  arşivli not bulunmaz; masa eki dosyası bulunmaz; etiket sonucu Ana sayfayı süzer.
+- **Tamamlanınca tekrar (2026-10-17, ADR-0056):** gün/hafta/ay (yıl yok, 12 ay); tamamlama anından
+  sayılır (erken/geç), saat aynı; sıradakini yalnız sunucu üretir — çevrimdışı tamamlamada sıradaki ve
+  alarmı ilk sync'te gelir; yalnız `completed` ilerletir, `cancelled` değil; sıradaki tamamlanan
+  satırdan kopyalanır (kapsam sorusu yok); açık olanı silmek tekrarı durdurur; tekrarı kapatmak açık
+  görevi sıradan görev olarak bırakır; MCP durduramaz.
+- **Sesle ekleme (2026-10-17, ADR-0057):** iOS/macOS niyetleri uygulamayı öne getirir, arka planda
+  görev oluşturmaz (alarm Dart'ta kurulur; başsız Flutter çöktü); metin URL'de taşınmaz; sese
+  Fikirler hızlı ekleme kuralı uygulanır (tarihsiz → Fikirler); "Bugün" Ana sayfayı bugünle açar,
+  Siri sesli özet okumaz. Android'de yalnız iki statik başlatıcı kısayolu; App Actions, AppFunctions,
+  AUTO_SEND, CREATE_NOTE yok (2026'da işleyen bir asistan yolu yok).
+- **AI'ya ek (2026-10-17, ADR-0058):** yalnız "@" ile seçilen gönderilir (otomatik bağlamda not ve
+  dosya yok); not/metin dosyası/görev/proje; PDF/görsel/Office eklenmez (çıkarım yolu yok); ekler
+  sohbet boyunca kalır; ekli turda görev kapısı atlanır (ekten görev çıkarılmaz).
+- **CalDAV (2026-10-17, ADR-0059):** iCloud + genel CalDAV birlikte; hepsi `apple_caldav` +
+  `caldav_kind` (API `caldav` der); varsayılan kapalı, özel/LAN adres ve http yalnız
+  `CALDAV_ALLOW_PRIVATE_HOSTS` ile; iCloud seçeneği yalnız Apple olmayan cihazda, genel her yerde;
+  kullanıcı başına çalışma alanında tek hesap; sunucu iCloud'a yazarken cihazdaki EventKit aynası
+  kendi etkinliklerini siler ve durur; yoklama 300 sn; kendi etkinlikleri tekrarlılar dahil
+  önbellekte (seri başına ≤500); bağlanma yalnız oturum, MCP aracı yok; VTODO yok (sahip seçer).
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

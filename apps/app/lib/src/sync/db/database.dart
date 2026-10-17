@@ -167,6 +167,10 @@ class FileRows extends Table {
 
   /// Folder membership — workspace-target files only (v7, ADR-0014).
   TextColumn get folderId => text().nullable()();
+
+  /// ADR-0013/ADR-0055 (v39): folded shadow of [name] — the global search
+  /// palette finds files by name. Written by `fileCompanion`, the one writer.
+  TextColumn get nameFold => text().nullable()();
   IntColumn get revision => integer().withDefault(const Constant(0))();
   DateTimeColumn get createdAt => dateTime().nullable()();
   DateTimeColumn get updatedAt => dateTime().nullable()();
@@ -525,6 +529,11 @@ class AppleEventLinks extends Table {
   TextColumn get calendarId => text()();
   TextColumn get eventId => text()();
   TextColumn get signature => text()();
+
+  /// v38 (OPH-369): the user deleted this task's event in THIS calendar, so it
+  /// is not recreated here. Device-local on purpose — Google mirroring and the
+  /// other devices' calendars are untouched (ADR-0050).
+  DateTimeColumn get suppressedAt => dateTime().nullable()();
 
   @override
   Set<Column<Object>> get primaryKey => {taskId};
@@ -1206,8 +1215,12 @@ class AwDatabase extends _$AwDatabase {
   /// v36 → v37 (EE-296, EE-297): tasks.created_by — who made a task, for the
   /// lists a person shares a workspace through — and tickets.work_task_id, the
   /// task a request is worked through.
+  /// v37 → v38 (OPH-369): apple_event_links.suppressed_at — the Apple event the
+  /// user deleted is not recreated in that calendar (ADR-0050).
+  /// v38 → v39 (OPH-374): file_rows.name_fold for the global search
+  /// (ADR-0055).
   @override
-  int get schemaVersion => 37;
+  int get schemaVersion => 39;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1480,6 +1493,23 @@ class AwDatabase extends _$AwDatabase {
         if (from >= 24) await m.addColumn(tickets, tickets.workTaskId);
         await _createWorkIndexes();
       }
+      // v38 (OPH-369): one nullable, device-local column. Guarded `from >= 4`:
+      // a device from before v4 just got `apple_event_links` CREATED at step 4
+      // with today's definition, column included (LESSONS drift-replica).
+      // Nothing to backfill — no event had been deleted under read-back yet.
+      if (from >= 4 && from < 38) {
+        await m.addColumn(appleEventLinks, appleEventLinks.suppressedAt);
+      }
+      // v39 (OPH-374, ADR-0055): the folded shadow of a file's name, for the
+      // global search palette. Guarded `from >= 5`: a device from before v5
+      // just got `file_rows` CREATED at step 5 with today's definition, column
+      // included, and no rows to fold. Existing rows are folded here — the
+      // pull is incremental and would never send them again (LESSONS
+      // drift-replica: a derived column is backfilled in the migration).
+      if (from >= 5 && from < 39) {
+        await m.addColumn(fileRows, fileRows.nameFold);
+        await backfillFileNameFolds(this);
+      }
     },
   );
 
@@ -1571,6 +1601,18 @@ Future<void> backfillTicketFolds(AwDatabase db) async {
 
   await run('tickets', {'subject': 'subject_fold', 'body': 'body_fold'});
   await run('ticket_comments', {'body': 'body_fold'});
+}
+
+/// v39 (OPH-374): the same one-time fold for file names — the third table
+/// with its own step, for [backfillTicketFolds]' reason.
+Future<void> backfillFileNameFolds(AwDatabase db) async {
+  final rows = await db.customSelect('SELECT id, name FROM file_rows').get();
+  for (final row in rows) {
+    await db.customStatement(
+      'UPDATE file_rows SET name_fold = ? WHERE id = ?',
+      [foldSearchText(row.read<String>('name')), row.read<String>('id')],
+    );
+  }
 }
 
 /// One-time v19 conversion (OPH-274, ADR-0033): the replica's Delta-canonical

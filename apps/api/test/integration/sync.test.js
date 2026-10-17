@@ -154,6 +154,80 @@ describe.runIf(enabled)('integration: sync revision generator + pull/push', () =
     expect(row.priority).toBe('high');
   });
 
+  it('OPH-372: "when" and duration cross push and pull, and clear with null', async () => {
+    const clientId = newId();
+    const taskId = newId();
+    const base = Number(
+      (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+    );
+    const push = (mutations) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/sync/push',
+        headers: owner.headers,
+        payload: { clientId, workspaceId: owner.workspace.id, baseRevision: base, mutations },
+      });
+    // The client's own body: "when" is the chosen day's local midnight in UTC
+    // (awWhenIso), the deadline a separate instant.
+    const startAt = '2030-06-02T21:00:00.000Z';
+    const created = await push([
+      {
+        clientMutationId: newId(),
+        entityType: 'task',
+        entityId: taskId,
+        operation: 'create',
+        patch: {
+          title: 'Ne zaman ve süre',
+          startAt,
+          estimatedMinutes: 90,
+          dueAt: '2030-06-06T20:59:00.000Z',
+        },
+      },
+    ]);
+    expect(created.statusCode).toBe(200);
+    expect(created.json().results.map((r) => r.status)).toEqual(['applied']);
+    let row = await app.db('tasks').where({ id: taskId }).first();
+    expect(new Date(row.start_at).toISOString()).toBe(startAt);
+    expect(row.estimated_minutes).toBe(90);
+    expect(new Date(row.due_at).toISOString()).toBe('2030-06-06T20:59:00.000Z');
+
+    const updated = await push([
+      {
+        clientMutationId: newId(),
+        entityType: 'task',
+        entityId: taskId,
+        operation: 'update',
+        patch: { estimatedMinutes: 45, startAt: null },
+      },
+    ]);
+    expect(updated.json().results.map((r) => r.status)).toEqual(['applied']);
+    row = await app.db('tasks').where({ id: taskId }).first();
+    expect(row.start_at).toBeNull();
+    expect(row.estimated_minutes).toBe(45);
+    // The deadline was not part of the patch and did not move.
+    expect(new Date(row.due_at).toISOString()).toBe('2030-06-06T20:59:00.000Z');
+
+    const revisions = await app
+      .db('sync_revisions')
+      .where({ workspace_id: owner.workspace.id, entity_id: taskId })
+      .orderBy('revision', 'asc')
+      .select('operation');
+    expect(revisions.map((r) => r.operation)).toEqual(['create', 'update']);
+
+    const pullRes = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${base}`,
+      headers: owner.headers,
+    });
+    const snapshot = pullRes.json().changes.find((c) => c.entityId === taskId);
+    expect(snapshot.data).toMatchObject({
+      id: taskId,
+      startAt: null,
+      estimatedMinutes: 45,
+      dueAt: '2030-06-06T20:59:00.000Z',
+    });
+  });
+
   it('OPH-057: a live client hears committed writes (redis adapter attached)', async () => {
     await app.listen({ port: 0, host: '127.0.0.1' });
     const url = `http://127.0.0.1:${app.server.address().port}`;
@@ -238,6 +312,95 @@ describe.runIf(enabled)('integration: sync revision generator + pull/push', () =
       .where({ entity_type: 'note', entity_id: noteId })
       .select();
     expect(logged).toHaveLength(1);
+  });
+
+  it('OPH-378: a row moved to another workspace is a tombstone in the one it left', async () => {
+    // A second workspace the owner also belongs to — the device that pulls both.
+    const other = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email: `${emailPrefix}-other@example.com`, password: 'integration-pw-6' },
+    });
+    expect(other.statusCode).toBe(201);
+    const wsB = other.json().workspace.id;
+    const wsA = owner.workspace.id;
+    await app.db('workspace_members').insert({
+      id: newId(),
+      workspace_id: wsB,
+      user_id: owner.user.id,
+      role: 'member',
+    });
+    const head = async (ws) =>
+      Number((await app.db('workspaces').where({ id: ws }).first('revision')).revision);
+    const pull = (ws, since) =>
+      app.inject({
+        method: 'GET',
+        url: `/api/v1/sync/pull?workspaceId=${ws}&sinceRevision=${since}`,
+        headers: owner.headers,
+      });
+
+    const movedId = newId();
+    const stayId = newId();
+    const created = await app.db.transaction(async (trx) => {
+      const r1 = await withRevision(trx, wsA, 'task', movedId, 'create');
+      const r2 = await withRevision(trx, wsA, 'task', stayId, 'create');
+      await trx('tasks').insert([
+        { id: movedId, workspace_id: wsA, title: 'secret moved title', revision: r1 },
+        { id: stayId, workspace_id: wsA, title: 'stays in A', revision: r2 },
+      ]);
+      return r1;
+    });
+    const sinceA = created - 1;
+    const sinceB = await head(wsB);
+
+    // The move: delete revision where it left, create revision where it landed.
+    await app.db.transaction(async (trx) => {
+      await withRevision(trx, wsA, 'task', movedId, 'delete');
+      await withRevision(trx, wsA, 'task', stayId, 'update');
+      const rev = await withRevision(trx, wsB, 'task', movedId, 'create');
+      await trx('tasks').where({ id: movedId }).update({ workspace_id: wsB, revision: rev });
+    });
+
+    const fromA = (await pull(wsA, sinceA)).json().changes;
+    const movedInA = fromA.filter((c) => c.entityId === movedId);
+    expect(movedInA).toHaveLength(1);
+    // No snapshot leak: the old stream learns the id is gone and nothing else.
+    expect(movedInA[0]).toMatchObject({ operation: 'delete', data: null });
+    expect(JSON.stringify(fromA)).not.toContain('secret moved title');
+    // A row that never moved still snapshots in its own stream.
+    expect(fromA.find((c) => c.entityId === stayId)).toMatchObject({
+      operation: 'update',
+      data: { id: stayId, workspaceId: wsA, title: 'stays in A' },
+    });
+
+    const fromB = (await pull(wsB, sinceB)).json().changes;
+    expect(fromB.find((c) => c.entityId === movedId)).toMatchObject({
+      operation: 'create',
+      data: { id: movedId, workspaceId: wsB, title: 'secret moved title' },
+    });
+
+    // A late offline edit against the old stream is told the row is not there.
+    const late = await app.inject({
+      method: 'POST',
+      url: '/api/v1/sync/push',
+      headers: owner.headers,
+      payload: {
+        clientId: newId(),
+        workspaceId: wsA,
+        baseRevision: 0,
+        mutations: [
+          {
+            clientMutationId: newId(),
+            entityType: 'task',
+            entityId: movedId,
+            operation: 'update',
+            patch: { title: 'typed offline in A' },
+          },
+        ],
+      },
+    });
+    expect(late.json().results[0].rebase).toMatchObject({ entityId: movedId, present: false });
+    expect((await app.db('tasks').where({ id: movedId }).first()).title).toBe('secret moved title');
   });
 });
 
@@ -346,5 +509,174 @@ describe.runIf(enabled)('integration: a write retired in its own transaction', (
     });
     const mine = pull.json().changes.filter((c) => c.entityId === retired);
     expect(mine.at(-1)).toMatchObject({ operation: 'delete', data: null });
+  });
+
+  it('OPH-375: an offline completion spawns the next occurrence, dated from the tap', async () => {
+    const clientId = newId();
+    const taskId = newId();
+    const seriesId = newId();
+    const DAY = 86400000;
+    const nine = (ms) => `${new Date(ms).toISOString().slice(0, 10)}T09:00:00.000Z`;
+    const revisionNow = async () =>
+      Number(
+        (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+      );
+    const push = (mutations, baseRevision) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/sync/push',
+        headers: owner.headers,
+        payload: { clientId, workspaceId: owner.workspace.id, baseRevision, mutations },
+      });
+
+    const setup = await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task',
+          entityId: taskId,
+          patch: { title: 'Filtre', dueAt: nine(Date.now() - 4 * DAY), timezone: 'UTC' },
+        },
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task_series',
+          entityId: seriesId,
+          patch: {
+            rule: { freq: 'daily', interval: 5, basis: 'completion' },
+            template: { title: 'Filtre' },
+            timezone: 'UTC',
+            anchorAt: nine(Date.now() - 4 * DAY),
+            fromTaskId: taskId,
+          },
+        },
+      ],
+      await revisionNow(),
+    );
+    expect(setup.json().results.map((r) => r.status)).toEqual(['applied', 'applied']);
+    // The row was created "now" by the push; pretend it has existed for a week.
+    await app
+      .db('tasks')
+      .where({ id: taskId })
+      .update({ created_at: new Date(Date.now() - 7 * DAY) });
+
+    const since = await revisionNow();
+    const tapped = new Date(Date.now() - 2 * DAY);
+    const done = await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'update',
+          entityType: 'task',
+          entityId: taskId,
+          patch: { status: 'completed' },
+          localUpdatedAt: tapped.toISOString(),
+        },
+      ],
+      since,
+    );
+    expect(done.json().results[0].status).toBe('applied');
+
+    const row = await app.db('tasks').where({ id: taskId }).first();
+    expect(new Date(row.completed_at).toISOString()).toBe(tapped.toISOString());
+
+    const pull = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${since}`,
+      headers: owner.headers,
+    });
+    const created = pull
+      .json()
+      .changes.filter(
+        (c) => c.entityType === 'task' && c.operation === 'create' && c.entityId !== taskId,
+      );
+    expect(created).toHaveLength(1);
+    expect(created[0].data).toMatchObject({
+      title: 'Filtre',
+      status: 'open',
+      seriesId,
+      dueAt: nine(tapped.getTime() + 5 * DAY),
+    });
+    // Server-owned: the link to the completed row never reaches a client.
+    expect(created[0].data).not.toHaveProperty('spawnedFromTaskId');
+  });
+  it("OPH-375: an offline rule edit (the app's updateRule) keeps the days the new rule still has", async () => {
+    const clientId = newId();
+    const seriesId = newId();
+    const today = new Date().toISOString().slice(0, 10);
+    const revisionNow = async () =>
+      Number(
+        (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+      );
+    const push = (mutations, baseRevision) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/sync/push',
+        headers: owner.headers,
+        payload: { clientId, workspaceId: owner.workspace.id, baseRevision, mutations },
+      });
+    const live = () =>
+      app.db('tasks').where({ series_id: seriesId }).whereNull('deleted_at').select('id');
+    const ruleUpdate = (rule) => ({
+      clientMutationId: newId(),
+      operation: 'update',
+      entityType: 'task_series',
+      entityId: seriesId,
+      patch: { rule },
+    });
+    const pullTasks = async (since) => {
+      const pull = await app.inject({
+        method: 'GET',
+        url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${since}&limit=500`,
+        headers: owner.headers,
+      });
+      expect(pull.statusCode).toBe(200);
+      expect(pull.json().hasMore).toBe(false);
+      const changes = pull.json().changes.filter((c) => c.entityType === 'task');
+      return {
+        deletes: changes.filter((c) => c.operation === 'delete').length,
+        creates: changes.filter((c) => c.operation === 'create').length,
+      };
+    };
+
+    const created = await push(
+      [
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task_series',
+          entityId: seriesId,
+          patch: {
+            rule: { freq: 'daily', interval: 1 },
+            template: { title: 'Esneme' },
+            timezone: 'UTC',
+            anchorAt: `${today}T08:00:00.000Z`,
+          },
+        },
+      ],
+      await revisionNow(),
+    );
+    expect(created.json().results[0].status).toBe('applied');
+    const all = (await live()).length;
+    expect(all).toBeGreaterThan(360);
+
+    const weekdays = ['MO', 'TU', 'WE', 'TH', 'FR'].map((day) => ({ day, ordinal: null }));
+    let since = await revisionNow();
+    const narrowed = await push(
+      [ruleUpdate({ freq: 'weekly', interval: 1, byWeekday: weekdays })],
+      since,
+    );
+    expect(narrowed.json().results[0].status).toBe('applied');
+    const kept = (await live()).length;
+    // Only the weekends leave; the device hears exactly that and nothing else.
+    expect(kept).toBeGreaterThan(250);
+    expect(await pullTasks(since)).toEqual({ deletes: all - kept, creates: 0 });
+
+    since = await revisionNow();
+    const widened = await push([ruleUpdate({ freq: 'daily', interval: 1 })], since);
+    expect(widened.json().results[0].status).toBe('applied');
+    expect((await live()).length).toBe(all);
+    expect(await pullTasks(since)).toEqual({ deletes: 0, creates: all - kept });
   });
 });

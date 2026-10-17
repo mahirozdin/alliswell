@@ -1,0 +1,8 @@
+/* OPH-376 (ADR-0057): Siri phrases for AWAppShortcuts, Turkish. Several
+   variants on purpose: Siri hears the suffixed app name differently. */
+"Add a task in ${applicationName}" = "${applicationName}'e görev ekle";
+"Add a task to ${applicationName}" = "${applicationName} ile görev ekle";
+"New task in ${applicationName}" = "${applicationName}'de yeni görev";
+"Add to ${applicationName}" = "${applicationName}'e ekle";
+"Show today in ${applicationName}" = "${applicationName}'de bugünü göster";
+"What's on today in ${applicationName}" = "${applicationName}'de bugün ne var";

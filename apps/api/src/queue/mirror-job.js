@@ -1,6 +1,7 @@
 import { newId } from '../lib/ids.js';
 import { desiredEventForTask } from '../lib/mirror.js';
 import { googleClientFor, getFreshAccessToken } from '../db/calendar.js';
+import { mirrorTaskToCaldav } from './caldav-mirror.js';
 
 /**
  * One mirror pass for one task (OPH-072/073): reconcile the task's CURRENT
@@ -13,19 +14,33 @@ export async function runMirrorJob(app, { taskId }) {
   const task = await app.db('tasks').where({ id: taskId }).first();
   if (!task) return;
 
+  // CalDAV accounts (OPH-380, ADR-0059) mirror only while the server admin
+  // has the connector on — an account left from an enabled period sits still.
+  const providers = app.config.caldav?.enabled ? ['google', 'apple_caldav'] : ['google'];
   const accounts = await app
     .db('calendar_accounts')
-    .where({ workspace_id: task.workspace_id, provider: 'google', status: 'active' })
+    .where({ workspace_id: task.workspace_id, status: 'active' })
+    .whereIn('provider', providers)
     .whereNull('deleted_at')
     .whereNotNull('default_calendar_id')
     .select();
 
+  // One account failing (a CalDAV server down for the night) must not hold the
+  // others back: every account gets its pass, and the first error is rethrown
+  // afterwards so the queue still retries — the passes are idempotent.
+  let firstError = null;
   for (const account of accounts) {
-    await mirrorTaskToAccount(app, account, task);
+    try {
+      if (account.provider === 'apple_caldav') await mirrorTaskToCaldav(app, account, task);
+      else await mirrorTaskToGoogle(app, account, task);
+    } catch (err) {
+      firstError ??= err;
+    }
   }
+  if (firstError) throw firstError;
 }
 
-async function mirrorTaskToAccount(app, account, task) {
+async function mirrorTaskToGoogle(app, account, task) {
   const desired = desiredEventForTask(task);
   const link = await app
     .db('calendar_event_links')

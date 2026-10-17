@@ -1,0 +1,11 @@
+"Date: 2026-10-16+0000"
+"Version: 7.1"
+"Status: 
+0 Normal
+1 Completed
+2 Archived"
+"Folder Name","List Name","Title","Kind","Tags","Content","Is Check list","Start Date","Due Date","Reminder","Repeat","Priority","Status","Created Time","Completed Time","Order","Timezone","Is All Day","Is Floating","Column Name","Column Order","View Mode","taskId","parentId"
+"","Inbox","Boşluklu tarih","TEXT","","","N","","2030-02-20 10:00:00","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","o-space",""
+"","Inbox","Sıfır yıl","TEXT","","","N","0001-01-01T00:00:00+0000","0001-01-01T00:00:00+0000","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","o-zero",""
+"","Inbox","Geçersiz ay","TEXT","","","N","","2030-13-01T10:00:00+0000","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","o-month",""
+"","Inbox","Saat yok","TEXT","","","N","","2030-03-01","","","0","0","2026-10-01T08:00:00+0000","","-1099511627776","Europe/Istanbul","false","false","","","list","o-dateonly",""

@@ -72,6 +72,9 @@ services:
       GOOGLE_REDIRECT_URI: ${GOOGLE_REDIRECT_URI:-}
       CALENDAR_TOKEN_KEY: ${CALENDAR_TOKEN_KEY:-}
       GOOGLE_WEBHOOK_URL: ${GOOGLE_WEBHOOK_URL:-}
+      # Optional — iCloud / CalDAV calendar (docs/SELF-HOSTING.md §CalDAV).
+      CALDAV_ENABLED: ${CALDAV_ENABLED:-false}
+      CALDAV_ALLOW_PRIVATE_HOSTS: ${CALDAV_ALLOW_PRIVATE_HOSTS:-false}
       # Optional — file attachments on Cloudflare R2 / any S3 (docs/ATTACHMENTS.md).
       STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
       STORAGE_S3_REGION: ${STORAGE_S3_REGION:-auto}

@@ -619,7 +619,8 @@ yüzey OPH-210'da ölür.)_
 
 - `scheduled_start/end` doluysa blok ODUR (takvimden sürükleme kazanır — OPH-192
   davranışı aynen).
-- Değilse, tarihli görev = görev saatinde başlayan **30 dakikalık blok**; blok gece
+- Değilse, tarihli görev = görev saatinde başlayan **30 dakikalık blok** (görevin
+  `estimated_minutes`'ı varsa o uzunlukta, en çok 1440 — ADR-0053); blok gece
   yarısını aşacaksa güne kenetlenir → 23:59 vadeli (saatsiz) görev **23:29–23:59**.
 - Tarihsiz görev = **ekleniş gününe** aynı yarım-saat kuralıyla girer ("ekleniş
   tarihi baz alınır" — kullanıcının açık kuralı).
@@ -943,7 +944,8 @@ _(Revize 2026-07-20, feedback round 8 — OPH-162/170: **Calendar sekmesi KALDIR
 zaten ay ızgarası + kronolojik listeyi tek görünümde taşıyor, ikinci bir takvim ekranı ölü
 ağırlıktı. Yerine **Files (Dosyalar)** geldi: workspace'in tüm dosyalarını gösteren global
 dosya yöneticisi, §12.12. "Search" ayrı bir sekme DEĞİLDİR — arama her içerik ekranının kendi
-gövdesinde yaşar (§12.10); tek global arama ekranı v2 parking-lot'ta durur.)_
+gövdesinde yaşar (§12.10); her yerden arama bir sekme değil, ⌘K/Ctrl+K paleti olarak geldi —
+DESIGN §40, ADR-0055.)_
 
 _(Revize 2026-07-14, feedback round 1: Today ve Upcoming ayrı sekmeler olmaktan çıktı —
 Home her şeyin göründüğü tek kronolojik görünüm.)_
@@ -1489,6 +1491,10 @@ modeli + materyalizasyon kararı: ADR-0020; dialog/dil kuralları: DESIGN §25.)
 - **Görünürlük:** satır/detay/Pano kartında ↻ rozeti; tamamlamak kardeşleri
   etkilemez; silme kapsam sorusuna bağlanır; "Tekrarı durdur" gelecekleri siler,
   geçmişi bırakır.
+- **Tamamlanınca tekrar (OPH-375, ADR-0056):** kural `basis: "completion"` alırsa seri
+  takvime değil tamamlamaya bağlıdır — "su filtresini değiştirdikten 90 gün sonra". Tek
+  açık occurrence vardır; tamamlanınca sunucu sıradakini tamamlama günü + aralık, aynı
+  saatte üretir (ay sonu kırpılır); geri açmak onu geri çeker. Gün / hafta / ay.
 - **README sözü:** özellik örnekleriyle tanıtılır ("her ayın son günü", "ayın 2.
   Salı'sı", "22'sinden sonraki ilk Pazartesi") + değişik senaryolu listenin ekran
   görüntüsü (OPH-208).

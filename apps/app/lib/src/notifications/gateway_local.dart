@@ -31,6 +31,36 @@ const _legacyUrgentChannelId = 'urgent_alarms';
 /// a ding (docs/NOTIFICATIONS.md §1).
 const _androidInsistentFlag = 4;
 
+/// Windows toast identity (OPH-370). The AUMID names the app in Action Center
+/// and the GUID is the COM activation id of the toast callback — both must stay
+/// stable across releases, or Windows treats each update as a new app.
+const kWindowsNotificationAppName = 'AllisWell'; // i18n-ignore
+const kWindowsAppUserModelId = 'BubiApps.AllisWell.Desktop';
+const kWindowsNotificationGuid = '2db36880-ee5f-43dc-a408-41559f20642a';
+
+/// Every platform's plugin settings in one place. flutter_local_notifications
+/// throws "Windows settings must be set" without a `windows` entry, which left
+/// every local reminder on Windows failing (`degraded`) until OPH-370.
+///
+/// The desktop zip is unpackaged (no MSIX identity): scheduled toasts are still
+/// cancelled on reschedule/complete, but a toast already shown cannot be
+/// removed from Action Center — that needs package identity.
+@visibleForTesting
+InitializationSettings localInitializationSettings({
+  required DarwinInitializationSettings darwin,
+  required String linuxDefaultActionName,
+}) => InitializationSettings(
+  android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
+  iOS: darwin,
+  macOS: darwin,
+  linux: LinuxInitializationSettings(defaultActionName: linuxDefaultActionName),
+  windows: const WindowsInitializationSettings(
+    appName: kWindowsNotificationAppName,
+    appUserModelId: kWindowsAppUserModelId,
+    guid: kWindowsNotificationGuid,
+  ),
+);
+
 /// The real OS adapter (OPH-061, plan: docs/NOTIFICATIONS.md). Exactness and
 /// loudness choices live HERE — the logic layer is device-free and tested:
 ///
@@ -195,13 +225,9 @@ class LocalNotificationsGateway implements NotificationsGateway {
     );
 
     await _plugin.initialize(
-      settings: InitializationSettings(
-        android: const AndroidInitializationSettings('@mipmap/ic_launcher'),
-        iOS: darwinSettings,
-        macOS: darwinSettings,
-        linux: LinuxInitializationSettings(
-          defaultActionName: 'notif.action.open'.tr(),
-        ),
+      settings: localInitializationSettings(
+        darwin: darwinSettings,
+        linuxDefaultActionName: 'notif.action.open'.tr(),
       ),
       onDidReceiveNotificationResponse: (response) => _emit(
         NotificationEvent(

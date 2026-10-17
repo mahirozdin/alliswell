@@ -6,6 +6,8 @@ class MainFlutterWindow: NSWindow {
   /// Lives as long as the window: its channels answer for the whole session
   /// (OPH-335).
   private var widgetBridge: AWMacWidgetBridge?
+  /// Siri / Shortcuts requests (OPH-376, ADR-0057; `ios/Shared/AWAppShortcuts.swift`).
+  private var captureBridge: AWCaptureBridge?
 
   override func awakeFromNib() {
     let flutterViewController = FlutterViewController()
@@ -15,6 +17,7 @@ class MainFlutterWindow: NSWindow {
 
     RegisterGeneratedPlugins(registry: flutterViewController)
     widgetBridge = AWMacWidgetBridge(messenger: flutterViewController.engine.binaryMessenger)
+    captureBridge = AWCaptureBridge(messenger: flutterViewController.engine.binaryMessenger)
 
     super.awakeFromNib()
   }

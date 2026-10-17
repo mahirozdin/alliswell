@@ -57,3 +57,36 @@ Future<DateTime?> awPickDateTime(
     time?.minute ?? current?.minute ?? defMinute,
   );
 }
+
+/// The DAY-only input (OPH-372, DESIGN §17 D5 as amended): "When" stores a
+/// day, not an instant, so it asks for a day and nothing else — no clock step
+/// whose value would be thrown away. Same bounds and opening rule as
+/// [awPickDateTime] (an empty field opens on tomorrow, [awInitialPickerDate]).
+///
+/// Returns the chosen local day at 00:00, or null when the user backs out
+/// ("no change" — the caller keeps what it had).
+Future<DateTime?> awPickDate(
+  BuildContext context, {
+  DateTime? current,
+  DateTime? anchor,
+  DateTime? now,
+}) async {
+  final today = now ?? DateTime.now();
+  final first = today.subtract(const Duration(days: 365));
+  var initial = awInitialPickerDate(
+    current: current,
+    anchor: anchor,
+    now: today,
+  );
+  // A "when" can sit further back than the picker reaches (a task planned
+  // long ago and never done): open on the earliest day rather than assert.
+  if (initial.isBefore(first)) initial = first;
+  final date = await showDatePicker(
+    context: context,
+    initialDate: initial,
+    firstDate: first,
+    lastDate: today.add(const Duration(days: 365 * 5)),
+  );
+  if (date == null) return null;
+  return DateTime(date.year, date.month, date.day);
+}

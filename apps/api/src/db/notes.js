@@ -248,15 +248,35 @@ export async function createNote(
     links = [],
     origin = 'edit',
     clientId = null,
+    // OPH-371: the importer creates a note with its tags inside the same
+    // transaction as its ledger row.
+    tagIds = [],
+    trx: outer = null,
   },
 ) {
   if (body.projectId) await assertProjectUsable(app, body.projectId, workspaceId);
   for (const link of links) {
     await assertLinkTarget(app, link.entityType, link.entityId, workspaceId);
   }
+  const desiredTags = [...new Set(tagIds)];
+  if (desiredTags.length > 0) {
+    const found = await app
+      .db('tags')
+      .whereIn('id', desiredTags)
+      .where({ workspace_id: workspaceId })
+      .whereNull('deleted_at')
+      .select('id');
+    if (found.length !== desiredTags.length) {
+      throw coded(
+        app.httpErrors.badRequest('One or more tags do not exist in this workspace'),
+        'NOTE_TAG_NOT_FOUND',
+      );
+    }
+  }
 
   const id = newId();
-  await transactionWithRetry(app.db, async (trx) => {
+  const run = (work) => (outer ? work(outer) : transactionWithRetry(app.db, work));
+  await run(async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId,
       entityType: 'note',
@@ -279,6 +299,9 @@ export async function createNote(
         linked_entity_type: link.entityType,
         linked_entity_id: link.entityId,
       });
+    }
+    if (desiredTags.length > 0) {
+      await trx('note_tags').insert(desiredTags.map((tagId) => ({ note_id: id, tag_id: tagId })));
     }
     // OPH-267: the note's first state is version one — without it there is
     // nothing to restore an over-eager first edit back to.

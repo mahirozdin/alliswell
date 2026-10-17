@@ -15,6 +15,7 @@ import {
   ABORT_CANCELLED,
   ABORT_CLIENT_GONE,
 } from '../lib/ai/chat.js';
+import { attachedContextWithinLimits } from '../lib/ai/context.js';
 
 const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 
@@ -596,10 +597,14 @@ export default async function aiRoutes(app) {
               additionalProperties: false,
               required: ['tier', 'source', 'text'],
               properties: {
-                tier: { type: 'string', enum: ['t0', 't1', 't2'] },
+                // `attached` (OPH-377, ADR-0058): a note/file/task/project the
+                // user picked with "@" — never packed automatically.
+                tier: { type: 'string', enum: ['t0', 't1', 't2', 'attached'] },
                 source: { type: 'string', minLength: 1, maxLength: 32 },
                 id: { type: 'string', maxLength: 26 },
-                text: { type: 'string', minLength: 1, maxLength: 4000 },
+                // 16000 = one attached item (12000 chars) + its truncation
+                // notice, with room; the live tiers stay far below it.
+                text: { type: 'string', minLength: 1, maxLength: 16000 },
               },
             },
           },
@@ -637,6 +642,15 @@ export default async function aiRoutes(app) {
       await app.requireWorkspaceMember(request, workspaceId);
       const userId = request.user.id;
       const { requestId } = request.body;
+
+      // OPH-377: the aggregate cap on "@" attachments. Answered before the
+      // limiter takes a token; counts only — no content is read into a log.
+      if (!attachedContextWithinLimits(request.body.context?.segments ?? [])) {
+        throw coded(
+          app.httpErrors.badRequest('Too much attached to this conversation'),
+          'AI_CONTEXT_TOO_LARGE',
+        );
+      }
 
       // Rate limit BEFORE any hijack — a 429 is a normal JSON error.
       const verdict = await app.ai.limiter.take(userId);

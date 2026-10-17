@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { loadConfig } from '../../src/config.js';
 import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { startFakeGoogle, fakeGoogleEnv } from '../helpers/fakegoogle.js';
-import { blockForTask, desiredEventForTask } from '../../src/lib/mirror.js';
+import { blockForTask, blockMinutes, desiredEventForTask } from '../../src/lib/mirror.js';
 import { readFileSync } from 'node:fs';
 import { encryptSecret } from '../../src/lib/crypto.js';
 import { newId } from '../../src/lib/ids.js';
@@ -116,12 +116,73 @@ describe('lib/mirror desiredEventForTask (OPH-072, §7.1)', () => {
     const wall = (date) => date.toISOString().slice(0, 16);
     for (const testCase of fixture.cases) {
       const block = blockForTask(
-        { ...base, timezone: 'UTC', due_at: `${testCase.at}:00.000Z` },
+        {
+          ...base,
+          timezone: 'UTC',
+          due_at: `${testCase.at}:00.000Z`,
+          estimated_minutes: testCase.minutes ?? null,
+        },
         'UTC',
       );
       expect(wall(block.start), testCase.name).toBe(testCase.start);
       expect(wall(block.end), testCase.name).toBe(testCase.end);
     }
+  });
+
+  it('sizes the block by the task’s duration (OPH-372, ADR-0053)', () => {
+    const due = '2030-06-01T12:00:00.000Z';
+    const at = (minutes) =>
+      desiredEventForTask({ ...base, due_at: due, estimated_minutes: minutes }).end.dateTime;
+    expect(at(90)).toBe('2030-06-01T13:30:00.000Z');
+    // Not set, zero or nonsense → the 30-minute default.
+    expect(at(null)).toBe('2030-06-01T12:30:00.000Z');
+    expect(at(0)).toBe('2030-06-01T12:30:00.000Z');
+    expect(blockMinutes({ estimated_minutes: -5 })).toBe(30);
+    expect(blockMinutes({ estimated_minutes: 12.5 })).toBe(30);
+    expect(blockMinutes(undefined)).toBe(30);
+    // The server accepts up to 60000; a block never outgrows its day.
+    expect(blockMinutes({ estimated_minutes: 60000 })).toBe(1440);
+    const whole = desiredEventForTask({
+      ...base,
+      timezone: 'Europe/Istanbul',
+      due_at: '2030-06-01T06:00:00.000Z', // 09:00 in Istanbul
+      estimated_minutes: 1440,
+    });
+    expect(whole.start.dateTime).toBe('2030-05-31T21:00:00.000Z'); // 00:00 local
+    expect(whole.end.dateTime).toBe('2030-06-01T20:59:00.000Z'); // 23:59 local
+  });
+
+  it('a scheduled block without its end falls back to the task’s duration', () => {
+    const event = desiredEventForTask({
+      ...base,
+      scheduled_start_at: '2030-06-01T09:00:00.000Z',
+      scheduled_end_at: null,
+      estimated_minutes: 45,
+    });
+    expect(event.end.dateTime).toBe('2030-06-01T09:45:00.000Z');
+    // A real end the user dragged wins over the estimate.
+    const dragged = desiredEventForTask({
+      ...base,
+      scheduled_start_at: '2030-06-01T09:00:00.000Z',
+      scheduled_end_at: '2030-06-01T09:20:00.000Z',
+      estimated_minutes: 45,
+    });
+    expect(dragged.end.dateTime).toBe('2030-06-01T09:20:00.000Z');
+  });
+
+  it('“when” (start_at) never moves the block (ADR-0053)', () => {
+    const event = desiredEventForTask({
+      ...base,
+      start_at: '2030-05-25T21:00:00.000Z',
+      created_at: '2030-05-20T09:15:00.000Z',
+    });
+    expect(event.start.dateTime).toBe('2030-05-20T09:15:00.000Z');
+    const dated = desiredEventForTask({
+      ...base,
+      start_at: '2030-05-25T21:00:00.000Z',
+      due_at: '2030-06-01T12:00:00.000Z',
+    });
+    expect(dated.start.dateTime).toBe('2030-06-01T12:00:00.000Z');
   });
 
   it('wants no event for withdrawn work, a deleted task, or a suppressed one', () => {

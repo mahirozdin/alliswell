@@ -33,7 +33,7 @@
 └────────────────┘              └────────────────┘
         │
         └─ Calendar providers: Google Calendar API (OAuth, webhooks, incremental sync)
-                               Apple EventKit (on-device bridge) · CalDAV (v2)
+                               Apple EventKit (on-device bridge) · CalDAV (iCloud & any server, off by default)
 ```
 
 ## 2. Monorepo layout
@@ -165,6 +165,11 @@ No screen or route consults it yet.
   Capture is one function called from the note domain layer and, for the offline path, from the
   sync engine's own `afterCreate`/`afterUpdate` seam; the head coalesces inside a 10-minute
   window and identical bodies do not stack. A daily sweep applies the retention tiers.
+- **Imports from other apps** (OPH-371, ADR-0052): `src/lib/importers/` are pure parsers
+  (CSV records, dates, recurrences, Todoist, TickTick → one normalized plan), and
+  `src/db/app-import.js` writes the plan through the domain layer. `import_ledger` is
+  server-only (never synced): `UNIQUE(workspace_id, source, external_key)` is what makes a
+  re-import skip instead of duplicating.
 - Migrations: knex, append-only, ESM `up`/`down`. Full table list: the migrations themselves (`apps/api/migrations/`).
 
 ## 5. Sync engine (live end to end)
@@ -172,7 +177,9 @@ No screen or route consults it yet.
 Per BLUEPRINT §6: workspace-scoped monotonic revision log (`sync_revisions`; the
 `recordSyncWrite`/`withRevision` helper in `apps/api/src/db/sync.js` runs inside every entity
 write's transaction). `GET /api/v1/sync/pull` streams batched snapshots + delete tombstones
-since a revision, coalesced to each entity's latest change. `POST /api/v1/sync/push` applies
+since a revision, coalesced to each entity's latest change; a row whose `workspace_id` is no
+longer the pulled workspace goes out as a tombstone there (it moved), and the client applies a
+tombstone of a movable type only to that workspace's local row. `POST /api/v1/sync/push` applies
 client mutation batches idempotently — `client_mutations` records every outcome per
 (`clientId`, `clientMutationId`), and replays answer from the record. Conflict policy:
 field-level LWW for metadata (foreign changes detected via the changed-fields log with own
@@ -188,7 +195,7 @@ rooms after commits; clients respond by pulling — the socket never carries ent
 (keeps ordering and authz in one place: the pull endpoint). The app's periodic pull remains
 as the fallback for missed sockets.
 
-## 6. Calendar sync (Phase 4 — Google live, Apple pending)
+## 6. Calendar sync (Phase 4 — Google on the server, Apple on the device)
 
 Per BLUEPRINT §7, `calendar_event_links` maps tasks↔events per account. Both directions are
 BullMQ queues with an inline fallback when Redis is down (`src/queue/runner.js`), and both
@@ -204,8 +211,24 @@ converge on current state so duplicate jobs are harmless:
   task's `scheduled_*` fields, and disagreements are recorded in `conflict_status`. A sweep
   renews channels and polls installs with no public webhook address.
 
-Apple: EventKit bridge on-device (platform channel), URL-field marker `alliswell://task/{id}`;
-CalDAV connector deferred to v2 (ADR-0003).
+Apple: EventKit bridge on-device (platform channel, `packages/alliswell_eventkit`), URL-field
+marker `alliswell://task/{id}` (ADR-0003); the map is the device-local `apple_event_links`
+table. `AppleMirrorEngine` runs both directions in one serialised queue: outbound on every
+replica emit, and read-back (OPH-369, ADR-0050) on the first pass, every resume and before
+each outbound update — `apple_read_back.dart` decides with `inbound.js`'s semantics (time
+onto `scheduled_*` through the task store, echo from the link signature, a deleted event
+suppresses that task in that calendar).
+
+CalDAV (OPH-380, ADR-0059, [CALDAV.md](CALDAV.md)), behind `CALDAV_ENABLED`: the same two
+queues, a second transport. `queue/caldav-mirror.js` writes `desiredBlockForTask` as a VEVENT
+(`lib/caldav/ical.js`, ical.js) at `<calendar>/alliswell-<taskId>.ics` — `If-None-Match: *` to
+create, GET + merge + `If-Match` to update — and `queue/caldav-sync-job.js` polls RFC 6578
+sync-collection from the calendar sweep, multigets what changed and feeds the SAME
+`applyProviderEvent` reconcile (now behind a provider adapter) and `applyExternalEvent` cache.
+`lib/caldav/client.js` is hand-rolled `node:http(s)` with a host policy and the shared SSRF
+fence (`lib/net-guard.js`); the app-specific password is AES-GCM in
+`calendar_accounts.encrypted_app_password`. On an Apple device the EventKit mirror stands down
+while the server mirrors iCloud (no double events).
 
 ## 6b. File storage (Epic 14 — Cloudflare R2 / S3-compatible)
 
@@ -249,12 +272,23 @@ exactly why folding is app-owned) and it holds
 FULLTEXT indexes (`ft_notes_plain_text` in use; `ft_tasks_title_description` gains a task
 `?q=` param in Epic 15) — for API consumers and future web-scale needs, not the app's path.
 
+**Search everywhere (OPH-374, ADR-0055).** One palette (`lib/src/search/ui/`) over tasks,
+projects, notes, tags and file names, opened by ⌘K/Ctrl+K (bound at the app root in
+`AwGlobalSearchHost`, so a focused field's own ⌘K wins), the rail's leading entry or the phone's
+search button beside the bottom bar. It reads the same `SearchService` registry: notes, tags and
+files joined it as entities (a single-tier entity selects its tier as a constant), and replica
+v39 adds `file_rows.name_fold` (backfilled in the step, written by `fileCompanion`).
+`globalSearchProvider` groups the hits; recents are person-bound `localKv` rows recorded from
+route visits. The MCP `search` tool covers the same five kinds.
+
 ## 6d. AI (Epic 20 — MCP connector + BYOK, ADR-0019/0022/0023)
 
 Two tracks, one rule: **the model gets no write tools; every write goes through the confirm
 card / the local-first stores.** Track A is a **remote MCP server** (`/mcp`, hand-rolled
 Streamable HTTP — stateless POST-only JSON-RPC, ADR-0022) behind our **own OAuth 2.1 AS**
-(`/oauth/*`: PKCE, dynamic client registration, opaque rotating tokens with family revocation);
+(`/oauth/*`: PKCE, dynamic client registration, opaque rotating tokens with family revocation;
+its consent page signs in by password or a Google/Apple form_post round trip, then asks for the
+second factor — ADR-0049);
 its tools are an allowlist of **24** (ADR-0022 amendment): readers (`search`, `list_*`, `get_*`),
 the task write wave (`create_task`, `update_task`, `complete_task`, `reopen_task`, `snooze_task`,
 the checklist pair, `acknowledge_reminder`) and the note/project/tag writes (`create_note`,
@@ -275,7 +309,10 @@ word, `additionalProperties:false`, one repair round). **All context fencing liv
 MCP resources render through it, so the app's context chip is an honest view of what was packed.
 The app side is `features/ai/**` — a pure bubble state machine + controller (impure stream/STT
 edges), `AiText` inert rendering (no HTML, external links non-tappable), on-device STT and the
-share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/ai/*` entirely;
+share target behind nullable-provider seams (ADR-0023). Notes, text files, tasks and projects
+reach a chat turn only when picked with "@": a pure packer (`ai_attachments.dart`) turns them
+into `tier: attached` segments placed before the live T0–T2 bundle, and its loader reads the
+replica or a text file's presigned GET and keeps only decoded text (OPH-377, ADR-0058). `AI_ENABLED` removes `/ai/*` entirely;
 `MCP_ENABLED` + `API_PUBLIC_URL` gate MCP independently. Full threat model: [AI.md](AI.md),
 [SECURITY.md](../SECURITY.md) "AI surfaces".
 
@@ -333,6 +370,12 @@ share target behind nullable-provider seams (ADR-0023). `AI_ENABLED` removes `/a
   foreground `updateWidget` pushes (budget-exempt) + a sparse midnight-rollover timeline. Widget
   extensions are committed Xcode/Gradle targets (pbxproj + entitlements) — a deliberate deviation
   from the "no pbxproj" plugin model, since a plugin package can't vend an app-extension target.
+- **Voice capture (ADR-0057):** Siri / Shortcuts / Spotlight run `AppIntent`s compiled into the
+  iOS and macOS Runner (`ios/Shared/AWAppShortcuts.swift`) with `openAppWhenRun`; `perform()`
+  only parks the words in a standard-defaults mailbox, and `capture_inbox.dart` drains it over
+  `alliswell/capture` (bind, resume, `changed`, workspace arriving) through the Inbox quick-add
+  rule (`createCapture`), so the parser, outbox and alarms stay in Dart. Android has static
+  launcher shortcuts (`res/xml/shortcuts.xml`) onto `alliswell://add` / `alliswell://open`.
 - Feature-first folders: `lib/src/features/<domain>/{data,providers,ui}` as epics land.
 
 ## 8. Quality gates

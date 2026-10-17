@@ -22,12 +22,16 @@ class AuthApi {
       'displayName': displayName,
   }).then(AuthSession.fromJson);
 
+  /// [totpCode] is the authenticator or recovery code, sent only on the retry
+  /// after the server answered `AUTH_MFA_REQUIRED` (OPH-283, OPH-381).
   Future<AuthSession> login({
     required String email,
     required String password,
+    String? totpCode,
   }) => _post('/api/v1/auth/login', {
     'email': email,
     'password': password,
+    'totpCode': ?totpCode,
   }).then(AuthSession.fromJson);
 
   /// Exchange a Google/Apple ID token for an AllisWell session (ADR-0026).
@@ -36,12 +40,19 @@ class AuthApi {
   /// decides which account it belongs to and mints our own tokens. That is what
   /// keeps a self-hosted deployment — which has no Firebase and may have no
   /// Google client at all — working exactly like this one.
+  ///
+  /// The provider's token is the first factor only: an account with an
+  /// authenticator answers `AUTH_MFA_REQUIRED`, and the SAME [idToken] comes
+  /// back with [totpCode] — the native provider sheet is not run twice
+  /// (OPH-381).
   Future<AuthSession> oauth({
     required String provider,
     required String idToken,
+    String? totpCode,
   }) => _post('/api/v1/auth/oauth', {
     'provider': provider,
     'idToken': idToken,
+    'totpCode': ?totpCode,
   }).then(AuthSession.fromJson);
 
   Future<AuthSession> refresh(String refreshToken) => _post(

@@ -22,6 +22,11 @@ import '../features/ai/providers.dart';
 import '../features/ai/ui/ai_bubble.dart';
 import '../features/ai/ui/ai_bubble_controller.dart';
 import '../features/ai/ui/ai_fab.dart';
+import '../core/date_format.dart';
+import '../core/day_boundary.dart';
+import '../core/deep_link.dart';
+import '../core/persisted_prefs.dart';
+import '../features/tasks/data/capture_inbox.dart';
 import '../features/tasks/data/task_text.dart';
 import '../features/workspaces/workspaces.dart';
 import '../features/onboarding/tour.dart';
@@ -36,6 +41,7 @@ import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
+import '../search/ui/global_search_entry.dart';
 import '../theme/tokens.dart';
 import '../widgets/document_surface.dart';
 import '../widgets/fab_clearance.dart';
@@ -240,6 +246,26 @@ class HomeShell extends ConsumerWidget {
       if (waiting != null) unawaited(_routeShare(context, ref, waiting));
     });
 
+    // Voice capture (OPH-376, ADR-0057): Siri/Shortcuts park a request and
+    // bring the app forward; the binder turns it into a task, this confirms
+    // it. Same two halves as the share target above — a listener for what
+    // arrives while the shell shows, a post-frame sweep for what arrived while
+    // it did not (`take()` is read-and-clear, so they cannot double-deliver).
+    ref.watch(captureBinderProvider);
+    ref.listen(pendingCaptureOutcomesProvider, (_, next) {
+      if (next.isEmpty) return;
+      _showCaptureOutcomes(
+        context,
+        ref,
+        ref.read(pendingCaptureOutcomesProvider.notifier).take(),
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      final waiting = ref.read(pendingCaptureOutcomesProvider.notifier).take();
+      if (waiting.isNotEmpty) _showCaptureOutcomes(context, ref, waiting);
+    });
+
     // Round 16 follow-up: the OS opened a .md file with us. The viewer TAKES
     // the pending document itself, so this only has to get the user there —
     // and only when they are not already looking at it.
@@ -309,6 +335,12 @@ class HomeShell extends ConsumerWidget {
                             _goVisible(visibleSections, i),
                         minWidth: kAwRailMinWidth,
                         groupAlignment: -0.9,
+                        // OPH-374: search everywhere heads the rail — the
+                        // first thing on the left, as in every desktop app
+                        // with a palette (DESIGN §40 P1).
+                        leading: AwGlobalSearchRailEntry(
+                          extended: extendedRail,
+                        ),
                         // OPH-199: the shortcut section sits right under the
                         // destinations. `scrollable` is not optional — a full
                         // rail on a short window would otherwise overflow.
@@ -394,49 +426,79 @@ class HomeShell extends ConsumerWidget {
             child: SafeArea(
               top: false,
               minimum: const EdgeInsets.only(bottom: AwSpace.x3),
-              child: GlassSurface(
-                floating: true,
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AwRadius.pill),
-                ),
-                // OPH-359 (UI-AUDIT #58): the capsule's pill corners clipped
-                // the outermost labels ("Ana Sayfa", "Talepler"), so the bar
-                // sits inside the curve; and six labels do not fit a phone,
-                // so past five only the selected one is written — the rest
-                // keep their icon and tooltip.
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
-                  child: NavigationBar(
-                    // …and the docked Quick Access bubble (OPH-362) takes a
-                    // tab's width of the row, so past four the same applies.
-                    labelBehavior:
-                        visibleSections.length >
-                            (AwBubbleDock.maybeOf(context) == null ? 5 : 4)
-                        ? NavigationDestinationLabelBehavior.onlyShowSelected
-                        : NavigationDestinationLabelBehavior.alwaysShow,
-                    selectedIndex: destinationIndexFor(
-                      visibleSections,
-                      navigationShell.currentIndex,
-                    ).clamp(0, visibleSections.length - 1),
-                    onDestinationSelected: (i) =>
-                        _goVisible(visibleSections, i),
-                    destinations: [
-                      for (final section in visibleSections)
-                        NavigationDestination(
-                          icon: KeyedSubtree(
-                            key: _navKeys[section]!.icon,
-                            child: Icon(section.icon),
-                          ),
-                          selectedIcon: KeyedSubtree(
-                            key: _navKeys[section]!.selected,
-                            child: Icon(section.selectedIcon),
-                          ),
-                          label: section.title,
-                          tooltip: section.title,
+              // OPH-374: the capsule shares its row with the search button
+              // (DESIGN §40 P1) — glass beside glass, one row of chrome.
+              child: Row(
+                children: [
+                  Expanded(
+                    child: LayoutBuilder(
+                      builder: (context, bar) => GlassSurface(
+                        floating: true,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(AwRadius.pill),
                         ),
-                    ],
+                        // OPH-359 (UI-AUDIT #58): the capsule's pill corners
+                        // clipped the outermost labels ("Ana Sayfa",
+                        // "Talepler"), so the bar sits inside the curve.
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AwSpace.x3,
+                          ),
+                          child: NavigationBar(
+                            // Every label is written while each tab has room
+                            // for one; below that only the selected one is,
+                            // and the rest keep their icon and tooltip. Width
+                            // rather than count since OPH-374: the search
+                            // button takes a tab's width of the row, as the
+                            // docked Quick Access bubble does (OPH-362).
+                            labelBehavior:
+                                (bar.maxWidth - 2 * AwSpace.x3) /
+                                        visibleSections.length >=
+                                    kAwBarLabelSlot
+                                ? NavigationDestinationLabelBehavior.alwaysShow
+                                : NavigationDestinationLabelBehavior
+                                      .onlyShowSelected,
+                            selectedIndex: destinationIndexFor(
+                              visibleSections,
+                              navigationShell.currentIndex,
+                            ).clamp(0, visibleSections.length - 1),
+                            onDestinationSelected: (i) =>
+                                _goVisible(visibleSections, i),
+                            destinations: [
+                              for (final section in visibleSections)
+                                // A tab narrower than its label (TR "Ana
+                                // Sayfa" in a ~54 px slot beside the search
+                                // button) must not wrap the selected label
+                                // onto a second, clipped line. One line; in
+                                // `onlyShowSelected` the neighbours carry no
+                                // label for it to run into. Per destination:
+                                // the bar's Material resets any style above.
+                                DefaultTextStyle.merge(
+                                  maxLines: 1,
+                                  softWrap: false,
+                                  overflow: TextOverflow.visible,
+                                  child: NavigationDestination(
+                                    icon: KeyedSubtree(
+                                      key: _navKeys[section]!.icon,
+                                      child: Icon(section.icon),
+                                    ),
+                                    selectedIcon: KeyedSubtree(
+                                      key: _navKeys[section]!.selected,
+                                      child: Icon(section.selectedIcon),
+                                    ),
+                                    label: section.title,
+                                    tooltip: section.title,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: AwSpace.x2),
+                  const AwGlobalSearchOrb(),
+                ],
               ),
             ),
           ),
@@ -522,6 +584,53 @@ Future<void> _routeShare(
   await _showNoAiProviderDialog(context);
 }
 
+/// Confirms a voice capture (OPH-376): a SnackBar per added task with an
+/// "Open" action, and Home on today for "Show today" — the location a widget
+/// event row opens (`alliswell://day/<today>`).
+void _showCaptureOutcomes(
+  BuildContext context,
+  WidgetRef ref,
+  List<CaptureOutcome> outcomes,
+) {
+  final router = GoRouter.of(context);
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  for (final outcome in outcomes) {
+    switch (outcome) {
+      case CaptureShowToday():
+        final today = ref.read(nowProvider)();
+        router.go('/home?$kAwDayParam=${awDayParam(today)}');
+      case CaptureAdded(
+        :final taskId,
+        :final title,
+        :final dueAt,
+        :final inbox,
+      ):
+        // `inbox` is exactly "no deadline", so a dated one always has it.
+        final message = inbox || dueAt == null
+            ? 'capture.addedInbox'.tr(args: {'title': title})
+            : 'capture.added'.tr(
+                args: {
+                  'title': title,
+                  'due': awFormatShort(
+                    dueAt,
+                    format: ref.read(dateFormatProvider),
+                  ),
+                },
+              );
+        messenger?.showSnackBar(
+          SnackBar(
+            key: Key('capture-added-$taskId'),
+            content: Text(message),
+            action: SnackBarAction(
+              label: 'capture.open'.tr(),
+              onPressed: () => router.push('/tasks/$taskId'),
+            ),
+          ),
+        );
+    }
+  }
+}
+
 /// "You need an AI provider" — a dialog, not a snackbar.
 ///
 /// The user just performed a deliberate cross-app action and the app came up
@@ -596,6 +705,10 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 }
 
 const _shareStatusBudget = Duration(seconds: 2);
+
+/// The narrowest tab that still writes its label (OPH-374): "Ana Sayfa" and
+/// "Projeler" at the bar's label size fit 64 px; below it they ellipsize.
+const double kAwBarLabelSlot = 64;
 
 /// The phone bar's outer margins: [AwSpace.x3] each side, and on the side the
 /// Quick Access bubble docks, the bubble's lane instead (OPH-362).

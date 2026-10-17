@@ -169,6 +169,14 @@ jobs:
             -e MINIO_ROOT_USER=alliswell -e MINIO_ROOT_PASSWORD=alliswell_dev \
             cgr.dev/chainguard/minio:latest server /data
 
+      # A real CalDAV server for the CalDAV connector (OPH-380, ADR-0059). The
+      # config and its test-only account live in docker/radicale/.
+      - name: Start Radicale (CalDAV)
+        run: |
+          docker run -d --name radicale -p 5232:5232 \
+            -v ${{ github.workspace }}/docker/radicale:/config:ro \
+            tomsquest/docker-radicale:3.8.3.0
+
       - name: Integration tests
         run: npm run test:integration
 
@@ -245,6 +253,14 @@ jobs:
           docker run -d --name minio -p 9000:9000 \
             -e MINIO_ROOT_USER=alliswell -e MINIO_ROOT_PASSWORD=alliswell_dev \
             cgr.dev/chainguard/minio:latest server /data
+
+      # A real CalDAV server for the CalDAV connector (OPH-380, ADR-0059). The
+      # config and its test-only account live in docker/radicale/.
+      - name: Start Radicale (CalDAV)
+        run: |
+          docker run -d --name radicale -p 5232:5232 \
+            -v ${{ github.workspace }}/docker/radicale:/config:ro \
+            tomsquest/docker-radicale:3.8.3.0
 
       - name: Integration tests
         run: npm run test:integration

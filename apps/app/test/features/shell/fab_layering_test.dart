@@ -12,6 +12,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/nav.dart';
 
 Future<Widget> signedInApp(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -71,7 +72,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Projects: above the bar, tap opens the project sheet.
-      await tester.tap(find.text('Projects').last);
+      await tester.tap(navTab('Projects'));
       await tester.pumpAndSettle();
       expect(
         fabRect().overlaps(navRect()),
@@ -85,7 +86,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Notes: above the bar, tap opens the note editor.
-      await tester.tap(find.text('Notes').last);
+      await tester.tap(navTab('Notes'));
       await tester.pumpAndSettle();
       expect(
         fabRect().overlaps(navRect()),

@@ -76,5 +76,16 @@ WidgetHost defaultWidgetHost() =>
     ? const MacWidgetHost()
     : const HomeWidgetHost();
 
+/// Whether `home_widget`'s interactivity callback can be registered at all
+/// (OPH-370). The plugin declares android and ios only: on web, Windows, Linux
+/// — and macOS, whose widget runs over [MacWidgetHost]'s own channel — the call
+/// ended in an unawaited MissingPluginException at every start.
+bool homeWidgetCallbackSupported({
+  required bool isWeb,
+  required TargetPlatform platform,
+}) =>
+    !isWeb &&
+    (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
+
 /// The active host. Tests override this with a fake.
 final widgetHostProvider = Provider<WidgetHost>((_) => defaultWidgetHost());

@@ -45,11 +45,11 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 
 - Workspace sharing & roles UI (multi-user workspaces are schema-ready).
 - Project documents (block editor) — Phase 5 detail tasks to be expanded when reached.
-- Timeline view; smart lists/filters DSL; global single-screen search (per-screen search
-  shipped in Epic 15; kanban shipped in Epic 15 — OPH-168).
+- Timeline view; smart lists/filters DSL (kanban shipped in Epic 15 — OPH-168).
 - Search v2: FTS5 external-content upgrade (bm25 ranking — ADR-0013 upgrade path),
   server-side fold columns for a first-class API `?q=` (the server's FULLTEXT still folds `I`
-  but not `ı` — OPH-167), file-name search in Dosyalar (OPH-170).
+  but not `ı` — OPH-167), file-name search inside Dosyalar (OPH-170; the global palette
+  already finds files by name — OPH-374).
 - Task description v2: OG link previews (needs a server-side unfurl proxy — OPH-164, OPH-201),
   rich formatting.
 - Tag management v2: merge tags, usage counts, tag colors in board/list filters.
@@ -66,7 +66,7 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 - **Round 10 park kuyruğu (kararı OPH-195 verir):** alt görevler (`parent_task_id` —
   şema, API ve kaskadlı silme hazır, arayüz yok), görev rengi (`tasks.color_rgb` — widget
   kullanıyor, kullanıcı seçemiyor), **elle sıralama** (`sort_order` sıralamada kullanılıyor ama
-  sürükleme yok), süre alanları (`estimated_minutes`/`actual_minutes`), `tasks.start_at`,
+  sürükleme yok), gerçek süre (`actual_minutes`),
   proje ikonu/başlangıç-bitiş tarihi; Tamamlananlar ekranında arama + `cancelled`/`archived`
   sekmesi; Pano kartlarında kaydırarak silme (yatay pager jest çakışması); sunucu tarafı
   "tamamlananlar" ucu (bugün tamamen yerel replikadan okunuyor); geri alma olmayan silmeler
@@ -122,19 +122,27 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   inceltmesinden muafiyet mekanizması hazır, UI ürün kararı bekler); not etiketlerinin not
   push protokolüne girmesi (v1 bilinçli sınır: etiket yalnız REST `PUT /notes/:id/tags` ile
   yazılır, pull okur — OPH-261).
-- Import from Todoist/TickTick/Apple Reminders; ICS export.
+- ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), F-Droid/TestFlight packaging.
 - **İstemci yüklemelerinin taranması** (2026-09-24 incelemesi) — sunucunun kendi aldığı
   dosyalar bir uzantıda taranabiliyor; istemcinin presigned yüklemesi kovaya doğrudan gider
   ve taranmaz. Doğru çözüm kovada asenkron tarama + indirme kapısıdır (`files` satırında
   durum) — kendi turu.
-- **Takvim v2:** Apple aynasının gelen yarısı — takvimde yapılan yabancı düzenlemeyi geri okuma
-  (OPH-076'nın Google analoğu; çatışma politikası + ön plan yoklaması — OPH-078); CalDAV iCloud
-  bağlayıcısı (yalnız tasarım, [CALDAV.md](CALDAV.md), `CALDAV_ENABLED` varsayılan kapalı — OPH-079).
+- **CalDAV VTODO görev senkronu** — tasarım [CALDAV.md §9](CALDAV.md); seçenek: bağlayıcının
+  VTODO'su ya da AllisWell'in kendisinin CalDAV sunucusu olması (sahip kararı).
+- **İçe aktarma önizlemesinin `googleMirror` uyarısı CalDAV hesaplarını saymıyor** (OPH-380) —
+  büyük bir içe aktarma bağlı iCloud/Nextcloud takvimini sessizce doldurur.
+- **Google bağlantısı kesilince önbellekteki kendi etkinlikleri canlı kalıyor** (OPH-082 takibi,
+  2026-10-17 ölçüldü) — `DELETE /integrations/google/accounts/{id}` hesabı soft-delete ediyor,
+  `calendar_external_events` satırlarına dokunmuyor (FK CASCADE yalnız sert silmede); takvim
+  görünümünde kesilmiş hesabın toplantıları kalıyor. CalDAV'ınki düzeltildi (OPH-380): aynı
+  transaction'da `recordSyncWrites` ile mezar taşı.
 
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 
+- **Bozulmuş takvim serilerinin onarımı (sahip kararı bekliyor, 2026-10-17)** — `44a9e2e` öncesi her seri düzenlemesi geleceği silip tarihlerini tutuyordu (OPH-205'ten beri, v0.8.0–v1.17.0); bu satırlar kendiliğinden geri gelmez. Önce prod'da etkilenen seri sayısını ölç; onarım = sistemin sildiği satırların tarihini bırakan tek seferlik migration (kullanıcı silmelerinden ayırmak şart).
+- **Görev tarihlerinde 100'den küçük yıllar ve aralık denetimi** (QA 2026-10-17 ölçtü, eski) — `PATCH /tasks/{id}` `startAt: 0001-01-01T00:00:00Z` → yanıt `2001-01-01` (mysql2 iki haneli yılı 19xx/20xx okuyor, `db/knexconfig.js` bağlantısı); `9999-…` sınırsız kabul (`routes/tasks.js` yalnız `format: date-time`).
 - **Web teslimatı Kapalı iken alarm bandı** — Kapalı düşürülen aboneliği `webPushOff` diye
   raporluyor: bant dırdır ediyor ve "Tekrar kontrol et" kullanıcının Kapalı seçimine rağmen
   yeniden abone ediyor (`gateway_web.alarmSupport`, OPH-316'nın modu okunmuyor). 2026-09-26'da
@@ -146,6 +154,9 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 - **ADR-0038 §8** — iOS başsız uyanış ertelendi: kilitli iPhone Keychain'i okuyamıyor
   (`WhenUnlocked`); erişilebilirlik değişikliği kendi güvenlik ADR'sini + yeniden anahtarlama
   göçünü ister.
+- **OPH-366 (ölçüldü)** — Flutter web'de Google düğmesi `google_sign_in` `authenticate()`
+  çağırıyor; `google_sign_in_web` bunu desteklemiyor (`renderButton`/GIS gerekir) → web'de
+  Google ile giriş bugün çalışmıyor.
 - **OPH-025** — web'de httpOnly refresh-cookie sertleştirmesi (web oturumu bugün localStorage'da,
   `LocalKvSecretStore`).
 - **OPH-324 takibi** — release APK'nın `res/raw` seslerini gerçekten taşıdığını ölçen artefakt

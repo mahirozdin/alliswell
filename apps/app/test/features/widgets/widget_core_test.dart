@@ -19,6 +19,7 @@ Task _task(
   String? colorRgb,
   String status = 'open',
   int sortOrder = 0,
+  DateTime? startAt,
 }) => Task(
   id: id,
   workspaceId: 'W1',
@@ -31,6 +32,7 @@ Task _task(
   sortOrder: sortOrder,
   revision: 1,
   dueAt: dueAt,
+  startAt: startAt,
   projectId: projectId,
   colorRgb: colorRgb,
 );
@@ -127,6 +129,59 @@ void main() {
       final row = snap.buckets.single.items.single;
       expect(row.projectColor, '#FF8800');
       expect(row.done, isFalse);
+    });
+  });
+
+  // OPH-372 (ADR-0053): the widget files by Home's plan-day rule.
+  group('"when" on the widget (OPH-372)', () {
+    test('a started task due later is in Today; overdue still wins', () {
+      final groups = groupTasksForWidget([
+        _task(
+          'started',
+          startAt: DateTime(2026, 7, 16),
+          dueAt: DateTime(2026, 7, 20, 17),
+        ),
+        _task(
+          'late',
+          startAt: DateTime(2026, 7, 17),
+          dueAt: DateTime(2026, 7, 15, 9),
+        ),
+        _task('undated-later', startAt: DateTime(2026, 7, 21)),
+      ], now: now);
+      final byBucket = {for (final g in groups) g.bucket: g.tasks};
+      expect(byBucket[WidgetBucket.today]!.single.id, 'started');
+      expect(byBucket[WidgetBucket.overdue]!.single.id, 'late');
+      expect(byBucket[WidgetBucket.thisWeek]!.single.id, 'undated-later');
+      expect(byBucket[WidgetBucket.noDate], isNull);
+    });
+
+    test('its Today row says the due DAY, not a time, and it is counted', () {
+      final snap = buildWidgetSnapshot([
+        _task(
+          'started',
+          startAt: DateTime(2026, 7, 16),
+          dueAt: DateTime(2026, 7, 20, 17),
+        ),
+      ], now: now);
+      final today = snap.buckets.single;
+      expect(today.key, 'today');
+      final time = today.items.single.time!;
+      expect(time, contains('20'));
+      expect(time, isNot(contains('5:00')));
+      expect(time, isNot(contains('17:00')));
+      expect(snap.openToday, 1);
+      expect(snap.next!.id, 'started');
+      expect(snap.next!.bucket, 'today');
+      expect(snap.next!.time, time);
+    });
+
+    test('a started undated task in Today has no time label', () {
+      final snap = buildWidgetSnapshot([
+        _task('undated', startAt: DateTime(2026, 7, 10)),
+      ], now: now);
+      expect(snap.buckets.single.key, 'today');
+      expect(snap.buckets.single.items.single.time, isNull);
+      expect(snap.openToday, 1);
     });
   });
 

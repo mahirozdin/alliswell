@@ -20,6 +20,7 @@ class Task {
     this.description,
     this.colorRgb,
     this.startAt,
+    this.estimatedMinutes,
     this.dueAt,
     this.scheduledStartAt,
     this.scheduledEndAt,
@@ -31,6 +32,9 @@ class Task {
     // (BLUEPRINT §7.1) — so the Apple mirror needs this, and it was simply
     // never carried across before.
     this.createdAt,
+    // OPH-369: the Apple read-back settles a both-sides edit by last-write-wins
+    // (BLUEPRINT §6.5), which needs to know when the task last changed.
+    this.updatedAt,
     this.tagIds = const [],
     this.checklist = const [],
   });
@@ -46,6 +50,7 @@ class Task {
     priority: json['priority'] as String,
     colorRgb: json['colorRgb'] as String?,
     startAt: _date(json['startAt']),
+    estimatedMinutes: json['estimatedMinutes'] as int?,
     dueAt: _date(json['dueAt']),
     scheduledStartAt: _date(json['scheduledStartAt']),
     scheduledEndAt: _date(json['scheduledEndAt']),
@@ -61,6 +66,7 @@ class Task {
     createdAt: json['createdAt'] == null
         ? null
         : DateTime.parse(json['createdAt'] as String),
+    updatedAt: _date(json['updatedAt']),
     occurrenceDate: json['occurrenceDate'] as String?,
     sortOrder: json['sortOrder'] as int,
     revision: json['revision'] as int,
@@ -79,7 +85,17 @@ class Task {
   final String status;
   final String priority;
   final String? colorRgb;
+
+  /// "When" (OPH-372, ADR-0053): the DAY the user plans to do it — stored as
+  /// that day's local midnight (`awWhenIso`). It puts the task on Today from
+  /// that day; it never moves the deadline, the alarm or the calendar block.
   final DateTime? startAt;
+
+  /// How long it takes, in minutes (OPH-372). The calendar block is this long
+  /// (30 when unset). A series template field: editing it asks the scope.
+  final int? estimatedMinutes;
+
+  /// The deadline: owns the alarm and Overdue.
   final DateTime? dueAt;
 
   /// When you plan to actually DO it — the calendar block (§7.1). Dragging the
@@ -119,6 +135,10 @@ class Task {
   final int sortOrder;
   final int revision;
   final DateTime? createdAt;
+
+  /// Last change, by this device or (after a pull) by the server — the
+  /// "local" side of the Apple read-back's last-write-wins (OPH-369).
+  final DateTime? updatedAt;
   final List<String> tagIds;
   final List<ChecklistItem> checklist;
 

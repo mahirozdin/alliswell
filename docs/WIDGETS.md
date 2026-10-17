@@ -57,7 +57,10 @@ Today → This week → This month**, scrollable inside the widget. ("This month
 replaces Home's "Next 30 days" tail — a widget is a glanceable agenda and the user
 asked for a monthly horizon. As built, the horizon is a rolling 30 days like Home's
 (`kWidgetHorizonDays`): This month is +7…+30, and anything later is dropped, so a
-far-future or recurring item cannot flood it.)
+far-future or recurring item cannot flood it.) Since OPH-372 a task is filed the way Home
+files it: **today = due today, or its "when" day has come** (and it is not overdue). A task
+with a "when" and no deadline sits on its "when" day, not under No date. The rule is
+`taskPlanDay` (ADR-0053).
 
 ## 2. Platform support & the size/family mapping (READ FIRST)
 
@@ -173,7 +176,8 @@ added at the top level:
   "openToday": 5,                 // overdue + due-today, open tasks only; omitted/0 → hide
 ```
 
-- **What it counts, exactly:** tasks that are **overdue** plus tasks **due today**,
+- **What it counts, exactly:** tasks that are **overdue** plus tasks in the **Today**
+  bucket (due today, or "when" reached; OPH-372),
   in a planning status. Snoozed and muted tasks **count** (they are still open
   work). Dateless tasks do **not** (they belong to every day, so they would inflate
   every day). Completed-today rows do not count — they are done.

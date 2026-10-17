@@ -86,6 +86,13 @@ const UNIQUE_INDEXES = {
   // OPH-264: one secret is one row, forever — a revoked key's digest keeps
   // occupying the tuple so the same secret can never be re-registered.
   api_keys: [{ name: 'api_keys.uq_api_keys_hash', cols: ['key_hash'] }],
+  // OPH-371: re-importing the same export must not duplicate (ADR-0052).
+  import_ledger: [
+    {
+      name: 'import_ledger.uq_import_ledger_key',
+      cols: ['workspace_id', 'source', 'external_key'],
+    },
+  ],
 };
 
 const OPS = {
@@ -154,6 +161,8 @@ export function fakeDb({
     // unit-level login a 500 — which is how this line got written.
     user_totp: [],
     user_totp_recovery_codes: [],
+    // OPH-371 — the import ledger (ADR-0052).
+    import_ledger: [],
   };
   // Extension-owned tables (the EE-002 seam tests, future overlay suites):
   // the fixed list above stays the contract for core code — an unknown-table
@@ -194,6 +203,8 @@ export function fakeDb({
       // OPH-205: NULL on every ordinary task — an occurrence fills both.
       series_id: null,
       occurrence_date: null,
+      // OPH-375: the completed occurrence an after-completion row was born from.
+      spawned_from_task_id: null,
     }),
     task_series: () => ({ timezone: 'Europe/Istanbul', created_by: null, revision: 0 }),
     checklist_items: () => ({ is_done: false, sort_order: 0, revision: 0 }),
@@ -467,6 +478,15 @@ export function fakeDb({
         const doomed = new Set(matching());
         tables[name] = tables[name].filter((row) => !doomed.has(row));
         return doomed.size;
+      },
+      // `count({ n: '*' })` → `[{ n }]`, the only shape the code under test uses.
+      async count(spec = { count: '*' }) {
+        const alias = typeof spec === 'object' ? Object.keys(spec)[0] : 'count';
+        return [{ [alias]: matching().length }];
+      },
+      // knex's other spelling, used by db/totp.js.
+      del() {
+        return api.delete();
       },
       async insert(rowOrRows) {
         const rows = Array.isArray(rowOrRows) ? rowOrRows : [rowOrRows];

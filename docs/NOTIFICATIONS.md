@@ -535,6 +535,11 @@ The prose below says what a column cannot:
   so and offers a manual "start the sound": a silent alarm that looks like it is
   ringing is the one outcome this section forbids. An `AlarmDegradationBanner` on Home surfaces the "never fail silently"
   rule when notifications are off or Android exact alarms are denied.
+- **Windows (release zip, OPH-370)**: the plugin needs its own Windows settings
+  (app name, AUMID `BubiApps.AllisWell.Desktop`, a fixed activation GUID) — without
+  them every local reminder failed to initialise. The zip is unpackaged (no MSIX
+  identity): scheduled toasts are still cancelled on reschedule/complete, but a
+  toast already shown is not removed from Action Center.
 - **Web**: the running tab is its own alarm exactly as above, and for a tab
   that is NOT running the server sends the notification at fire time
   (§0's amendment, ADR-0038 §3). Notification permission is asked for

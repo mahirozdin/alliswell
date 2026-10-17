@@ -121,7 +121,11 @@ void main() {
         'settings-reminder-system',
         'settings-alarm-log',
       ],
-      'settings-group-data': ['settings-completed', 'settings-share-log'],
+      'settings-group-data': [
+        'settings-import',
+        'settings-completed',
+        'settings-share-log',
+      ],
       // OPH-292: API access moved here out of Integrations, and gained the
       // reference beside it. Censused now precisely because it was NOT
       // before — the row moved between pages without a single test noticing,
@@ -178,6 +182,30 @@ void main() {
     // it arrived somewhere; this proves it left, which is the other half of
     // "on exactly one page".
     expect(find.byKey(const Key('settings-api-keys')), findsNothing);
+  });
+
+  testWidgets('Data opens the import wizard first (OPH-371)', (tester) async {
+    wide(tester);
+    await tester.pumpWidget(await app(FakeApi()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    // The group's subtitle names what is behind it, import first.
+    expect(find.text('Import, completed work, share log'), findsOneWidget);
+    await openGroup(tester, 'settings-group-data');
+
+    // §32 S2 kept the first row of Data for this.
+    final rows = find.descendant(
+      of: find.byType(ListView),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      tester.widget<ListTile>(rows.first).key,
+      const Key('settings-import'),
+    );
+    await tester.tap(find.byKey(const Key('settings-import')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('import-source-todoist')), findsOneWidget);
+    expect(find.byKey(const Key('import-source-ticktick')), findsOneWidget);
   });
 
   testWidgets('Developer pairs the keys with the reference', (tester) async {

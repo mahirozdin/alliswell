@@ -6,7 +6,10 @@
 /// Tiers: T0 locale/tz/now/default time/project names+counts (always) · T1
 /// today+overdue+upcoming, TITLES only, ≤50 rows · T2 top-K fold-search
 /// excerpts. Never packed: attachment bytes, presigned URLs, storage keys,
-/// other members' data — the type system doesn't even accept them.
+/// other members' data — the type system doesn't even accept them. Notes and
+/// files never enter this automatic bundle; they reach a request only as
+/// `tier: attached` segments the user picked with "@" (OPH-377, ADR-0058 —
+/// ai_attachments.dart), added by [AiContextBundle.withAttached].
 library;
 
 class AiContextMeta {
@@ -79,7 +82,7 @@ class AiContextSegment {
     this.id,
     required this.text,
   });
-  final String tier; // t0 | t1 | t2
+  final String tier; // t0 | t1 | t2 | attached (OPH-377)
   final String source;
   final String? id;
   final String text;
@@ -105,6 +108,23 @@ class AiContextBundle {
     'segments': segments.map((s) => s.toJson()).toList(),
     'truncated': truncated,
   };
+
+  /// The bundle with the user's "@" attachments in FRONT (OPH-377). They have
+  /// their own caps (ai_attachments.dart), so the live token budget never
+  /// cuts them, and a full live bundle still carries them.
+  AiContextBundle withAttached(
+    List<AiContextSegment> attached, {
+    bool truncated = false,
+  }) {
+    if (attached.isEmpty && !truncated) return this;
+    return AiContextBundle(
+      segments: [...attached, ...segments],
+      tokenEstimate:
+          tokenEstimate +
+          attached.fold(0, (sum, s) => sum + estimateTokens(s.text)),
+      truncated: this.truncated || truncated,
+    );
+  }
 }
 
 /// Rough token estimate — ~4 chars/token (documented heuristic; the server's

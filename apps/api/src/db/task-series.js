@@ -1,9 +1,12 @@
 import { newId } from '../lib/ids.js';
+import { coded } from '../lib/errors.js';
 import {
   MAX_OCCURRENCES,
   WEEKDAYS,
   expandOccurrences,
+  isCompletionRule,
   lastDayOfMonth,
+  nextAfterCompletion,
   parseDay,
   validateRule,
 } from '../lib/recurrence.js';
@@ -195,6 +198,8 @@ export function plannedDays(series, now = new Date()) {
  * @returns {Promise<{created: number, days: string[]}>}
  */
 export async function materializeSeries(trx, { workspaceId, series, now = new Date() }) {
+  if (isCompletionSeries(series)) return materializeCompletionHead(trx, { workspaceId, series });
+
   const days = plannedDays(series, now);
   if (days.length === 0) return { created: 0, days: [] };
 
@@ -210,57 +215,531 @@ export async function materializeSeries(trx, { workspaceId, series, now = new Da
 
   for (const day of days) {
     if (taken.has(day)) continue;
-    const { year, month, day: dayOfMonth } = parseDay(day);
-    const dueAt = zonedWallTimeToUtc(
-      { year, month, day: dayOfMonth, hour: anchor.hour, minute: anchor.minute },
-      series.timezone,
-    );
-    const remindAt =
-      template.remindMinutesBefore == null
-        ? null
-        : new Date(dueAt.getTime() - template.remindMinutesBefore * 60000);
-
-    const id = newId();
-    const revision = await recordSyncWrite(trx, {
+    const dueAt = atWallTime(day, anchor, series.timezone);
+    await insertOccurrence(trx, {
       workspaceId,
-      entityType: 'task',
-      entityId: id,
-      operation: 'create',
+      series,
+      day,
+      columns: templateColumns(series, template, dueAt),
+      tagIds: template.tagIds,
     });
-    await trx('tasks').insert({
-      id,
-      workspace_id: workspaceId,
-      project_id: template.projectId ?? null,
-      title: template.title,
-      description: template.description ?? null,
-      status: 'open',
-      priority: template.priority ?? 'none',
-      color_rgb: template.colorRgb ?? null,
-      due_at: dueAt,
-      remind_at: remindAt,
-      timezone: series.timezone,
-      is_urgent: Boolean(template.isUrgent),
-      requires_acknowledgement: Boolean(template.requiresAcknowledgement),
-      estimated_minutes: template.estimatedMinutes ?? null,
-      series_id: series.id,
-      occurrence_date: day,
-      created_by: series.created_by ?? null,
-      updated_by: series.created_by ?? null,
-      revision,
-    });
-
-    if (Array.isArray(template.tagIds) && template.tagIds.length > 0) {
-      await trx('task_tags').insert(
-        template.tagIds.map((tagId) => ({ task_id: id, tag_id: tagId })),
-      );
-    }
-
-    const fresh = await trx('tasks').where({ id }).first();
-    await reconcileTaskReminder(trx, { workspaceId, task: fresh });
     created.push(day);
   }
 
   return { created: created.length, days: created };
+}
+
+/** `day` at the wall-clock hour/minute of `parts`, on the series' calendar. */
+function atWallTime(day, parts, timeZone) {
+  const { year, month, day: dayOfMonth } = parseDay(day);
+  return zonedWallTimeToUtc(
+    { year, month, day: dayOfMonth, hour: parts.hour, minute: parts.minute },
+    timeZone,
+  );
+}
+
+/** The columns a template stamps onto an occurrence due at `dueAt`. */
+function templateColumns(series, template, dueAt) {
+  return {
+    project_id: template.projectId ?? null,
+    title: template.title,
+    description: template.description ?? null,
+    status: 'open',
+    priority: template.priority ?? 'none',
+    color_rgb: template.colorRgb ?? null,
+    due_at: dueAt,
+    remind_at:
+      template.remindMinutesBefore == null
+        ? null
+        : new Date(dueAt.getTime() - template.remindMinutesBefore * 60000),
+    timezone: series.timezone,
+    is_urgent: Boolean(template.isUrgent),
+    requires_acknowledgement: Boolean(template.requiresAcknowledgement),
+    estimated_minutes: template.estimatedMinutes ?? null,
+    created_by: series.created_by ?? null,
+    updated_by: series.created_by ?? null,
+  };
+}
+
+/**
+ * Inserts ONE occurrence row with the bookkeeping every task write owes: the
+ * revision, its tags, and the alarm reconcile. The calendar materializer and
+ * the after-completion spawn (OPH-375) both come through here, so a spawned
+ * occurrence is mirrored, pulled and alarmed exactly like a materialized one.
+ *
+ * @returns {Promise<object>} the inserted row
+ */
+async function insertOccurrence(trx, { workspaceId, series, day, columns, tagIds }) {
+  const id = newId();
+  const revision = await recordSyncWrite(trx, {
+    workspaceId,
+    entityType: 'task',
+    entityId: id,
+    operation: 'create',
+  });
+  await trx('tasks').insert({
+    id,
+    workspace_id: workspaceId,
+    ...columns,
+    series_id: series.id,
+    occurrence_date: day,
+    revision,
+  });
+
+  if (Array.isArray(tagIds) && tagIds.length > 0) {
+    await trx('task_tags').insert(tagIds.map((tagId) => ({ task_id: id, tag_id: tagId })));
+  }
+
+  const fresh = await trx('tasks').where({ id }).first();
+  await reconcileTaskReminder(trx, { workspaceId, task: fresh });
+  return fresh;
+}
+
+// ── After completion (OPH-375, ADR-0056) ─────────────────────────────────────
+
+/** Statuses that are not "the open one" of an after-completion series. */
+const FINISHED_STATUSES = ['completed', 'cancelled', 'archived'];
+
+/** True when a series row counts from completions rather than the calendar. */
+export function isCompletionSeries(series) {
+  return isCompletionRule(parseJsonColumn(series?.rule));
+}
+
+/** Whole days from `a` to `b` (`YYYY-MM-DD` each). */
+function daysBetween(a, b) {
+  const pa = parseDay(a);
+  const pb = parseDay(b);
+  return Math.round(
+    (Date.UTC(pb.year, pb.month - 1, pb.day) - Date.UTC(pa.year, pa.month - 1, pa.day)) / 86400000,
+  );
+}
+
+/**
+ * The slot an after-completion occurrence takes: its own due day when free,
+ * otherwise the day after the series' last slot. A daily task completed a day
+ * EARLY is due on the day the completed one already holds, and the unique
+ * index `(series_id, occurrence_date)` must not turn that into an error —
+ * `occurrence_date` is the slot, `due_at` is the truth (ADR-0020).
+ */
+async function freeSlot(trx, { series, day }) {
+  const taken = await trx('tasks').where({ series_id: series.id, occurrence_date: day }).first();
+  if (!taken) return day;
+  const rows = await trx('tasks').where({ series_id: series.id }).select('occurrence_date');
+  const last = rows
+    .map((row) => occurrenceDayOf(row.occurrence_date))
+    .filter(Boolean)
+    .reduce((a, b) => laterDay(a, b), day);
+  return addWallDays(last, 1);
+}
+
+/**
+ * An after-completion series has no window: its first occurrence is the task
+ * the user turned Repeat on (adopted) or, without one, a row on the anchor.
+ * Once ANY row of the series exists — even a deleted one — this creates
+ * nothing, so the daily sweep can never resurrect a head the user removed.
+ */
+async function materializeCompletionHead(trx, { workspaceId, series }) {
+  const any = await trx('tasks').where({ series_id: series.id }).first();
+  if (any) return { created: 0, days: [] };
+  const rule = parseJsonColumn(series.rule);
+  const day = wallDay(series.anchor_at, series.timezone);
+  if (expandOccurrences(rule, { anchor: day }).length === 0) return { created: 0, days: [] };
+  const template = parseJsonColumn(series.template) ?? {};
+  const anchor = wallClockParts(new Date(series.anchor_at), series.timezone);
+  await insertOccurrence(trx, {
+    workspaceId,
+    series,
+    day,
+    columns: templateColumns(series, template, atWallTime(day, anchor, series.timezone)),
+    tagIds: template.tagIds,
+  });
+  return { created: 1, days: [day] };
+}
+
+/**
+ * Completing an occurrence of an after-completion series creates the next one
+ * (OPH-375, ADR-0056). Called by every door that completes a task — REST PATCH
+ * and /complete, MCP, the sync push — inside the completing transaction.
+ *
+ * - The next day is the completion day on the series' wall clock plus the
+ *   interval; late or early, it counts from when the user actually did it.
+ * - The time of day is the completed row's own (its `due_at`), applied with
+ *   `zonedWallTimeToUtc`, so 09:00 stays 09:00 across a DST change.
+ * - "When" keeps its day gap to the due date, and the alarm keeps its offset.
+ * - Everything else is COPIED from the completed row (title, notes, project,
+ *   priority, colour, urgency, duration, tags): an edit to the open one
+ *   carries forward, which is why the app asks no scope question here.
+ *
+ * Returns null — creating nothing — when the task is not part of a live
+ * after-completion series, when this completion already has a successor (a
+ * second device, a retried push), when a later occurrence is still open, or
+ * when the rule's end has been reached.
+ *
+ * @returns {Promise<object|null>} the new row, or null
+ */
+export async function spawnAfterCompletion(trx, { workspaceId, task, userId = null }) {
+  if (!task?.series_id || !task.completed_at || task.deleted_at != null) return null;
+  const series = await trx('task_series')
+    .where({ id: task.series_id, workspace_id: workspaceId })
+    .whereNull('deleted_at')
+    .first();
+  if (!series || !isCompletionSeries(series)) return null;
+
+  const successor = await trx('tasks')
+    .where({ spawned_from_task_id: task.id })
+    .whereNull('deleted_at')
+    .first();
+  if (successor) return null;
+
+  // One open occurrence at a time: completing an OLD one while a newer one is
+  // still waiting must not fork the series in two.
+  const slotDay = occurrenceDayOf(task.occurrence_date);
+  let laterOpen = trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: series.id })
+    .whereNull('deleted_at')
+    .whereNotIn('status', FINISHED_STATUSES)
+    .whereNot('id', task.id);
+  if (slotDay) laterOpen = laterOpen.where('occurrence_date', '>', slotDay);
+  if (await laterOpen.first()) return null;
+
+  const rule = parseJsonColumn(series.rule);
+  const tz = series.timezone;
+  const live = await trx('tasks')
+    .where({ series_id: series.id })
+    .whereNull('deleted_at')
+    .select('id');
+  const day = nextAfterCompletion(rule, {
+    completedDay: wallDay(task.completed_at, tz),
+    emitted: live.length,
+  });
+  if (!day) return null;
+
+  const template = parseJsonColumn(series.template) ?? {};
+  const wall = (instant) => wallClockParts(new Date(instant), tz);
+  const ms = (instant) => new Date(instant).getTime();
+  let dueAt = null;
+  let startAt = null;
+  let remindAt = null;
+  if (task.due_at) {
+    dueAt = atWallTime(day, wall(task.due_at), tz);
+    if (task.start_at) {
+      const gap = daysBetween(wallDay(task.start_at, tz), wallDay(task.due_at, tz));
+      startAt = atWallTime(addWallDays(day, -gap), wall(task.start_at), tz);
+    }
+    if (task.remind_at) {
+      remindAt = new Date(dueAt.getTime() - (ms(task.due_at) - ms(task.remind_at)));
+    } else if (template.remindMinutesBefore != null) {
+      remindAt = new Date(dueAt.getTime() - template.remindMinutesBefore * 60000);
+    }
+  } else if (task.start_at) {
+    // A "When"-only task moves its day and keeps no deadline it never had.
+    startAt = atWallTime(day, wall(task.start_at), tz);
+    if (task.remind_at) {
+      remindAt = new Date(startAt.getTime() - (ms(task.start_at) - ms(task.remind_at)));
+    }
+  } else {
+    dueAt = atWallTime(day, wall(series.anchor_at), tz);
+    if (template.remindMinutesBefore != null) {
+      remindAt = new Date(dueAt.getTime() - template.remindMinutesBefore * 60000);
+    }
+  }
+
+  const tags = await trx('task_tags').where({ task_id: task.id }).select('tag_id');
+  const actor = userId ?? task.updated_by ?? series.created_by ?? null;
+  return insertOccurrence(trx, {
+    workspaceId,
+    series,
+    day: await freeSlot(trx, { series, day }),
+    columns: {
+      project_id: task.project_id ?? null,
+      title: task.title,
+      description: task.description ?? null,
+      status: 'open',
+      priority: task.priority ?? 'none',
+      color_rgb: task.color_rgb ?? null,
+      due_at: dueAt,
+      start_at: startAt,
+      remind_at: remindAt,
+      timezone: task.timezone ?? tz,
+      is_urgent: Boolean(task.is_urgent),
+      requires_acknowledgement: Boolean(task.requires_acknowledgement),
+      estimated_minutes: task.estimated_minutes ?? null,
+      spawned_from_task_id: task.id,
+      created_by: actor,
+      updated_by: actor,
+    },
+    tagIds: [...new Set(tags.map((t) => t.tag_id))],
+  });
+}
+
+/**
+ * Uncompleting withdraws the occurrence that completion created — while it is
+ * still unfinished; a successor the user has already completed is history.
+ *
+ * The tombstone gives up its slot (`occurrence_date = NULL`): MySQL's unique
+ * index skips NULLs, so completing again can take the same day without
+ * colliding with the withdrawn row.
+ *
+ * @returns {Promise<number>} rows withdrawn
+ */
+export async function retractSpawn(trx, { workspaceId, task, userId = null }) {
+  const rows = await trx('tasks')
+    .where({ workspace_id: workspaceId, spawned_from_task_id: task.id })
+    .whereNull('deleted_at')
+    .whereNotIn('status', ['completed', 'cancelled'])
+    .select();
+  for (const row of rows) {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'delete',
+    });
+    await trx('tasks')
+      .where({ id: row.id })
+      .update({
+        deleted_at: new Date(),
+        occurrence_date: null,
+        revision,
+        updated_by: userId ?? row.updated_by ?? null,
+        updated_at: new Date(),
+      });
+    const fresh = await trx('tasks').where({ id: row.id }).first();
+    await reconcileTaskReminder(trx, { workspaceId, task: fresh });
+  }
+  return rows.length;
+}
+
+/**
+ * The status hook every completing door calls after it wrote the row: a task
+ * becoming `completed` may spawn its successor, a task leaving `completed`
+ * withdraws it. Tasks outside a series return at once.
+ *
+ * @returns {Promise<{spawned: object|null, retracted: number}>}
+ */
+export async function onTaskStatusChange(trx, { workspaceId, before, after, userId = null }) {
+  const none = { spawned: null, retracted: 0 };
+  if (!after?.series_id || !before) return none;
+  if (before.status !== 'completed' && after.status === 'completed') {
+    return {
+      ...none,
+      spawned: await spawnAfterCompletion(trx, { workspaceId, task: after, userId }),
+    };
+  }
+  if (before.status === 'completed' && after.status !== 'completed') {
+    return { ...none, retracted: await retractSpawn(trx, { workspaceId, task: after, userId }) };
+  }
+  return none;
+}
+
+/**
+ * A rule edit on an after-completion series (or a switch to one) keeps ONE
+ * open occurrence: the earliest open one stays as the head, any other open
+ * one from today on goes. With none left at all, a head is created on the
+ * anchor day or today, whichever is later — unless the rule has ended or the
+ * user deleted the head (the series then stays stopped).
+ */
+async function rebuildCompletionHead(trx, { workspaceId, series, now }) {
+  const fromDay = materializationWindow(series, now).from;
+  const open = await trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: series.id })
+    .whereNull('deleted_at')
+    .whereNotIn('status', FINISHED_STATUSES)
+    .orderBy('occurrence_date', 'asc')
+    .select();
+
+  const extras = open
+    .slice(1)
+    .filter((row) => (occurrenceDayOf(row.occurrence_date) ?? fromDay) >= fromDay);
+  const removed = await retireOccurrences(trx, { workspaceId, rows: extras });
+  if (open.length > 0) return { removed, created: 0 };
+
+  // A deleted head stopped the series: its tombstone still holds the latest
+  // slot, exactly as a deleted calendar occurrence keeps its day. A rule or
+  // title edit must not bring it back as a fresh task due today (ADR-0056 §8).
+  const latest = await trx('tasks')
+    .where({ series_id: series.id })
+    .whereNotNull('occurrence_date')
+    .orderBy('occurrence_date', 'desc')
+    .first();
+  if (latest?.deleted_at != null) return { removed, created: 0 };
+
+  const rule = parseJsonColumn(series.rule);
+  const live = await trx('tasks')
+    .where({ series_id: series.id })
+    .whereNull('deleted_at')
+    .select('id');
+  if (rule.end?.type === 'count' && live.length >= rule.end.count) return { removed, created: 0 };
+  if (rule.end?.type === 'until' && fromDay > rule.end.until) return { removed, created: 0 };
+
+  const template = parseJsonColumn(series.template) ?? {};
+  const anchor = wallClockParts(new Date(series.anchor_at), series.timezone);
+  await insertOccurrence(trx, {
+    workspaceId,
+    series,
+    day: await freeSlot(trx, { series, day: fromDay }),
+    columns: templateColumns(series, template, atWallTime(fromDay, anchor, series.timezone)),
+    tagIds: template.tagIds,
+  });
+  return { removed, created: 1 };
+}
+
+const SERIES_CODE_STATUS = {
+  TASK_SERIES_RULE_INVALID: 'badRequest',
+  TASK_SERIES_TEMPLATE_INVALID: 'badRequest',
+  TASK_SERIES_TOO_DENSE: 'unprocessableEntity',
+};
+const SERIES_CODE_MESSAGE = {
+  TASK_SERIES_TOO_DENSE: 'This repeat rule would create too many tasks',
+};
+
+/** The HTTP error a series refusal becomes, on every door that creates one. */
+export function seriesError(app, code, message) {
+  const status = SERIES_CODE_STATUS[code] ?? 'badRequest';
+  return coded(
+    app.httpErrors[status](message ?? SERIES_CODE_MESSAGE[code] ?? 'Invalid series'),
+    code,
+  );
+}
+
+/** Refuses an impossible rule BEFORE any row is written (ADR-0020 §4). */
+export function assertMaterializable(app, series, now) {
+  try {
+    return plannedDays(series, now);
+  } catch (err) {
+    throw seriesError(app, err.code ?? 'TASK_SERIES_RULE_INVALID', err.message);
+  }
+}
+
+/**
+ * Creates a series, adopts `fromTaskId` when its day is part of the pattern,
+ * and materializes the window — ONE transaction (the caller's, when `trx` is
+ * given). Extracted from the REST route in OPH-371 so the Todoist/TickTick
+ * importer creates a repeating task through the same door.
+ *
+ * `timezone` is required here: the route fills it from the user's profile.
+ *
+ * @returns {Promise<{stored: object, created: number, adoptedTaskId: string|null}>}
+ */
+export async function createTaskSeries(
+  app,
+  {
+    workspaceId,
+    userId,
+    rule,
+    template,
+    timezone,
+    anchorAt,
+    fromTaskId = null,
+    trx: outer = null,
+    now = new Date(),
+  },
+) {
+  const problem = validateSeriesInput({ rule, template, timezone, anchorAt });
+  if (problem) throw seriesError(app, problem.code, problem.message);
+  const normalized = normalizeTemplate(template);
+
+  const id = newId();
+  const series = {
+    id,
+    workspace_id: workspaceId,
+    rule,
+    template: normalized,
+    timezone,
+    anchor_at: new Date(anchorAt),
+    created_by: userId,
+  };
+  assertMaterializable(app, series, now);
+
+  let created = 0;
+  let adoptedTaskId = null;
+  let stored;
+  const work = async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task_series',
+      entityId: id,
+      operation: 'create',
+    });
+    await trx('task_series').insert({
+      ...series,
+      rule: JSON.stringify(rule),
+      template: JSON.stringify(normalized),
+      revision,
+    });
+    stored = await trx('task_series').where({ id }).first();
+
+    if (fromTaskId) {
+      adoptedTaskId = await adoptTaskIntoSeries(trx, {
+        workspaceId,
+        series: stored,
+        taskId: fromTaskId,
+        now,
+      });
+    }
+    ({ created } = await materializeSeries(trx, { workspaceId, series: stored, now }));
+  };
+  await (outer ? work(outer) : app.db.transaction(work));
+  return { stored, created, adoptedTaskId };
+}
+
+/**
+ * Replaces a series' rule / template / timezone / anchor and rebuilds its
+ * future in one transaction. Extracted from the REST PATCH (OPH-375) so MCP's
+ * `set_task_repeat` edits a repeat through the same door the API key does.
+ *
+ * @returns {Promise<{stored: object, created: number, removed: number}>}
+ */
+export async function updateTaskSeries(app, { row, body, now = new Date() }) {
+  const merged = {
+    rule: body.rule ?? parseJsonColumn(row.rule),
+    template: body.template ?? parseJsonColumn(row.template) ?? {},
+    timezone: body.timezone ?? row.timezone,
+    anchorAt: body.anchorAt ?? row.anchor_at,
+  };
+  const problem = validateSeriesInput(merged);
+  if (problem) throw seriesError(app, problem.code, problem.message);
+  const template = normalizeTemplate(merged.template);
+  const anchorAt = new Date(merged.anchorAt);
+
+  const next = {
+    ...row,
+    rule: merged.rule,
+    template,
+    timezone: merged.timezone,
+    anchor_at: anchorAt,
+  };
+  assertMaterializable(app, next, now);
+
+  let result = { created: 0, removed: 0 };
+  let stored;
+  await app.db.transaction(async (trx) => {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId: row.workspace_id,
+      entityType: 'task_series',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: Object.keys(body),
+    });
+    await trx('task_series')
+      .where({ id: row.id })
+      .update({
+        rule: JSON.stringify(merged.rule),
+        template: JSON.stringify(template),
+        timezone: merged.timezone,
+        anchor_at: anchorAt,
+        revision,
+        updated_at: new Date(),
+      });
+    stored = await trx('task_series').where({ id: row.id }).first();
+    result = await rebuildFuture(trx, {
+      workspaceId: row.workspace_id,
+      series: stored,
+      previous: row,
+      now,
+    });
+  });
+  return { stored, ...result };
 }
 
 /**
@@ -282,8 +761,14 @@ export async function adoptTaskIntoSeries(trx, { workspaceId, series, taskId, no
     .first();
   if (!task || task.series_id != null) return null;
 
-  const day = wallDay(task.due_at ?? task.created_at, series.timezone);
-  if (!plannedDays(series, now).includes(day)) return null;
+  // OPH-375: an after-completion series has no pattern for the day to match —
+  // the task the user turned Repeat on IS its first occurrence, whatever day.
+  const completion = isCompletionSeries(series);
+  const day = wallDay(
+    (completion ? (task.due_at ?? task.start_at) : task.due_at) ?? task.created_at,
+    series.timezone,
+  );
+  if (!completion && !plannedDays(series, now).includes(day)) return null;
 
   const revision = await recordSyncWrite(trx, {
     workspaceId,
@@ -295,6 +780,12 @@ export async function adoptTaskIntoSeries(trx, { workspaceId, series, taskId, no
   await trx('tasks')
     .where({ id: task.id })
     .update({ series_id: series.id, occurrence_date: day, revision, updated_at: new Date() });
+
+  // Repeat turned on for a task that is already done: that completion counts.
+  if (completion && task.status === 'completed' && task.completed_at) {
+    const adopted = await trx('tasks').where({ id: task.id }).first();
+    await spawnAfterCompletion(trx, { workspaceId, task: adopted });
+  }
   return task.id;
 }
 
@@ -342,13 +833,13 @@ function movableOccurrences(trx, { workspaceId, seriesId, fromDay = null, exclud
   return query.select();
 }
 
-async function writeOccurrence(trx, { workspaceId, row, patch, userId }) {
+async function writeOccurrence(trx, { workspaceId, row, patch, userId, changedFields = null }) {
   const revision = await recordSyncWrite(trx, {
     workspaceId,
     entityType: 'task',
     entityId: row.id,
     operation: 'update',
-    changedFields: Object.keys(patch),
+    changedFields: changedFields ?? Object.keys(patch),
   });
   await trx('tasks')
     .where({ id: row.id })
@@ -386,6 +877,8 @@ export function ruleFollowingDay(rule, day) {
   const weekdays = rule.byWeekday ?? [];
 
   if (rule.freq === 'daily') return null; // nothing about a day to follow
+  // OPH-375: an after-completion rule names no day; the completion does.
+  if (isCompletionRule(rule)) return null;
   if (monthDays.length > 1 || weekdays.length > 1) return null; // ambiguous
 
   if (rule.freq === 'weekly') {
@@ -487,8 +980,14 @@ export async function propagateSeriesScope(
       seriesId: series.id,
       excludeId: task.id,
     });
+    const completion = isCompletionRule(currentRule);
     for (const row of rows) {
-      const day = occurrenceDayOf(row.occurrence_date);
+      // OPH-375: an after-completion slot can differ from its due day (an
+      // early completion bumps it), so the due day is what keeps its date.
+      const day =
+        completion && row.due_at
+          ? wallDay(row.due_at, series.timezone)
+          : occurrenceDayOf(row.occurrence_date);
       await writeOccurrence(trx, {
         workspaceId,
         row,
@@ -539,17 +1038,7 @@ export async function propagateSeriesScope(
         seriesId: series.id,
         excludeId: task.id,
       });
-      for (const row of stale) {
-        const gone = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'task',
-          entityId: row.id,
-          operation: 'delete',
-        });
-        await trx('tasks')
-          .where({ id: row.id })
-          .update({ deleted_at: new Date(), revision: gone, updated_at: new Date() });
-      }
+      await retireOccurrences(trx, { workspaceId, rows: stale });
       const fresh = await trx('task_series').where({ id: series.id }).first();
       await materializeSeries(trx, { workspaceId, series: fresh, now });
     }
@@ -568,17 +1057,7 @@ export async function propagateSeriesScope(
     fromDay,
     excludeId: task.id,
   });
-  for (const row of moving) {
-    const revision = await recordSyncWrite(trx, {
-      workspaceId,
-      entityType: 'task',
-      entityId: row.id,
-      operation: 'delete',
-    });
-    await trx('tasks')
-      .where({ id: row.id })
-      .update({ deleted_at: new Date(), revision, updated_at: new Date() });
-  }
+  await retireOccurrences(trx, { workspaceId, rows: moving });
 
   const oldRevision = await recordSyncWrite(trx, {
     workspaceId,
@@ -653,6 +1132,45 @@ export function occurrenceDayOf(value) {
 }
 
 /**
+ * Tombstones occurrences the SYSTEM retires (a rule edit, a scoped move, a
+ * stop) and gives up their slot: `occurrence_date = NULL`, exactly as
+ * `retractSpawn` does. Only a user's own delete keeps its day — that tombstone
+ * is how "I removed this one" survives the sweep. A rebuild's tombstone that
+ * kept its day would read as taken to `materializeSeries`, and every edit whose
+ * new days overlap the old ones would leave the series with no future at all
+ * (a daily series' title-only edit: removed 366, created 0).
+ *
+ * @returns {Promise<number>} rows tombstoned
+ */
+async function retireOccurrences(trx, { workspaceId, rows }) {
+  for (const row of rows) {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'delete',
+    });
+    await trx('tasks').where({ id: row.id }).update({
+      deleted_at: new Date(),
+      occurrence_date: null,
+      revision,
+      updated_at: new Date(),
+    });
+  }
+  return rows.length;
+}
+
+/** Live, unfinished occurrences of a series from `fromDay` on. */
+function futureOccurrences(trx, { workspaceId, seriesId, fromDay }) {
+  return trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: seriesId })
+    .whereNull('deleted_at')
+    .whereNotIn('status', ['completed', 'cancelled'])
+    .where('occurrence_date', '>=', fromDay)
+    .select();
+}
+
+/**
  * Tombstones a series' FUTURE occurrences — everything from `fromDay` onward
  * that is not already finished. The past and anything completed stay: a
  * finished task is a historical fact (DESIGN §20 C4), and a rule change may not
@@ -661,39 +1179,136 @@ export function occurrenceDayOf(value) {
  * @returns {Promise<number>} rows tombstoned
  */
 export async function deleteFutureOccurrences(trx, { workspaceId, seriesId, fromDay }) {
-  const rows = await trx('tasks')
-    .where({ workspace_id: workspaceId, series_id: seriesId })
-    .whereNull('deleted_at')
-    .whereNotIn('status', ['completed', 'cancelled'])
-    .where('occurrence_date', '>=', fromDay)
-    .select('id');
+  const rows = await futureOccurrences(trx, { workspaceId, seriesId, fromDay });
+  return retireOccurrences(trx, { workspaceId, rows });
+}
 
-  for (const row of rows) {
-    const revision = await recordSyncWrite(trx, {
-      workspaceId,
-      entityType: 'task',
-      entityId: row.id,
-      operation: 'delete',
-    });
-    await trx('tasks')
-      .where({ id: row.id })
-      .update({ deleted_at: new Date(), revision, updated_at: new Date() });
-  }
-  return rows.length;
+/** Template-derived columns a series edit carries onto the rows it keeps. */
+const RESTAMPED_COLUMNS = [
+  'project_id',
+  'title',
+  'description',
+  'priority',
+  'color_rgb',
+  'due_at',
+  'remind_at',
+  'timezone',
+  'is_urgent',
+  'requires_acknowledgement',
+  'estimated_minutes',
+];
+
+/** Column equality across the drivers: Date vs Date, 0/1 vs boolean, null vs undefined. */
+function sameColumn(a, b) {
+  const norm = (v) => {
+    if (v == null) return null;
+    if (v instanceof Date) return v.getTime();
+    if (typeof v === 'boolean') return v ? 1 : 0;
+    return v;
+  };
+  return norm(a) === norm(b);
+}
+
+function sameTagSet(a, b) {
+  const left = [...new Set(a ?? [])].sort();
+  const right = [...new Set(b ?? [])].sort();
+  return left.length === right.length && left.every((tag, i) => tag === right[i]);
 }
 
 /**
- * Rebuilds the future of a series in one pass: drop what is planned but not
- * yet done, then materialize the new rule. Used by "edit all" and by any rule
- * change (OPH-206 owns the scope question itself).
+ * Carries a series edit onto the occurrences it keeps. A column moves only
+ * where the edit changed it AND the row still holds what the old template
+ * stamped there — an occurrence the user edited on its own ("only this one")
+ * keeps that edit, the same way it keeps its id, its subtasks and its links.
  */
-export async function rebuildFuture(trx, { workspaceId, series, now = new Date() }) {
+async function restampOccurrences(trx, { workspaceId, rows, before, after }) {
+  if (rows.length === 0) return;
+  const oldTemplate = parseJsonColumn(before.template) ?? {};
+  const newTemplate = parseJsonColumn(after.template) ?? {};
+  const oldClock = wallClockParts(new Date(before.anchor_at), before.timezone);
+  const newClock = wallClockParts(new Date(after.anchor_at), after.timezone);
+
+  const tagsChanged = !sameTagSet(oldTemplate.tagIds, newTemplate.tagIds);
+  const tagsByTask = new Map();
+  if (tagsChanged) {
+    const links = await trx('task_tags')
+      .whereIn(
+        'task_id',
+        rows.map((row) => row.id),
+      )
+      .select('task_id', 'tag_id');
+    for (const link of links) {
+      if (!tagsByTask.has(link.task_id)) tagsByTask.set(link.task_id, []);
+      tagsByTask.get(link.task_id).push(link.tag_id);
+    }
+  }
+
+  for (const row of rows) {
+    const day = occurrenceDayOf(row.occurrence_date);
+    const oldColumns = templateColumns(
+      before,
+      oldTemplate,
+      atWallTime(day, oldClock, before.timezone),
+    );
+    const newColumns = templateColumns(
+      after,
+      newTemplate,
+      atWallTime(day, newClock, after.timezone),
+    );
+    const patch = {};
+    for (const col of RESTAMPED_COLUMNS) {
+      if (sameColumn(oldColumns[col], newColumns[col])) continue;
+      if (!sameColumn(row[col], oldColumns[col])) continue;
+      patch[col] = newColumns[col];
+    }
+    const retag = tagsChanged && sameTagSet(tagsByTask.get(row.id), oldTemplate.tagIds);
+    if (Object.keys(patch).length === 0 && !retag) continue;
+
+    if (retag) {
+      await trx('task_tags').where({ task_id: row.id }).delete();
+      const tagIds = [...new Set(newTemplate.tagIds ?? [])];
+      if (tagIds.length > 0) {
+        await trx('task_tags').insert(tagIds.map((tagId) => ({ task_id: row.id, tag_id: tagId })));
+      }
+    }
+    await writeOccurrence(trx, {
+      workspaceId,
+      row,
+      patch,
+      changedFields: [...Object.keys(patch), ...(retag ? ['tags'] : [])],
+    });
+  }
+}
+
+/**
+ * Rebuilds the future of a series in one pass. Used by every series edit —
+ * REST, MCP and the sync `task_series` update (the app's `updateRule`).
+ *
+ * The future occurrences the new rule still plans KEEP their rows (and so their
+ * ids, subtasks, links and per-occurrence edits) and take the edit through
+ * `restampOccurrences`; the ones it no longer plans are retired with their slot
+ * released; the days still missing are materialized. A title-only edit
+ * therefore removes nothing, and daily → weekdays removes only the weekends.
+ *
+ * `previous` is the series row before the edit; without it the kept rows are
+ * left as they are.
+ */
+export async function rebuildFuture(
+  trx,
+  { workspaceId, series, previous = null, now = new Date() },
+) {
+  if (isCompletionSeries(series)) return rebuildCompletionHead(trx, { workspaceId, series, now });
   const fromDay = materializationWindow(series, now).from;
-  const removed = await deleteFutureOccurrences(trx, {
-    workspaceId,
-    seriesId: series.id,
-    fromDay,
-  });
+  const planned = new Set(plannedDays(series, now));
+  const rows = await futureOccurrences(trx, { workspaceId, seriesId: series.id, fromDay });
+  const keep = [];
+  const drop = [];
+  for (const row of rows)
+    (planned.has(occurrenceDayOf(row.occurrence_date)) ? keep : drop).push(row);
+
+  const removed = await retireOccurrences(trx, { workspaceId, rows: drop });
+  if (previous)
+    await restampOccurrences(trx, { workspaceId, rows: keep, before: previous, after: series });
   const { created } = await materializeSeries(trx, { workspaceId, series, now });
   return { removed, created };
 }
@@ -702,6 +1317,36 @@ export async function rebuildFuture(trx, { workspaceId, series, now = new Date()
  * Soft-deletes a series and its future occurrences in the caller's transaction.
  * Past occurrences keep their `series_id` — they remain part of the history.
  */
+/**
+ * Stopping an after-completion series (OPH-375): its open occurrence becomes
+ * an ordinary task — no series, no slot, no "born from" link, so the Repeat
+ * switch reads off and reopening its predecessor cannot withdraw it.
+ */
+async function detachOpenOccurrences(trx, { workspaceId, seriesId }) {
+  const rows = await trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: seriesId })
+    .whereNull('deleted_at')
+    .whereNotIn('status', FINISHED_STATUSES)
+    .select('id');
+  for (const row of rows) {
+    const revision = await recordSyncWrite(trx, {
+      workspaceId,
+      entityType: 'task',
+      entityId: row.id,
+      operation: 'update',
+      changedFields: ['series_id', 'occurrence_date'],
+    });
+    await trx('tasks').where({ id: row.id }).update({
+      series_id: null,
+      occurrence_date: null,
+      spawned_from_task_id: null,
+      revision,
+      updated_at: new Date(),
+    });
+  }
+  return rows.length;
+}
+
 export async function softDeleteSeries(
   trx,
   { workspaceId, series, now = new Date(), fromDay: overrideDay = null },
@@ -710,11 +1355,19 @@ export async function softDeleteSeries(
   // rather than at today — stopping a series from next March must not take
   // February's rows with it (OPH-208).
   const fromDay = overrideDay ?? materializationWindow(series, now).from;
-  const removed = await deleteFutureOccurrences(trx, {
-    workspaceId,
-    seriesId: series.id,
-    fromDay,
-  });
+  // OPH-375 (ADR-0056): an after-completion series has no future rows — its
+  // one open occurrence IS the task the user is looking at. Stopping the
+  // repeat keeps it as an ordinary task; only an explicit `fromDay` (the app
+  // deleting that occurrence and stopping in one commit) reaches it.
+  const keepHead = isCompletionSeries(series) && overrideDay == null;
+  const removed = keepHead
+    ? 0
+    : await deleteFutureOccurrences(trx, {
+        workspaceId,
+        seriesId: series.id,
+        fromDay,
+      });
+  if (keepHead) await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id });
   const revision = await recordSyncWrite(trx, {
     workspaceId,
     entityType: 'task_series',

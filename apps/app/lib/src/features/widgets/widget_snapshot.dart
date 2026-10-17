@@ -7,6 +7,7 @@ import '../../i18n/i18n.dart';
 import '../calendar/data/external_event.dart';
 import '../projects/data/project.dart';
 import '../tasks/data/task.dart';
+import '../tasks/data/task_when.dart';
 import 'widget_clock.dart';
 import 'widget_grouping.dart';
 
@@ -247,8 +248,8 @@ class WidgetSnapshot {
   /// clock and the task rows under it can never disagree (OPH-174).
   final String clockFormat;
 
-  /// What is on the user TODAY: overdue + due today, open tasks only
-  /// (OPH-187, DESIGN §8 W9). Snoozed and muted tasks count — they are still
+  /// What is on the user TODAY: overdue + the Today bucket (due today, or
+  /// "when" reached — OPH-372), open tasks only (OPH-187, DESIGN §8 W9). Snoozed and muted tasks count — they are still
   /// open work. Dateless ones do not: they belong to every day, so they would
   /// inflate every day. Zero means the badge is hidden, not drawn as "0".
   final int openToday;
@@ -299,12 +300,16 @@ String? _timeLabel(
   WidgetBucket bucket,
   String localeTag,
   String dateFormat,
+  DateTime now,
 ) {
   final due = task.dueAt;
   if (due == null) return null;
   // OPH-174: the widget speaks the SAME format as the app — a widget and an app
   // disagreeing about a date, side by side on one screen, is indefensible.
-  if (bucket == WidgetBucket.today) {
+  // A Today row due today says its time. One that is on Today because its
+  // "when" came (OPH-372) is due LATER — a bare time would read as "due at
+  // 17:00 today", so it says the due day instead.
+  if (bucket == WidgetBucket.today && awLocalDay(due) == awLocalDay(now)) {
     return awFormatTime(due, format: dateFormat, locale: localeTag);
   }
   // Overdue / this week / this month: a short date says more than a bare time.
@@ -329,6 +334,7 @@ WidgetTaskRow _rowFor(
   String localeTag,
   Map<String, String> projectColorById, {
   required bool hideTitles,
+  required DateTime now,
 }) {
   final color = task.projectId != null
       ? projectColorById[task.projectId]
@@ -338,7 +344,7 @@ WidgetTaskRow _rowFor(
     title: _titleOf(task, hideTitles: hideTitles),
     done: task.status == 'completed',
     priority: task.priority,
-    time: _timeLabel(task, bucket, localeTag, dateFormat),
+    time: _timeLabel(task, bucket, localeTag, dateFormat, now),
     projectColor: color,
   );
 }
@@ -445,6 +451,7 @@ _listData(
                 localeTag,
                 projectColorById,
                 hideTitles: hideTitles,
+                now: now,
               ),
               WidgetEventEntry() => _eventRowFor(
                 entry,
@@ -483,7 +490,13 @@ _listData(
           title: _titleOf(picked.task, hideTitles: hideTitles),
           bucket: picked.bucket.name,
           label: 'widget.bucket.${picked.bucket.name}'.tr(),
-          time: _timeLabel(picked.task, picked.bucket, localeTag, dateFormat),
+          time: _timeLabel(
+            picked.task,
+            picked.bucket,
+            localeTag,
+            dateFormat,
+            now,
+          ),
         );
 
   return (buckets: buckets, openToday: openToday, next: next);

@@ -34,6 +34,10 @@ The asset catalog stays the specification: this script READS
 exactly the size × scale it declares. It never rewrites that JSON, so Xcode
 remains the owner of which slots exist and the diff stays reviewable.
 
+The Windows desktop icon (`windows/runner/resources/app_icon.ico`, OPH-370) is
+the master's tile with the white page cut away, at every size Explorer and the
+taskbar ask for — it replaced Flutter's default icon.
+
 Usage:  python3 scripts/design/branding_icons.py [--check]
         --check verifies the committed assets instead of rewriting them.
 """
@@ -54,6 +58,8 @@ APPICONSET = (
 )
 
 CANVAS = 1024
+WINDOWS_ICO = ROOT / "apps" / "app" / "windows" / "runner" / "resources" / "app_icon.ico"
+WINDOWS_ICO_SIZES = [16, 24, 32, 48, 64, 128, 256]
 
 # --- adaptive-icon geometry, in the 108 dp units Android uses --------------
 # The layer is 108 dp. flutter_launcher_icons wraps our drawable in
@@ -258,12 +264,59 @@ def verify_ios(icons: dict[Path, Image.Image]) -> list[str]:
     return problems
 
 
+def _windows_icon() -> Image.Image:
+    """The tile alone on transparency, square, 256 px — the ICO's largest frame.
+
+    The master sits on a white page; on a dark taskbar that page would show as
+    a white square, so it is flooded from the corners and cut away.
+    """
+    master = Image.open(MASTER).convert("RGBA")
+    minc = _min_channel(master)
+    page = minc.point(lambda v: 255 if v >= WHITE_FLOOR else 0).convert("L")
+    ImageDraw.floodfill(page, (0, 0), 128)
+    ImageDraw.floodfill(page, (master.width - 1, master.height - 1), 128)
+    ImageDraw.floodfill(page, (master.width - 1, 0), 128)
+    ImageDraw.floodfill(page, (0, master.height - 1), 128)
+    alpha = page.point(lambda v: 0 if v == 128 else 255)
+    tile = master.copy()
+    tile.putalpha(alpha)
+    x0, y0, x1, y1 = _tile_bbox(master)
+    side = max(x1 - x0, y1 - y0)
+    square = Image.new("RGBA", (side, side), (0, 0, 0, 0))
+    square.alpha_composite(
+        tile.crop((x0, y0, x1, y1)), ((side - (x1 - x0)) // 2, (side - (y1 - y0)) // 2)
+    )
+    return square.resize((256, 256), Image.LANCZOS)
+
+
+def verify_windows(icon: Image.Image) -> list[str]:
+    problems: list[str] = []
+    if icon.getchannel("A").getpixel((0, 0)) != 0:
+        problems.append("app_icon.ico: corner is not transparent — the white page leaked in")
+    return problems
+
+
+def _check_windows(icon: Image.Image) -> list[str]:
+    if not WINDOWS_ICO.exists():
+        return ["app_icon.ico: missing"]
+    have = Image.open(WINDOWS_ICO)
+    sizes = sorted(s[0] for s in have.info.get("sizes", set()))
+    if sizes != WINDOWS_ICO_SIZES:
+        return [f"app_icon.ico: sizes {sizes} != {WINDOWS_ICO_SIZES}, re-run this script"]
+    have.size = (256, 256)
+    if have.convert("RGBA").tobytes() != icon.tobytes():
+        return ["app_icon.ico: out of date, re-run this script"]
+    return []
+
+
 def main() -> int:
     check_only = "--check" in sys.argv
     layers = build()
     ios = _ios_icons()
 
-    problems = verify(layers) + verify_ios(ios)
+    windows = _windows_icon()
+
+    problems = verify(layers) + verify_ios(ios) + verify_windows(windows)
     for line in problems:
         print(f"FAIL {line}")
 
@@ -289,6 +342,9 @@ def main() -> int:
             elif have.mode not in ("RGB", "P", "L"):
                 problems.append(f"{path.name}: has an alpha channel")
                 print(f"FAIL {path.name}: has an alpha channel")
+        for line in _check_windows(windows):
+            problems.append(line)
+            print(f"FAIL {line}")
     else:
         for name, img in layers.items():
             img.save(BRANDING / name)
@@ -303,6 +359,8 @@ def main() -> int:
         for path, img in ios.items():
             img.save(path)
         print(f"wrote {len(ios)} iOS AppIcon files (no alpha, sized from Contents.json)")
+        windows.save(WINDOWS_ICO, sizes=[(n, n) for n in WINDOWS_ICO_SIZES])
+        print(f"wrote {WINDOWS_ICO.name} ({', '.join(map(str, WINDOWS_ICO_SIZES))} px)")
 
     print(f"FAILURES: {len(problems)}")
     return 1 if problems else 0

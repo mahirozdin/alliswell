@@ -64,6 +64,16 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+            <!-- OPH-376 (ADR-0057): static launcher shortcuts, "New task" and
+                 "Today" (res/xml/shortcuts.xml) — navigations only. No App
+                 Actions capability and no AUTO_SEND / CREATE_NOTE filter: no
+                 2026 Google assistant can hand a task to an app that way, and
+                 an exported filter that writes would be the write-from-outside
+                 ADR-0016 forbids. -->
+            <meta-data
+              android:name="android.app.shortcuts"
+              android:resource="@xml/shortcuts"
+              />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>

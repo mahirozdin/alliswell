@@ -31,8 +31,8 @@ Google lists exactly two:
 **AllisWell claims the first, and can support the second.** The Play listing is
 *"AllisWell: Todo and Reminders"*. Its urgent reminders are alarms in the strict
 sense: they ring through at a set time, they repeat on a re-alert chain, and
-they must be acknowledged rather than swiped away. It also syncs Google and
-Apple calendars two ways and notifies on events, which is the second case.
+they must be acknowledged rather than swiped away. It also syncs Google
+Calendar both ways and notifies on events, which is the second case.
 
 ## 3. What to write in the form
 

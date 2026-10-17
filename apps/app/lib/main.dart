@@ -57,8 +57,11 @@ Future<void> widgetCallback(Uri? uri) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Registered before the first frame so a press that arrives during launch is
-  // not dropped. No-op off mobile.
-  if (!kIsWeb) {
+  // not dropped. Only where the plugin exists (android/iOS).
+  if (homeWidgetCallbackSupported(
+    isWeb: kIsWeb,
+    platform: defaultTargetPlatform,
+  )) {
     HomeWidget.registerInteractivityCallback(widgetCallback);
   }
   // Loads the persisted/device locale + fallback synchronously into memory

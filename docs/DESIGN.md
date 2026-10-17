@@ -387,7 +387,8 @@ _(Rules F7…F9 added 2026-07-20, feedback round 8 — the global Files section,
 
 _(Added 2026-07-20; engine architecture in
 [ADR-0013](adr/0013-local-first-search.md). Search is a per-screen capability
-— BLUEPRINT §12.10 — not a separate destination.)_
+— BLUEPRINT §12.10 — not a separate destination; since OPH-374 one global
+palette sits beside it, never instead of it — §40.)_
 
 - **S1 — One search field pattern.** A body-level `TextField` under the app
   bar (the Notes screen shape): `search` prefix icon, clear (×) suffix when
@@ -655,6 +656,9 @@ ayarlardan kullanıcı seçebilecek".)_
   shared, not necessarily the function: the alarm ring screen's custom snooze
   keeps its own picker because its constraints differ (no past instants, "+30
   min" default) — it already asks for a time, which is what D5 requires.
+  _Amended 2026-10-16 (OPH-372):_ "When" stores a DAY, not an instant, so it asks for a
+  day only (`awPickDate`, same bounds and the same tomorrow opening). D5 is about fields
+  that store a time.
 
 ## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
 
@@ -1093,7 +1097,8 @@ opens I can lift my finger and it stays open.")_
   links route through the ADR-0016 resolver (navigation-only by construction).
 - **AI7 — Provenance is visible.** Every AI message carries a context chip that
   expands to exactly what was packed and sent (T0/T1/T2 tiers, AI.md §7); shared-in
-  text is visually framed as quoted external content. Trust is a UI feature.
+  text is visually framed as quoted external content. Trust is a UI feature. (Not built
+  yet; what the user attached with "@" is shown — §41.)
 - **AI8 — Consent is a screen, not a checkbox.** Per provider, before first use:
   what leaves the device, where the key lives, the provider's retention/training
   stance in one honest sentence — and an amber warning where the truth is
@@ -1170,6 +1175,21 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   bare dropdown glyphs), the preview is readable as text rather than as a chart, and
   every control clears the 44 px floor. Contrast is checked in both themes like any
   other surface — the dialog introduces no new colour.
+- **R10 — After completion (OPH-375, ADR-0056).** A two-segment switch tops the
+  dialog: **"Takvime göre / On a schedule"** (everything above, the default) and
+  **"Tamamlanınca / After completion"**. The second mode has no pattern, so the presets
+  and "Sonraki 5" give way to one interval field (labelled above, 1..366) with a
+  full-width **gün / hafta / ay** unit switch under it — beside each other the units
+  wrapped letter by letter at 390 px — and ONE date: **"Bugün tamamlarsan / If you
+  complete it today"**, with the hint that the count runs from the completion, early or
+  late, and the time of day stays. The end condition stays under Gelişmiş. The sentence
+  reads "Tamamlanınca 90 gün sonra · bitiş yok" / "90 days after completion · no end".
+  Such an occurrence asks **no scope question** — the next one is copied from it, so an
+  edit carries forward — and deleting the open one stops the repeat in the same
+  undoable commit (a finished one is deleted alone). Turning Repeat off keeps the open
+  one as an ordinary task, and the stop dialog says so ("Bu görev kalır…"). EN "After completion" wraps to two
+  centred lines in its segment at 390 px; TR fits on one. Tokens only, no new colour;
+  checked in light and dark, EN and TR.
 
 ## 26. Creation defaults & the quick-add deadline ask (round 14 — Epic 21)
 
@@ -1194,7 +1214,9 @@ at capture time, not at 02:00 when nothing rang.)_
   lands instantly — on the selected day at the default task time when one is
   picked (the bar's own promise), dateless otherwise. Inbox capture stays a
   dateless capture box (§10) — the ask exists only where the user is planning,
-  not where they are unloading.
+  not where they are unloading. _(Amended by §39 Q4, OPH-373: when the typed
+  text already gives a deadline, a When day or a repeat, the ask is skipped and
+  the text wins.)_
 - **C4 — Defaults apply at every birth point identically.** Sheet, quick add and
   ✨ rider share `task_defaults.dart`; a surface that creates tasks and skips it
   is a bug (§22 reachability logic applied to behavior parity).
@@ -1479,7 +1501,7 @@ and split into sub-pages, "Entegrasyonlar" being the named example.
 | # | Rule | Why |
 | --- | --- | --- |
 | S1 | **The root Settings screen is an index, not a form.** It shows the account header, then one row per group — icon + title + a subtitle naming what lives inside ("Google Takvim, Apple Takvim, Yapay zeka") — then the sign-out card and the About row. Nothing else stays on the root. | An index the eye can scan in one pass; the subtitle is the map, so nobody has to open a group to learn what it holds. |
-| S2 | **Seven groups, fixed:** Hesap (account header target, server URL, account deletion) · Genel (language, date format, default task time, **editor formatting** — round 19 —, quick-access bubble, app tour; **a Widget card — density and "Private widget" — OPH-337, only on platforms that have widgets**, a card of Genel rather than an eighth group) · Bildirimler & Alarmlar (notification privacy, alarm permission status, **test alarm** — round 19 —, reminder system, alarm log) · Entegrasyonlar (Google Calendar, Apple Calendar, AI — whose screen keeps the MCP connector card) · **Geliştirici (API erişimi, API dokümantasyonu — round 20)** · Veri (completed tasks, share log; import/export lands here when it ships) · Hakkında (version + licences, the existing About dialog). | Grouping is by what the user is trying to do, not by which subsystem implements it. Every existing row keeps its widget `Key` and i18n string — this is a re-homing, not a rewrite (§22: nothing becomes unreachable). **Amended by OPH-292 (was six groups, with API access inside Entegrasyonlar).** The original placement was right for what the API was in round 18 — one more thing the app could be wired to. It stopped being that when it grew a public reference, a Postman collection and a landing-page entry: an integration is something this app talks TO, and this is a surface other software is written AGAINST. The measured symptom was a report that the feature was missing in production when it had shipped two releases earlier — it was two levels down, behind a word ("Entegrasyonlar") that does not describe it. Putting webhooks or a second MCP surface behind the same door later is now additive rather than another re-home. |
+| S2 | **Seven groups, fixed:** Hesap (account header target, server URL, account deletion) · Genel (language, date format, default task time, **editor formatting** — round 19 —, quick-access bubble, app tour; **a Widget card — density and "Private widget" — OPH-337, only on platforms that have widgets**, a card of Genel rather than an eighth group) · Bildirimler & Alarmlar (notification privacy, alarm permission status, **test alarm** — round 19 —, reminder system, alarm log) · Entegrasyonlar (Google Calendar, Apple Calendar, AI — whose screen keeps the MCP connector card) · **Geliştirici (API erişimi, API dokümantasyonu — round 20)** · Veri (**import from Todoist/TickTick — the first row, OPH-371, §37** —, completed tasks, share log; export lands here when it ships) · Hakkında (version + licences, the existing About dialog). | Grouping is by what the user is trying to do, not by which subsystem implements it. Every existing row keeps its widget `Key` and i18n string — this is a re-homing, not a rewrite (§22: nothing becomes unreachable). **Amended by OPH-292 (was six groups, with API access inside Entegrasyonlar).** The original placement was right for what the API was in round 18 — one more thing the app could be wired to. It stopped being that when it grew a public reference, a Postman collection and a landing-page entry: an integration is something this app talks TO, and this is a surface other software is written AGAINST. The measured symptom was a report that the feature was missing in production when it had shipped two releases earlier — it was two levels down, behind a word ("Entegrasyonlar") that does not describe it. Putting webhooks or a second MCP surface behind the same door later is now additive rather than another re-home. |
 | S3 | **Sub-pages are real routes** (`/settings/account`, `/settings/general`, `/settings/notifications`, `/settings/integrations`, `/settings/data`), pushed with `context.push` like the five settings routes that already exist; existing deep routes (`/settings/reminders`, `/settings/alarm-log`, `/settings/share-log`, `/settings/completed`, `/settings/ai`) stay valid and are linked from their new group pages. | Deep links, widget tests and muscle memory survive. A settings URL that worked yesterday works tomorrow. |
 | S4 | **Sign out stays on the root**, error-coloured, below the groups. | The one action people arrive stressed for does not get buried a level down. |
 | S5 | **No invented rows.** There is no theme switch today (`themeMode` is hardcoded to system — measured); regrouping must not smuggle new settings in. A group with one row is still a group. | This task's scope is architecture, not features; anything new gets its own task and its own row *inside* the structure. |
@@ -1556,3 +1578,90 @@ than inherited.
 | W3 | **A person who left still shows.** When the roster has no row for an assignee, the circle goes neutral (`surfaceContainerHighest` + `onSurfaceVariant` + an em dash) rather than disappearing. | The assignment is still true until the server releases it (EE-070). Dropping the avatar would show the task unowned on this device and owned on every other one — a replica that quietly disagrees is worse than one that shows an unfamiliar face. |
 | W4 | **Four faces, then a count.** Beyond four the row ends in `+N` in caption ink. | A row is read at a glance (§17 D4's reasoning, applied to people): five small circles stop being individuals and become texture. |
 | W5 | **Two named sizes, not literals** — 24 in a list row, 32 on the detail card and in the picker. | The same face at two scales is one decision; three call sites repeating `32` is three decisions waiting to drift. |
+
+## 37. Moving in: the import wizard (OPH-371)
+
+Settings › Veri › İçe aktar. One screen with four steps: choose the app (Todoist or TickTick),
+choose its export (a Todoist backup ZIP or project CSVs, a TickTick backup CSV), look at what
+will happen, import. The server parses (ADR-0052). Apple Reminders is not offered because it
+has no export file, and the first step says so.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| I1 | **The preview IS the import.** Step 3 is the server's `dryRun` of the same request, and its counts (tasks, repeating tasks, sub-items as checklist items, notes, new and existing projects, tags, already imported) are the numbers the import works from. | §28 M1, met again: a client-side estimate would be a second parser that agrees with the first only by luck. |
+| I2 | **Nothing is dropped silently.** Every loss or change (a repeat kept in the description, a date that could not be read, deeper sub-tasks flattened, an orphan sub-task, a reminder not converted) is a warning group with a count and up to five examples (file:row · title · value). | A person leaving another app checks the cases they care about. A warning they can expand is how they find theirs. |
+| I3 | **Provenance.** The file step lists the chosen files with their sizes, the warnings name the file and row, and kept-in-note text says "Imported from Todoist/TickTick". | §28 M3: "where did this come from" has an answer in the task itself. |
+| I4 | **Never ring.** Imported tasks are never urgent and need no acknowledgement. A reminder comes in only from a TickTick reminder in the future. The mapping card says so. | Moving 500 tasks in must not turn into 500 alarms. |
+| I5 | **Refuse honestly.** Over 8 MB (the JSON escaping of a CSV must still fit the 10 MiB body), a ZIP without CSVs, the other app's file ("this looks like a TickTick backup"), a proxy 413 (with the `client_max_body_size` hint) and offline each have their own sentence in an `AwInlineError`. A file where everything is already imported says so and disables the button. If Google Calendar is connected, a notice says how many tasks will appear there and how many undated ones land on today. | §28 M7. A blank preview reads as "your file was empty". |
+| I6 | **Glass only on the app bar; cards, tokens, both themes.** Count tiles and notes use `onSurfaceVariant`, warning icons use `AwTokens.warning` (never as text colour, LESSONS design-ui), priority flags use `taskPriorityColorOf`, buttons stay at ≥ 44 px. Every step is shot in light and dark (`test/features/import/import_wizard_screenshot_test.dart`). | Rule 11. |
+
+## 38. When and duration (OPH-372)
+
+A task has a deadline (Due), and now also a day you plan to do it (When) and how long it takes
+(Duration). They are separate fields and never merged (ADR-0053).
+
+| # | Rule | Why |
+| --- | --- | --- |
+| W1 | **When is a day, and it sits above Due**, in the create sheet (`task-sheet-when`) and on the detail screen (`when-row`): ☀ icon, a date with no time, ✕ to clear. | First the day you will do it, then the day it is due. A clock on a day field would be a value nobody reads (§17 D5 as amended). |
+| W2 | **When never touches the reminder.** Setting or clearing it leaves Due, Remind and the round-14 auto-reminder alone. On a recurring task it asks no scope question, because it belongs to this occurrence. | Pulling a Friday deadline's "when" to Monday must not move the Friday alarm. |
+| W3 | **Duration: presets plus a custom value.** The dialog offers 15/30/45 min, 1/1.5/2/3 h as `ChoiceChip`s and a minutes field (1–1440, an inline error outside that range). Rows read "1 h 30 min" / "1 sa 30 dk". A small ◔ chip on task rows shows it while the task is open. On a recurring task the scope question follows, as for a rename. | One tap for the common case, exact when needed. The calendar block is this long. |
+| W4 | **Filing.** Overdue is decided by the deadline alone, first. Otherwise a task sits on its When day, rolled forward to Today once it arrives and never later than its deadline (`taskPlanDay`). Home, the month-grid dots, the widget buckets and count, the AI context and the MCP today view all use this. A task with When yesterday and Due Friday is on Today. Its widget row shows the due day ("Oct 20"), not a time. | One rule in one helper, so no two surfaces disagree. |
+| W5 | **Both themes are shot:** `phone_sheet_dates_*`, `phone_task_detail_*` and `phone_duration_dialog_*` in `test/design_screenshots_test.dart` (use `shotLocale=tr` for the longer labels). Only existing tokens are used: onSurfaceVariant icons and solid dialog and card surfaces. | Rule 11. |
+
+
+## 39. Quick add that reads (OPH-373)
+
+The quick-add bars (Home, Inbox, a project's Tasks tab) understand Turkish and English offline,
+without an AI key. The grammar is ADR-0054; `test/fixtures/quick_parse_cases.json` is its
+contract.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| Q1 | **One grammar, both languages, every bar.** Relative days, weekdays (with Turkish suffixes), dates, times, `#tag`, `+Project` (existing projects only), `p1`..`p4` / `!acil`, and repeats ("her pazartesi", "every weekday"). A plain date is the deadline; `başla`/`start` makes it the When day; `son`/`due`/`…'e kadar` say deadline explicitly. The project tab does not read `+Project`. | A sentence means the same thing wherever it is typed. |
+| Q2 | **You see it before you save it.** Recognized words are painted in `tokens.link`, semibold (the measured "link on raised container" pair, ≥ 4.5 in both themes), and listed as `InputChip`s under the field — one per deadline (with its time), When, repeat, tag, project and priority, each with a kind icon (priority tinted by `taskPriorityColor`). ✕ ("Keep as text") gives the words back to the title. The chips row grows with `AnimatedSize` (`AwMotion.base`); chips keep the padded 48 px tap target. While the IME is composing, the field draws plain text. | No hidden magic: a misread "pazar" is visible and one tap undoes it. |
+| Q3 | **A help sheet, one tap away.** `?` opens `QuickAddHelpSheet` (solid sheet surface, root navigator, above the glass bar): Dates, Times, Deadline or When, Repeat, Tags · project · priority, Undo — examples in the UI language, plus the line that both languages work. The `?` sits in the bar while it is empty and at the end of the chips row while typing, so a phone bar never carries three suffix icons over the text. | Discoverable without stealing the text's width. |
+| Q4 | **Home skips its deadline ask when the text says when** (amends §26 C3). A parsed deadline, When day or repeat is used as typed and the selected calendar day does not override it; otherwise the C3 picker opens exactly as before. Inbox and project captures with a parsed deadline get the C1/C2 defaults (C4). The ✨ rider still receives the raw text. | Asking for a date the user just typed is friction; relative words are relative to the real now. |
+| Q5 | **Both themes are shot:** `phone_quick_add_tokens_*` and `phone_quick_add_help_*` in `test/design_screenshots_test.dart` (`shotLocale=tr` for Turkish). | Rule 11. |
+
+
+## 40. Search everywhere (OPH-374)
+
+One palette finds tasks, projects, notes, tags and file names from the replica, offline
+([ADR-0055](adr/0055-global-search-palette.md)). Per-screen search (§12) stays as it is.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 64 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row; no app-bar icon. Below 64 px per tab only the selected label is written, on ONE line (TR "Ana Sayfa" never wraps under the pill). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
+| P2 | **Surface.** A SOLID dialog (`dialogTheme`, G1) on the root navigator: wide (≥ 600) top-aligned 72 px down, ≤ 640 wide and ≤ min(560, 70 %) tall, radius `xl`; phone full screen with a back button beside the field. The field is the theme's filled input (G3) with a search prefix and a clear suffix. | Glass under body text fails contrast; the root navigator keeps it above the glass bar. |
+| P3 | **Groups and rows.** Fixed order Tasks · Projects · Notes · Tags · Files, ≤ 5 rows each; the header (`labelLarge`, `onSurfaceVariant`, `Semantics(header)`) adds "5 of 23" when there are more. Rows ≥ 48 px: kind icon (`onSurfaceVariant`; files by type), one-line title, a context line (`bodySmall`, `onSurfaceVariant`) saying WHERE it hit (S3: `#tag`, body snippet) or the project; a completed task shows a check icon and "Completed", an archived project "Archived"; a tag row says "Shows Home filtered by this tag". | One glance tells what and where; G5 — never colour alone. |
+| P4 | **Keyboard and active row.** The field keeps focus: ↑/↓ move the active row (wrapping, scrolled into view), Enter opens it, Esc closes. The active row has a `surfaceContainerHighest` fill AND a ⏎ glyph, and reports `selected` to screen readers; hover moves it. A live region reads the result count. | Keyboard-only use, and a selection that is not colour-only (G5). |
+| P5 | **Empty, no hits, create.** Empty field: "Recent" (≤ 8 things opened last, person-bound) or a one-line hint plus the shortcut tip. No hits: compact `AwEmptyState` naming the query. With text and `tasks.create`, the last row is "Create task “text”", which opens the normal create sheet prefilled — Enter takes it when nothing matched. Debounce 150 ms (faster than S4's ~250: the palette's lists are short), results stay while the next query loads, a 2 px progress line only after a further 150 ms. | No blank void, no spinner flash, no silent write. |
+| P6 | **Opening.** The palette closes first, then: task → detail (pushed), project/note → its page, file → its actions sheet, tag → Home filtered by it (board switches to list). The kind → destination table is the one Quick Access uses. | One place decides where a thing opens. |
+| P7 | **Both themes, both widths are shot:** `desktop_search_palette_*`, `desktop_search_recent_*`, `phone_search_palette_*`, `phone_search_orb_*` in `test/design_screenshots_test.dart`; only existing tokens (contrast pairs in `scripts/design/contrast.py`). | Rule 11. |
+
+## 41. Attaching to the AI chat (OPH-377)
+
+Notes, text files, tasks and projects reach the AI only when the user picks them with "@"
+([ADR-0058](adr/0058-ai-chat-attachments-on-demand.md), AI.md §7). Nothing is attached
+automatically.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| M1 | **Ways in.** Typing "@" at a word boundary (start, after a space or an opening bracket/quote — never inside an e-mail) opens the picker; the query may hold single spaces, ≤ 40 characters. A 44 px `@` icon button (`ai.attach.button` tooltip) beside the mic inserts the "@" and focuses the field. | Discoverable on touch, fast on a keyboard. |
+| M2 | **Surface.** An inline panel between the conversation and the composer, NOT a modal — typing continues in the same field. Solid `surfaceContainerHigh`, radius `m`, `outlineVariant` hairline, height ≤ min(280, 40 % of the sheet); title "Attach to this message" (`labelLarge`, `onSurfaceVariant`). No glass (G1). | Text never sits on glass; the field keeps focus. |
+| M3 | **Rows.** The §40 P3 anatomy over the same search: Notes · Files · Tasks · Projects (tags are not attachable), rows ≥ 48 px, group headers when a query is typed, recents (≤ 8) for a bare "@". A non-text file (PDF, image, Office, audio, video, archive) is drawn disabled — `onSurfaceVariant` title, context line "Only text files can be attached…" — and cannot be picked; an attached row shows a check; at 5 attachments the hint says so and rows are disabled. Keyboard as §40 P4: ↑/↓, Enter picks (also the mobile action key while the panel is open), Esc closes the panel and not the sheet; the same "@" stays closed until it is gone. Debounce 150 ms. | Same reading as the palette; a refusal is explained, not hidden. |
+| M4 | **Chips.** A pick removes "@query" from the field and adds an `InputChip` above it: kind icon (files by type), title ≤ 220 px with ellipsis, a delete button ("Remove"). Loading: a 14 px progress avatar, and send is disabled until it settles. Refused: an `error`-coloured icon and one `bodySmall` `onSurfaceVariant` line "title: reason" under the chips. A shortened item reads "title · shortened". | The user sees exactly what will be sent before sending. |
+| M5 | **The sent message.** Under the user bubble, compact non-interactive chips for what rode along; under them, when an item was cut, "Only the first 12,000 of N characters of “title” were sent.", and when the conversation cap left one out, "“title” was left out…" (`bodySmall`, `onSurfaceVariant`, end-aligned). | Truncation is visible to the user, not only to the model. |
+| M6 | **Both themes, both widths are shot:** `phone_ai_attach_picker_*`, `phone_ai_attach_chips_*`, `desktop_ai_attach_picker_*`, `desktop_ai_attach_chips_*` in `test/design_screenshots_test.dart`; only existing tokens (pairs "ai attach …" in `scripts/design/contrast.py`). | Rule 11. |
+
+## 42. The second-factor prompt (OPH-381)
+
+Shown when sign-in (e-mail + password, Google or Apple) answers `AUTH_MFA_REQUIRED`
+(`features/auth/ui/second_factor_prompt.dart`, ADR-0049 amendment).
+
+| # | Rule | Why |
+| --- | --- | --- |
+| T1 | **A solid `AlertDialog`** (G1, radius from `dialogTheme`) on the root navigator, not dismissible by a tap beside it: shield icon in `primary`, title "Enter your verification code", one body line in `onSurfaceVariant`, one filled text field, Cancel (text) and Verify (filled) actions ≥ 44 px. | A half-typed code must not vanish with a stray tap; glass never sits under the field. |
+| T2 | **One field for both kinds of code.** Text keyboard, capitals, no autocorrect, `oneTimeCode` autofill, 32 characters; the helper line says a recovery code works too. | The server tells them apart; asking which one it is would be a question the person cannot answer quickly. |
+| T3 | **A wrong code keeps the dialog open** with an `AwInlineError` ("That code is not right…"); any other refusal (rate limit, policy) uses the shared error sentence in the same place. Cancel closes it and leaves the sign-in screen exactly as it was, with no error. The screen's own spinner stops when the dialog opens; the Verify button carries the progress. | One retype, not a new sign-in; backing out is not a failure. |
+| T4 | **Both themes are shot:** `second-factor-prompt-*` and `second-factor-wrong-code-*` (`test/features/auth/second_factor_screenshot_test.dart`, `shotLocale=tr` for Turkish); only existing tokens. | Rule 11. |

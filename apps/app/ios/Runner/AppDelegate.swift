@@ -12,6 +12,10 @@ import UIKit
   /// (OPH-242, ADR-0029).
   private var shareInboxBridge: ShareInboxBridge?
 
+  /// Held for the app's lifetime: the channel Dart drains Siri / Shortcuts
+  /// requests through (OPH-376, ADR-0057; `Shared/AWAppShortcuts.swift`).
+  private var captureBridge: AWCaptureBridge?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
@@ -33,6 +37,11 @@ import UIKit
     // open, and an appex can no longer trigger one.
     if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "ShareInboxBridge") {
       shareInboxBridge = ShareInboxBridge(messenger: registrar.messenger())
+    }
+    // OPH-376 (ADR-0057): without this line a "Hey Siri, add a task" request
+    // waits in its mailbox forever — the intent parks it, nobody hands it over.
+    if let registrar = engineBridge.pluginRegistry.registrar(forPlugin: "AWCaptureBridge") {
+      captureBridge = AWCaptureBridge(messenger: registrar.messenger())
     }
   }
 }

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart';
 import '../data/social_sign_in.dart';
 import '../providers.dart';
+import 'second_factor_prompt.dart';
 
 /// "Continue with Google / Apple", shared by the sign-in and register screens.
 ///
@@ -39,10 +40,23 @@ class _SocialSignInButtonsState extends ConsumerState<SocialSignInButtons> {
         SocialProvider.google => await social.googleIdToken(),
         SocialProvider.apple => await social.appleIdToken(),
       };
-      final session = await ref
-          .read(authRepositoryProvider)
-          .signInWithProvider(provider: provider.wire, idToken: idToken);
       if (!mounted) return;
+      // The token is fetched ONCE. If the account has an authenticator the
+      // server answers AUTH_MFA_REQUIRED and the prompt re-sends this same
+      // token with the code — the provider's sheet is not shown again
+      // (OPH-381).
+      final session = await signInWithSecondFactor(
+        context,
+        (totpCode) => ref
+            .read(authRepositoryProvider)
+            .signInWithProvider(
+              provider: provider.wire,
+              idToken: idToken,
+              totpCode: totpCode,
+            ),
+        onPrompt: () => setState(() => _busy = null),
+      );
+      if (!mounted || session == null) return;
       widget.onSignedIn?.call(created: session.created);
     } on SocialSignInCancelled {
       // Backing out is not a failure; showing an error for it would be rude.
@@ -72,14 +86,17 @@ class _SocialSignInButtonsState extends ConsumerState<SocialSignInButtons> {
           busy: _busy == SocialProvider.apple,
           onPressed: busy ? null : () => _start(SocialProvider.apple),
         ),
-      _SocialButton(
-        key: const Key('sign-in-google'),
-        label: 'auth.continueWithGoogle'.tr(),
-        icon: Icons.g_mobiledata,
-        busy: _busy == SocialProvider.google,
-        onPressed: busy ? null : () => _start(SocialProvider.google),
-      ),
+      if (SocialSignIn.googleAvailable)
+        _SocialButton(
+          key: const Key('sign-in-google'),
+          label: 'auth.continueWithGoogle'.tr(),
+          icon: Icons.g_mobiledata,
+          busy: _busy == SocialProvider.google,
+          onPressed: busy ? null : () => _start(SocialProvider.google),
+        ),
     ];
+    // Windows and Linux have neither provider: no orphan "or" divider there.
+    if (buttons.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,

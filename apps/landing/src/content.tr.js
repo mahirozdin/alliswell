@@ -20,11 +20,13 @@ import {
   APP_STORE_URL,
   APP_URL,
   DOCS_URL,
+  LINUX_DOWNLOAD_URL,
   MCP_GUIDE_URL,
   MCP_URL,
   PLAY_URL,
   REPO_URL,
   VERSION,
+  WINDOWS_DOWNLOAD_URL,
   comparison,
   platforms,
 } from './content.js';
@@ -36,9 +38,10 @@ export default {
     title: 'AllisWell — kendi sunucunuzda barındırabileceğiniz görevler, hatırlatıcılar ve notlar',
     description:
       'Görevler, projeler, notlar, dosyalar ve sessiz moddayken bile çalan alarm gücünde ' +
-      'hatırlatıcılar; Google ve Apple Takvim ile gerçek iki yönlü eşitleme. iOS, Android, ' +
-      'web, macOS, Windows ve Linux için tek uygulama. Kaynağı açık, kendi sunucunuza ' +
-      'kurulabilir, bireysel kullanım için ücretsiz.',
+      'hatırlatıcılar; Google Takvim ile gerçek iki yönlü eşitleme, iPhone ve Mac’te ' +
+      'Apple Takvim’e yansıyan görevler. iOS, Android, web, macOS, Windows ve Linux için ' +
+      'tek uygulama. Kaynağı açık, kendi sunucunuza kurulabilir, bireysel kullanım için ' +
+      'ücretsiz.',
     ogImage: '/shots/og/home-tr.jpg',
   },
 
@@ -65,8 +68,9 @@ export default {
     title: 'Bütün gününüz, gerçekten size ait bir uygulamada.',
     lede:
       'Görevler, projeler, notlar, dosyalar ve sizi yerinizden kaldıracak kadar güçlü ' +
-      'hatırlatıcılar; Google ve Apple Takvim ile gerçek iki yönlü eşitleme. Altı platformda ' +
-      'tek uygulama, internet olmadan da çalışır, her veriyi kendi veritabanınızda tutar.',
+      'hatırlatıcılar; Google Takvim ile gerçek iki yönlü eşitleme, iPhone ve Mac’te Apple ' +
+      'Takvim’e yansıyan görevler. Altı platformda tek uygulama, internet olmadan da çalışır, ' +
+      'her veriyi kendi veritabanınızda tutar.',
     primary: { label: 'Web uygulamasını aç', href: APP_URL },
     store: { label: "Google Play'den indir", href: PLAY_URL },
     storeIos: { label: "App Store'dan indir", href: APP_STORE_URL },
@@ -106,10 +110,11 @@ export default {
     {
       key: 'sync',
       icon: '📅',
-      title: 'İki yönlü takvim eşitlemesi',
+      title: 'İki yönlü Google Takvim eşitlemesi',
       body:
         'Görevleriniz Google etkinliği olur, Google’da yaptığınız düzenlemeler geri gelir, ' +
-        'mevcut etkinlikleriniz bugünün işlerinin yanında görünür. Apple Takvim EventKit ile.',
+        'mevcut etkinlikleriniz bugünün işlerinin yanında görünür. iPhone ve Mac’te ' +
+        'görevleriniz Apple Takvim’e de yazılır; şimdilik tek yönlü.',
     },
     {
       key: 'ai',
@@ -185,6 +190,7 @@ export default {
         'Canlı "sonraki 5" önizlemesi günleri siz onaylamadan gösterir',
         'Tekrarlar gerçek görevlerdir: aramada, takvimde ve widget’ta görünür',
         'Birini düzenlemek ne kadar ileri gideceğini sorar: bu, bu ve sonrakiler, ya da hepsi',
+        'Ya da tamamladıktan N gün, hafta veya ay sonra tekrarlar: su filtresi, son değişimden 90 gün sonra',
       ],
       shot: 'web/home-dark.jpg',
       alt: 'AllisWell’de tekrarlayan bir görev, liste satırında tekrar rozetiyle',
@@ -450,7 +456,7 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
     points: [
       'Her uç nokta parametreleri, örnek istek ve örnek yanıtıyla belgelenmiş; sunucunun kendi şemalarından üretildiği için sapamaz',
       'Bir anahtar tek bir çalışma alanına bağlıdır; hesabınızı asla silemez, yapay zekâ sağlayıcı anahtarlarınıza dokunamaz, yeni anahtar üretemez, şifrenizi değiştiremez',
-      'Notlar ve görevler için toplu içe ve dışa aktarma; taşınmak bir destek talebi değil, bir betiktir',
+      'Notlar ve görevler için toplu içe ve dışa aktarma, üstelik Todoist ve TickTick dışa aktarımları olduğu gibi okunur; taşınmak bir destek talebi değil, bir betiktir',
     ],
     link: { label: 'API belgelerini okuyun', href: '/docs/api' },
     secondary: {
@@ -460,6 +466,43 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
     terminalTitle: 'cron işiniz',
     copyLabel: 'Kopyala',
     copiedLabel: 'Kopyalandı',
+  },
+
+  // OPH-371 — başka bir uygulamadan taşınmak (ADR-0052).
+  switchFrom: {
+    eyebrow: 'Taşınmak',
+    title: 'Todoist ya da TickTick’ten geçin',
+    lede:
+      'Görevlerinizi yanınızda getirin. Bıraktığınız uygulamadan dışa aktarın, dosyayı ' +
+      'Ayarlar › Veri › İçe aktar’da seçin ve hiçbir şey yazılmadan önce neyin geleceğine bakın.',
+    steps: [
+      {
+        title: 'Dışa aktarın',
+        body:
+          'Todoist: Ayarlar › Yedekler ya da bir projenin CSV olarak dışa aktarımı. TickTick: ' +
+          'web’de Ayarlar › Yedekleme ve İçe Aktarma › Yedek oluştur.',
+      },
+      {
+        title: 'Önizleyin',
+        body:
+          'Görevler, tekrarlayan görevler, alt maddeler, projeler ve etiketler sayılır; tam ' +
+          'taşınamayan her şey geldiği satırla birlikte listelenir.',
+      },
+      {
+        title: 'İçe aktarın',
+        body:
+          'Aynı dosyayı sonra yeniden içe aktarsanız da hiçbir şey çoğalmaz. Sildiğiniz görev ' +
+          'silinmiş kalır.',
+      },
+    ],
+    mapping: [
+      'Projeler ve listeler proje olur; etiketler, bölümler ve pano sütunları etiket olur',
+      'Alt görevler kontrol listesi maddesi olur; p1–p4 öncelikleri yüksek, orta, düşük ve yok olur',
+      'Bitiş tarihleri saatini ve saat dilimini korur; kural birebir karşılanıyorsa tekrarlar AllisWell tekrarına dönüşür, karşılanmıyorsa açıklamada kalır',
+      'İçe aktarılan görevler asla acil alarm olarak çalmaz; tamamlanmış görevler isteğe bağlıdır',
+    ],
+    note: 'Apple Anımsatıcılar’ın dışa aktarma dosyası yok, bu yüzden onun için içe aktarıcı yok.',
+    link: { label: 'Aynı içe aktarma tek bir API çağrısıyla', href: '/docs/api' },
   },
 
   comparison: {
@@ -523,10 +566,11 @@ docker compose -f docker-compose.selfhost.yml up -d`,
 
   download: {
     eyebrow: 'Edinin',
-    title: 'Tarayıcınızda, Google Play’de ve App Store’da',
+    title: 'Tarayıcınızda, telefonunuzda ve masaüstünüzde',
     lede:
       'Web uygulaması yayında ve eksiksiz: kaydolun, sahip olduğunuz her cihazda çalışsın. ' +
-      'Android uygulaması Google Play’de, iPhone uygulaması App Store’da; ikisi de ücretsiz.',
+      'Android uygulaması Google Play’de, iPhone uygulaması App Store’da; ikisi de ücretsiz. ' +
+      'Windows ve Linux sürümleri her sürüme ekli; macOS kaynaktan derlenir.',
     web: {
       title: 'Web uygulaması',
       status: 'Yayında',
@@ -553,6 +597,24 @@ docker compose -f docker-compose.selfhost.yml up -d`,
           'eşitleme ve ana ekran widget’ı.',
         icon: 'apple',
         cta: { label: "App Store'dan indir", href: APP_STORE_URL },
+      },
+      {
+        name: 'Windows',
+        status: 'İndir',
+        body:
+          'Windows 10 ve 11, 64 bit: zip’i açın, alliswell.exe’yi çalıştırın. Henüz kod imzalı ' +
+          'değil, bu yüzden SmartScreen bir kez sorar: Daha fazla bilgi › Yine de çalıştır.',
+        icon: 'windows',
+        cta: { label: 'Windows için indir (.zip)', href: WINDOWS_DOWNLOAD_URL },
+      },
+      {
+        name: 'Linux',
+        status: 'İndir',
+        body:
+          '64 bit: arşivi açın, ./alliswell’i çalıştırın. GTK 3, libsecret ve GStreamer ister; ' +
+          'çoğu masaüstünde zaten vardır.',
+        icon: 'linux',
+        cta: { label: 'Linux için indir (.tar.gz)', href: LINUX_DOWNLOAD_URL },
       },
     ],
     selfHostNote:
@@ -616,7 +678,9 @@ docker compose -f docker-compose.selfhost.yml up -d`,
         q: 'Neler eksik?',
         a:
           'Paylaşım ve atamalar (çalışma alanı modeli var, arayüzü yok), konuma dayalı ' +
-          'hatırlatıcılar ve CalDAV. Üçü de ima edilip geçiştirilmek yerine yol haritasında ' +
+          'hatırlatıcılar ve CalDAV üzerinden görevler (takvim etkinlikleri, sunucu yöneticisi ' +
+          'açtığında iCloud ya da herhangi bir CalDAV takvimine zaten gidiyor). Üçü de ima edilip ' +
+          'geçiştirilmek yerine yol haritasında ' +
           'yazılı.',
       },
     ],

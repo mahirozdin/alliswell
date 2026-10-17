@@ -45,6 +45,38 @@
     "fileName": "Ad",
     "fileSize": "Boyut"
   },
+  "search": {
+    "global": {
+      "open": "Her yerde ara",
+      "openWithShortcut": "Her yerde ara ({shortcut})",
+      "hint": "Görev, proje, not, etiket ve dosya ara…",
+      "recent": "Son açılanlar",
+      "emptyHint": "Görevlerini, projelerini, notlarını, etiketlerini ve dosyalarını aramak için yaz — internetsiz de çalışır.",
+      "shortcutTip": "İpucu: {shortcut} bunu her yerden açar.",
+      "noResultsTitle": "Sonuç yok",
+      "noResultsBody": "“{query}” ile eşleşen bir şey yok.",
+      "createTask": "“{title}” görevini oluştur",
+      "resultCount": "{count} sonuç",
+      "groupCount": "{total} sonuçtan {shown}",
+      "groups": {
+        "tasks": "Görevler",
+        "projects": "Projeler",
+        "notes": "Notlar",
+        "tags": "Etiketler",
+        "files": "Dosyalar"
+      },
+      "kinds": {
+        "task": "Görev",
+        "project": "Proje",
+        "note": "Not",
+        "tag": "Etiket",
+        "file": "Dosya"
+      },
+      "completed": "Tamamlandı",
+      "archived": "Arşivde",
+      "tagHint": "Ana sayfayı bu etiketle süzer"
+    }
+  },
   "color": {
     "recent": "Son kullanılanlar",
     "more": "Daha fazla renk",
@@ -94,7 +126,16 @@
     "or": "veya",
     "continueWithGoogle": "Google ile devam et",
     "continueWithApple": "Apple ile devam et",
-    "socialFailed": "Giriş tamamlanamadı. Lütfen tekrar deneyin."
+    "socialFailed": "Giriş tamamlanamadı. Lütfen tekrar deneyin.",
+    "mfa": {
+      "title": "Doğrulama kodunu gir",
+      "body": "Bu hesapta iki adımlı doğrulama açık. Doğrulama uygulamanı aç ve 6 haneli kodu gir.",
+      "code": "Doğrulama kodu",
+      "codeHelp": "Telefonunu mu kaybettin? Kurtarma kodlarından birini gir.",
+      "enterCode": "Doğrulama uygulamandaki kodu gir.",
+      "invalid": "Kod doğru değil. Kontrol edip tekrar dene.",
+      "verify": "Doğrula"
+    }
   },
   "settings": {
     "title": "Ayarlar",
@@ -168,7 +209,7 @@
       "developer": "API erişimi ve yönetimi",
       "developerSub": "API anahtarların ve onları kullanmanın dokümantasyonu",
       "data": "Veri",
-      "dataSub": "Tamamlananlar, paylaşım günlüğü",
+      "dataSub": "İçe aktarma, tamamlanan işler, paylaşım günlüğü",
       "account": "Hesap",
       "team": "Takım",
       "teamSub": "Ayarlar, üyeler ve davetler",
@@ -195,7 +236,9 @@
       "teamAudit": "Denetim günlüğü",
       "teamAuditSub": "Takımda kim neyi ne zaman değiştirdi",
       "customers": "Firmalar",
-      "customersSub": "Hizmet verdiğiniz firmalar ve portalına kimlerin girebileceği"
+      "customersSub": "Hizmet verdiğiniz firmalar ve portalına kimlerin girebileceği",
+      "rules": "Otomasyon kuralları",
+      "rulesSub": "Otomatik işler ve yeni taleplerin gideceği yer"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
@@ -288,10 +331,25 @@
     "priorityLabel": "Öncelik",
     "statusLabel": "Durum",
     "notSet": "Ayarlanmadı",
+    "when": "Ne zaman",
+    "clearWhen": "Ne zamanı temizle",
     "due": "Bitiş",
     "clearDue": "Bitiş tarihini temizle",
     "remind": "Hatırlat",
     "clearReminder": "Hatırlatıcıyı temizle",
+    "duration": "Süre",
+    "clearDuration": "Süreyi temizle",
+    "durationValue": {
+      "minutes": "{m} dk",
+      "hours": "{h} sa",
+      "hoursMinutes": "{h} sa {m} dk"
+    },
+    "durationDialog": {
+      "title": "Ne kadar sürer?",
+      "custom": "Dakika",
+      "invalid": "1 ile 1440 arasında dakika girin."
+    },
+    "durationSemantic": "Süre: {duration}",
     "clearField": "{field} temizle",
     "urgentAlarm": "Acil alarm",
     "urgentAlarmSub": "Onaylanması gereken ısrarlı hatırlatıcı",
@@ -326,7 +384,31 @@
     "deleted": "“{title}” silindi",
     "movedInCalendar": "Takvimde taşındı — {date}",
     "movedInCalendarSub": "Bu görevin etkinliğini takvimde sürüklediğin için bitiş tarihini izlemek yerine o saatte duruyor.",
-    "resetSchedule": "Sıfırla"
+    "resetSchedule": "Sıfırla",
+    "quickParse": {
+      "due": "Bitiş {date}",
+      "when": "Ne zaman {date}",
+      "repeat": "{rule} · ilk {date}",
+      "priority": "Öncelik: {label}",
+      "keepAsText": "Metin olarak bırak",
+      "helpTooltip": "Hızlı ekleme neyi anlar",
+      "help": {
+        "title": "Hızlı ekleme neyi anlar",
+        "intro": "Doğal yazın. Tarih, saat, etiket ve fazlası siz yazarken, internetsiz tanınır. Uygulama dili ne olursa olsun Türkçe de İngilizce de çalışır.",
+        "datesTitle": "Tarihler",
+        "dates": "bugün · yarın · öbür gün\ncuma · cumaya · haftaya cuma · 3 gün sonra\n15 Kasım · 15.11 · ay sonu · hafta sonu",
+        "timesTitle": "Saatler",
+        "times": "9'da · 14'te · saat 14:30 · akşam 7 · öğlen\n\"yarın 9'da kira\"",
+        "dueWhenTitle": "Bitiş mi, ne zaman mı",
+        "dueWhen": "Tek başına bir tarih bitiş tarihidir: \"rapor cuma\".\nAçıkça söylemek için \"son\" ya da \"…'e kadar\": \"son cuma\", \"cumaya kadar\".\n\"başla\" Ne zaman gününü, yani yapmayı planladığınız günü koyar: \"başla pazartesi son cuma\".",
+        "repeatTitle": "Tekrar",
+        "repeat": "her gün · her pazartesi · hafta içi her gün\niki haftada bir · her ayın 15'i · her ayın son günü",
+        "marksTitle": "Etiket, proje, öncelik",
+        "marks": "#ev etiket ekler (yoksa oluşturur)\n+İş projelerinizden birine koyar\np1 yüksek · p2 orta · p3 düşük · p4 yok · !acil",
+        "undoTitle": "Yanlış mı anladı?",
+        "undo": "Tanınan sözcükler vurgulanır ve çubuğun altında çip olarak görünür.\nÇipteki ✕'e dokunun, sözcükleri başlıkta kalır."
+      }
+    }
   },
   "tag": {
     "inputHint": "Etiket ekle…",
@@ -593,7 +675,46 @@
     "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al.",
     "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz.",
     "a11yToday": "bugün",
-    "a11yHasTasks": "görev var"
+    "a11yHasTasks": "görev var",
+    "appleServerMirrors": "Sunucun görevlerini zaten iCloud takvimine yazıyor; bu yüzden bu cihazdaki Apple Takvim kapalı kalır — yoksa her görev iki kez görünürdü.",
+    "caldav": {
+      "title": "iCloud ya da CalDAV takvimi",
+      "blurb": "Her görevini iCloud takvimine — ya da Nextcloud gibi herhangi bir CalDAV takvimine — sunucudan yaz; böylece bu cihazda da çalışır. Orada yaptığın taşımalar geri gelir.",
+      "blurbAppleDevice": "Bu iPhone ya da Mac'te iCloud'a giden yol yukarıdaki Apple Takvim. Bunu Nextcloud gibi başka bir CalDAV takvimi için kullan.",
+      "icloud": "iCloud Takvim",
+      "generic": "CalDAV takvimi",
+      "connectTitle": "Takvim bağla",
+      "icloudSegment": "iCloud",
+      "genericSegment": "Başka sunucu",
+      "serverLabel": "Sunucu adresi",
+      "appleIdLabel": "Apple Hesabı e-postası",
+      "usernameLabel": "Kullanıcı adı",
+      "appPasswordLabel": "Uygulamaya özel parola",
+      "passwordLabel": "Parola ya da uygulama parolası",
+      "showPassword": "Parolayı göster",
+      "hidePassword": "Parolayı gizle",
+      "howToMake": "Uygulamaya özel parola nasıl oluşturulur?",
+      "thisServer": "bu sunucu",
+      "consentIcloud": "Bağlamadan önce: AllisWell bu parolayı sunucusunda ({server}) saklar; böylece cihazların kapalıyken de takvimini güncelleyebilir. Apple Hesabı parolanı değil, uygulamaya özel parola kullan. Parolayı appleid.apple.com'da istediğin an iptal edebilirsin. Bu sunucuyu çalıştıran kişi takvimini okuyabilir. Her görev seçtiğin takvime yazılır.",
+      "consentGeneric": "Bağlamadan önce: AllisWell bu parolayı sunucusunda ({server}) saklar; böylece cihazların kapalıyken de takvimini güncelleyebilir. Sunucun sunuyorsa uygulama parolası kullan. Bu sunucuyu çalıştıran kişi takvimini okuyabilir. Her görev seçtiğin takvime yazılır.",
+      "authFailedIcloud": "Apple bunu kabul etmedi. appleid.apple.com'da oluşturduğun uygulamaya özel parolayı kullan — normal Apple Hesabı parolan burada çalışmaz.",
+      "authFailedGeneric": "Sunucu bu kullanıcı adı ve parolayı kabul etmedi.",
+      "notCaldav": "Bu adres bir takvim sunucusu gibi cevap vermiyor. Adresi kontrol et — Nextcloud için tarayıcıda açtığın adres.",
+      "noCalendars": "Bu hesapta etkinlik tutabilen bir takvim yok. Önce takvim uygulamanda bir tane oluştur.",
+      "blockedAddress": "Bu adres bu sunucudan kullanılamaz. Sunucunun https:// adresini kullan.",
+      "redirectOffHost": "Sunucu bizi başka bir adrese yönlendirdi. Güvenliğin için parola yalnızca yazdığın adrese gönderilir — o adresi gir.",
+      "unreachable": "Takvim sunucusuna ulaşılamadı. Biraz sonra yeniden dene.",
+      "alreadyConnected": "Zaten bağlı bir takvim var. Önce onun bağlantısını kes.",
+      "notEnabled": "Bu sunucu iCloud ve CalDAV takvimlerini açmamış.",
+      "reauth": "Takvim sunucusu kayıtlı parolayı artık kabul etmiyor. Yeniden bağla.",
+      "serverOff": "Bu sunucu iCloud ve CalDAV takvimlerini kapatmış; hiçbir şey güncellenmiyor. Bağlantıyı yine de kesebilirsin.",
+      "passwordRejectedIcloud": "Apple uygulamaya özel parolayı artık kabul etmiyor — iptal edilmiş olabilir. Yenisiyle yeniden bağla.",
+      "passwordRejected": "Sunucu kayıtlı parolayı artık kabul etmiyor. Yeniden bağla.",
+      "reconnect": "Yeniden bağla",
+      "disconnectBodyIcloud": "Etkinliklerin takviminde kalır. AllisWell parolayı sunucusundan siler ama senin yerine iptal edemez: appleid.apple.com'da Giriş ve Güvenlik → Uygulamaya Özel Parolalar'a git ve parolayı iptal et.",
+      "disconnectBodyGeneric": "Etkinliklerin takviminde kalır. AllisWell parolayı sunucusundan siler. Bir uygulama parolasıysa sunucunun ayarlarından da iptal edebilirsin.",
+      "disconnectSubIcloud": "Etkinlikler kalır; ardından parolayı appleid.apple.com'da iptal et"
+    }
   },
   "tour": {
     "skip": "Atla",
@@ -624,6 +745,9 @@
     "sessionExpired": "Oturumun sona erdi. Lütfen tekrar giriş yap.",
     "AUTH_INVALID_CREDENTIALS": "E-posta veya parola yanlış.",
     "AUTH_EMAIL_TAKEN": "Bu e-postayla bir hesap zaten var.",
+    "AUTH_MFA_REQUIRED": "Bu hesap doğrulama kodu istiyor.",
+    "AUTH_MFA_INVALID": "Kod doğru değil. Kontrol edip tekrar dene.",
+    "AUTH_SIGN_IN_REFUSED": "Bu hesapla şu an giriş yapılamıyor.",
     "NETWORK_ERROR": "Sunucuya ulaşılamadı. Bağlantını ve sunucu adresini kontrol et.",
     "server": "Sunucu bu isteği tamamlayamadı. Biraz sonra tekrar dene.",
     "notFound": "Bulunamadı — kaldırılmış ya da taşınmış olabilir.",
@@ -678,7 +802,45 @@
     "CUSTOMER_NAME_TAKEN": "Bu adla bir firma zaten var.",
     "CUSTOMER_USER_TAKEN": "Bu adres burada zaten bir kişiye ait.",
     "CUSTOMER_EMAIL_INVALID": "Bu bir e-posta adresi değil.",
-    "CUSTOMER_USER_DEACTIVATED": "Bu kişinin erişimi kapalı. Yeniden eklemek yerine erişimini açın."
+    "CUSTOMER_USER_DEACTIVATED": "Bu kişinin erişimi kapalı. Yeniden eklemek yerine erişimini açın.",
+    "IMPORT_FORMAT_UNRECOGNIZED": "Bu dosya bir Todoist ya da TickTick dışa aktarımı değil.",
+    "IMPORT_EMPTY": "Bu dosyada içe aktarılacak bir şey yok.",
+    "IMPORT_INVALID_TIMEZONE": "Profilinizdeki saat dilimi geçersiz; Ayarlar'da yeniden seçin.",
+    "IMPORT_FILE_TOO_LARGE": "Bu dosyada bir kerede aktarılamayacak kadar çok satır ya da sütun var.",
+    "IMPORT_ITEM_FAILED": "Bu öğe içe aktarılamadı.",
+    "TASK_SERIES_TOO_DENSE": "Bu tekrar kuralı çok fazla görev oluştururdu.",
+    "TICKET_UNIT_REQUIRED": "Bu hizmete birden çok birim bakıyor. Birini seçin.",
+    "TICKET_SERVICE_UNROUTED": "Bu hizmete henüz hiçbir birim bakmıyor.",
+    "SLA_RULE_NAME_TAKEN": "Bu adda bir kural zaten var.",
+    "SLA_RULE_STRATEGY": "Bu, kişi seçmenin tanınan bir yolu değil.",
+    "SLA_RULE_TRIGGER": "Bu ürünün tanıdığı bir tetikleyici değil.",
+    "SLA_RULE_ACTION": "Bir kuralın yapabileceği bir işlem değil.",
+    "SLA_RULE_TRIGGER_NOT_RAISED": "Bu sinyal henüz üretilmiyor; kural hiç çalışmaz. Başka bir tetikleyici seçin.",
+    "SLA_RULE_CONDITION_TRIGGER": "Bu tetikleyici koşullardan birini göremiyor; kural hiç eşleşmez. Koşulu kaldırın.",
+    "SLA_RULE_ACTION_TRIGGER": "Bu tetikleyici bir talep hakkında değil; bu işlemi yapamaz.",
+    "SLA_RULE_ORDER_STALE": "Siz bakarken kurallar değişti. Liste yenilendi; tekrar deneyin.",
+    "SLA_RULE_TEST_TICKET_NOT_FOUND": "Bu ekipte bu numarada bir talep yok.",
+    "SLA_RULE_TEST_NOT_A_REQUEST": "Bu tetikleyici bir talep hakkında değil; bir talepte denenemez.",
+    "SLA_RULE_NEEDS_ASSIGNEE": "Talebin kime atanacağını seçin.",
+    "SLA_RULE_NEEDS_PRIORITY": "Bir öncelik seçin.",
+    "SLA_RULE_NEEDS_WEBHOOK": "Bir webhook seçin.",
+    "SLA_RULE_NEEDS_ADDRESS": "Bir e-posta adresi girin.",
+    "SLA_RULE_NEEDS_TAG": "Bir etiket seçin.",
+    "SLA_RULE_TAG_UNKNOWN": "Bu etiket bu ekibin değil.",
+    "SLA_RULE_SERVICE_UNKNOWN": "Bu servis bu ekibin değil.",
+    "SLA_RULE_UNIT_UNKNOWN": "Bu birim bu ekibin değil.",
+    "SLA_RULE_WEBHOOK_UNKNOWN": "Bu webhook bu ekibin değil.",
+    "SLA_RULE_ASSIGNEE_NOT_MEMBER": "Bu kişi bu ekibin üyesi değil.",
+    "SLA_RULE_NEEDS_IDLE_DAYS": "Kaç gün işlem görmemenin sayılacağını yazın.",
+    "CLASSIFICATION_RULE_NAME_TAKEN": "Bu adda bir kural zaten var.",
+    "CLASSIFICATION_RULE_HAS_NO_ACTION": "Bir kural en az bir şey yapmalı: servis, birim, öncelik ya da etiket.",
+    "CLASSIFICATION_UNKNOWN_TAG": "Bu etiket bu ekibin değil.",
+    "CLASSIFICATION_UNKNOWN_SERVICE": "Bu servis bu ekibin değil.",
+    "CLASSIFICATION_UNKNOWN_UNIT": "Bu birim bu ekibin değil.",
+    "CLASSIFICATION_TOO_MANY_KEYWORDS": "En çok 20 kelime.",
+    "CLASSIFICATION_KEYWORD_TOO_LONG": "Bir kelime en çok 60 karakter olabilir.",
+    "CLASSIFICATION_UNKNOWN_PRIORITY": "Bilinmeyen öncelik.",
+    "CLASSIFICATION_ORDER_STALE": "Siz bakarken kurallar değişti. Liste yenilendi; tekrar deneyin."
   },
   "sync": {
     "noteConflict": "Bu not başka bir cihazda da düzenlendi — karşılaştırmak için aç.",
@@ -1033,6 +1195,7 @@
     "endUntilLabel": "Bitiş tarihi",
     "stop": "Tekrarı durdur",
     "stopConfirm": "Gelecekteki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
+    "stopConfirmAfter": "Bu görev kalır. Tamamladığında artık yenisi oluşturulmaz.",
     "badgeTooltip": "Tekrarlanıyor",
     "every": {
       "daily": "Her gün",
@@ -1075,6 +1238,26 @@
       "future": "Bu ve gelecektekiler",
       "all": "Tümü",
       "apply": "Uygula"
+    },
+    "basis": {
+      "calendar": "Takvime göre",
+      "completion": "Tamamlanınca"
+    },
+    "after": {
+      "daily": "Tamamlanınca 1 gün sonra",
+      "dailyN": "Tamamlanınca {n} gün sonra",
+      "weekly": "Tamamlanınca 1 hafta sonra",
+      "weeklyN": "Tamamlanınca {n} hafta sonra",
+      "monthly": "Tamamlanınca 1 ay sonra",
+      "monthlyN": "Tamamlanınca {n} ay sonra",
+      "intervalLabel": "Şu kadar sonra",
+      "unit": {
+        "days": "gün",
+        "weeks": "hafta",
+        "months": "ay"
+      },
+      "previewTitle": "Bugün tamamlarsan",
+      "hint": "Tamamladığın andan sayılır, erken ya da geç. Saat aynı kalır."
     }
   },
   "ai": {
@@ -1174,6 +1357,26 @@
     },
     "quickAdd": {
       "enriching": "Yapay zekâ dolduruyor…"
+    },
+    "attach": {
+      "button": "Not, dosya, görev ya da proje ekle (@)",
+      "panelTitle": "Bu mesaja ekle",
+      "emptyHint": "Not, dosya, görev ya da proje bulmak için yaz",
+      "noResults": "“{query}” bulunamadı",
+      "remove": "Kaldır",
+      "truncated": "kısaltıldı",
+      "truncatedNotice": "“{title}” için {total} karakterin yalnız ilk {shown} karakteri gönderildi.",
+      "droppedNotice": "“{title}” eklenmedi: bir sohbet en fazla 8 ek ve yaklaşık 40.000 karakter taşır.",
+      "limit": "Mesaj başına en fazla 5 ek",
+      "loading": "Ekleniyor…",
+      "attached": "Zaten eklendi",
+      "sentLabel": "Eklendi: {title}",
+      "refused": {
+        "notText": "Yalnız metin dosyaları eklenebilir (PDF, görsel ve Office dosyaları okunmaz)",
+        "tooLarge": "Eklemek için çok büyük (1 MB üstü)",
+        "unavailable": "Yüklenemedi, bağlantını kontrol et",
+        "empty": "Dosya boş"
+      }
     }
   },
   "markdown": {
@@ -1639,7 +1842,9 @@
         "note": "İç not yazıldı",
         "reply": "Yanıt yazıldı",
         "worklog": "Süre yazıldı: {duration}",
-        "formCorrected": "Form cevapları düzeltildi: {fields}"
+        "formCorrected": "Form cevapları düzeltildi: {fields}",
+        "transferred": "{from} → {to}",
+        "transferReason": "Gerekçe iç not olarak eklendi"
       }
     },
     "verb": {
@@ -1714,6 +1919,9 @@
       },
       "ee_mail_inbox": {
         "revoked": "bir posta kutusunun bağlantısını kesti"
+      },
+      "ee_ticket": {
+        "transferred": "bu talebi aktardı"
       }
     },
     "perm": {
@@ -1794,7 +2002,8 @@
         "override_priority": "Matrisin üretmeyeceği bir öncelik ver",
         "link": "Talepleri birbirine ve problemlere bağla",
         "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve sürdür",
-        "manage_worklog": "Başkasının yazdığı süreyi düzelt ya da sil"
+        "manage_worklog": "Başkasının yazdığı süreyi düzelt ya da sil",
+        "transfer": "Talebi başka bir hizmete ya da birime aktar"
       },
       "units": {
         "manage": "Birimleri yönet",
@@ -2110,6 +2319,10 @@
         "status_changed": {
           "title": "{ticketRef} artık {statusLabel}",
           "body": "{subject}"
+        },
+        "transferred": {
+          "title": "{ticketRef}, {unitName} birimine aktarıldı",
+          "body": "{subject} · {serviceName}"
         }
       },
       "share": {
@@ -2131,7 +2344,8 @@
           "assigned": "Bir talep size atandığında",
           "status_changed": "İstediğiniz ya da tuttuğunuz bir talebin durumu değiştiğinde",
           "commented": "İzlediğiniz bir talebe yanıt yazıldığında",
-          "rate": "Bir talebi puanlamanız istendiğinde"
+          "rate": "Bir talebi puanlamanız istendiğinde",
+          "transferred": "Açtığınız bir talep başka bir hizmete ya da birime aktarılır"
         },
         "sla": {
           "warned": "Bir SLA süresi yaklaştığında",
@@ -2577,7 +2791,25 @@
         }
       },
       "statusUnknown": "başka bir durumda",
-      "selectRow": "{ticket} talebini seç"
+      "selectRow": "{ticket} talebini seç",
+      "transfer": {
+        "action": "Aktar",
+        "title": "Talebi aktar",
+        "now": "Şu an: {where}",
+        "search": "Hizmet ya da birim ara",
+        "current": "Şu anki",
+        "none": "Bu talebi alabilecek başka bir hizmet ya da birim yok.",
+        "noMatch": "Bununla eşleşen bir şey yok.",
+        "notAllowed": "Rolünüz talep aktaramıyor. Bir takım yöneticisine sorun.",
+        "approvalPending": "Bu talep bir onay bekliyor. Karar verildikten sonra aktarılabilir.",
+        "reason": "Gerekçe (isteğe bağlı)",
+        "reasonHint": "Bunu yalnız masa görür",
+        "crossUnit": "Talebi {unit} alır. Şu an üstünde olan herkes bırakılır ve yeni masaya haber verilir. SLA, talebin açıldığı andan saymaya devam eder.",
+        "sameUnit": "Talep bu masada, başka bir hizmet altında kalır. SLA saymaya devam eder ve yeni hizmete göre yeniden hesaplanır.",
+        "apply": "Aktar",
+        "done": "{where} için aktarıldı",
+        "unchanged": "Talep zaten orada"
+      }
     },
     "sla": {
       "breached": "SLA aşıldı",
@@ -2949,7 +3181,8 @@
           "assigned": "Talep atandı",
           "status_changed": "Talebin durumu değişti",
           "commented": "Talebe yanıt yazıldı",
-          "rate": "Puanlama istendi"
+          "rate": "Puanlama istendi",
+          "transferred": "Talep başka bir hizmete ya da birime aktarıldı"
         },
         "sla": {
           "warned": "SLA süresi yaklaşıyor",
@@ -3675,6 +3908,194 @@
       "unsupportedTitle": "Bu sunucu kişileri henüz listeleyemiyor",
       "unsupportedBody": "Firma kişilerini listelemek ve kapatmak daha yeni bir sunucu ister. Sunucuyu yöneten kişiden güncellemesini isteyin.",
       "unsupportedAction": "Bu sunucu bunu henüz desteklemiyor. Sunucuyu yöneten kişiden güncellemesini isteyin."
+    },
+    "rules": {
+      "title": "Otomasyon kuralları",
+      "tabAutomation": "Otomasyon",
+      "tabRouting": "Yönlendirme",
+      "explainAutomation": "Eşleşen her kural yukarıdan aşağıya sırayla çalışır.",
+      "explainRouting": "Yeni bir talebin nereye gideceğine eşleşen ilk kural karar verir.",
+      "newRule": "Yeni kural",
+      "newAutomation": "Yeni otomasyon kuralı",
+      "newRouting": "Yeni yönlendirme kuralı",
+      "editAutomation": "Otomasyon kuralı",
+      "editRouting": "Yönlendirme kuralı",
+      "emptyAutomation": "Henüz otomasyon kuralı yok",
+      "emptyAutomationBody": "Kural bir sinyali işe çevirir: bir talep açıldığında, bekletildiğinde ya da geciktiğinde onu atayabilir, önceliğini yükseltebilir, etiketleyebilir ya da birine haber verebilir.",
+      "emptyRouting": "Henüz yönlendirme kuralı yok",
+      "emptyRoutingBody": "Yönlendirme kuralı yeni talepleri kelimelerine, gönderenine ya da kaynağına göre doğru servise veya birime gönderir.",
+      "unavailable": "Erişilemiyor",
+      "unavailableBody": "Kuralları ekibin yöneticileri düzenler.",
+      "off": "Kapalı",
+      "paused": "Duraklatıldı",
+      "pausedReason": "Duraklatıldı: {reason}",
+      "resume": "Sürdür",
+      "lastRan": "Son çalışma {ago}",
+      "neverRan": "Hiç çalışmadı",
+      "lastFailed": "Son çalışma başarısız: {reason}",
+      "dragHandle": "Sıralamak için sürükleyin",
+      "enabledLabel": "Kural açık",
+      "more": "Diğer işlemler",
+      "edit": "Düzenle",
+      "duplicate": "Kopyala",
+      "duplicated": "Kopyası en alta, kapalı olarak eklendi.",
+      "moveUp": "Yukarı taşı",
+      "moveDown": "Aşağı taşı",
+      "delete": "Sil",
+      "deleteTitle": "Bu kural silinsin mi?",
+      "deleteBody": "“{name}” durur ve ayarları kaybolur. Daha önce yaptıkları geçmişte kalır.",
+      "conditionCount": "Koşul: {n}",
+      "when": "Ne zaman",
+      "if": "Eğer",
+      "then": "O zaman",
+      "name": "Ad",
+      "nameRequired": "Kurala bir ad verin",
+      "nameTooLong": "En çok 160 karakter",
+      "enabled": "Kural açık",
+      "pausedBanner": "Sunucu bu kuralı duraklattı: {reason} Kaydetmek kuralı sürdürür.",
+      "notRaised": "Bu sinyal henüz üretilmiyor; onu dinleyen kural hiç çalışmaz. Kaydetmeden önce başka bir tetikleyici seçin.",
+      "trigger": "Tetikleyici",
+      "idleDays": "İşlem görmediği gün sayısı",
+      "idleDaysInvalid": "1 ile 365 gün arası",
+      "conditionsHelp": "Tüm koşullar sağlanmalı. Koşul yoksa her talep için geçerli.",
+      "conditionsHelpSignal": "Tüm koşullar sağlanmalı. Koşul yoksa her sinyal için geçerli.",
+      "noConditions": "Koşul yok: kural bu tetikleyicinin ürettiği her şeyde çalışır.",
+      "addCondition": "Koşul ekle",
+      "removeCondition": "Koşulu kaldır",
+      "is": "şu:",
+      "chooseValue": "Bir değer seçin",
+      "conditionsRemoved": "Bu tetikleyici kullanamadığı için kaldırıldı: {list}",
+      "actionRemoved": "Bu tetikleyici bu işlemi yapamadığı için işlem sıfırlandı.",
+      "action": "İşlem",
+      "strategy": "Kime",
+      "member": "Kişi",
+      "memberRequired": "Talebin kime atanacağını seçin",
+      "memberSearch": "Kişi ara",
+      "noMatches": "Eşleşen kimse yok",
+      "priority": "Öncelik",
+      "priorityRequired": "Bir öncelik seçin",
+      "webhook": "Webhook",
+      "webhookPaused": "{name} (duraklatıldı)",
+      "webhookRequired": "Bir webhook seçin",
+      "emailTo": "Alıcı",
+      "emailInvalid": "Bir e-posta adresi girin",
+      "subject": "Konu",
+      "subjectHelp": "Eklenen alanlar kural çalışırken doldurulur.",
+      "subjectRequired": "Bir konu yazın",
+      "body": "Metin",
+      "tag": "Etiket",
+      "tagRequired": "Bir etiket seçin",
+      "targetService": "Nerede açılsın",
+      "targetServiceHint": "Sinyalin geldiği yer",
+      "openPriority": "Yeni talebin önceliği",
+      "insertField": "Alan ekle",
+      "advanced": "Gelişmiş",
+      "dailyCap": "Talep başına günlük sınır",
+      "dailyCapHelp": "Kural kendini duraklatmadan önce bir talep için 24 saatte en çok kaç kez çalışabilir. 0 sınır yok demektir.",
+      "dailyCapInvalid": "0 ile 1000 arası",
+      "test": "Bir talepte dene",
+      "testHelp": "Kuralı bu ekranda göründüğü haliyle, kaydedilmiş olsun olmasın dener. Hiçbir şey değişmez.",
+      "testSignalOnly": "Bu tetikleyici bir talep değil bir izleyici hakkında; bir talepte denenemez.",
+      "testNumber": "Talep numarası",
+      "testNumberInvalid": "Bir talep numarası girin",
+      "testRun": "Dene",
+      "wouldFire": "{ref} talebinde çalışır",
+      "wouldNotFire": "{ref} talebinde çalışmaz",
+      "expectedFound": "beklenen {expected}, bulunan {actual}",
+      "found": "bulunan {actual}",
+      "removed": "Kullanılamıyor (kaldırılmış)",
+      "save": "Kaydet",
+      "any": "Herhangi",
+      "none": "Yok",
+      "keywords": "Kelimeler",
+      "keywordsHelp": "Konuda ya da metinde bu kelimelerden herhangi biri. Büyük-küçük harf ve Türkçe karakterler fark etmez.",
+      "keywordAdd": "Kelime ekle",
+      "keywordTooMany": "En çok {n} kelime",
+      "keywordTooLong": "En çok {n} karakter",
+      "from": "Gönderen",
+      "fromHelp": "Tek bir adres ya da o alan adındaki herkes için @alanadi",
+      "unit": "Birim",
+      "service": "Servis",
+      "needsAction": "Kuralın yapacağı en az bir şey seçin",
+      "priorityLocked": "Öncelik belirlemek için öncelikleri değiştirme izni gerekir.",
+      "tryRecent": "Son taleplerde dene",
+      "tryRecentHelp": "Bu kuralı sıradaki yerinde son 100 talep üzerinde çalıştırır. Hiçbir şey değişmez.",
+      "tryRun": "Dene",
+      "drySummary": "{sampled} talep incelendi · {matched} değişirdi · {unmatched} dokunulmadı",
+      "dryMatched": "Bu kuralın alacakları",
+      "dryShadowed": "Eşleşiyor ama üstteki bir kural alıyor",
+      "shadowedBy": "“{rule}” alıyor",
+      "dryNone": "Son taleplerin hiçbiri",
+      "triggerName": {
+        "ticket_created": "Talep oluşturuldu",
+        "ticket_updated": "Talep güncellendi",
+        "ticket_commented": "Yorum eklendi",
+        "ticket_idle": "Talep günlerdir işlem görmedi",
+        "sla_breached": "SLA hedefi aşıldı",
+        "sla_warned": "SLA uyarısı",
+        "health_down": "İzleyici çöktü",
+        "health_recovered": "İzleyici düzeldi"
+      },
+      "actionName": {
+        "open_ticket": "Talep aç",
+        "open_task": "Görev aç",
+        "assign": "Ata",
+        "set_priority": "Önceliği değiştir",
+        "call_webhook": "Webhook çağır",
+        "send_email": "E-posta gönder",
+        "add_tag": "Etiket ekle"
+      },
+      "strategyName": {
+        "user": "Belirli bir kişi",
+        "round_robin": "Sırayla",
+        "least_loaded": "En az yüklü",
+        "on_call": "Nöbetçi"
+      },
+      "conditionName": {
+        "service": "Servis",
+        "priority": "Öncelik",
+        "source": "Kaynak",
+        "unit": "Birim"
+      },
+      "sourceName": {
+        "internal": "Ekip içi",
+        "public": "Genel form",
+        "health": "İzleyici",
+        "sla": "SLA",
+        "email": "E-posta"
+      },
+      "checkName": {
+        "service": "Servis",
+        "priority": "Öncelik",
+        "source": "Kaynak",
+        "unit": "Birim",
+        "idle": "Yeterince bekledi (gün)",
+        "open": "Hâlâ açık",
+        "automated_source": "Bir otomasyon tarafından açılmamış",
+        "enabled": "Kural açık",
+        "paused": "Duraklatılmamış",
+        "daily_cap": "Günlük sınırın altında"
+      },
+      "outcome": {
+        "would_run": "Çalışır",
+        "would_fail": "Başarısız olur",
+        "no_change": "Değişecek bir şey yok"
+      },
+      "reason": {
+        "no_assignee": "Kişi seçilmemiş.",
+        "not_member": "Bu kişi talebin masasında değil.",
+        "nobody_available": "Masada müsait kimse yok.",
+        "no_on_call": "Nöbet çizelgesi şu an bu masa için kimseyi göstermiyor.",
+        "no_priority": "Öncelik seçilmemiş.",
+        "tag_missing": "Etiket artık yok.",
+        "webhook_missing": "Webhook artık yok.",
+        "webhook_disabled": "Webhook duraklatılmış.",
+        "no_address": "Adres girilmemiş.",
+        "no_destination": "Açılacak bir yer yok.",
+        "TICKET_SERVICE_NOT_FOUND": "Hedef servis artık yok.",
+        "TICKET_SERVICE_UNROUTED": "Hedef servise hiçbir birim bakmıyor.",
+        "TICKET_UNIT_REQUIRED": "Hedef servise birden çok birim bakıyor; kural birini seçemez."
+      }
     }
   },
   "perm": {
@@ -3694,5 +4115,114 @@
       "hours": "{n} saat önce",
       "days": "{n} gün önce"
     }
+  },
+  "import": {
+    "title": "İçe aktar",
+    "sub": "Todoist veya TickTick'ten taşının",
+    "stepOf": "Adım {n} / {total}",
+    "step": {
+      "source": "Nereden taşınıyorsunuz?",
+      "file": "{app} dışa aktarımınızı seçin",
+      "preview": "Neyin geleceğine bakın",
+      "importing": "İçe aktarılıyor",
+      "done": "İçe aktarıldı"
+    },
+    "intro": "Görevlerinizi yanınızda getirin. Önizlemeyi görmeden hiçbir şey yazılmaz; aynı dosyayı yeniden içe aktarmak hiçbir zaman kopya oluşturmaz.",
+    "how": {
+      "todoist": "Yedek ZIP'ini ya da bir projenin CSV dışa aktarımını kullanın.",
+      "ticktick": "TickTick web uygulamasındaki CSV yedeğini kullanın."
+    },
+    "export": {
+      "todoist": "Todoist'te Ayarlar › Yedekler'i açıp son yedeği (ZIP) indirin ya da bir projenin menüsünden CSV olarak dışa aktar'ı seçin. Birden çok CSV dosyasını birlikte seçebilirsiniz.",
+      "ticktick": "ticktick.com'da Ayarlar › Yedekleme ve İçe Aktarma › Yedek oluştur'u açıp CSV dosyasını kaydedin."
+    },
+    "todoistNoCompleted": "Todoist tamamlanmış görevleri dışa aktarıma koymaz; yalnız açık görevler gelir.",
+    "appleNote": "Apple Anımsatıcılar'ın dışa aktarma dosyası yok, bu yüzden içe aktarılamaz.",
+    "pick": "Dosya seç",
+    "pickAgain": "Başka dosyalar seç",
+    "previewButton": "Önizle",
+    "back": "Geri",
+    "fromFiles": "Dosya: {count}",
+    "count": {
+      "tasks": "görev",
+      "series": "tekrarlayan görev",
+      "checklist": "kontrol listesine giren alt madde",
+      "notes": "not",
+      "projectsNew": "yeni proje",
+      "projectsExisting": "mevcut proje",
+      "tags": "etiket",
+      "already": "zaten aktarılmış"
+    },
+    "includeCompleted": "Tamamlanmış görevleri de al ({count})",
+    "includeCompletedSub": "Tamamlanma tarihleriyle, tamamlanmış olarak gelirler.",
+    "mapping": {
+      "title": "Neyin neye dönüştüğü",
+      "sectionsTodoist": "Etiketler ve bölümler etiket olur.",
+      "sectionsTicktick": "Etiketler ve pano sütunları etiket olur; listeler proje olur.",
+      "subItems": "Alt görevler, görevlerinin kontrol listesine girer.",
+      "noAlarms": "İçe aktarılan görevler asla acil alarm olarak çalmaz; hatırlatıcı yalnız dışa aktarımda varsa korunur."
+    },
+    "warnings": {
+      "title": "Notla birlikte taşınanlar",
+      "count": "Öğe: {count}"
+    },
+    "warning": {
+      "other": "Bu dosyada dikkat isteyen bir şey var",
+      "IMPORT_FILE_SKIPPED": "Bu uygulamaya ait olmayan bir dosya atlandı",
+      "IMPORT_TITLE_TRUNCATED": "Çok uzun bir başlık 500 karaktere kısaltıldı",
+      "IMPORT_ATTACHMENT_LINKED": "Ekler açıklamada bağlantı olarak kalır",
+      "IMPORT_COMMENT_WITHOUT_TASK": "Görevi olmayan bir yorum atlandı",
+      "IMPORT_ROW_SKIPPED": "Türü bilinmeyen bir satır atlandı",
+      "IMPORT_EMPTY_TITLE": "Başlığı olmayan bir görev atlandı",
+      "IMPORT_DEEP_SUBTASK_FLATTENED": "Daha derin alt görevler üst görevin kontrol listesine alındı",
+      "IMPORT_SUBTASK_DETAILS_MOVED": "Bir alt görevin kendi notu ya da tarihi görev açıklamasına taşındı",
+      "IMPORT_ORPHAN_SUBTASK": "Üst görevi dosyada olmayan bir alt görev ayrı görev olarak geldi",
+      "IMPORT_RECURRENCE_KEPT_IN_NOTE": "Bir tekrar dönüştürülemedi; açıklamada duruyor",
+      "IMPORT_DATE_KEPT_IN_NOTE": "Bir tarih okunamadı; açıklamada duruyor",
+      "IMPORT_RELATIVE_DATE": "“Bugün” gibi bir tarih bugüne göre okundu",
+      "IMPORT_DATE_YEAR_GUESSED": "Yılı olmayan bir tarih bir sonraki gelişine kondu",
+      "IMPORT_DEADLINE_KEPT_IN_NOTE": "Bitiş tarihinin yanındaki son tarih açıklamada duruyor",
+      "IMPORT_FOLDER_FLATTENED": "Aynı adlı listeler klasör adını proje adında taşıyor",
+      "IMPORT_MULTIDAY_FLATTENED": "Birkaç güne yayılan bir görev artık son gününde bitiyor",
+      "IMPORT_EXTRA_REMINDERS_DROPPED": "Bir görevin yalnız ilk hatırlatıcısı korundu",
+      "IMPORT_REMINDER_NOT_CONVERTED": "Bir hatırlatıcı dönüştürülemedi; açıklamada duruyor",
+      "IMPORT_RECURRING_CHECKLIST_MOVED": "Tekrarlayan bir görevin kontrol listesi açıklamasında duruyor"
+    },
+    "google": {
+      "plain": "Google Takvim bağlı: bu {count} görev orada da görünecek.",
+      "withUndated": "Google Takvim bağlı: bu {count} görev orada da görünecek; tarihi olmayan {undated} görev bugüne düşecek."
+    },
+    "nothingNew": "Bu dosyadaki her şey zaten içe aktarılmış.",
+    "run": "{count} öğeyi içe aktar",
+    "progress": "{done} / {total} aktarıldı",
+    "progressNote": "Bu ekranı açık tutabilirsiniz; büyük bir dosya parça parça gönderilir.",
+    "result": {
+      "headline": "{count} öğe içe aktarıldı.",
+      "tasks": "Görevler",
+      "series": "Tekrarlayan görevler",
+      "checklist": "Kontrol listesi maddeleri",
+      "notes": "Notlar",
+      "projects": "Yeni projeler",
+      "tags": "Yeni etiketler",
+      "already": "Zaten aktarılmış, atlandı",
+      "completedSkipped": "Tamamlanmış, dışarıda bırakıldı",
+      "errors": "İçe aktarılamayan: {count}"
+    },
+    "openHome": "Ana sayfayı aç",
+    "done": "Bitti",
+    "error": {
+      "tooLarge": "Bu dosyalar 8 MB'tan büyük. Projeleri tek tek içe aktarın.",
+      "noCsv": "CSV dosyası bulunamadı. Dışa aktarımın CSV dosyasını ya da yedek ZIP'ini seçin.",
+      "looksTicktick": "Bu bir TickTick yedeğine benziyor. Geri dönüp TickTick'i seçin.",
+      "looksTodoist": "Bu bir Todoist dışa aktarımına benziyor. Geri dönüp Todoist'i seçin.",
+      "proxyLimit": "Sunucu bu büyüklükte bir dosyayı reddetti. Vekil sunucunun yükleme sınırı yükseltilmeli (client_max_body_size 10m) ya da projeleri tek tek içe aktarın.",
+      "offline": "Sunucuya ulaşılamadı. İçe aktarma bağlantı ister.",
+      "read": "Bu dosya okunamadı."
+    }
+  },
+  "capture": {
+    "added": "Eklendi: {title} · {due}",
+    "addedInbox": "Fikirler'e eklendi: {title}",
+    "open": "Aç"
   }
 }

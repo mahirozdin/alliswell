@@ -33,6 +33,20 @@ For contributors — the standing rules (BLUEPRINT §15.3, enforced through revi
 - Rate limiting globally and stricter on auth endpoints.
 - Secrets live in `.env` (gitignored); `.env.example` carries placeholders only.
 
+## Calendar passwords (CalDAV, optional)
+
+With `CALDAV_ENABLED=true` (off by default) the server stores a user's iCloud
+app-specific password or CalDAV app password so it can mirror while their devices are
+off ([ADR-0059](docs/adr/0059-caldav-connector.md)). It cannot be hashed — it is
+replayed on every request — so it is AES-256-GCM encrypted under `CALENDAR_TOKEN_KEY`
+(production refuses a placeholder key once CalDAV is on), checked against the server
+before it is stored, never logged or returned by any endpoint, and deleted on
+disconnect (the app tells the user to revoke it at appleid.apple.com, which we cannot
+do for them). Connecting is session-only — an API key cannot plant one. Requests go only
+to the host the user typed (iCloud: `caldav.icloud.com` and its `pNN-caldav` partitions);
+a redirect elsewhere is refused, so the password never reaches another host, and private
+addresses are refused at connect time unless the admin sets `CALDAV_ALLOW_PRIVATE_HOSTS`.
+
 ## File storage (attachments)
 
 S3/R2 credentials live only on the server (`STORAGE_S3_*`, never committed).

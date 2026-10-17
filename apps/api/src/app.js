@@ -37,12 +37,14 @@ import notificationDeviceRoutes from './routes/notification-devices.js';
 import pushRoutes from './routes/push.js';
 import reminderRoutes from './routes/reminders.js';
 import googleIntegrationRoutes from './routes/integrations-google.js';
+import caldavIntegrationRoutes from './routes/integrations-caldav.js';
 import storageRoutes from './routes/storage.js';
 import fileRoutes from './routes/files.js';
 import folderRoutes from './routes/folders.js';
 import quickLinkRoutes from './routes/quick-links.js';
 import taskSeriesRoutes from './routes/task-series.js';
 import importExportRoutes from './routes/import-export.js';
+import importAppsRoutes from './routes/import-apps.js';
 import noteVersionRoutes from './routes/note-versions.js';
 import { corsOriginAllowed, loadEeOverlay } from './lib/ee.js';
 import entitlementsPlugin from './plugins/entitlements.js';
@@ -218,6 +220,9 @@ export async function buildApp({
   await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
   await app.register(reminderRoutes, { prefix: '/api/v1' });
   await app.register(googleIntegrationRoutes, { prefix: '/api/v1' });
+  // OPH-380: iCloud / any CalDAV server (ADR-0059). Always registered so the
+  // reference is stable; answers CALDAV_NOT_ENABLED while CALDAV_ENABLED is off.
+  await app.register(caldavIntegrationRoutes, { prefix: '/api/v1' });
   await app.register(storageRoutes, { prefix: '/api/v1' });
   await app.register(fileRoutes, { prefix: '/api/v1' });
   await app.register(folderRoutes, { prefix: '/api/v1' });
@@ -225,6 +230,8 @@ export async function buildApp({
   await app.register(taskSeriesRoutes, { prefix: '/api/v1' });
   // OPH-266: the bulk surface an API key exists for (issue #3).
   await app.register(importExportRoutes, { prefix: '/api/v1' });
+  // OPH-371: moving in from Todoist or TickTick (ADR-0052).
+  await app.register(importAppsRoutes, { prefix: '/api/v1' });
   // ALWAYS registered (EE-003): /ee/status is capability discovery, and a CE
   // instance answering 404 here would be indistinguishable from an old server.
   await app.register(eeRoutes, { prefix: '/api/v1' });

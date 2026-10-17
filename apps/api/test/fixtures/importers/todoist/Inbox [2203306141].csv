@@ -1,0 +1,5 @@
+TYPE,CONTENT,DESCRIPTION,PRIORITY,INDENT,AUTHOR,RESPONSIBLE,DATE,DATE_LANG,TIMEZONE,DURATION,DURATION_UNIT,DEADLINE,DEADLINE_LANG
+meta,view_style=list,,,,,,,,,,,,
+task,Faturayı öde @ev,,2,1,Mahir (40001),,Oct 20 2026 2:30 PM,en,Europe/Istanbul,,,,
+task,Kitap oku,,4,1,Mahir (40001),,,en,Europe/Istanbul,,,,
+task,Spor @sağlık,,3,1,Mahir (40001),,"every mon, wed and fri at 7am",en,Europe/Istanbul,,,,

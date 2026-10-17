@@ -11,6 +11,13 @@ database, your own domain — no account with anyone, no data leaving your serve
 Both are published on every release for `linux/amd64` and `linux/arm64`, tagged
 `X.Y.Z`, `X.Y` and `latest`.
 
+Each [release](https://github.com/mahirozdin/alliswell/releases/latest) also carries the
+desktop app: a Windows zip (`alliswell-windows-x64.zip`) and a Linux tar.gz
+(`alliswell-linux-x64.tar.gz`); macOS builds from source. The same binary serves every
+instance: on first start, choose your server on the sign-in screen. The web bundle
+(`alliswell-web-X.Y.Z.tar.gz`) is there too, for serving behind your own API without the
+image.
+
 > **Self-hosting this inside a company?** Two things are worth knowing before you start.
 > The licence draws its line at person versus company — a business running AllisWell for
 > its team needs a commercial licence, at any size ([Licence and commercial
@@ -66,6 +73,10 @@ Terminate TLS in front of the containers. Any proxy works; the two rules that
 matter are **WebSocket upgrade** (live sync uses Socket.IO over WebSocket only)
 and forwarding the client IP.
 
+Also let request bodies up to **10 MB** through to the API. The import wizard
+sends a Todoist or TickTick export in one request, and nginx's default limit
+(1 MB) answers a larger backup with `413`. Caddy has no limit by default.
+
 <details>
 <summary>Caddy (simplest — automatic certificates)</summary>
 
@@ -88,6 +99,7 @@ Caddy proxies WebSockets and sets `X-Forwarded-*` on its own.
 ```nginx
 server {
     server_name api.alliswell.example;
+    client_max_body_size 10m;   # imports from Todoist/TickTick send up to 10 MB
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -293,6 +305,31 @@ they happen. Google only pushes to a domain it has verified (Search Console →
 Google Cloud domain verification); until then AllisWell polls every few minutes
 on its own, so sync works either way.
 
+## 6a. Optional: iCloud or any CalDAV calendar
+
+Off by default. Turning it on lets your users mirror their tasks into an iCloud calendar
+(with an Apple app-specific password) or any CalDAV server — Nextcloud, Radicale, Fastmail —
+two-way, from this server, on every platform ([CALDAV.md](CALDAV.md),
+[ADR-0059](adr/0059-caldav-connector.md)).
+
+1. Set `CALENDAR_TOKEN_KEY` (`openssl rand -hex 32`) — it encrypts the stored calendar
+   passwords; production refuses to start with CalDAV on and a placeholder key.
+2. Set `CALDAV_ENABLED=true` in `.env` and restart.
+
+**What you take on:** this server then **stores your users' calendar passwords**
+(encrypted, never shown again, checked before they are kept). Whoever runs the server
+and holds the key can read those calendars — the app says so before a user connects.
+Back up `CALENDAR_TOKEN_KEY` with the database (§4b).
+
+CalDAV has no push: accounts are polled every `CALENDAR_SYNC_SWEEP_SEC` (300 s).
+
+**A Nextcloud on your LAN, or plain http:** by default the connector only talks to public
+`https://` hosts — every address is checked when it connects, so a user cannot point the
+server at your router or another internal service. `CALDAV_ALLOW_PRIVATE_HOSTS=true` lifts
+that for a LAN Nextcloud. **Every user of this instance can then make the server send
+requests into your network.** Only turn it on for an instance where you trust everyone
+with an account.
+
 ## 6b. AI (on by default — BYOK)
 
 The embedded AI track (Epic 20, [AI.md](AI.md)) is **bring-your-own-key**: users
@@ -331,6 +368,12 @@ HTML page means the request reached a website instead of the API. Clients may
 register dynamically or name themselves by a metadata URL
 (`MCP_CIMD_ENABLED`, on by default). Full setup, troubleshooting and the tool
 list: [MCP.md](MCP.md).
+
+The connector's sign-in page offers **Continue with Google / Apple** when
+`SIGN_IN_GOOGLE_WEB_CLIENT_ID` / `SIGN_IN_APPLE_SERVICE_ID` are set (Apple needs
+an https `API_PUBLIC_URL`). Register `<API_PUBLIC_URL>/oauth/authorize/callback`
+as an authorized redirect URI on the Google *Web application* client and as a
+Return URL on the Apple Services ID ([ADR-0049](adr/0049-mcp-consent-social-sign-in-and-second-factor.md)).
 
 ## 6d. Optional: push (and why reminders work without it)
 

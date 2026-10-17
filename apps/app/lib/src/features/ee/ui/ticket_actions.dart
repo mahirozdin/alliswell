@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/fold.dart';
 import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
@@ -83,6 +84,339 @@ class EeTicketPriorityAction extends ConsumerWidget {
               ticket.id,
               _PrioritySheet(ticketId: ticket.id),
             ),
+    );
+  }
+}
+
+/// EE-307 — the third door: send the request to another service or unit.
+///
+/// Shown on every live request, like the two above, and for the same reason
+/// they read nothing on open: whether THIS person may transfer is the
+/// server's answer, asked when the sheet opens (the detail's `canTransfer`).
+/// A request the server already said no about loses the chip.
+class EeTicketTransferAction extends ConsumerWidget {
+  const EeTicketTransferAction({super.key, required this.ticket});
+
+  final TicketRecord ticket;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final offline = ref.watch(serverReachabilityProvider) == false;
+    return ActionChip(
+      key: const Key('ticket-transfer'),
+      avatar: const Icon(Icons.alt_route, size: 18),
+      label: Text('ee.tickets.transfer.action'.tr()),
+      tooltip: 'ee.tickets.transfer.title'.tr(),
+      onPressed: offline ? null : () => _openTransfer(context, ref, ticket.id),
+    );
+  }
+}
+
+/// Opens the transfer sheet; a transfer that happened is confirmed, every
+/// unit's engine asked for the moved rows, and — when this person no longer
+/// staffs the request where it landed — the screen about it is left.
+Future<void> _openTransfer(
+  BuildContext context,
+  WidgetRef ref,
+  String ticketId,
+) async {
+  final messenger = ScaffoldMessenger.maybeOf(context);
+  final done = await showModalBottomSheet<EeTransferResult>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (_) => EeTicketTransferSheet(ticketId: ticketId),
+  );
+  if (done == null || !context.mounted) return;
+  ref.invalidate(eeTicketActionsProvider(ticketId));
+  ref.invalidate(eeTicketRelationsProvider(ticketId));
+  // The request left one unit's stream and joined another's (EE-296: one
+  // engine per unit) — both are asked, not only the one on screen.
+  for (final engine in ref.read(syncEnginesProvider).values) {
+    unawaited(engine.syncNow());
+  }
+  messenger?.showSnackBar(
+    SnackBar(
+      content: Text(
+        done.changed
+            ? 'ee.tickets.transfer.done'.tr(args: {'where': done.where})
+            : 'ee.tickets.transfer.unchanged'.tr(),
+      ),
+    ),
+  );
+  if (!done.stillDesk) await Navigator.of(context).maybePop();
+}
+
+/// The transfer sheet (EE-307): the team's routed services grouped by the
+/// unit that answers them, an optional reason for the desk, and — when the
+/// pick is another unit — what that will do, said before the tap.
+class EeTicketTransferSheet extends ConsumerStatefulWidget {
+  const EeTicketTransferSheet({super.key, required this.ticketId});
+
+  final String ticketId;
+
+  @override
+  ConsumerState<EeTicketTransferSheet> createState() => _TransferSheetState();
+}
+
+class _TransferSheetState extends ConsumerState<EeTicketTransferSheet> {
+  final _query = TextEditingController();
+  final _reason = TextEditingController();
+  EeTransferTarget? _picked;
+  bool _busy = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _query.dispose();
+    _reason.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final picked = _picked;
+    if (picked == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      final reason = _reason.text.trim();
+      final result = await ref
+          .read(eeTicketWriteApiProvider)
+          .transfer(
+            widget.ticketId,
+            serviceId: picked.serviceId,
+            unitId: picked.unitId,
+            reason: reason.isEmpty ? null : reason,
+          );
+      if (mounted) Navigator.of(context).pop(result);
+    } on ApiException catch (failure) {
+      if (failure.code == 'NETWORK_ERROR') {
+        ref.read(serverReachabilityProvider.notifier).unreachable();
+      }
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _error = localizedError(failure);
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final actions = ref.watch(eeTicketActionsProvider(widget.ticketId));
+    final targets = ref.watch(eeTicketTransferTargetsProvider(widget.ticketId));
+    return _answered(context, ref, actions, (data) {
+      final theme = Theme.of(context);
+      final header = <Widget>[
+        Text(
+          'ee.tickets.transfer.title'.tr(),
+          style: theme.textTheme.titleMedium,
+        ),
+      ];
+      if (!data.canTransfer || data.approvalPending) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...header,
+            const SizedBox(height: AwSpace.x2),
+            Text(
+              (data.approvalPending
+                      ? 'ee.tickets.transfer.approvalPending'
+                      : 'ee.tickets.transfer.notAllowed')
+                  .tr(),
+              key: const Key('ticket-transfer-unavailable'),
+            ),
+          ],
+        );
+      }
+      final all = targets.value;
+      if (all == null) {
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...header,
+            if (targets.hasError)
+              AwInlineError(message: localizedError(targets.error))
+            else
+              const Padding(
+                padding: EdgeInsets.all(AwSpace.x6),
+                child: Center(child: CircularProgressIndicator()),
+              ),
+          ],
+        );
+      }
+      return _body(context, all);
+    });
+  }
+
+  Widget _body(BuildContext context, List<EeTransferTarget> all) {
+    final theme = Theme.of(context);
+    final here = all.where((t) => t.current).firstOrNull;
+    final query = foldSearchText(_query.text.trim());
+    final shown = query.isEmpty
+        ? all
+        : all
+              .where(
+                (t) =>
+                    foldSearchText(t.serviceName).contains(query) ||
+                    foldSearchText(t.unitName).contains(query),
+              )
+              .toList();
+    final picked = _picked;
+    final crossUnit =
+        picked != null && here != null && picked.unitId != here.unitId;
+    final movable = all.any((t) => !t.current);
+
+    final rows = <Widget>[];
+    String? unit;
+    for (final target in shown) {
+      if (target.unitId != unit) {
+        unit = target.unitId;
+        rows.add(
+          Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x3, bottom: AwSpace.x1),
+            child: Text(
+              target.unitName,
+              key: Key('ticket-transfer-unit-${target.unitId}'),
+              style: theme.textTheme.titleSmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        );
+      }
+      rows.add(
+        RadioListTile<EeTransferTarget>(
+          key: Key('ticket-transfer-${target.unitId}-${target.serviceId}'),
+          contentPadding: EdgeInsets.zero,
+          value: target,
+          enabled: !_busy && !target.current,
+          title: Text(target.serviceName),
+          secondary: target.current
+              ? Text(
+                  'ee.tickets.transfer.current'.tr(),
+                  key: const Key('ticket-transfer-current'),
+                  style: _quiet(context),
+                )
+              : null,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'ee.tickets.transfer.title'.tr(),
+          style: theme.textTheme.titleMedium,
+        ),
+        if (here != null) ...[
+          const SizedBox(height: AwSpace.x1),
+          Text(
+            'ee.tickets.transfer.now'.tr(
+              args: {'where': '${here.unitName} · ${here.serviceName}'},
+            ),
+            style: _quiet(context),
+          ),
+        ],
+        const SizedBox(height: AwSpace.x3),
+        if (!movable)
+          Text(
+            'ee.tickets.transfer.none'.tr(),
+            key: const Key('ticket-transfer-none'),
+          )
+        else ...[
+          TextField(
+            key: const Key('ticket-transfer-search'),
+            controller: _query,
+            enabled: !_busy,
+            decoration: InputDecoration(
+              prefixIcon: const Icon(Icons.search),
+              hintText: 'ee.tickets.transfer.search'.tr(),
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (shown.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AwSpace.x3),
+              child: Text('ee.tickets.transfer.noMatch'.tr()),
+            ),
+          RadioGroup<EeTransferTarget>(
+            groupValue: picked,
+            onChanged: (value) {
+              if (!_busy && value != null) setState(() => _picked = value);
+            },
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: rows,
+            ),
+          ),
+          const SizedBox(height: AwSpace.x3),
+          TextField(
+            key: const Key('ticket-transfer-reason'),
+            controller: _reason,
+            enabled: !_busy,
+            minLines: 2,
+            maxLines: 4,
+            maxLength: 2000,
+            decoration: InputDecoration(
+              labelText: 'ee.tickets.transfer.reason'.tr(),
+              hintText: 'ee.tickets.transfer.reasonHint'.tr(),
+            ),
+          ),
+          if (picked != null) ...[
+            const SizedBox(height: AwSpace.x2),
+            Row(
+              key: Key(
+                crossUnit
+                    ? 'ticket-transfer-cross-unit'
+                    : 'ticket-transfer-same-unit',
+              ),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(
+                  crossUnit ? Icons.info_outline : Icons.swap_horiz,
+                  size: 18,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+                const SizedBox(width: AwSpace.x2),
+                Expanded(
+                  child: Text(
+                    crossUnit
+                        ? 'ee.tickets.transfer.crossUnit'.tr(
+                            args: {'unit': picked.unitName},
+                          )
+                        : 'ee.tickets.transfer.sameUnit'.tr(),
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: AwSpace.x3),
+          _StepButtons(
+            busy: _busy,
+            onBack: () => Navigator.of(context).pop(),
+            confirmKey: const Key('ticket-transfer-apply'),
+            confirmIcon: Icons.alt_route,
+            confirmLabel: 'ee.tickets.transfer.apply'.tr(),
+            onConfirm: picked == null ? null : _send,
+          ),
+        ],
+        if (_error != null) ...[
+          const SizedBox(height: AwSpace.x3),
+          AwInlineError(
+            message: _error!,
+            textKey: const Key('ticket-transfer-error'),
+          ),
+        ],
+      ],
     );
   }
 }

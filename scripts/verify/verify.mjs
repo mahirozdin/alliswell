@@ -82,7 +82,19 @@ const steps = [
   gate(
     'docs',
     'npm run -s check:docs',
-    any(ext(/\.md$/), under('docs/', 'scripts/docs/', 'scripts/tasks/', 'package.json')),
+    any(
+      ext(/\.md$/),
+      under(
+        'docs/',
+        'scripts/docs/',
+        'scripts/tasks/',
+        'package.json',
+        'apps/landing/',
+        'apps/app/web/',
+        'apps/app/assets/i18n/',
+        'scripts/screenshots/',
+      ),
+    ),
   ),
   gate(
     'i18n',
@@ -221,6 +233,8 @@ const steps = [
   {
     name: 'native-ios',
     where: 'local',
+    host: 'darwin',
+    hostNote: 'build it on a Mac (docs/DEVICE-CHECKS.md)',
     cwd: 'apps/app',
     modes: ['batch'],
     heavy: true,
@@ -231,6 +245,8 @@ const steps = [
   {
     name: 'native-macos',
     where: 'local',
+    host: 'darwin',
+    hostNote: 'build it on a Mac (docs/DEVICE-CHECKS.md)',
     cwd: 'apps/app',
     modes: ['batch'],
     heavy: true,

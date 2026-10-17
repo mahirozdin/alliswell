@@ -38,6 +38,7 @@ import {
   adoptTaskIntoSeries,
   materializeSeries,
   normalizeTemplate,
+  onTaskStatusChange,
   parseJsonColumn,
   plannedDays,
   propagateSeriesScope,
@@ -340,6 +341,18 @@ function parseJson(value) {
   }
 }
 
+/**
+ * When an offline completion really happened (OPH-375): the client's
+ * `localUpdatedAt`, kept inside [the task's creation, now]. Anything missing or
+ * unparsable falls back to the server clock, as before.
+ */
+export function clientCompletionMoment(localUpdatedAt, row, now = new Date()) {
+  const client = localUpdatedAt ? Date.parse(localUpdatedAt) : Number.NaN;
+  if (!Number.isFinite(client)) return now;
+  const created = row?.created_at ? new Date(row.created_at).getTime() : Number.NEGATIVE_INFINITY;
+  return new Date(Math.min(now.getTime(), Math.max(client, created)));
+}
+
 export default async function syncRoutes(app) {
   /**
    * OPH-267: one snapshot for a note the offline path just wrote. Reads the
@@ -362,6 +375,15 @@ export default async function syncRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
   // ══ OPH-051 — incremental pull ═════════════════════════════════════════════
+
+  /**
+   * OPH-378 — a row that moved to another workspace is a tombstone in the
+   * stream it left (pull and the post-write check share this). Only a
+   * row that names a workspace can have left one; `rebaseFor` is stricter still
+   * and refuses any row that does not name this one.
+   */
+  const movedAway = (row, workspaceId) =>
+    typeof row.workspace_id === 'string' && row.workspace_id !== workspaceId;
 
   // Batch snapshot loaders, one per sync entity type: id list → Map(id → row).
   const SNAPSHOT_LOADERS = {
@@ -544,7 +566,14 @@ export default async function syncRoutes(app) {
         const load = typeof entry === 'function' ? entry : entry.load;
         const { rows, serialize } = await load(ids, { userId: request.user.id });
         for (const row of rows) {
-          snapshots.set(`${type}:${row.id}`, row.deleted_at != null ? null : serialize(row));
+          // A row whose workspace_id is not this stream's has MOVED: in the
+          // stream it left it is a tombstone, never a snapshot — the loaders
+          // read by id, so serializing it here would hand the row's current
+          // contents to members of a workspace it no longer belongs to.
+          // `rebaseFor` below already refuses such a row on push. Rows that
+          // carry no workspace_id are untouched by it.
+          const gone = row.deleted_at != null || movedAway(row, workspaceId);
+          snapshots.set(`${type}:${row.id}`, gone ? null : serialize(row));
         }
         if (entry.userScoped) {
           // ADR-0018: rows another member owns are not "deleted for me", they
@@ -937,9 +966,9 @@ export default async function syncRoutes(app) {
         }
         await materializeSeries(trx, { workspaceId: ctx.workspaceId, series });
       },
-      async afterUpdate(trx, ctx, mutation) {
+      async afterUpdate(trx, ctx, mutation, before) {
         const series = await trx('task_series').where({ id: mutation.entityId }).first();
-        await rebuildFuture(trx, { workspaceId: ctx.workspaceId, series });
+        await rebuildFuture(trx, { workspaceId: ctx.workspaceId, series, previous: before });
       },
       // Stopping a series removes its future and keeps its past (DESIGN §25 R7),
       // so the delete cannot be the generic soft-delete patch.
@@ -1111,6 +1140,18 @@ export default async function syncRoutes(app) {
         await reconcileTaskReminder(trx, { workspaceId: ctx.workspaceId, task: fresh });
         if (keptIntents.some((i) => i.name === 'snoozed_until')) {
           await applyReminderSnooze(trx, ctx.workspaceId, fresh);
+        }
+        // OPH-375: an offline completion of an after-completion occurrence
+        // spawns the next one HERE, when the push lands — the server stays the
+        // only producer of occurrences (ADR-0020 §4, ADR-0056). Only when the
+        // status intent survived LWW: a losing completion spawns nothing.
+        if (keptIntents.some((i) => i.name === 'status')) {
+          await onTaskStatusChange(trx, {
+            workspaceId: ctx.workspaceId,
+            before: row,
+            after: fresh,
+            userId: ctx.userId,
+          });
         }
         // OPH-206: the scope question, answered offline. It rides an ordinary
         // `update` because the protocol has no room for a fourth verb — the
@@ -1438,6 +1479,15 @@ export default async function syncRoutes(app) {
       }
     }
 
+    // OPH-375 (ADR-0056): a completion that waited in the outbox happened when
+    // the user tapped it, not when the push arrived. The mutation's
+    // `localUpdatedAt` is that moment; it becomes `completed_at` — clamped to
+    // [task created, now], so a wrong device clock cannot date it in the future
+    // or before the task existed. An after-completion series counts from it.
+    if (mutation.entityType === 'task' && prepared.rowPatch.completed_at instanceof Date) {
+      prepared.rowPatch.completed_at = clientCompletionMoment(mutation.localUpdatedAt, row);
+    }
+
     const changedFields = [
       ...Object.keys(prepared.rowPatch),
       ...keptIntents.filter((i) => i.cols.length === 0).map((i) => i.name),
@@ -1657,9 +1707,12 @@ export default async function syncRoutes(app) {
       for (const i of indexes) {
         const row = byId.get(mutations[i].entityId);
         // The pull rule, word for word: a soft-deleted row is a tombstone,
-        // and so is a missing one — unless the type is per-user, where a row
-        // the loader withholds is somebody else's, not gone.
-        const gone = row ? row.deleted_at != null : !entry.userScoped;
+        // and so is one that moved to another workspace (OPH-378), and so is a
+        // missing one — unless the type is per-user, where a row the loader
+        // withholds is somebody else's, not gone.
+        const gone = row
+          ? row.deleted_at != null || movedAway(row, ctx.workspaceId)
+          : !entry.userScoped;
         if (!gone) continue;
         results[i] = {
           ...results[i],

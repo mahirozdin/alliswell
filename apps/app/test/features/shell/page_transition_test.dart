@@ -15,6 +15,7 @@ import 'package:alliswell/src/widgets/glass.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/nav.dart';
 
 /// OPH-194 — a route is opaque to the route beneath it (DESIGN §21 T1).
 ///
@@ -111,7 +112,7 @@ void main() {
     await tester.pumpWidget(await app(FakeApi()));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Notes').last);
+    await tester.tap(navTab('Notes'));
     // One frame: an IndexedStack swap has nothing to animate.
     await tester.pump();
     expect(find.byKey(const Key('notes-refresh')), findsOneWidget);

@@ -1,0 +1,3333 @@
+{
+ "_comment": "OPH-373 quick-add grammar contract (ADR-0054). now defaults to 2026-10-16T10:00 (a Friday); projects default to p1 'Ev İşleri' and p2 'Work'. due is local YYYY-MM-DDTHH:mm, when is YYYY-MM-DD. A future JS twin must pass this file unchanged.",
+ "defaults": {
+  "now": "2026-10-16T10:00",
+  "projects": [
+   {
+    "id": "p1",
+    "name": "Ev İşleri"
+   },
+   {
+    "id": "p2",
+    "name": "Work"
+   }
+  ]
+ },
+ "cases": [
+  {
+   "group": "relative",
+   "text": "Yarın 9'da kira #ev",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [
+     "ev"
+    ],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "due",
+     "time",
+     "tag"
+    ],
+    "dueHasTime": true
+   }
+  },
+  {
+   "group": "relative",
+   "text": "yarin 9da kira",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "bugün 14:30 toplantı",
+   "expect": {
+    "title": "toplantı",
+    "due": "2026-10-16T14:30",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "today review",
+   "expect": {
+    "title": "review",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "dueHasTime": false
+   }
+  },
+  {
+   "group": "relative",
+   "text": "tomorrow call the bank",
+   "expect": {
+    "title": "call the bank",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "öbür gün dişçi",
+   "expect": {
+    "title": "dişçi",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "öbürgün dişçi",
+   "expect": {
+    "title": "dişçi",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "yarından sonra fatura",
+   "expect": {
+    "title": "fatura",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "day after tomorrow dentist",
+   "expect": {
+    "title": "dentist",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "3 gün sonra ara",
+   "expect": {
+    "title": "ara",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "iki hafta sonra kontrol",
+   "expect": {
+    "title": "kontrol",
+    "due": "2026-10-30T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "1 ay sonra yenile",
+   "expect": {
+    "title": "yenile",
+    "due": "2026-11-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "1 ay sonra yenile",
+   "now": "2026-01-31T10:00",
+   "expect": {
+    "title": "yenile",
+    "due": "2026-02-28T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "in 3 days call",
+   "expect": {
+    "title": "call",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "in a week follow up",
+   "expect": {
+    "title": "follow up",
+    "due": "2026-10-23T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "haftaya rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-23T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "gelecek hafta sunum",
+   "expect": {
+    "title": "sunum",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "önümüzdeki hafta sunum",
+   "expect": {
+    "title": "sunum",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "next week review",
+   "expect": {
+    "title": "review",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "next week review",
+   "options": {
+    "weekStart": 7
+   },
+   "expect": {
+    "title": "review",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "hafta sonu temizlik",
+   "expect": {
+    "title": "temizlik",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "haftasonu temizlik",
+   "expect": {
+    "title": "temizlik",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "this weekend clean",
+   "expect": {
+    "title": "clean",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "hafta sonu temizlik",
+   "now": "2026-10-17T08:00",
+   "expect": {
+    "title": "temizlik",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "ay sonu kira",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-31T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "ayın sonuna kadar kira",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-31T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "end of the month invoice",
+   "expect": {
+    "title": "invoice",
+    "due": "2026-10-31T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "yarın",
+   "expect": {
+    "title": "yarın",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "due"
+    ]
+   }
+  },
+  {
+   "group": "relative",
+   "text": "yarın",
+   "now": "2026-11-30T22:00",
+   "expect": {
+    "title": "yarın",
+    "due": "2026-12-01T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "yarın",
+   "now": "2026-12-31T22:00",
+   "expect": {
+    "title": "yarın",
+    "due": "2027-01-01T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "relative",
+   "text": "yarın",
+   "now": "2026-03-28T23:30",
+   "expect": {
+    "title": "yarın",
+    "due": "2026-03-29T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "cuma toplantı",
+   "expect": {
+    "title": "toplantı",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "cumaya kadar rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "due"
+    ]
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "cuma'ya rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "pazartesi günü spor",
+   "expect": {
+    "title": "spor",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "pazartesiye sunum",
+   "expect": {
+    "title": "sunum",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "salıya kadar",
+   "expect": {
+    "title": "salıya kadar",
+    "due": "2026-10-20T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "carsamba toplanti",
+   "expect": {
+    "title": "toplanti",
+    "due": "2026-10-21T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "perşembe ödev",
+   "expect": {
+    "title": "ödev",
+    "due": "2026-10-22T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "cumartesi piknik",
+   "expect": {
+    "title": "piknik",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "pazar kahvaltı",
+   "expect": {
+    "title": "kahvaltı",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "pazara kadar bitir",
+   "expect": {
+    "title": "bitir",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "bu cuma sinema",
+   "expect": {
+    "title": "sinema",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "haftaya cuma sunum",
+   "expect": {
+    "title": "sunum",
+    "due": "2026-10-23T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "haftaya salı sunum",
+   "expect": {
+    "title": "sunum",
+    "due": "2026-10-20T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "gelecek hafta çarşamba",
+   "expect": {
+    "title": "gelecek hafta çarşamba",
+    "due": "2026-10-21T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "next friday demo",
+   "expect": {
+    "title": "demo",
+    "due": "2026-10-23T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "next monday demo",
+   "expect": {
+    "title": "demo",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "next monday demo",
+   "options": {
+    "weekStart": 2
+   },
+   "expect": {
+    "title": "demo",
+    "due": "2026-10-26T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "önümüzdeki cuma maç",
+   "expect": {
+    "title": "maç",
+    "due": "2026-10-23T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "friday 3pm call",
+   "expect": {
+    "title": "call",
+    "due": "2026-10-16T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "on monday call",
+   "expect": {
+    "title": "call",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "wed review",
+   "expect": {
+    "title": "review",
+    "due": "2026-10-21T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "next sat party",
+   "expect": {
+    "title": "party",
+    "due": "2026-10-24T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "on sun brunch",
+   "expect": {
+    "title": "brunch",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "cuma 11'de",
+   "expect": {
+    "title": "cuma 11'de",
+    "due": "2026-10-16T11:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "cuma 9'da",
+   "expect": {
+    "title": "cuma 9'da",
+    "due": "2026-10-23T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "weekday",
+   "text": "pazar günü kahvaltı",
+   "expect": {
+    "title": "kahvaltı",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15 Kasım fatura",
+   "expect": {
+    "title": "fatura",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15 Kasım 2026 fatura",
+   "expect": {
+    "title": "fatura",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15 Kasım'da etkinlik",
+   "expect": {
+    "title": "etkinlik",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "Kasım 15 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "Nov 15 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15 Nov x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "November 15th, 2027 x",
+   "expect": {
+    "title": "x",
+    "due": "2027-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15th of November x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15.11 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15.11.2026 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15.11'de x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15/11 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15/11/26 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "2026-11-15 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "05/11 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-05T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "05/11 x",
+   "options": {
+    "monthFirstSlash": true
+   },
+   "expect": {
+    "title": "x",
+    "due": "2027-05-11T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "11/15 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "15 ocak x",
+   "now": "2026-12-20T10:00",
+   "expect": {
+    "title": "x",
+    "due": "2027-01-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "1 ocak x",
+   "expect": {
+    "title": "x",
+    "due": "2027-01-01T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "10 ekim x",
+   "expect": {
+    "title": "x",
+    "due": "2027-10-10T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "16 ekim x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "29.02.2028 x",
+   "expect": {
+    "title": "x",
+    "due": "2028-02-29T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "aralık 3 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-12-03T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "3 aralığa kadar x",
+   "expect": {
+    "title": "x",
+    "due": "2026-12-03T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "date",
+   "text": "call mom on Nov 15",
+   "expect": {
+    "title": "call mom",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "saat 14 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T14:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "time"
+    ]
+   }
+  },
+  {
+   "group": "time",
+   "text": "saat 14:30 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T14:30",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "saat 14.30 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T14:30",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "saat 9 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "14'te x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T14:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "13'te x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T13:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "15'te x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "9:30'da x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T09:30",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "9'de x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "sabah 9 koşu",
+   "expect": {
+    "title": "koşu",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "akşam 7'de yemek",
+   "expect": {
+    "title": "yemek",
+    "due": "2026-10-16T19:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "öğleden sonra 3 toplantı",
+   "expect": {
+    "title": "toplantı",
+    "due": "2026-10-16T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "gece 11 ilaç",
+   "expect": {
+    "title": "ilaç",
+    "due": "2026-10-16T23:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "gece 12 yedek",
+   "expect": {
+    "title": "yedek",
+    "due": "2026-10-17T00:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "öğlen ara",
+   "expect": {
+    "title": "ara",
+    "due": "2026-10-16T12:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "at 9 standup",
+   "expect": {
+    "title": "standup",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "at 15:00 x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "3 pm x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "3pm x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "3:30pm x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T15:30",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "12am x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T00:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "12pm x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T12:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "noon lunch",
+   "expect": {
+    "title": "lunch",
+    "due": "2026-10-16T12:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "midnight deploy",
+   "expect": {
+    "title": "deploy",
+    "due": "2026-10-17T00:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "9'da kahvaltı",
+   "expect": {
+    "title": "kahvaltı",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "yarın sabah 8 uçak",
+   "expect": {
+    "title": "uçak",
+    "due": "2026-10-17T08:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "kira yarın 9'da",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "9'da kira yarın",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "tomorrow at 3pm call",
+   "expect": {
+    "title": "call",
+    "due": "2026-10-17T15:00",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "time",
+   "text": "yarın 25:00 x",
+   "expect": {
+    "title": "25:00 x",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "rapor başla pazartesi son cuma",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-23T23:59",
+    "when": "2026-10-19",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "when",
+     "due"
+    ]
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "pazartesi başla rapor",
+   "expect": {
+    "title": "rapor",
+    "due": null,
+    "when": "2026-10-19",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "when"
+    ]
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "start mon report",
+   "expect": {
+    "title": "report",
+    "due": null,
+    "when": "2026-10-19",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "starting tomorrow diet",
+   "expect": {
+    "title": "diet",
+    "due": null,
+    "when": "2026-10-17",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "başlangıç 15.11 proje",
+   "expect": {
+    "title": "proje",
+    "due": null,
+    "when": "2026-11-15",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "due friday report",
+   "expect": {
+    "title": "report",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "by tomorrow x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "deadline nov 20 essay",
+   "expect": {
+    "title": "essay",
+    "due": "2026-11-20T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "son cuma rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "son gün 15 kasım başvuru",
+   "expect": {
+    "title": "başvuru",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "bitiş yarın x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "15 kasıma kadar başvuru",
+   "expect": {
+    "title": "başvuru",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "başla pazartesi 9'da rapor",
+   "expect": {
+    "title": "9'da rapor",
+    "due": null,
+    "when": "2026-10-19",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "when"
+    ]
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "başla yarın son cuma 17'de rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-23T17:00",
+    "when": "2026-10-17",
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "yarın ve cuma",
+   "expect": {
+    "title": "ve cuma",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "due-when",
+   "text": "son 3 gün",
+   "expect": {
+    "title": "son 3 gün",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her gün su iç",
+   "expect": {
+    "title": "su iç",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "hergün su iç",
+   "expect": {
+    "title": "su iç",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her gün 9'da ilaç",
+   "expect": {
+    "title": "ilaç",
+    "due": "2026-10-17T09:00",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her pazartesi 9'da spor",
+   "expect": {
+    "title": "spor",
+    "due": "2026-10-19T09:00",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her pazartesi 9'da spor",
+   "now": "2026-10-19T10:00",
+   "expect": {
+    "title": "spor",
+    "due": "2026-10-26T09:00",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her pazartesi ve perşembe yoga",
+   "expect": {
+    "title": "yoga",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      },
+      {
+       "day": "TH",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ayın 31'i kira",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-31T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      31
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ayın 15'inde fatura",
+   "expect": {
+    "title": "fatura",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      15
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ayın 1'i maaş",
+   "expect": {
+    "title": "maaş",
+    "due": "2026-11-01T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      1
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ayın son günü rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-31T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      -1
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every monday gym",
+   "expect": {
+    "title": "gym",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every mon, thu and fri gym",
+   "expect": {
+    "title": "gym",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      },
+      {
+       "day": "TH",
+       "ordinal": null
+      },
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every weekday standup",
+   "expect": {
+    "title": "standup",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      },
+      {
+       "day": "TU",
+       "ordinal": null
+      },
+      {
+       "day": "WE",
+       "ordinal": null
+      },
+      {
+       "day": "TH",
+       "ordinal": null
+      },
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every weekday standup",
+   "now": "2026-10-17T10:00",
+   "expect": {
+    "title": "standup",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      },
+      {
+       "day": "TU",
+       "ordinal": null
+      },
+      {
+       "day": "WE",
+       "ordinal": null
+      },
+      {
+       "day": "TH",
+       "ordinal": null
+      },
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "hafta içi her gün koşu",
+   "expect": {
+    "title": "koşu",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      },
+      {
+       "day": "TU",
+       "ordinal": null
+      },
+      {
+       "day": "WE",
+       "ordinal": null
+      },
+      {
+       "day": "TH",
+       "ordinal": null
+      },
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her hafta içi koşu",
+   "expect": {
+    "title": "koşu",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      },
+      {
+       "day": "TU",
+       "ordinal": null
+      },
+      {
+       "day": "WE",
+       "ordinal": null
+      },
+      {
+       "day": "TH",
+       "ordinal": null
+      },
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her hafta toplantı",
+   "expect": {
+    "title": "toplantı",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "iki haftada bir temizlik",
+   "expect": {
+    "title": "temizlik",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 2,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every other week x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 2,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every 2 weeks x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 2,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her 3 günde bir sula",
+   "expect": {
+    "title": "sula",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 3,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every 3 days water",
+   "expect": {
+    "title": "water",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 3,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "ayda bir rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ay fatura",
+   "expect": {
+    "title": "fatura",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her yıl doğum günü",
+   "expect": {
+    "title": "doğum günü",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "yearly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every year x",
+   "expect": {
+    "title": "x",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "yearly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every 15th rent",
+   "expect": {
+    "title": "rent",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      15
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every month on the 15th rent",
+   "expect": {
+    "title": "rent",
+    "due": "2026-11-15T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      15
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "monthly on the 1st report",
+   "expect": {
+    "title": "report",
+    "due": "2026-11-01T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      1
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every last day of the month backup",
+   "expect": {
+    "title": "backup",
+    "due": "2026-10-31T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      -1
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "mondays gym",
+   "expect": {
+    "title": "gym",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "cumaları halı saha",
+   "expect": {
+    "title": "halı saha",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "daily standup",
+   "expect": {
+    "title": "standup",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "weekly review",
+   "expect": {
+    "title": "review",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "Yarın 9'da kira #ev p1 her ayın 31'i",
+   "expect": {
+    "title": "kira",
+    "due": "2026-10-31T09:00",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "byMonthDay": [
+      31
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [
+     "ev"
+    ],
+    "project": null,
+    "priority": "high",
+    "kinds": [
+     "due",
+     "time",
+     "tag",
+     "priority",
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ayın 32'si x",
+   "expect": {
+    "title": "her ayın 32'si x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "#ev #Ev #iş alışveriş",
+   "expect": {
+    "title": "alışveriş",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [
+     "ev",
+     "iş"
+    ],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "süt al #market,",
+   "expect": {
+    "title": "süt al",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [
+     "market"
+    ],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "mail ali@x.com#x",
+   "expect": {
+    "title": "mail ali@x.com#x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "#1 numara",
+   "expect": {
+    "title": "#1 numara",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "oku https://x.dev/a#b",
+   "expect": {
+    "title": "oku https://x.dev/a#b",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "+ev işleri bulaşık",
+   "expect": {
+    "title": "bulaşık",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": "p1",
+    "priority": null,
+    "kinds": [
+     "project"
+    ]
+   }
+  },
+  {
+   "group": "marks",
+   "text": "+Ev_İşleri x",
+   "expect": {
+    "title": "+Ev_İşleri x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "+Work report",
+   "expect": {
+    "title": "report",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": "p2",
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "+wo report",
+   "expect": {
+    "title": "report",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": "p2",
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "+Unknown thing",
+   "expect": {
+    "title": "+Unknown thing",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "+Work report",
+   "options": {
+    "parseProject": false
+   },
+   "expect": {
+    "title": "+Work report",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "marks",
+   "text": "p1 acil iş",
+   "expect": {
+    "title": "acil iş",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "high"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "P2 x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "medium"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "p3 x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "low"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "p4 x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "none"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!1 x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "high"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!2 orta",
+   "expect": {
+    "title": "orta",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "medium"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!acil x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "urgent"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!urgent x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "urgent"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!yüksek x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "high"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!düşük x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "low"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "!low x",
+   "expect": {
+    "title": "x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "low"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "p1 p3 x",
+   "expect": {
+    "title": "p3 x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": "high"
+   }
+  },
+  {
+   "group": "marks",
+   "text": "p5 x",
+   "expect": {
+    "title": "p5 x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "options",
+   "text": "yarın x",
+   "options": {
+    "defaultTime": "07:15"
+   },
+   "expect": {
+    "title": "x",
+    "due": "2026-10-17T07:15",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "options",
+   "text": "Yarın 9'da kira",
+   "options": {
+    "ignored": [
+     "due:yarin",
+     "time:9'da"
+    ]
+   },
+   "expect": {
+    "title": "Yarın 9'da kira",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "options",
+   "text": "yarın kira cuma",
+   "options": {
+    "ignored": [
+     "due:yarin"
+    ]
+   },
+   "expect": {
+    "title": "yarın kira",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "options",
+   "text": "yarın kira cuma",
+   "expect": {
+    "title": "kira cuma",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "options",
+   "text": "#ev x",
+   "options": {
+    "ignored": [
+     "tag:#ev"
+    ]
+   },
+   "expect": {
+    "title": "#ev x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "options",
+   "text": "p1 x",
+   "options": {
+    "ignored": [
+     "priority:p1"
+    ]
+   },
+   "expect": {
+    "title": "p1 x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
+  },
+  {
+   "group": "negative",
+   "text": "Yarınki iş",
+   "expect": {
+    "title": "Yarınki iş",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "Birinci",
+   "expect": {
+    "title": "Birinci",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "İkinci",
+   "expect": {
+    "title": "İkinci",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "Seçili güne iş",
+   "expect": {
+    "title": "Seçili güne iş",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "3 elma al",
+   "expect": {
+    "title": "3 elma al",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "pazardan sebze al",
+   "expect": {
+    "title": "pazardan sebze al",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "may I call",
+   "expect": {
+    "title": "may I call",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "3.5 kg elma",
+   "expect": {
+    "title": "3.5 kg elma",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "1/2 kek",
+   "expect": {
+    "title": "1/2 kek",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "Sabahçı iş",
+   "expect": {
+    "title": "Sabahçı iş",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "Yarım kalan",
+   "expect": {
+    "title": "Yarım kalan",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "pazar listesi yaz",
+   "expect": {
+    "title": "pazar listesi yaz",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "öğle yemeği ye",
+   "expect": {
+    "title": "öğle yemeği ye",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "sat on the chair",
+   "expect": {
+    "title": "sat on the chair",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "faturayı öde ve raporu gönder",
+   "expect": {
+    "title": "faturayı öde ve raporu gönder",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "öylesine bir not",
+   "expect": {
+    "title": "öylesine bir not",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "31.02 x",
+   "expect": {
+    "title": "31.02 x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "29 şubat x",
+   "expect": {
+    "title": "29 şubat x",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "son durum",
+   "expect": {
+    "title": "son durum",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "bugünkü plan",
+   "expect": {
+    "title": "bugünkü plan",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "at yarışı",
+   "expect": {
+    "title": "at yarışı",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "on kişi",
+   "expect": {
+    "title": "on kişi",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  }
+ ]
+}

@@ -11,7 +11,7 @@
 
 **Diller:** **Türkçe** · [English](PRIVACY.md)
 
-**Son güncelleme: 31.07.2026**
+**Son güncelleme: 17.10.2026**
 
 Bu metin, AllisWell'in hangi verileri neden işlediğini ve bu konuda neler
 yapabileceğinizi anlatır. AllisWell uygulamaları ile <https://alliswell.space>
@@ -69,9 +69,10 @@ birlikte tutarız; böylece bir oturumun ne zaman açıldığı belli olur.
 | Hesabınızı işletmek, içeriğinizi eşitlemek       | Sözleşmenin kurulması/ifasıyla doğrudan doğruya ilgili olması, m. 5/2-(c) | Sözleşmenin ifası, m. 6(1)(b) |
 | Hizmeti güvende tutmak, kötüye kullanımı önlemek | Meşru menfaat, m. 5/2-(f)                                                 | Meşru menfaat, m. 6(1)(f)     |
 | Google Takvim bağlantısı                         | **Açık rıza**                                                             | Açık rıza, m. 6(1)(a)         |
+| iCloud / CalDAV takvim bağlantısı                | **Açık rıza**                                                             | Açık rıza, m. 6(1)(a)         |
 | Hukuki yükümlülüklerimizi yerine getirmek        | Hukuki yükümlülük, m. 5/2-(ç)                                             | Hukuki yükümlülük, m. 6(1)(c) |
 
-Google Takvim için verdiğiniz açık rızayı, bağlantıyı kaldırarak istediğiniz an
+Bir takvim bağlantısı (Google, iCloud ya da CalDAV) için verdiğiniz açık rızayı, bağlantıyı kaldırarak istediğiniz an
 geri alabilirsiniz. Bu, geri almadan önce hukuka uygun şekilde yaptığımız
 işlemleri etkilemez.
 
@@ -140,6 +141,26 @@ Tamamen cihazınızda, Apple'ın EventKit altyapısı üzerinden çalışır. Ap
 takvimlerinizle ilgili hiçbir bilgi sunucularımıza gönderilmez; bu verileri
 göremeyiz.
 
+## iCloud ya da CalDAV takvimi (isteğe bağlı)
+
+Yalnızca kullandığınız sunucu bunu açmışsa ve siz bağlarsanız devreye girer:
+
+- Takviminizin **kullanıcı adını ve parolasını** verirsiniz — iCloud için
+  uygulamaya özel parola, asla Apple Hesabı parolanız değil. Parolayı önce takvim
+  sunucusunda dener, yalnızca çalışıyorsa **AES-256-GCM ile şifreleyerek**
+  saklarız. Parola sunucudan hiç çıkmaz, uygulamaya geri gönderilmez.
+- Görevleriniz, seçtiğiniz takvime etkinlik olarak yazılır. Yani görevin
+  **başlığı ve açıklaması** o takvim sunucusuna (iCloud için Apple'a ya da
+  belirttiğiniz sunucuya) aktarılır.
+- O takvimdeki etkinlikler geri okunur; böylece görevlerinizle yan yana
+  görebilirsiniz. Görev etkinliğinizi orada taşımak görevin bloğunu taşır.
+
+Bağlantıyı kaldırdığınızda parola sunucumuzdan silinir ve hepsi durur. Apple'ın
+uygulamaya özel parolasını sizin yerinize iptal edemeyiz: appleid.apple.com'da
+iptal edin. Takviminize daha önce yazılmış etkinlikler orada kalır. iCloud
+verilerinizin Apple tarafından işlenmesi, Apple'ın kendi gizlilik politikasına
+tabidir.
+
 ## Yapay zekâ özellikleri (isteğe bağlı)
 
 Yapay zekâ, **siz açana kadar kapalıdır** — sağlayıcı yoksa hiçbir AI yüzeyi
@@ -201,11 +222,11 @@ Hizmeti çalıştırmak için gereken altyapı dışında kimseyle. Açıkça be
 Çalıştığımız veri işleyenler: sunucu ve veritabanı barındırma hizmetimiz,
 yüklediğiniz dosyalar için Cloudflare R2, yukarıdaki çökme ve kullanım
 raporlaması için **Google (Firebase)** ve — yalnızca bağlarsanız — takvim
-eşitlemesi için Google ile **seçtiğiniz yapay zekâ sağlayıcısı** (Anthropic,
+eşitlemesi için Google, Apple (iCloud) ya da belirttiğiniz CalDAV sunucusu ile **seçtiğiniz yapay zekâ sağlayıcısı** (Anthropic,
 OpenAI, Google Gemini, OpenRouter veya yerel kalan kendi Ollama'nız). Cloudflare,
 Google ve bulut yapay zekâ sağlayıcıları uluslararası olduğundan, bu verilerin
 **yurt dışında** saklanması veya işlenmesi mümkündür. Bu aktarım, sözleşmenin
-ifası için gerekli olduğu ölçüde; Google Takvim ve yapay zekâ özellikleri
+ifası için gerekli olduğu ölçüde; takvim bağlantıları ve yapay zekâ özellikleri
 bakımından ise açık rızanıza dayanılarak yapılır.
 
 ## Kurumsal talep formu

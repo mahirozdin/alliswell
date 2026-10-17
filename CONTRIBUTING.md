@@ -51,7 +51,7 @@ the key to the JSON files. CI enforces this (`npm run check:i18n`). See
 ## Pull request checklist
 
 - [ ] `npm run verify:batch` passes — lint, format, every policy gate, the API unit and
-      integration suites (with `docker compose up -d mysql redis minio` running) and, when the app
+      integration suites (with `docker compose up -d mysql redis minio radicale` running) and, when the app
       changed, `flutter analyze`, `flutter test` and the web build. `-- --list` shows what your
       change selects; while you work, `npm run verify:task -- <test files>` is the quick check.
 - [ ] Tests added/updated for the change

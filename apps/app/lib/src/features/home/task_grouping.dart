@@ -3,6 +3,7 @@ import '../../i18n/i18n.dart';
 import '../calendar/data/external_event.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/task_sort.dart';
+import '../tasks/data/task_when.dart';
 
 /// Chronological buckets of the home list (feedback round 1). When a calendar
 /// day is selected its group sorts first and the rest render dimmed.
@@ -190,6 +191,13 @@ List<Task> orderTasks(Iterable<Task> tasks, AwSortState? sort) {
 ///   is "every day's work": it renders directly under Overdue, above Today, and
 ///   stays full-opacity even while a calendar day is selected.
 ///
+/// **"When" (OPH-372, ADR-0053).** A not-done task is filed by its PLAN day:
+/// its "when" day, rolled forward to today once reached, never later than its
+/// deadline ([taskPlanDay]). Overdue is decided by the deadline alone, before
+/// anything else ([taskIsOverdueOn]). So a task started yesterday and due on
+/// Friday sits in Today; an undated task whose "when" is Thursday sits on
+/// Thursday, not under No date; the alarm and Overdue still follow `dueAt`.
+///
 /// Since OPH-084 the user's own calendar rides along (§12: "everything shows").
 /// Two more rules keep events honest:
 ///
@@ -226,22 +234,26 @@ List<HomeGroup> groupTasksForHome(
 
   for (final task in tasks) {
     final due = task.dueAt;
-    if (selectedDay != null && due != null && dayOf(due) == selectedDay) {
+    final overdue = taskIsOverdueOn(task, today);
+    final planDay = overdue ? null : taskPlanDay(task, today);
+    if (selectedDay != null &&
+        ((due != null && dayOf(due) == selectedDay) ||
+            (planDay != null && planDay == selectedDay))) {
       byBucket[HomeBucket.selectedDay]!.add(TaskItem(task));
       continue;
     }
-    if (due == null) {
-      byBucket[HomeBucket.noDate]!.add(TaskItem(task));
-      continue;
-    }
-    final day = dayOf(due);
-    if (day.isBefore(today)) {
+    if (overdue) {
       // A task's deadline CAN be in the past — that is the whole point of
       // Overdue (a beyond-horizon FUTURE task, by contrast, is simply dropped).
+      // A "when" never overrides it (ADR-0053).
       byBucket[HomeBucket.overdue]!.add(TaskItem(task));
       continue;
     }
-    final bucket = futureBucketForDay(day);
+    if (planDay == null) {
+      byBucket[HomeBucket.noDate]!.add(TaskItem(task));
+      continue;
+    }
+    final bucket = futureBucketForDay(planDay);
     if (bucket != null) byBucket[bucket]!.add(TaskItem(task));
   }
 
@@ -285,7 +297,7 @@ List<HomeGroup> groupTasksForHome(
   /// day it was bucketed by, and a heading that disagrees with the bucket that
   /// produced it is worse than no heading.
   DateTime dayForSplit(HomeItem item) => switch (item) {
-    TaskItem(:final task) => dayOf(task.dueAt!),
+    TaskItem(:final task) => taskPlanDay(task, today)!,
     EventItem(:final event) => daysOfEvent(
       event,
     ).firstWhere((d) => !d.isBefore(today)),
@@ -336,14 +348,18 @@ List<HomeGroup> groupTasksForHome(
   return groups;
 }
 
-/// Which local days have at least one OPEN task due — feeds the calendar dots.
+/// Which local days have at least one OPEN task due — or planned, by its
+/// "when" day (OPH-372) — feeds the calendar dots.
 ///
 /// Completed tasks are excluded even while they linger on today's list
 /// (OPH-185, DESIGN §20 C1): a dot means "there is work on this day", and a
 /// finished day is not a full day.
 Set<DateTime> daysWithTasks(List<Task> tasks) => {
   for (final task in tasks)
-    if (task.dueAt != null && !task.isCompleted) dayOf(task.dueAt!),
+    if (!task.isCompleted) ...[
+      if (task.dueAt != null) dayOf(task.dueAt!),
+      if (task.startAt != null) dayOf(task.startAt!),
+    ],
 };
 
 // ── The user's own calendar (OPH-083, ADR-0008) ────────────────────────────

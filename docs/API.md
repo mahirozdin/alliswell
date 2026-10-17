@@ -33,7 +33,7 @@ curl -s "$ALLISWELL_URL/api/v1/me" \
 A key acts as **you**, in **one workspace** — the one it was created in. There
 are no scopes in v1 ([ADR-0032](adr/0032-api-keys.md)).
 
-Four things it can never do, whatever it holds — **25 endpoints in total**,
+Five things it can never do, whatever it holds — **26 endpoints in total**,
 each marked "Session JWT only" in the reference below:
 
 | Refused | Why |
@@ -42,6 +42,7 @@ each marked "Session JWT only" in the reference below:
 | Anything under `/ai/*` | Those hold your AI provider keys and spend your model budget |
 | Create or revoke API keys | Otherwise one leaked key becomes permanent: the holder simply issues another |
 | Change your own credentials — password, two-factor, sessions (`/auth/password`, `/auth/mfa/*`, `/auth/sessions*`) | A key is for reaching your data, never for taking the account over. A holder who could rotate your password or close your sessions would own the account, not borrow it |
+| Connect a calendar with a password (`POST /workspaces/{id}/integrations/caldav`) | It stores a long-lived third-party credential and opens a standing channel from this server to another one. A leaked key must be able to do neither. Reading the connection, choosing its calendar and disconnecting it work with a key, as they do for Google |
 
 Those answer `403 AUTH_APIKEY_FORBIDDEN`. Using a key against a **different**
 workspace answers `403 AUTH_APIKEY_WORKSPACE`.
@@ -102,6 +103,28 @@ curl -s -X POST "$ALLISWELL_URL/api/v1/tasks/$TASK_ID/snooze" \
 ```
 
 Completing an already-completed task is a quiet no-op — safe to retry.
+
+### Repeat a task after you complete it
+
+```bash
+curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/task-series" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+        "rule": { "freq": "daily", "interval": 90, "basis": "completion" },
+        "template": { "title": "Change the water filter" },
+        "anchorAt": "2026-10-20T09:00:00+03:00",
+        "fromTaskId": "'"$TASK_ID"'"
+      }'
+```
+
+`basis: "completion"` counts from the moment the task is completed, early or
+late: completing it through `POST /tasks/{id}/complete` creates the next task,
+due on the completion day + 90 days at the same time of day; `POST
+/tasks/{id}/reopen` withdraws that next task again. `freq` is `daily`, `weekly`
+or `monthly`; months clamp to the month end (Jan 31 + 1 month = Feb 28). Leave
+`basis` out for a calendar pattern ("every month on the 31st"). `DELETE
+/task-series/{id}` stops it and keeps the open task as an ordinary one.
 
 ### Create a note and attach it to a task
 
@@ -220,6 +243,54 @@ curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/import/tasks" \
 Your devices converge on their own afterwards — imported rows are ordinary
 rows, so the usual sync brings them down with no import-aware client code.
 
+### Moving in from Todoist or TickTick
+
+The app's import wizard (Settings › Data › Import) is this one call, and a key
+can make it too. Send the export **as text**, one entry per CSV file; the
+server reads it ([ADR-0052](adr/0052-importing-from-other-apps.md)). A Todoist
+backup is a ZIP: unzip it first and send each CSV as its own file (the file
+name is the project name; `Inbox` means no project).
+
+```bash
+jq -n --rawfile csv "TickTick-backup.csv" \
+  '{source: "ticktick", dryRun: true, files: [{name: "TickTick-backup.csv", content: $csv}]}' |
+curl -s -X POST "$ALLISWELL_URL/api/v1/workspaces/$WS/import/apps" \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' --data-binary @-
+```
+
+`dryRun: true` writes nothing and returns the plan: counts (`tasks`, `series`,
+`checklistItems`, `notes`, `projects`, `tags`, `completed`, `alreadyImported`),
+the priority mapping, and `warnings` grouped by code with examples (a repeat
+that could not be converted, a date that could not be read…). Nothing is
+dropped silently: what cannot be represented is kept in the task's description.
+
+Send the same body with `dryRun: false` to import. Each call writes at most
+`options.maxItems` new items (default 250, max 500) and says how many are
+`remaining`. Call again until it is 0:
+
+```json
+{ "total": 412, "created": { "tasks": 230, "series": 12, "checklistItems": 88, "notes": 8,
+                              "projects": 6, "tags": 14 },
+  "errors": [], "remaining": 162 }
+```
+
+Re-importing is safe. Every item is recorded in an import ledger, so the same
+file a second time creates nothing (`alreadyImported` counts it), and a task you
+deleted after importing it is not brought back. TickTick items are matched by
+their own id. Todoist's CSV has no ids, so a task is matched by project, section
+and title. Rename one in Todoist and re-export it, and it imports again.
+
+`options`: `includeCompleted` (TickTick; Todoist exports have no completed
+tasks), `defaultTaskTime` (`HH:MM` for date-only tasks, default `23:59`),
+`timezone` (default: your profile's), `locale` (`en`/`tr`, the language of the
+notes the importer writes), `maxItems`. Imported tasks never become urgent
+alarms. A request body may be up to 10 MB; behind nginx that needs
+`client_max_body_size 10m` ([SELF-HOSTING.md](SELF-HOSTING.md)). Refusals:
+`422 IMPORT_SOURCE_MISMATCH` (with `detected`), `IMPORT_FORMAT_UNRECOGNIZED`,
+`IMPORT_EMPTY`, `IMPORT_INVALID_TIMEZONE`, and `413` for an oversized file.
+Apple Reminders has no export file, so there is no importer for it.
+
 ### Editing a note two places at once
 
 `PATCH /notes/:id` accepts an optional **`baseRevision`** — the note revision
@@ -256,6 +327,19 @@ captured too and the restore is itself undoable.
 Writes made with an API key are recorded with origin `api`, so a note's
 history distinguishes what you typed from what your cron job did.
 
+### iCloud or any CalDAV calendar
+
+When the server admin has turned on `CALDAV_ENABLED`, a user can mirror their
+tasks into an iCloud calendar (with an app-specific password) or any CalDAV
+calendar — Nextcloud, Radicale, Fastmail — two-way, from the server
+([CALDAV.md](CALDAV.md), [ADR-0059](adr/0059-caldav-connector.md)). Connecting is
+a session-only call (the table above says why); the password is checked
+against the server before anything is stored, kept encrypted, and **never
+returned** by any endpoint. A refused password is `422 CALDAV_AUTH_FAILED`; for
+iCloud its message says to use an app-specific password from account.apple.com
+(Apple refuses the account password itself). While the connector is off,
+connecting answers `503 CALDAV_NOT_ENABLED`, and status and disconnect still work.
+
 ### Sync is not the integration surface
 
 `GET /sync/pull` and `POST /sync/push` are the app's replication protocol
@@ -267,7 +351,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_114 operations across 82 paths, generated from
+_120 operations across 86 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -277,11 +361,13 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **API keys** — [`POST /api/v1/api-keys/{keyId}/revoke`](#post-api-v1-api-keys-keyid-revoke) · [`GET /api/v1/workspaces/{workspaceId}/api-keys`](#get-api-v1-workspaces-workspaceid-api-keys) · [`POST /api/v1/workspaces/{workspaceId}/api-keys`](#post-api-v1-workspaces-workspaceid-api-keys)
 - **Account** — [`GET /api/v1/me`](#get-api-v1-me) · [`PATCH /api/v1/me`](#patch-api-v1-me) · [`DELETE /api/v1/me`](#delete-api-v1-me) · [`POST /api/v1/me/deletion/cancel`](#post-api-v1-me-deletion-cancel)
 - **Authentication** — [`POST /api/v1/auth/login`](#post-api-v1-auth-login) · [`POST /api/v1/auth/logout`](#post-api-v1-auth-logout) · [`GET /api/v1/auth/mfa/totp`](#get-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp`](#post-api-v1-auth-mfa-totp) · [`DELETE /api/v1/auth/mfa/totp`](#delete-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp/confirm`](#post-api-v1-auth-mfa-totp-confirm) · [`POST /api/v1/auth/mfa/totp/recovery-codes`](#post-api-v1-auth-mfa-totp-recovery-codes) · [`POST /api/v1/auth/oauth`](#post-api-v1-auth-oauth) · [`POST /api/v1/auth/password`](#post-api-v1-auth-password) · [`POST /api/v1/auth/refresh`](#post-api-v1-auth-refresh) · [`POST /api/v1/auth/register`](#post-api-v1-auth-register) · [`GET /api/v1/auth/sessions`](#get-api-v1-auth-sessions) · [`DELETE /api/v1/auth/sessions/{id}`](#delete-api-v1-auth-sessions-id) · [`POST /api/v1/auth/sessions/revoke-others`](#post-api-v1-auth-sessions-revoke-others)
+- **CalDAV calendar** — [`PATCH /api/v1/integrations/caldav/accounts/{accountId}`](#patch-api-v1-integrations-caldav-accounts-accountid) · [`DELETE /api/v1/integrations/caldav/accounts/{accountId}`](#delete-api-v1-integrations-caldav-accounts-accountid) · [`GET /api/v1/integrations/caldav/accounts/{accountId}/calendars`](#get-api-v1-integrations-caldav-accounts-accountid-calendars) · [`GET /api/v1/workspaces/{workspaceId}/integrations/caldav`](#get-api-v1-workspaces-workspaceid-integrations-caldav) · [`POST /api/v1/workspaces/{workspaceId}/integrations/caldav`](#post-api-v1-workspaces-workspaceid-integrations-caldav)
 - **Capabilities** — [`GET /api/v1/ee/status`](#get-api-v1-ee-status)
 - **Devices** — [`GET /api/v1/notification-devices`](#get-api-v1-notification-devices) · [`PUT /api/v1/notification-devices/{deviceId}`](#put-api-v1-notification-devices-deviceid) · [`DELETE /api/v1/notification-devices/{deviceId}`](#delete-api-v1-notification-devices-deviceid)
 - **Files** — [`GET /api/v1/files/{fileId}`](#get-api-v1-files-fileid) · [`PATCH /api/v1/files/{fileId}`](#patch-api-v1-files-fileid) · [`DELETE /api/v1/files/{fileId}`](#delete-api-v1-files-fileid) · [`POST /api/v1/files/{fileId}/complete`](#post-api-v1-files-fileid-complete) · [`PATCH /api/v1/folders/{folderId}`](#patch-api-v1-folders-folderid) · [`DELETE /api/v1/folders/{folderId}`](#delete-api-v1-folders-folderid) · [`GET /api/v1/storage`](#get-api-v1-storage) · [`GET /api/v1/workspaces/{workspaceId}/files`](#get-api-v1-workspaces-workspaceid-files) · [`POST /api/v1/workspaces/{workspaceId}/files`](#post-api-v1-workspaces-workspaceid-files) · [`GET /api/v1/workspaces/{workspaceId}/files/usage`](#get-api-v1-workspaces-workspaceid-files-usage) · [`GET /api/v1/workspaces/{workspaceId}/folders`](#get-api-v1-workspaces-workspaceid-folders) · [`POST /api/v1/workspaces/{workspaceId}/folders`](#post-api-v1-workspaces-workspaceid-folders)
 - **Google Calendar** — [`PATCH /api/v1/integrations/google/accounts/{accountId}`](#patch-api-v1-integrations-google-accounts-accountid) · [`DELETE /api/v1/integrations/google/accounts/{accountId}`](#delete-api-v1-integrations-google-accounts-accountid) · [`GET /api/v1/integrations/google/accounts/{accountId}/calendars`](#get-api-v1-integrations-google-accounts-accountid-calendars) · [`GET /api/v1/integrations/google/callback`](#get-api-v1-integrations-google-callback) · [`POST /api/v1/integrations/google/webhook`](#post-api-v1-integrations-google-webhook) · [`GET /api/v1/workspaces/{workspaceId}/integrations/google`](#get-api-v1-workspaces-workspaceid-integrations-google) · [`POST /api/v1/workspaces/{workspaceId}/integrations/google/connect`](#post-api-v1-workspaces-workspaceid-integrations-google-connect)
 - **Health** — [`GET /health/live`](#get-health-live) · [`GET /health/ready`](#get-health-ready)
+- **Import & export** — [`POST /api/v1/workspaces/{workspaceId}/import/apps`](#post-api-v1-workspaces-workspaceid-import-apps)
 - **Notes** — [`GET /api/v1/notes/{noteId}`](#get-api-v1-notes-noteid) · [`PATCH /api/v1/notes/{noteId}`](#patch-api-v1-notes-noteid) · [`DELETE /api/v1/notes/{noteId}`](#delete-api-v1-notes-noteid) · [`GET /api/v1/notes/{noteId}/export`](#get-api-v1-notes-noteid-export) · [`POST /api/v1/notes/{noteId}/links`](#post-api-v1-notes-noteid-links) · [`DELETE /api/v1/notes/{noteId}/links/{linkId}`](#delete-api-v1-notes-noteid-links-linkid) · [`PUT /api/v1/notes/{noteId}/tags`](#put-api-v1-notes-noteid-tags) · [`GET /api/v1/notes/{noteId}/versions`](#get-api-v1-notes-noteid-versions) · [`GET /api/v1/notes/{noteId}/versions/{versionId}`](#get-api-v1-notes-noteid-versions-versionid) · [`GET /api/v1/notes/{noteId}/versions/{versionId}/diff`](#get-api-v1-notes-noteid-versions-versionid-diff) · [`POST /api/v1/notes/{noteId}/versions/{versionId}/restore`](#post-api-v1-notes-noteid-versions-versionid-restore) · [`GET /api/v1/projects/{projectId}/notes`](#get-api-v1-projects-projectid-notes) · [`GET /api/v1/workspaces/{workspaceId}/export/notes`](#get-api-v1-workspaces-workspaceid-export-notes) · [`POST /api/v1/workspaces/{workspaceId}/import/notes`](#post-api-v1-workspaces-workspaceid-import-notes) · [`GET /api/v1/workspaces/{workspaceId}/notes`](#get-api-v1-workspaces-workspaceid-notes) · [`POST /api/v1/workspaces/{workspaceId}/notes`](#post-api-v1-workspaces-workspaceid-notes)
 - **Projects** — [`GET /api/v1/projects/{projectId}`](#get-api-v1-projects-projectid) · [`PATCH /api/v1/projects/{projectId}`](#patch-api-v1-projects-projectid) · [`DELETE /api/v1/projects/{projectId}`](#delete-api-v1-projects-projectid) · [`POST /api/v1/projects/{projectId}/archive`](#post-api-v1-projects-projectid-archive) · [`POST /api/v1/projects/{projectId}/unarchive`](#post-api-v1-projects-projectid-unarchive) · [`GET /api/v1/workspaces/{workspaceId}/projects`](#get-api-v1-workspaces-workspaceid-projects) · [`POST /api/v1/workspaces/{workspaceId}/projects`](#post-api-v1-workspaces-workspaceid-projects)
 - **Quick links** — [`PATCH /api/v1/quick-links/{quickLinkId}`](#patch-api-v1-quick-links-quicklinkid) · [`DELETE /api/v1/quick-links/{quickLinkId}`](#delete-api-v1-quick-links-quicklinkid) · [`GET /api/v1/workspaces/{workspaceId}/quick-links`](#get-api-v1-workspaces-workspaceid-quick-links) · [`POST /api/v1/workspaces/{workspaceId}/quick-links`](#post-api-v1-workspaces-workspaceid-quick-links) · [`PUT /api/v1/workspaces/{workspaceId}/quick-links/order`](#put-api-v1-workspaces-workspaceid-quick-links-order)
@@ -294,7 +380,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
 ### AI
 
-#### `POST /api/v1/ai/actions/{actionId}/decision`
+#### <a name="post-api-v1-ai-actions-actionid-decision"></a>`POST /api/v1/ai/actions/{actionId}/decision`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -351,7 +437,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/ai/actions/:actionId/decision' 
 ```
 
 
-#### `PATCH /api/v1/ai/connections/{connectionId}`
+#### <a name="patch-api-v1-ai-connections-connectionid"></a>`PATCH /api/v1/ai/connections/{connectionId}`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -408,7 +494,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/ai/connections/:connectionId' 
 ```
 
 
-#### `DELETE /api/v1/ai/connections/{connectionId}`
+#### <a name="delete-api-v1-ai-connections-connectionid"></a>`DELETE /api/v1/ai/connections/{connectionId}`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -433,7 +519,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/ai/connections/:connectionId'
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `POST /api/v1/ai/connections/{connectionId}/test`
+#### <a name="post-api-v1-ai-connections-connectionid-test"></a>`POST /api/v1/ai/connections/{connectionId}/test`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -471,7 +557,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/ai/connections/:connectionId/te
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/ai/chat`
+#### <a name="post-api-v1-workspaces-workspaceid-ai-chat"></a>`POST /api/v1/workspaces/{workspaceId}/ai/chat`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -522,7 +608,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/chat
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/ai/chat/{requestId}/cancel`
+#### <a name="post-api-v1-workspaces-workspaceid-ai-chat-requestid-cancel"></a>`POST /api/v1/workspaces/{workspaceId}/ai/chat/{requestId}/cancel`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -548,7 +634,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/chat
 | `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/ai/connections`
+#### <a name="get-api-v1-workspaces-workspaceid-ai-connections"></a>`GET /api/v1/workspaces/{workspaceId}/ai/connections`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -597,7 +683,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/conne
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/ai/connections`
+#### <a name="post-api-v1-workspaces-workspaceid-ai-connections"></a>`POST /api/v1/workspaces/{workspaceId}/ai/connections`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -659,7 +745,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/conn
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/ai/extract`
+#### <a name="post-api-v1-workspaces-workspaceid-ai-extract"></a>`POST /api/v1/workspaces/{workspaceId}/ai/extract`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -714,7 +800,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/extr
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/ai/models`
+#### <a name="get-api-v1-workspaces-workspaceid-ai-models"></a>`GET /api/v1/workspaces/{workspaceId}/ai/models`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -776,7 +862,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/model
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/ai/status`
+#### <a name="get-api-v1-workspaces-workspaceid-ai-status"></a>`GET /api/v1/workspaces/{workspaceId}/ai/status`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -817,7 +903,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/statu
 
 ### API keys
 
-#### `POST /api/v1/api-keys/{keyId}/revoke`
+#### <a name="post-api-v1-api-keys-keyid-revoke"></a>`POST /api/v1/api-keys/{keyId}/revoke`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -858,7 +944,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/api-keys/:keyId/revoke' \
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/api-keys`
+#### <a name="get-api-v1-workspaces-workspaceid-api-keys"></a>`GET /api/v1/workspaces/{workspaceId}/api-keys`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -902,7 +988,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/api-keys
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/api-keys`
+#### <a name="post-api-v1-workspaces-workspaceid-api-keys"></a>`POST /api/v1/workspaces/{workspaceId}/api-keys`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -955,7 +1041,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/api-key
 
 ### Account
 
-#### `GET /api/v1/me`
+#### <a name="get-api-v1-me"></a>`GET /api/v1/me`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1001,7 +1087,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/me' \
 ```
 
 
-#### `PATCH /api/v1/me`
+#### <a name="patch-api-v1-me"></a>`PATCH /api/v1/me`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1055,7 +1141,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/me' \
 ```
 
 
-#### `DELETE /api/v1/me`
+#### <a name="delete-api-v1-me"></a>`DELETE /api/v1/me`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1083,7 +1169,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/me' \
 ```
 
 
-#### `POST /api/v1/me/deletion/cancel`
+#### <a name="post-api-v1-me-deletion-cancel"></a>`POST /api/v1/me/deletion/cancel`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1113,7 +1199,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/me/deletion/cancel' \
 
 ### Authentication
 
-#### `POST /api/v1/auth/login`
+#### <a name="post-api-v1-auth-login"></a>`POST /api/v1/auth/login`
 
 **Auth:** None — this endpoint is public.
 
@@ -1159,7 +1245,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/login' \
 ```
 
 
-#### `POST /api/v1/auth/logout`
+#### <a name="post-api-v1-auth-logout"></a>`POST /api/v1/auth/logout`
 
 **Auth:** None — this endpoint is public.
 
@@ -1190,7 +1276,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/logout' \
 | `204` | Done. No body. |
 
 
-#### `GET /api/v1/auth/mfa/totp`
+#### <a name="get-api-v1-auth-mfa-totp"></a>`GET /api/v1/auth/mfa/totp`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1218,7 +1304,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/auth/mfa/totp' \
 ```
 
 
-#### `POST /api/v1/auth/mfa/totp`
+#### <a name="post-api-v1-auth-mfa-totp"></a>`POST /api/v1/auth/mfa/totp`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1245,7 +1331,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp' \
 ```
 
 
-#### `DELETE /api/v1/auth/mfa/totp`
+#### <a name="delete-api-v1-auth-mfa-totp"></a>`DELETE /api/v1/auth/mfa/totp`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1271,7 +1357,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/auth/mfa/totp' \
 | `200` | Success. |
 
 
-#### `POST /api/v1/auth/mfa/totp/confirm`
+#### <a name="post-api-v1-auth-mfa-totp-confirm"></a>`POST /api/v1/auth/mfa/totp/confirm`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1308,7 +1394,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp/confirm' \
 ```
 
 
-#### `POST /api/v1/auth/mfa/totp/recovery-codes`
+#### <a name="post-api-v1-auth-mfa-totp-recovery-codes"></a>`POST /api/v1/auth/mfa/totp/recovery-codes`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1344,7 +1430,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp/recovery-codes' \
 ```
 
 
-#### `POST /api/v1/auth/oauth`
+#### <a name="post-api-v1-auth-oauth"></a>`POST /api/v1/auth/oauth`
 
 **Auth:** None — this endpoint is public.
 
@@ -1354,6 +1440,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp/recovery-codes' \
 | --- | --- | --- | --- |
 | `provider` | `google` · `apple` | **yes** | — |
 | `idToken` | string | **yes** | length 16–8192 |
+| `totpCode` | string | no | length 6–32 |
 
 **Request**
 
@@ -1394,7 +1481,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/oauth' \
 ```
 
 
-#### `POST /api/v1/auth/password`
+#### <a name="post-api-v1-auth-password"></a>`POST /api/v1/auth/password`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1421,7 +1508,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/password' \
 | `200` | Success. |
 
 
-#### `POST /api/v1/auth/refresh`
+#### <a name="post-api-v1-auth-refresh"></a>`POST /api/v1/auth/refresh`
 
 **Auth:** None — this endpoint is public.
 
@@ -1465,7 +1552,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/refresh' \
 ```
 
 
-#### `POST /api/v1/auth/register`
+#### <a name="post-api-v1-auth-register"></a>`POST /api/v1/auth/register`
 
 **Auth:** None — this endpoint is public.
 
@@ -1516,7 +1603,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/register' \
 ```
 
 
-#### `GET /api/v1/auth/sessions`
+#### <a name="get-api-v1-auth-sessions"></a>`GET /api/v1/auth/sessions`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1558,7 +1645,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/auth/sessions' \
 ```
 
 
-#### `DELETE /api/v1/auth/sessions/{id}`
+#### <a name="delete-api-v1-auth-sessions-id"></a>`DELETE /api/v1/auth/sessions/{id}`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1582,7 +1669,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/auth/sessions/:id' \
 | `200` | Success. |
 
 
-#### `POST /api/v1/auth/sessions/revoke-others`
+#### <a name="post-api-v1-auth-sessions-revoke-others"></a>`POST /api/v1/auth/sessions/revoke-others`
 
 **Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
@@ -1616,9 +1703,257 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/sessions/revoke-others' \
 ```
 
 
+### CalDAV calendar
+
+#### <a name="patch-api-v1-integrations-caldav-accounts-accountid"></a>`PATCH /api/v1/integrations/caldav/accounts/{accountId}`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `accountId` | ULID | 26-character identifier |
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `calendarUrl` | string | **yes** | length 1–255 |
+
+**Request**
+
+```bash
+curl -X PATCH 'https://api.alliswell.space/api/v1/integrations/caldav/accounts/:accountId' \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"calendarUrl":"string"}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `404` | Not visible to you. Someone else’s row answers 404, never 403. |
+| `422` | Well-formed, but refused by a business rule. |
+| `502` | An upstream service failed. |
+| `503` | Not configured on this server. |
+
+**Example response** (`200`)
+
+```json
+{
+  "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+  "provider": "caldav",
+  "server": "icloud",
+  "serverHost": "string",
+  "serverUrl": "string",
+  "username": "string",
+  "status": "active",
+  "calendarUrl": "string",
+  "calendarName": "string",
+  "lastSyncedAt": "2026-09-04T14:30:00.000Z",
+  "lastError": "string",
+  "createdAt": "2026-09-04T14:30:00.000Z",
+  "updatedAt": "2026-09-04T14:30:00.000Z"
+}
+```
+
+
+#### <a name="delete-api-v1-integrations-caldav-accounts-accountid"></a>`DELETE /api/v1/integrations/caldav/accounts/{accountId}`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `accountId` | ULID | 26-character identifier |
+
+**Request**
+
+```bash
+curl -X DELETE 'https://api.alliswell.space/api/v1/integrations/caldav/accounts/:accountId' \
+  -H "Authorization: Bearer $ALLISWELL_KEY"
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `204` | Done. No body. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `404` | Not visible to you. Someone else’s row answers 404, never 403. |
+
+
+#### <a name="get-api-v1-integrations-caldav-accounts-accountid-calendars"></a>`GET /api/v1/integrations/caldav/accounts/{accountId}/calendars`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `accountId` | ULID | 26-character identifier |
+
+**Request**
+
+```bash
+curl -X GET 'https://api.alliswell.space/api/v1/integrations/caldav/accounts/:accountId/calendars' \
+  -H "Authorization: Bearer $ALLISWELL_KEY"
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `404` | Not visible to you. Someone else’s row answers 404, never 403. |
+| `422` | Well-formed, but refused by a business rule. |
+| `502` | An upstream service failed. |
+| `503` | Not configured on this server. |
+
+**Example response** (`200`)
+
+```json
+{
+  "items": [
+    {
+      "url": "https://example.com",
+      "name": "Pay the electricity bill",
+      "color": "string"
+    }
+  ]
+}
+```
+
+
+#### <a name="get-api-v1-workspaces-workspaceid-integrations-caldav"></a>`GET /api/v1/workspaces/{workspaceId}/integrations/caldav`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `workspaceId` | ULID | 26-character identifier |
+
+**Request**
+
+```bash
+curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/integrations/caldav' \
+  -H "Authorization: Bearer $ALLISWELL_KEY"
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+
+**Example response** (`200`)
+
+```json
+{
+  "enabled": false,
+  "items": [
+    {
+      "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+      "provider": "caldav",
+      "server": "icloud",
+      "serverHost": "string",
+      "serverUrl": "string",
+      "username": "string",
+      "status": "active",
+      "calendarUrl": "string",
+      "calendarName": "string",
+      "lastSyncedAt": "2026-09-04T14:30:00.000Z",
+      "lastError": "string",
+      "createdAt": "2026-09-04T14:30:00.000Z",
+      "updatedAt": "2026-09-04T14:30:00.000Z"
+    }
+  ]
+}
+```
+
+
+#### <a name="post-api-v1-workspaces-workspaceid-integrations-caldav"></a>`POST /api/v1/workspaces/{workspaceId}/integrations/caldav`
+
+**Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `workspaceId` | ULID | 26-character identifier |
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `server` | `icloud` · `generic` | **yes** | — |
+| `url` | string | no | length 1–500 |
+| `username` | string | **yes** | length 1–255 |
+| `password` | string | **yes** | length 1–255 |
+
+**Request**
+
+```bash
+curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/integrations/caldav' \
+  -H "Authorization: Bearer $ALLISWELL_JWT" \
+  -H 'Content-Type: application/json' \
+  -d '{"server":"icloud","username":"string","password":"string"}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `201` | Created. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `409` | Refused because of a uniqueness or state clash (e.g. an edit conflict). |
+| `422` | Well-formed, but refused by a business rule. |
+| `502` | An upstream service failed. |
+| `503` | Not configured on this server. |
+
+**Example response** (`201`)
+
+```json
+{
+  "account": {
+    "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+    "provider": "caldav",
+    "server": "icloud",
+    "serverHost": "string",
+    "serverUrl": "string",
+    "username": "string",
+    "status": "active",
+    "calendarUrl": "string",
+    "calendarName": "string",
+    "lastSyncedAt": "2026-09-04T14:30:00.000Z",
+    "lastError": "string",
+    "createdAt": "2026-09-04T14:30:00.000Z",
+    "updatedAt": "2026-09-04T14:30:00.000Z"
+  },
+  "calendars": [
+    {
+      "url": "https://example.com",
+      "name": "Pay the electricity bill",
+      "color": "string"
+    }
+  ]
+}
+```
+
+
 ### Capabilities
 
-#### `GET /api/v1/ee/status`
+#### <a name="get-api-v1-ee-status"></a>`GET /api/v1/ee/status`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1652,7 +1987,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/ee/status' \
 
 ### Devices
 
-#### `GET /api/v1/notification-devices`
+#### <a name="get-api-v1-notification-devices"></a>`GET /api/v1/notification-devices`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1694,7 +2029,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notification-devices' \
 ```
 
 
-#### `PUT /api/v1/notification-devices/{deviceId}`
+#### <a name="put-api-v1-notification-devices-deviceid"></a>`PUT /api/v1/notification-devices/{deviceId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1756,7 +2091,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' 
 ```
 
 
-#### `DELETE /api/v1/notification-devices/{deviceId}`
+#### <a name="delete-api-v1-notification-devices-deviceid"></a>`DELETE /api/v1/notification-devices/{deviceId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1782,7 +2117,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/notification-devices/:deviceI
 
 ### Files
 
-#### `GET /api/v1/files/{fileId}`
+#### <a name="get-api-v1-files-fileid"></a>`GET /api/v1/files/{fileId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1832,7 +2167,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/files/:fileId' \
 ```
 
 
-#### `PATCH /api/v1/files/{fileId}`
+#### <a name="patch-api-v1-files-fileid"></a>`PATCH /api/v1/files/{fileId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1891,7 +2226,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/files/:fileId' \
 ```
 
 
-#### `DELETE /api/v1/files/{fileId}`
+#### <a name="delete-api-v1-files-fileid"></a>`DELETE /api/v1/files/{fileId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1917,7 +2252,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/files/:fileId' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `POST /api/v1/files/{fileId}/complete`
+#### <a name="post-api-v1-files-fileid-complete"></a>`POST /api/v1/files/{fileId}/complete`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -1967,7 +2302,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/files/:fileId/complete' \
 ```
 
 
-#### `PATCH /api/v1/folders/{folderId}`
+#### <a name="patch-api-v1-folders-folderid"></a>`PATCH /api/v1/folders/{folderId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2017,7 +2352,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/folders/:folderId' \
 ```
 
 
-#### `DELETE /api/v1/folders/{folderId}`
+#### <a name="delete-api-v1-folders-folderid"></a>`DELETE /api/v1/folders/{folderId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2051,7 +2386,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/folders/:folderId' \
 ```
 
 
-#### `GET /api/v1/storage`
+#### <a name="get-api-v1-storage"></a>`GET /api/v1/storage`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2079,7 +2414,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/storage' \
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/files`
+#### <a name="get-api-v1-workspaces-workspaceid-files"></a>`GET /api/v1/workspaces/{workspaceId}/files`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2144,7 +2479,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' \
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/files`
+#### <a name="post-api-v1-workspaces-workspaceid-files"></a>`POST /api/v1/workspaces/{workspaceId}/files`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2213,7 +2548,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files' 
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/files/usage`
+#### <a name="get-api-v1-workspaces-workspaceid-files-usage"></a>`GET /api/v1/workspaces/{workspaceId}/files/usage`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2247,7 +2582,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/files/us
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/folders`
+#### <a name="get-api-v1-workspaces-workspaceid-folders"></a>`GET /api/v1/workspaces/{workspaceId}/folders`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2290,7 +2625,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/folders'
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/folders`
+#### <a name="post-api-v1-workspaces-workspaceid-folders"></a>`POST /api/v1/workspaces/{workspaceId}/folders`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2341,7 +2676,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/folders
 
 ### Google Calendar
 
-#### `PATCH /api/v1/integrations/google/accounts/{accountId}`
+#### <a name="patch-api-v1-integrations-google-accounts-accountid"></a>`PATCH /api/v1/integrations/google/accounts/{accountId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2391,7 +2726,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/integrations/google/accounts/:
 ```
 
 
-#### `DELETE /api/v1/integrations/google/accounts/{accountId}`
+#### <a name="delete-api-v1-integrations-google-accounts-accountid"></a>`DELETE /api/v1/integrations/google/accounts/{accountId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2417,7 +2752,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/integrations/google/accounts/
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `GET /api/v1/integrations/google/accounts/{accountId}/calendars`
+#### <a name="get-api-v1-integrations-google-accounts-accountid-calendars"></a>`GET /api/v1/integrations/google/accounts/{accountId}/calendars`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2459,7 +2794,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/integrations/google/accounts/:ac
 ```
 
 
-#### `GET /api/v1/integrations/google/callback`
+#### <a name="get-api-v1-integrations-google-callback"></a>`GET /api/v1/integrations/google/callback`
 
 **Auth:** None — this endpoint is public.
 
@@ -2484,7 +2819,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/integrations/google/callback'
 | `200` | Success. |
 
 
-#### `POST /api/v1/integrations/google/webhook`
+#### <a name="post-api-v1-integrations-google-webhook"></a>`POST /api/v1/integrations/google/webhook`
 
 **Auth:** None — this endpoint is public.
 
@@ -2502,7 +2837,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/integrations/google/webhook'
 | `401` | No credential, or one that is expired, revoked or unknown. |
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/integrations/google`
+#### <a name="get-api-v1-workspaces-workspaceid-integrations-google"></a>`GET /api/v1/workspaces/{workspaceId}/integrations/google`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2548,7 +2883,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/integrat
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/integrations/google/connect`
+#### <a name="post-api-v1-workspaces-workspaceid-integrations-google-connect"></a>`POST /api/v1/workspaces/{workspaceId}/integrations/google/connect`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2584,7 +2919,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/integra
 
 ### Health
 
-#### `GET /health/live`
+#### <a name="get-health-live"></a>`GET /health/live`
 
 **Auth:** None — this endpoint is public.
 
@@ -2611,7 +2946,7 @@ curl -X GET 'https://api.alliswell.space/health/live'
 ```
 
 
-#### `GET /health/ready`
+#### <a name="get-health-ready"></a>`GET /health/ready`
 
 **Auth:** None — this endpoint is public.
 
@@ -2654,9 +2989,137 @@ curl -X GET 'https://api.alliswell.space/health/ready'
 ```
 
 
+### Import & export
+
+#### <a name="post-api-v1-workspaces-workspaceid-import-apps"></a>`POST /api/v1/workspaces/{workspaceId}/import/apps`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `workspaceId` | ULID | 26-character identifier |
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `source` | `todoist` · `ticktick` | **yes** | — |
+| `files` | array of object | **yes** | up to 200 items |
+| `dryRun` | boolean | no | default `false` |
+| `options` | object | no | — |
+
+**Request**
+
+```bash
+curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/import/apps' \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"source":"todoist","files":[{"name":"Pay the electricity bill","content":"string"}]}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `413` | Too large. |
+| `422` | Well-formed, but refused by a business rule. |
+
+**Example response** (`200`)
+
+```json
+{
+  "source": "todoist",
+  "dryRun": false,
+  "timezone": "Europe/Istanbul",
+  "total": 1,
+  "projects": {
+    "new": 1,
+    "existing": 1
+  },
+  "tags": {
+    "new": 1,
+    "existing": 1
+  },
+  "tasks": 1,
+  "series": 1,
+  "checklistItems": 1,
+  "notes": 1,
+  "completed": {
+    "included": 1,
+    "skipped": 1
+  },
+  "alreadyImported": 1,
+  "googleMirror": {
+    "connected": false,
+    "tasks": 1,
+    "undated": 1
+  },
+  "projectList": [
+    {
+      "name": "Pay the electricity bill",
+      "existing": false,
+      "tasks": 1
+    }
+  ],
+  "tagList": [
+    {
+      "name": "Pay the electricity bill",
+      "existing": false
+    }
+  ],
+  "mapping": {
+    "priority": [
+      {
+        "from": "string",
+        "to": "string"
+      }
+    ],
+    "sectionsAs": "string",
+    "subItemsAs": "string"
+  },
+  "warnings": [
+    {
+      "code": "string",
+      "count": 1,
+      "examples": [
+        {
+          "file": null,
+          "row": null,
+          "title": null,
+          "value": null
+        }
+      ]
+    }
+  ],
+  "created": {
+    "projects": 1,
+    "tags": 1,
+    "tasks": 1,
+    "checklistItems": 1,
+    "notes": 1,
+    "series": 1
+  },
+  "errors": [
+    {
+      "file": "string",
+      "row": 1,
+      "code": "string",
+      "message": "string"
+    }
+  ],
+  "remaining": 1
+}
+```
+
+
 ### Notes
 
-#### `GET /api/v1/notes/{noteId}`
+#### <a name="get-api-v1-notes-noteid"></a>`GET /api/v1/notes/{noteId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2714,7 +3177,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId' \
 ```
 
 
-#### `PATCH /api/v1/notes/{noteId}`
+#### <a name="patch-api-v1-notes-noteid"></a>`PATCH /api/v1/notes/{noteId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2789,7 +3252,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/notes/:noteId' \
 ```
 
 
-#### `DELETE /api/v1/notes/{noteId}`
+#### <a name="delete-api-v1-notes-noteid"></a>`DELETE /api/v1/notes/{noteId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2815,7 +3278,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/notes/:noteId' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `GET /api/v1/notes/{noteId}/export`
+#### <a name="get-api-v1-notes-noteid-export"></a>`GET /api/v1/notes/{noteId}/export`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2847,7 +3310,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/export' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `POST /api/v1/notes/{noteId}/links`
+#### <a name="post-api-v1-notes-noteid-links"></a>`POST /api/v1/notes/{noteId}/links`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2916,7 +3379,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/notes/:noteId/links' \
 ```
 
 
-#### `DELETE /api/v1/notes/{noteId}/links/{linkId}`
+#### <a name="delete-api-v1-notes-noteid-links-linkid"></a>`DELETE /api/v1/notes/{noteId}/links/{linkId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -2943,7 +3406,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/notes/:noteId/links/:linkId' 
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `PUT /api/v1/notes/{noteId}/tags`
+#### <a name="put-api-v1-notes-noteid-tags"></a>`PUT /api/v1/notes/{noteId}/tags`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3010,7 +3473,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notes/:noteId/tags' \
 ```
 
 
-#### `GET /api/v1/notes/{noteId}/versions`
+#### <a name="get-api-v1-notes-noteid-versions"></a>`GET /api/v1/notes/{noteId}/versions`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3065,7 +3528,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/versions' \
 ```
 
 
-#### `GET /api/v1/notes/{noteId}/versions/{versionId}`
+#### <a name="get-api-v1-notes-noteid-versions-versionid"></a>`GET /api/v1/notes/{noteId}/versions/{versionId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3111,7 +3574,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/versions/:versionI
 ```
 
 
-#### `GET /api/v1/notes/{noteId}/versions/{versionId}/diff`
+#### <a name="get-api-v1-notes-noteid-versions-versionid-diff"></a>`GET /api/v1/notes/{noteId}/versions/{versionId}/diff`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3152,7 +3615,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/versions/:versionI
 ```
 
 
-#### `POST /api/v1/notes/{noteId}/versions/{versionId}/restore`
+#### <a name="post-api-v1-notes-noteid-versions-versionid-restore"></a>`POST /api/v1/notes/{noteId}/versions/{versionId}/restore`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3193,7 +3656,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/notes/:noteId/versions/:version
 ```
 
 
-#### `GET /api/v1/projects/{projectId}/notes`
+#### <a name="get-api-v1-projects-projectid-notes"></a>`GET /api/v1/projects/{projectId}/notes`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3250,7 +3713,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/projects/:projectId/notes' \
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/export/notes`
+#### <a name="get-api-v1-workspaces-workspaceid-export-notes"></a>`GET /api/v1/workspaces/{workspaceId}/export/notes`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3294,7 +3757,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/export/n
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/import/notes`
+#### <a name="post-api-v1-workspaces-workspaceid-import-notes"></a>`POST /api/v1/workspaces/{workspaceId}/import/notes`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3345,7 +3808,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/import/
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/notes`
+#### <a name="get-api-v1-workspaces-workspaceid-notes"></a>`GET /api/v1/workspaces/{workspaceId}/notes`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3407,7 +3870,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/notes' \
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/notes`
+#### <a name="post-api-v1-workspaces-workspaceid-notes"></a>`POST /api/v1/workspaces/{workspaceId}/notes`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3481,7 +3944,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/notes' 
 
 ### Projects
 
-#### `GET /api/v1/projects/{projectId}`
+#### <a name="get-api-v1-projects-projectid"></a>`GET /api/v1/projects/{projectId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3529,7 +3992,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/projects/:projectId' \
 ```
 
 
-#### `PATCH /api/v1/projects/{projectId}`
+#### <a name="patch-api-v1-projects-projectid"></a>`PATCH /api/v1/projects/{projectId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3594,7 +4057,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/projects/:projectId' \
 ```
 
 
-#### `DELETE /api/v1/projects/{projectId}`
+#### <a name="delete-api-v1-projects-projectid"></a>`DELETE /api/v1/projects/{projectId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3620,7 +4083,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/projects/:projectId' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `POST /api/v1/projects/{projectId}/archive`
+#### <a name="post-api-v1-projects-projectid-archive"></a>`POST /api/v1/projects/{projectId}/archive`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3681,7 +4144,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/projects/:projectId/archive' \
 ```
 
 
-#### `POST /api/v1/projects/{projectId}/unarchive`
+#### <a name="post-api-v1-projects-projectid-unarchive"></a>`POST /api/v1/projects/{projectId}/unarchive`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3742,7 +4205,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/projects/:projectId/unarchive' 
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/projects`
+#### <a name="get-api-v1-workspaces-workspaceid-projects"></a>`GET /api/v1/workspaces/{workspaceId}/projects`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3799,7 +4262,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/projects
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/projects`
+#### <a name="post-api-v1-workspaces-workspaceid-projects"></a>`POST /api/v1/workspaces/{workspaceId}/projects`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3865,7 +4328,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/project
 
 ### Quick links
 
-#### `PATCH /api/v1/quick-links/{quickLinkId}`
+#### <a name="patch-api-v1-quick-links-quicklinkid"></a>`PATCH /api/v1/quick-links/{quickLinkId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3921,7 +4384,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/quick-links/:quickLinkId' \
 ```
 
 
-#### `DELETE /api/v1/quick-links/{quickLinkId}`
+#### <a name="delete-api-v1-quick-links-quicklinkid"></a>`DELETE /api/v1/quick-links/{quickLinkId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3946,7 +4409,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/quick-links/:quickLinkId' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/quick-links`
+#### <a name="get-api-v1-workspaces-workspaceid-quick-links"></a>`GET /api/v1/workspaces/{workspaceId}/quick-links`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -3995,7 +4458,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/quick-li
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/quick-links`
+#### <a name="post-api-v1-workspaces-workspaceid-quick-links"></a>`POST /api/v1/workspaces/{workspaceId}/quick-links`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4056,7 +4519,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/quick-l
 ```
 
 
-#### `PUT /api/v1/workspaces/{workspaceId}/quick-links/order`
+#### <a name="put-api-v1-workspaces-workspaceid-quick-links-order"></a>`PUT /api/v1/workspaces/{workspaceId}/quick-links/order`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4116,7 +4579,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/quick-li
 
 ### Recurrence
 
-#### `GET /api/v1/task-series/{seriesId}`
+#### <a name="get-api-v1-task-series-seriesid"></a>`GET /api/v1/task-series/{seriesId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4157,7 +4620,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/task-series/:seriesId' \
 ```
 
 
-#### `PATCH /api/v1/task-series/{seriesId}`
+#### <a name="patch-api-v1-task-series-seriesid"></a>`PATCH /api/v1/task-series/{seriesId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4171,7 +4634,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/task-series/:seriesId' \
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `rule` | object | no | — |
+| `rule` | object | no | ADR-0020 repeat rule. `basis` "calendar" (default) repeats on a fixed pattern; "completion" (OPH-375) creates the next task N days/weeks/months after the open one is completed. |
 | `template` | object | no | — |
 | `timezone` | string | no | length 1–64 |
 | `anchorAt` | string (date-time) | no | — |
@@ -4215,7 +4678,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/task-series/:seriesId' \
 ```
 
 
-#### `DELETE /api/v1/task-series/{seriesId}`
+#### <a name="delete-api-v1-task-series-seriesid"></a>`DELETE /api/v1/task-series/{seriesId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4254,7 +4717,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/task-series/:seriesId' \
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/task-series`
+#### <a name="get-api-v1-workspaces-workspaceid-task-series"></a>`GET /api/v1/workspaces/{workspaceId}/task-series`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4298,7 +4761,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/task-ser
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/task-series`
+#### <a name="post-api-v1-workspaces-workspaceid-task-series"></a>`POST /api/v1/workspaces/{workspaceId}/task-series`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4312,7 +4775,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/task-ser
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `rule` | object | **yes** | — |
+| `rule` | object | **yes** | ADR-0020 repeat rule. `basis` "calendar" (default) repeats on a fixed pattern; "completion" (OPH-375) creates the next task N days/weeks/months after the open one is completed. |
 | `template` | object | **yes** | — |
 | `timezone` | string | no | length 1–64 |
 | `anchorAt` | string (date-time) | **yes** | — |
@@ -4358,7 +4821,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/task-se
 
 ### Reminders
 
-#### `POST /api/v1/reminders/{reminderId}/acknowledge`
+#### <a name="post-api-v1-reminders-reminderid-acknowledge"></a>`POST /api/v1/reminders/{reminderId}/acknowledge`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4410,7 +4873,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/reminders/:reminderId/acknowled
 
 ### Service
 
-#### `GET /`
+#### <a name="get"></a>`GET /`
 
 **Auth:** None — this endpoint is public.
 
@@ -4438,7 +4901,7 @@ curl -X GET 'https://api.alliswell.space/'
 ```
 
 
-#### `GET /api/v1/push/public-key`
+#### <a name="get-api-v1-push-public-key"></a>`GET /api/v1/push/public-key`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4466,7 +4929,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/push/public-key' \
 
 ### Sync
 
-#### `GET /api/v1/sync/pull`
+#### <a name="get-api-v1-sync-pull"></a>`GET /api/v1/sync/pull`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4513,7 +4976,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/sync/pull' \
 ```
 
 
-#### `POST /api/v1/sync/push`
+#### <a name="post-api-v1-sync-push"></a>`POST /api/v1/sync/push`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4578,7 +5041,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/sync/push' \
 
 ### Tags
 
-#### `GET /api/v1/tags/{tagId}`
+#### <a name="get-api-v1-tags-tagid"></a>`GET /api/v1/tags/{tagId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4620,7 +5083,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/tags/:tagId' \
 ```
 
 
-#### `PATCH /api/v1/tags/{tagId}`
+#### <a name="patch-api-v1-tags-tagid"></a>`PATCH /api/v1/tags/{tagId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4673,7 +5136,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/tags/:tagId' \
 ```
 
 
-#### `DELETE /api/v1/tags/{tagId}`
+#### <a name="delete-api-v1-tags-tagid"></a>`DELETE /api/v1/tags/{tagId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4699,7 +5162,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/tags/:tagId' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/tags`
+#### <a name="get-api-v1-workspaces-workspaceid-tags"></a>`GET /api/v1/workspaces/{workspaceId}/tags`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4744,7 +5207,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/tags' \
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/tags`
+#### <a name="post-api-v1-workspaces-workspaceid-tags"></a>`POST /api/v1/workspaces/{workspaceId}/tags`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4798,7 +5261,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/tags' \
 
 ### Tasks
 
-#### `GET /api/v1/tasks/{taskId}`
+#### <a name="get-api-v1-tasks-taskid"></a>`GET /api/v1/tasks/{taskId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4874,7 +5337,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/tasks/:taskId' \
 ```
 
 
-#### `PATCH /api/v1/tasks/{taskId}`
+#### <a name="patch-api-v1-tasks-taskid"></a>`PATCH /api/v1/tasks/{taskId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -4979,7 +5442,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/tasks/:taskId' \
 ```
 
 
-#### `DELETE /api/v1/tasks/{taskId}`
+#### <a name="delete-api-v1-tasks-taskid"></a>`DELETE /api/v1/tasks/{taskId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5005,7 +5468,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/tasks/:taskId' \
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `POST /api/v1/tasks/{taskId}/checklist`
+#### <a name="post-api-v1-tasks-taskid-checklist"></a>`POST /api/v1/tasks/{taskId}/checklist`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5055,7 +5518,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/checklist' \
 ```
 
 
-#### `PATCH /api/v1/tasks/{taskId}/checklist/{itemId}`
+#### <a name="patch-api-v1-tasks-taskid-checklist-itemid"></a>`PATCH /api/v1/tasks/{taskId}/checklist/{itemId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5107,7 +5570,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/tasks/:taskId/checklist/:itemI
 ```
 
 
-#### `DELETE /api/v1/tasks/{taskId}/checklist/{itemId}`
+#### <a name="delete-api-v1-tasks-taskid-checklist-itemid"></a>`DELETE /api/v1/tasks/{taskId}/checklist/{itemId}`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5134,7 +5597,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/tasks/:taskId/checklist/:item
 | `404` | Not visible to you. Someone else’s row answers 404, never 403. |
 
 
-#### `POST /api/v1/tasks/{taskId}/complete`
+#### <a name="post-api-v1-tasks-taskid-complete"></a>`POST /api/v1/tasks/{taskId}/complete`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5211,7 +5674,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/complete' \
 ```
 
 
-#### `POST /api/v1/tasks/{taskId}/notes`
+#### <a name="post-api-v1-tasks-taskid-notes"></a>`POST /api/v1/tasks/{taskId}/notes`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5279,7 +5742,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/notes' \
 ```
 
 
-#### `POST /api/v1/tasks/{taskId}/reopen`
+#### <a name="post-api-v1-tasks-taskid-reopen"></a>`POST /api/v1/tasks/{taskId}/reopen`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5356,7 +5819,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/reopen' \
 ```
 
 
-#### `POST /api/v1/tasks/{taskId}/snooze`
+#### <a name="post-api-v1-tasks-taskid-snooze"></a>`POST /api/v1/tasks/{taskId}/snooze`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5442,7 +5905,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/tasks/:taskId/snooze' \
 ```
 
 
-#### `PUT /api/v1/tasks/{taskId}/tags`
+#### <a name="put-api-v1-tasks-taskid-tags"></a>`PUT /api/v1/tasks/{taskId}/tags`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5527,7 +5990,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/tasks/:taskId/tags' \
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/import/tasks`
+#### <a name="post-api-v1-workspaces-workspaceid-import-tasks"></a>`POST /api/v1/workspaces/{workspaceId}/import/tasks`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5578,7 +6041,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/import/
 ```
 
 
-#### `GET /api/v1/workspaces/{workspaceId}/tasks`
+#### <a name="get-api-v1-workspaces-workspaceid-tasks"></a>`GET /api/v1/workspaces/{workspaceId}/tasks`
 
 **Auth:** Personal API key **or** session JWT.
 
@@ -5661,7 +6124,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/tasks' \
 ```
 
 
-#### `POST /api/v1/workspaces/{workspaceId}/tasks`
+#### <a name="post-api-v1-workspaces-workspaceid-tasks"></a>`POST /api/v1/workspaces/{workspaceId}/tasks`
 
 **Auth:** Personal API key **or** session JWT.
 

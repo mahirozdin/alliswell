@@ -69,6 +69,21 @@ class SocialSignIn {
     return Platform.isIOS || Platform.isMacOS;
   }
 
+  /// Whether Google's button may be shown (OPH-370). google_sign_in 7 has no
+  /// Windows or Linux implementation, so on those desktops the button could
+  /// only ever fail — it stays hidden there and e-mail sign-in remains.
+  static bool googleAvailableOn({
+    required bool isWeb,
+    required TargetPlatform platform,
+  }) =>
+      isWeb ||
+      platform == TargetPlatform.android ||
+      platform == TargetPlatform.iOS ||
+      platform == TargetPlatform.macOS;
+
+  static bool get googleAvailable =>
+      googleAvailableOn(isWeb: kIsWeb, platform: defaultTargetPlatform);
+
   /// Sign in with Google and return the ID token.
   Future<String> googleIdToken() async {
     try {

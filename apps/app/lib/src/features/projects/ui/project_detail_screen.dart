@@ -20,6 +20,7 @@ import 'package:markdown_forge/markdown_forge.dart';
 import '../../notes/providers.dart';
 import '../../notes/ui/notes_screen.dart';
 import '../../home/task_grouping.dart' show orderTasks;
+import '../../tasks/data/quick_add_apply.dart';
 import '../../tasks/data/task_sort.dart';
 import '../../tasks/providers.dart';
 import '../../tasks/ui/quick_add_bar.dart';
@@ -387,13 +388,18 @@ class _ProjectTasksTab extends ConsumerWidget {
 
   final String projectId;
 
-  Future<void> _add(WidgetRef ref, String title) async {
-    final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
-    if (workspaceId == null) throw StateError('No workspace available');
-    await ref.read(taskStoreProvider).create(workspaceId, {
-      'title': title,
-      'projectId': projectId,
-    });
+  /// The task lands in THIS project whatever the text says (`+Name` is not
+  /// read here); a date in the text gets the quick-add defaults (OPH-373).
+  Future<void> _add(WidgetRef ref, QuickAddSubmission submission) async {
+    final parse = submission.parse;
+    final id = await createFromQuickParse(
+      ref.read,
+      parse: parse,
+      base: {'projectId': projectId},
+      withDefaults: parse.dueAt != null,
+      claim: false,
+    );
+    if (id == null) throw StateError('No workspace available');
   }
 
   @override
@@ -416,7 +422,8 @@ class _ProjectTasksTab extends ConsumerWidget {
               child: QuickAddBar(
                 key: const Key('project-quick-add'),
                 hintText: 'project.addTaskHint'.tr(),
-                onAdd: (title) => _add(ref, title),
+                parseProject: false,
+                onAdd: (submission) => _add(ref, submission),
               ),
             ),
             Padding(

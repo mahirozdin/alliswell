@@ -46,6 +46,38 @@
     "fileName": "Name",
     "fileSize": "Size"
   },
+  "search": {
+    "global": {
+      "open": "Search everywhere",
+      "openWithShortcut": "Search everywhere ({shortcut})",
+      "hint": "Search tasks, projects, notes, tags and files…",
+      "recent": "Recent",
+      "emptyHint": "Type to search your tasks, projects, notes, tags and files — it works offline too.",
+      "shortcutTip": "Tip: {shortcut} opens this from anywhere.",
+      "noResultsTitle": "No results",
+      "noResultsBody": "Nothing matches “{query}”.",
+      "createTask": "Create task “{title}”",
+      "resultCount": "{count} results",
+      "groupCount": "{shown} of {total}",
+      "groups": {
+        "tasks": "Tasks",
+        "projects": "Projects",
+        "notes": "Notes",
+        "tags": "Tags",
+        "files": "Files"
+      },
+      "kinds": {
+        "task": "Task",
+        "project": "Project",
+        "note": "Note",
+        "tag": "Tag",
+        "file": "File"
+      },
+      "completed": "Completed",
+      "archived": "Archived",
+      "tagHint": "Shows Home filtered by this tag"
+    }
+  },
   "color": {
     "recent": "Recently used",
     "more": "More colors",
@@ -95,7 +127,16 @@
     "or": "or",
     "continueWithGoogle": "Continue with Google",
     "continueWithApple": "Continue with Apple",
-    "socialFailed": "That sign-in did not go through. Please try again."
+    "socialFailed": "That sign-in did not go through. Please try again.",
+    "mfa": {
+      "title": "Enter your verification code",
+      "body": "This account has two-step verification. Open your authenticator app and enter the 6-digit code.",
+      "code": "Verification code",
+      "codeHelp": "Lost your phone? Enter one of your recovery codes instead.",
+      "enterCode": "Enter the code from your authenticator app.",
+      "invalid": "That code is not right. Check it and try again.",
+      "verify": "Verify"
+    }
   },
   "settings": {
     "title": "Settings",
@@ -169,7 +210,7 @@
       "developer": "API access and management",
       "developerSub": "Your API keys, and the reference for using them",
       "data": "Data",
-      "dataSub": "Completed work, share log",
+      "dataSub": "Import, completed work, share log",
       "account": "Account",
       "team": "Team",
       "teamSub": "Settings, members and invitations",
@@ -196,7 +237,9 @@
       "teamAudit": "Audit log",
       "teamAuditSub": "Who changed what in the team, and when",
       "customers": "Companies",
-      "customersSub": "Companies you serve and who may sign in to their portal"
+      "customersSub": "Companies you serve and who may sign in to their portal",
+      "rules": "Automation rules",
+      "rulesSub": "What happens automatically, and where new requests go"
     },
     "noteSourceStyling": {
       "title": "Editor formatting",
@@ -289,10 +332,25 @@
     "priorityLabel": "Priority",
     "statusLabel": "Status",
     "notSet": "Not set",
+    "when": "When",
+    "clearWhen": "Clear when",
     "due": "Due",
     "clearDue": "Clear due date",
     "remind": "Remind",
     "clearReminder": "Clear reminder",
+    "duration": "Duration",
+    "clearDuration": "Clear duration",
+    "durationValue": {
+      "minutes": "{m} min",
+      "hours": "{h} h",
+      "hoursMinutes": "{h} h {m} min"
+    },
+    "durationDialog": {
+      "title": "How long will it take?",
+      "custom": "Minutes",
+      "invalid": "Enter 1 to 1440 minutes."
+    },
+    "durationSemantic": "Takes {duration}",
     "clearField": "Clear {field}",
     "urgentAlarm": "Urgent alarm",
     "urgentAlarmSub": "Insistent reminder that must be acknowledged",
@@ -327,7 +385,31 @@
     "deleted": "“{title}” deleted",
     "movedInCalendar": "Moved in your calendar — {date}",
     "movedInCalendarSub": "You dragged this task’s event, so it stays at that time instead of following the deadline.",
-    "resetSchedule": "Reset"
+    "resetSchedule": "Reset",
+    "quickParse": {
+      "due": "Due {date}",
+      "when": "When {date}",
+      "repeat": "{rule} · first {date}",
+      "priority": "Priority: {label}",
+      "keepAsText": "Keep as text",
+      "helpTooltip": "What quick add understands",
+      "help": {
+        "title": "What quick add understands",
+        "intro": "Type naturally. Dates, times, tags and more are recognized as you type, offline. Turkish and English both work, whatever the app language.",
+        "datesTitle": "Dates",
+        "dates": "today · tomorrow · day after tomorrow\nfriday · next friday · in 3 days · next week\nNov 15 · 15.11 · 2026-11-15 · end of month",
+        "timesTitle": "Times",
+        "times": "9am · 3:30pm · at 15:00 · noon\n\"pay rent tomorrow 9am\"",
+        "dueWhenTitle": "Deadline or When",
+        "dueWhen": "A date on its own is the deadline: \"report friday\".\nSay \"due\" or \"by\" to be explicit: \"by tomorrow\".\n\"start\" sets When, the day you plan to do it: \"start mon due fri\".",
+        "repeatTitle": "Repeat",
+        "repeat": "every day · every monday · every weekday\nevery other week · every 15th · every last day of the month",
+        "marksTitle": "Tags, project, priority",
+        "marks": "#home adds a tag (created if it is new)\n+Work files it in one of your projects\np1 high · p2 medium · p3 low · p4 none · !urgent",
+        "undoTitle": "Not what you meant?",
+        "undo": "Recognized words are highlighted and shown as chips under the bar.\nTap ✕ on a chip and its words stay in the title."
+      }
+    }
   },
   "tag": {
     "inputHint": "Add tag…",
@@ -594,7 +676,46 @@
     "appleDisconnectBody": "AllisWell stops writing your tasks to Apple Calendar. Events already there stay. macOS/iOS keeps the permission itself — remove that in Settings if you want it gone.",
     "notInShared": "Calendars connect to a person's own account. In your organisation's workspaces your work lives in AllisWell, and no calendar is connected here.",
     "a11yToday": "today",
-    "a11yHasTasks": "has tasks"
+    "a11yHasTasks": "has tasks",
+    "appleServerMirrors": "Your server already puts your tasks on your iCloud calendar, so Apple Calendar on this device stays off — otherwise every task would appear twice.",
+    "caldav": {
+      "title": "iCloud or CalDAV calendar",
+      "blurb": "Put every task on your iCloud calendar — or any CalDAV calendar such as Nextcloud — from the server, so it works on this device too. Moves you make there come back.",
+      "blurbAppleDevice": "On this iPhone or Mac, Apple Calendar above is the way to iCloud. Use this for another CalDAV calendar, such as Nextcloud.",
+      "icloud": "iCloud Calendar",
+      "generic": "CalDAV calendar",
+      "connectTitle": "Connect a calendar",
+      "icloudSegment": "iCloud",
+      "genericSegment": "Other server",
+      "serverLabel": "Server address",
+      "appleIdLabel": "Apple Account email",
+      "usernameLabel": "User name",
+      "appPasswordLabel": "App-specific password",
+      "passwordLabel": "Password or app password",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "howToMake": "How do I make an app-specific password?",
+      "thisServer": "this server",
+      "consentIcloud": "Before you connect: AllisWell keeps this password on its server ({server}) so it can update your calendar while your devices are off. Use an app-specific password, never your Apple Account password. You can cancel it any time at appleid.apple.com. Whoever runs this server can read your calendar. Every task will be written to the calendar you pick.",
+      "consentGeneric": "Before you connect: AllisWell keeps this password on its server ({server}) so it can update your calendar while your devices are off. Use an app password if your server offers one. Whoever runs this server can read your calendar. Every task will be written to the calendar you pick.",
+      "authFailedIcloud": "Apple did not accept that. Use an app-specific password made at appleid.apple.com — your normal Apple Account password does not work here.",
+      "authFailedGeneric": "The server did not accept that user name and password.",
+      "notCaldav": "That address does not answer like a calendar server. Check the address — for Nextcloud it is the address you open in the browser.",
+      "noCalendars": "This account has no calendar that can hold events. Make one in your calendar app first.",
+      "blockedAddress": "That address cannot be used from this server. Use the server's https:// address.",
+      "redirectOffHost": "The server sent us to a different address. For your safety the password is only sent to the address you typed — enter that one instead.",
+      "unreachable": "The calendar server could not be reached. Try again in a moment.",
+      "alreadyConnected": "A calendar is already connected. Disconnect it first.",
+      "notEnabled": "This server has not turned on iCloud and CalDAV calendars.",
+      "reauth": "The calendar server no longer accepts the saved password. Reconnect.",
+      "serverOff": "This server has turned off iCloud and CalDAV calendars, so nothing is updated. You can still disconnect.",
+      "passwordRejectedIcloud": "Apple no longer accepts the app-specific password — it may have been revoked. Reconnect with a new one.",
+      "passwordRejected": "The server no longer accepts the saved password. Reconnect.",
+      "reconnect": "Reconnect",
+      "disconnectBodyIcloud": "Your events stay in your calendar. AllisWell deletes the password from its server, but it cannot cancel it for you: on appleid.apple.com go to Sign-In and Security → App-Specific Passwords and revoke it.",
+      "disconnectBodyGeneric": "Your events stay in your calendar. AllisWell deletes the password from its server. If it was an app password, you can revoke it in your server's settings too.",
+      "disconnectSubIcloud": "Events stay; revoke the password at appleid.apple.com afterwards"
+    }
   },
   "tour": {
     "skip": "Skip",
@@ -625,6 +746,9 @@
     "sessionExpired": "Your session has expired. Please sign in again.",
     "AUTH_INVALID_CREDENTIALS": "Email or password is incorrect.",
     "AUTH_EMAIL_TAKEN": "An account with this email already exists.",
+    "AUTH_MFA_REQUIRED": "This account needs its verification code.",
+    "AUTH_MFA_INVALID": "That code is not right. Check it and try again.",
+    "AUTH_SIGN_IN_REFUSED": "Sign-in is not allowed for this account right now.",
     "NETWORK_ERROR": "Could not reach the server. Check your connection and the server address.",
     "server": "The server could not complete this. Try again in a moment.",
     "notFound": "That could not be found — it may have been removed or moved.",
@@ -679,7 +803,45 @@
     "CUSTOMER_NAME_TAKEN": "A company with that name already exists.",
     "CUSTOMER_USER_TAKEN": "That address already belongs to a contact here.",
     "CUSTOMER_EMAIL_INVALID": "That is not an e-mail address.",
-    "CUSTOMER_USER_DEACTIVATED": "That contact is switched off. Switch them back on instead."
+    "CUSTOMER_USER_DEACTIVATED": "That contact is switched off. Switch them back on instead.",
+    "IMPORT_FORMAT_UNRECOGNIZED": "This file is not a Todoist or TickTick export.",
+    "IMPORT_EMPTY": "There is nothing to import in this file.",
+    "IMPORT_INVALID_TIMEZONE": "Your profile's time zone is not valid; set it again in Settings.",
+    "IMPORT_FILE_TOO_LARGE": "This file has too many rows or columns to import at once.",
+    "IMPORT_ITEM_FAILED": "This item could not be imported.",
+    "TASK_SERIES_TOO_DENSE": "This repeat rule would create too many tasks.",
+    "TICKET_UNIT_REQUIRED": "Several units answer that service. Pick one.",
+    "TICKET_SERVICE_UNROUTED": "No unit answers that service yet.",
+    "SLA_RULE_NAME_TAKEN": "A rule with this name already exists.",
+    "SLA_RULE_STRATEGY": "That is not a way of choosing a person this product has.",
+    "SLA_RULE_TRIGGER": "That is not a trigger this product fires.",
+    "SLA_RULE_ACTION": "That is not an action a rule can take.",
+    "SLA_RULE_TRIGGER_NOT_RAISED": "This signal is not raised yet, so the rule would never run. Choose another trigger.",
+    "SLA_RULE_CONDITION_TRIGGER": "This trigger cannot see one of the conditions, so the rule would never match. Remove it.",
+    "SLA_RULE_ACTION_TRIGGER": "This trigger is not about a request, so it cannot take this action.",
+    "SLA_RULE_ORDER_STALE": "The rules changed while you were looking. The list was reloaded; try again.",
+    "SLA_RULE_TEST_TICKET_NOT_FOUND": "There is no request with that number in this team.",
+    "SLA_RULE_TEST_NOT_A_REQUEST": "This trigger is not about a request, so it cannot be tested on one.",
+    "SLA_RULE_NEEDS_ASSIGNEE": "Choose who gets the request.",
+    "SLA_RULE_NEEDS_PRIORITY": "Choose a priority.",
+    "SLA_RULE_NEEDS_WEBHOOK": "Choose a webhook.",
+    "SLA_RULE_NEEDS_ADDRESS": "Enter an e-mail address.",
+    "SLA_RULE_NEEDS_TAG": "Choose a tag.",
+    "SLA_RULE_TAG_UNKNOWN": "That tag is not one of this team's.",
+    "SLA_RULE_SERVICE_UNKNOWN": "That service is not one of this team's.",
+    "SLA_RULE_UNIT_UNKNOWN": "That unit is not one of this team's.",
+    "SLA_RULE_WEBHOOK_UNKNOWN": "That webhook is not one of this team's.",
+    "SLA_RULE_ASSIGNEE_NOT_MEMBER": "That person is not a member of this team.",
+    "SLA_RULE_NEEDS_IDLE_DAYS": "Say how many days without activity count.",
+    "CLASSIFICATION_RULE_NAME_TAKEN": "A rule with this name already exists.",
+    "CLASSIFICATION_RULE_HAS_NO_ACTION": "A rule has to do at least one thing: service, unit, priority or tag.",
+    "CLASSIFICATION_UNKNOWN_TAG": "That tag is not one of this team's.",
+    "CLASSIFICATION_UNKNOWN_SERVICE": "That service is not one of this team's.",
+    "CLASSIFICATION_UNKNOWN_UNIT": "That unit is not one of this team's.",
+    "CLASSIFICATION_TOO_MANY_KEYWORDS": "At most 20 words.",
+    "CLASSIFICATION_KEYWORD_TOO_LONG": "A word can be at most 60 characters.",
+    "CLASSIFICATION_UNKNOWN_PRIORITY": "Unknown priority.",
+    "CLASSIFICATION_ORDER_STALE": "The rules changed while you were looking. The list was reloaded; try again."
   },
   "sync": {
     "noteConflict": "This note was edited on another device too — open it to compare.",
@@ -1034,6 +1196,7 @@
     "endUntilLabel": "End date",
     "stop": "Stop repeating",
     "stopConfirm": "Future occurrences are removed. Everything already done stays in your history.",
+    "stopConfirmAfter": "This task stays. Completing it no longer creates the next one.",
     "badgeTooltip": "Repeats",
     "every": {
       "daily": "Every day",
@@ -1076,6 +1239,26 @@
       "future": "This and future ones",
       "all": "All of them",
       "apply": "Apply"
+    },
+    "basis": {
+      "calendar": "On a schedule",
+      "completion": "After completion"
+    },
+    "after": {
+      "daily": "1 day after completion",
+      "dailyN": "{n} days after completion",
+      "weekly": "1 week after completion",
+      "weeklyN": "{n} weeks after completion",
+      "monthly": "1 month after completion",
+      "monthlyN": "{n} months after completion",
+      "intervalLabel": "Repeat after",
+      "unit": {
+        "days": "days",
+        "weeks": "weeks",
+        "months": "months"
+      },
+      "previewTitle": "If you complete it today",
+      "hint": "Counted from the moment you complete it, early or late. The time of day stays."
     }
   },
   "ai": {
@@ -1175,6 +1358,26 @@
     },
     "quickAdd": {
       "enriching": "AI is filling this in…"
+    },
+    "attach": {
+      "button": "Attach a note, file, task or project (@)",
+      "panelTitle": "Attach to this message",
+      "emptyHint": "Type to find a note, file, task or project",
+      "noResults": "Nothing called “{query}”",
+      "remove": "Remove",
+      "truncated": "shortened",
+      "truncatedNotice": "Only the first {shown} of {total} characters of “{title}” were sent.",
+      "droppedNotice": "“{title}” was left out: a conversation carries at most 8 attachments and about 40,000 characters.",
+      "limit": "Up to 5 attachments per message",
+      "loading": "Attaching…",
+      "attached": "Already attached",
+      "sentLabel": "Attached: {title}",
+      "refused": {
+        "notText": "Only text files can be attached (PDF, images and Office files are not read)",
+        "tooLarge": "Too large to attach (over 1 MB)",
+        "unavailable": "Couldn't load it, check your connection",
+        "empty": "The file is empty"
+      }
     }
   },
   "markdown": {
@@ -1640,7 +1843,9 @@
         "note": "Internal note written",
         "reply": "Reply written",
         "worklog": "Time logged: {duration}",
-        "formCorrected": "Form answers corrected: {fields}"
+        "formCorrected": "Form answers corrected: {fields}",
+        "transferred": "From {from} to {to}",
+        "transferReason": "Reason kept as an internal note"
       }
     },
     "verb": {
@@ -1715,6 +1920,9 @@
       },
       "ee_mail_inbox": {
         "revoked": "disconnected a mail inbox"
+      },
+      "ee_ticket": {
+        "transferred": "moved this request"
       }
     },
     "perm": {
@@ -1795,7 +2003,8 @@
         "override_priority": "Set a priority the impact × urgency matrix would not produce",
         "link": "Link requests to each other and to problems",
         "pause_sla": "Stop and restart a request’s SLA clock without moving it",
-        "manage_worklog": "Correct or remove somebody else’s recorded time"
+        "manage_worklog": "Correct or remove somebody else’s recorded time",
+        "transfer": "Move a request to another service or unit"
       },
       "units": {
         "manage": "Manage units",
@@ -2111,6 +2320,10 @@
         "status_changed": {
           "title": "{ticketRef} is now {statusLabel}",
           "body": "{subject}"
+        },
+        "transferred": {
+          "title": "{ticketRef} moved to {unitName}",
+          "body": "{subject} · {serviceName}"
         }
       },
       "share": {
@@ -2132,7 +2345,8 @@
           "assigned": "A request is assigned to you",
           "status_changed": "A request you asked for or hold changes status",
           "commented": "A request you follow gets a reply",
-          "rate": "You are asked to rate a request"
+          "rate": "You are asked to rate a request",
+          "transferred": "A request you asked for moves to another service or unit"
         },
         "sla": {
           "warned": "An SLA deadline is approaching",
@@ -2578,7 +2792,25 @@
         }
       },
       "statusUnknown": "in another status",
-      "selectRow": "Select {ticket}"
+      "selectRow": "Select {ticket}",
+      "transfer": {
+        "action": "Transfer",
+        "title": "Transfer request",
+        "now": "Now: {where}",
+        "search": "Find a service or unit",
+        "current": "Current",
+        "none": "No other service or unit can take this request.",
+        "noMatch": "Nothing matches that.",
+        "notAllowed": "Your role cannot transfer requests. Ask a team admin.",
+        "approvalPending": "This request is waiting on an approval. It can be transferred once someone decides.",
+        "reason": "Reason (optional)",
+        "reasonHint": "Only the desk sees this",
+        "crossUnit": "{unit} receives it. Everyone on it now is taken off, and the receiving desk is told. The SLA keeps counting from when the request was opened.",
+        "sameUnit": "It stays on this desk, under another service. The SLA keeps counting and is re-aimed on the new service.",
+        "apply": "Transfer",
+        "done": "Transferred to {where}",
+        "unchanged": "It is already there"
+      }
     },
     "sla": {
       "breached": "SLA missed",
@@ -2950,7 +3182,8 @@
           "assigned": "Request assigned",
           "status_changed": "Request status changed",
           "commented": "Reply on a request",
-          "rate": "Rating requested"
+          "rate": "Rating requested",
+          "transferred": "Request moved to another service or unit"
         },
         "sla": {
           "warned": "SLA deadline approaching",
@@ -3676,6 +3909,194 @@
       "unsupportedTitle": "This server cannot list contacts yet",
       "unsupportedBody": "Listing and switching off company contacts needs a newer server. Ask whoever runs it to update.",
       "unsupportedAction": "This server does not support that yet. Ask whoever runs it to update."
+    },
+    "rules": {
+      "title": "Automation rules",
+      "tabAutomation": "Automation",
+      "tabRouting": "Routing",
+      "explainAutomation": "Every matching rule runs, top to bottom.",
+      "explainRouting": "The first matching rule decides where a new request goes.",
+      "newRule": "New rule",
+      "newAutomation": "New automation rule",
+      "newRouting": "New routing rule",
+      "editAutomation": "Automation rule",
+      "editRouting": "Routing rule",
+      "emptyAutomation": "No automation rules yet",
+      "emptyAutomationBody": "A rule turns a signal into work: when a request is created, idle or late, it can assign it, raise its priority, tag it or tell someone.",
+      "emptyRouting": "No routing rules yet",
+      "emptyRoutingBody": "A routing rule sends new requests to the right service or unit by their words, sender or source.",
+      "unavailable": "Not available",
+      "unavailableBody": "Rules are managed by the team's administrators.",
+      "off": "Off",
+      "paused": "Paused",
+      "pausedReason": "Paused: {reason}",
+      "resume": "Resume",
+      "lastRan": "Last ran {ago}",
+      "neverRan": "Never ran",
+      "lastFailed": "Last run failed: {reason}",
+      "dragHandle": "Drag to reorder",
+      "enabledLabel": "Rule on",
+      "more": "More actions",
+      "edit": "Edit",
+      "duplicate": "Duplicate",
+      "duplicated": "A copy was added at the bottom, switched off.",
+      "moveUp": "Move up",
+      "moveDown": "Move down",
+      "delete": "Delete",
+      "deleteTitle": "Delete this rule?",
+      "deleteBody": "“{name}” stops and its settings are lost. What it already did stays in the history.",
+      "conditionCount": "Conditions: {n}",
+      "when": "When",
+      "if": "If",
+      "then": "Then",
+      "name": "Name",
+      "nameRequired": "Give the rule a name",
+      "nameTooLong": "At most 160 characters",
+      "enabled": "Rule is on",
+      "pausedBanner": "The server paused this rule: {reason} Saving resumes it.",
+      "notRaised": "This signal is not raised yet, so a rule listening for it never runs. Choose another trigger before saving.",
+      "trigger": "Trigger",
+      "idleDays": "Days without activity",
+      "idleDaysInvalid": "Between 1 and 365 days",
+      "conditionsHelp": "All conditions must match. No condition means every request.",
+      "conditionsHelpSignal": "All conditions must match. No condition means every signal.",
+      "noConditions": "No conditions: the rule applies to everything this trigger raises.",
+      "addCondition": "Add condition",
+      "removeCondition": "Remove condition",
+      "is": "is",
+      "chooseValue": "Choose a value",
+      "conditionsRemoved": "Removed because this trigger cannot use them: {list}",
+      "actionRemoved": "The action was reset because this trigger cannot take it.",
+      "action": "Action",
+      "strategy": "Who",
+      "member": "Person",
+      "memberRequired": "Choose who gets the request",
+      "memberSearch": "Search people",
+      "noMatches": "No one matches",
+      "priority": "Priority",
+      "priorityRequired": "Choose a priority",
+      "webhook": "Webhook",
+      "webhookPaused": "{name} (paused)",
+      "webhookRequired": "Choose a webhook",
+      "emailTo": "Send to",
+      "emailInvalid": "Enter an e-mail address",
+      "subject": "Subject",
+      "subjectHelp": "Inserted fields are filled in when the rule runs.",
+      "subjectRequired": "Write a subject",
+      "body": "Text",
+      "tag": "Tag",
+      "tagRequired": "Choose a tag",
+      "targetService": "Open it in",
+      "targetServiceHint": "Where the signal came from",
+      "openPriority": "Priority of the new request",
+      "insertField": "Insert a field",
+      "advanced": "Advanced",
+      "dailyCap": "Daily limit per request",
+      "dailyCapHelp": "How many times this rule may run for one request in 24 hours before it pauses itself. 0 means no limit.",
+      "dailyCapInvalid": "Between 0 and 1000",
+      "test": "Test on a request",
+      "testHelp": "Checks the rule as it is on this screen, saved or not. Nothing is changed.",
+      "testSignalOnly": "This trigger is about a monitor, not a request, so it cannot be tested on one.",
+      "testNumber": "Request number",
+      "testNumberInvalid": "Enter a request number",
+      "testRun": "Test",
+      "wouldFire": "Would run on {ref}",
+      "wouldNotFire": "Would not run on {ref}",
+      "expectedFound": "expected {expected}, found {actual}",
+      "found": "found {actual}",
+      "removed": "Unavailable (removed)",
+      "save": "Save",
+      "any": "Any",
+      "none": "None",
+      "keywords": "Words",
+      "keywordsHelp": "Any of these words in the subject or text. Upper and lower case and Turkish letters do not matter.",
+      "keywordAdd": "Add word",
+      "keywordTooMany": "At most {n} words",
+      "keywordTooLong": "At most {n} characters",
+      "from": "Sender",
+      "fromHelp": "One address, or @domain for everyone at that domain",
+      "unit": "Unit",
+      "service": "Service",
+      "needsAction": "Choose at least one thing for the rule to do",
+      "priorityLocked": "Setting a priority needs the permission to override priorities.",
+      "tryRecent": "Try on recent requests",
+      "tryRecentHelp": "Runs this rule, at its place in the order, over the last 100 requests. Nothing is changed.",
+      "tryRun": "Try",
+      "drySummary": "{sampled} requests checked · {matched} would change · {unmatched} not touched",
+      "dryMatched": "This rule would take",
+      "dryShadowed": "Matches, but a rule above takes it",
+      "shadowedBy": "Taken by “{rule}”",
+      "dryNone": "None of the recent requests",
+      "triggerName": {
+        "ticket_created": "Request created",
+        "ticket_updated": "Request updated",
+        "ticket_commented": "Comment added",
+        "ticket_idle": "Request untouched for days",
+        "sla_breached": "SLA target missed",
+        "sla_warned": "SLA warning",
+        "health_down": "Monitor down",
+        "health_recovered": "Monitor recovered"
+      },
+      "actionName": {
+        "open_ticket": "Open a request",
+        "open_task": "Open a task",
+        "assign": "Assign",
+        "set_priority": "Set priority",
+        "call_webhook": "Call a webhook",
+        "send_email": "Send an e-mail",
+        "add_tag": "Add a tag"
+      },
+      "strategyName": {
+        "user": "A specific person",
+        "round_robin": "Take turns",
+        "least_loaded": "Least busy",
+        "on_call": "Whoever is on call"
+      },
+      "conditionName": {
+        "service": "Service",
+        "priority": "Priority",
+        "source": "Source",
+        "unit": "Unit"
+      },
+      "sourceName": {
+        "internal": "Inside the team",
+        "public": "Public form",
+        "health": "Monitor",
+        "sla": "SLA",
+        "email": "E-mail"
+      },
+      "checkName": {
+        "service": "Service",
+        "priority": "Priority",
+        "source": "Source",
+        "unit": "Unit",
+        "idle": "Untouched long enough (days)",
+        "open": "Still open",
+        "automated_source": "Not opened by an automation",
+        "enabled": "Rule is on",
+        "paused": "Not paused",
+        "daily_cap": "Under the daily limit"
+      },
+      "outcome": {
+        "would_run": "Would run",
+        "would_fail": "Would fail",
+        "no_change": "Nothing to change"
+      },
+      "reason": {
+        "no_assignee": "No person is chosen.",
+        "not_member": "This person is not on the request's desk.",
+        "nobody_available": "Nobody on the desk is available.",
+        "no_on_call": "The on-call rota names nobody for this desk now.",
+        "no_priority": "No priority is chosen.",
+        "tag_missing": "The tag no longer exists.",
+        "webhook_missing": "The webhook no longer exists.",
+        "webhook_disabled": "The webhook is paused.",
+        "no_address": "No address is given.",
+        "no_destination": "There is nowhere to open it.",
+        "TICKET_SERVICE_NOT_FOUND": "The target service no longer exists.",
+        "TICKET_SERVICE_UNROUTED": "No unit answers the target service.",
+        "TICKET_UNIT_REQUIRED": "Several units answer the target service, so the rule cannot pick one."
+      }
     }
   },
   "perm": {
@@ -3695,5 +4116,114 @@
       "hours": "{n} h ago",
       "days": "{n} days ago"
     }
+  },
+  "import": {
+    "title": "Import",
+    "sub": "Move in from Todoist or TickTick",
+    "stepOf": "Step {n} of {total}",
+    "step": {
+      "source": "Where are you moving from?",
+      "file": "Choose your {app} export",
+      "preview": "Check what will come in",
+      "importing": "Importing",
+      "done": "Imported"
+    },
+    "intro": "Bring your tasks with you. Nothing is written until you have seen the preview, and importing the same file again never creates duplicates.",
+    "how": {
+      "todoist": "Use a backup ZIP or a project's CSV export.",
+      "ticktick": "Use the CSV backup from TickTick's web app."
+    },
+    "export": {
+      "todoist": "In Todoist, open Settings › Backups and download the latest backup (a ZIP), or open a project's menu and choose Export as CSV. You can choose several CSV files at once.",
+      "ticktick": "On ticktick.com, open Settings › Backup & Import › Generate backup and save the CSV file."
+    },
+    "todoistNoCompleted": "Todoist leaves completed tasks out of its exports, so only open tasks come over.",
+    "appleNote": "Apple Reminders has no export file, so it cannot be imported.",
+    "pick": "Choose file",
+    "pickAgain": "Choose other files",
+    "previewButton": "Preview",
+    "back": "Back",
+    "fromFiles": "Files: {count}",
+    "count": {
+      "tasks": "tasks",
+      "series": "repeating tasks",
+      "checklist": "sub-items as checklist items",
+      "notes": "notes",
+      "projectsNew": "new projects",
+      "projectsExisting": "existing projects",
+      "tags": "tags",
+      "already": "already imported"
+    },
+    "includeCompleted": "Include completed tasks ({count})",
+    "includeCompletedSub": "They arrive completed, with their completion date.",
+    "mapping": {
+      "title": "How things map",
+      "sectionsTodoist": "Labels and sections become tags.",
+      "sectionsTicktick": "Tags and board columns become tags; lists become projects.",
+      "subItems": "Sub-tasks become checklist items on their task.",
+      "noAlarms": "Imported tasks never ring as urgent alarms; a reminder is kept only when the export has one."
+    },
+    "warnings": {
+      "title": "Carried over with a note",
+      "count": "Items: {count}"
+    },
+    "warning": {
+      "other": "Something in this file needed attention",
+      "IMPORT_FILE_SKIPPED": "A file was skipped because it is not from this app",
+      "IMPORT_TITLE_TRUNCATED": "A very long title was shortened to 500 characters",
+      "IMPORT_ATTACHMENT_LINKED": "Attachments stay as links in the description",
+      "IMPORT_COMMENT_WITHOUT_TASK": "A comment without a task was skipped",
+      "IMPORT_ROW_SKIPPED": "A row of an unknown type was skipped",
+      "IMPORT_EMPTY_TITLE": "A task without a title was skipped",
+      "IMPORT_DEEP_SUBTASK_FLATTENED": "Deeper sub-tasks were moved up to the top-level checklist",
+      "IMPORT_SUBTASK_DETAILS_MOVED": "A sub-task's own notes or date were moved into the task description",
+      "IMPORT_ORPHAN_SUBTASK": "A sub-task whose parent is not in the file came in as a task",
+      "IMPORT_RECURRENCE_KEPT_IN_NOTE": "A repeat could not be converted; it is kept in the description",
+      "IMPORT_DATE_KEPT_IN_NOTE": "A date could not be read; it is kept in the description",
+      "IMPORT_RELATIVE_DATE": "A date like “today” was read relative to today",
+      "IMPORT_DATE_YEAR_GUESSED": "A date without a year was placed on its next occurrence",
+      "IMPORT_DEADLINE_KEPT_IN_NOTE": "A deadline next to a due date is kept in the description",
+      "IMPORT_FOLDER_FLATTENED": "Lists with the same name keep their folder in the project name",
+      "IMPORT_MULTIDAY_FLATTENED": "A multi-day task now ends on its last day",
+      "IMPORT_EXTRA_REMINDERS_DROPPED": "Only the first reminder of a task was kept",
+      "IMPORT_REMINDER_NOT_CONVERTED": "A reminder could not be converted; it is kept in the description",
+      "IMPORT_RECURRING_CHECKLIST_MOVED": "A repeating task's checklist is kept in its description"
+    },
+    "google": {
+      "plain": "Google Calendar is connected: these {count} tasks will appear there too.",
+      "withUndated": "Google Calendar is connected: these {count} tasks will appear there too, and the {undated} without a date will appear on today."
+    },
+    "nothingNew": "Everything in this file has already been imported.",
+    "run": "Import {count} items",
+    "progress": "{done} of {total} imported",
+    "progressNote": "You can keep this screen open; a large file is sent in parts.",
+    "result": {
+      "headline": "{count} items imported.",
+      "tasks": "Tasks",
+      "series": "Repeating tasks",
+      "checklist": "Checklist items",
+      "notes": "Notes",
+      "projects": "New projects",
+      "tags": "New tags",
+      "already": "Already imported, skipped",
+      "completedSkipped": "Completed, left out",
+      "errors": "Not imported: {count}"
+    },
+    "openHome": "Open Home",
+    "done": "Done",
+    "error": {
+      "tooLarge": "These files are larger than 8 MB. Import one project at a time.",
+      "noCsv": "No CSV file was found. Choose the export's CSV file or the backup ZIP.",
+      "looksTicktick": "This looks like a TickTick backup. Go back and choose TickTick.",
+      "looksTodoist": "This looks like a Todoist export. Go back and choose Todoist.",
+      "proxyLimit": "The server refused a file this large. Its proxy needs a higher upload limit (client_max_body_size 10m), or import one project at a time.",
+      "offline": "Could not reach the server. Importing needs a connection.",
+      "read": "This file could not be read."
+    }
+  },
+  "capture": {
+    "added": "Added: {title} · {due}",
+    "addedInbox": "Added to Inbox: {title}",
+    "open": "Open"
   }
 }

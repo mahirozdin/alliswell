@@ -62,6 +62,57 @@ describe('read tools', () => {
     expect(bodyHit).toBeGreaterThan(titleHit);
   });
 
+  it('search finds tags and file names too, metadata only (OPH-374)', async () => {
+    await seed(owner.headers, owner.workspace.id, 'tags', { name: 'Işık' });
+    const fileId = newId();
+    tables.files.push({
+      id: fileId,
+      workspace_id: owner.workspace.id,
+      target_type: 'workspace',
+      target_id: owner.workspace.id,
+      name: 'Işık-plan.pdf',
+      mime: 'application/pdf',
+      size_bytes: 10,
+      storage_key: `ws/${fileId}`,
+      status: 'ready',
+      deleted_at: null,
+      created_at: new Date(),
+    });
+    // A file still uploading is not a result yet.
+    tables.files.push({
+      id: newId(),
+      workspace_id: owner.workspace.id,
+      target_type: 'workspace',
+      target_id: owner.workspace.id,
+      name: 'Işık-taslak.pdf',
+      mime: 'application/pdf',
+      size_bytes: 10,
+      storage_key: 'ws/x',
+      status: 'uploading',
+      deleted_at: null,
+      created_at: new Date(),
+    });
+
+    const result = await callTool(app, access, 'search', { query: 'isik' });
+    expect(result.isError).toBeFalsy();
+    const results = result.structuredContent.results;
+    expect(results.find((r) => r.type === 'tag')?.title).toBe('Işık');
+    const file = results.find((r) => r.type === 'file');
+    expect(file).toMatchObject({
+      id: fileId,
+      title: 'Işık-plan.pdf',
+      mime: 'application/pdf',
+      targetType: 'workspace',
+    });
+    // Never a way to the bytes (AI.md §7).
+    expect(file).not.toHaveProperty('url');
+    expect(JSON.stringify(results)).not.toMatch(/https?:|storage_key|ws\//);
+    expect(results.filter((r) => r.type === 'file')).toHaveLength(1);
+
+    const onlyFiles = await callTool(app, access, 'search', { query: 'isik', types: ['file'] });
+    expect(onlyFiles.structuredContent.results.map((r) => r.type)).toEqual(['file']);
+  });
+
   it('search respects the limit and reports truncation', async () => {
     for (let i = 0; i < 6; i += 1) {
       await seed(owner.headers, owner.workspace.id, 'tasks', { title: `Rapor ${i}` });
@@ -365,6 +416,7 @@ describe('complete_task and scopes', () => {
       ['complete_task', { taskId: ABSENT_ULID }],
       ['update_task', { taskId: ABSENT_ULID, title: 'Yazamam' }],
       ['reopen_task', { taskId: ABSENT_ULID }],
+      ['set_task_repeat', { taskId: ABSENT_ULID, rule: { freq: 'daily' } }],
       ['snooze_task', { taskId: ABSENT_ULID, preset: '5_min' }],
       ['add_checklist_item', { taskId: ABSENT_ULID, title: 'Yazamam' }],
       ['set_checklist_item', { taskId: ABSENT_ULID, itemId: ABSENT_ULID, isDone: true }],
@@ -916,5 +968,204 @@ describe('acknowledge_reminder', () => {
       (l) => JSON.parse(l.proposal).tool === 'acknowledge_reminder',
     );
     expect(log).toHaveLength(2); // both calls are on the record, no-op or not
+  });
+});
+
+// OPH-372 (ADR-0053): "when" (startAt) and duration (estimatedMinutes) reach
+// MCP — written by create/update, returned by every read, and "today" includes
+// a task whose "when" day has come while its deadline is still ahead.
+describe('when and duration (OPH-372)', () => {
+  async function pinMidday() {
+    // Same pinning as the today/overdue test above: a safe local hour, so
+    // ±1 day stays on the right side of midnight.
+    const offset = Math.max(-12, Math.min(12, 12 - new Date().getUTCHours()));
+    const middayTz = offset >= 0 ? `Etc/GMT-${offset}` : `Etc/GMT+${-offset}`;
+    await app.db('users').where({ id: owner.user.id }).update({ timezone: middayTz });
+  }
+  const day = 86400000;
+  const at = (ms) => new Date(Date.now() + ms).toISOString();
+
+  it('create_task writes startAt and estimatedMinutes, and the result carries both', async () => {
+    const startAt = at(day);
+    const result = await callTool(app, access, 'create_task', {
+      title: 'Sunum provası',
+      startAt,
+      estimatedMinutes: 90,
+    });
+    expect(result.isError).toBeFalsy();
+    const task = result.structuredContent.task;
+    expect(task.startAt).toBe(startAt);
+    expect(task.estimatedMinutes).toBe(90);
+    expect(task.dueAt).toBeNull(); // "when" is not the deadline
+    const row = tables.tasks.find((t) => t.id === task.id);
+    expect(new Date(row.start_at).toISOString()).toBe(startAt);
+    expect(row.estimated_minutes).toBe(90);
+    expect(row.due_at ?? null).toBeNull();
+
+    // The schema bounds hold (a zero duration is "clear", which create has
+    // nothing to clear).
+    const zero = await callTool(app, access, 'create_task', {
+      title: 'Sıfır',
+      estimatedMinutes: 0,
+    });
+    expect(zero.isError).toBe(true);
+    expect(zero.structuredContent.code).toBe('INVALID_ARGUMENTS');
+  });
+
+  it('update_task sets and clears estimatedMinutes; get_task and list_tasks return both', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Rapor' });
+    const set = await callTool(app, access, 'update_task', {
+      taskId: task.id,
+      estimatedMinutes: 45,
+    });
+    expect(set.isError).toBeFalsy();
+    expect(set.structuredContent.task.estimatedMinutes).toBe(45);
+    expect(tables.tasks.find((t) => t.id === task.id).estimated_minutes).toBe(45);
+
+    const got = await callTool(app, access, 'get_task', { taskId: task.id });
+    expect(got.structuredContent.task.estimatedMinutes).toBe(45);
+    expect(got.structuredContent.task).toHaveProperty('startAt', null);
+    const listed = await callTool(app, access, 'list_tasks', { status: ['open'] });
+    const row = listed.structuredContent.tasks.find((t) => t.id === task.id);
+    expect(row.estimatedMinutes).toBe(45);
+    expect(row).toHaveProperty('startAt', null);
+
+    const cleared = await callTool(app, access, 'update_task', {
+      taskId: task.id,
+      estimatedMinutes: null,
+    });
+    expect(cleared.structuredContent.task.estimatedMinutes).toBeNull();
+    expect(tables.tasks.find((t) => t.id === task.id).estimated_minutes ?? null).toBeNull();
+  });
+
+  it('today includes a started task due later, never a future or overdue one, once', async () => {
+    await pinMidday();
+    const ws = owner.workspace.id;
+    await seed(owner.headers, ws, 'tasks', {
+      title: 'Başladı, süresi var',
+      startAt: at(-day),
+      dueAt: at(3 * day),
+    });
+    await seed(owner.headers, ws, 'tasks', { title: 'Yarın başlar', startAt: at(day) });
+    await seed(owner.headers, ws, 'tasks', {
+      title: 'Bugün başladı ama gecikti',
+      startAt: at(-3600000),
+      dueAt: at(-day),
+    });
+    await seed(owner.headers, ws, 'tasks', {
+      title: 'İkisi de bugün',
+      startAt: at(-3600000),
+      dueAt: at(2 * 3600000),
+    });
+    await seed(owner.headers, ws, 'tasks', { title: 'Tarihsiz başladı', startAt: at(-day) });
+
+    const today = await callTool(app, access, 'list_tasks', { today: true });
+    const titles = today.structuredContent.tasks.map((t) => t.title);
+    expect(titles).toContain('Başladı, süresi var');
+    expect(titles).toContain('Tarihsiz başladı');
+    expect(titles).not.toContain('Yarın başlar');
+    expect(titles).not.toContain('Bugün başladı ama gecikti');
+    expect(titles.filter((t) => t === 'İkisi de bugün')).toHaveLength(1);
+    // Due-today first, then by deadline, the undated last.
+    expect(titles).toEqual(['İkisi de bugün', 'Başladı, süresi var', 'Tarihsiz başladı']);
+
+    const overdue = await callTool(app, access, 'list_tasks', { overdue: true });
+    expect(overdue.structuredContent.tasks.map((t) => t.title)).toEqual([
+      'Bugün başladı ama gecikti',
+    ]);
+
+    // The resource view is the same query.
+    const res = await rpc(app, access, 'resources/read', { uri: 'alliswell://views/today' });
+    const payload = JSON.parse(res.json().result.contents[0].text);
+    expect(payload.tasks.map((t) => t.title)).toEqual(titles);
+    expect(payload.tasks[1].startAt).not.toBeNull();
+  });
+});
+
+describe('set_task_repeat (OPH-375)', () => {
+  const tomorrowNine = () =>
+    `${new Date(Date.now() + 86400000).toISOString().slice(0, 10)}T09:00:00.000Z`;
+
+  it('makes a task repeat after completion; complete_task hands back the next one', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', {
+      title: 'Su filtresini değiştir',
+      dueAt: tomorrowNine(),
+      timezone: 'UTC',
+    });
+    const set = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'daily', interval: 90, basis: 'completion' },
+      idempotencyKey: 'repeat-filter-1',
+    });
+    expect(set.isError).toBeFalsy();
+    const { repeat } = set.structuredContent;
+    expect(repeat.rule).toMatchObject({ freq: 'daily', interval: 90, basis: 'completion' });
+    expect(tables.tasks.find((t) => t.id === task.id).series_id).toBe(repeat.seriesId);
+
+    const detail = await callTool(app, access, 'get_task', { taskId: task.id });
+    expect(detail.structuredContent.task.repeat).toEqual(repeat);
+
+    const done = await callTool(app, access, 'complete_task', { taskId: task.id });
+    const { next } = done.structuredContent;
+    const expected = `${new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10)}T09:00:00.000Z`;
+    expect(next).toMatchObject({
+      title: 'Su filtresini değiştir',
+      status: 'open',
+      dueAt: expected,
+    });
+
+    // The replay answers from the ledger instead of building a second series.
+    const replay = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'daily', interval: 90, basis: 'completion' },
+      idempotencyKey: 'repeat-filter-1',
+    });
+    expect(replay.structuredContent.replayed).toBe(true);
+    expect(tables.task_series).toHaveLength(1);
+  });
+
+  it('replaces the rule of a task that already repeats', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', {
+      title: 'Kombi',
+      dueAt: tomorrowNine(),
+      timezone: 'UTC',
+    });
+    const first = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'daily', interval: 1 },
+    });
+    expect(first.isError).toBeFalsy();
+    const seriesId = first.structuredContent.repeat.seriesId;
+    const second = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'monthly', interval: 6, basis: 'completion' },
+    });
+    expect(second.structuredContent.repeat).toEqual({
+      seriesId,
+      rule: { freq: 'monthly', interval: 6, basis: 'completion' },
+    });
+    const open = tables.tasks.filter(
+      (t) => t.series_id === seriesId && !t.deleted_at && t.status === 'open',
+    );
+    expect(open).toHaveLength(1);
+  });
+
+  it('turns an invalid rule into a readable tool error and writes nothing', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Yıllık' });
+    const res = await callTool(app, access, 'set_task_repeat', {
+      taskId: task.id,
+      rule: { freq: 'yearly', interval: 1, basis: 'completion' },
+    });
+    expect(res.isError).toBe(true);
+    expect(res.structuredContent.code).toBe('TASK_SERIES_RULE_INVALID');
+    expect(tables.task_series).toHaveLength(0);
+  });
+
+  it('get_task says null for a task that does not repeat', async () => {
+    const task = await seed(owner.headers, owner.workspace.id, 'tasks', { title: 'Tek sefer' });
+    const detail = await callTool(app, access, 'get_task', { taskId: task.id });
+    expect(detail.structuredContent.task.repeat).toBeNull();
+    const done = await callTool(app, access, 'complete_task', { taskId: task.id });
+    expect(done.structuredContent.next).toBeNull();
   });
 });

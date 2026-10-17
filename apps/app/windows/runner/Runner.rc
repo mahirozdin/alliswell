@@ -89,13 +89,13 @@ BEGIN
     BEGIN
         BLOCK "040904e4"
         BEGIN
-            VALUE "CompanyName", "com.alliswell" "\0"
-            VALUE "FileDescription", "alliswell" "\0"
+            VALUE "CompanyName", "BubiApps" "\0"
+            VALUE "FileDescription", "AllisWell" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "alliswell" "\0"
-            VALUE "LegalCopyright", "Copyright (C) 2026 com.alliswell. All rights reserved." "\0"
+            VALUE "LegalCopyright", "Copyright (C) 2026 BubiApps" "\0"
             VALUE "OriginalFilename", "alliswell.exe" "\0"
-            VALUE "ProductName", "alliswell" "\0"
+            VALUE "ProductName", "AllisWell" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

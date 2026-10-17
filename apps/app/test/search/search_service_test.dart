@@ -320,6 +320,93 @@ void main() {
     expect((await service.searchTickets(ws, 'yorum')).single.id, 'K9');
   });
 
+  // ── OPH-374: notes, tags and files join the registry ──────────────────
+
+  Future<void> applyNote(
+    String id,
+    String title, {
+    String? plainText,
+    bool archived = false,
+    String workspaceId = ws,
+    String updatedAt = '2026-10-01T10:00:00.000Z',
+  }) => db
+      .into(db.notes)
+      .insertOnConflictUpdate(
+        noteCompanion({
+          'id': id,
+          'workspaceId': workspaceId,
+          'title': title,
+          'plainText': plainText,
+          'isArchived': archived,
+          'updatedAt': updatedAt,
+        }),
+      );
+
+  Future<void> applyFile(
+    String id,
+    String name, {
+    String targetType = 'workspace',
+    String status = 'ready',
+    String workspaceId = ws,
+  }) => db
+      .into(db.fileRows)
+      .insertOnConflictUpdate(
+        fileCompanion({
+          'id': id,
+          'workspaceId': workspaceId,
+          'targetType': targetType,
+          'targetId': 'X1',
+          'name': name,
+          'mime': 'application/pdf',
+          'sizeBytes': 10,
+          'status': status,
+        }),
+      );
+
+  test(
+    'notes: title (0) over body (2), archived and other workspaces out',
+    () async {
+      await applyNote('N1', 'Elektrik', plainText: 'ışık faturası burada');
+      await applyNote('N2', 'Işık notu');
+      await applyNote('N3', 'Işık arşivi', archived: true);
+      await applyNote('N4', 'Işık başka alanda', workspaceId: 'W2');
+
+      final hits = await service.searchNotes(ws, 'isik');
+      expect(hits.map((h) => h.id), ['N2', 'N1']);
+      expect(hits.map((h) => h.tier), [0, 2]);
+    },
+  );
+
+  test('tags: one tier, no CASE — the single-tier SQL runs', () async {
+    await applyTag('G1', 'Çay');
+    await applyTag('G2', 'Kahve');
+
+    final hits = await service.searchTags(ws, 'cay');
+    expect(hits.single.id, 'G1');
+    expect(hits.single.tier, 0);
+    expect(await service.searchTags(ws, 'yok'), isEmpty);
+  });
+
+  test(
+    'files: the applier writes the name fold; desk and unready rows are out',
+    () async {
+      await applyFile('F1', 'Fatura_Ekim.PDF');
+      await applyFile('F2', 'Fatura cevabı.pdf', targetType: 'ticket_comment');
+      await applyFile('F3', 'Fatura taslak.pdf', status: 'uploading');
+      await applyFile('F4', 'Fatura başka.pdf', workspaceId: 'W2');
+      await applyFile('F5', 'Proje fatura.pdf', targetType: 'task');
+
+      final raw = await db
+          .customSelect("SELECT name_fold FROM file_rows WHERE id = 'F1'")
+          .getSingle();
+      expect(raw.data['name_fold'], 'fatura_ekim.pdf');
+
+      final hits = await service.searchFiles(ws, 'fatura');
+      expect(hits.map((h) => h.id).toSet(), {'F1', 'F5'});
+      expect(hits.every((h) => h.tier == 0), isTrue);
+    },
+  );
+
   test('searchSnippet windows around the folded match', () {
     const body =
         'Uzun bir açıklamanın ortasında çay servisi geçiyor ve devamında '
@@ -327,5 +414,60 @@ void main() {
     final snippet = searchSnippet(body, 'cay');
     expect(snippet, contains('çay servisi'));
     expect(snippet.length, lessThan(body.length));
+  });
+
+  group('OPH-386: searchSnippet on multi-line text', () {
+    test('newlines and runs of spaces do not shift the window', () {
+      // Every line break before the hit used to move the cut one character
+      // left of where the folded index pointed.
+      const body =
+          'Alışveriş listesi\n\n\n- ekmek\n- süt\n\n\n\n'
+          'Pazartesi    günü   kirayı   ödemeyi unutma\n\nson satır';
+      final snippet = searchSnippet(body, 'kira', radius: 12);
+      expect(snippet, contains('kirayı'));
+      expect(snippet, isNot(contains('\n')));
+      expect(snippet, isNot(contains('  ')));
+      expect(snippet, '…günü kirayı ödemeyi…');
+    });
+
+    test('the window never opens or closes on half a word', () {
+      const body =
+          'Birinci satır burada\nikinci satır şurada\n'
+          'üçüncü satırda ÇAY demlemek var\ndördüncü satır orada';
+      final snippet = searchSnippet(body, 'cay', radius: 10);
+      expect(snippet, contains('ÇAY'));
+      final words = body.replaceAll('\n', ' ').split(' ').toSet();
+      final inner = snippet.replaceAll('…', '').split(' ');
+      for (final w in inner) {
+        expect(words, contains(w), reason: 'fragment "$w" in "$snippet"');
+      }
+    });
+
+    test('Turkish dotted/dotless I and İ fold onto the right offsets', () {
+      const body = 'IĞDIR\nyolculuğu için\n\nİSTANBUL ofisinde ılık bir gün';
+      expect(searchSnippet(body, 'istanbul', radius: 6), startsWith('…'));
+      expect(searchSnippet(body, 'istanbul', radius: 6), contains('İSTANBUL'));
+      expect(searchSnippet(body, 'ilik', radius: 4), contains('ılık'));
+      expect(searchSnippet(body, 'igdir', radius: 4), startsWith('IĞDIR'));
+    });
+
+    test('an expanding fold (ß → ss) keeps the hit whole', () {
+      const body = 'Die Straße\nist lang und die Sonne scheint heute sehr warm';
+      final snippet = searchSnippet(body, 'sonne', radius: 8);
+      expect(snippet, contains('Sonne'));
+      expect(snippet, isNot(contains('\n')));
+    });
+
+    test('no hit: the head of the collapsed text, cut on a word', () {
+      const body = 'kısa\n\nnot';
+      expect(searchSnippet(body, 'yok'), 'kısa not');
+      final long = List.filled(30, 'kelime').join('\n');
+      final snippet = searchSnippet(long, 'yok', radius: 10);
+      expect(snippet, endsWith('…'));
+      expect(
+        snippet.replaceAll('…', '').split(' ').every((w) => w == 'kelime'),
+        isTrue,
+      );
+    });
   });
 }

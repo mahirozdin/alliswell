@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/auth/providers.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
+import '../../support/nav.dart';
 import '../../support/sync_overrides.dart';
 
 /// OPH-184 — swipe to delete, everywhere, with a real undo (DESIGN §19).
@@ -55,7 +56,7 @@ bool pushedDelete(FakeApi api) =>
     api.pushedMutations.any((m) => m['operation'] == 'delete');
 
 Future<void> openSection(WidgetTester tester, String label) async {
-  await tester.tap(find.text(label).last);
+  await tester.tap(navTab(label));
   await tester.pumpAndSettle();
 }
 

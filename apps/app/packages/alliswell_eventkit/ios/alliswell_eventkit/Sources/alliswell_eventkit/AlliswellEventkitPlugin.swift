@@ -9,14 +9,16 @@ import EventKit
   import FlutterMacOS
 #endif
 
-/// The Apple half of BLUEPRINT §7.3 (OPH-077 permission+list, OPH-078 CRUD).
+/// The Apple half of BLUEPRINT §7.3 (OPH-077 permission+list, OPH-078 CRUD,
+/// OPH-369 reading our own events' times back).
 /// Apple publishes no server-side calendar API, so unlike Google — which syncs
 /// on our server — this bridge is per-device by nature: it runs where the
 /// calendar lives.
 ///
-/// Deliberately dumb. It requests access, lists calendars, and writes exactly
-/// the event Dart tells it to. Every DECISION (what mirrors, when, which
-/// calendar, conflict handling) stays in Dart, where it is pure and testable.
+/// Deliberately dumb. It requests access, lists calendars, writes exactly the
+/// event Dart tells it to, and reports what an event it wrote looks like now.
+/// Every DECISION (what mirrors, when, which calendar, conflict handling) stays
+/// in Dart, where it is pure and testable.
 /// Native code we cannot easily unit-test holds no policy.
 public class AlliswellEventkitPlugin: NSObject, FlutterPlugin {
   /// One store for the plugin's lifetime: EventKit ties an access grant to the
@@ -47,6 +49,8 @@ public class AlliswellEventkitPlugin: NSObject, FlutterPlugin {
       deleteEvent(call.arguments as? [String: Any] ?? [:], result: result)
     case "findEventByUrl":
       result(findEventByUrl(call.arguments as? [String: Any] ?? [:]))
+    case "readEvents":
+      result(readEvents(call.arguments as? [String: Any] ?? [:]))
     default:
       result(FlutterMethodNotImplemented)
     }
@@ -163,6 +167,32 @@ public class AlliswellEventkitPlugin: NSObject, FlutterPlugin {
       .first { $0.url?.absoluteString == urlString }?.eventIdentifier
   }
 
+  /// Read-back (OPH-369): what the events Dart mapped look like NOW, so a move
+  /// or resize the user made in Calendar can flow back to the task. Reports
+  /// facts only — whether a change is ours, theirs, or a conflict is decided in
+  /// Dart (`apple_read_back.dart`). An id EventKit no longer resolves is left
+  /// out of the answer rather than reported as an error.
+  private func readEvents(_ args: [String: Any]) -> [[String: Any?]] {
+    let ids = args["ids"] as? [String] ?? []
+    return ids.compactMap { id -> [String: Any?]? in
+      // `refresh()` re-reads an object EventKit may hold from before the user
+      // edited it in Calendar; false means it was deleted in the meantime.
+      guard let event = store.event(withIdentifier: id), event.refresh(),
+        let start = event.startDate, let end = event.endDate
+      else { return nil }
+      return [
+        "id": id,
+        "calendarId": event.calendar?.calendarIdentifier,
+        "url": event.url?.absoluteString,
+        "startMs": Self.millis(start),
+        "endMs": Self.millis(end),
+        "isAllDay": event.isAllDay,
+        "hasRecurrence": event.hasRecurrenceRules,
+        "lastModifiedMs": event.lastModifiedDate.map { Self.millis($0) },
+      ]
+    }
+  }
+
   private func calendarForSaving(_ id: String?) -> EKCalendar? {
     if let id = id, let calendar = store.calendar(withIdentifier: id),
       calendar.allowsContentModifications {
@@ -191,6 +221,11 @@ public class AlliswellEventkitPlugin: NSObject, FlutterPlugin {
     case .authorized: return "fullAccess"  // pre-iOS 17 spelling
     @unknown default: return "notDetermined"
     }
+  }
+
+  /// Milliseconds since the epoch — the unit every time on this channel uses.
+  private static func millis(_ date: Date) -> Int {
+    Int((date.timeIntervalSince1970 * 1000).rounded())
   }
 
   /// A calendar's colour as 0xAARRGGBB, so Dart can tint rows without knowing

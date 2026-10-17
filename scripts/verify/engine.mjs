@@ -15,7 +15,7 @@
 //   sandbox  runs on the remote sandbox when one is configured (`sbx` on PATH), against a
 //            fresh mirror of the TRACKED tree — so nothing untracked, and no secret, leaves
 //            this machine. Without a sandbox (VERIFY_SANDBOX=0, or a contributor's machine)
-//            it runs here instead, against `docker compose up -d mysql redis minio`.
+//            it runs here instead, against `docker compose up -d mysql redis minio radicale`.
 // The local leg and the sandbox leg run at the same time: they are the two slow halves
 // and neither needs the other.
 import { spawn, spawnSync } from 'node:child_process';
@@ -377,7 +377,7 @@ async function runSandboxLeg(steps, config, ctx) {
 }
 
 // No sandbox: the same steps, here, against the compose stack a contributor already runs
-// (`docker compose up -d mysql redis minio`, CONTRIBUTING.md) — with the same fresh database.
+// (`docker compose up -d mysql redis minio radicale`, CONTRIBUTING.md) — with the same fresh database.
 function localFallback(steps, config) {
   const env = (s) => ({ ...config.db.env, ...(s.env || {}) });
   const out = steps.map((s) => ({ ...s, env: env(s) }));
@@ -466,6 +466,7 @@ export async function runCli(config) {
 
   const plan = [];
   const skipped = [];
+  const hostSkipped = [];
   const candidates = [...config.steps.filter((s) => s.modes.includes(mode))];
   if (mode === 'task') candidates.push(...config.targets(targets));
   for (const step of candidates) {
@@ -484,6 +485,14 @@ export async function runCli(config) {
       (step.when ? step.when(files, mode, targets) : true);
     if (!relevant) {
       skipped.push([step.name, 'nothing it checks changed']);
+      continue;
+    }
+    // A step only one OS can run (an Xcode build) is never green or red elsewhere: it is
+    // skipped with its reason, and the verdict says the change is not verified there.
+    if (step.host && step.host !== process.platform) {
+      const why = `needs ${step.host}, this host is ${process.platform}: ${step.hostNote}`;
+      skipped.push([step.name, why]);
+      hostSkipped.push(step.name);
       continue;
     }
     // A command may depend on the change (lint the changed files); settle it once, here —
@@ -588,6 +597,8 @@ export async function runCli(config) {
   }
   const verdict = failed.length ? 'FAIL' : 'PASS';
   const partial = only.length > 0 || skip.length > 0;
+  if (hostSkipped.length)
+    console.log(`\n  NOT VERIFIED on this host: ${hostSkipped.join(', ')} (see the SKIP lines).`);
   console.log(
     `\n${layer} ${verdict} in ${fmtSecs(total)}` +
       (failed.length

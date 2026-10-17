@@ -258,6 +258,25 @@ PAIRS = [
     # palette's selected row. Secondary ink, not measured here before.
     ('L variant ink on highest container', '#44536F', '#DEE8F8', 4.5),
     ('D variant ink on highest container', '#AAB6D6', '#26345E', 4.5),
+    # OPH-374 (DESIGN §40): the search palette. Its dialog is
+    # `surfaceContainerLow`; group headers, context lines and the shortcut tip
+    # are variant ink on it, the active row is body ink on the highest
+    # container, and the rail's field-shaped entry is variant ink on the
+    # raised container. Same colours as pairs above, named for what paints them.
+    ('L palette variant ink on dialog', '#44536F', '#F6F9FF', 4.5),
+    ('D palette variant ink on dialog', '#AAB6D6', '#121B36', 4.5),
+    ('L palette active row title', '#0F1B2E', '#DEE8F8', 4.5),
+    ('D palette active row title', '#EAF0FD', '#26345E', 4.5),
+    ('L search rail entry ink', '#44536F', '#E7EEFA', 4.5),
+    ('D search rail entry ink', '#AAB6D6', '#1F2C51', 4.5),
+    # OPH-377 (DESIGN §41): the AI chat's "@" picker is a solid
+    # `surfaceContainerHigh` panel; headers, context lines and a DISABLED row's
+    # title are variant ink on it (the active row reuses the palette pairs).
+    # A refused chip's icon is `error` on the chip's `surfaceContainerLow`.
+    ('L ai attach panel variant ink', '#44536F', '#E7EEFA', 4.5),
+    ('D ai attach panel variant ink', '#AAB6D6', '#1F2C51', 4.5),
+    ('L ai attach refused chip icon', '#D70015', '#F6F9FF', 3.0),
+    ('D ai attach refused chip icon', '#FF5147', '#121B36', 3.0),
 
     # ── Note conflict banner (OPH-269, DESIGN §35) ──
     # This whole block exists because the banner shipped with a real failure

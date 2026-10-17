@@ -16,25 +16,41 @@ import '../../../theme/tokens.dart';
 ///
 /// Returns the rule, or null when the user cancels — which is what turns the
 /// Repeat switch back off (R1).
+///
+/// OPH-375 (R10): a basis switch on top picks "on a schedule" (everything
+/// above) or "after completion" — N days / weeks / months after the open one
+/// is completed. That mode has no pattern, so the presets and the "next 5"
+/// make way for one interval, one unit and ONE date: when the next one would
+/// be due if the user completed it today. [today] is injectable for tests.
 Future<AwRepeatRule?> showRepeatDialog(
   BuildContext context, {
   required DateTime anchor,
   AwRepeatRule? initial,
+  DateTime? today,
 }) => showDialog<AwRepeatRule>(
   context: context,
   // The dialog goes to the ROOT navigator: pushed into a shell branch it would
   // render under the shell's own bar and FAB (OPH-212's lesson).
   useRootNavigator: true,
-  builder: (_) => _RepeatDialog(anchor: anchor, initial: initial),
+  builder: (_) => _RepeatDialog(anchor: anchor, initial: initial, today: today),
 );
 
 enum _MonthMode { monthDay, nthWeekday, afterDay }
 
+/// The units an after-completion rule counts in (OPH-375) — no years: the
+/// owner asked for days, weeks and months, and 12 months says a year.
+const _afterUnits = [
+  AwRepeatFreq.daily,
+  AwRepeatFreq.weekly,
+  AwRepeatFreq.monthly,
+];
+
 class _RepeatDialog extends ConsumerStatefulWidget {
-  const _RepeatDialog({required this.anchor, this.initial});
+  const _RepeatDialog({required this.anchor, this.initial, this.today});
 
   final DateTime anchor;
   final AwRepeatRule? initial;
+  final DateTime? today;
 
   @override
   ConsumerState<_RepeatDialog> createState() => _RepeatDialogState();
@@ -55,12 +71,16 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
   DateTime? _until;
   late int _count;
   bool _advanced = false;
+  late AwRepeatBasis _basis;
+  late AwRepeatFreq _afterFreq;
+  late int _afterInterval;
 
   // R5: the dialog owns its controllers for its whole lifetime. Disposing them
   // when `showDialog` returns rebuilds the fields mid-animation and throws —
   // round 11 shipped that bug three times.
   final _intervalController = TextEditingController();
   final _countController = TextEditingController();
+  final _afterIntervalController = TextEditingController();
 
   @override
   void initState() {
@@ -103,13 +123,52 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
     _count = rule?.end.count ?? 10;
     _intervalController.text = '$_interval';
     _countController.text = '$_count';
+
+    // OPH-375: the basis comes from the rule being edited. Switching modes
+    // keeps both halves' state, so flipping back and forth loses nothing.
+    final after = rule != null && rule.isAfterCompletion;
+    _basis = after ? AwRepeatBasis.completion : AwRepeatBasis.calendar;
+    _afterFreq = after && _afterUnits.contains(rule.freq)
+        ? rule.freq
+        : AwRepeatFreq.daily;
+    _afterInterval = after ? rule.interval : 1;
+    _afterIntervalController.text = '$_afterInterval';
+    if (after) {
+      // The calendar half starts from the defaults, not from this rule.
+      _freq = AwRepeatFreq.monthly;
+      _interval = 1;
+      _intervalController.text = '1';
+      _advanced = !rule.end.isNever;
+    }
   }
 
   @override
   void dispose() {
     _intervalController.dispose();
     _countController.dispose();
+    _afterIntervalController.dispose();
     super.dispose();
+  }
+
+  bool get _isAfter => _basis == AwRepeatBasis.completion;
+
+  AwRepeatRule get _afterRule => AwRepeatRule(
+    freq: _afterFreq,
+    interval: _afterInterval,
+    end: _end,
+    basis: AwRepeatBasis.completion,
+  );
+
+  /// When the next one would be due if the user completed it today.
+  String? get _afterPreview {
+    try {
+      return awNextAfterCompletion(
+        _afterRule,
+        awDayKey(widget.today ?? DateTime.now()),
+      );
+    } on ArgumentError {
+      return null;
+    }
   }
 
   AwRepeatEnd get _end => switch (_endType) {
@@ -118,7 +177,9 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
     _ => const AwRepeatEnd.never(),
   };
 
-  AwRepeatRule get _rule {
+  AwRepeatRule get _rule => _isAfter ? _afterRule : _calendarRule;
+
+  AwRepeatRule get _calendarRule {
     switch (_freq) {
       case AwRepeatFreq.daily:
         return AwRepeatRule(
@@ -222,7 +283,9 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
   Widget build(BuildContext context) {
     final dateFormat = ref.watch(dateFormatProvider);
     final locale = AwI18n.instance.locale.languageCode;
-    final valid = awValidateRepeatRule(_rule) == null && _preview.isNotEmpty;
+    final valid =
+        awValidateRepeatRule(_rule) == null &&
+        (_isAfter || _preview.isNotEmpty);
 
     return AlertDialog(
       key: const Key('repeat-dialog'),
@@ -233,40 +296,46 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _label('repeat.presets'.tr()),
-            Wrap(
-              spacing: AwSpace.x2,
-              children: [
-                for (final preset in const [
-                  'daily',
-                  'weekly',
-                  'weekdays',
-                  'monthly',
-                  'yearly',
-                ])
-                  ChoiceChip(
-                    key: Key('repeat-preset-$preset'),
-                    label: Text('repeat.preset.$preset'.tr()),
-                    selected: _activePreset == preset,
-                    onSelected: (_) => _applyPreset(preset),
-                  ),
-              ],
-            ),
-            const SizedBox(height: AwSpace.x2),
-            // R4: the preview sits ABOVE the advanced disclosure, so the answer
-            // is on screen no matter how deep the rule goes.
-            _previewCard(dateFormat, locale),
-            const SizedBox(height: AwSpace.x2),
-            _sentence(dateFormat, locale),
-            ExpansionTile(
-              key: const Key('repeat-advanced'),
-              title: Text('repeat.advanced'.tr()),
-              initiallyExpanded: _advanced,
-              tilePadding: EdgeInsets.zero,
-              childrenPadding: const EdgeInsets.only(bottom: AwSpace.x2),
-              onExpansionChanged: (open) => setState(() => _advanced = open),
-              children: [_intervalField(), ..._freqFields(), _endFields()],
-            ),
+            _basisSwitch(),
+            const SizedBox(height: AwSpace.x3),
+            if (_isAfter)
+              ..._afterBody(dateFormat, locale)
+            else ...[
+              _label('repeat.presets'.tr()),
+              Wrap(
+                spacing: AwSpace.x2,
+                children: [
+                  for (final preset in const [
+                    'daily',
+                    'weekly',
+                    'weekdays',
+                    'monthly',
+                    'yearly',
+                  ])
+                    ChoiceChip(
+                      key: Key('repeat-preset-$preset'),
+                      label: Text('repeat.preset.$preset'.tr()),
+                      selected: _activePreset == preset,
+                      onSelected: (_) => _applyPreset(preset),
+                    ),
+                ],
+              ),
+              const SizedBox(height: AwSpace.x2),
+              // R4: the preview sits ABOVE the advanced disclosure, so the answer
+              // is on screen no matter how deep the rule goes.
+              _previewCard(dateFormat, locale),
+              const SizedBox(height: AwSpace.x2),
+              _sentence(dateFormat, locale),
+              ExpansionTile(
+                key: const Key('repeat-advanced'),
+                title: Text('repeat.advanced'.tr()),
+                initiallyExpanded: _advanced,
+                tilePadding: EdgeInsets.zero,
+                childrenPadding: const EdgeInsets.only(bottom: AwSpace.x2),
+                onExpansionChanged: (open) => setState(() => _advanced = open),
+                children: [_intervalField(), ..._freqFields(), _endFields()],
+              ),
+            ],
           ],
         ),
       ),
@@ -284,6 +353,141 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
       ],
     );
   }
+
+  /// R10: "On a schedule" | "After completion".
+  Widget _basisSwitch() => SizedBox(
+    width: double.infinity,
+    child: SegmentedButton<AwRepeatBasis>(
+      key: const Key('repeat-basis'),
+      showSelectedIcon: false,
+      segments: [
+        ButtonSegment(
+          value: AwRepeatBasis.calendar,
+          label: Text(
+            'repeat.basis.calendar'.tr(),
+            key: const Key('repeat-basis-calendar'),
+            textAlign: TextAlign.center,
+          ),
+        ),
+        ButtonSegment(
+          value: AwRepeatBasis.completion,
+          label: Text(
+            'repeat.basis.completion'.tr(),
+            key: const Key('repeat-basis-completion'),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+      selected: {_basis},
+      onSelectionChanged: (s) => setState(() => _basis = s.first),
+    ),
+  );
+
+  /// The after-completion half (OPH-375): interval + unit, the one date it
+  /// would land on, the sentence, and the end condition one disclosure deeper.
+  List<Widget> _afterBody(String dateFormat, String locale) {
+    final next = _afterPreview;
+    final theme = Theme.of(context);
+    return [
+      // The number on its own line and the unit under it, full width: three
+      // unit segments beside a field wrapped "months" letter by letter at
+      // 390 px (checked in the TR and EN shots).
+      _label('repeat.after.intervalLabel'.tr()),
+      SizedBox(
+        width: 96,
+        // The visible label sits above; screen readers get it on the field.
+        child: Semantics(
+          label: 'repeat.after.intervalLabel'.tr(),
+          child: TextField(
+            key: const Key('repeat-after-interval'),
+            controller: _afterIntervalController,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            decoration: const InputDecoration(hintText: '1'),
+            onChanged: (value) {
+              final parsed = int.tryParse(value);
+              if (parsed != null && parsed >= 1 && parsed <= 366) {
+                setState(() => _afterInterval = parsed);
+              }
+            },
+          ),
+        ),
+      ),
+      const SizedBox(height: AwSpace.x2),
+      SizedBox(
+        width: double.infinity,
+        child: SegmentedButton<AwRepeatFreq>(
+          key: const Key('repeat-after-unit'),
+          showSelectedIcon: false,
+          segments: [
+            for (final unit in _afterUnits)
+              ButtonSegment(
+                value: unit,
+                label: Text(
+                  'repeat.after.unit.${_unitKey(unit)}'.tr(),
+                  key: Key('repeat-after-unit-${_unitKey(unit)}'),
+                ),
+              ),
+          ],
+          selected: {_afterFreq},
+          onSelectionChanged: (s) => setState(() => _afterFreq = s.first),
+        ),
+      ),
+      const SizedBox(height: AwSpace.x3),
+      Card(
+        key: const Key('repeat-after-preview'),
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(AwSpace.x3),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'repeat.after.previewTitle'.tr(),
+                style: theme.textTheme.labelLarge,
+              ),
+              const SizedBox(height: AwSpace.x1),
+              if (next != null)
+                Text(
+                  awFormatDate(
+                    DateTime.parse(next),
+                    format: dateFormat,
+                    locale: locale,
+                  ),
+                  key: Key('repeat-after-preview-$next'),
+                  style: theme.textTheme.bodyMedium,
+                )
+              else
+                Text('state.empty'.tr(), style: theme.textTheme.bodySmall),
+              const SizedBox(height: AwSpace.x2),
+              Text(
+                'repeat.after.hint'.tr(),
+                key: const Key('repeat-after-hint'),
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+      ),
+      const SizedBox(height: AwSpace.x2),
+      _sentence(dateFormat, locale),
+      ExpansionTile(
+        key: const Key('repeat-advanced'),
+        title: Text('repeat.advanced'.tr()),
+        initiallyExpanded: _advanced,
+        tilePadding: EdgeInsets.zero,
+        childrenPadding: const EdgeInsets.only(bottom: AwSpace.x2),
+        onExpansionChanged: (open) => setState(() => _advanced = open),
+        children: [_endFields()],
+      ),
+    ];
+  }
+
+  static String _unitKey(AwRepeatFreq unit) => switch (unit) {
+    AwRepeatFreq.daily => 'days',
+    AwRepeatFreq.weekly => 'weeks',
+    _ => 'months',
+  };
 
   Widget _label(String text) => Padding(
     padding: const EdgeInsets.only(bottom: AwSpace.x2),

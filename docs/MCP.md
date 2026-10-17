@@ -33,7 +33,9 @@ personal key instead: [API.md](API.md).
 2. Name it `AllisWell` and paste `https://api.alliswell.space/mcp`.
 3. Leave the advanced OAuth settings as they are and press **Add**, then **Connect**.
 4. AllisWell's sign-in page opens: log in with your AllisWell email and
-   password, pick a workspace if you have several, and approve.
+   password, or press **Continue with Google** / **Continue with Apple** if that
+   is how you sign in to the app. Enter your authenticator code if two-factor
+   authentication is on, pick a workspace if you have several, and approve.
 5. In a chat, open the tools menu and make sure AllisWell is switched on.
 
 ## Add it to Claude Team or Enterprise
@@ -79,7 +81,9 @@ HTTP with OAuth (Cursor, VS Code, the MCP Inspector) takes the same URL.
 | --- | --- |
 | *Couldn't register with AllisWell's sign-in service* | The URL is not the API's. Use `https://api.alliswell.space/mcp` (or your own `API_PUBLIC_URL` + `/mcp`), remove the connector and add it again. |
 | The sign-in page says *The client's metadata document could not be loaded* | The AI app's identity document was unreachable for a moment. Try again; if it persists, re-add the connector with *Register automatically*. |
-| *Email or password is wrong* | Use the email and password of your AllisWell account. The sign-in page asks for a password, so an account created only with Google or Apple sign-in cannot connect yet — it has no password, and setting one is not built. |
+| *Email or password is wrong* | Use the email and password of your AllisWell account. If you sign in to the app with Google or Apple, use **Continue with Google / Apple** instead — such an account has no password. |
+| *No AllisWell account uses this Google/Apple account yet* | The provider signed you in with an account AllisWell does not know — usually the wrong one in Google's account chooser. Pick the account you use in the app, or sign up in the app first; the sign-in page never creates an account. |
+| *That code is not right* | Two-factor authentication is on: enter the current code from your authenticator app, or one of your recovery codes (each works once). |
 | The connector is listed but has no tools | Open a new chat and switch AllisWell on in the tools menu. On Team/Enterprise, an Owner may have disabled it or some of its tools. |
 | Self-hosted: every request fails | `curl -i https://<your-api>/mcp` must answer **401** with a `www-authenticate: Bearer resource_metadata=…` header. HTML means the request reached a website, not the API; 404 means `API_PUBLIC_URL` is unset, is not https, or `MCP_ENABLED=false`. |
 
@@ -87,17 +91,18 @@ Still stuck? Write to info@bubiapps.com — we answer within two working days.
 
 ## What the AI can do
 
-Twenty-four tools, no delete tool — by design (loosening it needs a new ADR):
+Twenty-five tools, no delete tool — by design (loosening it needs a new ADR):
 
 **Tasks**
 
 | Tool | What it does |
 | --- | --- |
-| `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone |
-| `get_task` | One task in full — checklist, tags, project, alarms and its notes |
-| `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks |
-| `update_task` | Change title, description, status, priority, dates, urgency, project or tags |
-| `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open |
+| `list_tasks` | Filtered list, plus `today` / `overdue` in your timezone. `today` = due today, or its "when" day has come and it is not overdue. Every task read returns `startAt` ("when") and `estimatedMinutes` |
+| `get_task` | One task in full — checklist, tags, project, alarms, its notes and how it repeats (`repeat`) |
+| `create_task` | Create a task; an unknown/ambiguous project creates nothing and asks. Takes `startAt` ("when": the day it shows in Today, never the deadline or the alarm) and `estimatedMinutes` (the calendar block length) |
+| `update_task` | Change title, description, status, priority, dates (incl. `startAt` "when"), duration (`estimatedMinutes`, `null` clears), urgency, project or tags |
+| `complete_task` / `reopen_task` | Mark a task done, or put a finished one back to open. For a task that repeats after completion, `complete_task` returns the `next` task it created; reopening withdraws it |
+| `set_task_repeat` | Make a task repeat, or change how: a calendar pattern ("every month on the 31st") or N days/weeks/months **after completion** (`basis: "completion"` — "change the water filter 90 days after I change it") |
 | `snooze_task` | Push a task's alarms out (5 min / 30 min / 1 hour / tomorrow morning, or a time you name) |
 | `add_checklist_item` / `set_checklist_item` | Add a checklist item, tick it, or rename it |
 | `acknowledge_reminder` | Answer an urgent alarm that is waiting for you |
@@ -106,7 +111,7 @@ Twenty-four tools, no delete tool — by design (loosening it needs a new ADR):
 
 | Tool | What it does |
 | --- | --- |
-| `search` | Find tasks, notes and projects (Turkish-aware folding) |
+| `search` | Find tasks, notes, projects, tags and file names (Turkish-aware folding); `types` narrows to any of the five. A file result is metadata (name, mime, target) — no link, no bytes |
 | `list_notes` / `get_note` | Notes with a short summary; one note in full, with its tags and what it is attached to |
 | `create_note` | Write a note — standalone, filed under a project, or attached to a task in the same write |
 | `update_note` | Retitle, rewrite, pin or archive a note (see the rich-text note below) |
@@ -138,6 +143,9 @@ Deliberate limits, so nothing here surprises you:
   `NOTE_NOT_MARKDOWN` — the assistant could rename a note it was not allowed
   to edit — because writing markdown onto a Delta would have left the body and
   the canonical source disagreeing.
+- **Stopping a repeat stays in the app**: for a calendar series it deletes the
+  future tasks, and deleting is not something the connector does. `set_task_repeat`
+  can start or change a repeat, never end it.
 - **Archiving a project stays in the app**, because it cascades over that
   project's tasks and notes and deserves your confirmation.
 - **File contents never leave through the connector** — no download links, no
@@ -145,6 +153,12 @@ Deliberate limits, so nothing here surprises you:
   are made in the app on the device ([ADR-0048](adr/0048-docx-export-own-ooxml-writer.md)),
   and an assistant reads the note's markdown with `get_note` instead.
 - Colours and icons are not settable by the AI: those are yours to pick.
+- **Calendar connections (Google, iCloud/CalDAV) are set up in the app**; the
+  connector never handles a calendar password ([ADR-0059](adr/0059-caldav-connector.md)).
+  The tasks it creates still reach a connected calendar like any other task.
+- **Importing from Todoist or TickTick stays in the app and the API**
+  ([ADR-0052](adr/0052-importing-from-other-apps.md)): an export file is a file,
+  and the assistant already has `create_task` for one thing at a time.
 
 ## Self-hosting notes
 
@@ -159,6 +173,13 @@ Deliberate limits, so nothing here surprises you:
 - **`MCP_ENABLED=false`** withdraws the connector entirely (every `/mcp` and
   `/oauth/*` route answers 404). It is **independent of `AI_ENABLED`** — the
   MCP track spends no model money and stores no provider keys.
+- **Continue with Google / Apple** appears on the sign-in page only when
+  `SIGN_IN_GOOGLE_WEB_CLIENT_ID` / `SIGN_IN_APPLE_SERVICE_ID` are set (Apple also
+  needs an https `API_PUBLIC_URL`). Register
+  **`<API_PUBLIC_URL>/oauth/authorize/callback`** as an authorized redirect URI on
+  the Google *Web application* client and as a Return URL on the Apple Services ID
+  (whose primary App ID must be your iOS app's). Accounts are never created from
+  that page ([ADR-0049](adr/0049-mcp-consent-social-sign-in-and-second-factor.md)).
 - One connection maps to **one workspace**; connect twice to reach two.
 - An extension installed on the server may add tools of its own and say which
   connections they are for. A connection is shown only the tools it is

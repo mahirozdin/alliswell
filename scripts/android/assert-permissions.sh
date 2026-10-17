@@ -26,9 +26,21 @@ APK="$APP_DIR/build/app/outputs/flutter-apk/app-release.apk"
 
 find_aapt2() {
   if command -v aapt2 >/dev/null 2>&1; then command -v aapt2; return; fi
-  local sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Library/Android/sdk}}"
-  # Newest build-tools wins.
-  find "$sdk/build-tools" -maxdepth 2 -name aapt2 -type f 2>/dev/null | sort -V | tail -1
+  # The SDK Flutter itself builds with (android/local.properties), then the env, then the
+  # default install paths on macOS and Linux — a Linux host without ANDROID_HOME builds
+  # the APK fine and must not fail here for want of the path.
+  local props="$APP_DIR/android/local.properties" candidates=()
+  if [ -f "$props" ]; then
+    candidates+=("$(sed -n 's/^sdk\.dir=//p' "$props" | head -1)")
+  fi
+  candidates+=("${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "$HOME/Library/Android/sdk" "$HOME/Android/Sdk")
+  local sdk found
+  for sdk in "${candidates[@]}"; do
+    [ -n "$sdk" ] && [ -d "$sdk/build-tools" ] || continue
+    # Newest build-tools wins.
+    found="$(find "$sdk/build-tools" -maxdepth 2 -name aapt2 -type f 2>/dev/null | sort -V | tail -1)"
+    if [ -n "$found" ]; then echo "$found"; return; fi
+  done
 }
 
 if [ ! -f "$APK" ]; then

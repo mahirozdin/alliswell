@@ -17,36 +17,38 @@
 - **DERS** `$(printf …)` son satır sonunu siler, `while read` satır sonu olmayan son satırı atlar → dağıtımın `.env`'inin son satırı sessizce düşüyordu; `read … || [ -n "$line" ]` + eklemeden önce satır sonu; sunucu bloğu testte bash'le koşar.
 - **DERS** Sunucunun SSH giriş uyarısı her oturumda stdout'a yanıt basar → public dağıtım kayıtlarına sahibin mesajlaşma kimliği düştü; adres yalnız bir secret'ın değerine eşit olduğu için `***`. Kayıtları okunmayacak sanma, ne bastığını ölç.
 - **KARAR** Uzantılı dağıtım yalnız uzantı CI'ının (`DEPLOY_OVERLAY_CI_WORKFLOW`, varsayılan `EE CI`) en yeni koşusu yeşilse çıkar; sunucuya denetlenen SHA gider, koşu okunamazsa durur — kırmızı uzantı commit'i sunucuya çıkamaz.
-- **DERS** Flutter web adları hash'siz → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; servis edileni ölç. Cloudflare Browser Cache TTL *Respect Existing Headers* olmalı, yoksa `.js` 4 saate yeniden yazılır (OPH-273; `curl --resolve` ile origin'e karşı).
+- **DERS** Flutter web adları hash'siz → `immutable` tarayıcıyı bir yıl eski uygulamada tuttu; `/app/` `no-cache, must-revalidate`; servis edileni ölç. Cloudflare Browser Cache TTL *Respect Existing Headers* olmalı, yoksa `.js` 4 saate yeniden yazılır (OPH-273; origin'e `curl --resolve`).
 - **DERS** `mysqldump` `--no-tablespaces`'sız "Error:" basar ama 0 ile tam dump üretir; takvim/AI/TOTP sırları `.env` anahtarlarıyla şifreli → başka anahtarla geri yükleme kusursuz görünür, 2FA'lıları kilitler.
 - **NOT** Docroot: landing kökte, Flutter web `/app` (`--base-href /app/`); `.htaccess` build'den gelir (sunucununkini taşıma, /app sessizce ölür); Vite `public/` nokta dosyalarını kopyalamaz → özel plugin.
 
 ## docs-gates-process — kapılar, enjeksiyon, belge doğruluğu
 - **KARAR** Her düzeltmenin yanına aynı kusur SINIFINI yakalayan kapı ya da değişmez testi konur; kapı sahte ihlalle kırmızıya düşürülerek kanıtlanır.
 - **KARAR** İnsanın dokunamadığı yetenek (şema alanı, store metodu, uç) özellik değildir: iş yüzeyini adıyla yazar, uygulamada koşturularak kapanır (DESIGN §22).
-- **DERS** Kapının ölçmediği yeşil okunur: yeni kapı sahte ihlalle exit 1, kaldırınca 0 vermeli; boş kümede kırmızı; iki yönde enjekte et; eşanlamlı (`AnimatedOpacity`) kapsanır, yorum satırı ihlal değil.
+- **DERS** Kapının ölçmediği yeşil okunur: sahte ihlalle exit 1, kaldırınca 0; boş kümede kırmızı; iki yönde enjekte et; eşanlamlı (`AnimatedOpacity`) kapsanır, yorum satırı ihlal değil.
 - **DERS** Üretilmiş fixture'ı üreten kodla kıyaslayan kapı döngüseldir → bir taraf POLİTİKA: elle onaylı allowlist + bilinçli `--write` (`allowed-payload-keys.txt` kalıbı); liste bağımsız kaynakla (şema) doğrulanır.
-- **DERS** Enjeksiyon yanlış sebepten geçebilir (örtüşen savunmalar birbirini maskeler) → kuralı çıplak testle çivile, savunmaları ayrı enjekte et; ardışık test eşzamanlılığı kanıtlamaz.
-- **DERS** "Bu işi geri alsam hangi kapı kırmızı?" Hiçbiriyse iş bitmedi: okunmayan bayrak, çağrılmayan adaptör hep yeşildir → çağıran + test yaz.
-- **DERS** Davranış değişince doğru olan docstring/kullanıcı metni yalana döner, `check:docs` görmez → davranışı değiştiren tur yorumu ve metni aynı turda düzeltir.
-- **DERS** `docs/adr/README.md` dizininin kapısı yok (iki kez bayatladı) → ADR'nin dizin satırı aynı commit'te.
-- **NOT** `check:docs` sürüm iddialarını kök `package.json`'a kapılar (kaçış `docs-check-ignore`); test sayıları bilerek kapısız → belgede çürümeyen biçim ("1,200+").
-- **NOT** İkiz uygulamalar ortak fikstürle çivili, biri değişirse öteki + fikstür aynı değişiklikte: fold `fold_parity.json`, proje eşleme `project_match_parity.json`, takvim bloğu `calendar_block_parity.json`, tekrar motoru.
-- **DERS** Görev kimliği kalıbı `\d{3}\b` dört haneli kimliği hiç görmez (OPH-1000'de üçüncü haneden sonra kelime sınırı yok): iş hem `next`'ten hem kapıdan sessizce düşer → `\d{3,}`; TASKS'ı yalnız `scripts/tasks/tasks.mjs` okur, kapı ve `next` ondan (enjeksiyonla ölçüldü).
+- **DERS** Enjeksiyon yanlış sebepten geçebilir (örtüşen savunmalar maskeler) → kuralı çıplak testle çivile, savunmaları ayrı enjekte et; ardışık test eşzamanlılığı kanıtlamaz.
+- **DERS** "Bu işi geri alsam hangi kapı kırmızı?" Hiçbiriyse iş bitmedi: okunmayan bayrak, çağrılmayan adaptör yeşildir → çağıran + test.
+- **DERS** Davranış değişince doğru olan docstring/kullanıcı metni yalana döner, `check:docs` görmez → davranışı değiştiren tur metni de düzeltir.
+- **DERS** `docs/adr/README.md` dizini kapısız (2× bayatladı) → ADR'nin dizin satırı aynı commit'te.
+- **NOT** `check:docs` sürüm iddialarını kök `package.json`'a kapılar (kaçış `docs-check-ignore`); test sayıları bilerek kapısız → çürümeyen biçim ("1,200+").
+- **NOT** İkiz uygulamalar ortak fikstürle çivili, biri değişirse öteki + fikstür aynı değişiklikte: `fold_parity.json`, `project_match_parity.json`, `calendar_block_parity.json`, tekrar motoru.
+- **DERS** GitHub slug'ı U+FE0F'u tutar, ` — ` çift tire bırakır; README'de 3 ölü anchor → `check:docs` link+anchor'ı github-slugger'la denetler (OPH-368).
+- **DERS** Görev kimliği kalıbı `\d{3}\b` dört haneli kimliği hiç görmez: iş `next`'ten ve kapıdan sessizce düşer → `\d{3,}`; TASKS'ı yalnız `scripts/tasks/tasks.mjs` okur.
 
 ## api-db — Fastify rotaları, MySQL, kuyruk, test DB
 - **KARAR** Hata kodu ailesi: 400 biçim · 404 sana görünmez (403 değil) · 409 tekillik · 422 iş kuralı (gövde şemaya uyar, kural reddeder); her hata stabil `code` taşır.
 - **KARAR** Periyodik iş `setInterval`+`unref()`+`env!=='test'` ev kalıbıyla (`series-gc.js`), BullMQ repeatable değil — self-host Redis'siz de koşmalı; çok replikada dedupe + idempotens.
 - **DERS** Kuralı route'a yazma, ikinci yol atlar (MCP'nin etiket-yalnız yazımı arşiv kuralını atladı) → kural domain fonksiyonunda (`db/tasks.js`), REST ve MCP onu çağırır.
-- **DERS** Fastify Ajv bilinmeyen gövde anahtarını reddetmez SİLER → yalnız bilinmeyen alanlı PATCH sessiz 200 alır: boş patch'i kodla reddet (`*_EMPTY_PATCH`); hata serileştiricisi yalnız `{statusCode,code,error,message}` yayar.
-- **DERS** Aynı milisaniyedeki düz `ulid()` sıralanmaz → `orderBy('id')` sayfası iki kaydı ters verir (aralıklı flake) → `ids.js` `monotonicFactory`.
+- **DERS** Fastify Ajv bilinmeyen gövde anahtarını reddetmez SİLER → yalnız bilinmeyen alanlı PATCH sessiz 200: boş patch'i kodla reddet (`*_EMPTY_PATCH`); hata gövdesi yalnız `{statusCode,code,error,message}`.
+- **DERS** Aynı milisaniyedeki düz `ulid()` sıralanmaz → `orderBy('id')` sayfası ters verir (flake) → `ids.js` `monotonicFactory`.
 - **DERS** Yalnız yapılandırılınca kaydedilen rota OpenAPI üretecine görünmez → üreteç özelliği tek kullanımlık kimlikle açar; "yapılandırılmamışken 404" testi rota yokken de geçer → koşulsuz kayıtla kırmızıyı gör.
-- **DERS** `fakedb.js` MySQL değil: rollback, aggregate/subquery yok; benzersizlik `===` (datetime'lı unique tutmadı), `Date`'i referansla sıraladı → bu davranışlar entegrasyonla kanıtlanır; tuhaflıkta önce fakedb'den şüphelen.
+- **DERS** `fakedb.js` MySQL değil: rollback, aggregate/subquery yok, benzersizlik/sıralama bir kez referansla karşılaştırdı → bu davranışlar entegrasyonla kanıtlanır; tuhaflıkta önce fakedb'den şüphelen.
 - **DERS** MySQL NULL'lu UNIQUE tekilliği zorlamaz → kök seviye (parent NULL) ad tekilliği API guard'ında; `deleted_at`'li aktif tekillik VIRTUAL `active_flag` + unique. ENUM tanım sırasıyla sıralanır.
-- **DERS** Toplu yazımda `ER_LOCK_DEADLOCK` kalem kaybettirir → `transactionWithRetry` (`src/db/tx.js`, 1205 denenmez); entegrasyon dosyaları tek MySQL'e sıralı koşar (`fileParallelism` kapalı).
-- **DERS** Eşzamanlılık ardışık testle/SQLite'la kanıtlanmaz → gerçek MySQL'de paralel test; "bir kez" etkisi (bildirim, süpürge) koşullu tek `UPDATE … AND status=…` + `affectedRows===1` ile.
-- **DERS** BullMQ varsayılan `bull:` keyspace'i: aynı Redis'i paylaşan iki kurulum birbirinin işini tüketir, iş sessizce kaybolur → her dağıtıma ayrı `REDIS_KEY_PREFIX`.
+- **DERS** Toplu yazımda `ER_LOCK_DEADLOCK` kalem kaybettirir → `transactionWithRetry` (`db/tx.js`, 1205 denenmez); entegrasyon dosyaları sıralı koşar (`fileParallelism` kapalı).
+- **DERS** Eşzamanlılık ardışık testle kanıtlanmaz → gerçek MySQL'de paralel test; "bir kez" etkisi koşullu tek `UPDATE … AND status=…` + `affectedRows===1` ile.
+- **DERS** BullMQ varsayılan `bull:` keyspace'i: Redis'i paylaşan iki kurulum birbirinin işini sessizce tüketir → her dağıtıma ayrı `REDIS_KEY_PREFIX`.
 - **DERS** Kod sabiti ile migration ENUM'u ikizdir, REST şemasına elle yazılan enum kayar → şemayı sabitten türet, pin testi; ENUM'u ALTER'la genişlet, canlıda daraltma. Tekillik/zorunluluk şemada (importer modeli atlar).
+- **DERS** Todoist CSV'sinde id yok → anahtar tarihsiz parmak izi; TickTick ön sözü çok satırlı → kayıt oku, satır değil.
 - **NOT** Ölü kolonlar yazılmaz: `tasks.repeat_rule` (tekrar `task_series`'te), `calendar_mirror_enabled` (bastırma `calendar_mirror_suppressed_at`), `notes.content_delta` (okunur kaçış ambarı).
 - **NOT** Tek kopya zemin, ikincisini yazma: `queue/runner.js`, `plugins/storage.js`, `lib/crypto.js`, `lib/tokens.js`, `lib/time.js`, `calendar-sync.js` süpürge idiomu, `db/sync.js` `publishEntityChanged` (commit sonrası).
 
@@ -61,24 +63,24 @@
 - **DERS** Yeni sync `operation` fiili eklenemez: ENUM'lar ve pull şeması üç fiile kilitli, dispatch `default:` bilinmeyeni `applyDelete`'e düşürür → `update` + virtual alan (`orderedIds`, `seriesScope`).
 - **DERS** Push `guard` create+update'te koşar, DELETE'te ASLA → sahiplik `checkOwnership`'te; `!(await ownershipOk())` dönen hata KODU dizesini geçirir; silinmesi denetlenecek varlığa delete açma.
 - **DERS** Yazma iki dikişten geçer: REST/MCP/import `db/*.js` domain'inden, sync push kendi ENTITIES makinesinden (`afterCreate/afterUpdate`) → her yeni kural (not sürümü, `noteMarkdownFrom`, erteleme) ikisine bağlanır.
-- **DERS** Serileştiriciyi REST ile sync PULL paylaşır → yeni alanı (`tagIds`) pull yükleyicisi yüklemezse her snapshot sessizce boş değer (`[]`) taşır.
+- **DERS** Serileştiriciyi REST ile sync PULL paylaşır → pull yükleyicisi yeni alanı (`tagIds`) yüklemezse snapshot sessizce `[]` olur.
 - **DERS** Not kilidinin base'i notun KENDİ revizyonudur, workspace imleci değil — imleç soket pull'uyla karşı yazımı geçer, gövde sessizce ezilir; kendi başarılı push'u base'i ilerletir.
 - **DERS** LWW intent adı gerçekten yazılan kolon olmalı: emekli kolona bağlı intent hiç eşleşmez, kilit log'suz kilitlemeyi bırakır → kolon emekliye çıkınca intent'i taşı.
 - **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; yerelde de `userId` süz (ADR-0018) (ikinci duvar).
 - **KARAR** Replika tek kişinin (OPH-355): çıkış + başkasının girişi onu ve `kUserBoundKvPrefixes`'i siler, yerinde (`secure_delete`+VACUUM); kişiye ait yeni LocalKv anahtarı → o listeye.
-- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa çekme onu görmez → kaldıran iş aynı txn'de sync yazımı kaydeder, gerçek çekmeyle test; push `present:false` döner (OPH-362).
-- **DERS** Genel push makinesi silmeyi `deleted_at` adıyla yazar ve onunla tombstone'lar → push'lanan her varlığın soft-delete kolonu `deleted_at` olmalı.
+- **DERS** Tombstone bir revizyondur: imleçten ileri `sync_revisions` satırı yoksa çekme onu görmez → kaldıran iş aynı txn'de sync yazımı kaydeder, gerçek çekmeyle test; push `present:false` döner (OPH-362); taşınan satır eski akışta tombstone, istemci yalnız o akışınkini siler (OPH-378)
+- **DERS** Push makinesi silmeyi `deleted_at` ile yazar ve onunla tombstone'lar → push'lanan varlığın soft-delete kolonu `deleted_at` olmalı.
 - **DERS** `registerSyncEntity` tip başına tek kayıt, tek serileştirici → aynı tabloyu iki kitleye iki alan kümesiyle sunmak ayrı tip ya da server-only REST ister.
 - **DERS** Sunucu patch'teki ilk bilinmeyen alanda mutation'ın TAMAMINI reddeder (reddedilen create yerel satırı bırakır) → testte istemcinin gerçek gövdesini gönder; `enqueueMutation` assert'i yalnız koşulan yolu görür.
-- **DERS** Socket.IO `sync:ready` connect ack'iyle aynı TCP segmentinde gelebilir → istemci dinleyicilerini handshake'ten ÖNCE bağla.
-- **NOT** Soket oda üyeliği bağlantı anında donar (JWT yalnız bağlanırken doğrulanır) → yeni workspace üyeliği yeniden bağlanana dek `sync:changed` almaz; periyodik pull yedektir.
+- **DERS** Socket.IO `sync:ready` connect ack'iyle aynı segmentte gelebilir → dinleyiciyi handshake'ten ÖNCE bağla.
+- **NOT** Soket oda üyeliği bağlanırken donar (JWT yalnız o an doğrulanır) → yeni üyelik yeniden bağlanana dek `sync:changed` almaz; periyodik pull yedek.
 - **KARAR** Paylaşılan alanlar birlikte senkronda: alan başına motor, yazım `pokeSync(ref)` ile hepsini dürter, düşen alan son tur alır; kişisel kullanımda tek motor (ADR-0044).
 - **DERS** Gözlemcinin fırlatması push'u 500'e çevirir, cihaz yazımı sonsuza dek yollar → içeriden ret `syncRefusal(code)` (REST 409, push rejected+rebase).
 
 ## drift-replica — istemci replikası, göçler, outbox
 - **DERS** drift'in varsayılan `onUpgrade`'i fırlatır: basamaksız `schemaVersion` artışı her replikayı tuğlalar → her sürüm `if (from < n)` basamağı; replika outbox taşır, "sil, yeniden çek" güvenli değil.
 - **DERS** Eski basamaktaki `createTable(x)` GÜNCEL tanımı yaratır → x'e sonra eklenen `addColumn` `from >= <createTable sürümü>` korumalı olmalı (yoksa duplicate column; üç kez oldu).
-- **DERS** Göç testi gerçek dosyalı SQLite'ta (`drift_dev` şema araçları bu zincirde kırık); sürüm fixture'ı sonra eklenen HER şeyi düşürüp gerçek satırla açılır, yoksa korumalı ALTER hiç koşmaz; adımı silip kırmızıyı gör.
+- **DERS** Göç testi gerçek dosyalı SQLite'ta (`drift_dev` şema araçları kırık); sürüm fixture'ı sonra eklenen HER şeyi düşürüp gerçek satırla açılır, yoksa korumalı ALTER hiç koşmaz; adımı silip kırmızıyı gör; tipli `select` eksik kolonu null okur → SQL'de adla.
 - **DERS** `createAll` ad-hoc indeks yaratmaz → indeksi `onUpgrade`'e ek olarak `onCreate`'e de koy (yoksa taze kurulum sessizce tam tarama); Migrator'da `customStatement` yok → `db.customStatement`.
 - **DERS** Türetilmiş kolon (fold gölgesi) eski satırlarda boş kalır, çekme artımlıdır → göçte geri doldur, alanı yazan her yol gölgeyi de yazar; sunucu-sahipli yeni kolon satır değişene dek null.
 - **DERS** Cihazın YAZDIĞI replika tablosuna kolon eklenince applier onu da eşlemeli, yoksa itmeden sonraki çekme ekrandaki değeri siler.
@@ -106,14 +108,15 @@
 - **DERS** Flutter 3.44'te eylemli `SnackBar` süre dolunca kapanmaz (`persist ?? action != null`) → eylemli snackbar yalnız `showAwActionSnackBar` (`persist:false`).
 - **DERS** Web'de dio 204 gövdesi `''` → `as Map` TypeError, temizlik atlanır → `data is Map ? … : {}`.
 - **DERS** Gün sınırlı liste gece yarısı yenilenmez (askıda timer ateşlemez) → gece yarısı+1 sn timer + `resumed`'da hesap, saat `nowProvider`'dan; `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
-- **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi yeni senkron varlığı push'ta uygulamazsa silinen satır sonraki pull'da geri döner.
+- **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi push'u yansıtmazsa (yeni varlık, null alan) pull geri getirir/siler.
 - **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; gerçek async kurulum `tester.runAsync`'te.
 - **DERS** Kare başına çok sürükleme olayı: `build` yereline eklenen delta (`centre + d.delta`) düşer, `DragStartBehavior.start` eşiği yutar → state'e biriktir, `.down`; testte `pump`suz `moveBy`.
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
-- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn zamanlayıcısı; `localKv` örneği tutar → `setUp`'ta sil.
+- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn; `localKv` örneği tutar → yazan test siler.
 - **DERS** Oturumda adres değişince örtülü ekranın provider'ları build içinde kurulur → adres geçişi Ana sayfadan (ADR-0046).
 - **DERS** Sheet controller'ını await eden fonksiyon dispose ederse kapanış animasyonu çöker → State'e ver (OPH-360).
+- **DERS** `buildTextSpan` ezen controller IME composing'de `super` döner (OPH-373).
 
 ## design-ui — tokenlar, kontrast, yüzeyler
 - **KARAR** Renk yalnız paletten, kullanıcıya hex asla; not rengi ADIYLA saklanır, her tema kendi değerini çözer (tek hex iki temada 4.5 tutmaz); markdown'a renk sözdizimi yok, yalnız `==vurgu==` (DESIGN §33).
@@ -156,15 +159,15 @@
 - **DERS** Yükleme guard'ı (tavan/kota) iki fazda: beyan edilen boyutla erken, HeadObject'le ÖLÇÜLEN boyutla commit'te — tek faz eşzamanlı yüklemelerle tavanı aştırır.
 
 ## calendar — takvim aynası, Google/EventKit, tekrar, DST
-- **KARAR** Ayna seçeneksiz: her görev 30 dk blok, güne kenetli (23:59 → 23:29–23:59), tarihsiz → ekleniş günü; tamamlanan `✓` ile kalır, iptal/silinen gider; backfill −30g→+12ay (ADR-0021).
+- **KARAR** Ayna seçeneksiz: her görev süre (yoksa 30 dk) blok, güne kenetli (23:59 → 23:29–23:59), tarihsiz → ekleniş günü; tamamlanan `✓` ile kalır, iptal/silinen gider; backfill −30g→+12ay (ADR-0021).
 - **KARAR** Blok önce `scheduled_start_at`'ten türer; Google'da sürükleme `due_at`'i değil `scheduled_*`'ı yazar; "Planlanan tarih" alanı yok, yalnız doluyken "Takvimde taşındı — Sıfırla" (ADR-0007).
-- **KARAR** Tekrar: RFC 5545 alt kümesi + RFC 7529 kırpma (31 → ay sonu); occurrence gerçek görev satırı, yalnız sunucu üretir (+12 ay, günlük süpürme); istemci/widget/alarm tekrarı bilmez (ADR-0020).
-- **DERS** Echo bastırma etag'le: giden her yazımda dönen etag `calendar_event_links.etag`'e yazılmazsa kendi değişikliğimiz kullanıcı düzenlemesi sanılır → ayna ⇄ inbound döngüsü.
-- **DERS** Google: `nextSyncToken` yalnız son sayfada, 410 → token düş + tam resync; `timeMin/Max` `syncToken`'la kullanılamaz; `singleEvents` iki tüketiciye yetmez (iki akış, iki cursor); webhook gövdesiz POST'tur.
-- **DERS** Yalnız `scheduledStartAt` sıfırlanırsa ters blok türer, Google `end<=start`'a 400 verir, kuyruk aşamaz → iki alan birlikte null; kenetleme görevin KENDİ diliminde.
-- **DERS** "Yalnız bu" düzenlemesinde `series_id` null'lanmaz (slot boşalır, süpürme aynı güne kopya üretir) → satır seride kalır, zamanı `due_at` söyler; seri `timezone`'u kullanıcı profilinden (cihaz "+03" der).
-- **DERS** EventKit: id iCloud taşımasında değişir → yeniden bağlama URL alanındaki `alliswell://task/{id}`'le (ADR-0003); iOS 17 `writeOnly` "verildi" değil; izin `EKEventStore` örneğine bağlı → tek örnek.
-- **DERS** Europe/Istanbul DST'siz → onunla DST testi hiçbir şey kanıtlamaz; `lib/time.js` `zonedWallTimeToUtc` boşluktaki saati 1 sa ileri kaydırır, örtüşmede GEÇ oluşu seçer → politikayı seç, iki vakayı testle.
+- **KARAR** Tekrar: RFC 5545 alt kümesi + RFC 7529 kırpma (31 → ay sonu); occurrence gerçek görev satırı, yalnız sunucu üretir (+12 ay, süpürme); istemci bilmez (ADR-0020). ADR-0056: her tamamlama kapısı `onTaskStatusChange`; geri çekilenin slotu NULL.
+- **DERS** Echo etag'le: giden yazımın etag'i link'e yazılmazsa kendi yazımız kullanıcınınki sanılır (döngü). CalDAV: PATCH yok → GET + birleştir + `If-Match`; yabancı etag → önce inbound.
+- **DERS** Token reddi: Google 410 (`nextSyncToken` son sayfada), CalDAV'da kod yok (Radicale 403 `valid-sync-token`) → DAV hatası/dolu token'da her 4xx: tam resync. `timeMin/Max`+`syncToken` olmaz; iki akış, iki cursor; webhook gövdesiz.
+- **DERS** Yalnız `scheduledStartAt` sıfırlanırsa ters blok türer, Google `end<=start`'a 400 → iki alan birlikte null; kenetleme görevin KENDİ diliminde.
+- **DERS** "Yalnız bu" düzenlemesi `series_id`'yi null'lamaz (slot boşalır, süpürme kopyalar); zamanı `due_at` söyler; seri `timezone`'u kullanıcı profilinden (cihaz "+03" der).
+- **DERS** EventKit id'si iCloud taşımasında değişir → `alliswell://` URL'siyle bağla; `writeOnly` ≠ verildi; etag yok, iCloud saniyeyi keser → echo ±1 dk (ADR-0050); sunucu iCloud'a yazınca çekilir.
+- **DERS** Europe/Istanbul DST'siz → DST testi onunla bir şey kanıtlamaz; `zonedWallTimeToUtc` boşluktaki saati 1 sa ileri kaydırır, örtüşmede GEÇ oluşu seçer → iki vakayı testle.
 
 ## notifications-alarm — yerel alarmlar, AlarmKit, başsız tur
 - **KARAR** Görev saati de alarmdır: hatırlatıcı deadline alarmını silmez (`reminders.kind` remind|due); süresiz susturma (`alarms_muted_at`) görevi açık bırakır — susturmak tamamlamak değildir (ADR-0015).
@@ -186,26 +189,26 @@
 - **KARAR** `web/aw_push_sw.js` karar vermez (çeviri/gizlilik/`silent` uygulamanın yazdığı önbellekten), her yol bir bildirimle biter; web modu cihaz-yerel Kapalı/Sessiz (varsayılan)/Sesli, Kapalı aboneliği bırakır (ADR-0039).
 - **DERS** Web Push `userVisibleOnly`: bildirim göstermeyen işleyiciye Chrome jenerik kart basar → "sessiz" web push yok, susturmak = abonelikten çıkmak. Firefox `silent`'ı yok sayar ama true döner → UA kontrolü.
 - **DERS** Web'de izin ≠ ulaşılabilirlik (VAPID yok ya da abonelik iptal) → ayrı `AlarmProblem.webPushOff`; tarayıcı yerel bildirim zamanlayamaz; iOS web push yalnız Ana Ekran uygulamasında; SW `localStorage` göremez.
-- **DERS** `url_launcher` web'de bilinmeyen şemada (`app-settings:`) hata vermez, ölü sekme açar → "best effort + catch" web'de hiç düşmez; web'in reddi üç sorun (istenmemiş / engellenmiş / desteklenmiyor), düzeltme sayfasının aksiyonu `AlarmProblem` üzerinde exhaustive switch (#19).
+- **DERS** `url_launcher` web'de bilinmeyen şemada (`app-settings:`) hata vermez, ölü sekme açar → "best effort + catch" web'de hiç düşmez; web'in reddi üç sorun (istenmemiş/engellenmiş/desteklenmiyor), düzeltme sayfasının aksiyonu `AlarmProblem` üzerinde exhaustive switch (#19).
 - **DERS** iOS'ta `notification` bloğu olmayan FCM mesajı teslim edilmez → görünür yedek `notification` + `aps.sound` taşır. Firebase'e APNs anahtarı yüklenmezse token üretilir, hiçbir şey gitmez, test görmez.
 - **DERS** FCM token bir aboneliktir: geri yüklemede döner → yenilemeyi dinle; çıkışta önce sunucu kaydını, sonra token'ı sil. VAPID anahtarı 65/32 bayt — yer değiştirmiş çift "dolu mu"dan geçer, uzunluğu ölç.
 - **DERS** Ertelenen hatırlatıcı `remind_at`'ini korur, yeni an `snoozed_until`'de → vadesi gelenler iki ayrı sorgu (OR indeksi kullanamaz); idempotenlik `uq_reminder_push`'a INSERT.
 - **NOT** `EE_PUSH_ENABLED` uzantının push kuyruğa alıp alamayacağını, `config.push` (VAPID/FCM) çekirdeğin gönderebilmesini söyler — iki ayrı soru, iki anahtar.
 
 ## ios-native — Runner, uzantılar, WidgetKit, AlarmKit
-- **KARAR** Native kod in-repo eklenti paketinde (`packages/alliswell_eventkit`; pbxproj cerrahisi yok); App Extension paketle gelemez → hedef + entitlement betikle (`wire_*.rb`); yeni Swift mevcut `AlarmKitBridge.swift`'e.
+- **KARAR** Native kod in-repo eklenti paketinde (`packages/alliswell_eventkit`); paketle gelemeyen (uzantı hedefi, App Intents) betikle (`wire_*.rb`); yeni Runner Swift'i `AlarmKitBridge.swift`'e.
 - **DERS** `flutter analyze/test` Swift/Kotlin derlemez: hedefte olmayan Swift hiç çalışmaz (köprü sessizce "desteklenmiyor"), pod'lar Flutter'ın alt iOS hedefinde derlenir → native işi gerçek `flutter build`'le doğrula.
 - **DERS** Uzantı hedefi eklerken (SETUP.md): base xcconfig yoksa `MARKETING_VERSION` boş → App Store reddi; sanal `Flutter` grubunda tam yol; pod uzantıda → `inherit! :search_paths`; Embed fazı Thin Binary'den önce.
 - **DERS** Share uzantısı dyld'de raporsuz ölüyordu (`@rpath/AppAuth`): Pods runpath vermez → `AllisWellShare*.xcconfig`'teki `@executable_path/../../Frameworks` korunur (`otool -l | grep LC_RPATH`).
 - **DERS** iOS 18+ uzantı ana uygulamayı açamaz, `getInitialMedia()` App Group'u okumaz → açılış/resume'da drain (ADR-0029); iOS 26'da dönüş URL'i rota sanılıp /not-found'a gider → SceneDelegate `super`'e vermez.
 - **DERS** Uzantı sürümü `$(FLUTTER_BUILD_NAME/NUMBER)` olmalı (yeni hedef 1.0/1 doğar); yükseltince `flutter clean && pub get && pod install`. App Group dizesi her yerde bayt-bayt aynı: `group.com.alliswell.alliswell`.
-- **DERS** `LiveActivityIntent` DAİMA ana uygulamada koşar (widget'tan tamamlama Flutter'ı başsız başlatıp çökertti) → widget sürecinde düz `AppIntent` + App Group kuyruğu; Dart her öne gelişte `drainPendingActions`.
+- **DERS** `LiveActivityIntent` DAİMA ana uygulamada koşar (widget'tan başsız Flutter öldü) → widget sürecinde düz `AppIntent` + App Group kuyruğu; Dart her öne gelişte `drainPendingActions`. Siri niyeti `openAppWhenRun`, cümlede String yok (ADR-0057).
 - **DERS** WidgetKit'te canlı saat yok → dakikalık girdiler, ufuk bayttan (~16.6 MB arşivi aşınca chronod hepsini atar, widget placeholder'da kalır); timeline şimdi + 4 gece yarısı, başlık tarihi ENTRY'den.
 - **DERS** Snapshot'a yeni alan: native taraf eksiğe toleranslı (Swift opsiyonel, Kotlin `optInt`), JSONSerialization (Codable yeni alanı düşürür); iki platformun yerleşimi de pariteye tabi.
 - **DERS** Oturum `kSecAttrAccessibleWhenUnlocked` → kilitli iPhone'da başsız yol Keychain'i null okuyup "çıkış yapılmış" sanar → oturum yoksa sessiz çıkış, widget'ı replikadan yine çiz.
 - **DERS** AlarmKit: `Alarm`'da attributes yok (id↔UUID eşlemesi), `.stopped` yok (düğmeler `LiveActivityIntent`), erteleme `.custom` (`.countdown` alarmı ikiler); `NSSupportsLiveActivities` iki Info.plist'te.
 - **DERS** Focus `.active`'i gömer → hatırlatıcı `timeSensitive`; izinsiz iOS onu sessizce `.active`'e düşürür, plugin ayarı vermez → native sonda; `critical` yalnız `isCriticalEnabled`'da; kategori ~4 eylem gösterir.
-- **NOT** iOS ve macOS aynı takımla imzalanır: `WWRZ5CG3DW` (eski `QB8VR32GWN` hiçbir yerde kalmamalı). AlarmKit'in Xcode bağlantısı `ios/scripts/wire_alarmkit.rb`'de (idempotent).
+- **NOT** iOS ve macOS aynı takımla imzalanır: `WWRZ5CG3DW` (eski `QB8VR32GWN` hiçbir yerde kalmamalı). Xcode bağlantıları `ios/scripts/wire_*.rb`'de (idempotent).
 
 ## android-native — manifest, izinler, kanallar, widget
 - **KARAR** Kesin alarm: `USE_EXACT_ALARM` + `SCHEDULE_EXACT_ALARM` (minSdk 24; Play beyanı `docs/store/exact-alarm-declaration.md`); izin yalnız alarmlara — widget'ın gece yarısı tazelemesi bilerek kesin değil (ADR-0037).
@@ -231,7 +234,7 @@
 - **DERS** Cloudflare Email Address Obfuscation JS'siz legal sayfalardaki e-postayı uçuşta bozar → `<!--email_off-->`; deploy build edileni değil servis edileni doğrular.
 - **DERS** Landing `public/` hash'lenmez, `.htaccess` her `.css`'e `immutable, max-age=1y` verir → içerik değişince dosya adındaki tutamağı artır (`api-docs-1.css`); `.json` bilerek immutable değil.
 - **DERS** `String.fromEnvironment` derlemede gömülür, hazır web imajı başka domaine bağlanamaz → çalışma anı `alliswell-config.js` (env'den, `no-store`); `apiBaseUrlProvider` sırası runtime → dart-define → localhost.
-- **NOT** `/privacy` ve `/support` build'de `docs/PRIVACY*.md`/`docs/SUPPORT*.md`'den üretilir → md'yi düzenle. İki karşılaştırma tablosu var (`docs/COMPARISON.md`, `content.js` `comparison`) — birlikte güncelle.
+- **NOT** `/privacy` ve `/support` build'de `docs/PRIVACY*.md`/`docs/SUPPORT*.md`'den üretilir → md'yi düzenle. İki karşılaştırma tablosu (`docs/COMPARISON.md`, `content.js` `comparison`) birlikte güncellenir; §7 rakipleri tarihli: sürümde yeniden doğrula, kanıtsız '—'.
 
 ## ai-mcp — BYOK AI, uzak MCP, araç politikası
 - **KARAR** AI iki hat: uzak MCP (kullanıcının aboneliği) + uygulama içi BYOK (`fetch` adaptörleri, SDK yok, anahtar `AI_TOKEN_KEY`'le şifreli, arayüzde `key_last4`); abonelik-OAuth kapalı (ADR-0019).
@@ -253,7 +256,7 @@
 - **DERS** Rate limit app seviyesinde → rotayı `config.rateLimit`'le daralt; kova kimlik, IP değil (ADR-0045); kasıtlı 5xx `app.httpErrors.*` ile (gerisi `INTERNAL_ERROR`).
 - **DERS** Kullanıcıya özel akış (AI sohbeti) `user:{userId}` soket odasına gider; `ws:*` workspace odası onu tüm üyelere yayınlar.
 - **DERS** `routes/oauth.js` `renderPage` title'ı kaçırır, body'yi HAM basar; helmet CSP kapalı → kullanıcı içeriği basan HTML sayfası her enterpolasyonu kaçırır, CSP seçer, payload'lı test.
-- **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP için OAuth 2.1 SUNUCUSU, `lib/oauth-identity.js` yalnız Google/Apple ID token; harici kimlik ayrı uçtan — `/auth/login`'i dallandırmak dummy verify'ı bozar.
+- **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP'nin OAuth 2.1 sunucusu, `lib/oauth-identity.js` Google/Apple ID token. Her giriş kapısı yazmadan önce `lib/sign-in-factors.js` (OPH-381).
 - **DERS** Kullanıcı kontrollü dış URL SSRF'tir: yalnız http/https, IP denetimi DNS'ten SONRA ve her yönlendirmede, gövde tavanı; AI `baseUrl`'inde (`aiFetch`) allowlist yok — bilinçli kabul (SECURITY.md).
 - **DERS** `refresh_tokens` her yenilemede satır yazar: "oturum" = `family_id` ailesi, liste/iptal aile başına; yenileme UA göndermeyebilir → cihaz adı yalnız INSERT'te ("kolon var" ≠ "kolon dolu").
 
@@ -272,4 +275,4 @@
 - **DERS** Enjeksiyonda `cp` hatasında dur ("yeşil kaldı" yalanı); geri alınan dosyayı sandbox'a yeniden gönder + checksum; hedefli tar'a girmeyen dizin sandbox'ta bayat kalıp ölçülür (`apps/app/assets/i18n` her pakette).
 - **DERS** `&&` zinciri eşleşmeyen grep'te (exit 1) sessizce kesilir, "ölçüm yok" "sıfır" görünür → ölçüm zincirinde `;`; zsh'te tırnaksız `--include=*.js` "no matches found" verir.
 - **DERS** Yerelde npm betikleri guard hook'a takılır → kapıları `node scripts/…` ile koş; `apps/app/lib` okuyan core kapıları sandbox'ta ENOENT verir → onları yerelde koş.
-- **KARAR** Süitler `npm run verify:task|batch` ile koşar (ADR-0042): sandbox'a yalnız git'in izlediği/izleyeceği dosyalar gider (`apps/app` yok — fikstür ve i18n var; sır şekli reddedilir), ağaç her koşuda temiz kurulur, `node_modules` lockfile özeti değişmedikçe taşınır. Dışlanan yoldan yeni dosya okuyan test yalnız orada ENOENT verir → yolu `scripts/verify/verify.mjs` `include`'una ekle.
+- **KARAR** Süitler `npm run verify:task|batch` ile koşar (ADR-0042): sandbox'a yalnız git'in izlediği/izleyeceği dosyalar gider (`apps/app` yok — fikstür ve i18n var; sır şekli reddedilir), ağaç her koşu temiz kurulur. Dışlanan yoldan dosya okuyan test yalnız orada ENOENT verir → yolu `scripts/verify/verify.mjs` `include`'una ekle.

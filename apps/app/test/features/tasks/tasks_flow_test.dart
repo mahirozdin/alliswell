@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/persisted_prefs.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/app.dart';
@@ -17,6 +18,7 @@ import 'package:alliswell/src/features/tasks/ui/task_detail_screen.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/nav.dart';
 
 Future<Widget> signedInAppWith(
   FakeApi api, {
@@ -300,6 +302,10 @@ void main() {
       listen: false,
     );
     await container.read(defaultTaskTimeProvider.notifier).set('07:15');
+    // `localKv` caches its instance across tests (LESSONS flutter-app): the
+    // quick-add bar reads this preference from the first frame (OPH-373), so
+    // a leaked 07:15 would reach every later test's pickers.
+    addTearDown(() => localKv.remove('alliswell_default_task_time'));
 
     await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
@@ -345,6 +351,8 @@ void main() {
       'bağlam: https://x.dev/spec',
     );
     // Pick a due date via the date + time dialogs (defaults accepted).
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
@@ -353,6 +361,9 @@ void main() {
     await tester.pumpAndSettle();
 
     // Round 14: urgent is ON and priority is medium out of the box — no taps.
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -450,6 +461,9 @@ void main() {
     // Back in the task sheet with the NEW project selected in the field.
     expect(find.text('Anında Proje'), findsOneWidget);
 
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -465,7 +479,7 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byKey(const Key('quick-add')), 'Yeni fikir');
@@ -705,11 +719,16 @@ void main() {
       'Yarına iş',
     );
     // Accept both pickers untouched: whatever they OPENED on is what lands.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
@@ -762,6 +781,8 @@ void main() {
       opensOn.month,
       opensOn.day == 15 ? 16 : 15,
     );
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('${target.day}').last);
@@ -772,11 +793,16 @@ void main() {
     await tester.pumpAndSettle();
 
     // …and the reminder picker, accepted untouched, lands on THAT day.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-remind')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-remind')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
@@ -809,7 +835,7 @@ void main() {
     expect(find.text('Yakalanan fikir'), findsNothing);
 
     // The Inbox shows the capture with triage actions and no completion box.
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
     expect(find.text('Yakalanan fikir'), findsOneWidget);
     expect(find.byType(Checkbox), findsNothing);
@@ -823,7 +849,7 @@ void main() {
     final api = FakeApi()..seedTask(title: 'Planlanacak', status: 'inbox');
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     // Plan opens the sheet in edit mode.
@@ -832,11 +858,16 @@ void main() {
     expect(find.text('Plan task'), findsOneWidget);
 
     // Give it a due date (accept picker defaults) and save.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    // The sheet grew When and Duration rows (OPH-372): scroll first.
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
@@ -844,7 +875,7 @@ void main() {
     // It left the Inbox and now shows on Home as a real 'open' task.
     expect(find.text('Planlanacak'), findsNothing);
     expect(api.tasks.single['status'], 'open');
-    await tester.tap(find.text('Home').last);
+    await tester.tap(navTab('Home'));
     await tester.pumpAndSettle();
     expect(find.text('Planlanacak'), findsOneWidget);
   });
@@ -856,7 +887,7 @@ void main() {
     final api = FakeApi()..seedTask(title: 'Nota gidecek', status: 'inbox');
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('capture-to-note')));
@@ -882,7 +913,7 @@ void main() {
       );
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Inbox').last);
+    await tester.tap(navTab('Inbox'));
     await tester.pumpAndSettle();
 
     // A RenderFlex overflow would have thrown during layout; the three actions

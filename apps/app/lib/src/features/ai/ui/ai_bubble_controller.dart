@@ -11,6 +11,8 @@ import '../../projects/providers.dart';
 import '../../tasks/data/task_text.dart';
 import '../../tasks/providers.dart';
 import '../../workspaces/workspaces.dart';
+import '../data/ai_attachment_loader.dart';
+import '../data/ai_attachments.dart';
 import '../data/ai_context_builder.dart';
 import '../data/ai_models.dart';
 import '../data/ai_stream_client.dart';
@@ -105,10 +107,55 @@ class AiBubbleController extends Notifier<AiBubbleState> {
 
   void editInput(String text) => state = _machine.editInput(state, text);
 
+  // ── OPH-377: "@" attachments ──────────────────────────────────────────
+
+  /// Adds a picked item as a loading chip, then loads its text. A refusal
+  /// stays on screen as an error chip (with its reason) until removed.
+  Future<void> attach(AiAttachmentRef item) async {
+    final before = state.pending.length;
+    state = _machine.attachPending(state, AiAttachment.loading(item));
+    if (state.pending.length == before) return; // duplicate or at the limit
+    final loaded = await ref.read(aiAttachmentLoaderProvider).load(item);
+    if (_disposed) return;
+    state = _machine.updatePending(state, loaded);
+  }
+
+  void detach(AiAttachmentRef item) =>
+      state = _machine.removePending(state, item);
+
+  /// The live bundle plus every attachment of the conversation, newest turn
+  /// first (the newest copy of an item wins). Attachments stay with the
+  /// conversation: a follow-up question keeps its subject (ADR-0058).
+  AiContextBundle withConversationAttachments(AiContextBundle? live) {
+    final attachments = <AiAttachment>[
+      for (final entry in state.history.reversed)
+        if (entry.role == 'user') ...entry.attachments,
+    ];
+    final base =
+        live ??
+        const AiContextBundle(segments: [], tokenEstimate: 0, truncated: false);
+    if (attachments.isEmpty) return base;
+    final pack = packAttachedSegments(attachments);
+    _recordDropped(pack.dropped);
+    return base.withAttached(pack.segments, truncated: pack.truncated);
+  }
+
+  /// Puts the items the cap left out on the turn being sent, so its notice
+  /// shows under the message that lost them.
+  void _recordDropped(List<AiAttachmentRef> dropped) {
+    final history = state.history;
+    if (history.isEmpty || history.last.role != 'user') return;
+    final last = history.last;
+    if (dropped.isEmpty && last.droppedAttachments.isEmpty) return;
+    state = state.copyWith(
+      history: [...history.take(history.length - 1), last.withDropped(dropped)],
+    );
+  }
+
   /// Sends the current input as a chat turn, streaming the answer. Context is
   /// packed by the caller (kept minimal here so the controller stays testable).
   Future<void> send({AiContextBundle? context}) async {
-    if (_sendBlocked || !state.canSend) return;
+    if (_sendBlocked || !state.canSend || state.attachLoading) return;
     _busySending = true;
     try {
       final prepared = await _prepare();
@@ -131,7 +178,7 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   /// commit BEFORE the gate so the tap answers instantly, and a gate failure
   /// of any kind degrades to plain chat, never to a dead end.
   Future<AiProposal?> sendGated({AiContextBundle? context}) async {
-    if (_sendBlocked || !state.canSend) return null;
+    if (_sendBlocked || !state.canSend || state.attachLoading) return null;
     _busySending = true;
     try {
       final text = state.input.trim();
@@ -139,9 +186,17 @@ class AiBubbleController extends Notifier<AiBubbleState> {
       if (prepared == null) {
         return null; // offline face; the input is preserved
       }
+      // OPH-377: a turn that carries "@" attachments is a question ABOUT
+      // them — it streams straight to chat. The gate's extraction sees text
+      // only, and turning attached notes/files into tasks was ruled out.
+      final attaching = state.hasReadyPending;
       final requestId = newUlid();
       _cancelled = false;
       state = _machine.send(state, requestId);
+      if (attaching) {
+        _stream(prepared, requestId, context);
+        return null;
+      }
 
       AiVoiceRoute route;
       try {
@@ -204,6 +259,9 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     String requestId,
     AiContextBundle? context,
   ) {
+    // OPH-377: every turn (send, gated send, retry) carries the
+    // conversation's "@" attachments — added here, once, for all of them.
+    final bundle = withConversationAttachments(context);
     final messages = [
       for (final entry in state.history)
         AiChatMessage(role: entry.role, content: entry.text),
@@ -212,7 +270,9 @@ class AiBubbleController extends Notifier<AiBubbleState> {
       workspaceId: prepared.workspaceId,
       requestId: requestId,
       messages: messages,
-      context: context?.toJson(),
+      context: context == null && bundle.segments.isEmpty
+          ? null
+          : bundle.toJson(),
     );
     _sub = prepared.client
         .chat(request)

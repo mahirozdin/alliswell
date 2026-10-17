@@ -398,7 +398,7 @@ export default {
     points: [
       'Geciken, bugünkü ve bu haftaki işler tek listede; ay takvimi hemen yanında',
       'Hatırlatıcılar telefon sessizdeyken bile çalar; acil işler gözden kaçmaz',
-      'Google ve Apple takvimleriyle iki yönlü eşitleme: görevler takvimde, takvim görevlerin yanında',
+      'Google Takvim ile iki yönlü eşitleme (görevler takvimde, takvim görevlerin yanında); iPhone ve Mac’te görevler Apple Takvim’e de yazılır',
     ],
     shot: '/shots/ee/work-home-light-tr.jpg',
     shotDark: '/shots/ee/work-home-dark-tr.jpg',

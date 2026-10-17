@@ -7,6 +7,7 @@ import { reconcileProviderEvent, CONFLICT } from '../lib/inbound.js';
 import { deriveExternalEvent } from '../lib/external-events.js';
 import { newChannelToken, hashChannelToken } from '../lib/tokens.js';
 import { googleClientFor, getFreshAccessToken } from '../db/calendar.js';
+import { runCaldavSyncJob } from './caldav-sync-job.js';
 
 /**
  * The INBOUND half of BLUEPRINT §7.2 (OPH-074/075/076): keep the push channel
@@ -110,6 +111,11 @@ export async function runWatchJob(app, { accountId }) {
  * retrying is for.
  */
 export async function runInboundSyncJob(app, { accountId }) {
+  // CalDAV accounts (OPH-380, ADR-0059) share the queue, the sweep and the
+  // reconcile below; only the transport differs.
+  const kind = await app.db('calendar_accounts').where({ id: accountId }).first('provider');
+  if (kind?.provider === 'apple_caldav') return runCaldavSyncJob(app, { accountId });
+
   const account = await loadSyncableAccount(app, accountId);
   if (!account) return;
 
@@ -124,8 +130,9 @@ export async function runInboundSyncJob(app, { accountId }) {
   try {
     // Feed 1 — our own events: task ⇄ event reconcile (ADR-0007).
     const mirror = await fetchFeed(app, google, account, accessToken, FEEDS.mirror);
+    const remote = googleRemote(account, google, accessToken);
     for (const event of mirror.events) {
-      await applyProviderEvent(app, { account, event, google, accessToken });
+      await applyProviderEvent(app, { account, event, remote });
     }
 
     // Feed 2 — the user's own events, cached for display (ADR-0008). Same
@@ -215,7 +222,48 @@ async function fetchFeed(app, google, account, accessToken, feed) {
 
 // ── Steps 9-10: match to a task, apply the decision ────────────────────────
 
-async function applyProviderEvent(app, { account, event, google, accessToken }) {
+/**
+ * The provider half of steps 9-10, as an adapter: the reconcile below is the
+ * same for every provider (ADR-0007), and only these operations differ
+ * (OPH-380 — Google here, CalDAV in `caldav-sync-job.js`).
+ *
+ * @typedef {{
+ *   provider: string,                         // calendar_event_links.provider
+ *   calendarId: string,                       // provider_calendar_id for an adopted link
+ *   eventUid: (event: object) => string|null, // provider_event_uid for an adopted link
+ *   deleteEvent: (event: object, link: object) => Promise<void>, // tolerate "already gone"
+ *   pushTask: (task: object, event: object, link: object)
+ *     => Promise<{etag?: string|null, updated?: string|null}|null>,
+ * }} ProviderRemote
+ */
+function googleRemote(account, google, accessToken) {
+  const calendarOf = (link) => link?.provider_calendar_id ?? account.default_calendar_id;
+  return {
+    provider: 'google',
+    calendarId: account.default_calendar_id,
+    eventUid: (event) => event.iCalUID ?? null,
+    deleteEvent: async (event, link) => {
+      try {
+        await google.deleteEvent(accessToken, calendarOf(link), event.id);
+      } catch (err) {
+        if (err?.status !== 404 && err?.status !== 410) throw err;
+      }
+    },
+    pushTask: (task, event, link) =>
+      google.patchEvent(accessToken, calendarOf(link), event.id, desiredEventForTask(task)),
+  };
+}
+
+/**
+ * Reconciles ONE provider event against its task and executes the decision.
+ * Returns the decision, so a caller that runs this before its own write (the
+ * CalDAV mirror's foreign-etag check) knows whether to carry on.
+ *
+ * @param {object} app
+ * @param {{ account: object, event: object, remote: ProviderRemote }} input
+ * @returns {Promise<string>} the decision taken
+ */
+export async function applyProviderEvent(app, { account, event, remote }) {
   const link = await app
     .db('calendar_event_links')
     .where({ calendar_account_id: account.id, provider_event_id: event.id })
@@ -253,6 +301,15 @@ async function applyProviderEvent(app, { account, event, google, accessToken }) 
     updated_at: new Date(),
   };
   const flagged = outcome.conflictStatus ? { conflict_status: outcome.conflictStatus } : {};
+
+  await executeDecision(app, { account, event, remote, link, task, outcome, observed, flagged });
+  return outcome.decision;
+}
+
+async function executeDecision(
+  app,
+  { account, event, remote, link, task, outcome, observed, flagged },
+) {
   const updateLink = (patch) => app.db('calendar_event_links').where({ id: link.id }).update(patch);
 
   switch (outcome.decision) {
@@ -277,10 +334,10 @@ async function applyProviderEvent(app, { account, event, google, accessToken }) 
         id: newId(),
         task_id: task.id,
         calendar_account_id: account.id,
-        provider: 'google',
-        provider_calendar_id: account.default_calendar_id,
+        provider: remote.provider,
+        provider_calendar_id: remote.calendarId,
         provider_event_id: event.id,
-        provider_event_uid: event.iCalUID ?? null,
+        provider_event_uid: remote.eventUid(event),
         etag: observed.etag,
         last_provider_updated_at: observed.last_provider_updated_at,
         sync_direction: 'both',
@@ -291,25 +348,14 @@ async function applyProviderEvent(app, { account, event, google, accessToken }) 
       return;
 
     case 'remove-remote': {
-      const calendarId = link.provider_calendar_id ?? account.default_calendar_id;
-      try {
-        await google.deleteEvent(accessToken, calendarId, event.id);
-      } catch (err) {
-        if (err?.status !== 404 && err?.status !== 410) throw err;
-      }
+      await remote.deleteEvent(event, link);
       await updateLink({ ...observed, ...flagged });
       return;
     }
 
     case 'push': {
       // Local won the last-write-wins race — put it back the way the task says.
-      const calendarId = link.provider_calendar_id ?? account.default_calendar_id;
-      const updated = await google.patchEvent(
-        accessToken,
-        calendarId,
-        event.id,
-        desiredEventForTask(task),
-      );
+      const updated = await remote.pushTask(task, event, link);
       await updateLink({
         etag: updated?.etag ?? null,
         last_provider_updated_at: updated?.updated
@@ -362,11 +408,21 @@ async function applyExternalEvents(app, { account, events }) {
   for (const event of events) {
     const outcome = deriveExternalEvent(event, { timeZone, now });
     if (outcome.action === 'skip') continue;
-    await applyExternalEvent(app, { account, event, outcome });
+    await applyExternalEvent(app, {
+      account,
+      event,
+      outcome,
+      provider: 'google',
+      calendarId: account.default_calendar_id,
+    });
   }
 }
 
-async function applyExternalEvent(app, { account, event, outcome }) {
+/**
+ * Upserts (or drops) one cached external event. `provider`/`calendarId` say
+ * which feed it came from (OPH-380: Google or CalDAV).
+ */
+export async function applyExternalEvent(app, { account, event, outcome, provider, calendarId }) {
   const existing = await app
     .db('calendar_external_events')
     .where({ calendar_account_id: account.id, provider_event_id: event.id })
@@ -414,8 +470,8 @@ async function applyExternalEvent(app, { account, event, outcome }) {
       ...outcome.values,
       workspace_id: account.workspace_id,
       calendar_account_id: account.id,
-      provider: 'google',
-      provider_calendar_id: account.default_calendar_id,
+      provider,
+      provider_calendar_id: calendarId,
       provider_event_id: event.id,
       revision,
       deleted_at: null, // an event can come back from out-of-window
@@ -434,7 +490,7 @@ async function applyExternalEvent(app, { account, event, outcome }) {
  * revision so every replica hears about it (§6.2), and the reminder reconciled
  * alongside. Attributed to the user whose calendar spoke.
  */
-async function writeTaskFromProvider(app, { account, task, patch }) {
+export async function writeTaskFromProvider(app, { account, task, patch }) {
   await app.db.transaction(async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: account.workspace_id,
@@ -486,5 +542,20 @@ export async function sweepCalendarAccounts(app) {
       app.calendarSync.enqueueSync(account.id);
     }
   }
-  return accounts.length;
+
+  // CalDAV has no push (CALDAV.md §5): every pass IS the notification, so each
+  // active CalDAV account with a calendar is polled — never watched. A
+  // sync-collection with nothing new is one small REPORT (ADR-0059).
+  let caldav = 0;
+  if (app.config.caldav?.enabled) {
+    const rows = await app
+      .db('calendar_accounts')
+      .where({ provider: 'apple_caldav', status: 'active' })
+      .whereNull('deleted_at')
+      .whereNotNull('default_calendar_id')
+      .select('id');
+    for (const row of rows) app.calendarSync.enqueueSync(row.id);
+    caldav = rows.length;
+  }
+  return accounts.length + caldav;
 }

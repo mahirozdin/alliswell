@@ -37,6 +37,12 @@ import {
   updateProject,
 } from '../../db/projects.js';
 import { createTag, listTags } from '../../db/tags.js';
+import {
+  createTaskSeries,
+  liveSeries,
+  parseJsonColumn,
+  updateTaskSeries,
+} from '../../db/task-series.js';
 import { wallClockParts, zonedWallTimeToUtc } from '../time.js';
 import { findMcpReplay, recordMcpAction } from './actions.js';
 import { McpToolError } from './jsonrpc.js';
@@ -258,11 +264,82 @@ function leanTask(row) {
     priority: row.priority,
     dueAt: isoOrNull(row.due_at),
     remindAt: isoOrNull(row.remind_at),
+    // OPH-372 (ADR-0053): "when" — the day the task enters Today — and how
+    // long it takes. Neither is the deadline; `dueAt` keeps that job.
+    startAt: isoOrNull(row.start_at),
+    estimatedMinutes: row.estimated_minutes ?? null,
     isUrgent: Boolean(row.is_urgent),
     projectId: row.project_id ?? null,
     updatedAt: isoOrNull(row.updated_at),
   };
 }
+
+/**
+ * OPH-375: how a task repeats, for `get_task` and `set_task_repeat` — the rule
+ * object as stored (ADR-0020, `basis` from ADR-0056), or null.
+ */
+async function repeatOf(app, row) {
+  if (!row.series_id) return null;
+  const series = await liveSeries(app.db, { workspaceId: row.workspace_id, id: row.series_id });
+  return series ? { seriesId: series.id, rule: parseJsonColumn(series.rule) } : null;
+}
+
+/** The occurrence an after-completion completion created (OPH-375), or null. */
+async function nextOccurrenceOf(app, taskId) {
+  const row = await app
+    .db('tasks')
+    .where({ spawned_from_task_id: taskId })
+    .whereNull('deleted_at')
+    .first();
+  return row ? leanTask(row) : null;
+}
+
+const REPEAT_RULE_SCHEMA = {
+  type: 'object',
+  additionalProperties: false,
+  required: ['freq'],
+  properties: {
+    freq: { enum: ['daily', 'weekly', 'monthly', 'yearly'] },
+    interval: { type: 'integer', minimum: 1, maximum: 366 },
+    basis: { enum: ['calendar', 'completion'] },
+    byWeekday: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 7,
+      items: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['day'],
+        properties: {
+          day: { enum: ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'] },
+          ordinal: { type: ['integer', 'null'], minimum: -1, maximum: 5 },
+        },
+      },
+    },
+    byMonthDay: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 31,
+      items: { type: 'integer', minimum: -1, maximum: 31 },
+    },
+    byMonth: {
+      type: 'array',
+      minItems: 1,
+      maxItems: 12,
+      items: { type: 'integer', minimum: 1, maximum: 12 },
+    },
+    end: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['type'],
+      properties: {
+        type: { enum: ['never', 'until', 'count'] },
+        until: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+        count: { type: 'integer', minimum: 1, maximum: 1000 },
+      },
+    },
+  },
+};
 
 function snippet(text, needle) {
   if (!text) return null;
@@ -296,8 +373,19 @@ function createTaskInputSchema() {
   delete schema.properties.ambiguities;
   schema.required = ['title'];
   schema.properties.idempotencyKey = IDEMPOTENCY_KEY_SCHEMA;
+  // OPH-372: added HERE, not to TASK_ITEM — that one is also the in-app AI
+  // extraction schema and the provider variants, which stay as they are.
+  schema.properties.startAt = TIMESTAMP_SCHEMA;
+  schema.properties.estimatedMinutes = ESTIMATED_MINUTES_SCHEMA;
   return schema;
 }
+
+/** The server's own bounds for a duration (routes/sync.js, routes/tasks.js). */
+const ESTIMATED_MINUTES_SCHEMA = { type: 'integer', minimum: 1, maximum: 60000 };
+
+/** What `startAt` and `estimatedMinutes` mean — said once, to both write tools. */
+const WHEN_AND_DURATION_NOTE =
+  "`startAt` = 'when': the day the task should show in Today (only its date in the user's timezone matters); it never moves the deadline (`dueAt`) or the alarm. `estimatedMinutes` = how long it takes; calendar blocks use it.";
 
 async function queryOverdue(app, workspaceId, now) {
   return app
@@ -312,8 +400,15 @@ async function queryOverdue(app, workspaceId, now) {
     .select();
 }
 
+/**
+ * Today = due today, OR its "when" day has come and it is not overdue
+ * (OPH-372, ADR-0053 — the app's Home and widget rule). Two plain queries
+ * merged here rather than one nested `where`: a started task due next week
+ * belongs to today, a started task whose deadline already passed belongs to
+ * Overdue alone.
+ */
 async function queryToday(app, workspaceId, { start, end }) {
-  return app
+  const due = await app
     .db('tasks')
     .where({ workspace_id: workspaceId })
     .whereNull('deleted_at')
@@ -324,6 +419,33 @@ async function queryToday(app, workspaceId, { start, end }) {
     .orderBy('due_at', 'asc')
     .limit(60)
     .select();
+  const started = await app
+    .db('tasks')
+    .where({ workspace_id: workspaceId })
+    .whereNull('deleted_at')
+    .whereIn('status', OPEN_STATUSES)
+    .whereNotNull('start_at')
+    .where('start_at', '<', end)
+    .orderBy('id', 'asc')
+    .limit(120)
+    .select();
+  const seen = new Set(due.map((row) => row.id));
+  const merged = [...due];
+  for (const row of started) {
+    if (seen.has(row.id)) continue;
+    if (row.due_at != null && new Date(row.due_at) < start) continue; // overdue
+    seen.add(row.id);
+    merged.push(row);
+  }
+  merged.sort((a, b) => {
+    if (a.due_at == null && b.due_at == null) return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    if (a.due_at == null) return 1;
+    if (b.due_at == null) return -1;
+    const byDue = new Date(a.due_at) - new Date(b.due_at);
+    if (byDue !== 0) return byDue;
+    return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+  });
+  return merged.slice(0, 60);
 }
 
 /**
@@ -345,11 +467,14 @@ async function queryInbox(app, workspaceId) {
 
 export const TASK_VIEW_QUERIES = { queryOverdue, queryToday, queryInbox, dayBounds };
 
+/** The kinds `search` answers, and its default — all of them (OPH-374). */
+const SEARCH_TYPES = ['task', 'note', 'project', 'tag', 'file'];
+
 export const MCP_TOOLS = [
   {
     name: 'search',
     title: 'Search the workspace',
-    description: `Search tasks, notes and projects by text. Titles match with Turkish-aware folding (ışık ≈ isik); note/task bodies match by the database engine. ${DATA_NOTE}`,
+    description: `Search tasks, notes, projects, tags and file names by text — the same five kinds the app's "search everywhere" palette finds. Titles and names match with Turkish-aware folding (ışık ≈ isik); note/task bodies match too. A file result is metadata only (name, type, what it hangs off) — never its contents or a link. ${DATA_NOTE}`,
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
@@ -359,15 +484,15 @@ export const MCP_TOOLS = [
         query: { type: 'string', minLength: 1, maxLength: 200 },
         types: {
           type: 'array',
-          maxItems: 3,
-          items: { enum: ['task', 'note', 'project'] },
+          maxItems: 5,
+          items: { enum: SEARCH_TYPES },
         },
         limit: { type: 'integer', minimum: 1, maximum: 20 },
       },
     },
     async handler(app, auth, args) {
       const limit = args.limit ?? 10;
-      const wanted = new Set(args.types ?? ['task', 'note', 'project']);
+      const wanted = new Set(args.types ?? SEARCH_TYPES);
       const query = foldSearchText(args.query);
       const hits = new Map(); // `${type}:${id}` → {tier, entry}
 
@@ -465,6 +590,40 @@ export const MCP_TOOLS = [
         }
       }
 
+      // OPH-374: tags and file names — the palette's last two groups (rule 12).
+      // Names only, tier 0 on a prefix and 1 otherwise, like the titles above.
+      if (wanted.has('tag')) {
+        for (const row of await listTags(app, auth.workspaceId)) {
+          const folded = foldSearchText(row.name ?? '');
+          if (!folded.includes(query)) continue;
+          consider('tag', row.id, folded.startsWith(query) ? 0 : 1, {
+            type: 'tag',
+            id: row.id,
+            title: row.name,
+          });
+        }
+      }
+      if (wanted.has('file')) {
+        // Metadata only: no URL and no bytes ever leave through MCP (AI.md §7).
+        const rows = await app
+          .db('files')
+          .where({ workspace_id: auth.workspaceId, status: 'ready' })
+          .whereNull('deleted_at')
+          .select('id', 'name', 'mime', 'target_type', 'target_id');
+        for (const row of rows) {
+          const folded = foldSearchText(row.name ?? '');
+          if (!folded.includes(query)) continue;
+          consider('file', row.id, folded.startsWith(query) ? 0 : 1, {
+            type: 'file',
+            id: row.id,
+            title: row.name,
+            mime: row.mime,
+            targetType: row.target_type,
+            targetId: row.target_id,
+          });
+        }
+      }
+
       const ranked = [...hits.values()]
         .sort((a, b) => a.tier - b.tier || (a.entry.id < b.entry.id ? 1 : -1))
         .map(({ entry }) => entry);
@@ -475,7 +634,7 @@ export const MCP_TOOLS = [
   {
     name: 'list_tasks',
     title: 'List tasks',
-    description: `List tasks with filters. \`today\`/\`overdue\` use the account owner's timezone. ${DATA_NOTE}`,
+    description: `List tasks with filters. \`today\`/\`overdue\` use the account owner's timezone. \`today\` = due today, or its 'when' day (\`startAt\`) has come and it is not overdue. ${DATA_NOTE}`,
     annotations: { readOnlyHint: true },
     inputSchema: {
       type: 'object',
@@ -610,6 +769,8 @@ export const MCP_TOOLS = [
             requiresAcknowledgement: Boolean(alarm.requires_acknowledgement),
           })),
           notes: notes.map((note) => ({ id: note.id, title: note.title })),
+          // OPH-375: how it repeats — calendar pattern or after completion.
+          repeat: await repeatOf(app, detail.row),
         },
       };
     },
@@ -709,8 +870,7 @@ export const MCP_TOOLS = [
   {
     name: 'create_task',
     title: 'Create task',
-    description:
-      'Create ONE task. `projectName` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name creates NOTHING and returns candidates instead. Tags resolve to existing tags only. Pass `idempotencyKey` to make retries safe.',
+    description: `Create ONE task. \`projectName\` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name creates NOTHING and returns candidates instead. Tags resolve to existing tags only. Pass \`idempotencyKey\` to make retries safe. ${WHEN_AND_DURATION_NOTE}`,
     annotations: WRITE_ANNOTATIONS,
     inputSchema: createTaskInputSchema(),
     async handler(app, auth, args) {
@@ -744,6 +904,10 @@ export const MCP_TOOLS = [
           ...(projectId ? { projectId } : {}),
           ...(args.dueAt !== undefined ? { dueAt: args.dueAt } : {}),
           ...(args.reminderAt !== undefined ? { remindAt: args.reminderAt } : {}),
+          ...(args.startAt !== undefined ? { startAt: args.startAt } : {}),
+          ...(args.estimatedMinutes !== undefined
+            ? { estimatedMinutes: args.estimatedMinutes }
+            : {}),
           ...(args.priority !== undefined ? { priority: args.priority } : {}),
           ...(args.urgent !== undefined ? { isUrgent: args.urgent } : {}),
           tagIds,
@@ -779,7 +943,8 @@ export const MCP_TOOLS = [
   {
     name: 'complete_task',
     title: 'Complete task',
-    description: 'Mark one task completed. Completing an already-completed task is a quiet no-op.',
+    description:
+      'Mark one task completed. Completing an already-completed task is a quiet no-op. When the task repeats AFTER COMPLETION, `next` is the occurrence this completion created (otherwise null).',
     annotations: IDEMPOTENT_WRITE,
     inputSchema: {
       type: 'object',
@@ -797,15 +962,18 @@ export const MCP_TOOLS = [
         proposal: { tool: 'complete_task', taskId: args.taskId },
       });
       const fresh = await loadTask(app, args.taskId);
-      return { task: leanTask(fresh), alreadyCompleted: !changed };
+      return {
+        task: leanTask(fresh),
+        alreadyCompleted: !changed,
+        next: await nextOccurrenceOf(app, args.taskId),
+      };
     },
   },
 
   {
     name: 'update_task',
     title: 'Update task',
-    description:
-      'Change fields of ONE existing task. `projectName` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name changes NOTHING and returns candidates instead. `tags` REPLACES the task’s tags and resolves to existing tags only. Pass `idempotencyKey` to make retries safe. Scheduling fields are ISO-8601 with an offset; `null` clears them.',
+    description: `Change fields of ONE existing task. \`projectName\` is matched against real projects with Turkish-aware folding; an unknown or ambiguous name changes NOTHING and returns candidates instead. \`tags\` REPLACES the task’s tags and resolves to existing tags only. Pass \`idempotencyKey\` to make retries safe. Scheduling fields are ISO-8601 with an offset; \`null\` clears them. ${WHEN_AND_DURATION_NOTE}`,
     annotations: OVERWRITING_WRITE,
     inputSchema: {
       type: 'object',
@@ -820,6 +988,7 @@ export const MCP_TOOLS = [
         dueAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
         remindAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
         startAt: { anyOf: [{ type: 'null' }, TIMESTAMP_SCHEMA] },
+        estimatedMinutes: { type: ['integer', 'null'], minimum: 0, maximum: 60000 },
         isUrgent: { type: 'boolean' },
         requiresAcknowledgement: { type: 'boolean' },
         // The name the user SAID — never an id (AI.md §4).
@@ -858,6 +1027,7 @@ export const MCP_TOOLS = [
         'dueAt',
         'remindAt',
         'startAt',
+        'estimatedMinutes',
         'isUrgent',
         'requiresAcknowledgement',
         'timezone',
@@ -929,6 +1099,93 @@ export const MCP_TOOLS = [
         proposal: { tool: 'reopen_task', taskId: args.taskId },
       });
       return { task: leanTask(await loadTask(app, args.taskId)) };
+    },
+  },
+
+  {
+    name: 'set_task_repeat',
+    title: 'Set how a task repeats',
+    description: `Make ONE task repeat, or replace how it repeats. \`basis: "completion"\` repeats N days/weeks/months AFTER the task is completed — "change the water filter 90 days after I change it" is \`{ freq: "daily", interval: 90, basis: "completion" }\`: completing it creates the next task, due the completion day + 90 days at the same time of day; reopening withdraws that next task. Months clamp to month end (Jan 31 + 1 month = Feb 28). Without \`basis\` the rule is a calendar pattern (\`byWeekday\` / \`byMonthDay\` / \`byMonth\`); \`end\` is never, until a date, or a count. Pass \`idempotencyKey\` to make retries safe. Stopping a repeat is not offered here (it deletes future tasks); the user does that in the app.`,
+    annotations: OVERWRITING_WRITE,
+    inputSchema: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['taskId', 'rule'],
+      properties: {
+        taskId: ULID_SCHEMA,
+        rule: REPEAT_RULE_SCHEMA,
+        idempotencyKey: IDEMPOTENCY_KEY_SCHEMA,
+      },
+    },
+    async handler(app, auth, args) {
+      requireScope(auth, 'mcp:write');
+
+      const seen = await findMcpReplay(app, auth, args.idempotencyKey);
+      if (seen) {
+        const replayed = await loadTask(app, seen.entity_id).catch(() => null);
+        return {
+          replayed: true,
+          task: replayed ? leanTask(replayed) : null,
+          repeat: replayed ? await repeatOf(app, replayed) : null,
+        };
+      }
+
+      const row = await requireTask(app, auth, args.taskId);
+      const rule = { interval: 1, ...args.rule };
+      const current = row.series_id
+        ? await liveSeries(app.db, { workspaceId: auth.workspaceId, id: row.series_id })
+        : null;
+
+      let stored;
+      if (current) {
+        ({ stored } = await updateTaskSeries(app, { row: current, body: { rule } }));
+      } else {
+        const tags = await app.db('task_tags').where({ task_id: row.id }).select('tag_id');
+        const user = await app.db('users').where({ id: auth.userId }).first('timezone');
+        const remindMinutes =
+          row.due_at && row.remind_at
+            ? Math.round((new Date(row.due_at) - new Date(row.remind_at)) / 60000)
+            : null;
+        ({ stored } = await createTaskSeries(app, {
+          workspaceId: auth.workspaceId,
+          userId: auth.userId,
+          rule,
+          template: {
+            title: row.title,
+            description: row.description ?? null,
+            projectId: row.project_id ?? null,
+            priority: row.priority,
+            colorRgb: row.color_rgb ?? null,
+            isUrgent: Boolean(row.is_urgent),
+            requiresAcknowledgement: Boolean(row.requires_acknowledgement),
+            estimatedMinutes: row.estimated_minutes ?? null,
+            ...(remindMinutes != null && remindMinutes >= 0 && remindMinutes <= 43200
+              ? { remindMinutesBefore: remindMinutes }
+              : {}),
+            tagIds: tags.map((t) => t.tag_id),
+          },
+          // The task's own zone is a real IANA name the server set; the user's
+          // profile is the fallback (LESSONS: never a device offset).
+          timezone: row.timezone ?? user?.timezone ?? 'Europe/Istanbul',
+          anchorAt: new Date(row.due_at ?? row.start_at ?? Date.now()),
+          fromTaskId: row.id,
+        }));
+      }
+
+      await recordMcpAction(app, auth, {
+        idempotencyKey: args.idempotencyKey,
+        entityType: 'task',
+        entityId: args.taskId,
+        proposal: { tool: 'set_task_repeat', ...args },
+      });
+
+      // A calendar pattern the task's own day is not part of leaves the task
+      // outside the series (ADR-0020); the series is still the answer.
+      const fresh = await loadTask(app, args.taskId);
+      return {
+        task: leanTask(fresh),
+        repeat: { seriesId: stored.id, rule: parseJsonColumn(stored.rule) },
+      };
     },
   },
 

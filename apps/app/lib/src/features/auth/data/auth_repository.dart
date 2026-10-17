@@ -66,8 +66,13 @@ class AuthRepository {
   Future<AuthSession> login({
     required String email,
     required String password,
+    String? totpCode,
   }) async {
-    final session = await _api.login(email: email, password: password);
+    final session = await _api.login(
+      email: email,
+      password: password,
+      totpCode: totpCode,
+    );
     await _setSession(session);
     return session;
   }
@@ -76,8 +81,13 @@ class AuthRepository {
   Future<AuthSession> signInWithProvider({
     required String provider,
     required String idToken,
+    String? totpCode,
   }) async {
-    final session = await _api.oauth(provider: provider, idToken: idToken);
+    final session = await _api.oauth(
+      provider: provider,
+      idToken: idToken,
+      totpCode: totpCode,
+    );
     await _setSession(session);
     return session;
   }

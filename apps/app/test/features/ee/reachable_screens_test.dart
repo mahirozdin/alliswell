@@ -18,6 +18,7 @@ import 'package:alliswell/src/features/ee/ui/meeting_screen.dart';
 import 'package:alliswell/src/features/ee/ui/meetings_screen.dart';
 import 'package:alliswell/src/features/ee/ui/notification_center_screen.dart';
 import 'package:alliswell/src/features/ee/ui/notification_prefs_screen.dart';
+import 'package:alliswell/src/features/ee/ui/rules_screen.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
 import '../projects/fake_api.dart';
@@ -53,6 +54,8 @@ const _me = MemberProfile(
 const _adminRows = [
   'settings-group-services',
   'settings-group-sla',
+  // EE-308 (OPH-379): automation and routing rules, beside the SLA row.
+  'settings-group-rules',
   'settings-group-portal',
   'settings-group-customers',
   'settings-group-team-ai',
@@ -203,6 +206,32 @@ void main() {
     expect(key('settings-group-services'), findsOneWidget);
   });
 
+  testWidgets('EE-308: Settings opens the automation rules for an admin who '
+      'holds sla.manage, and draws no door without it', (tester) async {
+    tall(tester);
+    final api = FakeApi()
+      ..eeGoverned = true
+      ..eePermissions = ['sla.manage'];
+    await tester.pumpWidget(await app(api, extra: asAdmin()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    await openGroup(tester, 'settings-group-rules');
+    expect(find.byType(EeRulesScreen), findsOneWidget);
+  });
+
+  testWidgets('EE-308: without sla.manage there is no door to the rules', (
+    tester,
+  ) async {
+    tall(tester);
+    final api = FakeApi()
+      ..eeGoverned = true
+      ..eePermissions = ['services.manage'];
+    await tester.pumpWidget(await app(api, extra: asAdmin()));
+    await tester.pumpAndSettle();
+    await openSettings(tester);
+    expect(key('settings-group-rules'), findsNothing);
+  });
+
   testWidgets('UI-AUDIT #18: Settings opens the companies for an admin who '
       'holds customers.manage, and draws no door without it', (tester) async {
     tall(tester);
@@ -240,6 +269,7 @@ void main() {
     for (final row in [
       'settings-group-services',
       'settings-group-sla',
+      'settings-group-rules',
       'settings-group-portal',
       'settings-group-customers',
       'settings-group-team-ai',

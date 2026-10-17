@@ -1,8 +1,25 @@
 # AllisWell
 
 > Source-available, self-hostable tasks, projects, notes, files and alarm-grade reminders,
-> with two-way Google & Apple Calendar sync. One Flutter app for iOS, Android, Web, macOS,
-> Windows and Linux. Free for personal use. Made by BubiApps (info@bubiapps.com).
+> with two-way Google Calendar sync and tasks mirrored into Apple Calendar. One Flutter app
+> for iOS, Android, Web, macOS, Windows and Linux. Free for personal use. Made by BubiApps
+> (info@bubiapps.com).
+
+## Get the app
+
+- Web: https://alliswell.space/app
+- Android: https://play.google.com/store/apps/details?id=com.alliswell.alliswell
+- iPhone: https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494
+- Windows (64-bit zip, unsigned): https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-windows-x64.zip
+- Linux (64-bit tar.gz): https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-linux-x64.tar.gz
+- macOS: build from source.
+
+## Moving from another app
+
+- Todoist and TickTick: Settings › Data › Import. Upload a Todoist backup ZIP or project CSV,
+  or a TickTick backup CSV; a preview shows what will come in; re-importing creates no
+  duplicates. API: POST /api/v1/workspaces/{id}/import/apps. Apple Reminders has no export
+  file, so it cannot be imported.
 
 ## MCP connector (Claude, ChatGPT, any MCP client)
 

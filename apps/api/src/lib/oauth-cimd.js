@@ -1,6 +1,6 @@
-import dns from 'node:dns';
 import https from 'node:https';
 import net from 'node:net';
+import { isBlockedAddress, guardedLookup } from './net-guard.js';
 
 /**
  * OAuth Client ID Metadata Documents (ADR-0047,
@@ -25,50 +25,8 @@ export const CIMD_DEFAULT_TTL_SEC = 3600;
 export const CIMD_MIN_TTL_SEC = 300;
 export const CIMD_MAX_TTL_SEC = 86400;
 
-const blocked = new net.BlockList();
-for (const [prefix, bits] of [
-  ['0.0.0.0', 8],
-  ['10.0.0.0', 8],
-  ['100.64.0.0', 10],
-  ['127.0.0.0', 8],
-  ['169.254.0.0', 16],
-  ['172.16.0.0', 12],
-  ['192.0.0.0', 24],
-  ['192.0.2.0', 24],
-  ['192.168.0.0', 16],
-  ['198.18.0.0', 15],
-  ['198.51.100.0', 24],
-  ['203.0.113.0', 24],
-  ['224.0.0.0', 4],
-  ['240.0.0.0', 4],
-]) {
-  blocked.addSubnet(prefix, bits, 'ipv4');
-}
-for (const [prefix, bits] of [
-  ['::', 128],
-  ['::1', 128],
-  ['64:ff9b::', 96],
-  ['100::', 64],
-  ['2001:db8::', 32],
-  ['fc00::', 7],
-  ['fe80::', 10],
-  ['ff00::', 8],
-]) {
-  blocked.addSubnet(prefix, bits, 'ipv6');
-}
-
-/** True for an address no metadata fetch may connect to. */
-export function isBlockedAddress(address) {
-  const family = net.isIP(address);
-  if (family === 0) return true;
-  if (family === 6) {
-    // An IPv4-mapped IPv6 address is the IPv4 address in disguise.
-    const mapped = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(address);
-    if (mapped) return blocked.check(mapped[1], 'ipv4');
-    return blocked.check(address, 'ipv6');
-  }
-  return blocked.check(address, 'ipv4');
-}
+/** The fence lives in `net-guard.js` now (shared with CalDAV, ADR-0059). */
+export { isBlockedAddress };
 
 /**
  * Whether `value` is a client_id this server will treat as a metadata URL:
@@ -106,19 +64,7 @@ export function clientMetadataHost(value) {
 }
 
 /** Resolves like dns.lookup, but refuses when any answer is private. */
-function guardedLookup(hostname, options, callback) {
-  dns.lookup(hostname, { ...options, all: true }, (err, addresses) => {
-    if (err) return callback(err);
-    const list = Array.isArray(addresses) ? addresses : [];
-    if (list.length === 0 || list.some((entry) => isBlockedAddress(entry.address))) {
-      const refused = new Error(`refusing to fetch client metadata from ${hostname}`);
-      refused.code = 'CIMD_BLOCKED_ADDRESS';
-      return callback(refused);
-    }
-    if (options?.all) return callback(null, list);
-    return callback(null, list[0].address, list[0].family);
-  });
-}
+const lookupGuarded = guardedLookup('CIMD_BLOCKED_ADDRESS');
 
 /** `max-age` from a Cache-Control header, clamped; the default when absent. */
 export function ttlFromCacheControl(header) {
@@ -143,7 +89,7 @@ export function fetchClientMetadata(url, { timeoutMs = CIMD_TIMEOUT_MS } = {}) {
     const request = https.get(
       url,
       {
-        lookup: guardedLookup,
+        lookup: lookupGuarded,
         timeout: timeoutMs,
         headers: { accept: 'application/json', 'user-agent': 'AllisWell-OAuth/1' },
       },

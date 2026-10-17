@@ -9,6 +9,7 @@ import 'features/ee/ticket_drafts_providers.dart';
 import 'features/quick_access/ui/quick_access_bubble_host.dart';
 import 'i18n/i18n.dart';
 import 'router.dart';
+import 'search/ui/global_search_entry.dart';
 import 'features/notes/markdown/markdown_forge_adapters.dart';
 import 'theme/theme.dart';
 import 'theme/tokens.dart';
@@ -83,8 +84,13 @@ class AllisWellApp extends ConsumerWidget {
           child: ColoredBox(
             color: context.awTokens.auroraTop,
             child: AwMarkdownScope(
-              child: QuickAccessBubbleHost(
-                child: child ?? const SizedBox.shrink(),
+              // OPH-374: ⌘K/Ctrl+K and the recents tracker, above every
+              // route — and above the bubble, so the palette's shortcut
+              // works wherever the person is (ADR-0055).
+              child: AwGlobalSearchHost(
+                child: QuickAccessBubbleHost(
+                  child: child ?? const SizedBox.shrink(),
+                ),
               ),
             ),
           ),

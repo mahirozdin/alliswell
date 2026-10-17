@@ -61,6 +61,10 @@ const PUBLISHED = [
   ['sla-calendars', 'a business calendar, so a night shift is one row and not two'],
   ['sla-dashboard', 'what was promised against what happened'],
   ['sla-monitors', 'a watched URL opens one incident, not one a minute'],
+  // EE-308 (OPH-379) — the rules the desk runs, edited at a screen.
+  ['rules-automation', 'automation rules in run order, each saying when it last ran'],
+  ['rules-automation-editor', 'a condition → action form, tested on a real request first'],
+  ['rules-routing', 'routing rules: the first match decides where a request goes'],
   ['portal-links', 'each public form with its expiry, its cap and its revoke switch'],
   ['portal-form', 'and what the stranger sees: no account, no JavaScript', 'external'],
   ['portal-follow', 'then a link that follows it, in five buckets and not seven', 'external'],

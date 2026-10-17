@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/tasks/ui/task_tile.dart';
 
 import 'auth/test_support.dart';
 import 'projects/fake_api.dart';
+import '../support/nav.dart';
 import '../support/sync_overrides.dart';
 
 /// OPH-171 — pull to refresh in all five sections (DESIGN §15).
@@ -53,7 +54,7 @@ int pulls(FakeApi api) =>
     api.requests.where((r) => r.contains('/sync/pull')).length;
 
 Future<void> openSection(WidgetTester tester, String label) async {
-  await tester.tap(find.text(label).last);
+  await tester.tap(navTab(label));
   await tester.pumpAndSettle();
 }
 

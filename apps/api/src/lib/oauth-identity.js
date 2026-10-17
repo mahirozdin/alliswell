@@ -3,7 +3,7 @@
 // Importing this here rather than in an entry file keeps the guarantee attached
 // to the module that actually needs it.
 import './webcrypto.js';
-import { createRemoteJWKSet, jwtVerify } from 'jose';
+import { createLocalJWKSet, createRemoteJWKSet, jwtVerify } from 'jose';
 
 /**
  * Verifying a Google or Apple **ID token** (ADR-0026).
@@ -92,17 +92,34 @@ export function audiencesFor(config, provider) {
 /**
  * Verify an ID token and return the identity it asserts.
  *
+ * Two optional checks exist for the MCP consent page's redirect round trip
+ * (OPH-366, ADR-0049), where THIS server started the sign-in and therefore
+ * knows more than the native app path does:
+ *
+ * - `audience` narrows the accepted audiences to the one client the redirect
+ *   used (the web client id or the Apple Services ID). It is intersected with
+ *   the configured list, never added to it: a value that is not one of ours
+ *   refuses rather than falling back to "any of ours".
+ * - `nonce` must equal the token's `nonce` claim exactly; a token without one
+ *   is refused. This is what binds the token to the authorization request
+ *   that asked for it.
+ *
+ * `POST /auth/oauth` passes neither, and behaves exactly as before.
+ *
+ * @param {object} config
+ * @param {{provider: string, idToken: string, nonce?: string, audience?: string[]}} input
  * @returns {Promise<{provider: string, subject: string, email: string|null,
  *                    emailVerified: boolean, name: string|null}>}
  * @throws {OauthIdentityError} on anything that is not a valid token for us.
  */
-export async function verifyIdentityToken(config, { provider, idToken }) {
+export async function verifyIdentityToken(config, { provider, idToken, nonce, audience: only }) {
   const spec = provider === 'google' ? GOOGLE : provider === 'apple' ? APPLE : null;
   if (!spec) {
     throw new OauthIdentityError('OAUTH_PROVIDER_UNSUPPORTED', `Unknown provider: ${provider}`);
   }
 
-  const audience = audiencesFor(config, provider);
+  const configured = audiencesFor(config, provider);
+  const audience = only ? configured.filter((value) => only.includes(value)) : configured;
   if (audience.length === 0) {
     throw new OauthIdentityError(
       'OAUTH_PROVIDER_NOT_CONFIGURED',
@@ -122,6 +139,10 @@ export async function verifyIdentityToken(config, { provider, idToken }) {
     }));
   } catch (err) {
     throw new OauthIdentityError('OAUTH_TOKEN_INVALID', `Token rejected: ${err.message}`);
+  }
+
+  if (nonce !== undefined && (typeof payload.nonce !== 'string' || payload.nonce !== nonce)) {
+    throw new OauthIdentityError('OAUTH_TOKEN_INVALID', 'Token rejected: nonce mismatch');
   }
 
   const subject = payload.sub;
@@ -152,4 +173,14 @@ export async function verifyIdentityToken(config, { provider, idToken }) {
 /** Test seam: drop cached JWKS clients between cases. */
 export function resetJwksCacheForTest() {
   jwks.clear();
+}
+
+/**
+ * Test seam: answer `provider`'s key lookups from a local JWK set, so tests can
+ * sign real tokens and the signature, issuer, audience and nonce checks all run
+ * for real without the network. Cleared by `resetJwksCacheForTest`.
+ */
+export function useLocalJwksForTest(provider, keySet) {
+  const spec = provider === 'google' ? GOOGLE : APPLE;
+  jwks.set(spec.jwksUri, createLocalJWKSet(keySet));
 }

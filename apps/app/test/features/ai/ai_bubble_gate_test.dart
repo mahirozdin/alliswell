@@ -3,6 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/retry.dart';
+import 'package:alliswell/src/features/ai/data/ai_attachment_loader.dart';
+import 'package:alliswell/src/features/ai/data/ai_attachments.dart';
 import 'package:alliswell/src/features/ai/data/ai_live_context.dart';
 import 'package:alliswell/src/features/ai/providers.dart';
 import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
@@ -23,13 +25,16 @@ import '../../support/sync_overrides.dart';
 /// owner's live screenshots). Controller-level, the voice wiring harness.
 Future<ProviderContainer> signedInContainer(
   FakeApi api,
-  ScriptedAiStreamClient stream,
-) async {
+  ScriptedAiStreamClient stream, {
+  bool cannedAttachments = false,
+}) async {
   final store = InMemorySecretStore();
   final container = ProviderContainer(
     retry: awRetry,
     overrides: [
       ...syncTestOverrides(aiStreamClient: stream),
+      if (cannedAttachments)
+        aiAttachmentLoaderProvider.overrideWith(_CannedLoader.new),
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -202,4 +207,67 @@ void main() {
       'yine de buradayım',
     );
   });
+
+  test('OPH-377: a turn with an "@" attachment skips the gate and streams '
+      'chat with the attached segment', () async {
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    api.nextProposal = {
+      'intent': 'create_tasks',
+      'tasks': [
+        {'title': 'Olmamalı', 'confidence': 0.9},
+      ],
+    };
+    final stream = ScriptedAiStreamClient(script: const [AiTextDelta('Q3')]);
+    final container = await signedInContainer(
+      api,
+      stream,
+      cannedAttachments: true,
+    );
+    final controller = container.read(aiBubbleControllerProvider.notifier);
+
+    await controller.attach(
+      const AiAttachmentRef(
+        kind: AiAttachmentKind.note,
+        id: 'NOTE0000000000000000000001',
+        title: 'Q3 plan',
+      ),
+    );
+    controller.editInput('bu notta ne karar verdik');
+    final proposal = await controller.sendGated();
+    await pumpEventQueue();
+
+    expect(proposal, isNull);
+    expect(
+      api.requests.where((r) => r.contains('/ai/extract')),
+      isEmpty,
+      reason: 'attachments are a question about them, never extraction',
+    );
+    final segments = (stream.requests.single.context!['segments'] as List)
+        .cast<Map>();
+    final attached = segments.where((s) => s['tier'] == 'attached').toList();
+    expect(attached, hasLength(1));
+    expect(attached.single['id'], 'NOTE0000000000000000000001');
+    expect(attached.single['text'], contains('SENTINEL-Q3'));
+
+    // A follow-up without a new pick still carries it (conversation-sticky)
+    // and, without attachments of its own, goes through the gate again.
+    api.nextProposal = null;
+    controller.editInput('peki ya bütçe');
+    await controller.sendGated();
+    await pumpEventQueue();
+    expect(api.requests.where((r) => r.contains('/ai/extract')), hasLength(1));
+    final followUp = (stream.requests.last.context!['segments'] as List)
+        .cast<Map>();
+    expect(followUp.where((s) => s['tier'] == 'attached'), hasLength(1));
+  });
+}
+
+/// Hands back a ready note with a sentinel — the loader's own reads are
+/// covered by ai_attach_flow_test.
+class _CannedLoader extends AiAttachmentLoader {
+  _CannedLoader(super.ref);
+
+  @override
+  Future<AiAttachment> load(AiAttachmentRef ref) async =>
+      AiAttachment.ready(ref, '# ${ref.title}\n\nSENTINEL-Q3 karar: B');
 }

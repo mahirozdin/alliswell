@@ -70,6 +70,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('#ev'), findsOneWidget);
 
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -101,6 +103,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('#Çay'), findsOneWidget); // the EXISTING tag's chip
 
+    await tester.ensureVisible(find.byKey(const Key('task-sheet-create')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-create')));
     await tester.pumpAndSettle();
 
@@ -119,6 +123,14 @@ void main() {
     await tester.tap(find.text('Yönetilecek iş'));
     await tester.pumpAndSettle();
 
+    // The detail screen grew When and Duration rows (OPH-372): the tag field
+    // is past the lazy list's first build — scroll it in.
+    await tester.dragUntilVisible(
+      find.byKey(const Key('tag-input')),
+      find.byKey(const Key('duration-row')),
+      const Offset(0, -200),
+    );
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('tag-input')));
     await tester.enterText(find.byKey(const Key('tag-input')), 'rapor');
     await tester.testTextInput.receiveAction(TextInputAction.done);

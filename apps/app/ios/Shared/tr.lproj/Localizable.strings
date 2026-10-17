@@ -1,0 +1,11 @@
+/* OPH-376 (ADR-0057): AllisWell App Intent başlıkları (Siri, Kestirmeler,
+   Spotlight). Anahtarlar ios/Shared/AWAppShortcuts.swift'teki İngilizce
+   metinlerdir. */
+"Add task" = "Görev ekle";
+"Show today" = "Bugünü göster";
+"Today" = "Bugün";
+"Task" = "Görev";
+"What's the task?" = "Görev ne?";
+"Adds a task to AllisWell. Dates and times in the text are understood." = "AllisWell'e görev ekler. Metindeki tarih ve saatler anlaşılır.";
+"Opens AllisWell on today." = "AllisWell'i bugünle açar.";
+"Add ${text} to AllisWell" = "${text} görevini AllisWell'e ekle";

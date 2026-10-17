@@ -89,7 +89,11 @@ function renderOperation(method, path, operation) {
   const pathParams = params.filter((p) => p.in === 'path');
   const queryParams = params.filter((p) => p.in === 'query');
 
-  out.push(`#### \`${method.toUpperCase()} ${path}\``);
+  // The explicit name is what the contents links land on GITHUB: github.com
+  // slugs this heading by dropping `/` and `{}` (`post-apiv1tasks…`), so
+  // without it every contents link was dead there while working on the site,
+  // whose renderer strips the tag and slugs like `anchor()` (OPH-368).
+  out.push(`#### <a name="${anchor(method, path)}"></a>\`${method.toUpperCase()} ${path}\``);
   out.push('');
   if (operation.summary) out.push(escape(operation.summary), '');
 

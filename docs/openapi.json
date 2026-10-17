@@ -1167,6 +1167,11 @@
                     "type": "string",
                     "minLength": 16,
                     "maxLength": 8192
+                  },
+                  "totpCode": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 32
                   }
                 }
               }
@@ -2785,6 +2790,520 @@
         },
         "tags": [
           "Files"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      }
+    },
+    "/api/v1/integrations/caldav/accounts/{accountId}": {
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "calendarUrl"
+                ],
+                "properties": {
+                  "calendarUrl": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "accountId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "provider",
+                    "server",
+                    "serverHost",
+                    "username",
+                    "status"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "provider": {
+                      "type": "string",
+                      "enum": [
+                        "caldav"
+                      ]
+                    },
+                    "server": {
+                      "type": "string",
+                      "enum": [
+                        "icloud",
+                        "generic"
+                      ]
+                    },
+                    "serverHost": {
+                      "type": "string"
+                    },
+                    "serverUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "username": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "active",
+                        "error",
+                        "revoked",
+                        "disconnected"
+                      ]
+                    },
+                    "calendarUrl": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "calendarName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lastSyncedAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lastError": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalDAV calendar"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      },
+      "delete": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "accountId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Default Response"
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalDAV calendar"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      }
+    },
+    "/api/v1/integrations/caldav/accounts/{accountId}/calendars": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "accountId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "items"
+                  ],
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "url",
+                          "name"
+                        ],
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "color": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalDAV calendar"
         ],
         "security": [
           {
@@ -8070,7 +8589,31 @@
                     },
                     "rule": {
                       "type": "object",
-                      "additionalProperties": true
+                      "additionalProperties": true,
+                      "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                      "properties": {
+                        "freq": {
+                          "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                        },
+                        "interval": {
+                          "description": "Every N periods, 1..366"
+                        },
+                        "basis": {
+                          "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                        },
+                        "byWeekday": {
+                          "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                        },
+                        "byMonthDay": {
+                          "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                        },
+                        "byMonth": {
+                          "description": "calendar only, yearly: 1..12"
+                        },
+                        "end": {
+                          "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                        }
+                      }
                     },
                     "template": {
                       "type": "object",
@@ -8144,7 +8687,31 @@
                 "properties": {
                   "rule": {
                     "type": "object",
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                    "properties": {
+                      "freq": {
+                        "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                      },
+                      "interval": {
+                        "description": "Every N periods, 1..366"
+                      },
+                      "basis": {
+                        "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                      },
+                      "byWeekday": {
+                        "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                      },
+                      "byMonthDay": {
+                        "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                      },
+                      "byMonth": {
+                        "description": "calendar only, yearly: 1..12"
+                      },
+                      "end": {
+                        "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                      }
+                    }
                   },
                   "template": {
                     "type": "object",
@@ -8209,7 +8776,31 @@
                         },
                         "rule": {
                           "type": "object",
-                          "additionalProperties": true
+                          "additionalProperties": true,
+                          "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                          "properties": {
+                            "freq": {
+                              "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                            },
+                            "interval": {
+                              "description": "Every N periods, 1..366"
+                            },
+                            "basis": {
+                              "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                            },
+                            "byWeekday": {
+                              "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                            },
+                            "byMonthDay": {
+                              "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                            },
+                            "byMonth": {
+                              "description": "calendar only, yearly: 1..12"
+                            },
+                            "end": {
+                              "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                            }
+                          }
                         },
                         "template": {
                           "type": "object",
@@ -11056,7 +11647,8 @@
                               "enum": [
                                 "t0",
                                 "t1",
-                                "t2"
+                                "t2",
+                                "attached"
                               ]
                             },
                             "source": {
@@ -11071,7 +11663,7 @@
                             "text": {
                               "type": "string",
                               "minLength": 1,
-                              "maxLength": 4000
+                              "maxLength": 16000
                             }
                           }
                         }
@@ -13464,6 +14056,491 @@
         "description": "Accepts either a session JWT or a personal API key."
       }
     },
+    "/api/v1/workspaces/{workspaceId}/import/apps": {
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "source",
+                  "files"
+                ],
+                "properties": {
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "todoist",
+                      "ticktick"
+                    ]
+                  },
+                  "files": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 200,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "name",
+                        "content"
+                      ],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 255
+                        },
+                        "content": {
+                          "type": "string",
+                          "maxLength": 10000000
+                        }
+                      }
+                    }
+                  },
+                  "dryRun": {
+                    "type": "boolean",
+                    "default": false
+                  },
+                  "options": {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "properties": {
+                      "includeCompleted": {
+                        "type": "boolean",
+                        "default": false
+                      },
+                      "defaultTaskTime": {
+                        "type": "string",
+                        "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                        "default": "23:59"
+                      },
+                      "timezone": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 64
+                      },
+                      "locale": {
+                        "type": "string",
+                        "enum": [
+                          "en",
+                          "tr"
+                        ],
+                        "default": "en"
+                      },
+                      "maxItems": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 500,
+                        "default": 250
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "workspaceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "source",
+                    "dryRun",
+                    "total",
+                    "projects",
+                    "tags",
+                    "tasks",
+                    "series",
+                    "checklistItems",
+                    "notes",
+                    "completed",
+                    "alreadyImported",
+                    "warnings",
+                    "created",
+                    "errors",
+                    "remaining"
+                  ],
+                  "properties": {
+                    "source": {
+                      "type": "string",
+                      "enum": [
+                        "todoist",
+                        "ticktick"
+                      ]
+                    },
+                    "dryRun": {
+                      "type": "boolean"
+                    },
+                    "timezone": {
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    },
+                    "projects": {
+                      "type": "object",
+                      "required": [
+                        "new",
+                        "existing"
+                      ],
+                      "properties": {
+                        "new": {
+                          "type": "integer"
+                        },
+                        "existing": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "tags": {
+                      "type": "object",
+                      "required": [
+                        "new",
+                        "existing"
+                      ],
+                      "properties": {
+                        "new": {
+                          "type": "integer"
+                        },
+                        "existing": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "tasks": {
+                      "type": "integer"
+                    },
+                    "series": {
+                      "type": "integer"
+                    },
+                    "checklistItems": {
+                      "type": "integer"
+                    },
+                    "notes": {
+                      "type": "integer"
+                    },
+                    "completed": {
+                      "type": "object",
+                      "required": [
+                        "included",
+                        "skipped"
+                      ],
+                      "properties": {
+                        "included": {
+                          "type": "integer"
+                        },
+                        "skipped": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "alreadyImported": {
+                      "type": "integer"
+                    },
+                    "googleMirror": {
+                      "type": "object",
+                      "properties": {
+                        "connected": {
+                          "type": "boolean"
+                        },
+                        "tasks": {
+                          "type": "integer"
+                        },
+                        "undated": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "projectList": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "existing": {
+                            "type": "boolean"
+                          },
+                          "tasks": {
+                            "type": "integer"
+                          }
+                        }
+                      }
+                    },
+                    "tagList": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          },
+                          "existing": {
+                            "type": "boolean"
+                          }
+                        }
+                      }
+                    },
+                    "mapping": {
+                      "type": "object",
+                      "properties": {
+                        "priority": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "from": {
+                                "type": "string"
+                              },
+                              "to": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        },
+                        "sectionsAs": {
+                          "type": "string"
+                        },
+                        "subItemsAs": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "code": {
+                            "type": "string"
+                          },
+                          "count": {
+                            "type": "integer"
+                          },
+                          "examples": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "file": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "row": {
+                                  "type": "integer",
+                                  "nullable": true
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "nullable": true
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "nullable": true
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    },
+                    "created": {
+                      "type": "object",
+                      "properties": {
+                        "projects": {
+                          "type": "integer"
+                        },
+                        "tags": {
+                          "type": "integer"
+                        },
+                        "tasks": {
+                          "type": "integer"
+                        },
+                        "checklistItems": {
+                          "type": "integer"
+                        },
+                        "notes": {
+                          "type": "integer"
+                        },
+                        "series": {
+                          "type": "integer"
+                        }
+                      }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "file": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "row": {
+                            "type": "integer",
+                            "nullable": true
+                          },
+                          "code": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "remaining": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detected": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detected": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detected": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    },
+                    "detected": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Import & export"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      }
+    },
     "/api/v1/workspaces/{workspaceId}/import/notes": {
       "post": {
         "requestBody": {
@@ -13829,6 +14906,469 @@
           }
         ],
         "description": "Accepts either a session JWT or a personal API key."
+      }
+    },
+    "/api/v1/workspaces/{workspaceId}/integrations/caldav": {
+      "get": {
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "workspaceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "enabled",
+                    "items"
+                  ],
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean"
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "id",
+                          "provider",
+                          "server",
+                          "serverHost",
+                          "username",
+                          "status"
+                        ],
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "provider": {
+                            "type": "string",
+                            "enum": [
+                              "caldav"
+                            ]
+                          },
+                          "server": {
+                            "type": "string",
+                            "enum": [
+                              "icloud",
+                              "generic"
+                            ]
+                          },
+                          "serverHost": {
+                            "type": "string"
+                          },
+                          "serverUrl": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "username": {
+                            "type": "string"
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "error",
+                              "revoked",
+                              "disconnected"
+                            ]
+                          },
+                          "calendarUrl": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "calendarName": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lastSyncedAt": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "lastError": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalDAV calendar"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      },
+      "post": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "server",
+                  "username",
+                  "password"
+                ],
+                "properties": {
+                  "server": {
+                    "type": "string",
+                    "enum": [
+                      "icloud",
+                      "generic"
+                    ]
+                  },
+                  "url": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  },
+                  "username": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 255
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "workspaceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "account",
+                    "calendars"
+                  ],
+                  "properties": {
+                    "account": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "provider",
+                        "server",
+                        "serverHost",
+                        "username",
+                        "status"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "provider": {
+                          "type": "string",
+                          "enum": [
+                            "caldav"
+                          ]
+                        },
+                        "server": {
+                          "type": "string",
+                          "enum": [
+                            "icloud",
+                            "generic"
+                          ]
+                        },
+                        "serverHost": {
+                          "type": "string"
+                        },
+                        "serverUrl": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "username": {
+                          "type": "string"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "error",
+                            "revoked",
+                            "disconnected"
+                          ]
+                        },
+                        "calendarUrl": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "calendarName": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "lastSyncedAt": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "lastError": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "createdAt": {
+                          "type": "string"
+                        },
+                        "updatedAt": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "calendars": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": [
+                          "url",
+                          "name"
+                        ],
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "color": {
+                            "type": "string",
+                            "nullable": true
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "CalDAV calendar"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          }
+        ],
+        "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4)."
       }
     },
     "/api/v1/workspaces/{workspaceId}/integrations/google": {
@@ -15686,7 +17226,31 @@
                 "properties": {
                   "rule": {
                     "type": "object",
-                    "additionalProperties": true
+                    "additionalProperties": true,
+                    "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                    "properties": {
+                      "freq": {
+                        "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                      },
+                      "interval": {
+                        "description": "Every N periods, 1..366"
+                      },
+                      "basis": {
+                        "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                      },
+                      "byWeekday": {
+                        "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                      },
+                      "byMonthDay": {
+                        "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                      },
+                      "byMonth": {
+                        "description": "calendar only, yearly: 1..12"
+                      },
+                      "end": {
+                        "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                      }
+                    }
                   },
                   "template": {
                     "type": "object",
@@ -15762,7 +17326,31 @@
                         },
                         "rule": {
                           "type": "object",
-                          "additionalProperties": true
+                          "additionalProperties": true,
+                          "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                          "properties": {
+                            "freq": {
+                              "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                            },
+                            "interval": {
+                              "description": "Every N periods, 1..366"
+                            },
+                            "basis": {
+                              "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                            },
+                            "byWeekday": {
+                              "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                            },
+                            "byMonthDay": {
+                              "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                            },
+                            "byMonth": {
+                              "description": "calendar only, yearly: 1..12"
+                            },
+                            "end": {
+                              "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                            }
+                          }
                         },
                         "template": {
                           "type": "object",
@@ -15905,7 +17493,31 @@
                           },
                           "rule": {
                             "type": "object",
-                            "additionalProperties": true
+                            "additionalProperties": true,
+                            "description": "ADR-0020 repeat rule. `basis` \"calendar\" (default) repeats on a fixed pattern; \"completion\" (OPH-375) creates the next task N days/weeks/months after the open one is completed.",
+                            "properties": {
+                              "freq": {
+                                "description": "daily | weekly | monthly | yearly (completion: daily | weekly | monthly)"
+                              },
+                              "interval": {
+                                "description": "Every N periods, 1..366"
+                              },
+                              "basis": {
+                                "description": "calendar (default) | completion — \"after completion\": the next due date is the completion day + interval, at the same time of day; months clamp to month end"
+                              },
+                              "byWeekday": {
+                                "description": "calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]"
+                              },
+                              "byMonthDay": {
+                                "description": "calendar only, monthly/yearly: 1..31 or -1 (last day)"
+                              },
+                              "byMonth": {
+                                "description": "calendar only, yearly: 1..12"
+                              },
+                              "end": {
+                                "description": "{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }"
+                              }
+                            }
                           },
                           "template": {
                             "type": "object",

@@ -9,6 +9,8 @@
   planner that must keep working without learning about recurrence),
   [ADR-0018](0018-quick-links-user-scoped-sync-entity.md) (the "no new sync verb" finding),
   BLUEPRINT §4.3 / §12.17, DESIGN §22 / §25. Sourced research tables: TASKS.md OPH-204.
+- **Amended by:** [ADR-0056](0056-repeat-after-completion.md) — the `basis: "completion"` flavour
+  ("N days/weeks/months after completion"), additive inside the rule JSON.
 
 ## Context
 
@@ -135,6 +137,12 @@ Rule edits rebuild the **future** window in one transaction and never touch the 
 anything completed. Editing scope (`this` / `future` / `all`) rides an ordinary `update`
 mutation with a **virtual `seriesScope` field** (the `orderedIds` idiom,
 `routes/sync.js:165-176`), because the protocol has no room for a fourth verb.
+
+*Amended 2026-10-17 (OPH-375 follow-up):* "rebuild" keeps the future rows the new rule still
+plans — same ids, the edit carried onto each column the row did not change on its own — and
+retires only the rest. A retired row releases its slot (`occurrence_date = NULL`); only a
+user's own delete keeps its day. Tombstones that kept their day read as taken, and every
+edit whose days overlapped the old ones emptied the series.
 
 ### 5. The daily sweep is an interval, not a BullMQ repeatable
 

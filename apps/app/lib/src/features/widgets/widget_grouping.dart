@@ -1,6 +1,7 @@
 import '../calendar/data/external_event.dart';
 import '../home/task_grouping.dart' show daysOfEvent;
 import '../tasks/data/task.dart';
+import '../tasks/data/task_when.dart';
 
 /// The home-screen widget's task buckets (OPH-130) — the user's "geçmiş / nodate
 /// / bugün / bu hafta / bu ay". A glanceable sibling of Home's `groupTasksForHome`
@@ -55,19 +56,18 @@ class WidgetGroup {
   ];
 }
 
-DateTime _dayOf(DateTime value) {
-  final local = value.toLocal();
-  return DateTime(local.year, local.month, local.day);
-}
-
 /// Groups open tasks — and, since snapshot v5, the user's calendar [events] —
 /// into the widget's buckets, chronologically within each. Pure and
 /// deterministic (pass [now]) so it is fully unit-testable.
 ///
 /// Order: Overdue → No date → Today → This week → This month. Only non-empty
 /// buckets are returned. Boundaries (local days): overdue = due < today;
-/// today = due == today; this week = +1…+6; this month = +7…+30 inclusive;
-/// beyond +30 is dropped. Undated tasks are "every day's work" (No date).
+/// otherwise a task is filed by its plan day (OPH-372, ADR-0053 — Home's
+/// rule, the same helper): its "when" day rolled forward to today once
+/// reached and never later than its deadline, else its due day. So today =
+/// due today OR "when" reached; this week = +1…+6; this month = +7…+30
+/// inclusive; beyond +30 is dropped. A task with neither date is "every day's
+/// work" (No date).
 ///
 /// Events follow Home's rules (`groupTasksForHome`), so the glance and the app
 /// cannot disagree about a meeting: never Overdue (a meeting that happened is
@@ -97,14 +97,13 @@ List<WidgetGroup> groupTasksForWidget(
   }
 
   for (final task in tasks) {
-    final due = task.dueAt;
-    if (due == null) {
-      byBucket[WidgetBucket.noDate]!.add(WidgetTaskEntry(task));
+    if (taskIsOverdueOn(task, today)) {
+      byBucket[WidgetBucket.overdue]!.add(WidgetTaskEntry(task));
       continue;
     }
-    final day = _dayOf(due);
-    if (day.isBefore(today)) {
-      byBucket[WidgetBucket.overdue]!.add(WidgetTaskEntry(task));
+    final day = taskPlanDay(task, today);
+    if (day == null) {
+      byBucket[WidgetBucket.noDate]!.add(WidgetTaskEntry(task));
       continue;
     }
     final bucket = futureBucketForDay(day);

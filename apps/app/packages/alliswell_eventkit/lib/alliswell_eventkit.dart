@@ -168,6 +168,81 @@ class AlliswellEventKit {
       throw EventKitException(e.message ?? e.code);
     }
   }
+  // ── Read-back (OPH-369) ─────────────────────────────────────────────────────
+
+  /// The current state of the events behind [ids] — the ones we created and
+  /// mapped. An id EventKit no longer knows (deleted, or re-identified by an
+  /// iCloud move) is simply absent from the answer; deciding what that MEANS
+  /// is the app's job, not the channel's.
+  ///
+  /// Null when this build cannot read back at all (no EventKit, or a native
+  /// side without the method). That is deliberately not an empty list: "no
+  /// events found" would read as "the user deleted all of them".
+  Future<List<AppleEventSnapshot>?> readEvents(List<String> ids) async {
+    if (ids.isEmpty) return const [];
+    try {
+      final raw = await _channel.invokeListMethod<Object?>('readEvents', {
+        'ids': ids,
+      });
+      return [
+        for (final item in raw ?? const [])
+          AppleEventSnapshot.fromMap(item! as Map<Object?, Object?>),
+      ];
+    } on MissingPluginException {
+      return null;
+    } on PlatformException catch (e) {
+      throw EventKitException(e.message ?? e.code);
+    }
+  }
+}
+
+/// One event as EventKit holds it NOW (OPH-369) — only the fields the
+/// read-back maps or needs to judge. Times are instants (UTC); an all-day
+/// event's boundaries are the device's local midnights, so callers interpret
+/// them in local time.
+class AppleEventSnapshot {
+  const AppleEventSnapshot({
+    required this.id,
+    required this.start,
+    required this.end,
+    this.calendarId,
+    this.url,
+    this.isAllDay = false,
+    this.hasRecurrence = false,
+    this.lastModified,
+  });
+
+  factory AppleEventSnapshot.fromMap(Map<Object?, Object?> map) {
+    DateTime at(Object? ms) =>
+        DateTime.fromMillisecondsSinceEpoch((ms! as num).toInt(), isUtc: true);
+    final modified = map['lastModifiedMs'];
+    return AppleEventSnapshot(
+      id: map['id']! as String,
+      calendarId: map['calendarId'] as String?,
+      url: map['url'] as String?,
+      start: at(map['startMs']),
+      end: at(map['endMs']),
+      isAllDay: (map['isAllDay'] as bool?) ?? false,
+      hasRecurrence: (map['hasRecurrence'] as bool?) ?? false,
+      lastModified: modified == null ? null : at(modified),
+    );
+  }
+
+  /// The identifier that was asked for (the one the app stored).
+  final String id;
+  final String? calendarId;
+
+  /// `alliswell://task/{id}` on our own events (ADR-0003).
+  final String? url;
+  final DateTime start;
+  final DateTime end;
+  final bool isAllDay;
+
+  /// The user turned our block into a series — many instants, one task.
+  final bool hasRecurrence;
+
+  /// When EventKit last saw the event change; null if it does not say.
+  final DateTime? lastModified;
 }
 
 /// What to write to EventKit for one task (OPH-078). Purely data — the decision

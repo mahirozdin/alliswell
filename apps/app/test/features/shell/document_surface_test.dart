@@ -15,6 +15,7 @@ import 'package:alliswell/src/widgets/document_surface.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import '../../support/nav.dart';
 
 /// OPH-271 — while a note is open, nothing floats over it.
 ///
@@ -78,7 +79,7 @@ void main() {
     final api = FakeApi()..seedNote(title: 'Yazılacak not');
     await tester.pumpWidget(await app(api));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Notes').last);
+    await tester.tap(navTab('Notes'));
     await tester.pumpAndSettle();
 
     expect(
@@ -110,7 +111,7 @@ void main() {
     phone(tester);
     await tester.pumpWidget(await app(FakeApi()));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Notes').last);
+    await tester.tap(navTab('Notes'));
     await tester.pumpAndSettle();
 
     // The "+" is the way in, so it must survive its own tap and then go.

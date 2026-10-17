@@ -4,7 +4,7 @@ import { nextMorningIn } from '../lib/time.js';
 import { recordSyncWrite } from './sync.js';
 import { notifyEntityWrite } from '../lib/ee.js';
 import { reconcileTaskReminder } from './reminders.js';
-import { propagateSeriesScope } from './task-series.js';
+import { onTaskStatusChange, propagateSeriesScope } from './task-series.js';
 import { cascadeDeleteFiles } from './files.js';
 import { cascadeDeleteQuickLinks } from './quick-links.js';
 
@@ -210,7 +210,10 @@ export async function assertTagsUsable(app, tagIds, workspaceId) {
  * default, sync revision, tag links and reminder reconcile in ONE
  * transaction. Returns the new task id.
  */
-export async function createTask(app, { workspaceId, userId, body: rawBody, trx: outer = null }) {
+export async function createTask(
+  app,
+  { workspaceId, userId, body: rawBody, trx: outer = null, completedAt = null },
+) {
   const { tagIds = [], ...body } = rawBody;
   if (body.projectId) await assertProjectUsable(app, body.projectId, workspaceId);
   if (body.parentTaskId) await assertParentUsable(app, body.parentTaskId, workspaceId, null);
@@ -233,6 +236,10 @@ export async function createTask(app, { workspaceId, userId, body: rawBody, trx:
       id,
       workspace_id: workspaceId,
       ...toRowPatch(body),
+      // A task born completed carries its completion moment, like one that
+      // was completed later (completionPatch). The importer passes the
+      // source's own `completedAt` (OPH-371); every other door gets "now".
+      ...(body.status === 'completed' ? { completed_at: completedAt ?? new Date() } : {}),
       created_by: userId,
       updated_by: userId,
       revision,
@@ -287,6 +294,16 @@ export async function updateTask(app, { row, userId, body, trx: outer = null }) 
       .update({ ...patch, revision, updated_by: userId, updated_at: new Date() });
     const fresh = await trx('tasks').where({ id: row.id }).first();
     await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+    // OPH-375: completing an after-completion occurrence creates the next one;
+    // uncompleting it withdraws that one again.
+    if (body.status !== undefined) {
+      await onTaskStatusChange(trx, {
+        workspaceId: row.workspace_id,
+        before: row,
+        after: fresh,
+        userId,
+      });
+    }
     await propagateSeriesScope(trx, {
       workspaceId: row.workspace_id,
       task: fresh,
@@ -331,6 +348,13 @@ export async function applyStatusTransition(app, { userId, row, toStatus, trx: o
       });
     const fresh = await trx('tasks').where({ id: row.id }).first();
     await reconcileTaskReminder(trx, { workspaceId: row.workspace_id, task: fresh });
+    // OPH-375: the after-completion hook, as in updateTask.
+    await onTaskStatusChange(trx, {
+      workspaceId: row.workspace_id,
+      before: row,
+      after: fresh,
+      userId,
+    });
     // A status change is the one task edit that reads as an EVENT rather than
     // a revision, so it is described for observers rather than merely counted.
     await notifyEntityWrite(app, trx, {
@@ -555,11 +579,15 @@ export async function loadChecklistItem(app, taskId, itemId) {
   return item;
 }
 
-/** Adds one checklist item to a live task. Returns the new id. */
-export async function addChecklistItem(app, { task, title, sortOrder }) {
+/**
+ * Adds one checklist item to a live task. Returns the new id. `isDone` and
+ * `trx` serve the importer (OPH-371): a ticked TickTick line arrives ticked,
+ * inside the same transaction as its task.
+ */
+export async function addChecklistItem(app, { task, title, sortOrder, isDone, trx = null }) {
   assertNotArchived(app, task);
   const id = newId();
-  await app.db.transaction(async (trx) => {
+  await inTransaction(app, trx, async (trx) => {
     const revision = await recordSyncWrite(trx, {
       workspaceId: task.workspace_id,
       entityType: 'checklist_item',
@@ -571,6 +599,7 @@ export async function addChecklistItem(app, { task, title, sortOrder }) {
       task_id: task.id,
       title,
       ...(sortOrder !== undefined ? { sort_order: sortOrder } : {}),
+      ...(isDone !== undefined ? { is_done: isDone } : {}),
       revision,
     });
   });

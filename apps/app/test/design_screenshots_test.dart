@@ -8,28 +8,38 @@
 //
 // Skipped without the dart-define (goldens are generated output, not
 // committed, so plain CI runs must not try to compare against them).
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/retry.dart';
+import 'package:alliswell/src/features/ai/data/ai_attachment_loader.dart';
+import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/calendar/apple/apple_calendar_gateway.dart';
+import 'package:alliswell/src/features/calendar/apple/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
+import 'package:alliswell/src/search/search_recents.dart';
+import 'package:alliswell/src/search/ui/global_search_entry.dart';
 import 'package:alliswell/src/sections.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'package:alliswell/src/widgets/glass.dart';
 
 import 'features/auth/test_support.dart';
 import 'features/projects/fake_api.dart';
+import 'support/fake_ai.dart';
 import 'support/sync_overrides.dart';
 
 const bool _enabled = bool.fromEnvironment('screenshots');
@@ -109,21 +119,31 @@ class _ScreenshotApp extends ConsumerWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      builder: (context, child) =>
-          AuroraBackground(child: child ?? const SizedBox.shrink()),
+      // OPH-374: the palette's host, as app.dart mounts it — the rail and
+      // phone entries only ask it to open.
+      builder: (context, child) => AuroraBackground(
+        child: AwGlobalSearchHost(child: child ?? const SizedBox.shrink()),
+      ),
       routerConfig: router,
     );
   }
 }
 
-Future<Widget> _signedInScreenshotApp(FakeApi api) async {
+/// [aiStreamClient] and [overrides] are for shots that need a seam the
+/// default app leaves empty (OPH-377: the AI chat's stream and file bytes).
+Future<Widget> _signedInScreenshotApp(
+  FakeApi api, {
+  AiStreamClient? aiStreamClient,
+  List<Override> overrides = const [],
+}) async {
   SharedPreferences.setMockInitialValues({});
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   return ProviderScope(
     retry: awRetry,
     overrides: [
-      ...syncTestOverrides(),
+      ...syncTestOverrides(aiStreamClient: aiStreamClient),
+      ...overrides,
       secretStoreProvider.overrideWithValue(store),
       apiClientProvider.overrideWithValue(
         fakeDio(FakeHttpClientAdapter(api.handle)),
@@ -226,10 +246,15 @@ FakeApi _seededApi() {
     tagIds: [health],
   );
   // Next 30 days.
+  // OPH-372: started yesterday ("when"), due next week, 90 minutes long — so
+  // the Home shot shows a Today row whose deadline is later, with its
+  // duration chip.
   api.seedTask(
     title: 'Draft the Q3 planning doc',
     priority: 'medium',
     dueAt: day(8, 12, 0),
+    startAt: iso(DateTime(now.year, now.month, now.day - 1)),
+    estimatedMinutes: 90,
     projectId: launch,
     tagIds: [writing],
   );
@@ -374,6 +399,8 @@ Future<void> _shoot(
   required String name,
   Future<void> Function(WidgetTester tester)? navigate,
   FakeApi Function() seed = _seededApi,
+  AiStreamClient? aiStreamClient,
+  List<Override> overrides = const [],
 }) async {
   tester.view.physicalSize = size * 2;
   tester.view.devicePixelRatio = 2.0;
@@ -390,9 +417,17 @@ Future<void> _shoot(
   // four of the five committed store goldens ended up byte-identical to their
   // board twin. Same idiom the feature tests use.
   await localKv.remove('alliswell_home_view');
+  // OPH-374: the palette's recents are a process-wide localKv key too.
+  await localKv.remove(kSearchRecentsKey);
   debugDisableShadows = false;
   try {
-    await tester.pumpWidget(await _signedInScreenshotApp(seed()));
+    await tester.pumpWidget(
+      await _signedInScreenshotApp(
+        seed(),
+        aiStreamClient: aiStreamClient,
+        overrides: overrides,
+      ),
+    );
     await tester.pumpAndSettle();
     if (navigate != null) {
       await navigate(tester);
@@ -513,6 +548,454 @@ void main() {
     );
   });
 
+  // OPH-372 (DESIGN §38 W5): the When / Due / Remind / Duration rows, filled,
+  // in the create sheet and on the detail screen, and the duration dialog —
+  // both themes. `--dart-define=shotLocale=tr` renders the longer language.
+  Future<void> withShotLocale() async {
+    await AwI18n.instance.setLocale(screenshotLocale('en'));
+    addTearDown(() => AwI18n.instance.setLocale(const Locale('en')));
+  }
+
+  Future<void> fillSheetDates(WidgetTester t) async {
+    await t.tap(find.byType(FloatingActionButton));
+    await t.pumpAndSettle();
+    await t.enterText(
+      find.byKey(const Key('task-sheet-title')),
+      'Prepare the launch demo',
+    );
+    await t.ensureVisible(find.byKey(const Key('task-sheet-when')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('task-sheet-when')));
+    await t.pumpAndSettle();
+    await t.tap(
+      find.text(
+        MaterialLocalizations.of(
+          t.element(find.byType(DatePickerDialog)),
+        ).okButtonLabel,
+      ),
+    );
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('task-sheet-duration')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('task-sheet-duration')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('duration-preset-45')));
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('duration-save')));
+    await t.pumpAndSettle();
+    // Unfocus the title so no caret or keyboard inset sits in the shot.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('task-sheet-duration')));
+  }
+
+  Future<void> openSeededDetail(WidgetTester t) async {
+    final row = find.text('Draft the Q3 planning doc');
+    await t.scrollUntilVisible(
+      row,
+      300,
+      scrollable: find
+          .ancestor(
+            of: find.text('Review contrast report'),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
+    await t.pumpAndSettle();
+    await t.tap(row);
+    await t.pumpAndSettle();
+    await t.ensureVisible(find.byKey(const Key('duration-row')));
+  }
+
+  // OPH-375 (DESIGN §25 R10): the repeat dialog in its after-completion mode —
+  // basis switch, interval + unit, the one date and the hint.
+  Future<void> openRepeatAfterCompletion(WidgetTester t) async {
+    await openSeededDetail(t);
+    final toggle = find.byKey(const Key('repeat-switch'));
+    await t.ensureVisible(toggle);
+    await t.pumpAndSettle();
+    await t.tap(toggle);
+    await t.pumpAndSettle();
+    await t.tap(find.byKey(const Key('repeat-basis-completion')));
+    await t.pumpAndSettle();
+    await t.enterText(find.byKey(const Key('repeat-after-interval')), '90');
+    await t.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.pumpAndSettle();
+  }
+
+  // …and the sentence it leaves on the detail once saved.
+  Future<void> saveRepeatAfterCompletion(WidgetTester t) async {
+    await openRepeatAfterCompletion(t);
+    await t.tap(find.byKey(const Key('repeat-save')));
+    await t.pumpAndSettle();
+    // The switch AND the sentence under it in one frame.
+    await t.ensureVisible(find.byKey(const Key('repeat-switch')));
+    await t.pumpAndSettle();
+  }
+
+  Future<void> typeQuickAdd(WidgetTester t) async {
+    final bar = find.byKey(const Key('home-quick-add'));
+    await t.ensureVisible(bar);
+    await t.pumpAndSettle();
+    await t.enterText(
+      bar,
+      screenshotLocale('en').languageCode == 'tr'
+          ? "Yarın 9'da kira #ev p1 her ayın 31'i"
+          : 'Pay rent tomorrow 9am #home p1 every month on the 31st',
+    );
+    await t.pump(const Duration(milliseconds: 300));
+    // Caret to the start so the field shows the title and the first marks,
+    // then unfocus: no caret blinking in the shot.
+    final field = t.widget<EditableText>(
+      find.descendant(of: bar, matching: find.byType(EditableText)),
+    );
+    field.controller.selection = const TextSelection.collapsed(offset: 0);
+    await t.pump();
+    FocusManager.instance.primaryFocus?.unfocus();
+    await t.pumpAndSettle();
+    t
+        .state<ScrollableState>(
+          find.descendant(of: bar, matching: find.byType(Scrollable)),
+        )
+        .position
+        .jumpTo(0);
+    await t.pump();
+    await t.ensureVisible(bar);
+  }
+
+  for (final (brightness, suffix) in [
+    (Brightness.light, 'light'),
+    (Brightness.dark, 'dark'),
+  ]) {
+    testWidgets('phone create sheet dates — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_sheet_dates_$suffix',
+        navigate: fillSheetDates,
+      );
+    });
+
+    testWidgets('phone task detail — $suffix', skip: !_enabled, (tester) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_task_detail_$suffix',
+        navigate: openSeededDetail,
+      );
+    });
+
+    testWidgets('phone repeat after completion — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_repeat_after_completion_$suffix',
+        navigate: openRepeatAfterCompletion,
+      );
+    });
+
+    testWidgets(
+      'phone repeat after completion summary — $suffix',
+      skip: !_enabled,
+      (tester) async {
+        await withShotLocale();
+        await _shoot(
+          tester,
+          size: const Size(390, 844),
+          brightness: brightness,
+          name: 'phone_repeat_after_completion_summary_$suffix',
+          navigate: saveRepeatAfterCompletion,
+        );
+      },
+    );
+
+    // OPH-373 (DESIGN §39 Q5): the quick-add bar reading a line — highlight
+    // in the field, chips under it — and its syntax sheet.
+    testWidgets('phone quick add tokens — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_quick_add_tokens_$suffix',
+        navigate: typeQuickAdd,
+      );
+    });
+
+    testWidgets('phone quick add help — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_quick_add_help_$suffix',
+        navigate: (t) async {
+          final help = find.byKey(const Key('quick-add-help')).first;
+          await t.ensureVisible(help);
+          await t.pumpAndSettle();
+          await t.tap(help);
+        },
+      );
+    });
+
+    // OPH-374 (DESIGN §40 P7): search everywhere — the palette with an
+    // active row, the recents, the phone's full-screen palette and the
+    // search button beside the bar.
+    testWidgets('desktop search palette — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(1280, 800),
+        brightness: brightness,
+        name: 'desktop_search_palette_$suffix',
+        navigate: (t) async {
+          await t.tap(find.byKey(const Key('global-search-rail')));
+          await t.pumpAndSettle();
+          await t.enterText(find.byKey(const Key('global-search-field')), 're');
+          await t.pump(const Duration(milliseconds: 400));
+          await t.pumpAndSettle();
+          await t.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+        },
+      );
+    });
+
+    testWidgets('desktop search recent — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(1280, 800),
+        brightness: brightness,
+        name: 'desktop_search_recent_$suffix',
+        navigate: (t) async {
+          await t.tap(find.text('Review contrast report').first);
+          await t.pumpAndSettle();
+          // By type, not `pageBack()`: that finds the tooltip 'Back', which
+          // is "Geri" under shotLocale=tr.
+          await t.tap(find.byType(BackButton));
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(const Key('global-search-rail')));
+        },
+      );
+    });
+
+    testWidgets('phone search palette — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_search_palette_$suffix',
+        navigate: (t) async {
+          await t.tap(find.byKey(const Key('global-search-orb')));
+          await t.pumpAndSettle();
+          await t.enterText(find.byKey(const Key('global-search-field')), 'pr');
+          await t.pump(const Duration(milliseconds: 400));
+          await t.pumpAndSettle();
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+      );
+    });
+
+    testWidgets('phone search orb — $suffix', skip: !_enabled, (tester) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_search_orb_$suffix',
+      );
+    });
+
+    // OPH-377 (DESIGN §41): "@" attachments in the AI chat — the picker with
+    // a disabled PDF row, and the chips (pending + sent, one shortened).
+    for (final (label, size) in [
+      ('phone', const Size(390, 844)),
+      ('desktop', const Size(1280, 800)),
+    ]) {
+      testWidgets('ai attach picker $label — $suffix', skip: !_enabled, (
+        tester,
+      ) async {
+        await withShotLocale();
+        await _shoot(
+          tester,
+          size: size,
+          brightness: brightness,
+          name: '${label}_ai_attach_picker_$suffix',
+          seed: _aiAttachSeed,
+          aiStreamClient: ScriptedAiStreamClient(),
+          overrides: _aiAttachOverrides,
+          navigate: (t) async {
+            await t.tap(find.byKey(const Key('ai-fab')));
+            await t.pumpAndSettle();
+            await t.enterText(
+              find.byKey(const Key('ai-input')),
+              'Summarize @quote',
+            );
+            await t.pump(const Duration(milliseconds: 400));
+            await t.pumpAndSettle();
+            // The first row stays active: its fill AND the ⏎ glyph show
+            // beside the disabled PDF row (a disabled row never gets a ⏎).
+          },
+        );
+      });
+
+      testWidgets('ai attach chips $label — $suffix', skip: !_enabled, (
+        tester,
+      ) async {
+        await withShotLocale();
+        await _shoot(
+          tester,
+          size: size,
+          brightness: brightness,
+          name: '${label}_ai_attach_chips_$suffix',
+          seed: _aiAttachSeed,
+          aiStreamClient: ScriptedAiStreamClient(
+            script: const [
+              AiTextDelta(
+                'Two of three quotes are in; the worktop line is still '
+                'missing from the third. The log shows the cabinets are '
+                'measured.',
+              ),
+            ],
+          ),
+          overrides: _aiAttachOverrides,
+          navigate: (t) async {
+            final input = find.byKey(const Key('ai-input'));
+            Future<void> pick(String query, String rowText) async {
+              await t.enterText(input, '@$query');
+              await t.pump(const Duration(milliseconds: 400));
+              await t.pumpAndSettle();
+              await t.tap(find.text(rowText).last);
+              await t.pumpAndSettle();
+            }
+
+            await t.tap(find.byKey(const Key('ai-fab')));
+            await t.pumpAndSettle();
+            await pick('supplier', 'Kitchen supplier quotes');
+            await pick('kitchen-log', 'kitchen-log.txt');
+            await t.enterText(input, 'What is still open here?');
+            await t.pump();
+            await t.tap(find.byKey(const Key('ai-send')));
+            await t.pumpAndSettle();
+            await pick('measure', 'kitchen-measurements.md');
+            await pick('Renovation', 'Renovation measurements');
+            FocusManager.instance.primaryFocus?.unfocus();
+          },
+        );
+      });
+    }
+
+    testWidgets('phone duration dialog — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_duration_dialog_$suffix',
+        navigate: (t) async {
+          await openSeededDetail(t);
+          await t.pumpAndSettle();
+          await t.tap(find.byKey(const Key('duration-row')));
+        },
+      );
+    });
+  }
+
+  // OPH-380 (ADR-0059): the iCloud / CalDAV connect sheet off an Apple
+  // device, consent visible; and Settings → Integrations with Google and a
+  // connected CalDAV account. Solid sheet surface, 44 px targets, both themes.
+  Future<void> openIntegrations(WidgetTester t) async {
+    GoRouter.of(
+      t.element(find.byType(Scaffold).first),
+    ).go('/settings/integrations');
+    await t.pumpAndSettle();
+  }
+
+  final caldavOverrides = <Override>[
+    appleCalendarGatewayProvider.overrideWithValue(_NoEventKit()),
+  ];
+
+  for (final (brightness, suffix) in [
+    (Brightness.light, 'light'),
+    (Brightness.dark, 'dark'),
+  ]) {
+    testWidgets('phone caldav connect — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_caldav_connect_$suffix',
+        seed: () => _seededApi()..caldavEnabled = true,
+        overrides: caldavOverrides,
+        navigate: (t) async {
+          await openIntegrations(t);
+          final connect = find.byKey(const Key('caldav-connect'));
+          await t.ensureVisible(connect);
+          await t.pumpAndSettle();
+          await t.tap(connect);
+          await t.pumpAndSettle();
+          await t.enterText(
+            find.byKey(const Key('caldav-username')),
+            'ben@icloud.com',
+          );
+          await t.enterText(
+            find.byKey(const Key('caldav-password')),
+            'abcd-efgh-ijkl-mnop',
+          );
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+      );
+    });
+
+    testWidgets('phone caldav connected — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_caldav_connected_$suffix',
+        seed: () => _seededApi()
+          ..caldavEnabled = true
+          ..seedGoogleAccount(defaultCalendarId: 'primary')
+          ..seedCaldavAccount(),
+        overrides: caldavOverrides,
+        navigate: (t) async {
+          await openIntegrations(t);
+          final card = find.byKey(const Key('caldav-card'));
+          await t.ensureVisible(card);
+        },
+      );
+    });
+  }
+
   testWidgets('desktop home — light', skip: !_enabled, (tester) async {
     await _shoot(
       tester,
@@ -565,3 +1048,42 @@ void main() {
     );
   });
 }
+
+/// The design seed plus an AI connection (the FAB) and two text files — one
+/// long enough to be shortened (OPH-377).
+FakeApi _aiAttachSeed() {
+  final api = _seededApi()..seedAiConnection(provider: 'anthropic');
+  final md = api.seedFile(
+    name: 'kitchen-measurements.md',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    mime: 'text/markdown',
+    sizeBytes: 900,
+  );
+  final log = api.seedFile(
+    name: 'kitchen-log.txt',
+    targetType: 'workspace',
+    targetId: api.workspaceId,
+    mime: 'text/plain',
+    sizeBytes: 53120,
+  );
+  api.downloadUrls[md['id'] as String] = 'https://files.test/md';
+  api.downloadUrls[log['id'] as String] = 'https://files.test/log';
+  return api;
+}
+
+/// Not an Apple device: the screenshot host must not depend on the OS it runs on.
+class _NoEventKit extends Fake implements AppleCalendarGateway {
+  @override
+  bool get isSupported => false;
+}
+
+final List<Override> _aiAttachOverrides = [
+  aiFileBytesFetcherProvider.overrideWithValue(
+    (url) async => utf8.encode(
+      url.endsWith('/log')
+          ? 'Cabinets measured. ' * 2800
+          : '# Kitchen\n\nWall A 3.2 m, wall B 4.1 m.',
+    ),
+  ),
+];

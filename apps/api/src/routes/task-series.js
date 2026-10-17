@@ -1,16 +1,13 @@
-import { newId } from '../lib/ids.js';
 import { coded } from '../lib/errors.js';
 import { toIso } from '../lib/serialize.js';
-import { recordSyncWrite } from '../db/sync.js';
 import {
-  adoptTaskIntoSeries,
+  createTaskSeries,
   listLiveSeries,
-  materializeSeries,
   normalizeTemplate,
   parseJsonColumn,
-  plannedDays,
-  rebuildFuture,
+  seriesError,
   softDeleteSeries,
+  updateTaskSeries,
   validateSeriesInput,
 } from '../db/task-series.js';
 
@@ -29,7 +26,33 @@ const errorResponseSchema = {
 // The rule and the template are validated semantically in db/task-series.js —
 // the sync push bypasses Ajv entirely, so the real rules cannot live here.
 // Ajv's job is to keep the payload's SHAPE sane before it reaches them.
-const ruleSchema = { type: 'object', additionalProperties: true };
+//
+// The properties below DESCRIBE the rule for the API reference; they carry no
+// constraint of their own, so a bad value still comes back as the stable
+// TASK_SERIES_RULE_INVALID rather than a generic validation error.
+const ruleSchema = {
+  type: 'object',
+  additionalProperties: true,
+  description:
+    'ADR-0020 repeat rule. `basis` "calendar" (default) repeats on a fixed pattern; "completion" (OPH-375) creates the next task N days/weeks/months after the open one is completed.',
+  properties: {
+    freq: {
+      description: 'daily | weekly | monthly | yearly (completion: daily | weekly | monthly)',
+    },
+    interval: { description: 'Every N periods, 1..366' },
+    basis: {
+      description:
+        'calendar (default) | completion — "after completion": the next due date is the completion day + interval, at the same time of day; months clamp to month end',
+    },
+    byWeekday: { description: 'calendar only: [{ day: MO..SU, ordinal: null | 1..5 | -1 }]' },
+    byMonthDay: { description: 'calendar only, monthly/yearly: 1..31 or -1 (last day)' },
+    byMonth: { description: 'calendar only, yearly: 1..12' },
+    end: {
+      description:
+        '{ type: never } | { type: until, until: YYYY-MM-DD } | { type: count, count: 1..1000 }',
+    },
+  },
+};
 const templateSchema = { type: 'object', additionalProperties: true };
 
 const taskSeriesSchema = {
@@ -73,19 +96,8 @@ export function serializeTaskSeries(row) {
 export default async function taskSeriesRoutes(app) {
   const auth = { onRequest: [app.authenticate] };
 
-  const CODE_STATUS = {
-    TASK_SERIES_RULE_INVALID: 'badRequest',
-    TASK_SERIES_TEMPLATE_INVALID: 'badRequest',
-    TASK_SERIES_TOO_DENSE: 'unprocessableEntity',
-  };
-
-  const CODE_MESSAGE = {
-    TASK_SERIES_TOO_DENSE: 'This repeat rule would create too many tasks',
-  };
-
   function fail(code, message) {
-    const status = CODE_STATUS[code] ?? 'badRequest';
-    return coded(app.httpErrors[status](message ?? CODE_MESSAGE[code] ?? 'Invalid series'), code);
+    return seriesError(app, code, message);
   }
 
   /** Loads a live series and proves the caller is in its workspace. */
@@ -109,15 +121,6 @@ export default async function taskSeriesRoutes(app) {
     const problem = validateSeriesInput({ rule, template, timezone, anchorAt });
     if (problem) throw fail(problem.code, problem.message);
     return { rule, template: normalizeTemplate(template), timezone, anchorAt: new Date(anchorAt) };
-  }
-
-  /** Refuses an impossible rule BEFORE any row is written (ADR-0020 §4). */
-  function assertMaterializable(series, now) {
-    try {
-      return plannedDays(series, now);
-    } catch (err) {
-      throw fail(err.code ?? 'TASK_SERIES_RULE_INVALID', err.message);
-    }
   }
 
   // ── Create ────────────────────────────────────────────────────────────────
@@ -168,46 +171,14 @@ export default async function taskSeriesRoutes(app) {
         timezone: request.body.timezone ?? (await timezoneOf(request.user.id)),
       });
 
-      const now = new Date();
-      const id = newId();
-      const series = {
-        id,
-        workspace_id: workspaceId,
+      const { stored, created, adoptedTaskId } = await createTaskSeries(app, {
+        workspaceId,
+        userId: request.user.id,
         rule: input.rule,
         template: input.template,
         timezone: input.timezone,
-        anchor_at: input.anchorAt,
-        created_by: request.user.id,
-      };
-      assertMaterializable(series, now);
-
-      let created = 0;
-      let adoptedTaskId = null;
-      let stored;
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId,
-          entityType: 'task_series',
-          entityId: id,
-          operation: 'create',
-        });
-        await trx('task_series').insert({
-          ...series,
-          rule: JSON.stringify(input.rule),
-          template: JSON.stringify(input.template),
-          revision,
-        });
-        stored = await trx('task_series').where({ id }).first();
-
-        if (request.body.fromTaskId) {
-          adoptedTaskId = await adoptTaskIntoSeries(trx, {
-            workspaceId,
-            series: stored,
-            taskId: request.body.fromTaskId,
-            now,
-          });
-        }
-        ({ created } = await materializeSeries(trx, { workspaceId, series: stored, now }));
+        anchorAt: input.anchorAt,
+        fromTaskId: request.body.fromTaskId ?? null,
       });
 
       return reply.code(201).send({
@@ -293,53 +264,11 @@ export default async function taskSeriesRoutes(app) {
     },
     async (request) => {
       const row = await loadSeries(request, request.params.seriesId);
-      const merged = {
-        rule: request.body.rule ?? parseJsonColumn(row.rule),
-        template: request.body.template ?? parseJsonColumn(row.template) ?? {},
-        timezone: request.body.timezone ?? row.timezone,
-        anchorAt: request.body.anchorAt ?? row.anchor_at,
-      };
-      const input = validatedInput(merged);
-
-      const now = new Date();
-      const next = {
-        ...row,
-        rule: input.rule,
-        template: input.template,
-        timezone: input.timezone,
-        anchor_at: input.anchorAt,
-      };
-      assertMaterializable(next, now);
-
-      let result = { created: 0, removed: 0 };
-      let stored;
-      await app.db.transaction(async (trx) => {
-        const revision = await recordSyncWrite(trx, {
-          workspaceId: row.workspace_id,
-          entityType: 'task_series',
-          entityId: row.id,
-          operation: 'update',
-          changedFields: Object.keys(request.body),
-        });
-        await trx('task_series')
-          .where({ id: row.id })
-          .update({
-            rule: JSON.stringify(input.rule),
-            template: JSON.stringify(input.template),
-            timezone: input.timezone,
-            anchor_at: input.anchorAt,
-            revision,
-            updated_at: new Date(),
-          });
-        stored = await trx('task_series').where({ id: row.id }).first();
-        result = await rebuildFuture(trx, {
-          workspaceId: row.workspace_id,
-          series: stored,
-          now,
-        });
+      const { stored, created, removed } = await updateTaskSeries(app, {
+        row,
+        body: request.body,
       });
-
-      return { series: serializeTaskSeries(stored), ...result };
+      return { series: serializeTaskSeries(stored), created, removed };
     },
   );
 

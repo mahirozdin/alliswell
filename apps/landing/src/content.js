@@ -13,6 +13,11 @@ export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
 export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
 export const VERSION = '1.17.0';
+// OPH-370 / ADR-0051: every release carries the desktop apps under stable,
+// unversioned names, so these links always fetch the newest one.
+export const RELEASES_URL = `${REPO_URL}/releases/latest`;
+export const WINDOWS_DOWNLOAD_URL = `${RELEASES_URL}/download/alliswell-windows-x64.zip`;
+export const LINUX_DOWNLOAD_URL = `${RELEASES_URL}/download/alliswell-linux-x64.tar.gz`;
 /**
  * OPH-364 — the hosted connector URL, said once. It is on the API host, not
  * this one: an agent that guessed `alliswell.space/mcp` from the marketing
@@ -24,7 +29,7 @@ export const MCP_GUIDE_URL = '/docs/mcp';
 export const hero = {
   eyebrow: `v${VERSION} · source available · free for personal use`,
   title: 'Your whole day, in an app you actually own.',
-  lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google & Apple Calendar sync. One app on six platforms, offline-first, storing every byte in your own database.',
+  lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app on six platforms, offline-first, storing every byte in your own database.',
   primary: { label: 'Open the web app', href: APP_URL },
   store: { label: 'Get it on Google Play', href: PLAY_URL },
   storeIos: { label: 'Download on the App Store', href: APP_STORE_URL },
@@ -57,8 +62,8 @@ export const pillars = [
   {
     key: 'sync',
     icon: '📅',
-    title: 'Calendar sync in both directions',
-    body: 'Your tasks become Google events, your edits in Google come back, and your existing events show up next to today’s work. Apple Calendar through EventKit.',
+    title: 'Google Calendar sync in both directions',
+    body: 'Your tasks become Google events, your edits in Google come back, and your existing events show up next to today’s work. On iPhone and Mac, tasks are mirrored into Apple Calendar too — one way, for now.',
   },
   {
     key: 'ai',
@@ -119,6 +124,7 @@ export const features = [
       'A live “next 5” preview shows the days before you commit',
       'Occurrences are real tasks — they appear in search, the calendar and the widget',
       'Editing one asks how far it reaches: this, this and future, or all',
+      'Or repeat N days, weeks or months after you complete it — the water filter, 90 days after the last change',
     ],
     shot: 'web/home-dark.jpg',
     alt: 'A repeating task in AllisWell, with its repeat badge on the list row',
@@ -341,7 +347,7 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
   points: [
     'Every endpoint documented with its parameters, an example request and an example response — generated from the server’s own schemas, so it cannot drift',
     'A key is bound to one workspace, and can never delete your account, touch your AI provider keys, mint more keys or change your password',
-    'Bulk import and export for notes and tasks, so moving in or out is a script rather than a support ticket',
+    'Bulk import and export for notes and tasks, plus Todoist and TickTick exports read as they are, so moving in or out is a script rather than a support ticket',
   ],
   link: { label: 'Read the API documentation', href: '/docs/api' },
   secondary: {
@@ -350,10 +356,39 @@ curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
   },
 };
 
+/** OPH-371 — moving in from another app, said plainly (ADR-0052). */
+export const switchFrom = {
+  eyebrow: 'Moving in',
+  title: 'Switch from Todoist or TickTick',
+  lede: 'Bring your tasks with you. Export from the app you are leaving, choose the file in Settings › Data › Import, and look at what will come in before anything is written.',
+  steps: [
+    {
+      title: 'Export',
+      body: 'Todoist: Settings › Backups, or a project’s Export as CSV. TickTick: Settings › Backup & Import › Generate backup, on the web.',
+    },
+    {
+      title: 'Preview',
+      body: 'Tasks, repeating tasks, sub-items, projects and tags are counted, and anything that cannot come over exactly is listed with the row it came from.',
+    },
+    {
+      title: 'Import',
+      body: 'Run the same file again later and nothing is duplicated. A task you deleted stays deleted.',
+    },
+  ],
+  mapping: [
+    'Projects and lists become projects; labels, sections and board columns become tags',
+    'Sub-tasks become checklist items; priorities p1–p4 become high, medium, low and none',
+    'Due dates keep their time and time zone; repeats become AllisWell repeats when the rule is exact, and stay in the description when it is not',
+    'Imported tasks never ring as urgent alarms; completed tasks are optional',
+  ],
+  note: 'Apple Reminders has no export file, so there is no importer for it.',
+  link: { label: 'The same import as one API call', href: '/docs/api' },
+};
+
 export const download = {
   eyebrow: 'Get it',
-  title: 'In your browser, on Google Play and on the App Store',
-  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is on Google Play and the iPhone app is on the App Store, both free.',
+  title: 'In your browser, on your phone and on your desktop',
+  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is on Google Play and the iPhone app is on the App Store, both free. Windows and Linux builds are attached to every release; macOS builds from source.',
   web: {
     title: 'Web app',
     status: 'Live now',
@@ -374,6 +409,20 @@ export const download = {
       body: 'The iPhone app, on the store — the same alarm-grade reminders, offline-first sync and Home Screen widget.',
       icon: 'apple',
       cta: { label: 'Download on the App Store', href: APP_STORE_URL },
+    },
+    {
+      name: 'Windows',
+      status: 'Download',
+      body: 'Windows 10 and 11, 64-bit: unzip and run alliswell.exe. Not code-signed yet, so SmartScreen asks once: More info › Run anyway.',
+      icon: 'windows',
+      cta: { label: 'Download for Windows (.zip)', href: WINDOWS_DOWNLOAD_URL },
+    },
+    {
+      name: 'Linux',
+      status: 'Download',
+      body: '64-bit: extract and run ./alliswell. Needs GTK 3, libsecret and GStreamer, which most desktops already have.',
+      icon: 'linux',
+      cta: { label: 'Download for Linux (.tar.gz)', href: LINUX_DOWNLOAD_URL },
     },
   ],
   selfHostNote:
@@ -407,7 +456,7 @@ export const faq = [
   },
   {
     q: 'What is missing?',
-    a: 'Sharing and assignees (the workspace model exists, the UI does not), location-based reminders, and CalDAV. All three are written down in the roadmap rather than implied away.',
+    a: 'Sharing and assignees (the workspace model exists, the UI does not), location-based reminders, and tasks over CalDAV (calendar events already go to iCloud or any CalDAV calendar when the server admin turns it on). All three are written down in the roadmap rather than implied away.',
   },
 ];
 
@@ -550,7 +599,7 @@ export default {
   seo: {
     title: 'AllisWell — source-available tasks, reminders & notes you can host yourself',
     description:
-      'Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google & Apple Calendar sync. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use.',
+      'Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use.',
     ogImage: '/shots/og/home.jpg',
   },
 
@@ -584,6 +633,8 @@ export default {
   mcp: { ...mcp, copyLabel: 'Copy', copiedLabel: 'Copied' },
 
   api: { ...api, terminalTitle: 'your cron job', copyLabel: 'Copy', copiedLabel: 'Copied' },
+
+  switchFrom,
 
   comparison: comparisonTable,
 

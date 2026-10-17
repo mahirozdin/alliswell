@@ -75,6 +75,9 @@ void main() {
     await tester.pumpAndSettle();
     await openDetail(tester, 'Saatli görev');
 
+    // The When row (OPH-372) sits above the deadline now; scroll first.
+    await tester.ensureVisible(find.byKey(const Key('due-row')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('due-row')));
     await tester.pumpAndSettle();
     // The date picker opens on the current value; accept the same day.
@@ -133,6 +136,9 @@ void main() {
     await tester.pumpAndSettle();
     await openDetail(tester, 'Dokunma');
 
+    // The When row (OPH-372) sits above the deadline now; scroll first.
+    await tester.ensureVisible(find.byKey(const Key('due-row')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('due-row')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Cancel'));
@@ -143,6 +149,36 @@ void main() {
     ).toLocal();
     expect(due.hour, 9);
     expect(due.minute, 15);
+  });
+
+  // OPH-372: "When" stores a DAY, so its row asks for a day and nothing more
+  // (D5 as amended) — and backing out still changes nothing.
+  testWidgets('the When row asks for a day only; cancel changes nothing', (
+    tester,
+  ) async {
+    phone(tester);
+    final api = FakeApi();
+    final task = api.seedTask(title: 'Gün seç');
+
+    await tester.pumpWidget(await app(api));
+    await tester.pumpAndSettle();
+    await openDetail(tester, 'Gün seç');
+
+    await tester.tap(find.byKey(const Key('when-row')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+    expect(serverTask(api, task['id'] as String)['startAt'], isNull);
+
+    await tester.tap(find.byKey(const Key('when-row')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('OK'));
+    await tester.pumpAndSettle();
+    expect(find.byType(TimePickerDialog), findsNothing);
+    final when = DateTime.parse(
+      serverTask(api, task['id'] as String)['startAt'] as String,
+    ).toLocal();
+    expect((when.hour, when.minute), (0, 0), reason: 'local midnight');
   });
 
   group('OPH-192 — the planned date row', () {

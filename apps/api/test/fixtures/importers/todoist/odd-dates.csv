@@ -1,0 +1,9 @@
+TYPE,CONTENT,DESCRIPTION,PRIORITY,INDENT,AUTHOR,RESPONSIBLE,DATE,DATE_LANG,TIMEZONE,DURATION,DURATION_UNIT,DEADLINE,DEADLINE_LANG
+task,Yılsız tarih,,4,1,Mahir (40001),,Oct 20,en,Europe/Istanbul,,,,
+task,Artık gün yok,,4,1,Mahir (40001),,2026-02-29,en,Europe/Istanbul,,,,
+task,Artık gün var,,4,1,Mahir (40001),,2028-02-29,en,Europe/Istanbul,,,,
+task,Bugün saatli,,4,1,Mahir (40001),,today at 11:00,en,Europe/Istanbul,,,,
+task,Sadece gün adı,,4,1,Mahir (40001),,Friday,en,Europe/Istanbul,,,,
+task,Türkçe,,4,1,Mahir (40001),,yarın 09:00,tr,Europe/Istanbul,,,,
+task,ISO saat,,4,1,Mahir (40001),,2026-11-01T09:30:00Z,en,Europe/Istanbul,,,,
+task,Saat aralığı yok,,4,1,Mahir (40001),,Oct 20 2026 25:00,en,Europe/Istanbul,,,,
