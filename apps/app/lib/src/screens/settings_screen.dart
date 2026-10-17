@@ -268,6 +268,16 @@ class SettingsScreen extends ConsumerWidget {
                   subtitleKey: 'settings.group.slaSub',
                   path: '/settings/team/sla',
                 ),
+              // EE-308 (OPH-379): automation and routing rules. The SLA row's
+              // gate — the same verb guards both engines' doors.
+              if (may('sla.manage'))
+                _GroupRow(
+                  keyName: 'settings-group-rules',
+                  icon: Icons.rule_outlined,
+                  titleKey: 'settings.group.rules',
+                  subtitleKey: 'settings.group.rulesSub',
+                  path: '/settings/team/rules',
+                ),
               // EE-106: the public request links. Same gate shape as the SLA
               // row above — `portal.manage_links` is a plain role permission,
               // so an admin who lacks it sees no door rather than a forbidden

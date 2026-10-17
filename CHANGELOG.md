@@ -9,6 +9,7 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Enterprise: automation and routing rules can be created, ordered, tested and edited in the app.**
 - **Enterprise desk: transfer a request to another service or unit.**
 - **Ask the AI about a note or file.** Type @ in the AI chat to attach a note, a text file, a
   task or a project; only what you pick is sent, and long items are shortened with a notice.

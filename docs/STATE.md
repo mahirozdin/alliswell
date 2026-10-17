@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — OPH-378: kurumsal masada talebi başka hizmete ya da birime aktarma (uzantı EE-307); sync: başka workspace'e taşınan satır ayrıldığı akışta tombstone.
+**Last updated:** 2026-10-17 — OPH-379: kurumsal otomasyon ve yönlendirme kuralları uygulamadan yönetiliyor (uzantı EE-308).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-378: pull'da `workspace_id`'si değişen satır ayrıldığı akışta tombstone (`movedAway`, post-write kontrolü de); istemcide `ee_ticket`/`ee_ticket_comment`/`ee_ticket_assignment`/`file` tombstone'u ve rebase'i yalnız o workspace'in satırını siler; uygulamada talep detayına "Aktar" kapısı + sayfa, geçmişte "nereden → nereye" satırı; landing `transfer` yeteneği `app`. Uzantı tarafı EE-307. |
+| Last completed           | OPH-379: Ayarlar → "Otomasyon kuralları" (`/settings/team/rules`, `sla.manage`): iki sekme (otomasyon, yönlendirme), sıralı liste (sürükle + Yukarı/Aşağı), son çalışma/hata, Sürdür, kopyala/sil; koşul → işlem düzenleyicileri sunucunun sunduğu kelime dağarcığıyla, satır içi hatalar, "bir talepte dene" ve "son taleplerde dene"; landing `rules` yeteneği `app`. MCP/API: uzantının REST kapıları (EE-021, core MCP.md/API.md değişmedi). Uzantı tarafı EE-308. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

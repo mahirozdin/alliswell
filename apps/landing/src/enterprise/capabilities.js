@@ -189,7 +189,9 @@ export const CAPABILITIES = Object.freeze([
   },
   {
     key: 'rules',
-    level: 'api',
+    // OPH-379/EE-308: Settings → Automation rules — both engines (automation
+    // and routing) listed, ordered, edited and tested on a request in the app.
+    level: 'app',
     packages: all,
     tr: 'Otomasyon ve otomatik yönlendirme kuralları',
     en: 'Automation and automatic routing rules',
