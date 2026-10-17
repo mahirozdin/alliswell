@@ -62,6 +62,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The page that connects an AI app (Claude, ChatGPT) fits a phone screen.** On a narrow phone
+  its card was a little wider than the screen and scrolled sideways.
+
 - **The AI chat answers in the web app again.** Its streamed reply left out the header that
   lets the browser read it, so the web app waited forever while phones and desktops worked.
 

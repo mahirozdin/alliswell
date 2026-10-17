@@ -97,6 +97,22 @@ describe('consent page buttons', () => {
     expect(page.body).toContain('value="deny" formnovalidate');
   });
 
+  it('OPH-383: the card fits a 390 px phone (border-box, smaller padding when narrow)', async () => {
+    const client = await registerMcpClient(app);
+    const page = await openConsent(app, {
+      clientId: client.client_id,
+      challenge: pkcePair().challenge,
+    });
+    const card = page.body.match(/\.card\{([^}]*)\}/)[1];
+    // Without border-box the 32 px padding sat outside calc(100% - …) and the
+    // card overflowed a 390 px screen (scrollWidth 399).
+    expect(card).toContain('box-sizing:border-box');
+    expect(card).toContain('width:calc(100% - 32px)');
+    expect(page.body).toMatch(/@media \(max-width:420px\)\{\.card\{padding:20px\}\}/);
+    // The social buttons stay full width of the card.
+    expect(page.body).toMatch(/\.social button\{[^}]*width:100%/);
+  });
+
   it('shows neither button nor divider when no provider is configured', async () => {
     const plain = await buildTestApp();
     const client = await registerMcpClient(plain.app);

@@ -73,7 +73,8 @@ function renderPage(title, body) {
 <title>${escapeHtml(title)} — AllisWell</title>
 <style>
   body{font-family:-apple-system,system-ui,sans-serif;background:#0f172a;color:#e2e8f0;display:grid;place-items:center;min-height:100vh;margin:0}
-  .card{background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;max-width:380px;width:calc(100% - 48px)}
+  .card{box-sizing:border-box;background:#1e293b;border:1px solid #334155;border-radius:16px;padding:32px;max-width:380px;width:calc(100% - 32px);overflow-wrap:anywhere}
+  @media (max-width:420px){.card{padding:20px}}
   h1{font-size:20px;margin:0 0 4px} p{color:#94a3b8;font-size:14px;line-height:1.5}
   label{display:block;font-size:13px;color:#cbd5e1;margin:14px 0 4px}
   input[type=email],input[type=password],input[type=text]{width:100%;box-sizing:border-box;padding:10px;border-radius:8px;border:1px solid #475569;background:#0f172a;color:#e2e8f0}
