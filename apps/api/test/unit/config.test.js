@@ -203,6 +203,41 @@ describe('loadConfig AI (OPH-215)', () => {
     ).toThrow(/AI_TOKEN_KEY/);
   });
 
+  it('CalDAV connector: off by default, parsed, and a real key when on (OPH-380)', () => {
+    expect(loadConfig({}).caldav).toEqual({
+      enabled: false,
+      allowPrivateHosts: false,
+      icloudUrl: 'https://caldav.icloud.com',
+      timeoutMs: 15000,
+    });
+    const on = loadConfig({
+      CALDAV_ENABLED: 'true',
+      CALDAV_ALLOW_PRIVATE_HOSTS: '1',
+      CALDAV_ICLOUD_URL: 'http://127.0.0.1:5232',
+    });
+    expect(on.caldav).toMatchObject({
+      enabled: true,
+      allowPrivateHosts: true,
+      icloudUrl: 'http://127.0.0.1:5232',
+    });
+    expect(() => loadConfig({ CALDAV_ENABLED: 'maybe' })).toThrow(/CALDAV_ENABLED/);
+    expect(() => loadConfig({ CALDAV_ICLOUD_URL: 'caldav.icloud.com' })).toThrow(
+      /CALDAV_ICLOUD_URL/,
+    );
+    expect(() => loadConfig({ CALDAV_TIMEOUT_MS: '10' })).toThrow(/CALDAV_TIMEOUT_MS/);
+    // Production + CalDAV on + the dev/placeholder calendar key → refuse to boot.
+    expect(() =>
+      loadConfig({ NODE_ENV: 'production', ...strongSecrets, CALDAV_ENABLED: 'true' }),
+    ).toThrow(/CALENDAR_TOKEN_KEY/);
+    const ok = loadConfig({
+      NODE_ENV: 'production',
+      ...strongSecrets,
+      CALDAV_ENABLED: 'true',
+      CALENDAR_TOKEN_KEY: '0123456789abcdef'.repeat(4),
+    });
+    expect(ok.caldav.enabled).toBe(true);
+  });
+
   it('boots production without the key when AI_ENABLED=false', () => {
     const config = loadConfig({ NODE_ENV: 'production', AI_ENABLED: 'false', ...withoutAiKey });
     expect(config.ai.enabled).toBe(false);

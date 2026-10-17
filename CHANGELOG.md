@@ -9,6 +9,14 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
+- **Your tasks can go to an iCloud or any CalDAV calendar (Nextcloud, Radicale…) from the
+  server, two-way, on every platform** — off until the server admin turns on `CALDAV_ENABLED`.
+  Settings › Integrations › iCloud or CalDAV calendar: on the web, Android, Windows and Linux
+  connect iCloud with an app-specific password; any device can connect another CalDAV server.
+  Moving an event in the calendar moves the task's block, deleting it stops mirroring that
+  task, and your own events show next to your tasks. The password is checked before it is
+  kept, stored encrypted and never shown again. On an iPhone or Mac whose server already
+  writes to iCloud, the on-device Apple Calendar mirror steps aside so nothing appears twice.
 - **Enterprise: automation and routing rules can be created, ordered, tested and edited in the app.**
 - **Enterprise desk: transfer a request to another service or unit.**
 - **Ask the AI about a note or file.** Type @ in the AI chat to attach a note, a text file, a

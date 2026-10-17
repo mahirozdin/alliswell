@@ -71,7 +71,11 @@ const outcome = (decision, extra = {}) => ({ decision, ...extra });
  * Decides what one event from the sync feed means for us.
  *
  * @param {{
- *   event: object,          // Google event resource (may be `status: cancelled`)
+ *   event: object,          // the provider-neutral event, in Google's spelling:
+ *                           // {id, status?: 'cancelled', etag, updated,
+ *                           //  start: {dateTime|date}, end: {dateTime|date}, recurrence?}
+ *                           // — a Google resource as-is, or a VEVENT normalised by
+ *                           // `lib/caldav/ical.js` (OPH-380, ADR-0059)
  *   link: object|null,      // calendar_event_links row for (account, event id)
  *   task: object|null,      // the task it maps to — by link, or by extended property
  *   alreadyLinked?: boolean // that task already has a link on this account

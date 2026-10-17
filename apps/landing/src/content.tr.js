@@ -678,7 +678,9 @@ docker compose -f docker-compose.selfhost.yml up -d`,
         q: 'Neler eksik?',
         a:
           'Paylaşım ve atamalar (çalışma alanı modeli var, arayüzü yok), konuma dayalı ' +
-          'hatırlatıcılar ve CalDAV. Üçü de ima edilip geçiştirilmek yerine yol haritasında ' +
+          'hatırlatıcılar ve CalDAV üzerinden görevler (takvim etkinlikleri, sunucu yöneticisi ' +
+          'açtığında iCloud ya da herhangi bir CalDAV takvimine zaten gidiyor). Üçü de ima edilip ' +
+          'geçiştirilmek yerine yol haritasında ' +
           'yazılı.',
       },
     ],

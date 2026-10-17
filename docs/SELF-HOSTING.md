@@ -305,6 +305,31 @@ they happen. Google only pushes to a domain it has verified (Search Console →
 Google Cloud domain verification); until then AllisWell polls every few minutes
 on its own, so sync works either way.
 
+## 6a. Optional: iCloud or any CalDAV calendar
+
+Off by default. Turning it on lets your users mirror their tasks into an iCloud calendar
+(with an Apple app-specific password) or any CalDAV server — Nextcloud, Radicale, Fastmail —
+two-way, from this server, on every platform ([CALDAV.md](CALDAV.md),
+[ADR-0059](adr/0059-caldav-connector.md)).
+
+1. Set `CALENDAR_TOKEN_KEY` (`openssl rand -hex 32`) — it encrypts the stored calendar
+   passwords; production refuses to start with CalDAV on and a placeholder key.
+2. Set `CALDAV_ENABLED=true` in `.env` and restart.
+
+**What you take on:** this server then **stores your users' calendar passwords**
+(encrypted, never shown again, checked before they are kept). Whoever runs the server
+and holds the key can read those calendars — the app says so before a user connects.
+Back up `CALENDAR_TOKEN_KEY` with the database (§4b).
+
+CalDAV has no push: accounts are polled every `CALENDAR_SYNC_SWEEP_SEC` (300 s).
+
+**A Nextcloud on your LAN, or plain http:** by default the connector only talks to public
+`https://` hosts — every address is checked when it connects, so a user cannot point the
+server at your router or another internal service. `CALDAV_ALLOW_PRIVATE_HOSTS=true` lifts
+that for a LAN Nextcloud. **Every user of this instance can then make the server send
+requests into your network.** Only turn it on for an instance where you trust everyone
+with an account.
+
 ## 6b. AI (on by default — BYOK)
 
 The embedded AI track (Epic 20, [AI.md](AI.md)) is **bring-your-own-key**: users

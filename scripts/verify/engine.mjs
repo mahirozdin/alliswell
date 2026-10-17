@@ -15,7 +15,7 @@
 //   sandbox  runs on the remote sandbox when one is configured (`sbx` on PATH), against a
 //            fresh mirror of the TRACKED tree — so nothing untracked, and no secret, leaves
 //            this machine. Without a sandbox (VERIFY_SANDBOX=0, or a contributor's machine)
-//            it runs here instead, against `docker compose up -d mysql redis minio`.
+//            it runs here instead, against `docker compose up -d mysql redis minio radicale`.
 // The local leg and the sandbox leg run at the same time: they are the two slow halves
 // and neither needs the other.
 import { spawn, spawnSync } from 'node:child_process';
@@ -377,7 +377,7 @@ async function runSandboxLeg(steps, config, ctx) {
 }
 
 // No sandbox: the same steps, here, against the compose stack a contributor already runs
-// (`docker compose up -d mysql redis minio`, CONTRIBUTING.md) — with the same fresh database.
+// (`docker compose up -d mysql redis minio radicale`, CONTRIBUTING.md) — with the same fresh database.
 function localFallback(steps, config) {
   const env = (s) => ({ ...config.db.env, ...(s.env || {}) });
   const out = steps.map((s) => ({ ...s, env: env(s) }));

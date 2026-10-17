@@ -17,6 +17,7 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
@@ -26,6 +27,8 @@ import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/calendar/apple/apple_calendar_gateway.dart';
+import 'package:alliswell/src/features/calendar/apple/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
 import 'package:alliswell/src/search/search_recents.dart';
@@ -921,6 +924,78 @@ void main() {
     });
   }
 
+  // OPH-380 (ADR-0059): the iCloud / CalDAV connect sheet off an Apple
+  // device, consent visible; and Settings → Integrations with Google and a
+  // connected CalDAV account. Solid sheet surface, 44 px targets, both themes.
+  Future<void> openIntegrations(WidgetTester t) async {
+    GoRouter.of(
+      t.element(find.byType(Scaffold).first),
+    ).go('/settings/integrations');
+    await t.pumpAndSettle();
+  }
+
+  final caldavOverrides = <Override>[
+    appleCalendarGatewayProvider.overrideWithValue(_NoEventKit()),
+  ];
+
+  for (final (brightness, suffix) in [
+    (Brightness.light, 'light'),
+    (Brightness.dark, 'dark'),
+  ]) {
+    testWidgets('phone caldav connect — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_caldav_connect_$suffix',
+        seed: () => _seededApi()..caldavEnabled = true,
+        overrides: caldavOverrides,
+        navigate: (t) async {
+          await openIntegrations(t);
+          final connect = find.byKey(const Key('caldav-connect'));
+          await t.ensureVisible(connect);
+          await t.pumpAndSettle();
+          await t.tap(connect);
+          await t.pumpAndSettle();
+          await t.enterText(
+            find.byKey(const Key('caldav-username')),
+            'ben@icloud.com',
+          );
+          await t.enterText(
+            find.byKey(const Key('caldav-password')),
+            'abcd-efgh-ijkl-mnop',
+          );
+          FocusManager.instance.primaryFocus?.unfocus();
+        },
+      );
+    });
+
+    testWidgets('phone caldav connected — $suffix', skip: !_enabled, (
+      tester,
+    ) async {
+      await withShotLocale();
+      await _shoot(
+        tester,
+        size: const Size(390, 844),
+        brightness: brightness,
+        name: 'phone_caldav_connected_$suffix',
+        seed: () => _seededApi()
+          ..caldavEnabled = true
+          ..seedGoogleAccount(defaultCalendarId: 'primary')
+          ..seedCaldavAccount(),
+        overrides: caldavOverrides,
+        navigate: (t) async {
+          await openIntegrations(t);
+          final card = find.byKey(const Key('caldav-card'));
+          await t.ensureVisible(card);
+        },
+      );
+    });
+  }
+
   testWidgets('desktop home — light', skip: !_enabled, (tester) async {
     await _shoot(
       tester,
@@ -995,6 +1070,12 @@ FakeApi _aiAttachSeed() {
   api.downloadUrls[md['id'] as String] = 'https://files.test/md';
   api.downloadUrls[log['id'] as String] = 'https://files.test/log';
   return api;
+}
+
+/// Not an Apple device: the screenshot host must not depend on the OS it runs on.
+class _NoEventKit extends Fake implements AppleCalendarGateway {
+  @override
+  bool get isSupported => false;
 }
 
 final List<Override> _aiAttachOverrides = [

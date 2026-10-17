@@ -1,14 +1,16 @@
-# CALDAV.md — Apple CalDAV connector design (OPH-079, v2 scope)
+# CALDAV.md — CalDAV connector: iCloud and any CalDAV server (OPH-079 design, OPH-380 build)
 
-> **Status: design only. Nothing here is built.** This is the plan an agent picks up when the
-> CalDAV connector is scheduled (BLUEPRINT §7.3 Level 3). It is written now because the choice
-> it documents — asking users for an iCloud app-specific password — is the most
-> security-sensitive thing AllisWell would ever do, and that decision deserves writing down
-> *before* someone is halfway into the code (AGENTS.md rule 10).
+> **Status: built (OPH-380, [ADR-0059](adr/0059-caldav-connector.md)), off by default.** A
+> server admin turns it on with `CALDAV_ENABLED=true`. Events mirror two-way with Google's
+> rules; tasks as VTODO are not built (§9). Tested end to end against a real Radicale in CI;
+> real iCloud and Nextcloud are the owner's manual check (DEVICE-CHECKS.md) — public copy
+> says "tested against Radicale" until then. The sections below are the design as written
+> before the build, with §2 and §7 updated to what was decided.
 >
 > Related: [ADR-0003](adr/0003-product-name-and-blueprint-deviations.md) (mapping keys),
 > [ADR-0006](adr/0006-google-oauth-token-crypto-and-mirror-queue.md) (token crypto, queue),
-> [ADR-0007](adr/0007-google-inbound-sync-and-conflict-policy.md) (the sync shape this reuses).
+> [ADR-0007](adr/0007-google-inbound-sync-and-conflict-policy.md) (the sync shape this reuses),
+> [ADR-0059](adr/0059-caldav-connector.md) (what was built and why).
 
 ## 1. Why a CalDAV connector at all
 
@@ -26,13 +28,14 @@ must not be the *first* Apple experience a user meets.
 
 ## 2. Scope
 
-**In:** connect an iCloud account, discover calendars, mirror tasks → events, consume remote
-changes, the same two-way conflict policy as Google.
+**In:** connect an iCloud account (app-specific password) **or any CalDAV server** (Nextcloud,
+Radicale, Fastmail… — the owner asked for generic "if the design allows", and the protocol
+surface is identical), discover calendars, mirror tasks → events, consume remote changes, the
+same two-way conflict policy as Google, and the user's own events cached for display
+(ADR-0008), recurring ones expanded.
 
-**Out (v2 too):** other CalDAV servers as a supported product (Fastmail, Nextcloud, Radicale
-will very likely work — the protocol is standard — but only iCloud is *tested* and only iCloud
-is claimed); scheduling/invitations (RFC 6638); VTODO sync (AllisWell tasks are not VTODOs —
-see §7); free/busy.
+**Out:** scheduling/invitations (RFC 6638); free/busy; **VTODO sync** — specified as a
+follow-up in §9, not built.
 
 ## 3. The security problem — read this before writing any code
 
@@ -196,24 +199,21 @@ surface is PROPFIND/REPORT/PUT/DELETE plus an iCalendar serializer. An ICS libra
 handling is a bug farm, and unlike HTTP it is not a small surface. That is a new dependency
 category → its own ADR when the time comes (AGENTS.md rule 6).
 
-## 7. Open questions — resolve these before implementing
+## 7. Open questions — answered (ADR-0059)
 
-1. **Tasks as VEVENT, not VTODO.** iCloud Reminders are VTODOs in a separate collection.
-   AllisWell mirrors tasks as calendar *blocks* (§7.1), so VEVENT is right for the mirror —
-   but a user seeing "[Task] …" in Calendar rather than Reminders is a product call worth
-   making explicitly, and two-way Reminders sync is a different (larger) feature.
-2. **Rate limits are undocumented.** Apple publishes none for CalDAV. Assume they exist:
-   respect `Retry-After`, back off on 429/503, and do not let the sweep hammer a partition.
-   Measure before choosing a poll interval.
-3. **X-property survival** (§4.4) — must be tested against real iCloud, not assumed.
-4. **Testing without Apple.** Google's suite runs against an in-process fake
-   (`test/helpers/fakegoogle.js`) and real Google is not in CI. Do the same: a fake CalDAV
-   server modelling the *documented* contract, plus a manual verification checklist against a
-   real iCloud account (like Epic 07's device pass). A real Radicale in CI is a tempting
-   middle ground — it proves the protocol, but it is not iCloud, so it cannot prove the
-   quirks. Decide deliberately.
-5. **Where the warning lives.** §3.3's consent text must be reviewed as *product copy*, not
-   left to the implementing agent.
+1. **Tasks as VEVENT, not VTODO** — yes: the mirror writes calendar blocks, like Google's.
+   Two-way Reminders/VTODO is a different feature (§9).
+2. **Rate limits** — 2 requests in flight per host, 429/503 retried while obeying
+   `Retry-After` (cap 60 s), polling at the existing `CALENDAR_SYNC_SWEEP_SEC` (300 s); an
+   unchanged calendar costs one small REPORT.
+3. **X-property survival** — proven on Radicale; for iCloud it is part of the owner's check.
+   Nothing depends on it: the link table, the URL, the deterministic href and the UID each
+   find the task.
+4. **Testing** — both: an in-process fake for the iCloud quirks
+   (`test/helpers/fakecaldav.js`) and a real Radicale 3.8.3 in CI
+   (`test/integration/caldav-radicale.test.js`). Real iCloud/Nextcloud: DEVICE-CHECKS.md.
+5. **The warning** — drafted as product copy (`calendar.caldav.consentIcloud`,
+   `consentGeneric`, `disconnectBodyIcloud`, EN + TR) and queued for the owner's review.
 
 ## 8. References
 
@@ -226,3 +226,39 @@ category → its own ADR when the time comes (AGENTS.md rule 6).
 7. [Aurinko — Demystifying CalDAV: Apple Calendar integration](https://www.aurinko.io/blog/caldav-apple-calendar-integration/) — partition hosts, "no patching", etag handling
 8. [Nylas — iCloud CalDAV settings](https://cli.nylas.com/guides/icloud-caldav-settings) — endpoint, Basic auth, app-specific password requirement
 9. [Tasks.org — iCloud CalDAV synchronization](https://tasks.org/docs/caldav_icloud/) — a shipped Android client's account of the same flow
+
+## 9. VTODO follow-up — tasks as CalDAV to-dos (not built; the owner chooses)
+
+Self-hosters asked for standard task sync (Nextcloud Tasks, DAVx5 + jtx/Tasks.org,
+Thunderbird). There are two honest ways to give it; they are alternatives, not phases.
+
+**A. The connector also syncs VTODO.** Per account, an opt-in "Tasks over CalDAV" picks a
+VTODO collection; every task becomes a VTODO there, both ways. Field map:
+
+| AllisWell | VTODO | Notes |
+| --- | --- | --- |
+| `title` | `SUMMARY` | |
+| `description` | `DESCRIPTION` | plain text; markdown passes through |
+| `due_at` | `DUE` | a DATE-only `DUE` becomes 23:59 local (the creation default) |
+| `start_at` | `DTSTART` | a day; the "When" field (ADR-0053) |
+| `status` | `STATUS` | `NEEDS-ACTION`/`IN-PROCESS` → open; `COMPLETED` ↔ completed (+ `COMPLETED` stamp); `CANCELLED` ↔ cancelled |
+| `priority` | `PRIORITY` | 1–4 ↔ high, 5 ↔ medium, 6–9 ↔ low, 0/absent ↔ none |
+| tags | `CATEGORIES` | by name; unknown names create tags |
+| `parent_task_id` | `RELATED-TO;RELTYPE=PARENT` | |
+| `task_series` | `RRULE` | only the ADR-0020 subset round-trips; anything else is read-only |
+| reminders | `VALARM` | outbound only — alarms stay the app's (ADR-0015) |
+
+The hard part is **conflicts**: a VTODO has one `LAST-MODIFIED` for the whole resource, while
+AllisWell resolves field by field (BLUEPRINT §6.5). Without a per-field base, two edits to
+different fields of the same task on two sides become whole-resource last-write-wins, and one
+of them is lost. A faithful version stores the last-synced VTODO as the merge base and does a
+three-way field merge — more machinery than the event mirror, whose only mapped fields are two
+instants.
+
+**B. AllisWell is the CalDAV server.** `/dav/` serves each workspace's tasks as a VTODO
+collection (and optionally its events), authenticated with an app password/API key; DAVx5,
+Thunderbird and Apple Reminders connect to AllisWell directly. The server is canonical, so the
+field-level merge happens where it already does (sync push), and nothing is polled.
+
+Either way: a parked line in TASKS.md, an ADR, rule 12 (MCP/API already cover tasks), and a
+real-client check list. **The owner decides A or B.**

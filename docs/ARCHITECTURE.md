@@ -33,7 +33,7 @@
 └────────────────┘              └────────────────┘
         │
         └─ Calendar providers: Google Calendar API (OAuth, webhooks, incremental sync)
-                               Apple EventKit (on-device bridge) · CalDAV (v2)
+                               Apple EventKit (on-device bridge) · CalDAV (iCloud & any server, off by default)
 ```
 
 ## 2. Monorepo layout
@@ -217,7 +217,18 @@ table. `AppleMirrorEngine` runs both directions in one serialised queue: outboun
 replica emit, and read-back (OPH-369, ADR-0050) on the first pass, every resume and before
 each outbound update — `apple_read_back.dart` decides with `inbound.js`'s semantics (time
 onto `scheduled_*` through the task store, echo from the link signature, a deleted event
-suppresses that task in that calendar). CalDAV connector deferred to v2 (ADR-0003).
+suppresses that task in that calendar).
+
+CalDAV (OPH-380, ADR-0059, [CALDAV.md](CALDAV.md)), behind `CALDAV_ENABLED`: the same two
+queues, a second transport. `queue/caldav-mirror.js` writes `desiredBlockForTask` as a VEVENT
+(`lib/caldav/ical.js`, ical.js) at `<calendar>/alliswell-<taskId>.ics` — `If-None-Match: *` to
+create, GET + merge + `If-Match` to update — and `queue/caldav-sync-job.js` polls RFC 6578
+sync-collection from the calendar sweep, multigets what changed and feeds the SAME
+`applyProviderEvent` reconcile (now behind a provider adapter) and `applyExternalEvent` cache.
+`lib/caldav/client.js` is hand-rolled `node:http(s)` with a host policy and the shared SSRF
+fence (`lib/net-guard.js`); the app-specific password is AES-GCM in
+`calendar_accounts.encrypted_app_password`. On an Apple device the EventKit mirror stands down
+while the server mirrors iCloud (no double events).
 
 ## 6b. File storage (Epic 14 — Cloudflare R2 / S3-compatible)
 

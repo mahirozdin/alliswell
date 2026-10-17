@@ -1,0 +1,16 @@
+# Radicale for the CalDAV integration test only (OPH-380, ADR-0059) — a real
+# CalDAV server proving the protocol end to end. NOT a deployment config: the
+# password file is plain text and holds a test-only account.
+[server]
+hosts = 0.0.0.0:5232
+
+[auth]
+type = htpasswd
+htpasswd_filename = /config/users
+htpasswd_encryption = plain
+
+[rights]
+type = owner_only
+
+[storage]
+filesystem_folder = /data/collections

@@ -129,8 +129,10 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   dosyalar bir uzantıda taranabiliyor; istemcinin presigned yüklemesi kovaya doğrudan gider
   ve taranmaz. Doğru çözüm kovada asenkron tarama + indirme kapısıdır (`files` satırında
   durum) — kendi turu.
-- **Takvim v2:** CalDAV iCloud bağlayıcısı (yalnız tasarım, [CALDAV.md](CALDAV.md),
-  `CALDAV_ENABLED` varsayılan kapalı — OPH-079).
+- **CalDAV VTODO görev senkronu** — tasarım [CALDAV.md §9](CALDAV.md); seçenek: bağlayıcının
+  VTODO'su ya da AllisWell'in kendisinin CalDAV sunucusu olması (sahip kararı).
+- **İçe aktarma önizlemesinin `googleMirror` uyarısı CalDAV hesaplarını saymıyor** (OPH-380) —
+  büyük bir içe aktarma bağlı iCloud/Nextcloud takvimini sessizce doldurur.
 
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 

@@ -105,8 +105,20 @@ function clampToDay(instant, timeZone, minutes) {
   return { start: pulledBack < startOfDay ? startOfDay : pulledBack, end: endOfDay };
 }
 
-/** @returns {object|null} Google event resource, or null = no event wanted */
-export function desiredEventForTask(task) {
+/**
+ * The provider-neutral half of the mirror rule (OPH-380, CALDAV.md §6): WHICH
+ * block, WHICH title, gone-or-not — decided once, encoded per provider.
+ * `desiredEventForTask` turns it into a Google event resource; the CalDAV
+ * connector turns it into a VEVENT (`lib/caldav/ical.js`). Two encoders over
+ * one decision is what keeps the two mirrors from drifting apart.
+ *
+ * @param {object} task
+ * @returns {{
+ *   taskId: string, workspaceId: string, projectId: string|null, revision: number,
+ *   title: string, description: string|null, start: Date, end: Date
+ * }|null} null = no event wanted
+ */
+export function desiredBlockForTask(task) {
   if (!task || task.deleted_at != null) return null;
   // The suppression flag (ADR-0021 §3) — set only by the inbound side, when the
   // user removed our event themselves.
@@ -118,19 +130,35 @@ export function desiredEventForTask(task) {
 
   const done = task.status === 'completed';
   return {
-    summary: `${done ? DONE_PREFIX : ''}[Task] ${task.title}`,
-    ...(task.description ? { description: task.description } : {}),
+    taskId: task.id,
+    workspaceId: task.workspace_id,
+    projectId: task.project_id ?? null,
+    revision: task.revision,
+    title: `${done ? DONE_PREFIX : ''}[Task] ${task.title}`,
+    description: task.description ? task.description : null,
+    start: block.start,
+    end: block.end,
+  };
+}
+
+/** @returns {object|null} Google event resource, or null = no event wanted */
+export function desiredEventForTask(task) {
+  const block = desiredBlockForTask(task);
+  if (!block) return null;
+  return {
+    summary: block.title,
+    ...(block.description ? { description: block.description } : {}),
     start: { dateTime: block.start.toISOString() },
     end: { dateTime: block.end.toISOString() },
     // ADR-0003 mapping keys + §7.1 metadata. The mapping TABLE stays the
     // source of truth; these let foreign events be re-linked (OPH-073).
     extendedProperties: {
       private: {
-        alliswell_task_id: task.id,
-        alliswell_workspace_id: task.workspace_id,
-        ...(task.project_id ? { alliswell_project_id: task.project_id } : {}),
+        alliswell_task_id: block.taskId,
+        alliswell_workspace_id: block.workspaceId,
+        ...(block.projectId ? { alliswell_project_id: block.projectId } : {}),
         alliswell_source: 'alliswell',
-        alliswell_revision: String(task.revision),
+        alliswell_revision: String(block.revision),
       },
     },
   };

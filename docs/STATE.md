@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — OPH-379: kurumsal otomasyon ve yönlendirme kuralları uygulamadan yönetiliyor (uzantı EE-308).
+**Last updated:** 2026-10-17 — OPH-380: iCloud ve herhangi bir CalDAV takvimi sunucudan, iki yönlü (varsayılan kapalı, `CALDAV_ENABLED`).
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-379: Ayarlar → "Otomasyon kuralları" (`/settings/team/rules`, `sla.manage`): iki sekme (otomasyon, yönlendirme), sıralı liste (sürükle + Yukarı/Aşağı), son çalışma/hata, Sürdür, kopyala/sil; koşul → işlem düzenleyicileri sunucunun sunduğu kelime dağarcığıyla, satır içi hatalar, "bir talepte dene" ve "son taleplerde dene"; landing `rules` yeteneği `app`. MCP/API: uzantının REST kapıları (EE-021, core MCP.md/API.md değişmedi). Uzantı tarafı EE-308. |
+| Last completed           | OPH-380: sunucu tarafı CalDAV bağlayıcısı (ADR-0059) — iCloud (uygulamaya özel parola) + genel CalDAV (Nextcloud, Radicale); etkinlikler Google kurallarıyla iki yönlü (ortak `applyProviderEvent`), kullanıcının kendi etkinlikleri (tekrarlılar açılarak) önbellekte; parola AES-GCM, saklamadan önce doğrulanır, asla dönmez; Ayarlar › Entegrasyonlar kartı + bağlanma sayfası; Apple cihazda sunucu iCloud'a yazıyorsa EventKit aynası çekilir. MCP aracı yok (MCP.md), API'de bağlanma yalnız oturum (API.md). VTODO yapılmadı (CALDAV.md §9). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -84,6 +84,14 @@
     `AWAppShortcuts.swift` bu makinede hiç derlenmedi), sonra DEVICE-CHECKS "Siri ve kısayollar"
     (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
 
+17. **OPH-380 CalDAV** — test sunucusunda `CALDAV_ENABLED=true` + gerçek `CALENDAR_TOKEN_KEY`, sonra
+    DEVICE-CHECKS "CalDAV (iCloud / Nextcloud)": gerçek iCloud (uygulamaya özel parola, X-prop
+    sağ kalıyor mu → CALDAV.md §4.4) ve gerçek Nextcloud; Apple cihazda çift ayna koruması.
+    Onay/bağlantı kesme metinlerini (EN+TR `calendar.caldav.*`) ve PRIVACY(.tr) bölümünü ürün/hukuk
+    metni olarak gözden geçir. alliswell.space'te açmak SAHİBİN kararı; açılana dek kamu metni
+    "sunucu yöneticisi açtığında" der. VTODO yönü (CALDAV.md §9: A bağlayıcı / B AllisWell CalDAV
+    sunucusu) sahibin kararı.
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
@@ -137,6 +145,12 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 - **AI'ya ek (2026-10-17, ADR-0058):** yalnız "@" ile seçilen gönderilir (otomatik bağlamda not ve
   dosya yok); not/metin dosyası/görev/proje; PDF/görsel/Office eklenmez (çıkarım yolu yok); ekler
   sohbet boyunca kalır; ekli turda görev kapısı atlanır (ekten görev çıkarılmaz).
+- **CalDAV (2026-10-17, ADR-0059):** iCloud + genel CalDAV birlikte; hepsi `apple_caldav` +
+  `caldav_kind` (API `caldav` der); varsayılan kapalı, özel/LAN adres ve http yalnız
+  `CALDAV_ALLOW_PRIVATE_HOSTS` ile; iCloud seçeneği yalnız Apple olmayan cihazda, genel her yerde;
+  kullanıcı başına çalışma alanında tek hesap; sunucu iCloud'a yazarken cihazdaki EventKit aynası
+  kendi etkinliklerini siler ve durur; yoklama 300 sn; kendi etkinlikleri tekrarlılar dahil
+  önbellekte (seri başına ≤500); bağlanma yalnız oturum, MCP aracı yok; VTODO yok (sahip seçer).
 - **Görseller üretilir, çekilmez:** belge ve mağaza görüntüleri golden testlerden ve demo tohumundan;
   gerçek kullanıcı verisi hiçbir belgeye girmez.
 

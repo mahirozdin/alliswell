@@ -1,5 +1,6 @@
 import { GoogleClient } from '../lib/google.js';
 import { encryptSecret, decryptSecret } from '../lib/crypto.js';
+import { createCaldavClient } from '../lib/caldav/client.js';
 
 /** One client per app is plenty — it is stateless over fetch. */
 export function googleClientFor(app) {
@@ -55,4 +56,64 @@ export async function getFreshAccessToken(app, account) {
     }
     throw err;
   }
+}
+
+// ── CalDAV (OPH-380, ADR-0059) ─────────────────────────────────────────────
+
+/** `provider_account_id` of a CalDAV account: `<host>/<username>`. */
+export function caldavIdentity(host, username) {
+  return `${String(host).toLowerCase()}/${username}`;
+}
+
+/** The username half of a CalDAV `provider_account_id`. */
+export function caldavUsername(account) {
+  const id = String(account.provider_account_id ?? '');
+  const slash = id.indexOf('/');
+  return slash === -1 ? id : id.slice(slash + 1);
+}
+
+/** The host half of a CalDAV `provider_account_id`. */
+export function caldavHost(account) {
+  const id = String(account.provider_account_id ?? '');
+  const slash = id.indexOf('/');
+  return slash === -1 ? '' : id.slice(0, slash);
+}
+
+const reauth = (message) =>
+  Object.assign(new Error(message), { code: 'CALENDAR_ACCOUNT_REAUTH_REQUIRED' });
+
+/**
+ * The account's CalDAV client, its password decrypted for this call only.
+ * A row without ciphertext (disconnected, or a password rejected earlier)
+ * throws `CALENDAR_ACCOUNT_REAUTH_REQUIRED` — the same contract as Google's
+ * `getFreshAccessToken`, so callers skip it the same way.
+ */
+export function caldavClientForAccount(app, account) {
+  if (!account.encrypted_app_password) throw reauth('CalDAV account has no stored password');
+  const password = decryptSecret(account.encrypted_app_password, app.config.calendar.tokenKey);
+  return createCaldavClient({
+    kind: account.caldav_kind === 'icloud' ? 'icloud' : 'generic',
+    serverUrl: account.caldav_server_url ?? account.calendar_home_url,
+    username: caldavUsername(account),
+    password,
+    config: app.config.caldav,
+  });
+}
+
+/**
+ * The server said 401: the app-specific password was revoked (or changed).
+ * Retrying cannot fix that, so the account flips to `error` — and the card asks
+ * the user to reconnect — instead of decaying silently (CALDAV.md §6).
+ */
+export async function markCaldavReauth(app, account) {
+  await app.db('calendar_accounts').where({ id: account.id }).update({
+    status: 'error',
+    last_error: 'password rejected — reconnect the calendar',
+    updated_at: new Date(),
+  });
+}
+
+/** Absolute URL for a stored CalDAV path (hrefs and calendar paths are paths). */
+export function caldavUrl(account, path) {
+  return new URL(path, account.calendar_home_url ?? account.caldav_server_url).href;
 }

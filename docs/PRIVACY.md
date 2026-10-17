@@ -2,7 +2,7 @@
 
 **Languages:** **English** · [Türkçe](PRIVACY.tr.md)
 
-**Last updated: 2026-07-31**
+**Last updated: 2026-10-17**
 
 This policy explains what AllisWell collects, why, and what you can do about it.
 It applies to the AllisWell apps and to the hosted service at
@@ -59,9 +59,10 @@ tell when a session was created.
 | Running your account and syncing your content | Performance of a contract, Art. 6(1)(b) | Directly related to the performance of a contract, Art. 5/2-(c) |
 | Keeping the service secure, preventing abuse  | Legitimate interests, Art. 6(1)(f)      | Legitimate interest, Art. 5/2-(f)                               |
 | Google Calendar connection                    | Consent, Art. 6(1)(a)                   | Explicit consent (açık rıza)                                    |
+| iCloud / CalDAV calendar connection           | Consent, Art. 6(1)(a)                   | Explicit consent (açık rıza)                                    |
 | Meeting legal obligations                     | Legal obligation, Art. 6(1)(c)          | Legal obligation, Art. 5/2-(ç)                                  |
 
-You can withdraw consent for the Google Calendar connection at any time by
+You can withdraw consent for a calendar connection (Google, iCloud or CalDAV) at any time by
 disconnecting it. That does not affect anything we did before you withdrew it.
 
 ## Files you upload
@@ -127,6 +128,25 @@ privacy policy.
 Handled entirely on your device through Apple's EventKit. Nothing about your
 Apple calendars is sent to our servers, and we cannot see them.
 
+## iCloud or CalDAV calendar (optional)
+
+Only if the server you use has turned this on, and only if you connect it:
+
+- You give us your calendar **user name and password** — for iCloud, an
+  app-specific password, never your Apple Account password. We check it with the
+  calendar server first and keep it only if it works, **encrypted at rest with
+  AES-256-GCM**. It never leaves the server and is never sent back to the app.
+- Your tasks are written as events into the calendar you pick. This means the
+  task's **title and description** are sent to that calendar server (Apple for
+  iCloud, or the server you name).
+- Events from that calendar are read back so you can see them next to your tasks,
+  and moving one of your task events there moves the task's block.
+
+Disconnecting deletes the password from our server and stops all of this. We
+cannot cancel an Apple app-specific password for you: revoke it at
+appleid.apple.com. Events already written to your calendar stay there. Apple's
+handling of your iCloud data is governed by Apple's own privacy policy.
+
 ## AI features (optional)
 
 AI is **off until you turn it on** — no provider, no AI surfaces. Nothing here
@@ -186,12 +206,13 @@ No one, other than the infrastructure we need to run the service. Specifically:
 
 The processors we rely on are our server and database hosting, Cloudflare R2 for
 the files you upload, **Google (Firebase)** for the crash and usage reporting
-above, and — only if you connect them — Google for calendar sync and the **AI
+above, and — only if you connect them — Google, Apple (iCloud) or the CalDAV server you
+name for calendar sync and the **AI
 provider you choose** (Anthropic, OpenAI, Google Gemini,
 OpenRouter, or your own Ollama, which stays local). Cloudflare, Google and the
 cloud AI providers are international, so data handled by them may be stored or
 processed outside Türkiye and the EU. Where that happens, it is either necessary
-to perform our contract with you or, for Google Calendar and AI features, based
+to perform our contract with you or, for calendar connections and AI features, based
 on your explicit consent.
 
 ## Enterprise enquiries

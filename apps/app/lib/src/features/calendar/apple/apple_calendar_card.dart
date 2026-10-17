@@ -5,6 +5,7 @@ import '../../../i18n/i18n.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
+import '../../integrations/providers.dart';
 import 'apple_calendar_gateway.dart';
 import 'providers.dart';
 
@@ -126,9 +127,28 @@ class _Connected extends ConsumerWidget {
     final tokens = context.awTokens;
     final chosen = ref.watch(appleCalendarIdProvider);
     final hasCalendar = chosen.isNotEmpty;
+    // OPH-380: the server already writes this workspace's tasks to iCloud, so
+    // the device mirror stands down (ADR-0059) — and says why.
+    final serverMirrors = ref.watch(serverMirrorsIcloudProvider) == '1';
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        if (serverMirrors)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              AwSpace.x3,
+              AwSpace.x4,
+              0,
+            ),
+            child: Text(
+              'calendar.appleServerMirrors'.tr(),
+              key: const Key('apple-server-mirrors'),
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ),
         ListTile(
           leading: Icon(
             Icons.event_available_outlined,

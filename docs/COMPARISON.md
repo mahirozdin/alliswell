@@ -109,7 +109,7 @@ list every screenshot, the landing page and the store copy draw from.
 | Your own Google events flow **back into Home**, next to your tasks                             | OPH-083 |
 | Apple Calendar via an on-device **EventKit** bridge — one-way for now (tasks → events)        | Epic 08 |
 | **Every task is on the calendar — and it is not a setting.** The mirror stopped being a toggle | OPH-210 |
-| CalDAV — designed, parked for v2                                                              | CALDAV.md |
+| iCloud or any CalDAV calendar (Nextcloud, Radicale…) from the server — events two-way, off until the admin enables it; tasks are not served as CalDAV/VTODO | OPH-380 |
 
 ### Search
 
@@ -310,7 +310,7 @@ Writing these down is what makes §4 trustworthy.
 | **Ecosystem reach** — Siri, Gmail side panel, Watch complications | Apple, Google | Widgets ship; Siri/Watch integration is designed (OPH-183), not delivered. |
 | **Design polish over years** | Things 3 | We took their model and our own design system is strict — but they have had ten years to sand the corners. |
 | **Localisation breadth** | all of them | Two languages. Adding one is a JSON file, which is the point, but the file has to be written. |
-| **Sharing, CalDAV, a public demo, importers beyond Todoist/TickTick** | Vikunja, Nextcloud Tasks, Tasks.org | Not built — see §7. We import Todoist and TickTick exports (OPH-371). |
+| **Sharing, tasks over CalDAV, a public demo, importers beyond Todoist/TickTick** | Vikunja, Nextcloud Tasks, Tasks.org | Not built — see §7. Calendar events go to any CalDAV calendar (OPH-380); we import Todoist and TickTick exports (OPH-371). |
 
 Two more, said plainly: **self-hosting is work.** A managed app has no
 `docker compose`, no TLS certificate, no backups to think about. And
@@ -440,7 +440,7 @@ Legend: ● yes · ◐ partly (the cell says how) · ○ no · — not checked.
 | Repeating tasks | ● | ● | ● | ● | ◐ since 0.18 (2026-06), open bugs |
 | Monthly on the 31st clamps to month end | ● | — | — | — | — |
 | Two-way Google Calendar | ● | ○ | — | ○ (Google Tasks, not Calendar) | ○ |
-| CalDAV | ○ designed, not built | ● | ◐ basic | ◐ name-your-price tier | ● native |
+| CalDAV | ◐ calendar events over CalDAV (iCloud, Nextcloud…); tasks are not served as CalDAV/VTODO | ● | ◐ basic | ◐ name-your-price tier | ● native |
 | Sharing | ○ no sharing UI | ● users · teams · link shares | ○ | ◐ Cloud tier, Friends & Family | ● via Nextcloud calendar sharing |
 | Import from other apps | ◐ Todoist · TickTick (wizard) + API bulk import | ● Todoist · Trello · MS To Do · TickTick · Planka · WeKan · CSV | — | ◐ connects to Google Tasks / MS To Do | — |
 | Public demo | ○ | ● try.vikunja.io | ● web app, no account | ○ | ○ |
@@ -453,8 +453,9 @@ Legend: ● yes · ◐ partly (the cell says how) · ○ no · — not checked.
 - **Sharing.** Vikunja shares projects with users, teams and links; Nextcloud shares
   through its calendars; Tasks.org Cloud has family lists. We have no sharing UI — the
   workspace model exists, the screens do not.
-- **CalDAV.** Three of the four speak it, so any CalDAV client works with them. Ours is
-  [designed](CALDAV.md) and not built.
+- **CalDAV.** Three of the four serve tasks over it, so any CalDAV client works with them.
+  Ours writes calendar events to an iCloud or CalDAV calendar ([CALDAV.md](CALDAV.md)), but a
+  CalDAV task client (DAVx⁵, Thunderbird) cannot read AllisWell's tasks yet.
 - **Trying before installing.** Vikunja has a public demo and Super Productivity runs in
   the browser without an account. We have neither.
 - **Importers.** Vikunja imports from seven sources. We read two (Todoist and TickTick, a

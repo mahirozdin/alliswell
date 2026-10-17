@@ -3,11 +3,16 @@ import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/calendar/apple/apple_calendar_gateway.dart';
 import 'package:alliswell/src/features/calendar/apple/apple_mirror.dart';
 import 'package:alliswell/src/features/calendar/apple/apple_mirror_engine.dart';
+import 'package:alliswell/src/features/calendar/apple/providers.dart';
+import 'package:alliswell/src/core/persisted_prefs.dart';
+import 'package:alliswell/src/features/integrations/providers.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 
@@ -424,6 +429,61 @@ void main() {
       expect(await links.get('T2'), isNull);
       expect(await links.get('T1'), isNotNull); // survivor untouched
     });
+
+    test(
+      'retireAll deletes every event it made and clears the map (OPH-380)',
+      () async {
+        await engine().reconcileTask(
+          _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
+        );
+        await engine().reconcileTask(
+          _task('T2', due: DateTime.utc(2030, 6, 2, 12)),
+        );
+        await engine().retireAll();
+        expect(gateway.deleted, containsAll(['ev-1', 'ev-2']));
+        expect(await links.all(), isEmpty);
+      },
+    );
+
+    test(
+      'the server mirroring iCloud stands the device mirror down (ADR-0059)',
+      () async {
+        await engine().reconcileTask(
+          _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
+        );
+        final saves = gateway.saved.length;
+        final mirror = engine();
+        final container = ProviderContainer(
+          overrides: [
+            appleAccessProvider.overrideWith(
+              (_) async => EventKitAccess.fullAccess,
+            ),
+            appleCalendarIdProvider.overrideWith(
+              () => PersistedChoice('apple_calendar_id', fallback: 'cal-1'),
+            ),
+            serverMirrorsIcloudProvider.overrideWith(
+              () => PersistedChoice('caldav_icloud_active', fallback: '1'),
+            ),
+            caldavIntegrationProvider.overrideWith((_) async => null),
+            appleMirrorEngineProvider.overrideWithValue(mirror),
+            openTasksProvider.overrideWith(
+              (_) => Stream.value([
+                _task('T1', due: DateTime.utc(2030, 6, 1, 12)),
+                _task('T3', due: DateTime.utc(2030, 6, 3, 12)),
+              ]),
+            ),
+          ],
+        );
+        addTearDown(container.dispose);
+        await container.read(appleAccessProvider.future);
+        container.read(appleMirrorProvider);
+        await pumpEventQueue(times: 50);
+        // Nothing new was written, and what the device made is gone.
+        expect(gateway.saved.length, saves);
+        expect(gateway.deleted, contains('ev-1'));
+        expect(await links.all(), isEmpty);
+      },
+    );
 
     test('does nothing on a platform without EventKit', () async {
       final off = AppleMirrorEngine(

@@ -37,6 +37,7 @@ import notificationDeviceRoutes from './routes/notification-devices.js';
 import pushRoutes from './routes/push.js';
 import reminderRoutes from './routes/reminders.js';
 import googleIntegrationRoutes from './routes/integrations-google.js';
+import caldavIntegrationRoutes from './routes/integrations-caldav.js';
 import storageRoutes from './routes/storage.js';
 import fileRoutes from './routes/files.js';
 import folderRoutes from './routes/folders.js';
@@ -219,6 +220,9 @@ export async function buildApp({
   await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
   await app.register(reminderRoutes, { prefix: '/api/v1' });
   await app.register(googleIntegrationRoutes, { prefix: '/api/v1' });
+  // OPH-380: iCloud / any CalDAV server (ADR-0059). Always registered so the
+  // reference is stable; answers CALDAV_NOT_ENABLED while CALDAV_ENABLED is off.
+  await app.register(caldavIntegrationRoutes, { prefix: '/api/v1' });
   await app.register(storageRoutes, { prefix: '/api/v1' });
   await app.register(fileRoutes, { prefix: '/api/v1' });
   await app.register(folderRoutes, { prefix: '/api/v1' });

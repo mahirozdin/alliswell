@@ -619,6 +619,140 @@ class FakeApi {
     return account;
   }
 
+  // ── iCloud / CalDAV (OPH-380) — mirrors routes/integrations-caldav.js ──
+
+  /// `CALDAV_ENABLED` on the server. Off by default, like the real default:
+  /// the card then hides and every other suite is unaffected.
+  bool caldavEnabled = false;
+
+  /// This user's CalDAV accounts, in the server's `accountSchema` shape.
+  final List<Map<String, dynamic>> caldavAccounts = [];
+
+  /// What the CalDAV server lists for the account.
+  List<Map<String, dynamic>> caldavCalendars = [
+    {'url': '/1234/calendars/home/', 'name': 'Ev', 'color': '#FF2968'},
+  ];
+
+  /// The next connect fails with this code (422/502), then clears.
+  String? caldavConnectError;
+
+  /// Every connect body, so tests can assert what the app sent.
+  final List<Map<String, dynamic>> caldavConnectBodies = [];
+
+  Map<String, dynamic> seedCaldavAccount({
+    String id = 'CAL1',
+    String server = 'icloud',
+    String serverHost = 'caldav.icloud.com',
+    String username = 'ben@icloud.com',
+    String status = 'active',
+    String? calendarUrl = '/1234/calendars/home/',
+    String? calendarName = 'Ev',
+  }) {
+    final account = {
+      'id': id.padRight(26, '0'),
+      'provider': 'caldav',
+      'server': server,
+      'serverHost': serverHost,
+      'serverUrl': server == 'icloud' ? null : 'https://$serverHost/',
+      'username': username,
+      'status': status,
+      'calendarUrl': calendarUrl,
+      'calendarName': calendarName,
+      'lastSyncedAt': null,
+      'lastError': null,
+      'createdAt': '2026-10-17T10:00:00.000Z',
+      'updatedAt': '2026-10-17T10:00:00.000Z',
+    };
+    caldavAccounts.add(account);
+    return account;
+  }
+
+  Future<ResponseBody>? _caldav(
+    String path,
+    RequestOptions options,
+    Map<String, dynamic>? body,
+  ) {
+    final wsPath = '/api/v1/workspaces/$workspaceId/integrations/caldav';
+    if (path == wsPath && options.method == 'GET') {
+      return Future.value(
+        jsonBody(200, {'enabled': caldavEnabled, 'items': caldavAccounts}),
+      );
+    }
+    if (path == wsPath && options.method == 'POST') {
+      caldavConnectBodies.add(Map<String, dynamic>.from(body ?? const {}));
+      if (!caldavEnabled) {
+        return Future.value(
+          jsonBody(503, {'code': 'CALDAV_NOT_ENABLED', 'message': 'off'}),
+        );
+      }
+      final failure = caldavConnectError;
+      if (failure != null) {
+        caldavConnectError = null;
+        final status = switch (failure) {
+          'CALDAV_UNREACHABLE' => 502,
+          'CALDAV_ALREADY_CONNECTED' => 409,
+          _ => 422,
+        };
+        return Future.value(
+          jsonBody(status, {'code': failure, 'message': failure}),
+        );
+      }
+      final single = caldavCalendars.length == 1 ? caldavCalendars.first : null;
+      caldavAccounts.clear();
+      final account = seedCaldavAccount(
+        server: body?['server'] as String? ?? 'generic',
+        serverHost: body?['server'] == 'icloud'
+            ? 'caldav.icloud.com'
+            : Uri.parse(body?['url'] as String? ?? 'https://x').host,
+        username: body?['username'] as String? ?? '',
+        calendarUrl: single?['url'] as String?,
+        calendarName: single?['name'] as String?,
+      );
+      return Future.value(
+        jsonBody(201, {'account': account, 'calendars': caldavCalendars}),
+      );
+    }
+    final calendars = RegExp(
+      r'^/api/v1/integrations/caldav/accounts/([^/]+)/calendars$',
+    ).firstMatch(path);
+    if (calendars != null && options.method == 'GET') {
+      return Future.value(jsonBody(200, {'items': caldavCalendars}));
+    }
+    final account = RegExp(
+      r'^/api/v1/integrations/caldav/accounts/([^/]+)$',
+    ).firstMatch(path);
+    if (account != null) {
+      final index = caldavAccounts.indexWhere(
+        (a) => a['id'] == account.group(1),
+      );
+      if (index < 0) {
+        return Future.value(
+          jsonBody(404, {'code': 'CALENDAR_ACCOUNT_NOT_FOUND', 'message': ''}),
+        );
+      }
+      if (options.method == 'PATCH') {
+        final url = body?['calendarUrl'];
+        final chosen = caldavCalendars.where((c) => c['url'] == url);
+        if (chosen.isEmpty) {
+          return Future.value(
+            jsonBody(422, {'code': 'CALDAV_UNKNOWN_CALENDAR', 'message': ''}),
+          );
+        }
+        caldavAccounts[index] = {
+          ...caldavAccounts[index],
+          'calendarUrl': url,
+          'calendarName': chosen.first['name'],
+        };
+        return Future.value(jsonBody(200, caldavAccounts[index]));
+      }
+      if (options.method == 'DELETE') {
+        caldavAccounts.removeAt(index);
+        return Future.value(jsonBody(204, const <String, dynamic>{}));
+      }
+    }
+    return null;
+  }
+
   /// AI settings + extract + actions (Epic 20). Returns null when the path is
   /// not an AI route (fall through); a 404 for every /ai/* when disabled.
   Future<ResponseBody>? _ai(
@@ -934,6 +1068,9 @@ class FakeApi {
 
     final google = _google(path, options, body);
     if (google != null) return google;
+
+    final caldav = _caldav(path, options, body);
+    if (caldav != null) return caldav;
 
     final filesRes = _files(path, options, body);
     if (filesRes != null) return filesRes;

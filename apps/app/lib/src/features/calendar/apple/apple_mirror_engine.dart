@@ -124,6 +124,26 @@ class AppleMirrorEngine {
     return _running ??= _drain();
   }
 
+  /// OPH-380 (ADR-0059): the SERVER now mirrors this workspace into the
+  /// user's iCloud calendar over CalDAV — which Apple Calendar on this device
+  /// shows too. Two mirrors would put every task in it twice, so this one
+  /// retires: every event it created is deleted and its map cleared. Waits for
+  /// a pass in flight first, so the two never interleave.
+  Future<void> retireAll() async {
+    await _running;
+    if (!gateway.isSupported) return;
+    for (final link in await links.all()) {
+      try {
+        await gateway.deleteEvent(link.eventId);
+      } on EventKitException catch (e) {
+        // Gone already, or the store refused: the map row goes either way —
+        // a stale link must not revive the mirror later.
+        debugPrint('apple mirror retire: $e');
+      }
+      await links.delete(link.taskId);
+    }
+  }
+
   Future<void> _drain() async {
     try {
       while (_pending != null) {

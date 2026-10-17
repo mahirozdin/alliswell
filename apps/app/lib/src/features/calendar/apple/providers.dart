@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/persisted_prefs.dart';
 import '../../tasks/data/task.dart';
+import '../../integrations/providers.dart';
 import '../../tasks/providers.dart';
 import '../../../sync/providers.dart';
 import 'apple_calendar_gateway.dart';
@@ -68,6 +69,16 @@ final appleMirrorProvider = Provider<void>((ref) {
   if (access == null || !access.canMirror || calendarId.isEmpty) return;
 
   final engine = ref.watch(appleMirrorEngineProvider);
+  // OPH-380 duplicate guard (ADR-0059): when the server mirrors this
+  // workspace into iCloud over CalDAV, Apple Calendar here already shows every
+  // task — a second, device-side mirror would show each one twice. The flag
+  // is persisted (an offline launch honours it) and refreshed from the server
+  // status, which this keeps loaded while the mirror is wanted.
+  ref.listen(caldavIntegrationProvider, (_, _) {});
+  if (ref.watch(serverMirrorsIcloudProvider) == '1') {
+    unawaited(engine.retireAll());
+    return;
+  }
   List<Task>? latest;
   var readBackDone = false;
   final sub = ref.listen(openTasksProvider, (_, next) {

@@ -14,6 +14,7 @@ import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/sign_out.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
+import '../features/integrations/ui/caldav_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/workspaces/workspaces.dart';
 import '../features/notes/providers.dart' show noteSourceStylingChoiceProvider;
@@ -814,6 +815,10 @@ class SettingsIntegrationsScreen extends ConsumerWidget {
         const SizedBox(height: AwSpace.x3),
         // OPH-078: the device-side twin — hides itself off Apple platforms.
         const AppleCalendarCard(),
+        // OPH-380: iCloud / any CalDAV server, from the server — hides itself
+        // while the server admin has not turned it on (and nothing is
+        // connected). Brings its own top gap, so a hidden card leaves none.
+        const CaldavCalendarCard(),
       ],
       const SizedBox(height: AwSpace.x3),
       // OPH-220: AI — hides itself when the server has AI disabled.

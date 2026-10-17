@@ -581,6 +581,23 @@ export function loadConfig(env = process.env) {
       // channel-less ones.
       sweepSec: toInt(env.CALENDAR_SYNC_SWEEP_SEC, 300, 'CALENDAR_SYNC_SWEEP_SEC'),
     }),
+    // CalDAV connector — iCloud (app-specific password) and any CalDAV server
+    // (OPH-380, CALDAV.md, ADR-0059). OFF by default: turning it on means this
+    // server stores long-lived calendar passwords (encrypted under
+    // CALENDAR_TOKEN_KEY), and that is an admin's deliberate choice.
+    caldav: Object.freeze({
+      enabled: toBool(env.CALDAV_ENABLED, false, 'CALDAV_ENABLED'),
+      // http:// and private/loopback/link-local addresses (a LAN Nextcloud,
+      // the test Radicale). Every user of the instance can then make the
+      // server talk to the LAN — SELF-HOSTING.md says so in plain words.
+      allowPrivateHosts: toBool(
+        env.CALDAV_ALLOW_PRIVATE_HOSTS,
+        false,
+        'CALDAV_ALLOW_PRIVATE_HOSTS',
+      ),
+      icloudUrl: env.CALDAV_ICLOUD_URL || 'https://caldav.icloud.com',
+      timeoutMs: toInt(env.CALDAV_TIMEOUT_MS, 15000, 'CALDAV_TIMEOUT_MS'),
+    }),
   };
 
   if (config.port < 1 || config.port > 65535) {
@@ -693,6 +710,20 @@ export function loadConfig(env = process.env) {
   if (config.calendar.webhookUrl && !config.calendar.webhookUrl.startsWith('https://')) {
     throw new Error('GOOGLE_WEBHOOK_URL must be a public https:// address (Google requires TLS)');
   }
+  {
+    let parsed = null;
+    try {
+      parsed = new URL(config.caldav.icloudUrl);
+    } catch {
+      parsed = null;
+    }
+    if (!parsed || !/^https?:$/.test(parsed.protocol)) {
+      throw new Error('CALDAV_ICLOUD_URL must be an http(s) URL');
+    }
+  }
+  if (config.caldav.timeoutMs < 1000 || config.caldav.timeoutMs > 120000) {
+    throw new Error('CALDAV_TIMEOUT_MS must be between 1000 and 120000');
+  }
   if (config.env === 'production') {
     validateProductionSecret('JWT_ACCESS_SECRET', env.JWT_ACCESS_SECRET);
     validateProductionSecret('JWT_REFRESH_SECRET', env.JWT_REFRESH_SECRET);
@@ -703,6 +734,12 @@ export function loadConfig(env = process.env) {
     // as the Google integration is configured.
     if (config.google.clientId) {
       validateProductionSecret('GOOGLE_CLIENT_SECRET', env.GOOGLE_CLIENT_SECRET);
+      validateProductionSecret('CALENDAR_TOKEN_KEY', env.CALENDAR_TOKEN_KEY);
+    }
+    // CalDAV passwords are the most sensitive thing this server can hold
+    // (CALDAV.md §3.4): fail closed on a placeholder key the moment the
+    // connector is switched on.
+    if (config.caldav.enabled) {
       validateProductionSecret('CALENDAR_TOKEN_KEY', env.CALENDAR_TOKEN_KEY);
     }
     // BYOK keys may only be stored under a real key. Required while the AI

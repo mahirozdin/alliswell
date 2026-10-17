@@ -345,7 +345,7 @@ Things 3 has had ten years to sand its corners; we are a young product. And
 certificate and no backups to think about.
 
 **Already self-hosting?** Then Vikunja, Super Productivity, Tasks.org and Nextcloud
-Tasks are the real alternatives, and some of them beat us — sharing, CalDAV, a public
+Tasks are the real alternatives, and some of them beat us — sharing, tasks over CalDAV, a public
 demo, more importers (we read Todoist and TickTick), years of maturity. The side-by-side, checked against their own docs,
 is in [docs/COMPARISON.md §7](docs/COMPARISON.md#7-self-hosted-alternatives-checked-2026-10).
 
@@ -397,7 +397,7 @@ Node.js API — Fastify, JavaScript only (no TypeScript)
       ├─ MySQL 8.4 / MariaDB 10.11+  (canonical data)
       ├─ Redis 8    (queues, Socket.IO fan-out, cache)
       ├─ Object storage: Cloudflare R2 / any S3 (attachments)
-      └─ Calendar providers: Google Calendar API · Apple EventKit · CalDAV (v2)
+      └─ Calendar providers: Google Calendar API · Apple EventKit · CalDAV (iCloud, Nextcloud…)
 ```
 
 The monorepo:

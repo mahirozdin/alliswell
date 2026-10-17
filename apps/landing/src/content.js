@@ -456,7 +456,7 @@ export const faq = [
   },
   {
     q: 'What is missing?',
-    a: 'Sharing and assignees (the workspace model exists, the UI does not), location-based reminders, and CalDAV. All three are written down in the roadmap rather than implied away.',
+    a: 'Sharing and assignees (the workspace model exists, the UI does not), location-based reminders, and tasks over CalDAV (calendar events already go to iCloud or any CalDAV calendar when the server admin turns it on). All three are written down in the roadmap rather than implied away.',
   },
 ];
 
