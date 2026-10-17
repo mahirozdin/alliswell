@@ -141,6 +141,7 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
 
 ### Ölçülmüş açıklar ve bilinen sınırlar (2026-09-26 temizliğinde toplandı — hiçbiri bir işe bağlı değildi)
 
+- **Bozulmuş takvim serilerinin onarımı (sahip kararı bekliyor, 2026-10-17)** — `44a9e2e` öncesi her seri düzenlemesi geleceği silip tarihlerini tutuyordu (OPH-205'ten beri, v0.8.0–v1.17.0); bu satırlar kendiliğinden geri gelmez. Önce prod'da etkilenen seri sayısını ölç; onarım = sistemin sildiği satırların tarihini bırakan tek seferlik migration (kullanıcı silmelerinden ayırmak şart).
 - **Görev tarihlerinde 100'den küçük yıllar ve aralık denetimi** (QA 2026-10-17 ölçtü, eski) — `PATCH /tasks/{id}` `startAt: 0001-01-01T00:00:00Z` → yanıt `2001-01-01` (mysql2 iki haneli yılı 19xx/20xx okuyor, `db/knexconfig.js` bağlantısı); `9999-…` sınırsız kabul (`routes/tasks.js` yalnız `format: date-time`).
 - **Web teslimatı Kapalı iken alarm bandı** — Kapalı düşürülen aboneliği `webPushOff` diye
   raporluyor: bant dırdır ediyor ve "Tekrar kontrol et" kullanıcının Kapalı seçimine rağmen
