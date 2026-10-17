@@ -62,6 +62,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Search results show a clean line around the match.** In notes and descriptions with line
+  breaks, the preview under a result could start or end on a stray letter ("…r"); it is now
+  cut on whole words, on one line.
+
 - **Quick add forgets a ✕ once you empty the field.** After you dismissed a recognized
   date or tag and then deleted the text by hand, the same words stayed plain text in the next
   task you typed; now only sending the task or clearing the field starts fresh.

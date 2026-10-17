@@ -420,20 +420,58 @@ const _kbArticles = SearchEntity(
 );
 
 /// A short window of [original] around the first folded match of [word] —
-/// the honest "WHERE it hit" context line (DESIGN S3). The fold is nearly
-/// length-preserving (only ß/æ/œ expand), so the folded index maps back onto
-/// the original within a character or two — good enough for a snippet.
+/// the honest "WHERE it hit" context line (DESIGN S3).
+///
+/// Whitespace (newlines included) is collapsed FIRST and the window is cut
+/// from that same string: `foldSearchText` collapses whitespace too, so a hit
+/// index taken from the folded text and applied to the raw one drifted by one
+/// per extra space/newline and left fragments like "…r" (OPH-386). The fold is
+/// applied per character with an offset map, so ß→ss and a dropped combining
+/// dot cannot shift the window either. The cut snaps to word boundaries.
 String searchSnippet(String original, String word, {int radius = 32}) {
-  final folded = foldSearchText(original);
-  final index = folded.indexOf(foldSearchText(word));
-  if (index < 0) {
-    return original.length <= radius * 2
-        ? original
-        : '${original.substring(0, radius * 2)}…';
+  final text = original.replaceAll(RegExp(r'\s+'), ' ').trim();
+  final needle = foldSearchText(word);
+  // folded[i] came from text[sourceAt[i]].
+  final folded = StringBuffer();
+  final sourceAt = <int>[];
+  var offset = 0;
+  for (final rune in text.runes) {
+    final char = String.fromCharCode(rune);
+    final piece = char == ' ' ? ' ' : foldSearchText(char);
+    for (var k = 0; k < piece.length; k++) {
+      sourceAt.add(offset);
+    }
+    folded.write(piece);
+    offset += char.length;
   }
-  final start = (index - radius).clamp(0, original.length);
-  final end = (index + word.length + radius).clamp(0, original.length);
+  final index = needle.isEmpty ? -1 : folded.toString().indexOf(needle);
+  if (index < 0) {
+    return text.length <= radius * 2 ? text : '${_snapEnd(text, radius * 2)}…';
+  }
+  final hitStart = sourceAt[index];
+  final lastFolded = index + needle.length - 1;
+  final hitEnd = lastFolded + 1 < sourceAt.length
+      ? sourceAt[lastFolded + 1]
+      : text.length;
+  var start = (hitStart - radius).clamp(0, text.length);
+  var end = (hitEnd + radius).clamp(0, text.length);
+  if (start > 0) {
+    // Never open on half a word: skip to the next word start before the hit.
+    final space = text.indexOf(' ', start);
+    start = space >= 0 && space < hitStart ? space + 1 : hitStart;
+  }
+  if (end < text.length) {
+    final space = text.lastIndexOf(' ', end);
+    end = space >= hitEnd ? space : hitEnd;
+  }
   final prefix = start > 0 ? '…' : '';
-  final suffix = end < original.length ? '…' : '';
-  return '$prefix${original.substring(start, end).trim()}$suffix';
+  final suffix = end < text.length ? '…' : '';
+  return '$prefix${text.substring(start, end).trim()}$suffix';
+}
+
+/// [text] cut to at most [max] characters, backed off to a word boundary.
+String _snapEnd(String text, int max) {
+  final space = text.lastIndexOf(' ', max);
+  return (space > 0 ? text.substring(0, space) : text.substring(0, max))
+      .trimRight();
 }
