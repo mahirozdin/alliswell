@@ -1,7 +1,7 @@
 # ARCHITECTURE — AllisWell
 
 > How the system is put together and why. Product spec: [BLUEPRINT.md](BLUEPRINT.md).
-> Decisions with trade-offs: [adr/](adr/). Keep this file updated when structure changes (AGENTS.md rule 5).
+> Decisions with trade-offs: [adr/](adr/). Keep this file updated when structure changes (AGENTS.md I-05).
 
 ## 1. System overview
 
@@ -385,5 +385,8 @@ replica or a text file's presigned GET and keeps only decoded text (OPH-377, ADR
   `flutter analyze` + `flutter test`.
 - Before a push the same set runs through `npm run verify:batch` — the API suites on a remote
   sandbox, Flutter locally — and each task closes on its narrow part, `verify:task`
-  ([ADR-0042](adr/0042-layered-verification-and-the-loop-contract.md)).
-- Definition of Done: [../AGENTS.md](../AGENTS.md) §3.
+  ([ADR-0042](adr/0042-layered-verification-and-the-loop-contract.md)); a phase also ends on
+  `npm run verify:smoke` ([development/verification.md](development/verification.md)).
+- Work runs as phase workflows (`/isler`, `/faz`) under a small root contract
+  ([ADR-0060](adr/0060-phase-workflow-and-a-light-root-contract.md)); Definition of Done:
+  [../AGENTS.md](../AGENTS.md#definition-of-done).

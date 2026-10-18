@@ -1,6 +1,7 @@
 # ADR-0042 — Layered verification, a machine-picked next task, and the loop contract
 
-- **Status:** Accepted
+- **Status:** Accepted — the loop contract (LOOP.md, `--batch`) superseded by
+  [ADR-0060](0060-phase-workflow-and-a-light-root-contract.md); the layers stand
 - **Date:** 2026-09-26
 - **Related task:** — (process; follows the owner's decisions of 2026-09-25 "checks at the end"
   and 2026-09-26 "lean working docs")

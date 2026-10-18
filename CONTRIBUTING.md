@@ -54,6 +54,8 @@ the key to the JSON files. CI enforces this (`npm run check:i18n`). See
       integration suites (with `docker compose up -d mysql redis minio radicale` running) and, when the app
       changed, `flutter analyze`, `flutter test` and the web build. `-- --list` shows what your
       change selects; while you work, `npm run verify:task -- <test files>` is the quick check.
+- [ ] `npm run verify:smoke` passes — it starts the API for real against a throw-away MySQL +
+      Redis (Docker) and drives sign-up → tasks → sync once.
 - [ ] Tests added/updated for the change
 - [ ] Docs updated: finished task deleted from `docs/TASKS.md`, `docs/STATE.md` updated in place,
       `CHANGELOG.md` entry (+ ADR/`docs/LESSONS.md` if needed); `npm run check:docs` passes

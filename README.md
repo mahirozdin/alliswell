@@ -505,7 +505,7 @@ This repository is designed for continuous development by AI coding agents:
 1. `npm run next` prints the **next task** ([docs/STATE.md](docs/STATE.md) names it too).
 2. Say **"do the next task"** (Turkish: _"sıradaki işi yap"_).
 3. The agent follows [AGENTS.md](AGENTS.md): implement → its own tests (`verify:task`) → update docs → remove the finished task from [docs/TASKS.md](docs/TASKS.md) → update STATE → commit; the full set (`verify:batch`) runs once before a push.
-4. For a run of many tasks, a loop follows [LOOP.md](LOOP.md): one turn = one batch, stopping on its own when `next` has nothing left.
+4. For a run of many tasks, a phase workflow takes a whole epic ([docs/development/workflow.md](docs/development/workflow.md)): a fresh agent per task, then the full set, a smoke run and a review once at the end.
 
 The markdown files (STATE / TASKS / CHANGELOG) are the single source of truth — no external board required.
 

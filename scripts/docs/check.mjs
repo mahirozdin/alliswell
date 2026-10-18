@@ -23,7 +23,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
-import { budgetProblems, nextTaskId, parseTasks } from '../tasks/tasks.mjs';
+import { budgetProblems, nextTaskId, parseTasks, rootBudgetProblems } from '../tasks/tasks.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(here, '../..');
@@ -138,7 +138,9 @@ function docProblems() {
         let match;
         while ((match = pattern.exec(line)) !== null) {
           if (match[1] !== VERSION) {
-            problems.push(`${rel(file)}:${i + 1}: claims ${match[1]}, repo is ${VERSION}\n    ${line.trim()}`);
+            problems.push(
+              `${rel(file)}:${i + 1}: claims ${match[1]}, repo is ${VERSION}\n    ${line.trim()}`,
+            );
           }
         }
       }
@@ -290,9 +292,46 @@ function anchorsOf(file) {
   return anchors;
 }
 
-/** README.md + docs/*.md (the same set the version gate reads, minus the landing tree). */
+/**
+ * README.md + docs/*.md (the same set the version gate reads, minus the landing tree),
+ * plus the agent contract: AGENTS.md, CLAUDE.md, docs/development/ and the path rules.
+ */
+function contractFiles() {
+  const out = ['AGENTS.md', 'CLAUDE.md'].map((f) => join(ROOT, f)).filter((f) => existsSync(f));
+  for (const dir of ['docs/development', '.claude/rules']) {
+    const abs = join(ROOT, dir);
+    if (!existsSync(abs)) continue;
+    for (const entry of readdirSync(abs)) if (entry.endsWith('.md')) out.push(join(abs, entry));
+  }
+  return out;
+}
+
 function linkFiles() {
-  return claimFiles().filter((f) => f.endsWith('.md'));
+  return [...claimFiles().filter((f) => f.endsWith('.md')), ...contractFiles()];
+}
+
+// ── The contract's commands exist ─────────────────────────────────────────────
+//
+// The agent contract tells agents which command closes a task. A renamed npm script
+// left behind in it costs every agent a failed command and a guess — so every
+// `npm run <script>` the contract names must be a script in the root package.json.
+function commandProblems() {
+  const scripts = JSON.parse(read(join(ROOT, 'package.json'))).scripts ?? {};
+  const problems = [];
+  for (const file of contractFiles()) {
+    read(file)
+      .split('\n')
+      .forEach((line, i) => {
+        for (const m of line.matchAll(/npm run (?:-s )?([\w:-]+)/g)) {
+          if (!(m[1] in scripts)) {
+            problems.push(
+              `${rel(file)}:${i + 1}: \`npm run ${m[1]}\` — no such script in package.json`,
+            );
+          }
+        }
+      });
+  }
+  return problems;
 }
 
 let linksChecked = 0;
@@ -323,7 +362,9 @@ function linkProblems() {
           continue;
         }
         if (anchor && dest.endsWith('.md') && !anchorsOf(dest).has(anchor.toLowerCase())) {
-          problems.push(`${rel(file)}:${i + 1}: ${raw} — no heading with that anchor in ${rel(dest)}`);
+          problems.push(
+            `${rel(file)}:${i + 1}: ${raw} — no heading with that anchor in ${rel(dest)}`,
+          );
         }
       }
     });
@@ -366,6 +407,15 @@ const DRAINED = '**BACKLOG BOŞ**';
 
 function workingDocProblems() {
   const problems = [];
+  // The root contract (ADR-0060): AGENTS.md ≤ 120 lines / 10 KB, CLAUDE.md ≤ 20 lines,
+  // each .claude/rules file ≤ 60 lines — loaded by every session and every agent.
+  for (const p of rootBudgetProblems(ROOT)) {
+    const unit = p.kind === 'lines' ? 'lines' : 'bytes';
+    problems.push(
+      `${p.file}: ${p.size} ${unit}, budget ${p.limit}${p.kind === 'chain' ? ' (import chain)' : ''} — ` +
+        'move the detail to docs/development/ or a .claude/rules file',
+    );
+  }
   for (const p of budgetProblems(join(ROOT, 'docs'))) {
     const file = `docs/${p.file}`;
     if (p.kind === 'missing') problems.push(`${file}: missing`);
@@ -435,6 +485,7 @@ const problems = [...manifestProblems(), ...docProblems()];
 const appleClaims = appleClaimProblems();
 const working = workingDocProblems();
 const links = linkProblems();
+const commands = commandProblems();
 
 if (problems.length > 0) {
   console.error(`✗ docs: ${problems.length} stale version claim(s) — repo is ${VERSION}\n`);
@@ -458,13 +509,24 @@ if (links.length > 0) {
   console.error(`✗ docs: ${links.length} broken relative link(s) or anchor(s)\n`);
   for (const p of links) console.error(`  ${p}`);
 }
-if (problems.length > 0 || appleClaims.length > 0 || working.length > 0 || links.length > 0) {
+if (commands.length > 0) {
+  console.error(`✗ docs: ${commands.length} command(s) the agent contract names do not exist\n`);
+  for (const p of commands) console.error(`  ${p}`);
+}
+if (
+  problems.length > 0 ||
+  appleClaims.length > 0 ||
+  working.length > 0 ||
+  links.length > 0 ||
+  commands.length > 0
+) {
   process.exit(1);
 }
 
 console.log(
   `✓ docs: version claims agree with package.json (${VERSION}); ` +
     'no surface calls Apple Calendar two-way; ' +
-    'STATE/TASKS/LESSONS within their rules, STATE points where `npm run next` does; ' +
+    'STATE/TASKS/LESSONS and the root contract within their rules, STATE points where ' +
+    '`npm run next` does; the contract names only real npm scripts; ' +
     `${linksChecked} relative links and anchors resolve`,
 );

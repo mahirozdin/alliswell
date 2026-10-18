@@ -1,236 +1,92 @@
-# AGENTS.md — Operating manual for AI agents (and humans)
+# AGENTS.md — AllisWell binding contract for agents (and humans)
 
-This repository is designed to be developed incrementally by AI coding agents.
-**Read this file before touching any code.** It defines the hard rules, the workflow, and the
-definition of done. The product spec lives in [docs/BLUEPRINT.md](docs/BLUEPRINT.md); the backlog
-in [docs/TASKS.md](docs/TASKS.md) (`npm run next` prints its next task); the current position in
-[docs/STATE.md](docs/STATE.md). A loop of many tasks follows [LOOP.md](LOOP.md).
+> Sistem: blueprint-system v3 · Last updated: 2026-10-18 — blueprint v3 upgrade ([ADR-0060](docs/adr/0060-phase-workflow-and-a-light-root-contract.md))
 
----
+**The product in one sentence:** a source-available, self-hosted productivity hub — tasks,
+projects, notes, documents, calendar sync and reminders — with one Fastify/MySQL API and one
+Flutter app for every platform.
 
-## 1. Hard rules (non-negotiable)
+## Reading order
 
-1. **Backend is JavaScript only.** Node.js, ESM (`type: module`). **TypeScript is forbidden** —
-   no `.ts` files, no `tsc`, no type-only tooling. CI enforces this (`npm run check:no-ts`).
-   Use JSDoc comments for editor type hints where helpful.
-2. **Database is MySQL** (8.x), accessed through **knex** + **mysql2**. No ORMs, no other databases
-   for canonical data. Redis is for queues/cache/realtime fanout only.
-3. **All client platforms are one Flutter codebase** (`apps/app`). No secondary web framework
-   unless a task explicitly justifies it with an ADR.
-4. **Every feature ships with tests.** API: Vitest (unit + integration). App: `flutter test`.
-   A task closes on its own tests (K1, `npm run verify:task`), and nothing is pushed until the
-   full set is green (K2, `npm run verify:batch`) — §3.
-5. **Every task updates the docs — and keeps them small.** At minimum: delete the finished task
-   from `docs/TASKS.md`, update `docs/STATE.md` in place, add a `CHANGELOG.md` entry. Update
-   `docs/ARCHITECTURE.md` when structure changes. STATE/TASKS are read every session: they hold
-   the pointer, the owner's decisions and open work only — never a log (`check:docs` enforces it).
-6. **Architectural decisions require an ADR** in `docs/adr/` (use the template). Examples: new
-   dependency category, schema redesign, protocol change, security-relevant choice.
-7. **Never commit secrets.** `.env` is gitignored; only `.env.example` is committed, with
-   placeholder values. OAuth tokens are stored encrypted (see BLUEPRINT §15.3).
-8. **Migrations are append-only.** Never edit an applied migration; create a new one.
-   Naming: `YYYYMMDDHHMMSS_verb_subject.js` with ESM `export async function up/down(knex)`.
-9. **Conventional Commits.** `feat(api): …`, `fix(app): …`, `docs: …`, `chore: …`, `ci: …`,
-   `refactor(api): …`, `test(api): …`. Scope is `api`, `app`, or omitted for repo-wide.
-10. **Do risky things in writing first.** Large refactors and data migrations get a short plan
-    (in the task section of `docs/TASKS.md` or an ADR) *before* implementation.
-11. **One design system, forever.** All UI follows the "AllisWell Glass" design language defined
-    in [docs/DESIGN.md](docs/DESIGN.md) (ADR-0005) — **visual continuity is mandatory for every
-    future feature**, screen and platform. Concretely: colors/spacing/radii come from
-    `apps/app/lib/src/theme/` tokens (no raw hex or `Colors.*` in widgets), glass/blur is
-    chrome-only (never under body text), text contrast ≥ 4.5:1 and icon/border contrast ≥ 3:1 in
-    BOTH themes (`python3 scripts/design/contrast.py` must pass after palette edits), tap targets
-    ≥ 44 px, and every UI change is checked in light *and* dark before it is done. Deviations
-    require amending docs/DESIGN.md in the same change.
-12. **The MCP tool surface and the public API are part of every feature.** When a task adds or
-    changes a user-facing capability (an entity, a field, an operation), the same epic must
-    extend the remote MCP server (and [docs/MCP.md](docs/MCP.md)) and the key-authenticated
-    public REST surface ([docs/API.md](docs/API.md)) to match — or record a one-line written
-    reason in the task. Standing exceptions, already decided: `delete_*` never enters MCP
-    (ADR-0022; the API-key surface does expose deletes), and raw file bytes / presigned URLs
-    never flow through MCP (AI.md §7).
+1. Your slice: `npm run next` (or `-- --list`, `-- --only OPH-NNN --json`). Never read
+   [docs/TASKS.md](docs/TASKS.md) or [docs/STATE.md](docs/STATE.md) whole.
+2. The docs and ADRs the slice names; grep [docs/LESSONS.md](docs/LESSONS.md) for your area.
+3. Touching a critical path → its rule file below, first.
 
-## 2. The "do the next task" protocol
+Spec: [docs/BLUEPRINT.md](docs/BLUEPRINT.md) (frozen). Old references "AGENTS §1.N" mean I-0N
+below; "§4" → [conventions.md](docs/development/conventions.md); "§5" →
+[verification.md](docs/development/verification.md); "§6" → [.claude/rules/sync.md](.claude/rules/sync.md).
 
-When the user says **“do the next task”** / **“sıradaki işi yap”** (or similar):
+## Invariants
 
-1. **Locate position.** `npm run next` prints the next task — the first one in `docs/TASKS.md`
-   without ⏸️ — with its epic's intro; STATE's “Next task” cell names the same one (`check:docs`
-   keeps them equal). Exit 3: only tasks parked on the owner remain; exit 4: nothing is open —
-   say so and stop. Don't read TASKS.md whole.
-2. **Understand scope.** Read the task's checklist, acceptance criteria and tests. Read the
-   relevant BLUEPRINT sections. Look at existing code — reuse existing helpers and patterns.
-   Grep [docs/LESSONS.md](docs/LESSONS.md) for the area you touch (`ios-native`, `sync`, …):
-   it holds the traps that already cost a round. Don't read it whole.
-3. **Implement** the task fully, following the hard rules above. Small, cohesive diffs.
-4. **Verify — K1, then K2.** `npm run verify:task -- <the test files you wrote or touched>`:
-   lint and format of the changed files, every gate whose input changed, the named tests (API
-   tests on the sandbox, Flutter tests here). Fix until green; a critical path (§3) runs its K2
-   part now. The full set — `npm run verify:batch` — runs before anything is pushed: once per
-   batch in a loop ([LOOP.md](LOOP.md)), right after the task when it is a lone one.
-5. **Document.** Delete the finished task's block from `docs/TASKS.md` (git and CHANGELOG are its
-   record). Update `docs/STATE.md` **in place**: overwrite the Snapshot cells — no "Önceki
-   metin" chains, no session blocks. A trap that could silently recur → one or two lines in
-   `docs/LESSONS.md` under its area; an owner decision → STATE "Sahip kararları"; an owner
-   step still open → STATE "Kullanıcıdan bekleyen". Add one short `CHANGELOG.md` entry under
-   `[Unreleased]` when a user will see the change (owner decision). Verification evidence (suite counts, injection proofs) goes in the commit
-   message, not in the docs. `npm run check:docs` must pass.
-6. **Commit** with a Conventional Commit message referencing the task id, e.g.
-   `feat(api): add register endpoint (OPH-020)` — locally; the push follows a green K2.
-7. **Report** briefly: what was done, how it was verified, what is next.
-
-Never skip ahead (dependencies are encoded in epic order). A task that waits on the owner gets
-⏸️ in its TASKS heading and its step under STATE “Kullanıcıdan bekleyen” (`check:docs` wants it
-named there); `next` then moves on to the next unparked task — tell the user.
-
-## 3. Verification layers, critical paths, Definition of Done
-
-Checks are layered so a task pays for its own proof and a batch for the full set — once
-([ADR-0042](docs/adr/0042-layered-verification-and-the-loop-contract.md)):
-
-| Layer | When | Command | Then |
+| # | Invariant | Enforcement | ADR |
 | --- | --- | --- | --- |
-| **K1** | every task | `npm run verify:task -- <tests>` | local commit |
-| **K2** | every batch, and a lone task | `npm run verify:batch` (`-- --list` shows the plan) | one push, only when green |
-| **K3** | after the push | CI — never waited on | read once at the start of the next turn |
-| **K4** | when the owner can | device, emulator, screenshots | [docs/DEVICE-CHECKS.md](docs/DEVICE-CHECKS.md) — never a closing condition |
+| I-01 | Backend is JavaScript (Node, ESM). **No TypeScript** — no `.ts`, no `tsc`; JSDoc for hints | `check:no-ts` | [0001](docs/adr/0001-stack-and-monorepo.md) |
+| I-02 | Canonical data in **MySQL 8** via **knex + mysql2**; no ORM. Redis = queues/cache/fanout only | review | [0001](docs/adr/0001-stack-and-monorepo.md) |
+| I-03 | Every client platform is the one Flutter codebase `apps/app`; another UI framework needs an ADR | review | [0001](docs/adr/0001-stack-and-monorepo.md) |
+| I-04 | Every feature ships with its tests (Vitest unit + integration, `flutter test`) | `verify:task`, review | [0042](docs/adr/0042-layered-verification-and-the-loop-contract.md) |
+| I-05 | Every task updates the docs and keeps them small ([doc-protocol](docs/development/doc-protocol.md)) | `check:docs` | [0042](docs/adr/0042-layered-verification-and-the-loop-contract.md) |
+| I-06 | An architectural decision is an ADR in `docs/adr/` + its index row | review | — |
+| I-07 | No secrets in git (only `.env.example`, placeholders); OAuth tokens stored encrypted | `.gitignore`, verify's secret filter | [0006](docs/adr/0006-google-oauth-token-crypto-and-mirror-queue.md) |
+| I-08 | Migrations are append-only; never edit an applied one | migration round trip | [0004](docs/adr/0004-ids-timestamps-schema-conventions.md) |
+| I-09 | Conventional Commits with the task id: `feat(api): … (OPH-NNN)` | review | — |
+| I-10 | Risky work in writing first: a large refactor or data migration gets a plan (task or ADR) | review | — |
+| I-11 | One design system forever — "AllisWell Glass" ([DESIGN.md](docs/DESIGN.md)): tokens only, glass is chrome-only, contrast ≥ 4.5:1 / 3:1 in both themes, taps ≥ 44 px, light **and** dark checked | `check:fab`, `check:opacity`, `scripts/design/contrast.py` | [0005](docs/adr/0005-alliswell-glass-design-system.md) |
+| I-12 | A user-facing capability extends MCP ([MCP.md](docs/MCP.md)) and the public REST API ([API.md](docs/API.md)) in the same epic, or the task records why. `delete_*` never enters MCP; no file bytes/presigned URLs through MCP | `check:openapi`, review | [0022](docs/adr/0022-remote-mcp-server.md) |
+| I-13 | Push payloads carry IDs only, never task content | `check:push-payload` | [0038](docs/adr/0038-server-to-device-delivery.md) |
+| I-14 | The extension's design never enters a public doc or commit; core work keeps CE behaviour | `check:no-ee`, review | [0041](docs/adr/0041-an-extension-that-wrote-data-must-be-present-to-serve-it.md) |
 
-The API suites run on the sandbox (`sbx`), which gets the tracked tree and nothing else; Flutter
-runs here. Without a sandbox, `verify` runs the suites against `docker compose up -d mysql redis
-minio`. What only CI covers is printed at the end of every `verify:batch`.
+## Critical paths
 
-**Critical paths run their K2 part at K1 time** — a mistake there is expensive or irreversible,
-and the batch's net comes too late for it. In a loop, a batch that touches one is 2 tasks, not 4.
+A mistake here is expensive or irreversible: the task runs its K2 part at K1 time and reads
+the rule file first (`next` marks such tasks ⚠).
 
-- **Migrations** (`apps/api/migrations/`) — `verify:task` runs migrate → rollback → migrate itself.
-- **Sync** (`src/routes/sync.js`, `src/db/sync.js`, `apps/app/lib/src/sync/`) — `check:sync-fields`
-  runs itself; name `apps/api/test/integration/sync.test.js`, and `apps/app/test/sync/migration_test.dart`
-  when the replica schema moves.
-- **Auth, sessions, keys** — name `apps/api/test/integration/{auth,auth-refresh,auth-me,sessions,mfa}.test.js`.
-- **Push payload privacy** and **notification platform behaviour** — `check:push-payload` and
-  `check:notify-matrix` run themselves.
-- **The extension seam** — name `apps/api/test/unit/{ee-seam,ee-status,ee-lock}.test.js`; with the
-  extension checked out, its `verify:batch` too (core pushed first).
+| Area | Paths | Rule file |
+| --- | --- | --- |
+| Migrations | `apps/api/migrations/**` | [.claude/rules/migrations.md](.claude/rules/migrations.md) |
+| Sync | `src/routes/sync.js`, `src/db/sync.js`, `apps/app/lib/src/sync/**` | [.claude/rules/sync.md](.claude/rules/sync.md) |
+| Auth, sessions, keys | `routes/{auth,api-keys,oauth}.js`, `plugins/auth.js`, `lib/{tokens,crypto,totp,…}.js` | [.claude/rules/auth.md](.claude/rules/auth.md) |
+| Push privacy, notification platforms | `src/lib/push/**`, `apps/app/lib/src/notifications/**` | [.claude/rules/push-notifications.md](.claude/rules/push-notifications.md) |
+| Extension seam | `lib/ee*.js`, `plugins/entitlements.js`, `routes/ee.js`, `features/ee/**` | [.claude/rules/extension-seam.md](.claude/rules/extension-seam.md) |
 
-**Per task (K1):**
+## Commands
 
-- [ ] Code follows hard rules (JS-only backend, MySQL, ESM, tests with the change).
-- [ ] `npm run verify:task -- <tests>` green.
-- [ ] New/changed endpoints have Ajv JSON schemas (request + response).
-- [ ] **Sync push fields touched** (`SYNC_ENTITY_FIELDS` in `apps/api/src/routes/sync.js`) →
-      `npm run gen:sync-fields` re-run and `apps/app/lib/src/sync/sync_fields.g.dart` committed;
-      `npm run check:sync-fields` passes. The client asserts every `enqueueMutation` against
-      that file; a field that does not cross the language boundary in the same change dies
-      silently with every suite green (OPH-299).
-- [ ] DB changes shipped as a new knex migration (with `down`).
-- [ ] **Push payload touched** (`apps/api/src/lib/push/payload.js`) → `npm run check:push-payload`
-      passes; a deliberate change is accepted with `node scripts/push/payload.mjs --write` and
-      explained in the commit. Nothing a task says may cross a push provider (BLUEPRINT §8.3,
-      ADR-0038) — including prose inside a declared key.
-- [ ] **Notification platform behaviour touched** (a gateway, a token path, a channel) →
-      `apps/app/lib/src/notifications/platform_matrix.dart` updated and
-      `npm run check:notify-matrix -- --write` re-run, so `docs/NOTIFICATIONS.md` §3 says what
-      the build does (`AwPushMessaging` reads that declaration before asking for a token).
-- [ ] Docs: finished task deleted from TASKS, STATE updated in place, one CHANGELOG entry if a
-      user will see it (+ LESSONS/ADR/ARCHITECTURE when relevant); `npm run check:docs` passes.
-- [ ] User-facing capability added/changed → MCP tools + docs/MCP.md and docs/API.md extended,
-      or a written reason recorded (rule 12).
-- [ ] Local Conventional Commit with the task id; suite counts and injection proofs in its body.
+`npm run next` (`-- --list`, `-- --summary`) · `npm run verify:task -- <tests>` (K1) ·
+`npm run verify:batch` (K2) · `npm run verify:smoke` (phase end) · `npm run check:docs`.
+All of them: [commands.md](docs/development/commands.md).
 
-**Per batch (K2):**
+API suites run on the sandbox (`sbx`) or against `docker compose up -d mysql redis minio radicale`;
+Flutter runs here. CI is GitHub-hosted on purpose (public repo, ADR-0060) and never waited on
+inside a phase; the merge gate is a local green K2 + smoke. Mobile/desktop behaviour is checked
+on a device here before the merge, or `NOT RUN` + a [DEVICE-CHECKS](docs/DEVICE-CHECKS.md) row.
 
-- [ ] `npm run verify:batch` green and complete (no `--only`/`--skip`) — then one `git push`.
-- [ ] STATE's Snapshot cells current; anything to see on a device queued in DEVICE-CHECKS.md.
-- [ ] CI read at the start of the next turn, not waited on; an epic or a release closes only on
-      a green CI.
+## Execution
 
-## 4. Code conventions
+Session start: `/isler`; phases: `/faz E35 …` — the contract is
+[workflow.md](docs/development/workflow.md); layers: [verification.md](docs/development/verification.md).
 
-### Backend (`apps/api`)
+## Definition of Done
 
-- ESM imports with `.js` extensions; Node built-ins via `node:` prefix.
-- Prettier (single quotes, width 100) + ESLint — run `npm run format` before committing.
-- Fastify plugins live in `src/plugins/`, routes in `src/routes/` (one file per resource,
-  registered with a prefix), shared helpers in `src/lib/`, DB helpers in `src/db/`.
-- Every route declares an Ajv schema (`body`, `querystring`, `params`, `response`).
-- Errors: use `@fastify/sensible` (`app.httpErrors.badRequest(...)`) + stable machine-readable
-  `code` fields (e.g. `AUTH_INVALID_CREDENTIALS`). Never leak internals in error messages.
-- IDs are **ULIDs** (`CHAR(26)`), generated via `src/lib/ids.js`. Timestamps are UTC `DATETIME(3)`;
-  the API serializes ISO-8601 strings.
-- Soft delete via `deleted_at`; queries must filter `whereNull('deleted_at')` unless explicitly
-  including deleted rows.
-- Any write to a synced entity (project/task/tag/note/…) must bump its `revision` and insert a
-  `sync_revisions` row **in the same transaction** — use `recordSyncWrite`/`withRevision`
-  from `src/db/sync.js` (OPH-050) and stamp the returned revision onto the entity row.
-- No N+1 queries: batch with `whereIn`, join, or a single aggregate query.
+- **Task:** test written first and green — `npm run verify:task -- <tests>` (+ the area's gate
+  when critical) · docs per [doc-protocol](docs/development/doc-protocol.md): task deleted from
+  TASKS, STATE cells overwritten, CHANGELOG line if a user sees it · I-12 honoured or reasoned ·
+  local commit `type(scope): … (OPH-NNN)`, suite counts and injection proofs in the body.
+- **Phase:** `npm run verify:batch` complete and green + `npm run verify:smoke` · review has no
+  open blocker/major · STATE Snapshot current, device checks queued · then the git flow.
 
-### App (`apps/app`)
+## Source priority
 
-- Riverpod for state, go_router for navigation, feature-first folders under `lib/src/features/`.
-- **Local-first (Epic 06):** screens never call the REST APIs directly — reads watch the
-  drift replica through the feature stores (`features/*/data/*_store.dart`), writes go
-  through the same stores (optimistic row + outbox enqueue in one transaction, then poke
-  the engine). Widget tests that pump the app need `test/support/sync_overrides.dart`.
-- Keep widgets small; extract reusable UI to `lib/src/widgets/`.
-- **No hardcoded user-facing strings** (Epic 11, ADR-0009): every label goes through the i18n
-  facade — `'some.key'.tr()`, with the key added to `apps/app/assets/i18n/{en,tr}.json` (English is
-  the base/fallback). CI enforces this (`npm run check:i18n`); escape hatch `// i18n-ignore`.
-- `dart format <the files you touched>` before committing — never the whole tree: the local SDK
-  formats collections differently from CI's, and `verify:batch` checks your files with CI's
-  formatter (LESSONS `ci-release`). Zero `flutter analyze` warnings.
-- **UI = docs/DESIGN.md.** Theme/tokens live in `lib/src/theme/` (`buildAwTheme`, `AwTokens`,
-  `AwSpace`/`AwRadius`/`AwMotion`); glass chrome + aurora in `lib/src/widgets/glass.dart`;
-  shared empty/error/inline-error states in `lib/src/widgets/status_views.dart` (use them —
-  don't hand-roll new ones). Lists are card rows with `awListPadding(context)`; favorite/pin
-  stars use `AwTokens.warning`; priority colors only via `taskPriorityColor*` helpers.
+The user's explicit instruction > SECURITY.md > ADRs > STATE "Sahip kararları" > this file >
+docs/ > BLUEPRINT. In a conflict, don't choose silently: an ADR, or a task in TASKS.md.
 
-## 5. Testing strategy
+## Never (what no gate catches)
 
-| Layer | Tool | Location | Needs infra? |
-| --- | --- | --- | --- |
-| API unit | Vitest + `app.inject()` | `apps/api/test/unit/` | No (stub db/redis via `buildApp({ db, redis })`) |
-| API integration | Vitest | `apps/api/test/integration/` | Yes (MySQL+Redis; `npm run test:integration`) |
-| App widget/unit | flutter_test | `apps/app/test/` | No |
-
-CI (`.github/workflows/ci.yml`) runs all of the above with real MySQL/Redis service containers
-and runs migrations first — schema errors surface in CI even if local Docker is unavailable.
-Before a push they run through `verify` (§3): `npm run verify:batch -- --list` shows which parts
-a change selects, and `scripts/verify/verify.mjs` is the table — a gate added to CI is a row there.
-
-## 6. Sync & calendar invariants (read before touching those modules)
-
-- MySQL is canonical; clients hold replicas. Every workspace has a monotonic `revision`.
-- Client pushes carry `clientMutationId` — the server must be **idempotent** (`client_mutations`
-  table records processed ids).
-- Conflict policy: field-level last-write-wins for metadata; document-level optimistic lock +
-  conflict copy for notes (v1). See BLUEPRINT §6.5.
-- Calendar mapping keys: Google `extendedProperties.private.alliswell_task_id` /
-  `alliswell_workspace_id`; Apple events carry `alliswell://task/{taskId}` in the URL field.
-  The `calendar_event_links` table is the source of truth for mapping (see ADR-0003).
-- Notification payloads carry IDs only, never task content (privacy — BLUEPRINT §8.3).
-
-## 7. Repository map
-
-```txt
-apps/api/src/app.js        # buildApp() — register plugins/routes (testable factory)
-apps/api/src/server.js     # entrypoint (listen + graceful shutdown)
-apps/api/src/config.js     # env → validated config object
-apps/api/src/plugins/      # mysql (knex), redis (ioredis), …
-apps/api/src/routes/       # health, (auth, workspaces, projects, tasks, notes… per epics)
-apps/api/migrations/       # knex migrations (append-only)
-apps/app/lib/src/          # app.dart, router.dart, screens/, (features/ as epics land)
-docs/TASKS.md              # THE backlog — open work only; a closed task is deleted
-docs/STATE.md              # THE pointer + owner decisions + open owner steps; overwritten, never a log
-docs/LESSONS.md            # traps by area — grep the area before touching it
-docs/DEVICE-CHECKS.md      # K4 — what to look at on a device; never a closing condition
-scripts/tasks/             # `npm run next` + tasks.mjs, the one reader of TASKS.md
-scripts/verify/            # `npm run verify:task` / `verify:batch` — the K1/K2 check table
-LOOP.md                    # the loop contract: one turn = one batch
-```
-
-## 8. When in doubt
-
-- Prefer the BLUEPRINT; where reality diverged, ADRs win (they document deliberate deviations).
-- Prefer boring, proven solutions; this is infrastructure people will self-host.
-- Ask the user only when a decision is truly product-level (pricing of trade-offs unclear);
-  otherwise decide, document (ADR/STATE note), and move.
+- A ticked box or deleted task without its check having run; a skipped check not written as
+  `NOT RUN` + reason.
+- Skipping a test, lowering a threshold, deleting an invariant's test to get green.
+- Editing BLUEPRINT.md (a deviation is an ADR) or an accepted ADR's decision text.
+- The owner's work: versions, tags, releases, deploys, `gh workflow run`, writing to
+  production or an external account, store/console forms → STATE "Kullanıcıdan bekleyen".
+- Re-litigating STATE "Sahip kararları"; asking the user what is not a product decision —
+  decide, document (ADR / STATE), move.
+- Real user data in a doc or screenshot.

@@ -2,7 +2,7 @@
 
 > **How to use:** this file holds **open work only**, in order — the first task below without ⏸️
 > is the **next task**. Don't read the file whole to find it: `npm run next` prints it with its
-> epic's intro (`-- --batch 4` for a loop turn, `-- --summary` for the counts). The pointer also
+> epic's intro (`-- --list` for everything ready, `-- --summary` for the counts). The pointer also
 > lives in [STATE.md](STATE.md), and `check:docs` keeps the two equal. Rules and workflow:
 > [../AGENTS.md](../AGENTS.md). Spec: [BLUEPRINT.md](BLUEPRINT.md). Traps and decisions by area:
 > [LESSONS.md](LESSONS.md) (grep the area, don't read it whole).

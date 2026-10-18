@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// `npm run verify:task` (K1) and `npm run verify:batch` (K2) for this repo — ADR-0042, LOOP.md.
+// `npm run verify:task` (K1) and `npm run verify:batch` (K2) for this repo — ADR-0042, ADR-0060.
 //
 //   npm run verify:task [-- <test files>]   the change in hand: lint/format of the changed
 //                                            files, the gates whose input changed, and the
