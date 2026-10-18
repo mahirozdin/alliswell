@@ -18,7 +18,10 @@ coverage/
 .idea/
 .vscode/
 *.iml
-.claude/
+# Local agent state stays out; the path-scoped rules (ADR-0060) and skills are shared.
+.claude/*
+!.claude/rules/
+!.claude/skills/
 
 # --- Logs ---
 *.log

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// `npm run next` — print the next task (or a batch of them) from docs/TASKS.md.
+// `npm run next` — print the next task, or every task an agent can do, from docs/TASKS.md.
 //
 // Why a script: the selection rule lives here instead of in a conversation, where
 // it would be lost at the next context compaction, and an agent reads the slice it
@@ -7,18 +7,28 @@
 // with `check:docs` so the two can never disagree about what is next.
 //
 //   npm run next                      the next task, its epic's intro and its block
-//   npm run next -- --batch 4         up to 4 ready tasks from the same epic (one loop turn)
-//   npm run next -- --summary         open/ready/parked per epic + a loop iteration limit
-//   npm run next -- --check-budget    the working docs' byte budgets (check:docs runs the same)
-//   --json · --phase E34[,E35] · --only OPH-351,OPH-352 · --cross-phase · --todo <path>
+//   npm run next -- --list            every ready task, by epic, ⚠ on critical paths (/isler)
+//   npm run next -- --list --phase E35 --json
+//                                     an epic's ready tasks with their full text (/faz)
+//   npm run next -- --summary         open/ready/parked per epic
+//   npm run next -- --check-budget    the working docs' and the root contract's budgets
+//   --json · --phase E34[,E35] · --only OPH-351,OPH-352 · --todo <path> · --root <dir>
 //
-// Exit codes (a loop's stop condition reads these, not prose):
+// A "phase" in the phase workflow (docs/development/workflow.md) is an epic: `E35`.
+//
+// Exit codes (scripts read these, not prose):
 //   0 a task is ready · 3 only parked tasks remain (waiting on the owner)
 //   4 nothing is open · 5 a budget is exceeded (--check-budget) · 1 error
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
-import { budgetProblems, parseTasks } from './tasks.mjs';
+import {
+  budgetProblems,
+  criticalAreas,
+  criticalHits,
+  parseTasks,
+  rootBudgetProblems,
+} from './tasks.mjs';
 
 const BODY_LINES = 60;
 const INTRO_LINES = 20;
@@ -33,13 +43,13 @@ try {
   ({ values: args } = parseArgs({
     options: {
       todo: { type: 'string', default: 'docs/TASKS.md' },
-      batch: { type: 'string', default: '1' },
+      root: { type: 'string' },
+      list: { type: 'boolean', default: false },
       summary: { type: 'boolean', default: false },
       'check-budget': { type: 'boolean', default: false },
       json: { type: 'boolean', default: false },
       phase: { type: 'string' },
       only: { type: 'string' },
-      'cross-phase': { type: 'boolean', default: false },
     },
   }));
 } catch (error) {
@@ -50,28 +60,35 @@ const todo = resolve(args.todo);
 if (!existsSync(todo))
   fail(`next: ${args.todo} not found (run from the repo root, or pass --todo)`);
 const shown = relative(process.cwd(), todo) || todo;
+// TASKS.md lives in docs/; the root contract one level up.
+const root = resolve(args.root ?? resolve(dirname(todo), '..'));
 
 if (args['check-budget']) {
-  const problems = budgetProblems(dirname(todo));
+  const working = budgetProblems(dirname(todo));
+  const rooted = rootBudgetProblems(root);
   if (args.json) {
-    console.log(JSON.stringify({ problems }));
-  } else if (problems.length === 0) {
-    console.log(`✓ working docs within budget (${relative(process.cwd(), dirname(todo)) || '.'})`);
+    console.log(JSON.stringify({ problems: [...working, ...rooted] }));
+  } else if (working.length + rooted.length === 0) {
+    console.log('✓ working docs and the root contract within budget');
   } else {
-    console.log('✗ working docs over budget — every session and loop turn pays for these bytes:');
-    for (const p of problems) {
+    console.log('✗ over budget — every session and every agent pays for these bytes:');
+    for (const p of working) {
       if (p.kind === 'missing') console.log(`  ${p.file}: missing`);
       else if (p.kind === 'size') console.log(`  ${p.file}: ${p.size} bytes, budget ${p.limit}`);
       else console.log(`  ${p.file}:${p.line}: ${p.size}-byte line, budget ${p.limit}`);
     }
+    for (const p of rooted) {
+      const unit = p.kind === 'lines' ? 'lines' : 'bytes';
+      console.log(
+        `  ${p.file}: ${p.size} ${unit}, budget ${p.limit}${p.kind === 'chain' ? ' (import chain)' : ''}`,
+      );
+    }
   }
-  process.exit(problems.length ? 5 : 0);
+  process.exit(working.length + rooted.length ? 5 : 0);
 }
 
-const batchSize = Number.parseInt(args.batch, 10);
-if (!Number.isInteger(batchSize) || batchSize < 1) fail('next: --batch takes a positive integer');
-
 const { sections, tasks } = parseTasks(readFileSync(todo, 'utf8'));
+const areas = criticalAreas(root);
 const list = (value) =>
   value
     ? value
@@ -96,6 +113,8 @@ const open = scoped.filter((t) => !t.closed);
 const ready = open.filter((t) => t.ready);
 const parked = open.filter((t) => t.parked);
 const code = ready.length ? 0 : open.length ? 3 : 4;
+// An epic shows its key (the --phase argument); any other section just its title.
+const label = (s) => (/^E\d+$/.test(s.key) ? `${s.key} ${s.title}` : s.title);
 
 if (args.summary) {
   const rows = sections
@@ -110,9 +129,6 @@ if (args.summary) {
       };
     })
     .filter((r) => r.open > 0);
-  const size = batchSize > 1 ? batchSize : 4;
-  // One turn per batch, plus two for a red batch gate and a red CI to fix.
-  const suggested = ready.length ? Math.max(3, Math.ceil(ready.length / size) + 2) : 0;
   if (args.json) {
     console.log(
       JSON.stringify({
@@ -120,8 +136,6 @@ if (args.summary) {
         open: open.length,
         actionable: ready.length,
         parked: parked.map((t) => t.id),
-        suggested_max_iterations: suggested,
-        batch_size: size,
       }),
     );
   } else {
@@ -129,17 +143,69 @@ if (args.summary) {
       `${shown}: ${open.length} open · ${ready.length} ready · ${parked.length} parked (waiting on the owner)`,
     );
     for (const r of rows) {
-      // An epic shows its key (the --phase argument); any other section just its title.
-      const label = /^E\d+$/.test(r.phase) ? `${r.phase} ${r.title}` : r.title;
       console.log(
-        `  ${label.slice(0, 64).padEnd(64)} open ${String(r.open).padStart(3)}` +
+        `  ${label({ key: r.phase, title: r.title }).slice(0, 64).padEnd(64)} open ${String(r.open).padStart(3)}` +
           `  ready ${String(r.ready).padStart(3)}  ⏸ ${String(r.parked).padStart(3)}`,
       );
     }
-    if (suggested) {
-      console.log(`Loop: batch ${size} → --max-iterations ${suggested}`);
+  }
+  process.exit(code);
+}
+
+const trimmed = (lines, limit) => {
+  // Collapse blank runs, cap the length, drop the trailing blank.
+  const squeezed = lines.filter((l, i) => l.trim() || (i > 0 && lines[i - 1].trim()));
+  const kept = squeezed.slice(0, limit);
+  while (kept.length && !kept[kept.length - 1].trim()) kept.pop();
+  if (squeezed.length > limit) kept.push(`… (+${squeezed.length - limit} lines in ${shown})`);
+  return kept;
+};
+const asJson = (t) => ({
+  id: t.id,
+  title: t.title,
+  line: t.line,
+  critical: criticalHits(t, areas),
+  text: [t.heading, ...t.body].join('\n').trim(),
+});
+
+if (args.list) {
+  const groups = sections
+    .map((s) => ({
+      section: s,
+      tasks: ready.filter((t) => t.section === s.key),
+    }))
+    .filter((g) => g.tasks.length > 0);
+  if (args.json) {
+    console.log(
+      JSON.stringify({
+        status: code === 0 ? 'ready' : code === 3 ? 'parked_only' : 'done',
+        phases: groups.map((g) => ({
+          id: g.section.key,
+          title: g.section.title,
+          intro: trimmed(g.section.intro, INTRO_LINES).join('\n').trim(),
+          tasks: g.tasks.map(asJson),
+        })),
+        parked: parked.map((t) => ({ id: t.id, title: t.title })),
+        open: open.length,
+        ready: ready.length,
+      }),
+    );
+    process.exit(code);
+  }
+  if (groups.length === 0) console.log(`No task an agent can do in ${shown}.`);
+  for (const g of groups) {
+    console.log(`\n${label(g.section)}  (${g.tasks.length} ready)`);
+    for (const t of g.tasks) {
+      const hits = criticalHits(t, areas);
+      const mark = hits.length ? `⚠ ${hits.join(',')}` : '';
+      console.log(`  ${t.id.padEnd(9)} ${mark.padEnd(16)} ${t.title.slice(0, 90)}`);
     }
   }
+  if (parked.length) {
+    console.log(`\n⏸ waiting on the owner (${parked.length}) — not for an agent:`);
+    for (const t of parked) console.log(`  ${t.id.padEnd(9)} ${t.title.slice(0, 90)}`);
+  }
+  console.log(`\n${open.length} open · ${ready.length} ready · ${parked.length} parked.`);
   process.exit(code);
 }
 
@@ -150,7 +216,12 @@ if (code === 4) {
 
 if (code === 3) {
   if (args.json) {
-    console.log(JSON.stringify({ status: 'parked_only', parked: parked.map((t) => t.id) }));
+    console.log(
+      JSON.stringify({
+        status: 'parked_only',
+        parked: parked.map((t) => t.id),
+      }),
+    );
   } else {
     console.log(`⏸ no task an agent can do — ${parked.length} parked, waiting on the owner:`);
     for (const t of parked) console.log(`  ${t.id} — ${t.title.slice(0, 90)}`);
@@ -162,33 +233,14 @@ if (code === 3) {
 }
 
 const first = ready[0];
-const batch = [first];
-for (const t of ready.slice(1)) {
-  if (batch.length >= batchSize) break;
-  if (t.section !== first.section && !args['cross-phase'] && !only) break;
-  batch.push(t);
-}
 const section = sections.find((s) => s.key === first.section);
-const trimmed = (lines, limit) => {
-  // Collapse blank runs, cap the length, drop the trailing blank.
-  const squeezed = lines.filter((l, i) => l.trim() || (i > 0 && lines[i - 1].trim()));
-  const kept = squeezed.slice(0, limit);
-  while (kept.length && !kept[kept.length - 1].trim()) kept.pop();
-  if (squeezed.length > limit) kept.push(`… (+${squeezed.length - limit} lines in ${shown})`);
-  return kept;
-};
 
 if (args.json) {
   console.log(
     JSON.stringify({
       status: 'ready',
       phase: section ? { id: section.key, title: section.title } : null,
-      tasks: batch.map((t) => ({
-        id: t.id,
-        title: t.title,
-        line: t.line,
-        text: [t.heading, ...t.body].join('\n').trim(),
-      })),
+      tasks: [asJson(first)],
       open: open.length,
       ready: ready.length,
     }),
@@ -196,20 +248,18 @@ if (args.json) {
   process.exit(0);
 }
 
-console.log(
-  `${batch.length > 1 ? `NEXT BATCH (${batch.length})` : 'NEXT TASK'} — ${section ? section.title : '(no section)'}`,
-);
+console.log(`NEXT TASK — ${section ? section.title : '(no section)'}`);
 const intro = section ? trimmed(section.intro, INTRO_LINES) : [];
 if (intro.some((l) => l.trim())) {
   console.log('');
   for (const l of intro) console.log(`  ${l}`);
 }
-for (const t of batch) {
-  console.log(`\n${t.heading}   (${shown}:${t.line})`);
-  for (const l of trimmed(t.body, BODY_LINES)) console.log(l);
-}
+const hits = criticalHits(first, areas);
+console.log(`\n${first.heading}   (${shown}:${first.line})`);
+if (hits.length) console.log(`⚠ critical path: ${hits.join(', ')} — read .claude/rules/<area>.md`);
+for (const l of trimmed(first.body, BODY_LINES)) console.log(l);
 console.log(
   `\n${open.length} open · ${ready.length} ready · ${parked.length} parked. ` +
-    'Close each task with its narrow check (npm run verify:task), the batch with npm run verify:batch.',
+    'Close the task with its narrow check (npm run verify:task); a phase ends with npm run verify:batch + verify:smoke.',
 );
 process.exit(0);

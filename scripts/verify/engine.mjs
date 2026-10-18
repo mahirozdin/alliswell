@@ -4,7 +4,7 @@
 // better part of a quarter hour, and run after every task it turned a 61-task loop into 37
 // hours, most of them spent waiting. So a task closes on the narrowest check that proves it
 // (K1) and the full set runs once per batch, before the single push (K2). CI still runs
-// everything on every push and is read at the start of the next turn (K3); what needs a
+// everything on every push and is read once at the merge (K3); what needs a
 // device or a person goes to docs/DEVICE-CHECKS.md (K4).
 //
 // A repo describes its checks as steps and hands them to `runCli` (scripts/verify/verify.mjs
@@ -585,7 +585,7 @@ export async function runCli(config) {
   }
   for (const [n, why] of skipped) console.log(`  ${'SKIP'.padEnd(8)} ${n.padEnd(24)} ${why}`);
   if (mode === 'batch' && config.ciOnly?.length) {
-    console.log('  CI only (K3 — read at the start of the next turn):');
+    console.log('  CI only (K3 — read once at the merge):');
     for (const note of config.ciOnly) console.log(`    · ${note}`);
   }
   for (const [name] of failed) {
@@ -607,7 +607,7 @@ export async function runCli(config) {
           ? ''
           : partial
             ? ' — a partial run (--only/--skip): not a push verdict.'
-            : ' — the batch may be pushed.'),
+            : ' — the phase may be pushed.'),
   );
   console.log(`logs: ${logDir}`);
   return failed.length ? 1 : 0;

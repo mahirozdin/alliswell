@@ -48,7 +48,8 @@
     "check:search-reachable": "node scripts/search/check-reachable.mjs",
     "next": "node scripts/tasks/next.mjs",
     "verify:task": "node scripts/verify/verify.mjs task",
-    "verify:batch": "node scripts/verify/verify.mjs batch"
+    "verify:batch": "node scripts/verify/verify.mjs batch",
+    "verify:smoke": "node scripts/verify/smoke.mjs"
   },
   "repository": {
     "type": "git",

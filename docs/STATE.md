@@ -5,11 +5,11 @@
 > new one) and never add session blocks: `npm run check:docs` enforces both and a 16 KB budget.
 > Backlog: [TASKS.md](TASKS.md) — `npm run next` prints the next task, and `check:docs` keeps the
 > pointer below equal to it · traps and decisions by area: [LESSONS.md](LESSONS.md) (grep the
-> area, don't read it whole) · loop contract: [../LOOP.md](../LOOP.md) · history: `git log` +
+> area, don't read it whole) · phase workflow: [development/workflow.md](development/workflow.md) · history: `git log` +
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-17 — tarayıcı QA düzeltmeleri: web'de AI sohbet akışı CORS başlığını taşıyor (OPH-382), OAuth onay kartı 390 px'e sığıyor (OPH-383), hızlı eklemede ✕ alan boşalınca unutuluyor (OPH-385), arama parçacığı kelimede kesiliyor (OPH-386), web'de @ düğmesi alanın odağını bırakmıyor (OPH-387).
+**Last updated:** 2026-10-18 — blueprint v3 yükseltmesi (ADR-0060): LOOP.md yerine faz workflow'u (`/isler`, `/faz E35`; `npm run next -- --list`), AGENTS.md 236 → 92 satır (ayrıntı `docs/development/` ve `.claude/rules/`), `npm run verify:smoke`; CI GitHub-hosted kalıyor (public depo).
 
 ## Snapshot
 
@@ -88,16 +88,17 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 - **Çalışma belgeleri yalın (2026-09-26):** STATE işaretçidir, TASKS yalnız açık iştir; kapanan iş
   silinir; kalıcı tuzak LESSONS'a, doğrulama kanıtı commit mesajına. Hedef: her oturumun okuduğu
   belge küçük kalsın (`check:docs`).
-- **Kontroller en sonda (2026-09-25; katmanları ADR-0042):** çok işli döngüde iş başına push/CI
+- **Kontroller en sonda (2026-09-25; katmanları ADR-0042, yürütme ADR-0060):** iş başına push/CI
   yok — iş `npm run verify:task` (K1: dokunulanın en dar testi) + belge + yerel commit ile kapanır;
-  ağır süitler, kapılar, enjeksiyon ve push öbeğin sonunda tek turda (`npm run verify:batch`, K2);
-  CI beklenmez, sonraki turun başında bir kez okunur (K3). Tur sözleşmesi [LOOP.md](../LOOP.md).
+  ağır süitler, kapılar, enjeksiyon ve push fazın sonunda tek turda (`npm run verify:batch` +
+  `verify:smoke`, K2); CI faz içinde beklenmez, merge'de bir kez okunur (K3). Faz sözleşmesi
+  [development/workflow.md](development/workflow.md).
 - **Cihaz gözlemi kapanış koşulu değil (2026-09-23):** iş derleme + testle kapanır; cihazda bakılacak
   şey işin "Cihazda bakılacak" satırına ya da DEVICE-CHECKS.md'ye yazılır. O güne kadar açık kalan
   cihaz/elle turları yapıldı sayıldı.
-- **Etiket, sürüm, deploy ve release sahibindir:** döngü sürüm numarası değiştirmez, etiket itmez
-  (etiket push'u bir deploy'dur), `gh workflow run` koşmaz, canlıya yazan komut çalıştırmaz (okuyan
-  `curl` serbest). Kapanışın kelimesi "KOD TAMAM"dır.
+- **Etiket, sürüm, deploy ve release sahibindir:** faz workflow'u sürüm numarası değiştirmez, etiket
+  itmez (etiket push'u bir deploy'dur), `gh workflow run` koşmaz, canlıya yazan komut çalıştırmaz
+  (okuyan `curl` serbest).
 - **Erteleme meşru, sessiz atlama değil:** yapılmayacak kutu `[~]` + tek cümle gerekçe; kutu,
   doğrulaması koşmadan `[x]` olmaz; ölçümle doğan boşluk ya aynı turda yeni id'li iş olur ya `[~]`.
 - **İkiz işler** (`⚠️ Çift kapanış ↔`) iki depoda birlikte kapanır ve birlikte silinir
@@ -158,9 +159,10 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 
 ## How to continue (for agents)
 
-1. [../AGENTS.md](../AGENTS.md) §2: işi `npm run next` basar (döngüde `-- --batch 4`,
-   [../LOOP.md](../LOOP.md)); TASKS'ı bütün okuma.
-2. Dokunacağın alanı [LESSONS.md](LESSONS.md)'de grep'le; bağlayıcı metin ilgili ADR'lerde.
-3. İş başına `npm run verify:task` + yerel commit; öbek sonunda `npm run verify:batch`, yeşilse
-   tek push. Bitişte: biten işi TASKS'tan sil, bu dosyanın hücrelerini yerinde güncelle, tek
-   CHANGELOG girdisi, Conventional Commit.
+1. Oturum başı `/isler` (`npm run next -- --list`), fazlar `/faz E35 …`
+   ([development/workflow.md](development/workflow.md)); TASKS'ı bütün okuma.
+2. Dokunacağın alanı [LESSONS.md](LESSONS.md)'de grep'le; kritik yolsa `.claude/rules/<alan>.md`;
+   bağlayıcı metin ilgili ADR'lerde.
+3. İş başına `npm run verify:task` + yerel commit; faz sonunda `npm run verify:batch` +
+   `verify:smoke`, yeşilse PR. Bitişte: biten işi TASKS'tan sil, bu dosyanın hücrelerini yerinde
+   güncelle, tek CHANGELOG girdisi, Conventional Commit.

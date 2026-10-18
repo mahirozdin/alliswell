@@ -18,7 +18,7 @@
 // a task's order inside its epic is its dependency order. That is the rule the
 // extension's docs gate already enforced for its pointer; there is deliberately no
 // second, finer dependency syntax that one of the two readers would not know.
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const SECTION = /^## (.+?)\s*$/;
@@ -141,4 +141,135 @@ export function budgetProblems(docsDir) {
     });
   }
   return problems;
+}
+
+// ── The root contract ───────────────────────────────────────────────────────
+//
+// AGENTS.md — and CLAUDE.md, which imports it — is loaded into every session, every
+// workflow agent and every context after a compaction; an import does not make it
+// cheaper. By 2026-10-18 it had grown to 236 lines and 16 KB, most of it detail that
+// one task in ten needed. Codex truncates its AGENTS.md chain at 32 KiB without a
+// word, so past a point the rules at the bottom are simply not there. The detail now
+// lives in docs/development/ and in path-scoped rules (.claude/rules/, loaded when a
+// matching file is touched); these numbers keep it there (ADR-0060).
+export const ROOT_DOC_BUDGETS = {
+  'AGENTS.md': { lines: 120, bytes: 10_240 },
+  'CLAUDE.md': { lines: 20, bytes: 2_048 },
+};
+export const RULES_DIR = '.claude/rules';
+export const RULE_MAX_LINES = 60;
+export const ROOT_CHAIN_BYTES = 24 * 1024;
+
+const lineCount = (text) => text.split('\n').length - (text.endsWith('\n') ? 1 : 0);
+
+/**
+ * @param {string} root  the repository root
+ * @returns {Array<{file: string, kind: 'lines'|'size'|'chain', size: number, limit: number}>}
+ */
+export function rootBudgetProblems(root) {
+  const problems = [];
+  const chain = new Set();
+  for (const [file, budget] of Object.entries(ROOT_DOC_BUDGETS)) {
+    const path = join(root, file);
+    if (!existsSync(path)) continue;
+    const text = readFileSync(path, 'utf8');
+    const lines = lineCount(text);
+    const bytes = Buffer.byteLength(text);
+    if (lines > budget.lines)
+      problems.push({ file, kind: 'lines', size: lines, limit: budget.lines });
+    if (bytes > budget.bytes)
+      problems.push({ file, kind: 'size', size: bytes, limit: budget.bytes });
+    chain.add(file);
+    for (const m of text.matchAll(/^@(\S+)/gm)) chain.add(m[1]);
+  }
+  const chainBytes = [...chain]
+    .filter((f) => existsSync(join(root, f)))
+    .reduce((sum, f) => sum + Buffer.byteLength(readFileSync(join(root, f))), 0);
+  if (chainBytes > ROOT_CHAIN_BYTES) {
+    problems.push({
+      file: [...chain].join(' + '),
+      kind: 'chain',
+      size: chainBytes,
+      limit: ROOT_CHAIN_BYTES,
+    });
+  }
+  for (const rule of ruleFiles(root)) {
+    const lines = lineCount(readFileSync(join(root, rule), 'utf8'));
+    if (lines > RULE_MAX_LINES) {
+      problems.push({ file: rule, kind: 'lines', size: lines, limit: RULE_MAX_LINES });
+    }
+  }
+  return problems;
+}
+
+function ruleFiles(root) {
+  const dir = join(root, RULES_DIR);
+  if (!existsSync(dir)) return [];
+  return readdirSync(dir)
+    .filter((f) => f.endsWith('.md'))
+    .sort()
+    .map((f) => `${RULES_DIR}/${f}`);
+}
+
+// ── Critical paths ──────────────────────────────────────────────────────────
+//
+// A critical path is an area where a mistake is expensive or irreversible (AGENTS.md
+// "Critical paths"). Each has a rule file whose `paths:` front matter is the one list
+// of its globs — Claude loads the file when a matching path is touched, and `next`
+// reads the same globs to mark a task ⚠ when its text names such a path, so the phase
+// workflow can give that task the area's extra gate. A task may also say so outright
+// ("Kritik yol: sync." / "Critical path: sync.").
+
+/** "apps/api/migrations/**" → a RegExp over repo-relative paths. */
+function globToRegExp(glob) {
+  let re = '';
+  for (let i = 0; i < glob.length; i += 1) {
+    const c = glob[i];
+    if (c === '*' && glob[i + 1] === '*') {
+      re += '.*';
+      i += 1;
+      if (glob[i + 1] === '/') i += 1;
+    } else if (c === '*') re += '[^/]*';
+    else if (c === '{') {
+      const end = glob.indexOf('}', i);
+      const options = glob.slice(i + 1, end).split(',');
+      re += `(?:${options.map((o) => o.replace(/[.+^$()|[\]\\]/g, '\\$&')).join('|')})`;
+      i = end;
+    } else re += c.replace(/[.+?^$()|[\]\\]/g, '\\$&');
+  }
+  return new RegExp(`^${re}$`);
+}
+
+/**
+ * @param {string} root  the repository root
+ * @returns {Array<{area: string, file: string, globs: RegExp[]}>}
+ */
+export function criticalAreas(root) {
+  return ruleFiles(root).map((file) => {
+    const text = readFileSync(join(root, file), 'utf8');
+    const front = /^---\n([\s\S]*?)\n---/.exec(text);
+    const globs = front
+      ? [...front[1].matchAll(/^\s*-\s*["']?([^"'\n]+?)["']?\s*$/gm)].map((m) => globToRegExp(m[1]))
+      : [];
+    return { area: file.replace(/^.*\/|\.md$/g, ''), file, globs };
+  });
+}
+
+/** The critical areas a task touches: named outright, or through a path in its text. */
+export function criticalHits(task, areas) {
+  const text = [task.heading, ...task.body].join('\n');
+  const hits = new Set();
+  for (const m of text.matchAll(/(?:kritik yol|critical path)\s*[:—–-]?\s*([a-z][\w-]*)?/gi)) {
+    const area = m[1] && areas.find((a) => a.area === m[1].toLowerCase());
+    hits.add(area ? area.area : 'critical');
+  }
+  // Task text often names a path from inside its app ("src/routes/sync.js").
+  const paths = (text.match(/[\w.-]+(?:\/[\w.*-]+)+/g) ?? []).flatMap((p) => {
+    const bare = p.replace(/^\.\//, '');
+    return [bare, `apps/api/${bare}`, `apps/app/${bare}`];
+  });
+  for (const area of areas) {
+    if (paths.some((p) => area.globs.some((g) => g.test(p)))) hits.add(area.area);
+  }
+  return [...hits];
 }
