@@ -12,7 +12,7 @@ export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
 export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
-export const VERSION = '1.18.0';
+export const VERSION = '1.18.1';
 // OPH-370 / ADR-0051: every release carries the desktop apps under stable,
 // unversioned names, so these links always fetch the newest one.
 export const RELEASES_URL = `${REPO_URL}/releases/latest`;

@@ -57,7 +57,7 @@ and GStreamer for the alarm sound; on Debian/Ubuntu that is
 `libgtk-3-0 libsecret-1-0 gstreamer1.0-plugins-base gstreamer1.0-plugins-good`. The app talks
 to alliswell.space by default; point it at your own server from the sign-in screen.
 
-> **Project status — `v1.18.0`, live.** Everything on this page is built, tested
+> **Project status — `v1.18.1`, live.** Everything on this page is built, tested
 > (**1,200+ app tests · 700+ backend unit · 70+ integration, green**) and deployed to
 > [alliswell.space](https://alliswell.space). Track what's next in
 > [ROADMAP.md](ROADMAP.md) and [docs/STATE.md](docs/STATE.md).
