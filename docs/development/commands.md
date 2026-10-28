@@ -19,7 +19,7 @@ in `package.json`.
 
 | Command | What |
 | --- | --- |
-| `docker compose up -d mysql redis minio radicale` | local services |
+| `docker compose up -d mysql redis minio radicale` | local services; one shared `alliswell` stack, so start it from the main checkout, not a throwaway worktree |
 | `npm run db:migrate` / `npm run db:rollback` | migrations |
 | `npm run dev` / `npm run start` | API (watch / plain) |
 | `npm run lint` · `npm run format` · `npm run format:check` | ESLint / Prettier (API) |
