@@ -38,8 +38,34 @@
   --aw-blob-b: rgb(142 92 255 / 25%);
   --aw-blob-c: rgb(0 199 176 / 22%);
 
+  /* OPH-388 — fills that carry WHITE text or a surface-coloured icon, so they
+     are the same in both themes (the dark palette's brand colours are light
+     and fail 4.5:1 under white). Measured: white on --aw-fill-progress 5.3:1,
+     on --aw-fill-done 5.4:1, on --aw-fill-alert 5.3:1; both ≥ 3:1 against either theme's background. */
+  --aw-fill-progress: #0a5cff;
+  --aw-fill-done: #0d7a33;
+  --aw-fill-alert: #d70015;
+  --aw-on-fill: #ffffff;
+  /* The deck's dark "Conclusion" band. Light: the dark theme's top colour;
+     text 16.0:1, the dimmer body 11.5:1. Dark: one step above the surface so
+     the band still reads as a band; 12.0:1 and 8.6:1. */
+  --aw-band-bg: #0b1233;
+  --aw-band-text: #eaf0fd;
+  --aw-band-dim: #c3cde6;
+  /* --aw-warning is a UI colour (2.96:1 as text on white, LESSONS design-ui);
+     this is the text colour that says the same thing: 5.7:1 on its own 10%
+     tint. Dark: the warning colour itself, 8.3:1. */
+  --aw-warning-text: #8a5300;
+  /* --aw-tertiary is 4.3:1 on the page's lavender bottom — short of 4.5 for
+     text. The "what the requester sees" labels use this: 5.5:1 there, 5.7:1
+     on its tinted pill. Dark: the tertiary itself, 7.5:1 and up. */
+  --aw-tertiary-text: #0a6b5c;
+
   --aw-radius: 20px;
   --aw-radius-lg: 28px;
+  /* OPH-388 — the sales deck's vocabulary on the enterprise page. A screenshot
+     card is rounder than a browser frame is square, and less than a card. */
+  --aw-radius-sm: 12px;
   --aw-max: 1180px;
   --aw-ease: cubic-bezier(0.22, 0.61, 0.36, 1);
 }
@@ -69,6 +95,12 @@
   --aw-blob-a: rgb(61 125 255 / 42%);
   --aw-blob-b: rgb(139 92 246 / 35%);
   --aw-blob-c: rgb(34 201 180 / 29%);
+
+  --aw-band-bg: #1f2c51;
+  --aw-band-text: #eaf0fd;
+  --aw-band-dim: #c3cde6;
+  --aw-warning-text: #ffc400;
+  --aw-tertiary-text: #35d6c2;
 }
 
 *,
@@ -231,9 +263,12 @@ pre {
 
 /* ── Buttons ─────────────────────────────────────────────────────────────── */
 
+/* The primary button sits on --aw-fill-progress, not --aw-primary: the dark
+   theme's primary (#3e9bff) carries white at only 2.86:1, under I-11's 4.5:1
+   for a label. The fill is the same blue in both themes, 5.3:1 under white. */
 .aw-btn {
-  --_bg: var(--aw-primary);
-  --_fg: #fff;
+  --_bg: var(--aw-fill-progress);
+  --_fg: var(--aw-on-fill);
   display: inline-flex;
   align-items: center;
   justify-content: center;

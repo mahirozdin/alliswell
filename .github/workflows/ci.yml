@@ -431,6 +431,14 @@ jobs:
           grep -q 'R=308' apps/landing/dist/.htaccess \
             || { echo "::error::.htaccess lost the /mcp and OAuth forward to the API"; exit 1; }
 
+          # OPH-388: the enterprise page offers its sales deck as a download, in
+          # both languages. .htaccess answers a missing path with index.html and
+          # a 200, so only the file in the docroot proves the button works.
+          for pdf in alliswell-enterprise-sunum-2026-10.pdf alliswell-enterprise-presentation-2026-10.pdf; do
+            test -f "apps/landing/dist/downloads/$pdf" \
+              || { echo "::error::no dist/downloads/$pdf — the enterprise page's deck button would download a web page"; exit 1; }
+          done
+
           # EE-154. The sitemap is EMITTED from the route list rather than
           # written by hand, so "it exists" is not the interesting assertion —
           # "it lists every route" is. A plugin that silently stopped running

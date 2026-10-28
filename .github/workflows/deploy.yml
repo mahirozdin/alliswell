@@ -905,6 +905,26 @@ jobs:
             *) echo "::error::the Postman collection returned $code — the docs page offers a broken download"; fail=1 ;;
           esac
 
+          # OPH-388: the enterprise deck, in both languages. The content type is
+          # asserted too: a missing file is rewritten to index.html with a 200,
+          # so the status code alone would pass a deck button that downloads
+          # the homepage. curl's own exit status is kept as well: a transfer that
+          # sends "200 application/pdf" headers and then truncates or times out
+          # still prints those values, and must not pass.
+          for pdf in alliswell-enterprise-sunum-2026-10.pdf alliswell-enterprise-presentation-2026-10.pdf; do
+            rc=0
+            got=$(curl -fsS -o /dev/null -w '%{http_code} %{content_type}' --max-time 30 \
+              "$site/downloads/$pdf") || rc=$?
+            if [ "$rc" -ne 0 ]; then
+              echo "::error::/downloads/$pdf failed (curl exit $rc, got '$got') — the enterprise page offers a broken deck"; fail=1
+              continue
+            fi
+            case "$got" in
+              "200 application/pdf"*) echo "✓ $pdf downloads as a PDF" ;;
+              *) echo "::error::/downloads/$pdf returned '$got' — the enterprise page offers a broken deck"; fail=1 ;;
+            esac
+          done
+
           # The legal pages are a store REQUIREMENT, and they are the pages most
           # likely to be broken by something between us and the visitor rather
           # than by the build — Cloudflare's Email Address Obfuscation silently

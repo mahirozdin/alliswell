@@ -2,6 +2,7 @@
 import { ref } from 'vue';
 
 import ScreenshotFrame from '../components/ScreenshotFrame.vue';
+import LatinWords from '../components/LatinWords.vue';
 
 /**
  * Several captures of one idea, one at a time (EE-153; two columns in EE-164).
@@ -71,7 +72,7 @@ function onKey(event, i) {
     <div class="aw-shell tabs__grid">
       <div class="tabs__copy">
         <header class="tabs__head">
-          <p v-if="eyebrow" class="aw-eyebrow">{{ eyebrow }}</p>
+          <p v-if="eyebrow" class="aw-eyebrow"><LatinWords :text="eyebrow" /></p>
           <h2>{{ title }}</h2>
           <p v-if="lede" class="aw-lede">{{ lede }}</p>
         </header>

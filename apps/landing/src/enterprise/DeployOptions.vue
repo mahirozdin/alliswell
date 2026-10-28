@@ -1,4 +1,8 @@
 <script setup>
+import AwIcon from './AwIcon.vue';
+import { hasIcon } from './icons.js';
+import LatinWords from '../components/LatinWords.vue';
+
 /**
  * Cloud, or your own servers (EE-164).
  *
@@ -12,8 +16,8 @@
  * Two cards, same shape, because the offer really is symmetrical: the same
  * product, and the reader picks where the data lives. Each card ends in the
  * action that follows from choosing it — the cloud card points at the package
- * table, the on-premise card at the form, because there is no package table
- * for on-premise: the limits are set with the customer at installation.
+ * table, the own-server card at the form, because there is no package table
+ * for an own-server install: the limits are set with the customer at installation.
  */
 defineProps({
   eyebrow: { type: String, default: '' },
@@ -30,14 +34,17 @@ defineProps({
   <section :id="anchor" v-reveal class="aw-section deploy">
     <div class="aw-shell">
       <header class="deploy__head">
-        <p v-if="eyebrow" class="aw-eyebrow">{{ eyebrow }}</p>
+        <p v-if="eyebrow" class="aw-eyebrow"><LatinWords :text="eyebrow" /></p>
         <h2>{{ title }}</h2>
         <p v-if="lede" class="aw-lede">{{ lede }}</p>
       </header>
 
       <div class="deploy__grid">
         <article v-for="o in options" :key="o.key" class="aw-card deploy__card">
-          <span class="deploy__icon" aria-hidden="true">{{ o.icon }}</span>
+          <!-- OPH-388: an icons.js key draws the deck's line icon; anything
+               else is printed as before. -->
+          <span v-if="hasIcon(o.icon)" class="deploy__svg"><AwIcon :name="o.icon" :size="28" /></span>
+          <span v-else class="deploy__icon" aria-hidden="true">{{ o.icon }}</span>
           <h3>{{ o.title }}</h3>
           <p class="deploy__tagline">{{ o.tagline }}</p>
           <ul class="deploy__points">
@@ -90,6 +97,17 @@ defineProps({
   font-size: 2rem;
   line-height: 1;
   margin-bottom: 0.85rem;
+}
+
+.deploy__svg {
+  display: grid;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  margin-bottom: 1rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--aw-primary) 13%, var(--aw-surface));
+  color: var(--aw-primary-strong);
 }
 
 .deploy__card h3 {

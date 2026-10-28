@@ -309,7 +309,10 @@ async function waitJson(url, tries = 60) {
 async function dataUri(rel) {
   const file = path.join(SHOTS, rel);
   if (!existsSync(file)) return null;
-  return `data:image/png;base64,${(await readFile(file)).toString('base64')}`;
+  // OPH-388: the sales captures are JPEGs (screenshots/sales/); the type
+  // follows the file rather than being assumed.
+  const type = /\.jpe?g$/i.test(rel) ? 'image/jpeg' : 'image/png';
+  return `data:${type};base64,${(await readFile(file)).toString('base64')}`;
 }
 
 // ── The pages ───────────────────────────────────────────────────────────────
@@ -441,7 +444,7 @@ function iconPage(size, mark, { rounded }) {
  * and the enterprise page in two languages — and they differ only in words and
  * in the capture behind them.
  */
-function ogPage({ mark, title, sub, hero }) {
+function ogPage({ mark, title, sub, hero, composite = false }) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
     *{box-sizing:border-box;margin:0;padding:0}
     html,body{width:1200px;height:630px;overflow:hidden}
@@ -457,13 +460,34 @@ function ogPage({ mark, title, sub, hero }) {
       border-radius:20px;overflow:hidden;border:1px solid rgba(15,27,46,.12);
       box-shadow:0 40px 80px -30px rgba(32,58,102,.45);rotate:-4deg}
     .shot img{display:block;width:100%}
-  </style></head><body>
+    /* OPH-388: the sales hero is already a scene (a desktop and a phone, each
+       framed, on the page's own background), so it gets no second frame. Its
+       left and top edges fade into the card, and the words keep to the left
+       of it. */
+    .composite .top{max-width:560px}
+    .composite h1{font-size:48px}
+    .composite p{max-width:470px}
+    .comp{position:absolute;right:-6px;bottom:-26px;width:640px;z-index:0;
+      -webkit-mask-image:linear-gradient(to right,transparent 0,#000 14%),
+        linear-gradient(to bottom,transparent 0,#000 12%);
+      -webkit-mask-composite:source-in;
+      mask-image:linear-gradient(to right,transparent 0,#000 14%),
+        linear-gradient(to bottom,transparent 0,#000 12%);
+      mask-composite:intersect}
+    .comp img{display:block;width:100%}
+  </style></head><body class="${composite ? 'composite' : ''}">
     <div class="top">
       <div class="brand">${mark}<span>AllisWell</span></div>
       <h1>${title}</h1>
       <p>${sub}</p>
     </div>
-    ${hero ? `<div class="shot"><img src="${hero}"></div>` : ''}
+    ${
+      hero
+        ? composite
+          ? `<div class="comp"><img src="${hero}"></div>`
+          : `<div class="shot"><img src="${hero}"></div>`
+        : ''
+    }
   </body></html>`;
 }
 
@@ -682,17 +706,21 @@ async function main() {
           sub: 'Görevler, notlar ve alarm gücünde hatırlatıcılar · alliswell.space/tr',
           hero: 'web/home-light.png',
         },
+        // OPH-388: the enterprise cards say the page's hero title and show its
+        // hero, the sales composite (screenshots/sales/, JPEG).
         {
           file: 'enterprise-en.png',
-          title: 'Every work request in your organisation, in one place',
-          sub: 'Departments, SLAs, customer requests, tasks and documents · alliswell.space/enterprise',
-          hero: 'ee/sla-dashboard-light-en.png',
+          title: 'Manage every work request in your factory in one place',
+          sub: 'Requests, SLA tracking, approvals and a company portal · alliswell.space/enterprise',
+          hero: 'sales/hero-light-en.jpg',
+          composite: true,
         },
         {
           file: 'enterprise-tr.png',
-          title: 'Kurumunuzdaki bütün iş talepleri, tek yerden',
-          sub: 'Birimler, SLA, müşteri talepleri, görevler ve dokümanlar · alliswell.space/enterprise/tr',
-          hero: 'ee/sla-dashboard-light-tr.png',
+          title: 'Fabrikanızdaki bütün iş taleplerini tek yerden yönetin',
+          sub: 'Talepler, SLA takibi, onaylar ve firma portalı · alliswell.space/enterprise/tr',
+          hero: 'sales/hero-light-tr.jpg',
+          composite: true,
         },
       ];
       for (const card of cards) {
@@ -701,7 +729,7 @@ async function main() {
           console.log(`· og: skipped ${card.file} — no ${card.hero}`);
           continue;
         }
-        await shoot(ogPage({ mark: MARK, title: card.title, sub: card.sub, hero }), {
+        await shoot(ogPage({ ...card, mark: MARK, hero }), {
           width: 1200,
           height: 630,
           file: path.join(SHOTS, 'og', card.file),

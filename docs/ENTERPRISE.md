@@ -11,6 +11,7 @@ commercially licensed edition for organisations that need more than one person's
 > **What it does, with screenshots, is on the website:**
 > **[alliswell.space/enterprise](https://alliswell.space/enterprise)**
 > · **[Türkçe](https://alliswell.space/enterprise/tr)**
+> · the presentation as a PDF: [English](https://alliswell.space/downloads/alliswell-enterprise-presentation-2026-10.pdf) · [Türkçe](https://alliswell.space/downloads/alliswell-enterprise-sunum-2026-10.pdf)
 
 ## Why this file is short now
 

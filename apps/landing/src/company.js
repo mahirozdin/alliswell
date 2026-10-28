@@ -18,6 +18,12 @@ export const company = {
     country: 'Türkiye',
   },
   email: 'info@bubiapps.com',
+  /**
+   * OPH-388 — the address the enterprise sales deck prints, and so the one the
+   * enterprise page offers (contact form fallback, footer). The legal pages,
+   * the store listings and the privacy policy keep `email`.
+   */
+  salesEmail: 'mahirozdin@bubiapps.com',
   phone: '+90 505 493 1041',
   phoneAlt: '+44 7586 553454',
   site: 'https://bubiapps.com',
