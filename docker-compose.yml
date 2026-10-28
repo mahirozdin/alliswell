@@ -70,7 +70,16 @@ services:
     ports:
       - '${RADICALE_PORT:-5232}:5232'
     volumes:
-      - ./docker/radicale:/config:ro
+      # Long syntax with create_host_path: false — if this checkout is a git
+      # worktree that later gets deleted, the restarting container must fail
+      # instead of Docker re-creating ./docker/radicale as root, which leaves
+      # a root-owned folder that blocks new worktrees at the same path.
+      - type: bind
+        source: ./docker/radicale
+        target: /config
+        read_only: true
+        bind:
+          create_host_path: false
       - radicale_data:/data
 
   # Run the API in a container too: `docker compose --profile full up`
