@@ -11,6 +11,7 @@ bir sürümdür.
 > **Ne yaptığı, ekran görüntüleriyle birlikte web sitesinde:**
 > **[alliswell.space/enterprise/tr](https://alliswell.space/enterprise/tr)**
 > · **[English](https://alliswell.space/enterprise)**
+> · sunum PDF olarak: [Türkçe](https://alliswell.space/downloads/alliswell-enterprise-sunum-2026-10.pdf) · [English](https://alliswell.space/downloads/alliswell-enterprise-presentation-2026-10.pdf)
 
 ## Bu dosya neden kısaldı
 

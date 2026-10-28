@@ -4,14 +4,16 @@ import LangSwitch from './LangSwitch.vue';
 import { VERSION, siteColumns } from '../content.js';
 import { company } from '../company.js';
 import { useGithubStars } from '../composables/useGithubStars.js';
+import LatinWords from './LatinWords.vue';
 
 const { stars, forks, loaded, format } = useGithubStars();
 
 
 /**
  * EE-143 — the footer's own words become props so a second page can speak its
- * own language. `company.legalName` and the contact address deliberately stay
- * shared: the legal identity is the one thing that must not fork per page.
+ * own language. `company.legalName` deliberately stays shared: the legal
+ * identity is the one thing that must not fork per page. (The address beside
+ * it may — OPH-388, the `email` prop.)
  */
 defineProps({
   home: { type: String, default: '/' },
@@ -41,6 +43,12 @@ defineProps({
    * they are about the open repository and the column beside them says so.
    */
   showVersion: { type: Boolean, default: true },
+  /**
+   * OPH-388 — the address in the bottom line. The legal NAME stays shared; the
+   * enterprise page passes the sales address its deck prints, and every other
+   * page keeps the legal contact (`company.email`) by passing nothing.
+   */
+  email: { type: String, default: '' },
   /** EE-164 — the two words in the stats line, so a Turkish page can say them. */
   starsWord: { type: String, default: 'stars' },
   forksWord: { type: String, default: 'forks' },
@@ -68,7 +76,7 @@ defineProps({
         </div>
 
         <nav v-for="col in columns" :key="col.title" class="ftr__col" :aria-label="col.title">
-          <h3>{{ col.title }}</h3>
+          <h3><LatinWords :text="col.title" /></h3>
           <ul>
             <li v-for="l in col.links" :key="l.label">
               <a
@@ -88,7 +96,7 @@ defineProps({
           © {{ new Date().getFullYear() }} {{ company.legalName }} ·
           <a :href="privacyHref">{{ privacyLabel }}</a> ·
           <a :href="supportHref">{{ supportLabel }}</a> ·
-          <a :href="`mailto:${company.email}`">{{ company.email }}</a>
+          <a :href="`mailto:${email || company.email}`">{{ email || company.email }}</a>
         </p>
         <p>{{ notes }}</p>
         <LangSwitch class="ftr__langs" :alternates="alternates" :current="current" />

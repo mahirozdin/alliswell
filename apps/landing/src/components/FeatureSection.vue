@@ -1,5 +1,6 @@
 <script setup>
 import ScreenshotFrame from './ScreenshotFrame.vue';
+import LatinWords from './LatinWords.vue';
 
 /**
  * One feature: copy on one side, a screenshot on the other, alternating.
@@ -34,7 +35,7 @@ const shotPath = (s) => (s.startsWith('/') ? s : `/shots/${s}`);
 <template>
   <article v-reveal class="feature" :class="{ 'feature--flip': flip, 'aw-shell': shell }">
     <div class="feature__copy">
-      <p class="aw-eyebrow">{{ feature.eyebrow }}</p>
+      <p class="aw-eyebrow"><LatinWords :text="feature.eyebrow" /></p>
       <h2>{{ feature.title }}</h2>
       <p class="aw-lede">{{ feature.body }}</p>
       <ul class="feature__points">
@@ -55,6 +56,9 @@ const shotPath = (s) => (s.startsWith('/') ? s : `/shots/${s}`);
       </ul>
     </div>
 
+    <!-- `frameWidth` (optional, a CSS length) caps a tall capture so it shows at
+         about its real scale instead of filling the column — the enterprise
+         page's identity screen beside the smaller sales crops. -->
     <!-- `shotDark` was declared in content.js from the start and never read, so
          the site showed the light Home capture on a dark page. It is wired now,
          and the widget block relies on it. -->
@@ -66,6 +70,7 @@ const shotPath = (s) => (s.startsWith('/') ? s : `/shots/${s}`);
       :variant="feature.frame || 'browser'"
       :ratio="feature.ratio || ''"
       :label="feature.frameLabel || `alliswell.space/app — ${feature.eyebrow}`"
+      :style="feature.frameWidth ? { width: '100%', maxWidth: feature.frameWidth, justifySelf: 'center' } : null"
     />
   </article>
 </template>

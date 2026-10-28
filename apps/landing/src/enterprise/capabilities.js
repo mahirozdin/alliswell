@@ -36,7 +36,7 @@ export const CAPABILITIES = Object.freeze([
     level: 'app',
     packages: all,
     tr: 'Birim talep listeleri: durum, öncelik, atama, yanıt, iç not ve toplu işlem',
-    en: 'Unit request queues: status, priority, assignment, replies, internal notes and bulk actions',
+    en: 'Unit request lists: status, priority, assignment, replies, internal notes and bulk actions',
   },
   // OPH-367: the list said "none" while ticket_composer.dart (OPH-358) uploads
   // files onto the new reply (`ticket_comment`) and requester_ticket_screen.dart
@@ -64,7 +64,7 @@ export const CAPABILITIES = Object.freeze([
     level: 'app',
     packages: all,
     tr: 'Olay ile hizmet isteği ayrı: hizmetin türü, liste süzgeci ve türe göre performans',
-    en: 'Incidents apart from service requests: a kind per service, a queue filter and performance by kind',
+    en: 'Incidents apart from service requests: a kind per service, a list filter and performance by kind',
   },
   {
     key: 'crossUnit',
@@ -360,21 +360,25 @@ export const OFFLINE = Object.freeze({
   tr: {
     fact: 'İnternet kesildiğinde de açılır',
     queue:
-      'İnternet kesildiğinde de talep listesi açılır ve okunur; yeni talep taslak olarak bekler, ' +
-      'bağlantı gelince iletilir. Talebe yanıt, durum ve atama bağlantı ister',
+      'İnternet kesildiğinde de talep listesi ve talepler açılır; sinyal yokken yazılan yeni ' +
+      'talep taslak olarak bekler, bağlantı gelince gönderilir. Talebe yanıt, durum ve atama ' +
+      'bağlantı ister',
+    // OPH-388: the deck's words (slide 17). Still the same truth: requests
+    // READ offline, a new one waits as a draft, tasks and notes edit offline.
     integrity:
-      'Görevler ve notlar internet yokken düzenlenir, bağlantı gelince eşitlenir; hiçbir kayıt ' +
-      'yarım kalmaz. Talepler çevrimdışı okunur, yeni talep taslak olarak bekler.',
+      'Talep listesi ve talepler internet yokken de telefonda açılır. Sinyal yokken yazılan ' +
+      'talep taslak olarak bekler, bağlantı gelince gönderilir. Görevler ve notlar çevrimdışı ' +
+      'düzenlenir, bağlantı gelince eşitlenir.',
   },
   en: {
     fact: 'Opens with the internet down',
     queue:
-      'With the internet down the request list still opens and reads; a new request waits as a ' +
-      'draft and is sent when the connection returns. Replying, changing a status and assigning ' +
-      'need a connection',
+      'With the internet down the request list and the requests still open; a new request ' +
+      'written without a signal waits as a draft and is sent when the connection returns. ' +
+      'Replying, changing a status and assigning need a connection',
     integrity:
-      'Tasks and notes are edited with the internet down and synchronised when the connection ' +
-      'returns; no record is left half-written. Requests read offline, and a new one waits as a ' +
-      'draft.',
+      'The request list and the requests open on the phone with the internet down. A request ' +
+      'written without a signal waits as a draft and is sent when the connection returns. ' +
+      'Tasks and notes are edited offline and synchronised when the connection returns.',
   },
 });

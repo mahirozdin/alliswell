@@ -1,5 +1,8 @@
 <script setup>
+import { computed } from 'vue';
+
 import { comparison, DOCS_URL } from '../content.js';
+import LatinWords from './LatinWords.vue';
 
 /**
  * EE-143 — the whole table, its headings and its three cell words become one
@@ -36,6 +39,25 @@ const props = defineProps({
   highlight: { type: Number, default: 0 },
 });
 
+/**
+ * OPH-388 — `table.pinnedRows` (a number) keeps the first N rows in view and
+ * folds the rest into a `<details>` titled `table.moreLabel`. The enterprise
+ * package table has three rows a buyer compares (seats, units, history) and
+ * some twenty-five capability rows that are reference, not argument; open, it
+ * was the longest thing on the page. Absent, the table renders whole, as the
+ * homepage's does. The folded rows are a second table with the same head, so
+ * a screen reader inside it still knows which column is which.
+ */
+const pinned = computed(() => {
+  const n = props.table.pinnedRows;
+  return Number.isInteger(n) && n > 0 && n < props.table.rows.length ? n : 0;
+});
+const groups = computed(() =>
+  pinned.value
+    ? [props.table.rows.slice(0, pinned.value), props.table.rows.slice(pinned.value)]
+    : [props.table.rows],
+);
+
 /** 'yes' | 'no' | 'partial' | free text → a cell that reads without colour alone. */
 function cell(value) {
   const l = props.table.labels;
@@ -50,45 +72,63 @@ function cell(value) {
   <section :id="anchor" v-reveal class="aw-section">
     <div class="aw-shell">
       <header class="cmp__head">
-        <p class="aw-eyebrow">{{ table.eyebrow }}</p>
+        <p class="aw-eyebrow"><LatinWords :text="table.eyebrow" /></p>
         <h2>{{ table.title }}</h2>
         <p class="aw-lede">{{ table.lede }}</p>
       </header>
 
-      <div class="cmp__scroll" tabindex="0" role="region" :aria-label="table.caption">
-        <table class="cmp">
-          <thead>
-            <tr>
-              <th scope="col" class="cmp__feature">{{ table.featureHeading }}</th>
-              <th
-                v-for="(c, i) in table.columns"
-                :key="c"
-                scope="col"
-                :class="{ 'cmp__ours': i === highlight }"
-              >
-                {{ c }}
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="row in table.rows" :key="row[0]">
-              <th scope="row" class="cmp__feature">{{ row[0] }}</th>
-              <td
-                v-for="(value, i) in row.slice(1)"
-                :key="i"
-                :class="[`is-${cell(value).tone}`, { 'cmp__ours': i === highlight }]"
-              >
-                <span v-if="cell(value).mark" class="cmp__mark" aria-hidden="true">{{
-                  cell(value).mark
-                }}</span>
-                <span :class="{ 'aw-visually-hidden': !!cell(value).mark }">{{
-                  cell(value).label
-                }}</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <template v-for="(rows, g) in groups" :key="g">
+        <component
+          :is="g === 0 ? 'div' : 'details'"
+          :class="g === 0 ? 'cmp__group' : 'cmp__more'"
+        >
+          <summary v-if="g > 0" class="cmp__summary">
+            {{ table.moreLabel }}
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+              <path d="M12 15.4 6.6 10l1.4-1.4 4 4 4-4L17.4 10z" />
+            </svg>
+          </summary>
+          <div
+            class="cmp__scroll"
+            tabindex="0"
+            role="region"
+            :aria-label="g === 0 ? table.caption : `${table.caption} — ${table.moreLabel}`"
+          >
+            <table class="cmp" :class="{ 'cmp--fixed': pinned > 0 }">
+              <thead>
+                <tr>
+                  <th scope="col" class="cmp__feature">{{ table.featureHeading }}</th>
+                  <th
+                    v-for="(c, i) in table.columns"
+                    :key="c"
+                    scope="col"
+                    :class="{ 'cmp__ours': i === highlight }"
+                  >
+                    <LatinWords :text="c" />
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="row in rows" :key="row[0]">
+                  <th scope="row" class="cmp__feature">{{ row[0] }}</th>
+                  <td
+                    v-for="(value, i) in row.slice(1)"
+                    :key="i"
+                    :class="[`is-${cell(value).tone}`, { 'cmp__ours': i === highlight }]"
+                  >
+                    <span v-if="cell(value).mark" class="cmp__mark" aria-hidden="true">{{
+                      cell(value).mark
+                    }}</span>
+                    <span :class="{ 'aw-visually-hidden': !!cell(value).mark }">{{
+                      cell(value).label
+                    }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </component>
+      </template>
 
       <p class="cmp__note">
         {{ table.footnote }}
@@ -179,6 +219,54 @@ function cell(value) {
 .cmp tbody tr:last-child th,
 .cmp tbody tr:last-child td {
   border-bottom: 0;
+}
+
+/* ── OPH-388: pinned rows and the fold ─────────────────────────────────── */
+
+/* Both halves of a folded table share one column grid, so the folded rows
+   line up under the pinned ones. */
+.cmp--fixed {
+  table-layout: fixed;
+}
+.cmp--fixed .cmp__feature {
+  width: 46%;
+}
+.cmp--fixed td,
+.cmp--fixed thead th:not(.cmp__feature) {
+  white-space: normal;
+}
+
+.cmp__more {
+  margin-top: 0.85rem;
+}
+
+.cmp__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  min-height: 48px;
+  padding: 0.6rem 1.15rem;
+  border-radius: var(--aw-radius);
+  border: 1px solid var(--aw-hairline);
+  background: var(--aw-surface);
+  box-shadow: var(--aw-shadow-sm);
+  font-weight: 650;
+  cursor: pointer;
+  list-style: none;
+}
+.cmp__summary::-webkit-details-marker {
+  display: none;
+}
+.cmp__summary svg {
+  color: var(--aw-text-dim);
+  transition: rotate 0.18s var(--aw-ease);
+}
+.cmp__more[open] .cmp__summary {
+  margin-bottom: 0.85rem;
+}
+.cmp__more[open] .cmp__summary svg {
+  rotate: 180deg;
 }
 
 .cmp__note {

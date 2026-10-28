@@ -1,11 +1,17 @@
 <script setup>
 import { computed } from 'vue';
 
+import AnnotatedShots from './AnnotatedShots.vue';
+import ChannelList from './ChannelList.vue';
 import ContactForm from './ContactForm.vue';
+import DeckDownload from './DeckDownload.vue';
 import DeployOptions from './DeployOptions.vue';
 import EeHero from './EeHero.vue';
+import GroupHeading from './GroupHeading.vue';
+import JourneyFlow from './JourneyFlow.vue';
+import ProblemGrid from './ProblemGrid.vue';
 import ShotTabs from './ShotTabs.vue';
-import StepTimeline from './StepTimeline.vue';
+import StatusFlow from './StatusFlow.vue';
 import { SECTIONS, TWO_COLUMN_COMPONENTS } from './page.js';
 import { company } from '../company.js';
 import ComparisonTable from '../components/ComparisonTable.vue';
@@ -39,15 +45,33 @@ const props = defineProps({
 
 const COMPONENTS = {
   EeHero,
+  ProblemGrid,
+  JourneyFlow,
+  AnnotatedShots,
+  StatusFlow,
+  ChannelList,
   PillarGrid,
-  StepTimeline,
+  GroupHeading,
   FeatureSection,
   ShotTabs,
   DeployOptions,
   ComparisonTable,
+  DeckDownload,
   ContactForm,
   FaqSection,
 };
+
+/**
+ * Does this section really put copy beside a picture? AnnotatedShots does in
+ * its `side` layout, and in `phones` when a list sits beside the row; its grid
+ * and its lone phone row have no side to swap (page.js, TWO_COLUMN_COMPONENTS).
+ */
+function isTwoColumn(section) {
+  if (!TWO_COLUMN_COMPONENTS.includes(section.component)) return false;
+  if (section.component !== 'AnnotatedShots') return true;
+  const data = props.content[section.key];
+  return data.layout === 'side' || (data.layout === 'phones' && (data.items?.length ?? 0) > 0);
+}
 
 /** Only the sections this language actually has copy for. */
 const sections = computed(() => SECTIONS.filter((s) => props.content[s.key]));
@@ -62,7 +86,7 @@ const flipped = computed(() => {
   const map = new Map();
   let n = 0;
   for (const s of sections.value) {
-    if (TWO_COLUMN_COMPONENTS.includes(s.component)) map.set(s.key, n++ % 2 === 1);
+    if (isTwoColumn(s)) map.set(s.key, n++ % 2 === 1);
   }
   return map;
 });
@@ -74,16 +98,65 @@ function propsFor(section) {
   switch (section.component) {
     case 'EeHero':
       return { hero: data };
-    case 'PillarGrid':
-      return { items: data.items, eyebrow: data.eyebrow, title: data.title };
-    case 'StepTimeline':
+    case 'ProblemGrid':
+      return {
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        items: data.items,
+        conclusion: data.conclusion,
+      };
+    case 'JourneyFlow':
       return {
         eyebrow: data.eyebrow,
         title: data.title,
         lede: data.lede,
         steps: data.steps,
-        aside: data.aside,
+        footnote: data.footnote,
       };
+    case 'AnnotatedShots':
+      return {
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        layout: data.layout,
+        cols: data.cols,
+        shots: data.shots,
+        items: data.items,
+        points: data.points,
+        note: data.note,
+        flip,
+      };
+    case 'StatusFlow':
+      return {
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        teamLabel: data.teamLabel,
+        requesterLabel: data.requesterLabel,
+        states: data.states,
+        waiting: data.waiting,
+        after: data.after,
+      };
+    case 'ChannelList':
+      return {
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        channels: data.channels,
+        shot: data.shot,
+        note: data.note,
+      };
+    case 'PillarGrid':
+      return {
+        items: data.items,
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        shot: data.shot,
+      };
+    case 'GroupHeading':
+      return { eyebrow: data.eyebrow, title: data.title, lede: data.lede };
     case 'FeatureSection':
       // `shell`: the homepage wraps its feature run in one `.aw-shell`; this
       // page renders each row straight into <main>, and without its own shell
@@ -105,12 +178,22 @@ function propsFor(section) {
       // No highlighted column: on the homepage the first column is "us", here
       // the first column is merely the smallest package.
       return { table: data, anchor: section.anchor, highlight: -1 };
+    case 'DeckDownload':
+      return {
+        eyebrow: data.eyebrow,
+        title: data.title,
+        lede: data.lede,
+        cover: data.cover,
+        pdf: data.pdf,
+        secondary: data.secondary,
+      };
     case 'ContactForm':
-      // company.js, not the content module: this is the legal contact route
-      // and it must not fork per language. `content.lang` and not a new prop:
-      // the acknowledgement the sender receives is decided by the page they
-      // were reading (EE-158).
-      return { contact: data, email: company.email, lang: props.content.lang };
+      // company.js, not the content module: the address must not fork per
+      // language. `content.lang` and not a new prop: the acknowledgement the
+      // sender receives is decided by the page they were reading (EE-158).
+      // OPH-388: the SALES address, the one the deck prints; the legal pages
+      // keep `company.email`.
+      return { contact: data, email: company.salesEmail, lang: props.content.lang };
     case 'FaqSection':
       return { heading: data.heading, items: data.items };
     default:
@@ -170,10 +253,13 @@ function bindingsFor(section) {
     :notes="content.footer.notes"
     :privacy-label="content.footer.privacyLabel"
     :support-label="content.footer.supportLabel"
+    :stars-word="content.footer.starsWord"
+    :forks-word="content.footer.forksWord"
     :privacy-href="content.lang === 'tr' ? '/privacy/tr' : '/privacy'"
     :support-href="content.lang === 'tr' ? '/support/tr' : '/support'"
     :alternates="alternates"
     :current="current"
     :show-version="false"
+    :email="company.salesEmail"
   />
 </template>

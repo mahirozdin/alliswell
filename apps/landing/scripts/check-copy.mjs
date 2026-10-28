@@ -37,7 +37,7 @@
 // browser, in English, shared by both languages — the pipeline that makes them
 // is not run per language (content.tr.js says why). So the path-per-language
 // rule is a property of the PAIR, declared below, not of the gate.
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,6 +54,8 @@ const PAIRS = [
     tr: 'src/enterprise/content.tr.js',
     entries: { en: 'enterprise/index.html', tr: 'enterprise/tr/index.html' },
     shotsPerLanguage: true,
+    vocabulary: true,
+    downloads: true,
   },
   {
     name: 'home',
@@ -63,6 +65,33 @@ const PAIRS = [
     shotsPerLanguage: false,
   },
 ];
+
+/**
+ * ── 7. The words the sales deck does not use (OPH-388) ──────────────────
+ *
+ * The enterprise page speaks the language of the factory deck it follows:
+ * "talep", "birim", "kurum dışı talep formu" — not the translated-sounding
+ * terms a buyer hears as somebody else's product. The page had drifted into
+ * "on-premise", "herkese açık talep formu" and "departman" while both files
+ * stayed perfectly consistent with each other, which is exactly what checks
+ * 1–5 cannot see. The list is the sales deck's language rules.
+ *
+ * Plurals and Turkish suffixes count: the Turkish patterns anchor only the
+ * start of the word ("ticketlar", "team'i"), the English ones take an `s`.
+ *
+ * Prose only: a leaf whose NAME is structure (a path, an icon key, a layout)
+ * is skipped — alt text is prose and is checked. A deliberate use is marked
+ * `i18n-vocab-ok` on a line of the source that carries the word.
+ */
+const FORBIDDEN = {
+  tr: [
+    /\b(ticket|team|queue|dashboard|workflow|on-?prem|public portal)/i,
+    /servis masası|herkese açık|departman|kuyruk/i,
+  ],
+  en: [/\b(tickets?|on-?prem(ise)?s?|service desks?|public portals?|departments?|queues?|workflows?)\b/i],
+};
+/** Leaf names that hold structure, not words a reader reads. */
+const STRUCTURE = /^(lang|shot|shotDark|src|href|ogImage|icon|tone|layout|frame|accent|key|id|anchor|ratio|frameWidth)$/;
 
 const problems = [];
 const fail = (m) => problems.push(m);
@@ -104,6 +133,40 @@ function exemptIn(trLines) {
   };
 }
 
+/** The last name in a leaf path: `org.shots[0].alt` → `alt`. */
+const leafName = (key) => key.replace(/\[\d+\]/g, '').split('.').pop();
+
+/** The string literals written on one source line, unescaped. */
+function literals(line) {
+  const out = [];
+  for (const m of line.matchAll(/'((?:[^'\\]|\\.)*)'|"((?:[^"\\]|\\.)*)"|`((?:[^`\\]|\\.)*)`/g)) {
+    out.push((m[1] ?? m[2] ?? m[3]).replace(/\\(.)/g, '$1'));
+  }
+  return out;
+}
+
+/**
+ * Is the word marked `i18n-vocab-ok` on one of THIS leaf's own source lines?
+ * The marked line must carry a string fragment that holds the word and is part
+ * of the leaf's value — so one marked sentence does not exempt the same word in
+ * every other leaf of the file. A line that is only a comment does not count:
+ * the file header that LISTS the forbidden words and names the marker would
+ * otherwise exempt all of them.
+ */
+function vocabExempt(lines, word, value) {
+  const w = word.toLocaleLowerCase('tr');
+  const v = value.toLocaleLowerCase('tr');
+  return lines.some(
+    (line) =>
+      !/^\s*(\/\/|\/?\*)/.test(line) &&
+      line.includes('i18n-vocab-ok') &&
+      literals(line).some((f) => {
+        const lf = f.toLocaleLowerCase('tr');
+        return lf.includes(w) && v.includes(lf);
+      }),
+  );
+}
+
 let total = 0;
 
 for (const pair of PAIRS) {
@@ -143,8 +206,10 @@ for (const pair of PAIRS) {
     const other = trLeaves.get(key);
     if (typeof value !== 'string' || value !== other) continue;
     if (value.length <= SAME_LIMIT) continue;
-    // `lang`, the shot paths and the addresses are structure, not prose.
-    if (key === 'lang' || /shot|ogImage|href|src/i.test(key)) continue;
+    // `lang`, the shot paths and the addresses are structure, not prose. The
+    // LEAF's name decides (OPH-388): `org.shots[0].alt` is prose under a
+    // parent called `shots`, and testing the whole path skipped every caption.
+    if (key === 'lang' || /shot|ogImage|href|src/i.test(leafName(key))) continue;
     if (exempt(key)) continue;
     fail(
       `${tag} ${key} is byte-identical in both languages (${value.length} chars) — ` +
@@ -164,12 +229,54 @@ for (const pair of PAIRS) {
       [pair.tr, trLeaves, 'tr'],
     ]) {
       for (const [key, value] of map) {
-        if (!/shot|ogImage/i.test(key) || typeof value !== 'string' || value === '') continue;
+        // The leaf's name, not the path: `shots[0].alt` is not a path (OPH-388).
+        if (!/shot|ogImage/i.test(leafName(key)) || typeof value !== 'string' || value === '') continue;
         if (!value.startsWith('/shots/')) {
           fail(`${tag} ${file}: ${key} must be a whole path starting /shots/ (got "${value}")`);
         }
         if (!value.endsWith(`-${lang}.jpg`) && !value.includes('/og/')) {
           fail(`${tag} ${file}: ${key} is not the ${lang} capture ("${value}")`);
+        }
+      }
+    }
+  }
+
+  // ── 7. The deck's vocabulary (see FORBIDDEN above) ──────────────────────
+  if (pair.vocabulary) {
+    for (const [file, map, lang] of [
+      [pair.en, enLeaves, 'en'],
+      [pair.tr, trLeaves, 'tr'],
+    ]) {
+      const lines = readFileSync(path.join(root, file), 'utf8').split('\n');
+      for (const [key, value] of map) {
+        if (typeof value !== 'string' || STRUCTURE.test(leafName(key))) continue;
+        for (const re of FORBIDDEN[lang]) {
+          const hit = value.match(re);
+          if (!hit || vocabExempt(lines, hit[0], value)) continue;
+          fail(
+            `${tag} ${file}: ${key} says "${hit[0]}" — the deck's language rules keep it off ` +
+              'this page (mark the source line `i18n-vocab-ok` if it is deliberate)',
+          );
+        }
+      }
+    }
+  }
+
+  // ── 8. Every download the page offers is a file it ships ────────────────
+  //
+  // `public/` is copied to the docroot as is, and `.htaccess` answers a
+  // missing path with index.html and a 200 — so a deck link to a PDF nobody
+  // committed "works" in every HTTP check and hands the reader a web page
+  // saved as `.pdf`. The file has to be in `public/downloads/` itself.
+  if (pair.downloads) {
+    for (const [file, map] of [
+      [pair.en, enLeaves],
+      [pair.tr, trLeaves],
+    ]) {
+      for (const [key, value] of map) {
+        if (typeof value !== 'string' || !value.startsWith('/downloads/')) continue;
+        if (!existsSync(path.join(root, 'public', value))) {
+          fail(`${tag} ${file}: ${key} offers ${value}, which is not in public/downloads/`);
         }
       }
     }

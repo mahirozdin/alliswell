@@ -71,6 +71,13 @@ Options -Indexes
   RewriteRule ^ /index.html [L]
 </IfModule>
 
+# OPH-388: the enterprise sales deck is served as a file from /downloads/.
+# Said explicitly rather than left to the server's mime table, because a PDF
+# answered as application/octet-stream is a PDF a phone will not preview.
+<IfModule mod_mime.c>
+  AddType application/pdf .pdf
+</IfModule>
+
 <IfModule mod_headers.c>
   # The MARKETING bundle is content-hashed by Vite (`index-A1b2C3d4.js`), so its
   # assets really are immutable: a new build writes a new filename.
@@ -79,6 +86,13 @@ Options -Indexes
   </FilesMatch>
   <FilesMatch "^(index\.html|flutter_service_worker\.js|alliswell-config\.js)$">
     Header set Cache-Control "no-cache, no-store, must-revalidate"
+  </FilesMatch>
+
+  # OPH-388: the deck PDFs carry a date in their name (public/ is not hashed),
+  # but a corrected deck may be re-issued under the same month's name — so a
+  # day, not the year the hashed assets above get.
+  <FilesMatch "\.pdf$">
+    Header set Cache-Control "public, max-age=86400"
   </FilesMatch>
 
   # The FLUTTER bundle is not, and the rule above used to swallow it whole.

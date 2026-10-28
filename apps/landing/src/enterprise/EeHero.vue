@@ -1,6 +1,8 @@
 <script setup>
+import AwIcon from './AwIcon.vue';
 import BrandMark from '../components/BrandMark.vue';
 import ScreenshotFrame from '../components/ScreenshotFrame.vue';
+import LatinWords from '../components/LatinWords.vue';
 
 /**
  * The enterprise hero (EE-151; the facts row added in EE-164).
@@ -17,6 +19,11 @@ import ScreenshotFrame from '../components/ScreenshotFrame.vue';
  * "runs on your own servers" and "keeps working offline". Each fact is a claim
  * a section further down the page substantiates.
  *
+ * OPH-388: `hero.secondary.download` makes the second button a real download
+ * of the sales deck (`<a download>` plus the download icon), and `hero.note` is
+ * the deck's small print under the facts — the screens come from the real
+ * product running on sample data, and the names in them are made up.
+ *
  * The capture is `variant="bare"`: the hero image is already a composite with
  * its own frames and shadow (EE-150), and browser chrome around framed screens
  * would be a frame around a frame.
@@ -31,7 +38,7 @@ defineProps({
     <div class="aw-shell eehero__inner">
       <p class="aw-eyebrow">
         <BrandMark :size="16" />
-        {{ hero.eyebrow }}
+        <LatinWords :text="hero.eyebrow" />
       </p>
 
       <h1>{{ hero.title }}</h1>
@@ -44,7 +51,13 @@ defineProps({
             <path d="M13.2 5.4 20 12l-6.8 6.6-1.4-1.4 4.2-4.2H4v-2h12l-4.2-4.2z" />
           </svg>
         </a>
-        <a class="aw-btn aw-btn--ghost" :href="hero.secondary.href">
+        <a
+          class="aw-btn aw-btn--ghost"
+          :href="hero.secondary.href"
+          :download="hero.secondary.download ? '' : null"
+          :type="hero.secondary.download ? 'application/pdf' : null"
+        >
+          <AwIcon v-if="hero.secondary.download" name="download" :size="18" />
           {{ hero.secondary.label }}
         </a>
       </div>
@@ -65,6 +78,8 @@ defineProps({
           <span>{{ fact }}</span>
         </li>
       </ul>
+
+      <p v-if="hero.note" class="eehero__note">{{ hero.note }}</p>
     </div>
 
     <div class="aw-shell eehero__shot">
@@ -128,6 +143,12 @@ defineProps({
 .eehero__facts svg {
   color: var(--aw-success);
   flex-shrink: 0;
+}
+
+.eehero__note {
+  margin: 1.1rem 0 0;
+  font-size: 0.86rem;
+  color: var(--aw-text-dim);
 }
 
 .eehero__shot {

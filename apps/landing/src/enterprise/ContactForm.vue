@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 
 import { OUTCOME, captchaConfig, payloadFrom, sendEnquiry } from './submit.js';
+import LatinWords from '../components/LatinWords.vue';
 
 /**
  * The conversation this page exists to start (EE-153, wired in EE-161).
@@ -219,7 +220,7 @@ async function submit() {
   <section v-reveal class="aw-section contact">
     <div class="aw-shell contact__inner">
       <header class="contact__head">
-        <p v-if="contact.eyebrow" class="aw-eyebrow">{{ contact.eyebrow }}</p>
+        <p v-if="contact.eyebrow" class="aw-eyebrow"><LatinWords :text="contact.eyebrow" /></p>
         <h2>{{ contact.title }}</h2>
         <p class="aw-lede">{{ contact.lede }}</p>
       </header>

@@ -291,6 +291,22 @@ is metered rather than what it does, and that is not the landing page's story.
 
 ---
 
+## 4c. Enterprise sales set — `screenshots/sales/`
+
+The enterprise page's screens since OPH-388: the same "Demir Çelik" sample factory as the
+sales presentation, captured from the real web app (not goldens) in four variants each —
+`<name>-<light|dark>-<tr|en>.jpg` — plus `hero-*` (desktop + phone composite, 1600×1000) and
+`deck-cover-{tr,en}.jpg` (page 1 of the downloadable PDFs in `apps/landing/public/downloads/`).
+
+They are finished JPEGs (≤ 400 kB, long edge ≤ 1600 px except native-width phone shots), so
+`sync-screenshots.mjs` copies them through untouched. The capture pipeline, the sample data and
+its fixes live with the presentation in the private extension repository; re-run it there and
+replace the whole folder rather than editing single files, so the four variants stay in step.
+Only images the page references are committed. The `workspace` and `identity` sections still
+use the goldens in `screenshots/ee/` because the sample factory has no tasks, notes or projects.
+
+---
+
 ## 5. Store assets — `store/`
 
 ```bash

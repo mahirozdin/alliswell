@@ -13,13 +13,24 @@ import { useTheme } from '../composables/useTheme.js';
 const props = defineProps({
   src: { type: String, required: true },
   alt: { type: String, required: true },
-  variant: { type: String, default: 'browser' }, // 'browser' | 'phone' | 'bare'
+  /**
+   * 'browser' | 'phone' | 'bare' | 'card'. `card` (OPH-388) is the sales deck's
+   * look: no browser bar, a rounded corner, a hairline and a soft shadow — for
+   * a crop of one screen, where a browser bar would claim a whole window.
+   */
+  variant: { type: String, default: 'browser' },
   label: { type: String, default: 'alliswell.space/app' },
   eager: { type: Boolean, default: false },
   /** Optional dark-theme capture; falls back to `src` when there isn't one. */
   srcDark: { type: String, default: '' },
   /** e.g. '1320 / 2868'. Reserves the box before the image loads. */
   ratio: { type: String, default: '' },
+  /**
+   * The phone variant's CSS notch. On by default for the store captures, which
+   * carry a status bar under it; off for the sales deck's bare phone screens
+   * (OPH-388), which start at the app bar — a notch would cover its title.
+   */
+  notch: { type: Boolean, default: true },
 });
 
 const { theme } = useTheme();
@@ -37,19 +48,27 @@ const shown = computed(() =>
       <span class="frame__dot" />
       <span class="frame__url">{{ label }}</span>
     </div>
-    <div v-else-if="variant === 'phone'" class="frame__notch" aria-hidden="true" />
+    <div v-else-if="variant === 'phone' && notch" class="frame__notch" aria-hidden="true" />
     <!-- `ratio` reserves the box before the bytes arrive. Without it a lazy
          screenshot lands mid-scroll and shoves the page down under the reader
          — worst for the tall phone captures, which are twice the page's own
          height. -->
-    <img
-      :src="shown"
-      :alt="alt"
-      :loading="eager ? 'eager' : 'lazy'"
-      :fetchpriority="eager ? 'high' : 'auto'"
-      :style="ratio ? { aspectRatio: ratio } : null"
-      decoding="async"
-    />
+    <!-- `.frame__media` is the image's own box, so anything laid over the
+         picture (the numbered marks, OPH-388) is positioned in percent of the
+         IMAGE — not of a box that also holds a browser bar or a phone bezel.
+         The default slot is empty everywhere else, and the wrapper is a plain
+         block, so existing frames render as before. -->
+    <div class="frame__media">
+      <img
+        :src="shown"
+        :alt="alt"
+        :loading="eager ? 'eager' : 'lazy'"
+        :fetchpriority="eager ? 'high' : 'auto'"
+        :style="ratio ? { aspectRatio: ratio } : null"
+        decoding="async"
+      />
+      <slot />
+    </div>
   </figure>
 </template>
 
@@ -78,6 +97,14 @@ const shown = computed(() =>
 
 .frame--bare {
   border-radius: var(--aw-radius);
+}
+
+.frame--card {
+  border-radius: var(--aw-radius-sm);
+}
+
+.frame__media {
+  position: relative;
 }
 
 .frame__bar {
