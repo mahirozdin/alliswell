@@ -51,7 +51,7 @@ or make you leave the app for:
 The source is public. Personal use and running your own copy are free; a business needs a
 [commercial licence](#-licence--commercial-use).
 
-> **Project status: `v1.18.1`, live.** Everything here is built, tested
+> **Project status: `v1.18.2`, live.** Everything here is built, tested
 > (**1,200+ app tests, 700+ backend unit tests, 70+ integration tests, green**) and deployed to
 > [alliswell.space](https://alliswell.space). What comes next: [ROADMAP.md](ROADMAP.md) and
 > [docs/STATE.md](docs/STATE.md).
