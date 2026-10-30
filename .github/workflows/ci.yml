@@ -391,7 +391,7 @@ jobs:
           missing=0
 
           # Shape 1: literal paths, written out in the markup.
-          for ref in $(grep -rhoE "/shots/[A-Za-z0-9/_.-]+\.(jpg|png)" \
+          for ref in $(grep -rhoE "/(shots|media)/[A-Za-z0-9/_.-]+\.(jpg|png|webp|avif|mp4|webm|vtt)" \
                          --include='*.html' --include='*.js' --include='*.css' \
                          apps/landing/dist | sort -u); do
             if [ ! -f "apps/landing/dist${ref}" ]; then
@@ -400,20 +400,12 @@ jobs:
             fi
           done
 
-          # Shape 2: paths the feature section COMPOSES at render time —
-          # `:src="`/shots/${feature.shot}`"` — with the filenames living in
-          # content.js without the /shots/ prefix. No literal to grep, so the
-          # scan above never saw a single one of them: it found 7 of the 18
-          # references this site actually makes, and had done since the gate was
-          # written. Renaming a screenshot in content.js shipped a broken frame
-          # with CI green. Read the fields from content.js rather than repeating
-          # them here, so a new feature row is covered the day it is added.
-          for ref in $(node -e "import('./apps/landing/src/content.js').then(m=>m.features.flatMap(f=>[f.shot,f.shotDark]).filter(Boolean).forEach(s=>console.log(s)))" | sort -u); do
-            if [ ! -f "apps/landing/dist/shots/$ref" ]; then
-              echo "::error::missing /shots/$ref — referenced from content.js"
-              missing=1
-            fi
-          done
+          # Shape 2 used to read `features[].shot` out of content.js. The Dusk
+          # homepage (ADR-0061) names its pictures by media key instead, and a
+          # loop over a field that no longer exists runs zero times with the
+          # step green. check:media reads every key from both content modules
+          # against src/home/media.json and the files in public/media.
+          npm run -s check:media || missing=1
 
           exit $missing
 
@@ -466,6 +458,14 @@ jobs:
       # whatever the build does next.
       - name: Both languages describe the same page
         run: npm run check:copy
+
+      # ADR-0061: the Dusk homepage is server-rendered from content modules and
+      # promoted media. check:home reads the BUILT pages: one h1 that is the
+      # hero title, the MCP address in the HTML, no autoplaying or preloading
+      # video, every picture sized, the two stylesheets apart, and the
+      # Hallmark floor in the homepage's CSS source.
+      - name: The homepage is rendered, whole and apart
+        run: npm run check:home
 
       # EE-150. The site has been serving raw PNG bytes under `.jpg` names since
       # it shipped: sync-screenshots re-encoded only with macOS `sips`, and the
@@ -569,6 +569,12 @@ jobs:
           # source array still looks right.
           grep -rq "/enterprise" apps/landing/dist/assets/*.js \
             || { echo "::error::the marketing bundle no longer links to /enterprise"; fail=1; }
+          # The bundle grep passes on the enterprise chunk alone; the homepage
+          # is server-rendered now (ADR-0061), so its own HTML must link it.
+          grep -q 'href="/enterprise"' apps/landing/dist/index.html \
+            || { echo "::error::the homepage no longer links to /enterprise"; fail=1; }
+          grep -q 'href="/enterprise/tr"' apps/landing/dist/tr/index.html \
+            || { echo "::error::the Turkish homepage no longer links to /enterprise/tr"; fail=1; }
 
           # The pair cannot half-ship. Each page must name the OTHER language,
           # or one of them is an island a crawler will treat as a duplicate.
@@ -601,6 +607,8 @@ jobs:
           fail=0
           grep -rq "/docs/api" apps/landing/dist/assets/*.js \
             || { echo "::error::the marketing bundle no longer links to /docs/api"; fail=1; }
+          grep -q 'href="/docs/api"' apps/landing/dist/index.html \
+            || { echo "::error::the homepage no longer links to /docs/api"; fail=1; }
           test -f apps/landing/dist/docs/api/index.html \
             || { echo "::error::/docs/api was not generated into the bundle"; fail=1; }
           grep -q "docs/API.md" README.md \

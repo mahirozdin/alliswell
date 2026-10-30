@@ -20,7 +20,7 @@
 //
 // Since 2026-09-26 it also keeps the working docs small and STATE's pointer
 // honest — see `workingDocProblems()` below.
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, relative, resolve } from 'node:path';
 import { budgetProblems, nextTaskId, parseTasks, rootBudgetProblems } from '../tasks/tasks.mjs';
@@ -47,7 +47,7 @@ const SKIP_FILES = new Set(['CHANGELOG.md', 'STATE.md', 'TASKS.md', 'ROADMAP.md'
  */
 const CLAIMS = [
   /\bWe are at\s+v?(\d+\.\d+\.\d+)/g,
-  /\bProject status\s*[—-]\s*`v(\d+\.\d+\.\d+)`/g,
+  /\bProject status\s*[—:-]\s*`v(\d+\.\d+\.\d+)`/g,
   /\bcurrently (?:at|on)\s+v?(\d+\.\d+\.\d+)/g,
   /\bThe current (?:release|version) is\s+v?(\d+\.\d+\.\d+)/g,
   // The landing page's own banner. Not markdown, and the most VISIBLE version
@@ -189,6 +189,14 @@ function appleClaimFiles() {
     'apps/app/assets/i18n/en.json',
     'apps/app/assets/i18n/tr.json',
     'scripts/screenshots/store.mjs',
+    // ADR-0061: the film's on-screen words and the MCP loop's lines are a
+    // public surface too, rendered into video where no text search finds them.
+    'media/hyperframes/film/film-en.json',
+    'media/hyperframes/film/film-tr.json',
+    'media/hyperframes/film/film-en.vtt',
+    'media/hyperframes/film/film-tr.vtt',
+    'media/hyperframes/film/mcp-en.json',
+    'media/hyperframes/film/mcp-tr.json',
   ].map((p) => join(ROOT, p));
   const store = join(ROOT, 'docs/store');
   if (existsSync(store)) {
@@ -481,7 +489,37 @@ function workingDocProblems() {
   return problems;
 }
 
+// ── README media stays light and referenced (ADR-0061) ───────────────────────
+//
+// The README's animations are WebP files GitHub plays inline; each is fetched
+// by everyone who opens the repository, and the folder is written by
+// `npm run media:promote`, which can leave a renamed file behind. The budget
+// is the one the encoder works to (apps/landing/scripts/media-budgets.js).
+async function readmeMediaProblems() {
+  const { BUDGETS } = await import(join(ROOT, 'apps/landing/scripts/media-budgets.js'));
+  const problems = [];
+  const dir = join(ROOT, 'docs/assets/readme');
+  if (!existsSync(dir)) return problems;
+  const readme = read(join(ROOT, 'README.md'));
+  for (const name of readdirSync(dir)) {
+    const bytes = statSync(join(dir, name)).size;
+    const animated = /\.(webp|gif)$/i.test(name);
+    const budget = animated ? BUDGETS.readmeAnimated : BUDGETS.readmeStill;
+    if (bytes > budget) {
+      problems.push(
+        `docs/assets/readme/${name}: ${Math.round(bytes / 1024)} kB, over the ` +
+          `${Math.round(budget / 1024)} kB README ${animated ? 'animation' : 'image'} budget`,
+      );
+    }
+    if (!readme.includes(`docs/assets/readme/${name}`)) {
+      problems.push(`docs/assets/readme/${name}: README.md does not use it (npm run media:promote leaves renamed files behind)`);
+    }
+  }
+  return problems;
+}
+
 const problems = [...manifestProblems(), ...docProblems()];
+const readmeMedia = await readmeMediaProblems();
 const appleClaims = appleClaimProblems();
 const working = workingDocProblems();
 const links = linkProblems();
@@ -513,12 +551,17 @@ if (commands.length > 0) {
   console.error(`✗ docs: ${commands.length} command(s) the agent contract names do not exist\n`);
   for (const p of commands) console.error(`  ${p}`);
 }
+if (readmeMedia.length > 0) {
+  console.error(`✗ docs: ${readmeMedia.length} README media problem(s)\n`);
+  for (const p of readmeMedia) console.error(`  ${p}`);
+}
 if (
   problems.length > 0 ||
   appleClaims.length > 0 ||
   working.length > 0 ||
   links.length > 0 ||
-  commands.length > 0
+  commands.length > 0 ||
+  readmeMedia.length > 0
 ) {
   process.exit(1);
 }
@@ -528,5 +571,5 @@ console.log(
     'no surface calls Apple Calendar two-way; ' +
     'STATE/TASKS/LESSONS and the root contract within their rules, STATE points where ' +
     '`npm run next` does; the contract names only real npm scripts; ' +
-    `${linksChecked} relative links and anchors resolve`,
+    `${linksChecked} relative links and anchors resolve; README media inside budget`,
 );

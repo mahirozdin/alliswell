@@ -3,9 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)" />
-
+    <meta name="theme-color" content="#0e1017" />
+    <meta name="color-scheme" content="dark" />
     <!--
       EE-164 — the language. A browser that prefers Turkish is sent to the
       Turkish twin before anything paints, unless the reader has chosen a
@@ -33,31 +32,31 @@
     </script>
 
     <!--
-      EE-143 — the theme is applied by useTheme() in onMounted, which is one
-      paint too late: a visitor who chose dark, or whose system is dark, sees a
-      white flash on every navigation. This runs before the stylesheet, sets the
-      same attribute useTheme() will set, and is wrapped because localStorage
-      throws outright in some privacy modes — where the media query is still the
-      right answer.
+      ADR-0061 — the page is rendered on the server (scripts/prerender.mjs), so
+      it reads complete with scripting off. This marks the document as
+      scripted BEFORE the stylesheet paints, which is the only thing the CSS
+      keys its JavaScript-only states on (tabs collapsing, pause buttons), so
+      the server's markup and the first client paint agree and nothing shifts.
+      It also remembers a language chosen with the switch (`aw_lang`, EE-164)
+      the moment it is clicked, before Vue has hydrated anything.
     -->
     <script>
-      try {
-        var t = localStorage.getItem('aw_theme');
-        document.documentElement.dataset.theme =
-          t === 'light' || t === 'dark'
-            ? t
-            : matchMedia('(prefers-color-scheme: dark)').matches
-              ? 'dark'
-              : 'light';
-      } catch (e) {
-        /* no stored preference is readable; useTheme() decides on mount */
-      }
+      document.documentElement.classList.add('js');
+      document.addEventListener('click', function (e) {
+        var a = e.target && e.target.closest ? e.target.closest('a[data-aw-lang]') : null;
+        if (!a) return;
+        try {
+          localStorage.setItem('aw_lang', a.getAttribute('data-aw-lang'));
+        } catch (err) {
+          /* no storage: the choice lasts for this visit only */
+        }
+      });
     </script>
 
-    <title>AllisWell — source-available tasks, reminders &amp; notes you can host yourself</title>
+    <title>AllisWell: tasks, notes and alarms you can host yourself</title>
     <meta
       name="description"
-      content="Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use."
+      content="Tasks in projects, markdown notes, files and alarms that ring through Silent mode, with two-way Google Calendar sync and a connector for Claude and ChatGPT. One app for iPhone, Android, the web and desktop. Free for personal use, on your own server or ours."
     />
     <link rel="canonical" href="https://alliswell.space/" />
 
@@ -74,38 +73,33 @@
     <meta property="og:url" content="https://alliswell.space/" />
     <meta property="og:locale" content="en_US" />
     <meta property="og:locale:alternate" content="tr_TR" />
-    <meta
-      property="og:title"
-      content="AllisWell — source-available tasks, reminders &amp; notes you can host yourself"
-    />
+    <meta property="og:title" content="AllisWell: tasks, notes and alarms you own" />
     <meta
       property="og:description"
-      content="Alarm-grade reminders, a kanban board, rich notes, files and two-way Google Calendar sync — offline-first on six platforms, in your own MySQL."
+      content="Alarms that ring through Silent mode, two-way Google Calendar sync, markdown notes and files. Run it on your own server or ours."
     />
     <!--
-      EE-150 — was /og-cover.png, which has never existed in the docroot.
-      It is produced only by `npm run shots:store`, which no workflow runs
-      and which needs a Chrome the deploy runner does not have, and
-      `.gitignore` kept it untracked. The URL answered 200 anyway, because
-      the catch-all rewrite serves index.html for anything missing — so no
-      HTTP check could ever have caught it, and every share of this page
-      rendered a blank card. The card now lives in the committed
-      screenshots/ tree and reaches the docroot through sync-screenshots.
+      ADR-0061 — a new file name rather than a new home.jpg: `.htaccess` serves
+      /shots/*.jpg as immutable for a year, so a card under the old name would
+      keep its old picture in every cache that has seen it.
     -->
-    <meta property="og:image" content="https://alliswell.space/shots/og/home.jpg" />
+    <meta property="og:image" content="https://alliswell.space/shots/og/home-dusk.jpg" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta name="twitter:card" content="summary_large_image" />
 
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
-    <link rel="preconnect" href="https://api.github.com" />
+    <link rel="preload" href="/fonts/wix-madefor-display-v12-latin.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="/src/home/styles/home.css" />
+    <!--ssr-head-->
 
     <script type="application/ld+json">
       {
         "@context": "https://schema.org",
         "@type": "SoftwareApplication",
         "name": "AllisWell",
+        "inLanguage": "en",
         "alternateName": "AllisWell: ToDo, Reminders & Notes",
         "applicationCategory": "ProductivityApplication",
         "operatingSystem": "iOS, Android, Web, macOS, Windows, Linux",
@@ -118,8 +112,8 @@
         "license": "https://polyformproject.org/licenses/noncommercial/1.0.0",
         "isAccessibleForFree": true,
         "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
-        "description": "Source-available, self-hosted productivity hub: tasks, projects, notes, files, alarm-grade reminders, two-way Google Calendar sync and an Apple Calendar mirror. Free for personal use.",
-        "featureList": ["Tasks, projects and notes", "Alarm-grade reminders", "Two-way Google Calendar sync", "Tasks mirrored into Apple Calendar on iPhone and Mac", "Remote MCP connector for Claude and ChatGPT: https://api.alliswell.space/mcp", "REST API with personal keys"],
+        "description": "Tasks in projects, markdown notes, files and alarms that ring through Silent mode, with two-way Google Calendar sync, an Apple Calendar mirror and a connector for Claude and ChatGPT. The source is public; free for personal use and self-hosting.",
+        "featureList": ["Tasks, projects and notes", "Alarms that ring through Silent mode", "Two-way Google Calendar sync", "Tasks mirrored into Apple Calendar on iPhone and Mac", "Remote MCP connector for Claude and ChatGPT: https://api.alliswell.space/mcp", "REST API with personal keys"],
         "softwareVersion": "1.18.1",
         "codeRepository": "https://github.com/mahirozdin/alliswell",
         "publisher": {
@@ -140,33 +134,7 @@
     </script>
   </head>
   <body>
-    <!--
-      A real JavaScript-off rendering, not a placeholder: Vue's mount() clears
-      this container before its first render, so a reader who never runs the
-      script still gets the heading, the claim and the pages that need no
-      script at all. It is also what the CI <h1> assertion reads (EE-164; it
-      used to be a <noscript> block, which a crawler does not count as content).
-    -->
-    <div id="app">
-      <h1>Your whole day, in an app you actually own.</h1>
-      <p>
-        Source-available, self-hosted tasks, notes and alarm-grade reminders. This page needs
-        JavaScript; the app itself, the privacy policy and the support page do not.
-      </p>
-      <p>
-        Use it from Claude or ChatGPT: add a custom connector with the MCP URL
-        <code>https://api.alliswell.space/mcp</code> and sign in with your AllisWell account —
-        <a href="/docs/mcp">connector setup guide</a>.
-      </p>
-      <p>
-        <a href="/app">Open the app</a> ·
-        <a href="/docs/mcp">MCP connector</a> ·
-        <a href="https://github.com/mahirozdin/alliswell">Source on GitHub</a> ·
-        <a href="/privacy">Privacy policy</a> ·
-        <a href="/support">Support</a> ·
-        <a href="/tr" hreflang="tr">Türkçe</a>
-      </p>
-    </div>
-    <script type="module" src="/src/main.js"></script>
+    <!--email_off--><div id="app"><!--ssr-outlet--></div><!--/email_off-->
+    <script type="module" src="/src/home/main.en.js"></script>
   </body>
 </html>

@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <title>Tour: markdown notes</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="../assets/cam.js"></script>
+    <link rel="stylesheet" href="../assets/loop.css" />
+    <!-- Markdown notes (ADR-0061): the source of a note, then a rendered
+         README with its table and checklist revealed like the Reading toggle. -->
+    <style>
+      html, body { width: 1600px; height: 1000px; }
+      .cam > img { width: 1600px; height: 1000px; }
+      .edge { position: absolute; top: 0; bottom: 0; width: 3px; background: var(--periwinkle); left: 0; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="loop-tour-notes" data-start="0" data-width="1600" data-height="1000" data-duration="10">
+      <div class="plate" id="a"><div class="cam" id="camA"><img src="../assets/shots/web-note-editor.png" alt="" /></div></div>
+      <div class="plate" id="b"><div class="cam" id="camB"><img src="../assets/shots/web-project-readme.png" alt="" /></div></div>
+      <div class="edge" id="edge"></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const a0 = focusOn(1.32, 640, 420);
+      tl.fromTo('#camA', a0, { ...focusOn(1.32, 640, 520), duration: 4.4, ease: 'power1.inOut' }, 0);
+      tl.fromTo('#b', { clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0 0 0 0%)', duration: 1.0, ease: 'power2.inOut' }, 3.8);
+      tl.fromTo('#edge', { x: 1600, opacity: 1 }, { x: 0, duration: 1.0, ease: 'power2.inOut' }, 3.8);
+      tl.to('#edge', { opacity: 0, duration: 0.2 }, 4.8);
+      tl.fromTo('#camB', focusOn(1.28, 620, 360), { ...focusOn(1.28, 620, 560), duration: 4.6, ease: 'power1.inOut' }, 3.8);
+      tl.set('#camA', a0, 4.9);
+      tl.to('#b', { opacity: 0, duration: 0.8, ease: 'power1.inOut' }, 9.2);
+      window.__timelines['loop-tour-notes'] = tl;
+    </script>
+  </body>
+</html>

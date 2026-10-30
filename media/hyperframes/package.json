@@ -1,0 +1,12 @@
+{
+  "name": "alliswell-media",
+  "private": true,
+  "type": "module",
+  "description": "HyperFrames sources for the homepage loops, the film and the README animations (ADR-0061).",
+  "scripts": {
+    "shots": "node scripts/shots.mjs",
+    "check": "npx --yes hyperframes@0.8.221 check",
+    "preview": "npx --yes hyperframes@0.8.221 preview",
+    "render": "node scripts/render.mjs"
+  }
+}

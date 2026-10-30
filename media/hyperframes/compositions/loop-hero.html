@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <title>AllisWell hero loop</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <!--
+      The homepage hero (ADR-0061): a day in the real web app. The camera leans
+      into the Home list, one task is ticked off, the rent-style urgent reminder
+      rings on the phone through Silent (an icon, no words: the loop carries no
+      language), it is acknowledged and the camera settles back. The last frame
+      equals the first, so the loop has no seam.
+    -->
+    <style>
+      @font-face {
+        font-family: 'Wix Madefor Text';
+        src: url('../assets/fonts/wix-madefor-text-v17-latin.woff2') format('woff2');
+        font-weight: 400 800;
+      }
+      :root {
+        --paper: #0e1017;
+        --apricot: #f4ba87;
+        --periwinkle: #a0b0f4;
+        --row: #151f3c;
+        --done: #30d158;
+        --strike: #9aa3b8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        width: 1600px;
+        height: 1000px;
+        overflow: hidden;
+        background: var(--paper);
+      }
+      #root {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        overflow: hidden;
+        font-family: 'Wix Madefor Text', sans-serif;
+      }
+      .cam {
+        position: absolute;
+        inset: 0;
+        transform-origin: 34% 52%;
+      }
+      .cam > img {
+        display: block;
+        width: 1600px;
+        height: 1000px;
+      }
+      .dim {
+        position: absolute;
+        left: 396px;
+        top: 506px;
+        width: 340px;
+        height: 28px;
+        background: var(--row);
+        opacity: 0;
+      }
+      .tick {
+        position: absolute;
+        left: 345px;
+        top: 519px;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: var(--done);
+        display: grid;
+        place-items: center;
+      }
+      .tick svg {
+        display: block;
+        width: 14px;
+        height: 14px;
+      }
+      .strike {
+        position: absolute;
+        left: 400px;
+        top: 519px;
+        width: 328px;
+        height: 2px;
+        background: var(--strike);
+        transform-origin: 0 50%;
+      }
+      .phone-wrap {
+        position: absolute;
+        left: 1090px;
+        top: 70px;
+        width: 386px;
+        height: 860px;
+      }
+      .rings {
+        position: absolute;
+        left: 193px;
+        top: 250px;
+        width: 0;
+        height: 0;
+      }
+      .ring {
+        position: absolute;
+        left: -110px;
+        top: -110px;
+        width: 220px;
+        height: 220px;
+        border-radius: 50%;
+        border: 3px solid var(--apricot);
+      }
+      .phone {
+        position: absolute;
+        inset: 0;
+        border-radius: 40px;
+        overflow: hidden;
+        box-shadow:
+          0 0 0 1px rgba(255, 255, 255, 0.08),
+          0 60px 120px -30px rgba(4, 6, 14, 0.85);
+      }
+      .phone img {
+        display: block;
+        width: 386px;
+        height: 860px;
+      }
+      .press {
+        position: absolute;
+        left: 193px;
+        top: 452px;
+        width: 0;
+        height: 0;
+      }
+      .press span {
+        position: absolute;
+        left: -60px;
+        top: -60px;
+        width: 120px;
+        height: 120px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.55);
+        display: block;
+      }
+      .silent {
+        position: absolute;
+        left: -76px;
+        top: 34px;
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        display: grid;
+        place-items: center;
+        background: rgba(20, 24, 33, 0.72);
+        box-shadow:
+          inset 0 1px 0 rgba(255, 255, 255, 0.12),
+          0 12px 30px -10px rgba(0, 0, 0, 0.6);
+        color: #f4f1ed;
+      }
+      .silent svg {
+        display: block;
+        width: 26px;
+        height: 26px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="loop-hero" data-start="0" data-width="1600" data-height="1000" data-duration="12">
+      <div class="cam" id="cam">
+        <img src="../assets/shots/web-home-dark.png" alt="" />
+        <div class="dim" id="dim"></div>
+        <div class="strike" id="strike"></div>
+        <div class="tick" id="tick">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#0e1017" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+      </div>
+      <div class="phone-wrap" id="phoneWrap">
+        <div class="rings">
+          <div class="ring" id="r1"></div>
+          <div class="ring" id="r2"></div>
+          <div class="ring" id="r3"></div>
+        </div>
+        <div class="phone"><img src="../assets/shots/android-09-alarm-ring.png" alt="" /></div>
+        <div class="press"><span id="press"></span></div>
+        <div class="silent" id="silent">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M10.268 21a2 2 0 0 0 3.464 0" />
+            <path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742" />
+            <path d="m2 2 20 20" />
+            <path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05" />
+          </svg>
+        </div>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      // Camera: lean in, hold, settle back.
+      tl.fromTo('#cam', { scale: 1 }, { scale: 1.12, duration: 2.2, ease: 'power2.inOut' }, 0.2);
+      tl.to('#cam', { scale: 1, duration: 2.4, ease: 'power2.inOut' }, 9.0);
+      // One task ticked off.
+      tl.fromTo('#tick', { scale: 0, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.35, ease: 'back.out(2)' }, 2.5);
+      tl.fromTo('#strike', { scaleX: 0 }, { scaleX: 1, duration: 0.45, ease: 'power2.out' }, 2.7);
+      tl.fromTo('#dim', { opacity: 0 }, { opacity: 0.42, duration: 0.45, ease: 'power2.out' }, 2.7);
+      // The urgent reminder rings on the phone, on Silent.
+      tl.fromTo('#phoneWrap', { x: 260, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: 'power3.out' }, 3.6);
+      tl.fromTo('#silent', { scale: 0.6, opacity: 0 }, { scale: 1, opacity: 1, duration: 0.4, ease: 'power2.out' }, 4.2);
+      ['#r1', '#r2', '#r3'].forEach((id, i) => {
+        tl.fromTo(
+          id,
+          { scale: 0.55, opacity: 0.9 },
+          { scale: 3.4, opacity: 0, duration: 1.7, ease: 'power1.out', repeat: 1, repeatDelay: 0.2 },
+          4.3 + i * 0.55,
+        );
+      });
+      // Acknowledged: a press on the button, the phone leaves.
+      tl.fromTo('#press', { scale: 0, opacity: 0.8 }, { scale: 1.4, opacity: 0, duration: 0.6, ease: 'power2.out' }, 7.9);
+      tl.to('#phoneWrap', { x: 260, opacity: 0, duration: 0.7, ease: 'power3.in' }, 8.5);
+      // Reset the tick so the last frame is the first.
+      tl.to(['#tick', '#dim'], { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 10.9);
+      tl.to('#strike', { scaleX: 0, duration: 0.6, ease: 'power1.inOut' }, 10.9);
+      window.__timelines['loop-hero'] = tl;
+    </script>
+  </body>
+</html>

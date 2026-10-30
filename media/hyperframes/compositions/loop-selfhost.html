@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <title>Self-hosting</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="../assets/loop.css" />
+    <!--
+      Your server, one command (ADR-0061): the command from
+      docs/SELF-HOSTING.md, the four services of docker-compose.selfhost.yml
+      coming up, and the web app answering. Terminal output is set as text,
+      not drawn: it is what Docker Compose prints, shortened.
+    -->
+    <style>
+      html, body { width: 1600px; height: 1000px; }
+      .term { position: absolute; left: 40px; top: 40px; width: 1520px; height: 920px; padding: 72px 80px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 36px; line-height: 1.8; color: var(--ink-2); }
+      .line { white-space: pre; display: block; }
+      .prompt { color: var(--periwinkle); }
+      .cmd { display: inline-block; overflow: hidden; vertical-align: bottom; white-space: pre; color: var(--ink); width: 0; }
+      .ok { color: #8fd6a8; }
+      .dim { color: var(--muted); }
+      .cursor { display: inline-block; width: 16px; height: 34px; background: var(--ink-2); vertical-align: -6px; margin-left: 4px; }
+      .shot { position: absolute; left: 80px; top: 50px; width: 1440px; height: 900px; border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.1), 0 60px 120px -30px rgba(3,5,12,0.85); }
+      .shot img { display: block; width: 1440px; height: 900px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="loop-selfhost" data-start="0" data-width="1600" data-height="1000" data-duration="10">
+      <div class="term glass">
+        <span class="line"><span class="prompt">$ </span><span class="cmd" id="cmd">docker compose -f docker-compose.selfhost.yml up -d</span><span class="cursor" id="cursor"></span></span>
+        <span class="line dim o" id="o1">[+] Running 4/4</span>
+        <span class="line o" id="o2"> <span class="ok">✔</span> Container alliswell-mysql-1  <span class="ok">Healthy</span></span>
+        <span class="line o" id="o3"> <span class="ok">✔</span> Container alliswell-redis-1  <span class="ok">Healthy</span></span>
+        <span class="line o" id="o4"> <span class="ok">✔</span> Container alliswell-api-1    <span class="ok">Started</span></span>
+        <span class="line o" id="o5"> <span class="ok">✔</span> Container alliswell-web-1    <span class="ok">Started</span></span>
+      </div>
+      <div class="shot" id="shot"><img src="../assets/shots/web-home-light.png" alt="" /></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const chars = 'docker compose -f docker-compose.selfhost.yml up -d'.length;
+      tl.fromTo('#cmd', { width: '0ch' }, { width: `${chars}ch`, duration: 2.0, ease: `steps(${chars})` }, 0.5);
+      tl.fromTo('#cursor', { opacity: 1 }, { opacity: 0, duration: 0.01 }, 2.6);
+      tl.fromTo('.o', { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.45 }, 2.9);
+      tl.fromTo('#shot', { opacity: 0, y: 60, scale: 0.96 }, { opacity: 1, y: 0, scale: 1, duration: 0.9, ease: 'power3.out' }, 5.6);
+      // Back to the empty prompt: the loop's seam.
+      tl.to('#shot', { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 9.0);
+      tl.to('.o', { opacity: 0, duration: 0.5 }, 9.1);
+      tl.to('#cmd', { width: '0ch', duration: 0.01 }, 9.6);
+      tl.to('#cursor', { opacity: 1, duration: 0.01 }, 9.6);
+      window.__timelines['loop-selfhost'] = tl;
+    </script>
+  </body>
+</html>

@@ -93,6 +93,7 @@ const steps = [
         'apps/app/web/',
         'apps/app/assets/i18n/',
         'scripts/screenshots/',
+        'media/',
       ),
     ),
   ),
@@ -132,6 +133,11 @@ const steps = [
     under('apps/app/lib/src/theme/', 'scripts/design/', 'docs/DESIGN.md'),
   ),
   { ...gate('landing-copy', 'npm run -s check:copy', LANDING), when: LANDING },
+  // ADR-0061: the homepage's media manifest, files, hashes and budgets.
+  {
+    ...gate('landing-media', 'npm run -s check:media', any(LANDING, under('media/', 'scripts/media/'))),
+    when: any(LANDING, under('media/', 'scripts/media/')),
+  },
 
   // ── API lint/format: the changed files in K1, the whole package in K2 ──
   {
@@ -303,8 +309,8 @@ const steps = [
     cwd: '.',
     modes: ['batch'],
     when: LANDING,
-    needs: () => ['screenshots/'],
-    cmd: 'npm run -s landing:build && npm run -s check:pages',
+    needs: () => ['screenshots/', 'apps/landing/public/media/'],
+    cmd: 'npm run -s landing:build && npm run -s check:pages && npm run -s check:home',
   },
 ];
 
@@ -365,6 +371,10 @@ process.exitCode = await runCli({
     exclude: [
       'apps/app/',
       'screenshots/',
+      // ADR-0061: HyperFrames sources and the promoted videos are tens of MB;
+      // only landing-build reads the videos, and asks for them (`needs`).
+      'media/',
+      'apps/landing/public/media/',
       'store/',
       'docs/screenshots/',
       'docs/store/',

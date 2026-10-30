@@ -4,6 +4,7 @@ import { fileURLToPath, URL } from 'node:url';
 import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
+import { homeSsrPlugin } from './scripts/home-ssr.js';
 import { entryForUrl, VUE_PAGES } from './scripts/routes.js';
 import { sitemapPlugin } from './scripts/sitemap.js';
 import { staticPagesPlugin } from './scripts/static-pages.js';
@@ -75,7 +76,7 @@ function copyDotfilesFromPublic() {
  * the two as different bases is what lets one Apache docroot host both without
  * either one's router swallowing the other's URLs.
  */
-export default defineConfig({
+export default defineConfig(({ isSsrBuild }) => ({
   base: '/',
   // MPA, not SPA. Without this a mistyped URL in `vite dev` or `vite preview`
   // silently renders the homepage instead of 404ing, which is how a broken
@@ -85,40 +86,45 @@ export default defineConfig({
   plugins: [
     vue(),
     mpaRoutesPlugin(),
-    staticPagesPlugin(),
-    sitemapPlugin(),
-    copyDotfilesFromPublic(),
+    // ADR-0061: after mpaRoutesPlugin, so `/tr` is already `/tr/index.html`.
+    homeSsrPlugin(),
+    // The SSR pass (`vite build --ssr src/home/entry-server.js`) builds one
+    // render function and nothing else: these three would otherwise emit the
+    // markdown pages, the sitemap and .htaccess into its output a second time.
+    ...(isSsrBuild ? [] : [staticPagesPlugin(), sitemapPlugin(), copyDotfilesFromPublic()]),
   ],
   resolve: {
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
-  build: {
-    outDir: 'dist',
-    assetsDir: 'assets',
-    // Screenshots are the payload here — inlining them as data URIs would
-    // bloat the entry chunk and delay first paint.
-    assetsInlineLimit: 2048,
-    rollupOptions: {
-      // Derived from VUE_PAGES so a page added to that list becomes an entry
-      // without a second edit here. Named keys rather than an array so the
-      // entry chunks are `assets/enterprise-HASH.js` and not three files all
-      // called `index-HASH.js`.
-      //
-      // NOTE: specifying `input` at all means Vite stops adding `<root>/
-      // index.html` implicitly — the homepage has to be in the list, and it is.
-      input: Object.fromEntries(
-        VUE_PAGES.map((p) => [
-          p.route === '' ? 'index' : p.route.replace(/\//g, '-'),
-          fileURLToPath(new URL(`./${p.entry}`, import.meta.url)),
-        ]),
-      ),
-      output: {
-        manualChunks: undefined,
+  build: isSsrBuild
+    ? { copyPublicDir: false, emptyOutDir: true }
+    : {
+        outDir: 'dist',
+        assetsDir: 'assets',
+        // Screenshots are the payload here — inlining them as data URIs would
+        // bloat the entry chunk and delay first paint.
+        assetsInlineLimit: 2048,
+        rollupOptions: {
+          // Derived from VUE_PAGES so a page added to that list becomes an entry
+          // without a second edit here. Named keys rather than an array so the
+          // entry chunks are `assets/enterprise-HASH.js` and not three files all
+          // called `index-HASH.js`.
+          //
+          // NOTE: specifying `input` at all means Vite stops adding `<root>/
+          // index.html` implicitly — the homepage has to be in the list, and it is.
+          input: Object.fromEntries(
+            VUE_PAGES.map((p) => [
+              p.route === '' ? 'index' : p.route.replace(/\//g, '-'),
+              fileURLToPath(new URL(`./${p.entry}`, import.meta.url)),
+            ]),
+          ),
+          output: {
+            manualChunks: undefined,
+          },
+        },
       },
-    },
-  },
   server: {
     port: 5173,
     strictPort: false,
   },
-});
+}));

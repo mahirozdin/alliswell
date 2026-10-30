@@ -1,0 +1,110 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"you","type":"string","label":"You","default":"What is overdue? Move it all to tomorrow at nine."},
+    {"id":"tool","type":"string","label":"Tool line","default":"AllisWell, list_tasks"},
+    {"id":"found","type":"string","label":"Found","default":"Two tasks are overdue. Moving them changes two due dates."},
+    {"id":"ask","type":"string","label":"Approval","default":"Allow AllisWell to update 2 tasks?"},
+    {"id":"deny","type":"string","label":"Deny","default":"Deny"},
+    {"id":"allow","type":"string","label":"Allow","default":"Allow"},
+    {"id":"done","type":"string","label":"Done","default":"Done. Both are due tomorrow at 9:00."}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <title>Claude and ChatGPT connector</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="../assets/loop.css" />
+    <!--
+      The connector (ADR-0061): a request to an assistant, the tool call, the
+      approval AllisWell asks for, and the two overdue tasks in the real web
+      app moving to tomorrow. The conversation is drawn in the page's own
+      style, never as a copy of any assistant's interface. Rendered once per
+      language with --variables; the app capture stays in English.
+    -->
+    <style>
+      html, body { width: 1600px; height: 1000px; }
+      .talk { position: absolute; left: 40px; top: 40px; width: 720px; height: 920px; padding: 48px 44px; justify-content: center; display: flex; flex-direction: column; gap: 26px; }
+      .msg { font-size: 30px; line-height: 1.4; }
+      .you { align-self: flex-end; max-width: 520px; padding: 18px 24px; border-radius: 22px 22px 6px 22px; background: var(--paper-3); color: var(--ink); }
+      .tool { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 21px; }
+      .tool i { display: block; width: 12px; height: 12px; border-radius: 50%; background: var(--periwinkle); }
+      .tool code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 20px; color: var(--ink-2); }
+      .ai { color: var(--ink-2); max-width: 640px; }
+      .ask { padding: 26px 28px; border-radius: 20px; background: var(--well); color: var(--well-ink); }
+      .ask p { margin: 0; font-size: 25px; font-weight: 600; }
+      .ask ul { margin: 14px 0 0; padding: 0 0 0 22px; color: var(--well-muted); font-size: 21px; line-height: 1.5; }
+      .ask .row { display: flex; gap: 14px; justify-content: flex-end; margin-top: 20px; }
+      .ask .b { min-width: 132px; height: 52px; padding: 0 24px; border-radius: 999px; display: grid; place-items: center; font-size: 21px; font-weight: 600; }
+      .ask .deny { background: #ffffff; box-shadow: inset 0 0 0 1px #d8d3cc; color: var(--well-ink); }
+      .ask .allow { position: relative; background: var(--periwinkle); color: var(--periwinkle-ink); }
+      .done { display: flex; gap: 14px; align-items: flex-start; color: var(--ink); }
+      .done svg { flex: none; width: 30px; height: 30px; margin-top: 4px; color: var(--periwinkle); }
+      .frame { position: absolute; left: 790px; top: 40px; width: 770px; height: 920px; border-radius: 20px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 50px 100px -30px rgba(3,5,12,0.8); }
+      .app { position: absolute; left: -288px; top: -40px; width: 1600px; height: 1000px; transform: scale(0.96); transform-origin: 0 0; }
+      .app img { display: block; width: 1600px; height: 1000px; }
+      .patch { position: absolute; font-family: 'Wix Madefor Text', sans-serif; font-weight: 500; white-space: nowrap; display: flex; align-items: center; opacity: 0; }
+      .patch.head { left: 316px; top: 163px; width: 110px; height: 26px; background: #0f1c41; color: #c9cfdc; font-size: 15px; }
+      .patch.due { width: 204px; height: 22px; background: #151f3c; color: #6fb0ff; font-size: 14px; }
+      .press { left: 0; top: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="loop-mcp" data-start="0" data-width="1600" data-height="1000" data-duration="12">
+      <div class="talk glass">
+        <div class="msg you" id="you"></div>
+        <div class="tool" id="tool"><i></i><code id="toolText"></code></div>
+        <div class="msg ai" id="found"></div>
+        <div class="ask" id="ask">
+          <p id="askText"></p>
+          <ul>
+            <li>Send Acme the September invoice</li>
+            <li>Reply to the App Store review team</li>
+          </ul>
+          <div class="row">
+            <span class="b deny" id="deny"></span>
+            <span class="b allow" id="allow"><span class="press" style="left: 50%; top: 50%"><span id="press"></span></span></span>
+          </div>
+        </div>
+        <div class="msg done" id="done">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
+          <span id="doneText"></span>
+        </div>
+      </div>
+      <div class="frame">
+        <div class="app">
+          <img src="../assets/shots/web-home-dark.png" alt="" />
+          <div class="patch head" id="pHead">Tomorrow · 2</div>
+          <div class="patch due" id="p1" style="left: 398px; top: 242px">Tomorrow, 9:00 AM</div>
+          <div class="patch due" id="p2" style="left: 398px; top: 329px">Tomorrow, 9:00 AM</div>
+        </div>
+      </div>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      document.getElementById('you').textContent = v.you;
+      document.getElementById('toolText').textContent = v.tool;
+      document.getElementById('found').textContent = v.found;
+      document.getElementById('askText').textContent = v.ask;
+      document.getElementById('deny').textContent = v.deny;
+      document.getElementById('allow').prepend(document.createTextNode(v.allow));
+      document.getElementById('doneText').textContent = v.done;
+
+      const tl = gsap.timeline({ paused: true });
+      const rise = { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out' };
+      tl.fromTo('#you', { opacity: 0, y: 16 }, rise, 0.4);
+      tl.fromTo('#tool', { opacity: 0, y: 16 }, rise, 1.6);
+      tl.fromTo('#found', { opacity: 0, y: 16 }, rise, 2.4);
+      tl.fromTo('#ask', { opacity: 0, y: 16 }, rise, 3.4);
+      tl.fromTo('#press', { scale: 0, opacity: 0.8 }, { scale: 1.6, opacity: 0, duration: 0.6, ease: 'power2.out' }, 5.2);
+      tl.to('#ask', { opacity: 0.45, duration: 0.4 }, 5.6);
+      tl.fromTo(['#pHead', '#p1', '#p2'], { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power1.out', stagger: 0.18 }, 5.9);
+      tl.fromTo('#done', { opacity: 0, y: 16 }, rise, 6.6);
+      // Back to the empty conversation and the overdue list: the loop's seam.
+      tl.to(['#you', '#tool', '#found', '#ask', '#done', '#pHead', '#p1', '#p2'], { opacity: 0, duration: 0.6, ease: 'power1.inOut' }, 11.2);
+      window.__timelines['loop-mcp'] = tl;
+    </script>
+  </body>
+</html>

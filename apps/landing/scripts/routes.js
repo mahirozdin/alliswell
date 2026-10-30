@@ -27,11 +27,17 @@ import { STATIC_PAGES } from './static-pages.js';
  * be written outside `outDir`.
  */
 export const VUE_PAGES = Object.freeze([
-  { route: '', entry: 'index.html', lang: 'en' },
-  { route: 'tr', entry: 'tr/index.html', lang: 'tr' },
+  // `ssr`: rendered to HTML at build time by scripts/prerender.mjs and in dev
+  // by scripts/home-ssr.js, then hydrated (ADR-0061). The enterprise pages
+  // still mount into an empty container (ADR-0036).
+  { route: '', entry: 'index.html', lang: 'en', ssr: true },
+  { route: 'tr', entry: 'tr/index.html', lang: 'tr', ssr: true },
   { route: 'enterprise', entry: 'enterprise/index.html', lang: 'en' },
   { route: 'enterprise/tr', entry: 'enterprise/tr/index.html', lang: 'tr' },
 ]);
+
+/** The pages whose HTML is rendered on the server (ADR-0061). */
+export const SSR_PAGES = Object.freeze(VUE_PAGES.filter((p) => p.ssr));
 
 /** Every indexable HTML page in the docroot, however it was produced. */
 export const SITE_ROUTES = Object.freeze([

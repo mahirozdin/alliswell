@@ -63,8 +63,29 @@ const PAIRS = [
     tr: 'src/content.tr.js',
     entries: { en: 'index.html', tr: 'tr/index.html' },
     shotsPerLanguage: false,
+    // ADR-0061: rendered on the server, so the shell carries markers, not the h1.
+    ssr: true,
+    hallmark: true,
   },
 ];
+
+/**
+ * ── 9. Hallmark's floor, where a machine can read it (ADR-0061) ──────────
+ *
+ * The homepage follows Hallmark's Dusk theme, whose floor bans an eyebrow
+ * over a heading, an emoji standing in for an icon, the em and en dashes of
+ * generated prose, and more than about 450 words on the page. sloplint checks
+ * the rendered page when someone runs it; this holds the words on every
+ * commit. Visible means what a reader sees without opening anything: closed
+ * answers, the film transcript, alt text, the head and the chrome are not
+ * counted, and of the five tour panes only the open one's line is.
+ */
+const WORD_BUDGET = 450;
+const HIDDEN_ROOTS = /^(seo|lang|skip|ui|nav|footer)\b/;
+const HIDDEN_LEAVES = /^(alt|media|href|url|command|transcript|a|copied|id)$/;
+const DASHES = /[\u2013\u2014]/;
+const EMOJI = /\p{Extended_Pictographic}/u;
+const words = (text) => text.split(/\s+/).filter((w) => /\p{L}{2,}/u.test(w)).length;
 
 /**
  * ── 7. The words the sales deck does not use (OPH-388) ──────────────────
@@ -91,7 +112,7 @@ const FORBIDDEN = {
   en: [/\b(tickets?|on-?prem(ise)?s?|service desks?|public portals?|departments?|queues?|workflows?)\b/i],
 };
 /** Leaf names that hold structure, not words a reader reads. */
-const STRUCTURE = /^(lang|shot|shotDark|src|href|ogImage|icon|tone|layout|frame|accent|key|id|anchor|ratio|frameWidth)$/;
+const STRUCTURE = /^(lang|shot|shotDark|src|href|ogImage|icon|tone|layout|frame|accent|key|id|anchor|ratio|frameWidth|media|captions)$/;
 
 const problems = [];
 const fail = (m) => problems.push(m);
@@ -209,7 +230,7 @@ for (const pair of PAIRS) {
     // `lang`, the shot paths and the addresses are structure, not prose. The
     // LEAF's name decides (OPH-388): `org.shots[0].alt` is prose under a
     // parent called `shots`, and testing the whole path skipped every caption.
-    if (key === 'lang' || /shot|ogImage|href|src/i.test(leafName(key))) continue;
+    if (key === 'lang' || /shot|ogImage|href|src|media|captions|url/i.test(leafName(key))) continue;
     if (exempt(key)) continue;
     fail(
       `${tag} ${key} is byte-identical in both languages (${value.length} chars) — ` +
@@ -262,6 +283,31 @@ for (const pair of PAIRS) {
     }
   }
 
+  // ── 9. Hallmark's floor (see WORD_BUDGET above) ─────────────────────────
+  if (pair.hallmark) {
+    for (const [file, map, content] of [
+      [pair.en, enLeaves, en],
+      [pair.tr, trLeaves, tr],
+    ]) {
+      let visible = 0;
+      for (const [key, value] of map) {
+        if (typeof value !== 'string') continue;
+        const leaf = leafName(key);
+        if (leaf === 'eyebrow') fail(`${tag} ${file}: ${key} is an eyebrow, which the Dusk homepage does not use`);
+        if (STRUCTURE.test(leaf)) continue;
+        if (EMOJI.test(value)) fail(`${tag} ${file}: ${key} carries an emoji ("${value.match(EMOJI)[0]}")`);
+        if (DASHES.test(value)) fail(`${tag} ${file}: ${key} uses an em or en dash; Hallmark's copy floor bans them`);
+        if (HIDDEN_ROOTS.test(key) || HIDDEN_LEAVES.test(leaf)) continue;
+        if (/^tour\.panes\[[1-9]\]\.body$/.test(key)) continue;
+        visible += words(value);
+      }
+      if (visible > WORD_BUDGET) {
+        fail(`${tag} ${file}: ${visible} visible words, over Hallmark's ${WORD_BUDGET}-word page budget`);
+      }
+      void content;
+    }
+  }
+
   // ── 8. Every download the page offers is a file it ships ────────────────
   //
   // `public/` is copied to the docroot as is, and `.htaccess` answers a
@@ -295,11 +341,22 @@ for (const pair of PAIRS) {
     // `&` is written `&amp;` in the head and `&` in the module; compare the
     // text a reader sees, not the bytes a parser does.
     const html = readFileSync(path.join(root, entry), 'utf8').replace(/&amp;/g, '&');
-    for (const [what, want] of [
+    const heads = [
       ['<title>', content.seo.title],
       ['meta description', content.seo.description],
-      ['<h1>', content.hero.title],
-    ]) {
+    ];
+    // A server-rendered page keeps its h1 in the component, not the shell;
+    // what the shell must carry is exactly one of each marker, or the build
+    // ships the empty shell again (check:home reads the rendered h1).
+    if (pair.ssr) {
+      for (const marker of ['<!--ssr-outlet-->', '<!--ssr-head-->']) {
+        const count = html.split(marker).length - 1;
+        if (count !== 1) fail(`${tag} ${entry} must carry ${marker} exactly once (found ${count})`);
+      }
+    } else {
+      heads.push(['<h1>', content.hero.title]);
+    }
+    for (const [what, want] of heads) {
       if (!html.includes(want)) {
         fail(`${tag} ${entry} no longer carries the ${what} from ${content.lang}`);
       }
