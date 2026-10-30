@@ -1,14 +1,14 @@
 {
   "name": "@alliswell/landing",
-  "version": "1.18.1",
+  "version": "1.18.2",
   "private": true,
-  "description": "AllisWell marketing site — served at the root of alliswell.space, with the Flutter web app under /app.",
+  "description": "AllisWell marketing site \u2014 served at the root of alliswell.space, with the Flutter web app under /app.",
   "license": "LicenseRef-PolyForm-Noncommercial-1.0.0",
   "type": "module",
   "scripts": {
     "sync:shots": "node scripts/sync-screenshots.mjs",
     "dev": "npm run sync:shots && vite",
-    "build": "npm run sync:shots && vite build",
+    "build": "npm run sync:shots && node scripts/check-media.mjs && vite build && vite build --ssr src/home/entry-server.js --outDir node_modules/.cache/landing-ssr && node scripts/prerender.mjs",
     "preview": "vite preview --port 4173",
     "lint": "eslint ."
   },

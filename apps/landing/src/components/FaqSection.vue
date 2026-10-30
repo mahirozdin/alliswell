@@ -1,5 +1,5 @@
 <script setup>
-import { faq } from '../content.js';
+import { faq } from '../site.js';
 
 /** EE-143 — same list, a second page, a different heading and a different set. */
 defineProps({

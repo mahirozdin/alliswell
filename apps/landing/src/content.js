@@ -1,667 +1,277 @@
 /**
- * Every word on the site, in one file.
+ * The homepage, in English (ADR-0061). The Turkish twin is `content.tr.js`;
+ * `npm run check:copy` holds the two to the same key tree.
  *
  * The claims here are the ones docs/COMPARISON.md backs and
- * docs/STORE-LISTING.md §5 permits — if a line changes, change it there too.
- * Keeping copy out of the components means it can be reviewed as prose, and
- * translated later without touching markup.
- */
-
-export const APP_URL = '/app';
-export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
-export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
-export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';
-export const APP_STORE_URL = 'https://apps.apple.com/app/alliswell-todo-and-reminders/id6794964494';
-export const VERSION = '1.18.1';
-// OPH-370 / ADR-0051: every release carries the desktop apps under stable,
-// unversioned names, so these links always fetch the newest one.
-export const RELEASES_URL = `${REPO_URL}/releases/latest`;
-export const WINDOWS_DOWNLOAD_URL = `${RELEASES_URL}/download/alliswell-windows-x64.zip`;
-export const LINUX_DOWNLOAD_URL = `${RELEASES_URL}/download/alliswell-linux-x64.tar.gz`;
-/**
- * OPH-364 — the hosted connector URL, said once. It is on the API host, not
- * this one: an agent that guessed `alliswell.space/mcp` from the marketing
- * domain got this site's HTML back and a Claude Team owner a failed connector.
- */
-export const MCP_URL = 'https://api.alliswell.space/mcp';
-export const MCP_GUIDE_URL = '/docs/mcp';
-
-export const hero = {
-  eyebrow: `v${VERSION} · source available · free for personal use`,
-  title: 'Your whole day, in an app you actually own.',
-  lede: 'Tasks, projects, notes, files and reminders loud enough to move you — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app on six platforms, offline-first, storing every byte in your own database.',
-  primary: { label: 'Open the web app', href: APP_URL },
-  store: { label: 'Get it on Google Play', href: PLAY_URL },
-  storeIos: { label: 'Download on the App Store', href: APP_STORE_URL },
-  secondary: { label: 'Self-host in one command', href: '#self-host' },
-  note: 'Free forever. No tier, no ads, no tracking. In your browser at alliswell.space/app, on Google Play and on the App Store.',
-};
-
-export const platforms = [
-  { name: 'iOS', icon: 'apple' },
-  { name: 'Android', icon: 'android' },
-  { name: 'Web', icon: 'globe' },
-  { name: 'macOS', icon: 'apple' },
-  { name: 'Windows', icon: 'windows' },
-  { name: 'Linux', icon: 'linux' },
-];
-
-export const pillars = [
-  {
-    key: 'own',
-    icon: '🔐',
-    title: 'It is genuinely yours',
-    body: 'One `docker compose up`, your own MySQL on your own machine at your own domain — free, forever, for personal use. No other app in this category offers that at any price.',
-  },
-  {
-    key: 'alarm',
-    icon: '⏰',
-    title: 'Alarms, not notifications',
-    body: 'Urgent reminders ring through Silent mode and Focus, keep re-alerting until you acknowledge them, and write a log entry explaining themselves when the OS gets in the way.',
-  },
-  {
-    key: 'sync',
-    icon: '📅',
-    title: 'Google Calendar sync in both directions',
-    body: 'Your tasks become Google events, your edits in Google come back, and your existing events show up next to today’s work. On iPhone and Mac, tasks are mirrored into Apple Calendar too — one way, for now.',
-  },
-  {
-    key: 'ai',
-    icon: '🤖',
-    title: 'AI on your terms — or none at all',
-    body: 'Add AllisWell to the Claude or ChatGPT subscription you already pay for, or bring your own key (even a local Ollama). Every suggestion waits for your tap.',
-  },
-];
-
-export const features = [
-  {
-    id: 'home',
-    eyebrow: 'The day',
-    title: 'One surface for everything that is due',
-    body: 'Overdue, today, this week and the next 30 days in one chronological scroll, with a month calendar beside it. Flip the same day into a kanban Board with columns you name, hide and reorder.',
-    points: [
-      'Dateless captures pinned on top — nothing gets lost because it had no date',
-      'Drag between columns, or use the visible status button when dragging is awkward',
-      'A finished task stays on today’s list, struck through, until midnight',
-    ],
-    shot: 'web/home-light.jpg',
-    shotDark: 'web/home-dark.jpg',
-    alt: 'AllisWell Home on the web: overdue and today groups, project badges, tag chips and a month calendar',
-  },
-  {
-    id: 'board',
-    eyebrow: 'Board',
-    title: 'The same tasks, as a kanban',
-    body: 'Open, In progress, Waiting, Completed — or whatever set of statuses your work actually has. Columns are yours to hide and reorder, and every card keeps its project, tags, priority and repeat badge.',
-    points: [
-      'Your column layout is remembered per device',
-      'Hidden statuses stay reachable as move targets',
-      'Not a separate list: it is the same data, rearranged',
-    ],
-    shot: 'web/board.jpg',
-    alt: 'AllisWell Board view with Open, In progress, Waiting and Completed columns',
-  },
-  {
-    id: 'alarms',
-    eyebrow: 'Reminders',
-    title: 'A reminder that gets you out of the meeting',
-    body: 'Ordinary reminders arrive at the exact minute. Urgent ones ring like an alarm — through Silent mode, through Focus — and keep coming back on a chain until you acknowledge them.',
-    points: [
-      'Snooze presets that tell you exactly when they will ring again',
-      'Silence one task’s alarms without completing it',
-      'Your own ringtone, or one you upload',
-      'A privacy mode that hides the task’s text on the lock screen',
-    ],
-    shot: 'web/reminders.jpg',
-    alt: 'AllisWell reminder settings: alarm profile, re-alert chain, sound library',
-  },
-  {
-    id: 'recurrence',
-    eyebrow: 'Repeats',
-    title: 'Ask for the 31st and February answers',
-    body: 'Every day, every weekday, the last day of the month, the 2nd Tuesday, the first Monday after the 22nd. Pick a day that a month does not have and AllisWell clamps to the nearest real one — Google Calendar drops the month entirely.',
-    points: [
-      'A live “next 5” preview shows the days before you commit',
-      'Occurrences are real tasks — they appear in search, the calendar and the widget',
-      'Editing one asks how far it reaches: this, this and future, or all',
-      'Or repeat N days, weeks or months after you complete it — the water filter, 90 days after the last change',
-    ],
-    shot: 'web/home-dark.jpg',
-    alt: 'A repeating task in AllisWell, with its repeat badge on the list row',
-  },
-  {
-    id: 'notes',
-    eyebrow: 'Notes & files',
-    title: 'The document half of the job',
-    body: 'Markdown notes with live syntax while you type and a real GFM reading view — tables, task lists, KaTeX, Mermaid. Inline images, linked to tasks and projects, exportable as .md or PDF. Attach any file to anything, and browse the lot in a Files section with nestable folders.',
-    points: [
-      'A project’s README note becomes its overview page',
-      'Attachments go straight to Cloudflare R2 or any S3 — bytes never pass through the API',
-      'Pin, archive, card grid or list',
-    ],
-    shot: 'web/notes.jpg',
-    alt: 'AllisWell Notes: pinned notes, project links, README filter',
-  },
-  {
-    id: 'markdown',
-    eyebrow: 'Notes',
-    title: 'A markdown workspace, not a text box',
-    body: 'Notes render GitHub-flavoured markdown properly — tables with their alignment, task lists, callouts, real mathematics, syntax-coloured code, and Mermaid diagrams drawn as diagrams. One document, two ways to look at it: Reading, and the markdown source with live syntax as you type.',
-    points: [
-      'Open a .md file from your own computer, edit it, and save it back to that file',
-      'The file is never written behind your back — and if something else changed it, you choose what happens',
-      'Outline, folding, find and replace, a command palette, and slash commands everywhere',
-    ],
-    ratio: '1440 / 900',
-    shot: 'web/project-readme.jpg',
-    alt: 'A project’s README in AllisWell, with its markdown rendered as a document — headings, a table, a task list and a quote',
-  },
-  {
-    id: 'files',
-    eyebrow: 'Files',
-    title: 'Folders, and everything attached anywhere',
-    body: 'A workspace-wide file manager with nestable folders, plus a Files tab inside every project and an Attachments section on every task.',
-    points: [
-      'Presigned uploads — your storage, your bucket, your bill',
-      'Sources view shows where each file is attached',
-      'Works with MinIO locally and R2 in production',
-    ],
-    shot: 'web/files.jpg',
-    alt: 'AllisWell Files section with folders and uploaded documents',
-  },
-  {
-    id: 'search',
-    eyebrow: 'Search',
-    title: 'Search that ignores accents',
-    body: 'Type “muller” and find Müller. Type “cafe” and find café. Ranked title → tag → body, running over the copy of your data on the device, so it answers instantly and works with the network off.',
-    points: [
-      'Case- and diacritic-insensitive across the Latin alphabets — ß, ñ, å, ø, ł, č and the rest',
-      'Handles the letters database engines get wrong, so results do not depend on your server’s collation',
-      'Offline, because the index is local',
-    ],
-    shot: 'web/search.jpg',
-    alt: 'Searching AllisWell notes for “muller” and finding “Kickoff at Café Müller”',
-  },
-  {
-    id: 'widget',
-    eyebrow: 'Home Screen',
-    title: 'Your day, without unlocking anything',
-    body: 'The widget mirrors the same buckets Home does — overdue, undated, today — under a header carrying the date, the system clock and how many tasks today actually holds. It reads the same data the app does, without unlocking anything.',
-    points: [
-      'A clock that really ticks — not a number frozen at the last refresh',
-      'The count is what is on you today: overdue plus due today, hidden at zero',
-      'iPhone and Android, in light and dark, from the same task data',
-    ],
-    // A phone Home Screen belongs in phone chrome; the default browser frame
-    // would draw a fake URL bar around an iPhone.
-    frame: 'phone',
-    ratio: '1320 / 2868',
-    shot: 'ios/12-widget.jpg',
-    shotDark: 'ios/13-widget-dark.jpg',
-    alt: 'The AllisWell widget on the iPhone Home Screen: the date and the system clock in the header, today’s open count beneath it, then overdue, undated and today’s tasks',
-  },
-];
-
-export const aiSection = {
-  eyebrow: 'AI · entirely optional',
-  title: 'Two honest ways to use a model — and zero is one of them',
-  lede: 'Capture works with no AI at all. When you do want it, nothing is resold to you and nothing is trained on you.',
-  tracks: [
-    {
-      title: 'Add AllisWell to Claude or ChatGPT',
-      body: 'AllisWell is a remote MCP server. Connect it to the subscription you already pay for and ask about your day, from inside the assistant you already use.',
-      points: [
-        'OAuth 2.1 with PKCE — dynamic registration and client metadata documents, so every Claude option works',
-        'Read-first tools; there is no delete tool, and there never will be',
-        'Self-hosters get their own connector URL with no directory listing needed',
-      ],
-      link: { label: 'Connector URL and setup', href: '/#mcp' },
-    },
-    {
-      title: 'Bring your own key',
-      body: 'Anthropic, OpenAI, Gemini, OpenRouter — or a local Ollama, where nothing leaves the machine. Chat with your tasks, press and hold to speak one into being, or share any text into the app.',
-      points: [
-        'Speech is transcribed on the device: your voice never leaves it, only the text does',
-        'The model gets no write tools — it proposes, you confirm with one tap',
-        'The consent screen states each provider’s real data policy, including the ones that train on you',
-      ],
-      link: { label: 'How AI works here', href: `${DOCS_URL}/AI.md` },
-    },
-  ],
-};
-
-/**
- * OPH-364 — the connector, with its URL on the page. The AI section names the
- * track; this one is what somebody who wants to CONNECT needs: the address,
- * where to paste it in each assistant, and what to ask once it is in.
- */
-export const mcp = {
-  eyebrow: 'MCP connector',
-  title: 'Ask Claude or ChatGPT about your day',
-  lede: 'AllisWell is a remote MCP server. Paste one URL into the assistant you already pay for, sign in once, and it can read your tasks and notes — and add or finish them with your approval.',
-  urlLabel: 'Connector URL for alliswell.space accounts',
-  url: MCP_URL,
-  selfHost:
-    'Self-hosting? Your URL is your API_PUBLIC_URL followed by /mcp — the app shows it, with a copy button, under Settings → Integrations.',
-  clients: [
-    {
-      name: 'Claude',
-      note: 'Free, Pro and Max',
-      steps: [
-        'Settings → Connectors → Add custom connector',
-        'Paste the URL above, press Add, then Connect',
-        'Sign in with your AllisWell email and password',
-      ],
-    },
-    {
-      name: 'Claude Team & Enterprise',
-      note: 'An Owner adds it once',
-      steps: [
-        'Owner: Organization settings → Connectors → Add custom connector, with the URL above',
-        'Any OAuth option works; there is no client ID or secret to enter',
-        'Each member: Settings → Connectors → Connect, with their own account',
-      ],
-    },
-    {
-      name: 'ChatGPT',
-      note: 'Plus, Pro and Business',
-      steps: [
-        'Settings → Apps & Connectors → Advanced settings → Developer mode',
-        'Create a connector with the URL above and OAuth',
-        'Sign in and approve, exactly as in Claude',
-      ],
-    },
-  ],
-  promptsTitle: 'Then just ask',
-  prompts: [
-    'What is overdue today?',
-    'Add “renew passport” to Errands for next Friday, urgent',
-    'Summarise my renovation notes and list the open tasks',
-  ],
-  safety:
-    'Every write asks for your approval first, every AI change lands in the action log, and there is no delete tool at all.',
-  link: { label: 'Full setup guide & troubleshooting', href: MCP_GUIDE_URL },
-};
-
-export const comparison = {
-  columns: ['AllisWell', 'Google Calendar', 'Google Tasks', 'Apple Reminders', 'Things 3'],
-  rows: [
-    ['Source available', 'yes', 'no', 'no', 'no', 'no'],
-    ['Self-hosted, your database', 'yes', 'no', 'no', 'no', 'no'],
-    ['Price', 'free', 'free', 'free', 'free', '~$80'],
-    ['iOS + Android + Web + desktop', 'yes', 'partial', 'partial', 'no', 'no'],
-    ['Works fully offline', 'yes', 'partial', 'partial', 'yes', 'yes'],
-    ['Kanban board', 'yes', 'no', 'no', 'partial', 'no'],
-    ['Rich notes & file attachments', 'yes', 'partial', 'no', 'partial', 'no'],
-    ['Markdown files edited in place', 'yes', 'no', 'no', 'no', 'no'],
-    ['Alarms through Silent + Focus', 'yes', 'no', 'no', 'partial', 'no'],
-    ['Re-alert until acknowledged', 'yes', 'no', 'no', 'no', 'no'],
-    ['Recurrence clamps (31st → 28 Feb)', 'yes', 'no', 'no', 'yes', 'yes'],
-    ['Two-way Google Calendar sync', 'yes', 'native', 'native', 'no', 'no'],
-    ['Accent-insensitive search', 'yes', 'no', 'no', 'no', 'no'],
-    ['MCP connector for Claude / ChatGPT', 'yes', 'no', 'no', 'no', 'no'],
-  ],
-  footnote:
-    'Competitor behaviour as of mid-2026. The full analysis — including the places where they beat us — is in docs/COMPARISON.md.',
-};
-
-export const selfHost = {
-  eyebrow: 'Self-hosting',
-  title: 'Your server, your data, one command',
-  lede: 'Two published images — the API and the web app — for amd64 and arm64, tagged on every release. The API migrates its own schema on start, so an upgrade is `pull` + `up -d` and your data never moves.',
-  command: `curl -O https://raw.githubusercontent.com/mahirozdin/alliswell/main/docker-compose.selfhost.yml
-curl -o .env https://raw.githubusercontent.com/mahirozdin/alliswell/main/.env.selfhost.example
-
-echo "JWT_ACCESS_SECRET=$(openssl rand -hex 32)"  >> .env
-echo "JWT_REFRESH_SECRET=$(openssl rand -hex 32)" >> .env
-nano .env            # your domains + database passwords
-
-docker compose -f docker-compose.selfhost.yml up -d`,
-  points: [
-    'MySQL 8.4 or MariaDB 10.11+ — data in named volumes, never touched by an upgrade',
-    'Attachments in your own Cloudflare R2 or S3 bucket',
-    'One prebuilt web image serves any domain: the API address is read at container start',
-  ],
-  link: { label: 'Full self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
-};
-
-/**
- * OPH-296 — the REST API.
+ * docs/STORE-LISTING.md §5 permits: Apple Calendar only as a one-way mirror, no "never stops",
+ * no free or built-in AI, no "no tracking". If a line changes, change it there
+ * too. The page follows Hallmark's Dusk rules, which check:copy enforces where
+ * a machine can: no eyebrows, no emoji, no em or en dashes, about 450 visible
+ * words at most.
  *
- * It shipped in v1.7.0 and this site never mentioned it once, which is most
- * of why it was reported missing: a feature nobody can find is, from the
- * outside, a feature that does not exist. The section leads with a curl
- * command rather than a screenshot because that is what this audience wants
- * to see, and because the feature list is screenshot-gated in CI.
+ * `media` keys name entries in `src/home/media.json`, which
+ * `npm run media:promote` writes; `check:media` fails a key with no file.
  */
-export const api = {
-  eyebrow: 'REST API',
-  title: 'Everything the app does, your scripts can do',
-  lede: 'Mint a personal API key in Settings and the whole surface opens up — tasks, notes, projects, files, reminders. Plain bearer auth, no OAuth dance, no SDK to install. A cron job is three lines.',
-  command: `export ALLISWELL_KEY="awk_…"     # Settings -> API access and management
 
-curl -X POST "https://api.alliswell.space/api/v1/workspaces/$WS/tasks" \\
-  -H "Authorization: Bearer $ALLISWELL_KEY" \\
-  -H 'Content-Type: application/json' \\
-  -d '{"title": "Pay the electricity bill", "isUrgent": true}'`,
-  points: [
-    'Every endpoint documented with its parameters, an example request and an example response — generated from the server’s own schemas, so it cannot drift',
-    'A key is bound to one workspace, and can never delete your account, touch your AI provider keys, mint more keys or change your password',
-    'Bulk import and export for notes and tasks, plus Todoist and TickTick exports read as they are, so moving in or out is a script rather than a support ticket',
-  ],
-  link: { label: 'Read the API documentation', href: '/docs/api' },
-  secondary: {
-    label: 'Postman collection',
-    href: '/downloads/alliswell.postman_collection.json',
-  },
-};
-
-/** OPH-371 — moving in from another app, said plainly (ADR-0052). */
-export const switchFrom = {
-  eyebrow: 'Moving in',
-  title: 'Switch from Todoist or TickTick',
-  lede: 'Bring your tasks with you. Export from the app you are leaving, choose the file in Settings › Data › Import, and look at what will come in before anything is written.',
-  steps: [
-    {
-      title: 'Export',
-      body: 'Todoist: Settings › Backups, or a project’s Export as CSV. TickTick: Settings › Backup & Import › Generate backup, on the web.',
-    },
-    {
-      title: 'Preview',
-      body: 'Tasks, repeating tasks, sub-items, projects and tags are counted, and anything that cannot come over exactly is listed with the row it came from.',
-    },
-    {
-      title: 'Import',
-      body: 'Run the same file again later and nothing is duplicated. A task you deleted stays deleted.',
-    },
-  ],
-  mapping: [
-    'Projects and lists become projects; labels, sections and board columns become tags',
-    'Sub-tasks become checklist items; priorities p1–p4 become high, medium, low and none',
-    'Due dates keep their time and time zone; repeats become AllisWell repeats when the rule is exact, and stay in the description when it is not',
-    'Imported tasks never ring as urgent alarms; completed tasks are optional',
-  ],
-  note: 'Apple Reminders has no export file, so there is no importer for it.',
-  link: { label: 'The same import as one API call', href: '/docs/api' },
-};
-
-export const download = {
-  eyebrow: 'Get it',
-  title: 'In your browser, on your phone and on your desktop',
-  lede: 'The web app is live and complete — sign up and it works on every device you own. The Android app is on Google Play and the iPhone app is on the App Store, both free. Windows and Linux builds are attached to every release; macOS builds from source.',
-  web: {
-    title: 'Web app',
-    status: 'Live now',
-    body: 'The full app at alliswell.space/app — offline-capable, installable, nothing to download.',
-    cta: { label: 'Open alliswell.space/app', href: APP_URL },
-  },
-  stores: [
-    {
-      name: 'Google Play',
-      status: 'Live now',
-      body: 'The Android app, on the store — alarm-grade reminders, offline-first sync and the home-screen widget included.',
-      icon: 'android',
-      cta: { label: 'Get it on Google Play', href: PLAY_URL },
-    },
-    {
-      name: 'App Store',
-      status: 'Live now',
-      body: 'The iPhone app, on the store — the same alarm-grade reminders, offline-first sync and Home Screen widget.',
-      icon: 'apple',
-      cta: { label: 'Download on the App Store', href: APP_STORE_URL },
-    },
-    {
-      name: 'Windows',
-      status: 'Download',
-      body: 'Windows 10 and 11, 64-bit: unzip and run alliswell.exe. Not code-signed yet, so SmartScreen asks once: More info › Run anyway.',
-      icon: 'windows',
-      cta: { label: 'Download for Windows (.zip)', href: WINDOWS_DOWNLOAD_URL },
-    },
-    {
-      name: 'Linux',
-      status: 'Download',
-      body: '64-bit: extract and run ./alliswell. Needs GTK 3, libsecret and GStreamer, which most desktops already have.',
-      icon: 'linux',
-      cta: { label: 'Download for Linux (.tar.gz)', href: LINUX_DOWNLOAD_URL },
-    },
-  ],
-  selfHostNote:
-    'In a hurry, or want it entirely on your own metal? Self-hosting is one command away, and it is the same app.',
-};
-
-export const faq = [
-  {
-    q: 'Is it really free?',
-    a: 'Free for you, yes: personal use and self-hosting your own instance are free forever, with no tier, no ads and no tracking. Commercial use — running it inside a business, reselling it, or offering it as a service — needs a licence, because the hosted service and the app stores are what fund the work. Write to info@bubiapps.com.',
-  },
-  {
-    q: 'What does “alarm-grade” actually mean?',
-    a: 'An urgent task rings with a real alarm sound rather than a notification chime, at full volume through Silent mode and Focus (iOS 26 AlarmKit; Android’s USAGE_ALARM insistent channel), and keeps re-alerting on a chain until you acknowledge it. Delivery still depends on the OS, which is exactly why the app keeps an alarm log you can read when something does not fire.',
-  },
-  {
-    q: 'How is the Google Calendar sync two-way?',
-    a: 'Your tasks are written into a calendar you pick as real events; edits you make in Google flow back into AllisWell through push webhooks and incremental sync with etag-based conflict resolution. Your other Google events show up on Home next to your tasks.',
-  },
-  {
-    q: 'Do I have to use the AI features?',
-    a: 'No. They are off until you turn them on, capture works with zero AI, and there is no AllisWell AI account — you either connect AllisWell to your own Claude/ChatGPT subscription over MCP, or you paste your own provider key.',
-  },
-  {
-    q: 'How do I connect AllisWell to Claude or ChatGPT?',
-    a: 'Add a custom connector with the URL https://api.alliswell.space/mcp (self-hosted: your API address followed by /mcp) and sign in with your AllisWell account. On Claude Team and Enterprise an Owner adds the connector once and every member presses Connect. The full guide, with troubleshooting, is at alliswell.space/docs/mcp.',
-  },
-  {
-    q: 'Can I move my data out?',
-    a: 'It is your MySQL database. Notes export as Markdown, and the whole schema is documented and open. There is no lock-in to leave.',
-  },
-  {
-    q: 'What is missing?',
-    a: 'Sharing and assignees (the workspace model exists, the UI does not), location-based reminders, and tasks over CalDAV (calendar events already go to iCloud or any CalDAV calendar when the server admin turns it on). All three are written down in the roadmap rather than implied away.',
-  },
-];
-
-/**
- * The site nav.
- *
- * EE-143 made every in-page anchor ROOT-ABSOLUTE. On the homepage `/#features`
- * is a same-document fragment navigation — identical behaviour, no reload — and
- * from any other page it goes home and scrolls. A bare `#features` on
- * /enterprise scrolls nowhere, silently. One list that is correct everywhere
- * beats a second list that is correct on one page.
- */
-export const siteLinks = [
-  { label: 'Features', href: '/#features' },
-  { label: 'AI', href: '/#ai' },
-  // OPH-364: the connector gets its own entry — "where do I paste the URL" is
-  // the question people arrive with, and it was two clicks deep.
-  { label: 'MCP', href: '/#mcp' },
-  { label: 'Compare', href: '/#compare' },
-  { label: 'Self-host', href: '/#self-host' },
-  // The only nav entry that leaves this page. /enterprise ships in the SAME
-  // bundle — as a Vite entry since EE-151, as a generated page before that —
-  // so the link and its destination cannot drift apart between deploys.
-  { label: 'Enterprise', href: '/enterprise' },
-  // OPH-296: same reasoning as /enterprise — generated into this bundle by
-  // scripts/static-pages.js, so the link cannot outlive its destination.
-  { label: 'API', href: '/docs/api' },
-  { label: 'Get it', href: '/#get' },
-];
-
-/** EE-143 — root-absolute anchors, for the reason TheHeader's nav gives. */
-export const siteColumns = [
-  {
-    title: 'Product',
-    links: [
-      { label: 'Open the app', href: APP_URL },
-      { label: 'Get it on Google Play', href: PLAY_URL },
-      { label: 'Download on the App Store', href: APP_STORE_URL },
-      { label: 'Features', href: '/#features' },
-      { label: 'Comparison', href: '/#compare' },
-      { label: 'Enterprise', href: '/enterprise' },
-      { label: 'Roadmap', href: `${REPO_URL}/blob/main/ROADMAP.md` },
-      { label: 'Changelog', href: `${REPO_URL}/blob/main/CHANGELOG.md` },
-    ],
-  },
-  {
-    title: 'Run it yourself',
-    links: [
-      { label: 'Self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
-      { label: 'Architecture', href: `${DOCS_URL}/ARCHITECTURE.md` },
-      { label: 'Attachments (R2/S3)', href: `${DOCS_URL}/ATTACHMENTS.md` },
-      { label: 'Notifications & alarms', href: `${DOCS_URL}/NOTIFICATIONS.md` },
-    ],
-  },
-  {
-    title: 'AI',
-    links: [
-      { label: 'How AI works', href: `${DOCS_URL}/AI.md` },
-      { label: 'MCP connector', href: MCP_GUIDE_URL },
-      // OPH-296: the REST API sat in this repo undocumented on the site for
-      // two releases. It belongs beside the MCP connector — they are the two
-      // ways something other than the app reaches your data.
-      { label: 'REST API reference', href: '/docs/api' },
-      { label: 'Security policy', href: `${REPO_URL}/blob/main/SECURITY.md` },
-      { label: 'Privacy policy', href: '/privacy' },
-    ],
-  },
-  {
-    title: 'Project',
-    links: [
-      { label: 'GitHub', href: REPO_URL },
-      { label: 'Contributing', href: `${REPO_URL}/blob/main/CONTRIBUTING.md` },
-      { label: 'Issues', href: `${REPO_URL}/issues` },
-      { label: 'Support', href: '/support' },
-      { label: 'Licence (PolyForm NC)', href: `${REPO_URL}/blob/main/LICENSE` },
-      { label: 'Commercial licensing', href: 'mailto:info@bubiapps.com' },
-    ],
-  },
-];
-
-// ── EE-164: the homepage as ONE object, so a second language can be the ────
-// ── same shape ─────────────────────────────────────────────────────────────
-//
-// Everything above stays a named export because nine components and two gates
-// import it that way. What the Turkish homepage needed was a single object with
-// the same keys as `content.tr.js`, plus the handful of chrome words that lived
-// as literals inside templates ("Copy", "Coming soon", "Source on GitHub"),
-// which is exactly the shape `check:copy` can compare key for key.
-
-/** The phone strip: every image a real capture off a booted device. */
-export const mobile = {
-  eyebrow: 'One codebase',
-  title: 'The same app, everywhere you are',
-  lede: 'iPhone, Android, the browser, and native builds for macOS, Windows and Linux — from one Flutter codebase, with a local database on each of them.',
-  shots: [
-    { src: '/shots/ios/01-home.jpg', caption: 'Home — iPhone', alt: 'AllisWell Home on iPhone with the month calendar and overdue tasks' },
-    { src: '/shots/ios/07-task-detail-repeat.jpg', caption: 'A repeating task', alt: 'Task detail on iPhone: urgent alarm, repeat rule “every month on day 31”, due 30 September' },
-    { src: '/shots/ios/08-repeat-dialog.jpg', caption: 'The next five days', alt: 'The Repeat dialog on iPhone showing a live preview of the next five occurrences' },
-    { src: '/shots/android/01-home.jpg', caption: 'Home — Android', alt: 'AllisWell Home on an Android phone' },
-    { src: '/shots/android/09-alarm-ring.jpg', caption: 'An alarm, on Android', alt: 'AllisWell’s full-screen urgent reminder on Android, with an Acknowledge button and snooze presets' },
-    { src: '/shots/android/04-projects.jpg', caption: 'Projects — Android', alt: 'AllisWell Projects on an Android phone' },
-  ],
-};
-
-/** The clamping claim, shown as a table rather than asserted. */
-export const recurrence = {
-  eyebrow: 'Recurrence',
-  title: '“The 31st” should mean month end',
-  lede: 'Set a monthly task on the 31st and a calendar that follows RFC 5545 to the letter simply skips every month that has no 31st. Your rent does not skip February.',
-  note: 'AllisWell clamps backwards to the last real day — per value, and the result is a set, so a window like 23–29 in a 28-day February collapses instead of emitting the 28th twice.',
-  rule: 'Rule: every month on day 31',
-  columns: { month: 'Month', them: 'RFC 5545 / Google', us: 'AllisWell' },
-  skipped: '— skipped —',
-  months: [
-    { label: 'December', them: '31 Dec', us: '31 Dec' },
-    { label: 'January', them: '31 Jan', us: '31 Jan' },
-    { label: 'February', them: null, us: '28 Feb' },
-    { label: 'March', them: '31 Mar', us: '31 Mar' },
-    { label: 'April', them: null, us: '30 Apr' },
-  ],
-};
-
-/** The comparison table with its headings — what ComparisonTable renders. */
-export const comparisonTable = {
-  eyebrow: 'Honest comparison',
-  title: 'Where AllisWell is actually different',
-  lede: 'Not a scorecard designed to be won. The full analysis — including the six things these apps do better than we do — is in the repository.',
-  caption: 'Feature comparison table',
-  featureHeading: 'Feature',
-  labels: { yes: 'Yes', no: 'No', partial: 'Partial' },
-  columns: comparison.columns,
-  rows: comparison.rows,
-  footnote: comparison.footnote,
-  link: { label: 'Read it →', href: `${DOCS_URL}/COMPARISON.md` },
-};
+import {
+  APP_STORE_URL,
+  APP_URL,
+  DOCS_URL,
+  LINUX_DOWNLOAD_URL,
+  MCP_GUIDE_URL,
+  MCP_URL,
+  PLAY_URL,
+  REPO_URL,
+  WINDOWS_DOWNLOAD_URL,
+} from './site.js';
 
 export default {
   lang: 'en',
 
   seo: {
-    title: 'AllisWell — source-available tasks, reminders & notes you can host yourself',
+    title: 'AllisWell: tasks, notes and alarms you can host yourself',
     description:
-      'Tasks, projects, notes, files and alarm-grade reminders that ring through Silent mode — with true two-way Google Calendar sync, and your tasks mirrored into Apple Calendar on iPhone and Mac. One app for iOS, Android, Web, macOS, Windows and Linux. Source-available, self-hosted, free for personal use.',
-    ogImage: '/shots/og/home.jpg',
+      'Tasks in projects, markdown notes, files and alarms that ring through Silent mode, with ' +
+      'two-way Google Calendar sync and a connector for Claude and ChatGPT. One app for iPhone, ' +
+      'Android, the web and desktop. Free for personal use, on your own server or ours.',
+    ogImage: '/shots/og/home-dusk.jpg',
   },
 
-  skip: 'Skip to features',
+  skip: 'Skip to the tour',
+
+  ui: { pause: 'Pause the animation', play: 'Play the animation' },
 
   nav: {
     home: '/',
-    links: siteLinks,
+    label: 'Main',
+    links: [
+      { label: 'Tour', href: '/#features' },
+      { label: 'Claude and ChatGPT', href: '/#mcp' },
+      { label: 'Self-host', href: '/#self-host' },
+      { label: 'Download', href: '/#get' },
+      { label: 'Enterprise', href: '/enterprise' },
+    ],
     cta: { label: 'Open the app', href: APP_URL },
-    starsLabel: 'Star',
+    menu: 'Menu',
+    langLabel: 'Language',
   },
 
   hero: {
-    ...hero,
-    desktopAlt:
-      'AllisWell on the web: Home with overdue and today groups, project badges, tag chips, a quick-access rail and a month calendar',
-    phoneAlt: 'AllisWell on iPhone: the same day, with the month calendar and the overdue group',
-    words: { stars: 'stars', github: 'Source on GitHub', availableOn: 'Available on' },
+    title: 'Tasks, notes and alarms you own.',
+    sentence: 'Reminders ring through Silent mode. Run it on your server or ours.',
+    primary: { label: 'Open the web app', href: APP_URL },
+    secondary: { label: 'Host it yourself', href: '/#self-host' },
+    also: {
+      before: 'Also on ',
+      links: [
+        { label: 'iPhone', href: APP_STORE_URL },
+        { label: 'Android', href: PLAY_URL },
+        { label: 'Windows', href: WINDOWS_DOWNLOAD_URL },
+        { label: 'Linux', href: LINUX_DOWNLOAD_URL },
+      ],
+      and: ' and ',
+      after: '.',
+    },
+    media: 'hero',
+    alt: 'A day in AllisWell: the Home list fills with tasks from three projects, one is ticked off, and the rent reminder rings as an alarm.',
+    caption: 'Recorded from the app with sample data.',
   },
-  platforms,
-  pillars,
-  features,
-  recurrence,
-  mobile,
 
-  ai: {
-    ...aiSection,
-    foot: 'Not interested? Leave it off. AllisWell has no AI account, sends nothing anywhere by default, and every capture surface works without a model.',
+  tour: {
+    title: 'A task carries its project, files and alarm.',
+    lead: 'Five things it does, shown on the real app.',
+    tabsLabel: 'Features',
+    panes: [
+      {
+        id: 'tasks',
+        tab: 'Tasks that belong to projects',
+        body: 'Each task carries its project, tags, checklist and files, and syncs both ways with Google Calendar.',
+        media: 'tour-tasks',
+        alt: 'The board view: tasks move from Open to In progress, each one wearing its project badge and tags.',
+      },
+      {
+        id: 'notes',
+        tab: 'Markdown notes, rendered properly',
+        body: 'Tables, maths, code and Mermaid diagrams. Open a .md file from your computer and save it back.',
+        media: 'tour-notes',
+        alt: 'A note switches between its markdown source and the reading view, where the table and the checklist render.',
+      },
+      {
+        id: 'alarms',
+        tab: 'Alarms, not chimes',
+        body: 'Urgent tasks ring like an alarm clock through Silent and Focus, and ask again for half an hour until you answer.',
+        media: 'tour-alarms',
+        alt: 'A full-screen alarm on Android with an Acknowledge button and snooze presets that name the time they ring again.',
+      },
+      {
+        id: 'files',
+        tab: 'Files next to the work',
+        body: 'The whiteboard photo and the contract PDF live on the task or project they belong to.',
+        media: 'tour-files',
+        alt: 'A project’s Files tab lists photos and documents in folders, and a picture opens full size.',
+      },
+      {
+        id: 'repeats',
+        tab: 'Repeats that keep count',
+        body: 'Ask for the 31st and February gets the 28th. You see the next five dates before you save.',
+        media: 'tour-repeats',
+        alt: 'A task repeating every month on day 31, with the next five dates listed and February falling on the 28th.',
+      },
+    ],
   },
 
-  mcp: { ...mcp, copyLabel: 'Copy', copiedLabel: 'Copied' },
+  film: {
+    title: 'The whole app in a minute.',
+    media: 'film-en',
+    alt: 'A one-minute film of AllisWell: tasks, an alarm through Silent, the calendar, notes and files, Claude, and self-hosting.',
+    transcriptLabel: 'Read the film as text',
+    transcript: [
+      'Your day, closed calmly.',
+      'Tasks live in projects, with their tags, checklists and files.',
+      'Urgent ones ring through Silent mode and ask again for half an hour.',
+      'Google Calendar stays in step, both ways. The 31st lands on the 28th in February.',
+      'Notes render tables, maths and diagrams. Files sit next to the work.',
+      'Ask Claude or ChatGPT about your day. Every change waits for you.',
+      'Run it on your own server with one command, or use ours.',
+      'AllisWell. On the web, iPhone, Android and desktop. alliswell.space',
+    ],
+  },
 
-  api: { ...api, terminalTitle: 'your cron job', copyLabel: 'Copy', copiedLabel: 'Copied' },
+  assistant: {
+    title: 'Ask Claude about your day.',
+    lead: 'Add AllisWell to Claude or ChatGPT as a connector. Every change waits for your approval.',
+    steps: [
+      'In Claude or ChatGPT, add a custom connector.',
+      'Paste this address.',
+      'Sign in with your AllisWell account.',
+    ],
+    urlLabel: 'Connector address',
+    url: MCP_URL,
+    copy: 'Copy',
+    copied: 'Copied',
+    fact: 'Twenty-five tools over your tasks and notes, and no delete tool.',
+    link: { label: 'Read the setup guide', href: MCP_GUIDE_URL },
+    media: 'mcp-en',
+    alt: 'A request to an assistant moves three overdue tasks to tomorrow morning after an approval, and the AllisWell list updates.',
+  },
 
-  switchFrom,
+  own: {
+    title: 'Your server, one command.',
+    lead: 'Two Docker images and your own database. Upgrading is a pull.',
+    commandLabel: 'On your server',
+    command: 'docker compose -f docker-compose.selfhost.yml up -d', // i18n-same
+    points: [
+      'Free for personal use and for running your own copy.',
+      'MySQL 8.4 or MariaDB 10.11, files in your own S3 or R2 bucket.',
+      'The source is on GitHub under the PolyForm Noncommercial licence.',
+    ],
+    link: { label: 'Read the self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
+    media: 'selfhost',
+    alt: 'A terminal starts the AllisWell containers, every service reports healthy, and the app opens on your own domain.',
+  },
 
-  comparison: comparisonTable,
+  compare: {
+    title: 'How it compares, honestly.',
+    lead: 'Where others are ahead: sharing with other people, and reminders by location.',
+    caption: 'AllisWell beside three apps people move from, as of mid-2026.',
+    columns: ['AllisWell', 'Google Calendar', 'Apple Reminders', 'Things 3'],
+    rows: [
+      ['Runs on your own server', 'yes', 'no', 'no', 'no'],
+      ['Alarms through Silent and Focus', 'yes', 'no', 'partial', 'no'],
+      ['Re-alerts until you acknowledge', 'yes', 'no', 'no', 'no'],
+      ['Two-way Google Calendar sync', 'yes', 'native', 'no', 'no'],
+      ['The 31st repeats into February', 'yes', 'no', 'yes', 'yes'],
+      ['Connector for Claude and ChatGPT', 'yes', 'no', 'no', 'no'],
+    ],
+    labels: { yes: 'Yes', no: 'No', partial: 'Partly', native: 'Built in' },
+    link: { label: 'Read the full comparison', href: `${DOCS_URL}/COMPARISON.md` },
+  },
 
-  selfHost: { ...selfHost, terminalTitle: 'your server', copyLabel: 'Copy', copiedLabel: 'Copied' },
+  get: {
+    title: 'Web, phone and desktop. macOS from source.',
+    lead: 'One account, the same day on each of them.',
+    rows: [
+      { id: 'web', name: 'Web', note: 'Nothing to install.', cta: 'Open the app', href: APP_URL },
+      { id: 'ios', name: 'iPhone and iPad', note: 'Free on the App Store.', cta: 'App Store', href: APP_STORE_URL },
+      { id: 'android', name: 'Android', note: 'Free on Google Play.', cta: 'Google Play', href: PLAY_URL },
+      { id: 'windows', name: 'Windows', note: 'A .zip for Windows 10 and 11.', cta: 'Download', href: WINDOWS_DOWNLOAD_URL },
+      { id: 'linux', name: 'Linux', note: 'A .tar.gz for 64-bit desktops.', cta: 'Download', href: LINUX_DOWNLOAD_URL },
+      { id: 'macos', name: 'macOS', note: 'Builds from the source for now.', cta: 'Source', href: REPO_URL },
+    ],
+    media: 'get-phone',
+    alt: 'AllisWell on an iPhone: today’s tasks under a month calendar.',
+    caption: 'Home on an iPhone',
+    captionNote: 'The same day as on the web, in your pocket.',
+  },
 
-  download: { ...download, comingSoon: 'Coming soon' },
-
-  faq: { heading: 'Questions people actually ask', items: faq },
+  faq: {
+    title: 'What people ask before they switch.',
+    items: [
+      {
+        q: 'Is it open source?',
+        a: 'The source is public, and personal use and self-hosting are free. Running it inside a business, reselling it or offering it as a service needs a commercial licence, because the code is under PolyForm Noncommercial. Write to info@bubiapps.com.',
+      },
+      {
+        q: 'What happens when an alarm rings?',
+        a: 'An urgent task plays a real alarm sound through Silent mode and Focus (AlarmKit on iOS 26, the alarm channel on Android) and alerts again over the next half hour until you acknowledge it. When the system blocks it, the app writes down why.',
+      },
+      {
+        q: 'Is the Google Calendar sync really two-way?',
+        a: 'Yes. Tasks become events in a calendar you choose, and the edits you make in Google come back. On iPhone and Mac your tasks are also mirrored into Apple Calendar, one way.',
+      },
+      {
+        q: 'Do I need AI to use it?',
+        a: 'No. Everything works without a model. If you want one, connect your own Claude or ChatGPT account, or paste your own provider key.',
+      },
+      {
+        q: 'Can I bring my tasks from Todoist or TickTick?',
+        a: 'Yes. Export from the app you are leaving and import the file in Settings. You see what will come in before anything is written.',
+      },
+      {
+        q: 'What is missing?',
+        a: 'Sharing and assignees, reminders by location, and tasks over CalDAV. All three are written down in the roadmap.',
+      },
+    ],
+  },
 
   footer: {
-    columns: siteColumns,
-    blurb:
-      'Source-available, self-hosted tasks, notes and alarm-grade reminders. Free for personal use. Built in the open, one task at a time.',
-    notes: 'Not affiliated with Apple, Google, Anthropic or OpenAI. Product names are their owners’.',
-    privacyLabel: 'Privacy',
-    supportLabel: 'Support',
-    starsWord: 'stars',
-    forksWord: 'forks',
-  },
-
-  /** The JavaScript-off block inside `#app`, kept in step with the entry HTML. */
-  fallback: {
-    lede: 'Source-available, self-hosted tasks, notes and alarm-grade reminders. This page needs JavaScript; the app itself, the privacy policy and the support page do not.',
-    app: 'Open the app',
-    source: 'Source on GitHub',
-    privacy: 'Privacy policy',
-    support: 'Support',
-    other: 'Türkçe',
+    line: 'Built in the open, one task at a time.',
+    columns: [
+      {
+        title: 'Product',
+        links: [
+          { label: 'Open the app', href: APP_URL },
+          { label: 'App Store', href: APP_STORE_URL },
+          { label: 'Google Play', href: PLAY_URL },
+          { label: 'Enterprise', href: '/enterprise' },
+          { label: 'Changelog', href: `${REPO_URL}/blob/main/CHANGELOG.md` },
+          { label: 'Roadmap', href: `${REPO_URL}/blob/main/ROADMAP.md` },
+        ],
+      },
+      {
+        title: 'Build on it',
+        links: [
+          { label: 'Connector guide', href: MCP_GUIDE_URL },
+          { label: 'REST API', href: '/docs/api' },
+          { label: 'Self-hosting guide', href: `${DOCS_URL}/SELF-HOSTING.md` },
+          { label: 'Source on GitHub', href: REPO_URL },
+        ],
+      },
+      {
+        title: 'Company',
+        links: [
+          { label: 'Privacy', href: '/privacy' },
+          { label: 'Support', href: '/support' },
+          { label: 'Licence', href: `${REPO_URL}/blob/main/LICENSE` },
+          { label: 'Commercial licensing', href: 'mailto:info@bubiapps.com' },
+        ],
+      },
+    ],
+    notes: 'Not affiliated with Apple, Google, Anthropic or OpenAI.',
+    photoLabel: 'Photograph',
+    photoChanges: 'cropped and resized',
+    fontLabel: 'Type',
+    fontCredit: 'Wix Madefor, SIL Open Font License',
+    versionLabel: 'Version',
   },
 };

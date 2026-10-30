@@ -1,6 +1,6 @@
 # ADR-0036 — The enterprise page is a Vite entry, not generated markdown
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by [ADR-0061](0061-dusk-homepage-and-media-pipeline.md) (the homepage entry renders on the server)
 - **Date:** 2026-09-06
 - **Related task:** EE-142 (gate for EE-143 … EE-154)
 - **Related:** [ADR-0005](0005-alliswell-glass-design-system.md) (the tokens both pages share),

@@ -492,6 +492,50 @@ function ogPage({ mark, title, sub, hero, composite = false }) {
 }
 
 /**
+ * The homepage's social card in Hallmark Dusk (ADR-0061): the same fog
+ * photograph as the hero (promoted into apps/landing/public/media/photo), the
+ * same faces (public/fonts), the head on the palest part of the fog and the
+ * app's Home in smoked glass on the darker side.
+ */
+async function ogDuskPage({ title, sub, hero }) {
+  const pub = path.join(repo, 'apps/landing/public');
+  const manifest = JSON.parse(await readFile(path.join(repo, 'apps/landing/src/home/media.json'), 'utf8'));
+  const photo = manifest['photo-fog'].sources.jpg.find((j) => j.w <= 1600) ?? manifest['photo-fog'].sources.jpg[0];
+  const b64 = async (file, type) => `data:${type};base64,${(await readFile(file)).toString('base64')}`;
+  const fog = await b64(path.join(pub, photo.src), 'image/jpeg');
+  const display = await b64(path.join(pub, 'fonts/wix-madefor-display-v12-latin.woff2'), 'font/woff2');
+  const displayExt = await b64(path.join(pub, 'fonts/wix-madefor-display-v12-latin-ext.woff2'), 'font/woff2');
+  const text = await b64(path.join(pub, 'fonts/wix-madefor-text-v17-latin.woff2'), 'font/woff2');
+  const textExt = await b64(path.join(pub, 'fonts/wix-madefor-text-v17-latin-ext.woff2'), 'font/woff2');
+  const logo = await b64(path.join(pub, 'logo.svg'), 'image/svg+xml');
+  return `<!doctype html><html><head><meta charset="utf-8"><style>
+    @font-face{font-family:D;src:url(${display}) format('woff2');font-weight:400 800;unicode-range:U+0000-00FF,U+0131,U+2000-206F}
+    @font-face{font-family:D;src:url(${displayExt}) format('woff2');font-weight:400 800;unicode-range:U+0100-02BA}
+    @font-face{font-family:T;src:url(${text}) format('woff2');font-weight:400 800;unicode-range:U+0000-00FF,U+0131,U+2000-206F}
+    @font-face{font-family:T;src:url(${textExt}) format('woff2');font-weight:400 800;unicode-range:U+0100-02BA}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html,body{width:1200px;height:630px;overflow:hidden}
+    body{position:relative;background:#0e1017;font-family:T,sans-serif}
+    .photo{position:absolute;inset:0;background:url(${fog}) 38% 30%/cover}
+    .scrim{position:absolute;inset:0;background:radial-gradient(ellipse 52% 70% at 24% 58%,rgba(241,234,227,.82),rgba(241,234,227,0) 80%)}
+    .text{position:absolute;left:64px;top:84px;width:520px;color:#161a25}
+    .brand{display:flex;align-items:center;gap:12px;font-family:D;font-weight:600;font-size:26px;letter-spacing:-.02em}
+    .brand img{width:40px;height:40px;border-radius:10px}
+    h1{margin-top:30px;font-family:D;font-weight:500;font-size:58px;line-height:1.04;letter-spacing:-.022em}
+    p{margin-top:20px;font-size:22px;line-height:1.45;color:#3a4152}
+    .glass{position:absolute;left:640px;top:120px;width:620px;padding:10px;border-radius:18px;
+      background:rgba(28,32,44,.6);backdrop-filter:blur(22px) saturate(1.35);
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.06),0 40px 80px -32px rgba(3,5,12,.7)}
+    .glass img{display:block;width:100%;border-radius:10px}
+    .url{margin-top:22px;font-family:D;font-weight:600;font-size:22px;color:#33408a}
+  </style></head><body>
+    <div class="photo"></div><div class="scrim"></div>
+    <div class="text"><div class="brand"><img src="${logo}" alt=""><span>AllisWell</span></div><h1>${title}</h1><p>${sub}</p><div class="url">alliswell.space</div></div>
+    <div class="glass"><img src="${hero}" alt=""></div>
+  </body></html>`;
+}
+
+/**
  * The enterprise hero: two real captures, framed and overlapped (EE-150).
  *
  * NOT a wider Flutter golden. Every EE screen was grepped for `LayoutBuilder`,
@@ -691,20 +735,22 @@ async function main() {
     // silently in the one place failures are most public.
     if (want('og')) {
       const cards = [
+        // ADR-0061: the homepage cards wear the page's Dusk look: the hero
+        // photograph, the head dark on the fog, the app in smoked glass. New
+        // file names, because .htaccess caches /shots/*.jpg for a year.
         {
-          file: 'home.png',
-          title: 'Your whole day, in an app you actually own',
-          sub: 'Open-source tasks, notes and alarm-grade reminders · alliswell.space',
-          hero: 'web/home-light.png',
+          file: 'home-dusk.png',
+          title: 'Tasks, notes and alarms you own.',
+          sub: 'Reminders ring through Silent mode. Run it on your server or ours.',
+          hero: 'web/home-dark.png',
+          dusk: true,
         },
         {
-          // EE-164: the Turkish homepage's card. The same capture as the
-          // English one — the app's web captures are English — under a
-          // Turkish headline, which is what the page behind the link says.
-          file: 'home-tr.png',
-          title: 'Bütün gününüz, gerçekten size ait bir uygulamada',
-          sub: 'Görevler, notlar ve alarm gücünde hatırlatıcılar · alliswell.space/tr',
-          hero: 'web/home-light.png',
+          file: 'home-dusk-tr.png',
+          title: 'Görevler, notlar, alarmlar. Hepsi sizin.',
+          sub: 'Hatırlatıcılar sessiz modda bile çalar. İster kendi sunucunuzda, ister bizde.',
+          hero: 'web/home-dark.png',
+          dusk: true,
         },
         // OPH-388: the enterprise cards say the page's hero title and show its
         // hero, the sales composite (screenshots/sales/, JPEG).
@@ -729,7 +775,8 @@ async function main() {
           console.log(`· og: skipped ${card.file} — no ${card.hero}`);
           continue;
         }
-        await shoot(ogPage({ ...card, mark: MARK, hero }), {
+        const page = card.dusk ? await ogDuskPage({ ...card, hero }) : ogPage({ ...card, mark: MARK, hero });
+        await shoot(page, {
           width: 1200,
           height: 630,
           file: path.join(SHOTS, 'og', card.file),

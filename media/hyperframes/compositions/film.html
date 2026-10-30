@@ -1,0 +1,266 @@
+<!doctype html>
+<html
+  lang="en"
+  data-composition-variables='[
+    {"id":"t1","type":"string","label":"Opening","default":"Your day, closed calmly."},
+    {"id":"t2","type":"string","label":"Tasks","default":"Tasks live in projects, with their tags, checklists and files."},
+    {"id":"t3","type":"string","label":"Alarms","default":"Urgent ones ring through Silent mode until you answer."},
+    {"id":"t4","type":"string","label":"Calendar","default":"Google Calendar stays in step, both ways."},
+    {"id":"t4b","type":"string","label":"Repeats","default":"The 31st lands on the 28th in February."},
+    {"id":"t5","type":"string","label":"Notes and files","default":"Notes render tables, maths and diagrams. Files sit next to the work."},
+    {"id":"t6","type":"string","label":"Assistant","default":"Ask Claude or ChatGPT about your day. Every change waits for you."},
+    {"id":"t7","type":"string","label":"Self-host","default":"Run it on your own server with one command, or use ours."},
+    {"id":"t8","type":"string","label":"Platforms","default":"On the web, iPhone, Android and desktop."},
+    {"id":"you","type":"string","label":"Request","default":"What is overdue? Move it all to tomorrow at nine."},
+    {"id":"ask","type":"string","label":"Approval","default":"Allow AllisWell to update 2 tasks?"},
+    {"id":"allow","type":"string","label":"Allow","default":"Allow"}
+  ]'
+>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <title>AllisWell in a minute</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="../assets/cam.js"></script>
+    <link rel="stylesheet" href="../assets/loop.css" />
+    <!--
+      The one-minute film (ADR-0061). Eight scenes in Hallmark Dusk: the fog
+      photograph opens and closes it, the real app carries the middle, one
+      sentence of type per scene. The words come from film/film-<lang>.json,
+      the same lines as film/film-<lang>.vtt and the page's transcript. The
+      music bed is composed by scripts/music.py (owned outright, no licence).
+    -->
+    <style>
+      html, body { width: 1920px; height: 1080px; }
+      .scene { position: absolute; inset: 0; }
+      .in { position: absolute; inset: 0; }
+      .photo { position: absolute; inset: -40px; }
+      .photo img { width: 100%; height: 100%; object-fit: cover; object-position: 38% 30%; display: block; }
+      .scrim { position: absolute; inset: 0; background: radial-gradient(ellipse 52% 62% at 30% 56%, rgba(241, 234, 227, 0.78), rgba(241, 234, 227, 0) 78%); }
+      .day { color: #161a25; }
+      .open { position: absolute; left: 160px; top: 380px; width: 900px; }
+      .brand { display: flex; align-items: center; gap: 22px; font-family: 'Wix Madefor Display', sans-serif; font-weight: 600; font-size: 44px; letter-spacing: -0.02em; }
+      .brand img { width: 64px; height: 64px; border-radius: 16px; display: block; }
+      .head { font-family: 'Wix Madefor Display', sans-serif; font-weight: 500; letter-spacing: -0.022em; line-height: 1.06; margin: 0; }
+      .open .head { margin-top: 34px; font-size: 104px; }
+      .say { position: absolute; left: 140px; top: 0; bottom: 0; width: 620px; display: flex; flex-direction: column; justify-content: center; }
+      .say .head { font-size: 62px; color: var(--ink); }
+      .say .sub { margin-top: 26px; font-size: 38px; line-height: 1.3; color: var(--apricot); font-family: 'Wix Madefor Display', sans-serif; font-weight: 500; }
+      .frame { position: absolute; left: 820px; top: 240px; width: 960px; height: 600px; border-radius: 22px; overflow: hidden; box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 60px 120px -30px rgba(3,5,12,0.85); }
+      .frame .plate { position: absolute; inset: 0; overflow: hidden; }
+      .frame .cam img { width: 960px; height: 600px; display: block; }
+      .phoneA { left: 1110px; top: 110px; width: 386px; height: 860px; }
+      .ringsA { left: 1303px; top: 360px; }
+      .chipA { left: 980px; top: 150px; }
+      .phoneR { left: 830px; top: 110px; width: 396px; height: 860px; }
+      .hlR { position: absolute; left: 870px; top: 707px; width: 346px; height: 40px; border-radius: 12px; box-shadow: 0 0 0 3px var(--periwinkle); }
+      .dates { position: absolute; left: 1290px; top: 240px; width: 500px; padding: 40px 44px; }
+      .dates .big { font-family: 'Wix Madefor Display', sans-serif; font-weight: 500; font-size: 120px; line-height: 1; letter-spacing: -0.03em; color: var(--periwinkle); }
+      .dates .big small { font-size: 54px; color: var(--muted); }
+      .dates ul { margin: 26px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+      .dates li { display: flex; justify-content: space-between; align-items: center; height: 62px; border-bottom: 1px solid var(--rule); font-size: 30px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+      .dates li i { width: 12px; height: 12px; border-radius: 50%; background: var(--rule); display: block; }
+      .dates li.feb { color: var(--apricot); }
+      .dates li.feb i { background: var(--apricot); }
+      .chat { position: absolute; left: 860px; top: 250px; width: 880px; padding: 44px; display: flex; flex-direction: column; gap: 26px; }
+      .bubble { align-self: flex-end; max-width: 620px; padding: 20px 26px; border-radius: 22px 22px 6px 22px; background: var(--paper-3); font-size: 30px; line-height: 1.4; }
+      .ask { padding: 28px 30px; border-radius: 20px; background: var(--well); color: var(--well-ink); }
+      .ask p { margin: 0; font-size: 28px; font-weight: 600; }
+      .ask ul { margin: 14px 0 0; padding-left: 24px; color: var(--well-muted); font-size: 23px; line-height: 1.5; }
+      .ask .row { display: flex; justify-content: flex-end; margin-top: 18px; }
+      .allow { position: relative; min-width: 150px; height: 56px; padding: 0 28px; border-radius: 999px; background: var(--periwinkle); color: var(--periwinkle-ink); display: grid; place-items: center; font-size: 23px; font-weight: 600; }
+      .term { position: absolute; left: 820px; top: 330px; width: 960px; padding: 48px 52px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 27px; line-height: 1.8; color: var(--ink-2); }
+      .term .line { display: block; white-space: pre; }
+      .term .p { color: var(--periwinkle); }
+      .term .cmd { display: inline-block; overflow: hidden; vertical-align: bottom; white-space: pre; color: var(--ink); width: 0; }
+      .term .ok { color: #8fd6a8; }
+      .close { position: absolute; left: 160px; top: 330px; width: 1100px; }
+      .close .brand { font-size: 120px; gap: 40px; }
+      .close .brand img { width: 132px; height: 132px; border-radius: 32px; }
+      .close .t8 { margin-top: 30px; font-size: 46px; color: #3a4152; font-family: 'Wix Madefor Display', sans-serif; font-weight: 500; }
+      .close .url { margin-top: 18px; font-size: 46px; color: #3b4a9a; font-family: 'Wix Madefor Display', sans-serif; font-weight: 600; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="film" data-start="0" data-width="1920" data-height="1080" data-duration="56">
+      <audio id="bed" src="../assets/audio/film-bed.wav" data-start="0" data-duration="56" data-track-index="9" data-volume="0.6"></audio>
+
+      <section class="scene clip" data-start="0" data-duration="6.5" data-track-index="0">
+        <div class="in" id="s1">
+          <div class="photo" id="photo1"><img src="../assets/shots/fog-2400.jpg" alt="" /></div>
+          <div class="scrim"></div>
+          <div class="open day">
+            <div class="brand" id="brand1"><img src="../assets/logo.svg" alt="" /><span>AllisWell</span></div>
+            <h1 class="head" id="t1"></h1>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="6.5" data-duration="7.5" data-track-index="0">
+        <div class="in" id="s2">
+          <div class="say"><h2 class="head" id="t2"></h2></div>
+          <div class="frame glass">
+            <div class="plate" id="s2a"><div class="cam" id="cam2a"><img src="../assets/shots/web-board.png" alt="" /></div></div>
+            <div class="plate" id="s2b"><div class="cam" id="cam2b"><img src="../assets/shots/web-home-dark.png" alt="" /></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="14" data-duration="7.5" data-track-index="0">
+        <div class="in" id="s3">
+          <div class="say"><h2 class="head" id="t3"></h2></div>
+          <div class="rings ringsA"><div class="ring" id="a1"></div><div class="ring" id="a2"></div><div class="ring" id="a3"></div></div>
+          <div class="phone phoneA" id="phoneA"><img src="../assets/shots/android-09-alarm-ring.png" alt="" /></div>
+          <div class="chip chipA">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0" /><path d="M17 17H4a1 1 0 0 1-.74-1.673C4.59 13.956 6 12.499 6 8a6 6 0 0 1 .258-1.742" /><path d="m2 2 20 20" /><path d="M8.668 3.01A6 6 0 0 1 18 8c0 2.687.77 4.653 1.707 6.05" /></svg>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="21.5" data-duration="8" data-track-index="0">
+        <div class="in" id="s4">
+          <div class="say"><h2 class="head" id="t4"></h2><p class="sub" id="t4b"></p></div>
+          <div class="phone phoneR"><img src="../assets/shots/ios-07-task-detail-repeat.png" alt="" /></div>
+          <div class="hlR" id="hlR"></div>
+          <div class="dates glass" id="dates">
+            <div class="big">31 <small>/ 28</small></div>
+            <ul>
+              <li class="d"><span>10/31/2026</span><i></i></li>
+              <li class="d"><span>11/30/2026</span><i></i></li>
+              <li class="d"><span>12/31/2026</span><i></i></li>
+              <li class="d"><span>1/31/2027</span><i></i></li>
+              <li class="d feb"><span>2/28/2027</span><i></i></li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="29.5" data-duration="7.5" data-track-index="0">
+        <div class="in" id="s5">
+          <div class="say"><h2 class="head" id="t5"></h2></div>
+          <div class="frame glass">
+            <div class="plate" id="s5a"><div class="cam" id="cam5a"><img src="../assets/shots/web-project-readme.png" alt="" /></div></div>
+            <div class="plate" id="s5b"><div class="cam" id="cam5b"><img src="../assets/shots/web-files.png" alt="" /></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="37" data-duration="8" data-track-index="0">
+        <div class="in" id="s6">
+          <div class="say"><h2 class="head" id="t6"></h2></div>
+          <div class="chat glass">
+            <div class="bubble" id="you"></div>
+            <div class="ask" id="ask">
+              <p id="askText"></p>
+              <ul>
+                <li>Send Acme the September invoice</li>
+                <li>Reply to the App Store review team</li>
+              </ul>
+              <div class="row"><span class="allow" id="allow"><span class="press" style="left: 50%; top: 50%"><span id="press6"></span></span></span></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="45" data-duration="6" data-track-index="0">
+        <div class="in" id="s7">
+          <div class="say"><h2 class="head" id="t7"></h2></div>
+          <div class="term glass">
+            <span class="line"><span class="p">$ </span><span class="cmd" id="cmd7">docker compose -f docker-compose.selfhost.yml up -d</span></span>
+            <span class="line o7"> <span class="ok">✔</span> Container alliswell-mysql-1  <span class="ok">Healthy</span></span>
+            <span class="line o7"> <span class="ok">✔</span> Container alliswell-redis-1  <span class="ok">Healthy</span></span>
+            <span class="line o7"> <span class="ok">✔</span> Container alliswell-api-1    <span class="ok">Started</span></span>
+            <span class="line o7"> <span class="ok">✔</span> Container alliswell-web-1    <span class="ok">Started</span></span>
+          </div>
+        </div>
+      </section>
+
+      <section class="scene clip" data-start="51" data-duration="5" data-track-index="0">
+        <div class="in" id="s8">
+          <div class="photo" id="photo8"><img src="../assets/shots/fog-2400.jpg" alt="" /></div>
+          <div class="scrim"></div>
+          <div class="close day">
+            <div class="brand"><img src="../assets/logo.svg" alt="" /><span>AllisWell</span></div>
+            <p class="t8" id="t8"></p>
+            <p class="url">alliswell.space</p>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script>
+      const v = window.__hyperframes.getVariables();
+      for (const id of ['t1', 't2', 't3', 't4', 't4b', 't5', 't6', 't7', 't8', 'you']) {
+        document.getElementById(id).textContent = v[id];
+      }
+      document.getElementById('askText').textContent = v.ask;
+      document.getElementById('allow').prepend(document.createTextNode(v.allow));
+
+      const tl = gsap.timeline({ paused: true });
+      const W = 960;
+      const H = 600;
+      const cam = (s, x, y) => focusOn(s, x, y, W, H);
+      const rise = (sel, at) => tl.fromTo(sel, { opacity: 0, y: 24 }, { opacity: 1, y: 0, duration: 0.7, ease: 'power3.out' }, at);
+      const dip = (sel, start, end) => {
+        tl.fromTo(sel, { opacity: 0 }, { opacity: 1, duration: 0.45, ease: 'power1.out' }, start);
+        tl.to(sel, { opacity: 0, duration: 0.45, ease: 'power1.in' }, end - 0.45);
+      };
+
+      // 1. The hour.
+      dip('#s1', 0, 6.5);
+      tl.fromTo('#photo1', { x: 0, scale: 1.04 }, { x: -60, scale: 1.04, duration: 6.5, ease: 'none' }, 0);
+      rise('#brand1', 0.6);
+      rise('#t1', 1.3);
+
+      // 2. Tasks in projects.
+      dip('#s2', 6.5, 14);
+      rise('#t2', 6.8);
+      tl.fromTo('#cam2a', cam(1.35, 340, 230), { ...cam(1.35, 700, 230), duration: 3.6, ease: 'power1.inOut' }, 6.6);
+      tl.fromTo('#s2b', { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power1.inOut' }, 10.0);
+      tl.fromTo('#cam2b', cam(1.0, 480, 300), { ...cam(1.2, 540, 250), duration: 3.6, ease: 'power1.inOut' }, 10.0);
+
+      // 3. Alarms through Silent.
+      dip('#s3', 14, 21.5);
+      rise('#t3', 14.3);
+      tl.fromTo('#phoneA', { x: 120, opacity: 0 }, { x: 0, opacity: 1, duration: 0.8, ease: 'power3.out' }, 14.4);
+      ['#a1', '#a2', '#a3'].forEach((id, i) => {
+        tl.fromTo(id, { scale: 0.6, opacity: 0.85 }, { scale: 3.6, opacity: 0, duration: 2, ease: 'power1.out', repeat: 2 }, 14.8 + i * 0.66);
+      });
+
+      // 4. Calendar and repeats.
+      dip('#s4', 21.5, 29.5);
+      rise('#t4', 21.8);
+      rise('#t4b', 23.4);
+      tl.fromTo('#hlR', { opacity: 0 }, { opacity: 1, duration: 0.4 }, 22.6);
+      tl.fromTo('#dates', { opacity: 0, x: 30 }, { opacity: 1, x: 0, duration: 0.7, ease: 'power3.out' }, 23.0);
+      tl.fromTo('.d', { opacity: 0, y: 12 }, { opacity: 1, y: 0, duration: 0.4, ease: 'power2.out', stagger: 0.3 }, 23.5);
+
+      // 5. Notes and files.
+      dip('#s5', 29.5, 37);
+      rise('#t5', 29.8);
+      tl.fromTo('#cam5a', cam(1.3, 380, 260), { ...cam(1.3, 380, 340), duration: 3.6, ease: 'power1.inOut' }, 29.6);
+      tl.fromTo('#s5b', { clipPath: 'inset(0 0 0 100%)' }, { clipPath: 'inset(0 0 0 0%)', duration: 0.9, ease: 'power2.inOut' }, 33.2);
+      tl.fromTo('#cam5b', cam(1.25, 330, 220), { ...cam(1.4, 330, 220), duration: 3.6, ease: 'power1.inOut' }, 33.2);
+
+      // 6. The assistant.
+      dip('#s6', 37, 45);
+      rise('#t6', 37.3);
+      rise('#you', 38.0);
+      rise('#ask', 39.4);
+      tl.fromTo('#press6', { scale: 0, opacity: 0.8 }, { scale: 1.6, opacity: 0, duration: 0.6, ease: 'power2.out' }, 41.4);
+      tl.to('#ask', { opacity: 0.5, duration: 0.4 }, 41.9);
+
+      // 7. Self-hosting.
+      dip('#s7', 45, 51);
+      rise('#t7', 45.3);
+      const chars = 'docker compose -f docker-compose.selfhost.yml up -d'.length;
+      tl.fromTo('#cmd7', { width: '0ch' }, { width: `${chars}ch`, duration: 1.8, ease: `steps(${chars})` }, 45.8);
+      tl.fromTo('.o7', { opacity: 0 }, { opacity: 1, duration: 0.2, stagger: 0.4 }, 47.8);
+
+      // 8. The close.
+      tl.fromTo('#s8', { opacity: 0 }, { opacity: 1, duration: 0.6, ease: 'power1.out' }, 51);
+      tl.fromTo('#photo8', { x: -60, scale: 1.04 }, { x: 0, scale: 1.04, duration: 5, ease: 'none' }, 51);
+      rise('#t8', 51.8);
+      window.__timelines['film'] = tl;
+    </script>
+  </body>
+</html>

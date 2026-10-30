@@ -1,0 +1,9 @@
+{
+  "you": "Gecikenler neler? Hepsini yarın saat dokuza taşı.",
+  "tool": "AllisWell, list_tasks",
+  "found": "İki görev gecikmiş. Taşımak iki bitiş tarihini değiştirir.",
+  "ask": "AllisWell 2 görevi güncellesin mi?",
+  "deny": "Reddet",
+  "allow": "İzin ver",
+  "done": "Tamam. İkisi de yarın 9:00’da."
+}

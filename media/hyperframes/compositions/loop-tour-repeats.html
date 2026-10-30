@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <title>Tour: repeats</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <link rel="stylesheet" href="../assets/loop.css" />
+    <!-- Repeats that keep count (ADR-0061): a task set to repeat every month on
+         day 31, due 9/30/2026 in the capture, and the dates it lands on next.
+         February has no 31st, so it lands on the 28th. Dates in the app's own
+         numeric format, so the loop carries no language. -->
+    <style>
+      html, body { width: 1600px; height: 1000px; }
+      #phone { left: 210px; top: 50px; width: 414px; height: 900px; }
+      .hl { position: absolute; left: 252px; top: 659px; width: 362px; height: 42px; border-radius: 12px; box-shadow: 0 0 0 3px var(--periwinkle); opacity: 0; }
+      .card { position: absolute; left: 760px; top: 150px; width: 640px; padding: 48px 56px; }
+      .big { font-family: 'Wix Madefor Display', sans-serif; font-weight: 500; font-size: 150px; line-height: 1; letter-spacing: -0.03em; color: var(--periwinkle); display: flex; align-items: baseline; gap: 28px; }
+      .big small { font-size: 64px; color: var(--muted); }
+      .rows { margin: 36px 0 0; padding: 0; list-style: none; border-top: 1px solid var(--rule); }
+      .rows li { display: flex; align-items: center; justify-content: space-between; height: 72px; border-bottom: 1px solid var(--rule); font-size: 34px; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+      .rows li .d { width: 14px; height: 14px; border-radius: 50%; background: var(--rule); display: block; }
+      .rows li.feb { color: var(--apricot); }
+      .rows li.feb .d { background: var(--apricot); }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="loop-tour-repeats" data-start="0" data-width="1600" data-height="1000" data-duration="10">
+      <div class="phone" id="phone"><img src="../assets/shots/ios-07-task-detail-repeat.png" alt="" /></div>
+      <div class="hl" id="hl"></div>
+      <div class="card glass" id="card">
+        <div class="big"><span>31</span><small>/ 28</small></div>
+        <ul class="rows">
+          <li class="r"><span>10/31/2026</span><span class="d"></span></li>
+          <li class="r"><span>11/30/2026</span><span class="d"></span></li>
+          <li class="r"><span>12/31/2026</span><span class="d"></span></li>
+          <li class="r"><span>1/31/2027</span><span class="d"></span></li>
+          <li class="r feb"><span>2/28/2027</span><span class="d" id="febDot"></span></li>
+        </ul>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo('#hl', { opacity: 0 }, { opacity: 1, duration: 0.4, ease: 'power1.out' }, 0.5);
+      tl.fromTo('#card', { opacity: 0, x: 40 }, { opacity: 1, x: 0, duration: 0.7, ease: 'power3.out' }, 1.0);
+      tl.fromTo('.r', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.45, ease: 'power2.out', stagger: 0.35 }, 1.5);
+      tl.fromTo('#febDot', { scale: 1 }, { scale: 1.6, duration: 0.5, ease: 'sine.inOut', yoyo: true, repeat: 5 }, 3.6);
+      tl.to(['#card', '#hl'], { opacity: 0, duration: 0.7, ease: 'power1.inOut' }, 9.0);
+      window.__timelines['loop-tour-repeats'] = tl;
+    </script>
+  </body>
+</html>

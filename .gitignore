@@ -88,3 +88,15 @@ apps/app/packages/*/pubspec.lock
 # must NEVER enter the public tree — that is the entire point of the overlay.
 # The check:no-ee gate makes the one dangerous accident (git add -f) fail CI.
 /ee/
+
+# --- Homepage media pipeline (ADR-0061) ---
+# HyperFrames renders and the downloaded originals are regenerable; only the
+# compositions, sources.json and the promoted files in apps/landing/public/media
+# are committed.
+media/.cache/
+media/hyperframes/renders/
+media/hyperframes/.hyperframes/
+media/hyperframes/node_modules/
+media/hyperframes/assets/shots/
+media/hyperframes/snapshots/
+media/hyperframes/assets/audio/

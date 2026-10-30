@@ -1,7 +1,7 @@
 <script setup>
 import BrandMark from './BrandMark.vue';
 import LangSwitch from './LangSwitch.vue';
-import { VERSION, siteColumns } from '../content.js';
+import { VERSION, siteColumns } from '../site.js';
 import { company } from '../company.js';
 import { useGithubStars } from '../composables/useGithubStars.js';
 import LatinWords from './LatinWords.vue';

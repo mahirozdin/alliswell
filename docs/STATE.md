@@ -15,10 +15,10 @@
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.15.0 canlıda** (2026-09-30, `389c8c8` + uzantı `01c2c26`). Epic 34'ün (2026-10-07 UI denetimi) core işleri OPH-355…OPH-363 ve sahip isteğiyle OPH-364 (MCP bulunabilirliği) kapandı; açık iş yok (yalnız sahibin ⏸️ adımları). Uzantının el kitabı `/settings/team/customers` satırını bekliyor (uzantı EE-304 — `check:docs`'u o rota için kırmızı). |
+| Current phase            | **v1.18.1 canlıda** (2026-10-28, kurumsal sayfa OPH-388). OPH-389 (2026-10-30, sahip isteği): ana sayfa Hallmark Dusk ile baştan, sunucuda render, HyperFrames döngüleri + EN/TR film, yeni README (ADR-0061); sahibin açık isteğiyle v1.18.2 olarak yayına alınır. Açık iş yok (yalnız sahibin ⏸️ adımları). |
 | Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | Tarayıcı QA düzeltmeleri: OPH-382 — `sseSink` hijack'ten önce `reply.getHeaders()`'ı writeHead'e taşıyor (cors + helmet; web'de AI sohbeti hiç cevap vermiyordu); OPH-383 — MCP onay kartı border-box, 420 px altı 20 px dolgu; OPH-384 — hızlı eklemede `#` sonrası odak kaybı headless Chromium'da yeniden üretilemedi, semantik düğüm kararlılığı testle sabitlendi; OPH-385 — ✕ ile bırakılan tanımalar alan boşalınca temizleniyor; OPH-386 — `searchSnippet` boşluğu katlayıp aynı metinde, kelime sınırında kesiyor; OPH-387 — AI sohbetindeki @ düğmesi `TextFieldTapRegion` içinde (web'de fare tıklaması DOM girdisini kapatıyordu). |
+| Last completed           | OPH-389 — ana sayfa (EN/TR) Dusk + SSR + `check:home`/`check:media`, 9 döngü + 2 film (`media/hyperframes`), README WebP animasyonları, OG kartları `og/home-dusk*`; kurumsal sayfa değişmedi. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

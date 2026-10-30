@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1600, height=1000" />
+    <title>Tour: tasks in projects</title>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.14.2/dist/gsap.min.js"></script>
+    <script src="../assets/cam.js"></script>
+    <link rel="stylesheet" href="../assets/loop.css" />
+    <!-- Tasks in projects (ADR-0061): the board panned column to column, then
+         Home with its project badges and the month calendar. Seamless. -->
+    <style>
+      html, body { width: 1600px; height: 1000px; }
+      .cam > img { width: 1600px; height: 1000px; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="loop-tour-tasks" data-start="0" data-width="1600" data-height="1000" data-duration="10">
+      <div class="plate" id="a"><div class="cam" id="camA"><img src="../assets/shots/web-board.png" alt="" /></div></div>
+      <div class="plate" id="b"><div class="cam" id="camB"><img src="../assets/shots/web-home-dark.png" alt="" /></div></div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      const a0 = focusOn(1.35, 560, 380);
+      tl.fromTo('#camA', a0, { ...focusOn(1.35, 1180, 380), duration: 4.6, ease: 'power1.inOut' }, 0);
+      tl.fromTo('#b', { opacity: 0 }, { opacity: 1, duration: 0.7, ease: 'power1.inOut' }, 4.3);
+      tl.fromTo('#camB', focusOn(1.0, 800, 500), { ...focusOn(1.22, 900, 400), duration: 4.6, ease: 'power1.inOut' }, 4.3);
+      tl.set('#camA', a0, 5.2);
+      tl.to('#b', { opacity: 0, duration: 0.8, ease: 'power1.inOut' }, 9.2);
+      window.__timelines['loop-tour-tasks'] = tl;
+    </script>
+  </body>
+</html>

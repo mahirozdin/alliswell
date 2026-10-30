@@ -76,12 +76,26 @@ Options -Indexes
 # answered as application/octet-stream is a PDF a phone will not preview.
 <IfModule mod_mime.c>
   AddType application/pdf .pdf
+  # ADR-0061: the homepage's loops, film, captions, posters and fonts. With
+  # `nosniff` below, a captions file answered as text/plain is a track the
+  # browser refuses, and an AVIF answered as octet-stream a blank frame.
+  AddType video/mp4 .mp4
+  AddType video/webm .webm
+  AddType text/vtt .vtt
+  AddType image/avif .avif
+  AddType font/woff2 .woff2
 </IfModule>
 
 <IfModule mod_headers.c>
   # The MARKETING bundle is content-hashed by Vite (`index-A1b2C3d4.js`), so its
   # assets really are immutable: a new build writes a new filename.
   <FilesMatch "\.(js|css|woff2?|png|jpe?g|svg|webp|avif)$">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </FilesMatch>
+  # ADR-0061: everything under /media/ is named after the hash of its bytes
+  # (scripts/media/promote.mjs, enforced by check:media), so a changed loop is
+  # a new URL and the old one can be cached for good.
+  <FilesMatch "\.(mp4|webm|vtt)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
   <FilesMatch "^(index\.html|flutter_service_worker\.js|alliswell-config\.js)$">

@@ -1,0 +1,136 @@
+{
+  "$comment": "What `npm run media:promote` turns into apps/landing/public/media/* and apps/landing/src/home/media.json (ADR-0061). A loop or film is taken from its HyperFrames render; until the render exists the loop's poster comes from `still`. Readme entries also write docs/assets/readme/<file>.",
+  "hero": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-hero.mp4",
+    "posterAt": 5.5,
+    "still": "screenshots/web/home-dark.png",
+    "readme": {
+      "file": "hero.webp",
+      "width": 1200,
+      "fps": 12
+    }
+  },
+  "tour-tasks": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-tour-tasks.mp4",
+    "posterAt": 1.5,
+    "still": "screenshots/web/board.png",
+    "readme": {
+      "file": "tasks.webp",
+      "width": 800,
+      "fps": 12
+    }
+  },
+  "tour-notes": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-tour-notes.mp4",
+    "posterAt": 5,
+    "still": "screenshots/web/note-editor.png",
+    "readme": {
+      "file": "notes.webp",
+      "width": 800,
+      "fps": 12
+    }
+  },
+  "tour-alarms": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-tour-alarms.mp4",
+    "posterAt": 3,
+    "still": "screenshots/android/09-alarm-ring.png",
+    "fit": "contain",
+    "readme": {
+      "file": "alarms.webp",
+      "width": 800,
+      "fps": 12
+    }
+  },
+  "tour-files": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-tour-files.mp4",
+    "posterAt": 4,
+    "still": "screenshots/web/files.png"
+  },
+  "tour-repeats": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-tour-repeats.mp4",
+    "posterAt": 5,
+    "still": "screenshots/ios/08-repeat-dialog.png",
+    "fit": "contain",
+    "readme": {
+      "file": "repeats.webp",
+      "width": 800,
+      "fps": 12
+    }
+  },
+  "mcp-en": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-mcp-en.mp4",
+    "posterAt": 7.5,
+    "still": "screenshots/web/home-dark.png",
+    "readme": {
+      "file": "mcp.webp",
+      "width": 960,
+      "fps": 12
+    }
+  },
+  "mcp-tr": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-mcp-tr.mp4",
+    "posterAt": 7.5,
+    "still": "screenshots/web/home-dark.png"
+  },
+  "selfhost": {
+    "kind": "loop",
+    "render": "media/hyperframes/renders/loop-selfhost.mp4",
+    "posterAt": 8.5,
+    "still": "screenshots/web/settings.png",
+    "readme": {
+      "file": "selfhost.webp",
+      "width": 800,
+      "fps": 12
+    }
+  },
+  "film-en": {
+    "kind": "film",
+    "render": "media/hyperframes/renders/film-en.mp4",
+    "captions": "media/hyperframes/film/film-en.vtt",
+    "posterAt": 3,
+    "readmePoster": {
+      "file": "film-poster.jpg",
+      "width": 1200
+    }
+  },
+  "film-tr": {
+    "kind": "film",
+    "render": "media/hyperframes/renders/film-tr.mp4",
+    "captions": "media/hyperframes/film/film-tr.vtt",
+    "posterAt": 3
+  },
+  "photo-fog": {
+    "kind": "photo",
+    "download": "https://upload.wikimedia.org/wikipedia/commons/4/46/Vallee-brouillard.jpg",
+    "crop": {
+      "x": 0,
+      "y": 0,
+      "w": 4210,
+      "h": 2580
+    },
+    "credit": {
+      "title": "Brouillard dans la vallée de la Savoureuse au coucher du Soleil",
+      "author": "Thomas Bresson",
+      "licence": "CC BY 3.0",
+      "licenceUrl": "https://creativecommons.org/licenses/by/3.0/",
+      "source": "https://commons.wikimedia.org/wiki/File:Vallee-brouillard.jpg",
+      "changes": "cropped, resized and re-encoded"
+    }
+  },
+  "get-phone": {
+    "kind": "still",
+    "src": "screenshots/ios/10-home-dark.png",
+    "widths": [
+      660,
+      330
+    ]
+  }
+}

@@ -4,7 +4,7 @@ import { onMounted, onUnmounted, ref } from 'vue';
 import BrandMark from './BrandMark.vue';
 import LangSwitch from './LangSwitch.vue';
 import ThemeToggle from './ThemeToggle.vue';
-import { APP_URL, REPO_URL, siteLinks } from '../content.js';
+import { APP_URL, REPO_URL, siteLinks } from '../site.js';
 import { useGithubStars } from '../composables/useGithubStars.js';
 
 const { stars, loaded, format } = useGithubStars();

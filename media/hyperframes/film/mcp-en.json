@@ -1,0 +1,9 @@
+{
+  "you": "What is overdue? Move it all to tomorrow at nine.",
+  "tool": "AllisWell, list_tasks",
+  "found": "Two tasks are overdue. Moving them changes two due dates.",
+  "ask": "Allow AllisWell to update 2 tasks?",
+  "deny": "Deny",
+  "allow": "Allow",
+  "done": "Done. Both are due tomorrow at 9:00."
+}

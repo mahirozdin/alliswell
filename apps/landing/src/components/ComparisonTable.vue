@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue';
 
-import { comparison, DOCS_URL } from '../content.js';
+import { comparison, DOCS_URL } from '../site.js';
 import LatinWords from './LatinWords.vue';
 
 /**
