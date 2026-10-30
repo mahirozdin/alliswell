@@ -1,6 +1,6 @@
 <script setup>
 import ScreenshotFrame from './ScreenshotFrame.vue';
-import { pillars } from '../content.js';
+import { pillars } from '../site.js';
 import AwIcon from '../enterprise/AwIcon.vue';
 import { hasIcon } from '../enterprise/icons.js';
 import LatinWords from './LatinWords.vue';
