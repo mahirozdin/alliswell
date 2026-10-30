@@ -385,6 +385,26 @@ box, one digit, nothing else in the widget moved.
 
 ---
 
+## 7. Homepage media: loops, film, README animations (ADR-0061)
+
+The homepage (`/`, `/tr`) and the README show the product moving. The sources are HyperFrames
+compositions in `media/hyperframes/compositions/` built from the captures above; how to render
+them is in [media/hyperframes/README.md](../media/hyperframes/README.md).
+
+1. `cd media/hyperframes && npm run shots && npm run render` (renders land in `renders/`,
+   gitignored). Look at frames before promoting anything.
+2. `npm run media:promote` (repo root) encodes the renders with the budgets in
+   `apps/landing/scripts/media-budgets.js`, names each file after the hash of its bytes in
+   `apps/landing/public/media/`, writes `apps/landing/src/home/media.json`, writes the README's
+   WebP animations to `docs/assets/readme/` and deletes what it no longer names. What becomes
+   what is `media/sources.json`.
+3. `npm run check:media` and `npm run check:docs` hold the files, the hashes and the budgets.
+4. A change to the homepage's look runs Hallmark's `sloplint --render` against `vite preview`
+   (`/` and `/tr`); zero FAIL is the bar. The OG cards (`screenshots/og/home-dusk*.png`) come from
+   `npm run shots:store -- --only og`.
+
+Only approved finals are promoted: every promotion adds its new bytes to the history.
+
 ## When to regenerate
 
 Any change to Home, the Board, the task detail, Notes, Files or the theme.
