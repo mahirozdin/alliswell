@@ -53,6 +53,11 @@ ever cost legibility: if glass and readability conflict, readability wins.
 | G7 | **Both themes, always.** Every UI change is checked in light AND dark before it ships. Dark is not inverted light; it uses its own verified palette. | Half the users live in dark mode. |
 | G8 | **Motion is quick and physical:** 150–320 ms, `easeOutCubic` in / `easeInCubic` out. No decorative/slow animation; static aurora (no animated blobs). | Perceived speed, reduced-motion friendliness. |
 
+> **The marketing homepage is the one exception** (`alliswell.space/` and `/tr`, ADR-0061): it
+> wears Hallmark's Dusk theme, dark only (G7), with self-hosted Wix Madefor (§3.3) and muted
+> product loops (G8), its tokens in `apps/landing/src/home/styles/tokens.css`. The app, the
+> enterprise page and the markdown pages keep everything in this document.
+
 ## 3. Tokens (source: `apps/app/lib/src/theme/tokens.dart`)
 
 ### 3.1 Color — light / dark
