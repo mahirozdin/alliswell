@@ -151,6 +151,29 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     }
   }
 
+  /// Leaving with a title still waiting for its autosave pause — another
+  /// task opened in the desktop pane, the pane closed, the page popped —
+  /// writes it now instead of dropping it. Here and not in [dispose]: `ref`
+  /// and the messenger are still reachable. No series question can be asked
+  /// from a detail that is going away, so on a recurring occurrence the
+  /// rename reaches this occurrence only (the write without a scope).
+  @override
+  void deactivate() {
+    final pending = _titleDebounce?.isActive ?? false;
+    _titleDebounce?.cancel();
+    final title = _title.text.trim();
+    if (pending && title.isNotEmpty && title != task.title) {
+      final store = ref.read(taskStoreProvider);
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      store.update(task.id, {'title': title}).catchError((Object _) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text('task.couldNotSave'.tr())),
+        );
+      });
+    }
+    super.deactivate();
+  }
+
   @override
   void dispose() {
     _titleDebounce?.cancel();

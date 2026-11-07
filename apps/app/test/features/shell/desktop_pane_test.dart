@@ -156,6 +156,32 @@ void main() {
     expect(pane, findsNothing);
   });
 
+  testWidgets('a title typed just before another task opens, or the pane '
+      'closes, is saved', (tester) async {
+    // E35 G-C review r1: the autosave waits 1.5 s; switching tasks inside
+    // that pause disposed the detail and dropped the edit.
+    await pumpApp(tester);
+    await tester.tap(listRow('Alpha'));
+    await tester.pumpAndSettle();
+    final title = find.descendant(of: pane, matching: find.byType(TextField));
+    await tester.enterText(title.first, 'Alpha renamed');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(listRow('Beta'));
+    await tester.pumpAndSettle();
+    expect(paneTitle(tester), 'Beta');
+
+    await tester.tap(listRow('Alpha renamed'));
+    await tester.pumpAndSettle();
+    expect(paneTitle(tester), 'Alpha renamed');
+
+    await tester.enterText(title.first, 'Alpha again');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.tap(find.byKey(const Key('task-pane-close')));
+    await tester.pumpAndSettle();
+    expect(pane, findsNothing);
+    expect(listRow('Alpha again'), findsOneWidget);
+  });
+
   testWidgets('the pane\'s close button and a delete both close it; a '
       'section switch does too', (tester) async {
     await pumpApp(tester);
