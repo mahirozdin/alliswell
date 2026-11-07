@@ -8,6 +8,7 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/auth/ui/forgot_password_screen.dart';
 import 'package:alliswell/src/features/auth/ui/reset_password_screen.dart';
 
 import '../../support/sync_overrides.dart';
@@ -209,6 +210,23 @@ void main() {
     await tester.tap(find.byKey(const Key('reset-request-new')));
     await tester.pumpAndSettle();
     expect(find.text('Reset your password'), findsOneWidget);
+  });
+
+  test('an address with shell syntax is quoted in the operator command', () {
+    // E35 G-C review r1: the address is whatever the form accepted, and the
+    // operator pastes the command into a shell — nothing in it may run.
+    const prefix =
+        'docker compose exec api node apps/api/src/cli/password-reset-link.js ';
+    expect(awResetLinkCommand('ada@example.com'), '${prefix}ada@example.com');
+    expect(
+      awResetLinkCommand(r'`printf${IFS}injected`@example.com'),
+      "$prefix'`printf\${IFS}injected`@example.com'",
+    );
+    expect(
+      awResetLinkCommand(r"o'neil$(id)@example.com"),
+      "$prefix'o'\\''neil\$(id)@example.com'",
+    );
+    expect(awResetLinkCommand(''), '$prefix<email>');
   });
 
   test('the token is read from a whole link or taken as a bare code', () {

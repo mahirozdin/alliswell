@@ -18,7 +18,16 @@ const String kForgotPasswordPath = '/forgot-password';
 /// translated: it is typed into a shell exactly like this.
 String awResetLinkCommand(String email) =>
     'docker compose exec api node apps/api/src/cli/password-reset-link.js '
-    '${email.isEmpty ? '<email>' : email}';
+    '${email.isEmpty ? '<email>' : _shellWord(email)}';
+
+/// The address as one inert shell word. The form accepts whatever the server
+/// takes as an email, and backticks, `$(…)` or quotes are legal there; the
+/// operator pastes this into a shell, so anything beyond the plain address
+/// characters goes inside single quotes, where nothing is expanded.
+String _shellWord(String value) {
+  if (RegExp(r'^[A-Za-z0-9@._+-]+$').hasMatch(value)) return value;
+  return "'${value.replaceAll("'", r"'\''")}'";
+}
 
 /// Asks the server for a reset link. The answer never says whether the
 /// address has an account; it only says how this server hands links out —
