@@ -191,6 +191,56 @@ describe.runIf(enabled)('integration: password reset', () => {
     expect((await login(email, 'changed-password-1')).statusCode).toBe(200);
   });
 
+  it('a link checked before a password change cannot land after it', async () => {
+    // E35 G-C review r2: the reset door checked the link and the account
+    // outside its write. A change landing between that check and the write
+    // left the link looking valid (retirement sets expires_at to the change
+    // time, later than the reset's own clock), so the stale link replaced the
+    // password the owner had just chosen. Hold the reset right after its
+    // checks, let the change finish, then let the reset go on.
+    const email = `${emailPrefix}-interleaved@example.com`;
+    const registered = (await register(email)).json();
+    const token = await mailedToken(email);
+
+    let reached;
+    const atGate = new Promise((resolve) => {
+      reached = resolve;
+    });
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const hold = async ({ password }) => {
+      if (password !== 'attacker-password-1') return null;
+      reached();
+      await gate;
+      return null;
+    };
+    app.ee.passwordRequirements.push(hold);
+    try {
+      const pending = reset({ token, password: 'attacker-password-1' });
+      await atGate;
+
+      const change = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/password',
+        headers: { authorization: `Bearer ${registered.tokens.accessToken}` },
+        payload: { currentPassword: 'old-password-1', newPassword: 'changed-password-1' },
+      });
+      expect(change.statusCode).toBe(204);
+
+      release();
+      const spent = await pending;
+      expect(spent.statusCode).toBe(400);
+      expect(spent.json().code).toBe('AUTH_RESET_INVALID');
+    } finally {
+      release();
+      app.ee.passwordRequirements.splice(app.ee.passwordRequirements.indexOf(hold), 1);
+    }
+    expect((await login(email, 'changed-password-1')).statusCode).toBe(200);
+    expect((await login(email, 'attacker-password-1')).statusCode).toBe(401);
+  });
+
   it('sends at most three links an hour to one account, and still answers the same', async () => {
     const email = `${emailPrefix}-hourly@example.com`;
     await register(email);

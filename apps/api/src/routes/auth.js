@@ -995,6 +995,9 @@ export default async function authRoutes(app) {
 
       const now = new Date();
       await app.db.transaction(async (trx) => {
+        // The account row's lock serialises this with a reset link being spent
+        // (OPH-406): whichever writes second sees the other's change.
+        await trx('users').where({ id: user.id }).forUpdate().first('id');
         await trx('users')
           .where({ id: user.id })
           .update({
@@ -1098,6 +1101,22 @@ export default async function authRoutes(app) {
 
       let claimed = 0;
       await app.db.transaction(async (trx) => {
+        // Every door that sets a password writes under the account row's lock.
+        // The checks above ran outside it: a change that landed since then
+        // (its own retirement stamps this link's expiry with the change time,
+        // later than our `now`) is seen here, and the link is refused.
+        const locked = await trx('users')
+          .where({ id: user.id })
+          .whereNull('deleted_at')
+          .forUpdate()
+          .first('password_changed_at');
+        const changedAt = (v) => (v ? new Date(v).getTime() : null);
+        if (
+          !locked ||
+          changedAt(locked.password_changed_at) !== changedAt(user.password_changed_at)
+        ) {
+          return;
+        }
         // Atomic claim: of two requests with one link, only one UPDATE matches.
         claimed = await trx('password_resets')
           .where({ id: row.id })
