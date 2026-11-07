@@ -1,6 +1,6 @@
 /// Which AllisWell server this install talks to.
 ///
-/// AllisWell is open source and self-hostable, so the address cannot be a
+/// AllisWell is source-available and self-hostable, so the address cannot be a
 /// constant baked in at build time: the App Store build must reach ours out of
 /// the box, and someone running their own instance must be able to point the
 /// same binary at theirs. Resolution order, highest first:

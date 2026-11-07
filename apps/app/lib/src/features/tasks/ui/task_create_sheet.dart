@@ -28,6 +28,18 @@ import 'duration_picker.dart';
 import 'repeat_dialog.dart';
 import 'task_visuals.dart';
 
+/// The tallest a scroll-controlled sheet may grow: the screen below the top
+/// safe area, minus one [kAwSheetScrimStrip] of scrim left to tap.
+double awSheetMaxHeight(BuildContext context) {
+  final media = MediaQuery.of(context);
+  final available = media.size.height - media.padding.top - kAwSheetScrimStrip;
+  return available < 0 ? 0 : available;
+}
+
+/// The scrim strip a full-height sheet leaves above itself (E-24): one tap
+/// target (DESIGN G-taps ≥ 48 dp).
+const double kAwSheetScrimStrip = 56;
+
 /// Full task creation sheet behind the Home FAB (feedback round 2): title
 /// plus the options quick-add skips — project, priority, due/remind
 /// date-times and the urgent toggle.
@@ -47,7 +59,14 @@ Future<void> showTaskCreateSheet(
     useRootNavigator: true,
     isScrollControlled: true,
     useSafeArea: true,
-    constraints: const BoxConstraints(maxWidth: 560),
+    // OPH-395 (E-24): with the keyboard up the sheet grew to the top of the
+    // safe area and left the scrim ("Close" to VoiceOver) no visible area, so
+    // only a drag on the handle closed it. A tap-target-tall strip of scrim
+    // always stays above it; the form scrolls inside.
+    constraints: BoxConstraints(
+      maxWidth: 560,
+      maxHeight: awSheetMaxHeight(context),
+    ),
     builder: (_) => TaskCreateSheet(
       initialDue: initialDue,
       initialStatus: initialStatus,

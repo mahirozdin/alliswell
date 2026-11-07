@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-395** — Küçük kırıklar ve "source-available" |
-| Last completed           | OPH-394 — Ana Sayfa başlık sayısı tamamlananları saymaz, bugün saati geçen görev Geciken'de; alt görev üst görevin detayında "Alt görevler" kartında, Ana Sayfa'da satır değil; Pano açık sütunda seri yalnız sıradaki örnek + "+N sonraki"; arama: toplam alanın altında, grup başlığı "Görevler · 6", her grupta 3 satır + "N sonuç daha göster". |
+| ➡️ **Next task**         | **OPH-396** — Telefon alt barı: AwTabCapsule (B+) |
+| Last completed           | OPH-395 — yeni görev sayfası klavye açıkken de üstte dokunulabilir örtü bırakır; uygulama içi "açık kaynak" → source-available (A-36); alarm günlüğü satırı sözcüklerle, ham satır katlanır "Ayrıntı"da; MCP adresi localhost ise A-77 uyarısı; web Roboto'yu ve CanvasKit'i kendi paketinden yükler, Google'a istek yok. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

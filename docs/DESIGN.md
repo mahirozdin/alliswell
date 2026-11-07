@@ -104,7 +104,11 @@ two verified lightnesses.
 ### 3.3 Typography
 
 Platform system fonts on purpose (SF Pro on Apple, Roboto/Segoe elsewhere,
-Roboto on web) — zero network fetch, native feel. Weights/tracking tuned in
+Roboto on web) — zero network fetch, native feel. On the web "Roboto" is the
+app's own: `pubspec.yaml` registers `assets/fonts/Roboto-*` (400/500/700 +
+italics) under that exact family name, and `web/flutter_bootstrap.js` loads
+CanvasKit from the bundle, so the browser calls no Google host (OPH-395,
+ADR-0063 #7, `web_fonts_offline_test.dart`). Weights/tracking tuned in
 `theme.dart`: headlines w700 with negative tracking, titles w600, labels
 w600, body 16/1.5. Use `textTheme` roles; never ad-hoc `fontSize`.
 Tabular figures for day numbers and timers.
@@ -566,6 +570,10 @@ its text.
   leaves the OS queue after its instant is `delivered`, one that vanishes before
   it is `dropped`. Still never a claim about LOUDNESS — nothing on iOS can say
   that — but "scheduled → delivered, sound off" is now a complete sentence.
+  **OPH-395 (E-29):** each row reads as words first — event, surface, "Urgent",
+  "Rings at" in the local short format — and the raw line (ISO UTC, slot,
+  level, ids) sits behind a per-row "Details" toggle (48 pt); "Copy" still
+  copies the raw lines.
 - **A7 — A rehearsal, on the real path (round 19, OPH-277).** Settings ▸
   Bildirimler arms a genuine urgent alarm 15 seconds out, through the same
   `schedule` call every other alarm uses. The row states the delay rather than

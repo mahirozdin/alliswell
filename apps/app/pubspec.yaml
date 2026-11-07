@@ -221,6 +221,8 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   # Parses the generated DOCX parts in note_docx_test.dart (already transitive).
   xml: ^7.0.1
+  # Reads pubspec.yaml's `fonts:` in web_fonts_offline_test.dart (already transitive).
+  yaml: ^3.1.0
   drift_dev: ^2.34.0
   build_runner: ^2.15.1
 
@@ -242,9 +244,10 @@ flutter:
     # the OS notification carries, as a Flutter asset so every platform — incl.
     # desktop and web, where there is no OS alarm — can play it.
     - assets/audio/
-    # PDF-exporter fonts ONLY — NOT a Flutter `fonts:` entry, so they never
-    # change what the UI renders (DESIGN §3.3 keeps system fonts). Both are
-    # correctness requirements, not styling:
+    # PDF-exporter fonts. DejaVu Sans is a plain asset only; Roboto is ALSO
+    # the `fonts:` family below (OPH-395), so the web engine uses it instead
+    # of downloading one from Google. Both are correctness requirements, not
+    # styling:
     #   Roboto (Apache-2.0, from the Flutter SDK) — the `pdf` package's built-in
     #     Helvetica is WinAnsi-encoded and has no ı/ğ/ş/İ, so every Turkish note
     #     would export as mojibake;
@@ -253,6 +256,28 @@ flutter:
     #     hollow boxes until it was wired in as a per-glyph fallback.
     # Both LICENCE files ship beside them.
     - assets/fonts/
+
+  # OPH-395 (E-27, T-04, ADR-0063 #7) — the web makes no request to Google.
+  # CanvasKit needs a default font and downloads Roboto from fonts.gstatic.com
+  # unless FontManifest.json names a family called exactly "Roboto". This is
+  # the SAME family the theme already asks for on Android, Linux and the web
+  # (Material's default), now served from the bundle; iOS/macOS keep SF and
+  # Windows keeps Segoe (DESIGN §3.3 — the font family does not change).
+  # Weights: 400, 500 (row titles, labels) and 700; there is no 600 file in
+  # the SDK's Roboto, so w600 resolves to the nearest face.
+  fonts:
+    - family: Roboto
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+        - asset: assets/fonts/Roboto-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Roboto-BoldItalic.ttf
+          weight: 700
+          style: italic
 
   # To add more assets to your application, add them to this section, like this:
   #   - images/a_dot_burr.jpeg

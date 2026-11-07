@@ -165,7 +165,7 @@
       "body": "Bu cihazdaki {count} değişiklik henüz sunucuya ulaşmadı. Çıkış yaparsan bu cihazdan kalıcı olarak silinir.",
       "confirm": "Sil ve çıkış yap"
     },
-    "aboutBody": "Açık kaynak, kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
+    "aboutBody": "Kaynak kodu erişilebilir (source-available), kendi sunucunda barındırılan üretkenlik merkezi — görevler, projeler, notlar, takvim ve hatırlatıcılar.",
     "language": {
       "title": "Dil",
       "system": "Sistem varsayılanı"
@@ -187,7 +187,7 @@
     },
     "serverUrl": {
       "title": "Sunucu",
-      "body": "AllisWell açık kaynak — kendi sunucunu çalıştırabilirsin. Uygulamayı buradan ona yönlendir. Sunucuyu değiştirmek oturumunu kapatır.",
+      "body": "AllisWell'i kendi sunucunda da çalıştırabilirsin. Uygulamayı buradan ona yönlendir. Sunucuyu değiştirmek oturumunu kapatır.",
       "label": "Sunucu adresi",
       "short": "Sunucu: {server}",
       "useDefault": "Varsayılanı kullan",
@@ -947,8 +947,19 @@
       "interacted": "Sen açtın",
       "action": "Bir düğmeye bastın",
       "ringShown": "Uygulamada çaldı",
-      "degraded": "Sistem teslimatı kısıtlıyor"
-    }
+      "degraded": "Sistem teslimatı kısıtlıyor",
+      "delivered": "Sistem gösterdi",
+      "dropped": "Sistem attı",
+      "test": "Deneme alarmı"
+    },
+    "lane": {
+      "notification": "Bildirim",
+      "alarmkit": "Alarm",
+      "inapp": "Uygulama içi"
+    },
+    "urgent": "Acil",
+    "ringsAt": "Çalma zamanı: {time}",
+    "details": "Ayrıntı"
   },
   "shareLog": {
     "title": "Paylaşım günlüğü",
@@ -1293,6 +1304,7 @@
       "copied": "Kopyalandı",
       "mcpTitle": "Claude / ChatGPT'ye ekle",
       "mcpSub": "AllisWell'i kendi yapay zekâ aboneliğine bağlayıcı olarak ekle",
+      "mcpLoopback": "Bu adrese yalnız bu makineden ulaşılabilir. Sunucu ayarlarında herkese açık HTTPS adresini tanımla.",
       "removeConfirmTitle": "{provider} bağlantısı kaldırılsın mı?",
       "removeConfirmBody": "API anahtarın sunucudan hemen silinir. AllisWell bu sağlayıcıyı kullanmayı bırakır; istediğin zaman yeniden bağlayabilirsin.",
       "removed": "Bağlantı kaldırıldı"

@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Küçük kırıklar ve source-available (2026-11-07)
+
+- OPH-395 — **Web (yerel `flutter build web` + Chrome DevTools ▸ Network)**: ilk açılışta ve bir görev listesi açıkken `gstatic.com`/`fonts.googleapis.com` isteği yok, Roboto ve CanvasKit kendi sunucudan; Türkçe ı/ğ/ş ve w500 satır başlıkları doğru çiziliyor. **Android**: satır başlıkları ve etiketler (w500/w600) önceki gibi görünüyor (artık paketteki Roboto). **iPhone**: yeni görev → klavye açıkken sayfanın üstündeki karartılmış şeride dokun → sayfa kapanıyor; VoiceOver "Kapat" ile de. Ayarlar ▸ Alarm günlüğü: satırlar sözcüklerle, "Ayrıntı" ham satırı açıp kapatıyor. **Web 1440, yerel compose (localhost)**: Ayarlar ▸ Entegrasyonlar ▸ "Claude / ChatGPT'ye ekle" kartında A-77 uyarısı, açık ve koyu temada okunur.
+
 ## Ana Sayfa sayıları, alt görevler, Pano tekrarları, arama (2026-11-07)
 
 - OPH-394 — **iPhone ve web 1440**: demo verisinde Ana Sayfa "Geciken · N" kırmızı "Gecikti" satır sayısına eşit, üstü çizili satırlar başlık sayısına girmiyor; alt görevi olan görevin detayında "Alt görevler" kartı, alt görev Ana Sayfa'da ayrı satır değil; Pano "Açık" sütununda "Invoice Acme" bir kez ve altında "+2 sonraki"; arama "invoice": "N sonuç" alanın hemen altında, "Notlar · 9" altında 3 not + "6 sonuç daha göster" dokununca açılıyor; açık ve koyu tema.

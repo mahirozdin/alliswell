@@ -20,6 +20,11 @@ import '../widgets/route_leading.dart';
 /// know about delivery — iOS reports nothing for a notification the user never
 /// touches — so it shows what was scheduled, what the user interacted with, and
 /// what rang in-app.
+///
+/// OPH-395 (E-29): each row reads as words — what happened, on which surface,
+/// when it rings — and the raw diagnostic line (ISO UTC, slot, level, ids)
+/// sits behind a per-row "Details" toggle. "Copy the log" still copies the raw
+/// lines, which is what a bug report needs.
 class AlarmLogScreen extends ConsumerWidget {
   const AlarmLogScreen({super.key});
 
@@ -30,6 +35,9 @@ class AlarmLogScreen extends ConsumerWidget {
     AlarmLogEvent.action => 'alarmLog.event.action'.tr(),
     AlarmLogEvent.ringShown => 'alarmLog.event.ringShown'.tr(),
     AlarmLogEvent.degraded => 'alarmLog.event.degraded'.tr(),
+    AlarmLogEvent.delivered => 'alarmLog.event.delivered'.tr(),
+    AlarmLogEvent.dropped => 'alarmLog.event.dropped'.tr(),
+    AlarmLogEvent.test => 'alarmLog.event.test'.tr(),
     _ => event,
   };
 
@@ -108,36 +116,114 @@ class AlarmLogScreen extends ConsumerWidget {
                 for (final row in rows)
                   Padding(
                     padding: kAwListRowPadding,
-                    child: Card(
-                      child: ListTile(
-                        dense: true,
-                        title: Text(
-                          '${_label(row.event)} · ${row.lane}',
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        subtitle: Text(
-                          // Data, not prose: the part that goes into a bug
-                          // report verbatim.
-                          formatAlarmLogLine(row),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                            fontFeatures: const [],
-                          ),
-                        ),
-                        trailing: Text(
-                          awFormatTime(row.at, format: dateFormat),
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                      ),
+                    child: _AlarmLogRow(
+                      row: row,
+                      label: _label(row.event),
+                      dateFormat: dateFormat,
                     ),
                   ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+String _laneLabel(String lane) => switch (lane) {
+  AlarmLogLane.notification => 'alarmLog.lane.notification'.tr(),
+  AlarmLogLane.alarmkit => 'alarmLog.lane.alarmkit'.tr(),
+  AlarmLogLane.inapp => 'alarmLog.lane.inapp'.tr(),
+  _ => lane,
+};
+
+class _AlarmLogRow extends StatefulWidget {
+  const _AlarmLogRow({
+    required this.row,
+    required this.label,
+    required this.dateFormat,
+  });
+
+  final AlarmEvent row;
+  final String label;
+  final String dateFormat;
+
+  @override
+  State<_AlarmLogRow> createState() => _AlarmLogRowState();
+}
+
+class _AlarmLogRowState extends State<_AlarmLogRow> {
+  var _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final row = widget.row;
+    final summary = [
+      _laneLabel(row.lane),
+      if (row.urgent) 'alarmLog.urgent'.tr(),
+      if (row.fireAt != null)
+        'alarmLog.ringsAt'.tr(
+          args: {'time': awFormatShort(row.fireAt!, format: widget.dateFormat)},
+        ),
+    ].join(' · ');
+
+    return Card(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ListTile(
+            title: Text(
+              widget.label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            subtitle: Text(
+              summary,
+              style: theme.textTheme.bodySmall?.copyWith(color: muted),
+            ),
+            trailing: Text(
+              awFormatShort(row.at, format: widget.dateFormat),
+              style: theme.textTheme.labelSmall?.copyWith(color: muted),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.only(left: AwSpace.x2),
+            child: TextButton.icon(
+              key: Key('alarm-log-details-${row.id}'),
+              style: TextButton.styleFrom(
+                foregroundColor: muted,
+                minimumSize: const Size(48, 48),
+              ),
+              onPressed: () => setState(() => _open = !_open),
+              icon: Icon(
+                _open ? Icons.expand_less : Icons.expand_more,
+                size: 20,
+              ),
+              label: Semantics(
+                expanded: _open,
+                child: Text('alarmLog.details'.tr()),
+              ),
+            ),
+          ),
+          if (_open)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AwSpace.x4,
+                0,
+                AwSpace.x4,
+                AwSpace.x3,
+              ),
+              // Data, not prose: the part that goes into a bug report
+              // verbatim, so it can be selected and copied.
+              child: SelectableText(
+                formatAlarmLogLine(row),
+                style: theme.textTheme.bodySmall?.copyWith(color: muted),
+              ),
+            ),
+        ],
       ),
     );
   }

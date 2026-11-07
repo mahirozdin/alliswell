@@ -82,11 +82,19 @@ void main() {
       find.textContaining('iOS reports nothing about a notification'),
       findsOneWidget,
     );
-    // …and the row carries what a bug report needs.
+    // The row reads as words (OPH-395, E-29)…
+    expect(find.text('Scheduled'), findsOneWidget);
+    expect(
+      find.textContaining('Notification · Urgent · Rings at'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('level=timeSensitive'), findsNothing);
+    // …and "Details" opens what a bug report needs.
+    await tester.tap(find.text('Details'));
+    await tester.pumpAndSettle();
     expect(find.textContaining('sound=$kAwAlarmSoundName'), findsOneWidget);
     expect(find.textContaining('slot 0'), findsOneWidget);
     expect(find.textContaining('level=timeSensitive'), findsOneWidget);
-    expect(find.text('Scheduled · notification'), findsOneWidget);
   });
 
   testWidgets('an empty log says so instead of looking broken', (tester) async {

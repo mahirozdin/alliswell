@@ -26,6 +26,10 @@ This file holds the unreleased changes and the latest release; at each release t
   whose time passed today moves to Overdue. Subtasks are listed in their task's detail instead of
   as separate Home rows, the Board shows a repeating task once with "+N next", and search shows its
   total under the field with "Show N more" under each group, so notes are reachable.
+- **The web app no longer contacts Google for fonts or its renderer**, the new-task sheet closes
+  with a tap above it even with the keyboard up, the alarm log reads in words with the raw line
+  under "Details", a connector address on localhost carries a warning, and the app calls itself
+  source-available rather than open source.
 
 ## [1.18.2] — 2026-10-30
 

@@ -36,17 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-395 — Küçük kırıklar ve "source-available"
-
-E-24, E-26, E-27, E-28, E-29, T-04; metinler persona Ek A-36, A-77.
-
-- [ ] Oluşturma sayfasının arka plan örtüsü dokununca kapatır.
-- [ ] Uygulama içi "açık kaynak/open source" → "source-available".
-- [ ] Alarm günlüğü kullanıcı görünümü + katlanır "Ayrıntı".
-- [ ] MCP adresi localhost ise uyarı.
-- [ ] Web'de Roboto Google'dan inmez; uygulamanın fontları aile adıyla kaydedilir — web derlemesinde
-      gstatic isteği yok (test/kapı).
-
 ### OPH-396 — Telefon alt barı: AwTabCapsule (B+)
 
 R-01, R-02, R-04, A-01, A-02, U-01; [ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md).

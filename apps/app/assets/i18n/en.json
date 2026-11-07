@@ -166,7 +166,7 @@
       "body": "{count} changes on this device have not reached the server yet. Signing out deletes them from this device for good.",
       "confirm": "Delete and sign out"
     },
-    "aboutBody": "Open-source, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
+    "aboutBody": "Source-available, self-hosted productivity hub — tasks, projects, notes, calendar and reminders.",
     "language": {
       "title": "Language",
       "system": "System default"
@@ -188,7 +188,7 @@
     },
     "serverUrl": {
       "title": "Server",
-      "body": "AllisWell is open source — you can run your own server. Point this app at it here. Changing the server signs you out.",
+      "body": "You can also run AllisWell on your own server. Point this app at it here. Changing the server signs you out.",
       "label": "Server address",
       "short": "Server: {server}",
       "useDefault": "Use the default",
@@ -948,8 +948,19 @@
       "interacted": "You opened it",
       "action": "You pressed a button",
       "ringShown": "Rang in the app",
-      "degraded": "Delivery limited by the system"
-    }
+      "degraded": "Delivery limited by the system",
+      "delivered": "Shown by the system",
+      "dropped": "Dropped by the system",
+      "test": "Test alarm"
+    },
+    "lane": {
+      "notification": "Notification",
+      "alarmkit": "Alarm",
+      "inapp": "In the app"
+    },
+    "urgent": "Urgent",
+    "ringsAt": "Rings at {time}",
+    "details": "Details"
   },
   "shareLog": {
     "title": "Share log",
@@ -1294,6 +1305,7 @@
       "copied": "Copied",
       "mcpTitle": "Add to Claude / ChatGPT",
       "mcpSub": "Add AllisWell to your own AI subscription as a connector",
+      "mcpLoopback": "This address is only reachable from this machine. Set your public HTTPS URL in the server config.",
       "removeConfirmTitle": "Remove the {provider} connection?",
       "removeConfirmBody": "Your API key is deleted from the server immediately. AllisWell stops using this provider; you can connect it again any time.",
       "removed": "Connection removed"
