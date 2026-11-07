@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0F391A000000000000000001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0F391A000000000000000003 /* InfoPlist.strings */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */; };
 		1C805BE1C3654858412D4CB6 /* AWAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971C36AA734DCD5B31DD3D0E /* AWAppShortcuts.swift */; };
@@ -88,6 +89,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		0F391A000000000000000002 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		07A4383D5CFC7DCDC0913238 /* AllisWellWidget.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellWidget.xcconfig; path = Flutter/AllisWellWidget.xcconfig; sourceTree = "<group>"; };
 		0FB84AA988038830C33E7610 /* Pods-AllisWellShare.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.release.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.release.xcconfig"; sourceTree = "<group>"; };
@@ -294,6 +296,7 @@
 				AA414C4152414C41524D00F1 /* aw_alarm.caf */,
 				97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */,
 				97C147021CF9000F007C117D /* Info.plist */,
+				0F391A000000000000000003 /* InfoPlist.strings */,
 				1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */,
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
@@ -498,6 +501,7 @@
 				A54B30D1301EDC60003E181C /* GoogleService-Info.plist in Resources */,
 				8B199FDFAE9034BBDB9B4BAB /* AppShortcuts.strings in Resources */,
 				9BFE3BFAD237B825A5585911 /* Localizable.strings in Resources */,
+				0F391A000000000000000001 /* InfoPlist.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -707,6 +711,14 @@
 /* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
+		0F391A000000000000000003 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				0F391A000000000000000002 /* tr */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		3E101FA48BBDE185AC9536AC /* AppShortcuts.strings */ = {
 			isa = PBXVariantGroup;
 			children = (

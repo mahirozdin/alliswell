@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../widgets/fab_clearance.dart';
-import '../widgets/glass.dart';
 import 'tokens.dart';
 
 /// AllisWell brand seed — matches the API's default project color
@@ -17,6 +16,40 @@ const kSeedColor = Color(0xFF2563EB);
 /// [fontFamilyOverride] exists for the screenshot harness only (the platform
 /// default family renders as box glyphs inside `flutter test`); production
 /// callers pass nothing and keep the system font (DESIGN §3.3).
+/// The status bar's style for a theme (OPH-391, U-43): dark clock and icons on
+/// the light theme, light ones on the dark theme.
+///
+/// The app bars are transparent, and an `AppBar` with no explicit style
+/// guesses one from its background colour — a transparent colour reads as
+/// dark, so the light theme got WHITE status bar content over its pale aurora
+/// (~1.2:1 on iOS). The style follows the theme instead, never the screen.
+/// `statusBarBrightness` is iOS's (the brightness of what is BEHIND the
+/// text); `statusBarIconBrightness` is Android's (the icons' own).
+SystemUiOverlayStyle awSystemOverlayStyle(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+  );
+}
+
+/// The theme's status bar style for screens that have no `AppBar` (the
+/// splash, sign-in, the shell's own frame): app bars set it themselves
+/// through `appBarTheme`, this covers the rest of the screen. Mounted once,
+/// in the app's builder.
+class AwSystemOverlay extends StatelessWidget {
+  const AwSystemOverlay({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: awSystemOverlayStyle(Theme.of(context).brightness),
+    child: child,
+  );
+}
+
 ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
   final isDark = brightness == Brightness.dark;
   final tokens = isDark ? AwTokens.dark : AwTokens.light;
@@ -171,6 +204,8 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
       scrolledUnderElevation: 0,
       centerTitle: false,
       foregroundColor: scheme.onSurface,
+      // OPH-391 (U-43): from the theme, not from the transparent bar colour.
+      systemOverlayStyle: awSystemOverlayStyle(brightness),
       titleTextStyle: textTheme.titleLarge,
       iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
       actionsIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
@@ -504,13 +539,10 @@ class AwPageTransitionsBuilder extends PageTransitionsBuilder {
             begin: Offset.zero,
             end: const Offset(-slide, 0),
           ).animate(outgoing),
-          // OPH-362: a page outside the shell ends above the docked Quick
-          // Access bubble — once, here, for every route (`AwBubbleDockInset`).
-          child: AwBubbleDockInset(
-            route: route,
-            background: (page) => AwPageBackground(child: page),
-            child: child ?? const SizedBox.shrink(),
-          ),
+          // OPH-391: no page gives up a lane to the docked Quick Access
+          // bubble any more (it steps aside outside the shell) — the page
+          // reaches the bottom edge (E-09).
+          child: child ?? const SizedBox.shrink(),
         ),
       ),
     );

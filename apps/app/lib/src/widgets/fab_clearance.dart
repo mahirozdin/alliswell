@@ -108,13 +108,13 @@ enum AwDockEdge { left, right }
 /// bubble; it cannot uncover what a page draws at that height on first sight
 /// (a member's ⋮, the second approval's "Approve", the end of "Save"). So the
 /// bubble rests where no content is: in the bottom bar's row. The bubble
-/// layer publishes the lane here, above the Navigator, and two places give
-/// it up:
+/// layer publishes the lane here, above the Navigator, and the shell's glass
+/// bar ends [width] short of the [edge] it docks on.
 ///
-///  * the shell's glass bar ends [width] short of the [edge] it docks on;
-///  * every page OUTSIDE the shell (a root-navigator page route) ends
-///    [height] above the screen's bottom — [AwBubbleDockInset], applied once
-///    by the page transitions, so no screen has to know.
+/// A page OUTSIDE the shell has no bar, and gives up nothing: the docked
+/// button steps aside while one is on top (OPH-391, E-09). Until then every
+/// such page ended [height] above the screen's bottom, and task detail,
+/// settings and a note showed a ~100 pt band of wash under their content.
 ///
 /// Absent (or zero) when nothing is docked: wide layouts, no bubble, a bubble
 /// the person parked elsewhere, or a keyboard covering the row.
@@ -147,48 +147,7 @@ class AwBubbleDock extends InheritedWidget {
       oldWidget.width != width;
 }
 
-/// The name the shell's page carries, so the dock inset can leave it alone:
-/// the shell docks the bubble beside its own bar instead (see [AwBubbleDock]).
+/// The name the shell's page carries, so the bubble layer can tell the shell
+/// (where the button docks beside the bar, [AwBubbleDock]) from a page pushed
+/// over it (where a docked button steps aside, OPH-391).
 const String kAwShellPageName = 'aw-shell';
-
-/// Ends a page outside the shell above the docked bubble's lane (OPH-362).
-///
-/// Applied to every page route by the theme's page transitions, and a no-op
-/// unless the route is on the ROOT navigator (a page inside a shell section
-/// has the bar under it, where the bubble already docks), is not the shell
-/// itself ([kAwShellPageName]), and a dock is published. The lane is painted
-/// with the page's own wash ([background]), and the page below it no longer
-/// touches the bottom edge, so its bottom safe-area inset is the lane's.
-class AwBubbleDockInset extends StatelessWidget {
-  const AwBubbleDockInset({
-    super.key,
-    required this.route,
-    required this.background,
-    required this.child,
-  });
-
-  final ModalRoute<dynamic>? route;
-  final Widget Function(Widget child) background;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final dock = AwBubbleDock.maybeOf(context);
-    final route = this.route;
-    if (dock == null || route == null) return child;
-    if (route.settings.name == kAwShellPageName) return child;
-    final root = Navigator.maybeOf(context, rootNavigator: true);
-    if (root == null || route.navigator != root) return child;
-    return background(
-      Padding(
-        padding: EdgeInsets.only(bottom: dock.height),
-        child: MediaQuery(
-          data: MediaQuery.of(context)
-              .removePadding(removeBottom: true)
-              .removeViewPadding(removeBottom: true),
-          child: child,
-        ),
-      ),
-    );
-  }
-}

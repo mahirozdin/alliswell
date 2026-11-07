@@ -121,6 +121,10 @@ Tabular figures for day numbers and timers.
   (or passes it as the card's `margin`), never a number of its own — the
   theme's card margin is zero on purpose, so a bare stacked `Card` touches its
   neighbour. `test/support/list_rhythm.dart` measures the 6 px.
+- **The status bar follows the theme, never the screen** (OPH-391, U-43): dark clock and icons
+  on the light theme, light on the dark one — `awSystemOverlayStyle`, set by `appBarTheme` and,
+  for pages with no app bar, by `AwSystemOverlay` in the app's builder. A transparent app bar
+  left to guess read as dark and drew white on the light aurora (~1.2:1 on iOS).
 - **Checkboxes are circular** (Apple Reminders style); checked fill =
   `AwTokens.success`. **Switches read as iOS**: `AwTokens.success` track
   when on, near-white knob.
@@ -952,10 +956,11 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   that band is the dock: the button rests in the glass bar's own row, centred on it, on its
   edge (right by default), and **the layout keeps that lane free** rather than the button
   covering whatever is there. The shell's capsule ends a gap short of it (`AwBubbleDock.width`,
-  72 px on a phone; past four sections only the selected tab is labelled), and every page
-  OUTSIDE the shell — a root-navigator page route, go_router's or a pushed one — ends a gap
-  above it (`AwBubbleDock.height`, 80 px with no bottom inset), applied once by the page
-  transitions (`AwBubbleDockInset`), painted with the page wash, so no screen knows. A drag
+  72 px on a phone; past four sections only the selected tab is labelled). A page OUTSIDE the
+  shell — a root-navigator page route, go_router's or a pushed one — has no bar and so no dock:
+  while one is on top a docked button steps aside (`AwModalRouteObserver.outsideShell`) and the
+  page keeps the whole screen (OPH-391, E-09; until then it ended a lane above the bottom, a
+  ~100 pt band of wash under task detail, settings and notes). A drag
   that lets go below the free band docks; anywhere above it is the person's choice, and then
   the page is not shortened: `awListPadding` / `awScrollEndPadding` / `awPagePadding` end every
   scrolling page above the button (`AwBubbleClearance`, OPH-361 — the FAB lane's rule applied to

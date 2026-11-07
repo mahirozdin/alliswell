@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## İtilen ekranlar, durum çubuğu, iOS izin metinleri (2026-11-07)
+
+- OPH-391 — **iPhone, iOS dili Türkçe**, temiz kurulum: Ana sayfada mikrofona dokun → mikrofon ve konuşma tanıma izin pencereleri Türkçe (Ek A-65 metni); bir göreve fotoğraf ekle → kamera/fotoğraflar metni Türkçe; takvim ve (iOS 26) alarm izni de Türkçe. iOS dili İngilizce → aynı pencereler İngilizce. **iPhone, açık tema**: Ana sayfada, görev detayında ve Ayarlar'da saat, sinyal ve pil koyu ve okunur; koyu temada beyaz. Hızlı Erişim balonu bar satırına yerleşikken görev detayı, Ayarlar ve bir not ekranın altına kadar iniyor (altta boş şerit yok), balon orada görünmüyor; geri dönünce bar satırında yine duruyor. Balon yukarı taşınmışsa itilen ekranlarda da görünüyor. **Android telefon**, açık/koyu tema: durum çubuğu simgeleri aynı kurala uyuyor, gezinme çubuğu değişmemiş.
+
 ## Çıkış ve sunucu değiştirme (2026-11-07)
 
 - OPH-390 — **iPhone ve Android telefon**, bir takım hesabıyla giriş yapılmış ve sync dönmüşken: Ayarlar › Çıkış yap → giriş ekranı geliyor (dokunuş boşa gitmiyor). Tekrar gir, Ayarlar › Hesap › Sunucu → başka bir sunucunun adresini kaydet → dialog kapanıyor, giriş ekranı, hata yok; o sunucuda başka bir hesapla gir → Ana sayfada eski hesabın görevleri, ve "Takım: …" kromu YOK. Giriş ekranında sunucu satırına dokunup adres kaydet → dialog kapanıyor, giriş ekranında kalıyor, yeni adres yazıyor. Bir **release** derlemesinde de aynı tur (debug'daki hata release'te görünmüyordu; sıra hatası görünüyordu).

@@ -119,9 +119,11 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
     );
 
     // OPH-362: at rest in the dock the button covers no content — the shell
-    // shortens its bar beside it and every other page ends above it. A
-    // keyboard covers the bar's row, and the docked button goes with it
-    // rather than standing on whatever is being typed.
+    // shortens its bar beside it. A page outside the shell has no bar to dock
+    // beside, so the docked button steps aside there and the page keeps the
+    // whole screen (OPH-391, E-09). A keyboard covers the bar's row, and the
+    // docked button goes with it rather than standing on whatever is being
+    // typed.
     final docked = position.docked;
     final keyboardUp = media.viewInsets.bottom > 0;
     final lane = bubbleDockLane(resting, media.size);
@@ -134,7 +136,7 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
           onNotification: _onScroll,
           // UI-AUDIT #57 (retest): every route under the button learns how
           // high it reaches, so its lists and forms end above it — when it
-          // floats over them; docked, the lane itself is kept free.
+          // floats over them; docked, the shell's bar keeps the lane free.
           child: AwBubbleDock(
             edge: position.edge == BubbleEdge.left
                 ? AwDockEdge.left
@@ -147,13 +149,16 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
             ),
           ),
         ),
-        ValueListenableBuilder<int>(
-          valueListenable: observer.depth,
-          builder: (context, depth, _) {
+        ListenableBuilder(
+          listenable: Listenable.merge([observer.depth, observer.outsideShell]),
+          builder: (context, _) {
             // A dialog or a sheet is up — including this feature's own panel.
             // A floating control over a modal is two competing surfaces.
-            if (depth > 0) return const SizedBox.shrink();
+            if (observer.depth.value > 0) return const SizedBox.shrink();
             if (docked && keyboardUp) return const SizedBox.shrink();
+            if (docked && observer.outsideShell.value) {
+              return const SizedBox.shrink();
+            }
             final origin = bubbleOrigin(
               position,
               media.size,

@@ -338,16 +338,6 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    /// Every control the person could be after, as on-screen rectangles.
-    Iterable<Rect> controlsOf(WidgetTester tester, Finder page) => [
-      for (final type in const [InkWell, Switch, TextField])
-        for (final e
-            in find
-                .descendant(of: page, matching: find.byType(type))
-                .evaluate())
-          tester.getRect(find.byWidget(e.widget)),
-    ];
-
     for (final brightness in Brightness.values) {
       testWidgets('docked in the shell, beside the bar and below the FAB '
           '(${brightness.name})', (tester) async {
@@ -372,37 +362,52 @@ void main() {
         }
       });
 
-      testWidgets('a page outside the shell ends above it, so nothing on it '
-          'starts under the button (${brightness.name})', (tester) async {
+      // OPH-391 (E-09, U-25): a page outside the shell used to END the
+      // lane's height above the screen — under task detail, settings and a
+      // note a ~100 pt band of wash, the content cut by a straight line. The
+      // dock is a place in the BAR's row; a page without the bar has no dock,
+      // so the docked button steps aside and the page keeps the screen.
+      testWidgets('a page outside the shell reaches the bottom edge, with the '
+          'safe area, and the docked button steps aside (${brightness.name})', (
+        tester,
+      ) async {
+        tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+        addTearDown(tester.view.resetPadding);
         await pumpPhone(tester, brightness: brightness);
+        expect(bubble, findsOneWidget);
         await openSettings(tester);
-        final button = tester.getRect(bubble);
+        expect(bubble, findsNothing);
         final page = find.byType(SettingsScreen);
-        expect(
-          tester.getRect(page).bottom,
-          lessThanOrEqualTo(button.top - kBubbleEdgeMargin),
+        expect(tester.getRect(page).bottom, 844);
+        // The list draws down to the edge: something of it is laid out in
+        // what used to be the dead band.
+        final listRect = tester.getRect(
+          find.descendant(of: page, matching: find.byType(Scrollable)).first,
         );
-        // What is VISIBLE of each control: a row the list clips at the
-        // page's bottom edge is only there as far as the page is.
-        final visible = tester.getRect(page);
-        final covered = controlsOf(tester, page)
-            .map((control) => control.intersect(visible))
-            .where((part) => !part.isEmpty && part.overlaps(button))
-            .toList();
-        expect(covered, isEmpty);
+        expect(listRect.bottom, 844);
+        expect(MediaQuery.paddingOf(tester.element(page)).bottom, 34);
+        // Back in the shell, it docks again.
+        GoRouter.of(tester.element(page)).pop();
+        await tester.pumpAndSettle();
+        expect(bubble, findsOneWidget);
       });
     }
 
     // R3-2 (OPH-363): a screen reader found the docked button as a node
     // the size of the whole screen — its focus ring framed everything, and a
     // touch-explore anywhere announced "Quick Access".
+    // Outside the shell the button is there only where the person parked it
+    // (a docked one steps aside, OPH-391).
     for (final atSettings in [false, true]) {
       testWidgets('its accessibility node is the 56 px button, not the screen '
           '(${atSettings ? 'a page outside the shell' : 'the shell'})', (
         tester,
       ) async {
         final semantics = tester.ensureSemantics();
-        await pumpPhone(tester);
+        await pumpPhone(
+          tester,
+          storedPosition: atSettings ? 'right:0.300' : null,
+        );
         if (atSettings) await openSettings(tester);
         final node = tester.getSemantics(
           find.bySemanticsLabel(RegExp('^${'quick.title'.tr()}')),
@@ -444,7 +449,7 @@ void main() {
     }
 
     testWidgets('a keyboard covers the bar\'s row — the docked button goes '
-        'with it and the page gets its full height back', (tester) async {
+        'with it and the page keeps its full height', (tester) async {
       await pumpPhone(tester);
       await openSettings(tester);
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);

@@ -36,18 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-391 — İtilen ekranlarda ölü şerit, durum çubuğu, iOS izin metinleri TR
-
-E-09, E-13, U-43. İtilen ekranların altındaki ~100 pt ölü şerit (görev detayı, ayarlar, notlar ve
-uzantı ekranları); iOS açık temada okunmayan durum çubuğu (tema parlaklığına göre
-`SystemUiOverlayStyle`); iOS izin metinleri TR (`ios/Runner/tr.lproj/InfoPlist.strings`, persona Ek
-A-65; gerekirse Xcode projesine yerelleştirme).
-
-- [ ] Golden'da güvenli alanlı itilen ekranın içeriği alta kadar iner.
-- [ ] Durum çubuğu stili her iki temada testle sabit.
-- [ ] TR izin metinleri iOS projesinde.
-- **Cihazda bakılacak:** iPhone TR dilde mikrofon/bildirim izin metni; açık temada saat okunur.
-
 ### OPH-392 — Web: soğuk derin bağlantı, Google düğmesi, çevrimdışı göstergesi
 
 E-17, E-22, E-23.
