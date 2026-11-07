@@ -7,6 +7,13 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Added
+
+- **"Forgot password?" on the sign-in screen**: enter your email and a reset link arrives that
+  works once, for an hour; setting the new password signs you out everywhere. A self-hosted
+  server without email says so, and its admin can create the link with one command
+  (`password-reset-link`, see SELF-HOSTING). The link can also be pasted into the app.
+
 ### Fixed
 
 - **Signing out works again**, and changing the server now signs you out of the old one first:

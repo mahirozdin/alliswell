@@ -39,6 +39,17 @@ void main() {
     expect(isJoinLocation('/joined'), isFalse);
   });
 
+  test('OPH-406: the forgot form opens signed out, a reset link even '
+      'mid-restore, and both send a signed-in person Home', () {
+    expect(redirect(at: '/forgot-password'), isNull);
+    expect(redirect(loggedIn: true, at: '/forgot-password'), '/home');
+    expect(redirect(at: '/reset-password'), isNull);
+    // A cold start on the web opens at the link: parked on the splash, the
+    // token in its address was lost.
+    expect(redirect(restoring: true, at: '/reset-password'), isNull);
+    expect(redirect(loggedIn: true, at: '/reset-password'), '/home');
+  });
+
   test('signed in: auth and splash pages bounce to Home', () {
     expect(redirect(loggedIn: true, at: '/login'), '/home');
     expect(redirect(loggedIn: true, at: '/register'), '/home');

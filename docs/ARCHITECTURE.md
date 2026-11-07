@@ -59,6 +59,8 @@ npm workspaces manage the JS side (`npm install` at root). The Flutter app is ma
 - **Plugins:** connection lifecycles are Fastify plugins (`src/plugins/mysql.js`, `redis.js`)
   decorating `app.db` (knex) and `app.redis` (ioredis). Boot never hard-fails on missing infra —
   `/health/ready` reports degraded state instead (good for orchestrators and local dev).
+- **Outgoing mail:** `src/plugins/mail.js` decorates `app.mailer` from the `SMTP_*` block, or
+  `null` without one. Core mails only password-reset links (ADR-0064).
 - **Validation:** every route ships Ajv JSON schemas for body/query/params/response.
 - **Errors:** `@fastify/sensible` HTTP errors + stable `code` strings (e.g. `AUTH_EMAIL_TAKEN`).
 - **Observability:** pino structured logs with `x-request-id` propagation; `/health/live` and

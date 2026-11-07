@@ -36,18 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-406 — Şifre sıfırlama
-
-Kritik yol: auth. C-13; `ux-core-screens.md` §4.2. Yeni tablo gerekirse Kritik yol: migrations.
-
-- [ ] API `POST /auth/password/forgot` + `POST /auth/password/reset`: tek kullanımlık, süreli, hash'li
-      belirteç; oran sınırı; kullanıcının var olup olmadığını sızdırmaz.
-- [ ] SMTP yoksa yönetici yolu (CLI/komutla sıfırlama bağlantısı) ve uygulamada buna yönelik metin.
-- [ ] Uygulamada "Şifremi unuttum" akışı.
-- [ ] OpenAPI + API.md güncellenir; MCP'ye girmez (I-12 gerekçesi: oturumsuz hesap kurtarma, ajan aracı
-      değil). SELF-HOSTING.md'de SMTP'siz yol.
-- **Kabul:** entegrasyon testleri (tek kullanım, süre, oran sınırı) + widget testi.
-
 ### OPH-407 — Metin geçişi: ton, sözlük, kırpılan etiketler
 
 U-10; kurallar ve sözlük araştırma özetinde (README "Genel kurallar"), metinler persona Ek A.

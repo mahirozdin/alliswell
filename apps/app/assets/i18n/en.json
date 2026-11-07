@@ -125,6 +125,7 @@
     "passwordTooShort": "Password must be at least 8 characters",
     "showPassword": "Show password",
     "hidePassword": "Hide password",
+    "forgotLink": "Forgot password?",
     "signIn": "Sign in",
     "createAccount": "Create account",
     "toRegister": "New here? Create an account",
@@ -141,6 +142,30 @@
       "enterCode": "Enter the code from your authenticator app.",
       "invalid": "That code is not right. Check it and try again.",
       "verify": "Verify"
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "body": "Enter your account's email address and we'll send you a link to reset your password.",
+      "send": "Send link",
+      "sentTitle": "Check your email",
+      "sentBody": "If there is an account for {email}, a reset link arrives in a few minutes. If it doesn't, look in your spam folder.",
+      "adminTitle": "This server doesn't send email",
+      "adminBody": "Ask the person who runs this server for a reset link. They create it on the server with this command:",
+      "copyCommand": "Copy command",
+      "copied": "Command copied",
+      "haveLink": "I have a link",
+      "backToLogin": "Back to sign in"
+    },
+    "reset": {
+      "title": "Choose a new password",
+      "linkLabel": "Reset link",
+      "linkHelper": "Paste the link from the email or from the server's administrator",
+      "linkMissing": "Paste the link",
+      "newPassword": "New password",
+      "save": "Save password",
+      "doneTitle": "Your password is changed",
+      "doneBody": "You are signed out on every device. Sign in with your new password.",
+      "requestNew": "Request a new link"
     }
   },
   "settings": {
@@ -771,6 +796,7 @@
     "AUTH_MFA_REQUIRED": "This account needs its verification code.",
     "AUTH_MFA_INVALID": "That code is not right. Check it and try again.",
     "AUTH_SIGN_IN_REFUSED": "Sign-in is not allowed for this account right now.",
+    "AUTH_RESET_INVALID": "This link no longer works: it was used or it expired. Request a new one.",
     "NETWORK_ERROR": "Could not reach the server. Check your connection and the server address.",
     "server": "The server could not complete this. Try again in a moment.",
     "notFound": "That could not be found — it may have been removed or moved.",

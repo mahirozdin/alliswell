@@ -1882,3 +1882,16 @@ U-08, U-36 (board); research `ux-core-screens.md` §3.3, §6. `widgets/list_deta
 | D4 | **N opens the new-task form** (§49's dialog) anywhere in the shell, with `tasks.create`; **/ opens search everywhere** (§40, matched by the character, so Shift+7 on a Turkish keyboard works). Neither fires from a text field, during the tour or a ringing alarm. The "+" tooltip names N from 1200. | Two keys every desktop list app has (ux-core §6). |
 | D5 | **The wide board: four columns share the width, none under 260** (`boardColumnWidth`); past four, or in a narrow window, it scrolls sideways under an always-visible scrollbar, and the right edge fades 24 px in the page colour while there is more (paint, not glass). | The fourth column was cut at 1440 with no sign there was more (U-36). |
 | K1 | `test/features/shell/desktop_pane_test.dart` (11 widget tests at 1440). | Kabul of OPH-405. |
+
+## 52. Forgot password (OPH-406)
+
+C-13; research `ux-core-screens.md` §4.2; [ADR-0064](adr/0064-password-reset-links.md). `features/auth/ui/{login,forgot_password,reset_password}_screen.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| R1 | **"Parolamı unuttum" sits under the password field, end-aligned**, a text button on the auth card (opaque, G1); it carries the typed email to the form. Turkish says "parola", as every other auth label does. | The sign-in screen had no way back into an account (C-13). |
+| R2 | **The answer never says whether an account exists.** Mail: "E-postanı kontrol et" with "{email} adresiyle bir hesap varsa…". No mail on the server: "Bu sunucu e-posta göndermiyor" and the operator's command, selectable and with a copy button (monospace, the same as API keys). Both outcomes are an icon (48), a `titleMedium` title and one `bodyMedium` paragraph. | Account enumeration is a security leak; an SMTP-less self-host still needs a way. |
+| R3 | **"Bağlantım var" is always on the form**: the reset screen without a token in its address takes a pasted link or bare code (`awResetTokenFrom`). With the token in the address the field is not shown. | A link that arrives on the laptop must work in the phone app; the operator's command may print a code only. |
+| R4 | **A dead link says so and offers the way out**: `AUTH_RESET_INVALID` → "Bu bağlantı artık çalışmıyor…" + "Yeni bağlantı iste". Success replaces the form with "Parolan değişti" and one "Giriş yap" button; it says every device was signed out. | A spent link is the common failure; the person must not guess what to do next. |
+| K1 | `test/features/auth/password_reset_test.dart`, `test/router_redirect_test.dart`. | Kabul of OPH-406. |
+

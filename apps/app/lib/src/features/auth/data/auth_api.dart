@@ -7,6 +7,15 @@ import 'models.dart';
 /// client for (OPH-392).
 typedef ServerSignInProviders = ({bool google, bool apple});
 
+/// How a server hands out password-reset links (OPH-406).
+enum PasswordResetDelivery {
+  /// By e-mail, to the address — if it has an account there.
+  email,
+
+  /// The server sends no mail: its operator issues the link by command.
+  admin,
+}
+
 /// Raw HTTP calls to `/api/v1/auth/*`. No Authorization header is required by
 /// these endpoints, so this client uses the bare (interceptor-free) dio — the
 /// auth interceptor itself calls [refresh] and must not recurse.
@@ -76,6 +85,35 @@ class AuthApi {
     } on DioException catch (e) {
       throw _asAuthException(e);
     }
+  }
+
+  /// Asks for a reset link (OPH-406, ADR-0064). The answer is the same for
+  /// every address — whether an account exists is never said — and describes
+  /// only the server: [PasswordResetDelivery.email] when it mails links,
+  /// [PasswordResetDelivery.admin] when its operator has to issue one.
+  Future<PasswordResetDelivery> forgotPassword({
+    required String email,
+    String? locale,
+  }) async {
+    final data = await _post('/api/v1/auth/password/forgot', {
+      'email': email,
+      if (locale == 'tr' || locale == 'en') 'locale': locale,
+    });
+    return data['delivery'] == 'admin'
+        ? PasswordResetDelivery.admin
+        : PasswordResetDelivery.email;
+  }
+
+  /// Spends a reset link: sets [password] and ends every session of the
+  /// account. A spent, expired or unknown link is `AUTH_RESET_INVALID`.
+  Future<void> resetPassword({
+    required String token,
+    required String password,
+  }) async {
+    await _post('/api/v1/auth/password/reset', {
+      'token': token,
+      'password': password,
+    });
   }
 
   Future<void> logout(String refreshToken, {bool allDevices = false}) async {

@@ -439,6 +439,42 @@ to set up — you upload your APNs key to Firebase, not to AllisWell.
 text; the push only says which row to look at. `npm run check:push-payload` is
 the gate that keeps that true.
 
+## 6e. Optional: "Forgot password?" by email
+
+"Forgot password?" on the sign-in screen works on every install
+([ADR-0064](adr/0064-password-reset-links.md)). What it does depends on whether the API can send
+mail.
+
+**Without SMTP (the default)** the app says "This server doesn't send email" and shows the
+command below. Whoever runs the server creates the link and passes it on by hand:
+
+```bash
+docker compose -f docker-compose.selfhost.yml exec api \
+  node apps/api/src/cli/password-reset-link.js person@example.com
+```
+
+It prints a link that works once, for 24 hours. Any earlier link for that account stops working.
+Without `APP_PUBLIC_URL` and with more than one `CORS_ORIGIN`, it prints only the code. In the app,
+open "Forgot password?" → "I have a link" and paste it. From a source checkout, run
+`npm run password:reset-link -- person@example.com`.
+
+**With SMTP** the link is mailed. It works once, for an hour (`PASSWORD_RESET_TTL_MIN`). Set these
+in `.env` and restart:
+
+```bash
+APP_PUBLIC_URL=https://alliswell.example   # where the web app is served; links open here
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587                               # SMTP_SECURE=true for 465
+SMTP_USER=…                                 # leave both empty for an open relay
+SMTP_PASSWORD=…
+SMTP_FROM=AllisWell <no-reply@alliswell.example>
+```
+
+The block is all-or-nothing. A host without `SMTP_FROM` or `APP_PUBLIC_URL`, or a user without a
+password, stops the API at boot with the missing names. The form gives the same answer whether an
+address has an account or not. It mails at most three links per account per hour. Setting the new
+password signs the account out everywhere, and a second factor stays on.
+
 ## 7. Using your own database or Redis
 
 Point the API at them and drop the bundled services: set `DATABASE_HOST`,

@@ -83,6 +83,14 @@ services:
       STORAGE_S3_SECRET_ACCESS_KEY: ${STORAGE_S3_SECRET_ACCESS_KEY:-}
       STORAGE_MAX_UPLOAD_MB: ${STORAGE_MAX_UPLOAD_MB:-10}
       STORAGE_PRESIGN_TTL_SEC: ${STORAGE_PRESIGN_TTL_SEC:-900}
+      # Optional — "Forgot password?" by email (docs/SELF-HOSTING.md §6e).
+      APP_PUBLIC_URL: ${APP_PUBLIC_URL:-}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_SECURE: ${SMTP_SECURE:-false}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
     ports:
       # Loopback only: put your TLS proxy in front of it.
       - "${API_BIND:-127.0.0.1}:${API_PORT:-3000}:3000"

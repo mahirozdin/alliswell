@@ -8,8 +8,10 @@ import 'core/deep_link.dart';
 import 'core/modal_observer.dart';
 import 'core/persisted_prefs.dart' show homeCalendarVisibleProvider;
 import 'features/auth/providers.dart';
+import 'features/auth/ui/forgot_password_screen.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/auth/ui/reset_password_screen.dart';
 import 'features/ee/admin/admin_providers.dart';
 import 'features/ee/admin/ui/admin_login_screen.dart';
 import 'features/ee/admin/ui/admin_leads_screen.dart';
@@ -95,7 +97,7 @@ import 'i18n/i18n.dart';
 import 'widgets/route_leading.dart';
 import 'screens/shell_rail.dart';
 
-const _authLocations = {'/login', '/register'};
+const _authLocations = {'/login', '/register', kForgotPasswordPath};
 
 /// Where an unroutable location lands. A real route, so the screen it shows is
 /// ours — themed, localized and with an exit that works.
@@ -347,6 +349,12 @@ bool isAdminLocation(String location) =>
 /// free registration — the join screen is where that account is made.
 bool isJoinLocation(String location) => location.startsWith('/join/');
 
+/// Where a password-reset link lands (OPH-406). Reachable while a session is
+/// still restoring — a cold start on the web opens straight at the link, and
+/// parking it on the splash would lose the token — and signed out; a person
+/// who turns out to be signed in goes Home.
+bool isResetLocation(String location) => location == kResetPasswordPath;
+
 /// Pure redirect policy (unit-tested in test/router_redirect_test.dart):
 /// admin locations answer to the operator session ALONE; then restoring →
 /// splash; signed out → login/register only; signed in → keep auth/splash
@@ -367,6 +375,9 @@ String? computeAuthRedirect({
   // where parking it on the splash lost it on a cold start. The join screen
   // waits for the session itself.
   if (isJoinLocation(location)) return null;
+  if (isResetLocation(location)) {
+    return isLoggedIn && !isRestoring ? AppSection.home.path : null;
+  }
   if (isRestoring) return location == '/splash' ? null : '/splash';
   if (!isLoggedIn) {
     return _authLocations.contains(location) ? null : '/login';
@@ -546,7 +557,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         if (!_authLocations.contains(wanted) &&
             wanted != '/splash' &&
             wanted != _kNotFound &&
-            !isJoinLocation(wanted)) {
+            !isJoinLocation(wanted) &&
+            !isResetLocation(wanted)) {
           final pending = ref.read(pendingDeepLinkProvider.notifier);
           if (auth.isLoading) {
             // The FIRST destination wins while restoring: the redirects that
@@ -621,6 +633,21 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/register',
         builder: (context, state) => _page(const RegisterScreen()),
+      ),
+      // OPH-406 (ADR-0064): "Forgot password?" and the link it sends.
+      GoRoute(
+        path: kForgotPasswordPath,
+        builder: (context, state) => _page(
+          ForgotPasswordScreen(
+            initialEmail: state.uri.queryParameters['email'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: kResetPasswordPath,
+        builder: (context, state) => _page(
+          ResetPasswordScreen(token: state.uri.queryParameters['token']),
+        ),
       ),
       // EE-018: a team invite's landing place. Not in `_authLocations` on
       // purpose — a signed-in person may open one too.

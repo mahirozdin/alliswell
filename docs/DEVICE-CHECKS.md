@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Parola sıfırlama (2026-11-08)
+
+- OPH-406 — **SMTP'li bir sunucuda (örn. Mailpit), iPhone + Android + web, TR ve EN, açık ve koyu**: girişte "Parolamı unuttum" parola alanının altında, yazılı e-posta formda hazır; "Bağlantıyı gönder" → "E-postanı kontrol et"; gelen e-posta seçili dilde, bağlantı web uygulamasında "Yeni parola belirle"yi token'la açıyor (oturum geri yüklenirken bile — yeni sekmede yapıştır); yeni parola kaydedilince "Parolan değişti", diğer cihazdaki oturum ilk yenilemede kapanıyor; aynı bağlantı ikinci kez "artık çalışmıyor" + "Yeni bağlantı iste". SMTP'siz sunucuda "Bu sunucu e-posta göndermiyor" + kopyalanabilir komut; `docker compose exec api node apps/api/src/cli/password-reset-link.js <e-posta>` bağlantı basıyor; telefonda "Bağlantım var"a yapıştırınca parola değişiyor. 1.3× ve 2.0× metinde kartta taşma yok, düğmeler ≥44 pt.
+
 ## Masaüstü: ray, görev paneli, kısayollar (2026-11-07)
 
 - OPH-405 — **Web (Chrome, Safari) ve macOS/Windows uygulaması, 1440 ve 1280 px, TR, açık ve koyu**: Ana Sayfa'da bir göreve tıklayınca liste yerinde kalıyor, görev sağda 480 px panelde açılıyor (takvim paneli o sırada gizli), "+" ve mikrofon panelin solunda; ↓/↑ sıradaki/önceki görevi açıyor ve liste o satıra kayıyor; başlık alanındayken oklar imleci oynatıyor, ilk Esc alandan çıkarıyor, ikincisi paneli kapatıyor; panelde "Sil" paneli kapatıyor, geri al çalışıyor. Ayarlar ve bir görev bağlantısı (yeni sekmede `/tasks/…`) solda rayla açılıyor, raydan bir bölüme gidiliyor. Pano dört sütunu kesmeden gösteriyor; "Görünümü düzenle"den beşinci sütun açılınca altta kaydırma çubuğu ve sağ kenarda solma çıkıyor, fareyle çubuktan ve trackpad'le yana kayıyor. Bir alana odaklı değilken N yeni görev penceresini, / aramayı açıyor; Türkçe Q klavyede Shift+7 ile de. 1199 px'e daraltınca panel kapanıyor ve görev eskisi gibi kendi sayfasında açılıyor. VoiceOver/NVDA açık satırı "seçili" okuyor.

@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-07 — Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-406 parola sıfırlama; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-406** — Şifre sıfırlama |
-| Last completed           | OPH-405 — masaüstü (DESIGN §51): ≥1200 px'te ray Ayarlar'da, adresle açılan görevde ve bütün oturumlu sayfalarda da açık (`AwRailFrame`); listedeki görev 480 px sağ panelde açılır (`AwListDetailScope`/`AwListDetailPane`/`AwListOrder`, uzantı ekranları için ortak), Esc kapatır (alandaysa önce alandan çıkar), ↑/↓ önceki/sonraki; pano dört sütunu genişliğe sığdırır (en az 260 px), fazlası görünür çubukla yana kayar, sağ kenar solar; N yeni görev, / arama (yazarken ikisi de karakter). |
+| ➡️ **Next task**         | **OPH-407** — Metin geçişi: ton, sözlük, kırpılan etiketler |
+| Last completed           | OPH-406 — parola sıfırlama (ADR-0064, DESIGN §52): `POST /auth/password/forgot` + `/reset`, tek kullanımlık HMAC'li bağlantı (e-postayla 60 dk, yönetici komutuyla 24 saat), yeni bağlantı eskisini iptal eder, sıfırlama bütün oturumları kapatır; cevap hesabın varlığını söylemez, kimlik oran sınırı + hesap başına saatte 3 e-posta; çekirdeğin kendi SMTP'si (`SMTP_*` + `APP_PUBLIC_URL`, nodemailer), yoksa `delivery: admin` ve `password-reset-link` komutu; uygulamada "Parolamı unuttum" → bağlantı / yönetici komutu → "Bağlantım var" ile yapıştır. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -53,23 +53,28 @@
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.
 
-13. **OPH-369 Apple geri okuma** — Swift Mac'te derlendi (2026-10-17); kalan
+13. **OPH-406 parola sıfırlama e-postası** — alliswell.space'in `.env`'ine `SMTP_HOST`, `SMTP_FROM`
+    (+ `SMTP_USER`/`SMTP_PASSWORD`, gerekirse `SMTP_PORT`/`SMTP_SECURE`) ve `APP_PUBLIC_URL` (web
+    uygulamasının adresi, ör. `https://alliswell.space/app`) gir. Girilmezse "Parolamı unuttum"
+    "sunucu e-posta göndermiyor" der; bağlantıyı sunucuda `password-reset-link` komutu verir.
+
+14. **OPH-369 Apple geri okuma** — Swift Mac'te derlendi (2026-10-17); kalan
     DEVICE-CHECKS "Apple Takvim geri okuma" bölümü (iPhone + Mac). Geçerse "iki yönlü Apple"
     metnine dönüş SAHİBİN kararı; dönülürse aynı değişiklikte: README, COMPARISON, SUPPORT(.tr),
     STORE-LISTING, landing `content*.js` + index sayfaları, `llms.txt`, web `index.html`/manifest ve
     `scripts/docs/check.mjs` APPLE_CLAIMS kapısı.
 
-14. **OPH-370 masaüstü indirmeleri** — sonraki etiketten sonra Actions › Release'de "Desktop build
+15. **OPH-370 masaüstü indirmeleri** — sonraki etiketten sonra Actions › Release'de "Desktop build
     (linux)", "Desktop build (windows)" ve "Attach desktop downloads" yeşil; sürümde
     `alliswell-linux-x64.tar.gz`, `alliswell-windows-x64.zip`, `alliswell-desktop-SHA256SUMS.txt`
     var ve README'nin `releases/latest/download/…` bağlantıları iniyor (o zamana kadar 404).
     Sonra DEVICE-CHECKS "Masaüstü indirmeleri". İsteğe bağlı: Authenticode sertifikası (ya da Azure
     Trusted Signing) + Windows işine signtool adımı → SmartScreen uyarısı kalkar.
 
-15. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
+16. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
     (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
 
-16. **OPH-380 CalDAV** — sahip prod `.env`'de `CALDAV_ENABLED=true` yaptı (2026-10-17, alliswell.space'te açık); kalan
+17. **OPH-380 CalDAV** — sahip prod `.env`'de `CALDAV_ENABLED=true` yaptı (2026-10-17, alliswell.space'te açık); kalan
     DEVICE-CHECKS "CalDAV (iCloud / Nextcloud)": gerçek iCloud (uygulamaya özel parola, X-prop
     sağ kalıyor mu → CALDAV.md §4.4) ve gerçek Nextcloud; Apple cihazda çift ayna koruması.
     Onay/bağlantı kesme metinlerini (EN+TR `calendar.caldav.*`) ve PRIVACY(.tr) bölümünü ürün/hukuk

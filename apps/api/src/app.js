@@ -24,6 +24,7 @@ import accountGcPlugin from './plugins/account-gc.js';
 import noteVersionGcPlugin from './plugins/note-version-gc.js';
 import seriesGcPlugin from './plugins/series-gc.js';
 import aiPlugin from './plugins/ai.js';
+import mailPlugin from './plugins/mail.js';
 import healthRoutes from './routes/health.js';
 import authRoutes from './routes/auth.js';
 import meRoutes from './routes/me.js';
@@ -89,6 +90,7 @@ export async function buildApp({
   db,
   redis,
   storage,
+  mailer,
   instrument,
 } = {}) {
   const app = Fastify({
@@ -150,6 +152,8 @@ export async function buildApp({
   await app.register(mysqlPlugin, { db });
   await app.register(redisPlugin, { redis });
   await app.register(storagePlugin, { storage });
+  // OPH-406: `app.mailer`, or null when this server has no SMTP block.
+  await app.register(mailPlugin, { mailer });
   await app.register(storageGcPlugin);
   await app.register(accountGcPlugin);
   await app.register(noteVersionGcPlugin);

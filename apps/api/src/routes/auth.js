@@ -4,7 +4,15 @@ import { newId } from '../lib/ids.js';
 import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { OauthIdentityError, audiencesFor, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identities.js';
-import { hashRefreshToken } from '../lib/tokens.js';
+import { hashPasswordResetToken, hashRefreshToken } from '../lib/tokens.js';
+import {
+  EMAIL_RESETS_PER_HOUR,
+  issuePasswordReset,
+  recentEmailResets,
+  resetLink,
+  resetLinkBase,
+  resetMail,
+} from '../lib/password-reset.js';
 import { uniqueSlug } from '../lib/slug.js';
 import { credentialRateLimit } from '../lib/rate-limit.js';
 import { assertSignInFactors } from '../lib/sign-in-factors.js';
@@ -236,6 +244,74 @@ const oauthSchema = {
     503: errorResponseSchema,
   },
 };
+
+// OPH-406 (ADR-0064). One code for a link that is unknown, spent or expired:
+// whoever holds the link learns only that it no longer works.
+function invalidResetError(app) {
+  const err = app.httpErrors.badRequest('This reset link is invalid or has expired');
+  err.code = 'AUTH_RESET_INVALID';
+  return err;
+}
+
+const forgotSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['email'],
+    properties: {
+      email: { type: 'string', format: 'email', maxLength: 255 },
+      // The language of the mail. Absent or unknown → English.
+      locale: { type: 'string', enum: ['en', 'tr'] },
+    },
+  },
+  response: {
+    202: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['delivery'],
+      properties: {
+        // `email` — if the address has an account here, a link is on its way.
+        // `admin` — this server sends no mail: ask its operator for a link.
+        // A property of the SERVER, the same for every address.
+        delivery: { type: 'string', enum: ['email', 'admin'] },
+      },
+    },
+    429: errorResponseSchema,
+  },
+};
+
+const resetSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['token', 'password'],
+    properties: {
+      token: { type: 'string', minLength: 20, maxLength: 128 },
+      password: { type: 'string', minLength: 8, maxLength: 128 },
+    },
+  },
+  response: {
+    204: { type: 'null' },
+    400: errorResponseSchema,
+    429: errorResponseSchema,
+  },
+};
+
+/**
+ * The extension's password rules (length, reuse, a team's own policy), for
+ * every door that sets a password: the change below and the reset link.
+ */
+async function assertPasswordAllowed(app, { user, request, password }) {
+  for (const requirement of app.ee.passwordRequirements ?? []) {
+    const refusal = await requirement({ db: app.db, user, request, password });
+    if (refusal) {
+      throw coded(
+        app.httpErrors.badRequest(refusal.message ?? 'That password is not allowed'),
+        refusal.code ?? 'AUTH_PASSWORD_REJECTED',
+      );
+    }
+  }
+}
 
 export default async function authRoutes(app) {
   const { auth } = app.config;
@@ -915,20 +991,7 @@ export default async function authRoutes(app) {
       // rules). Same contract as sign-in: it runs only once the CURRENT
       // password has been proven, so it can say "no, pick a better one" and
       // never "wrong password, but here is a policy hint".
-      for (const requirement of app.ee.passwordRequirements ?? []) {
-        const refusal = await requirement({
-          db: app.db,
-          user,
-          request,
-          password: request.body.newPassword,
-        });
-        if (refusal) {
-          throw coded(
-            app.httpErrors.badRequest(refusal.message ?? 'That password is not allowed'),
-            refusal.code ?? 'AUTH_PASSWORD_REJECTED',
-          );
-        }
-      }
+      await assertPasswordAllowed(app, { user, request, password: request.body.newPassword });
 
       const now = new Date();
       await app.db.transaction(async (trx) => {
@@ -943,6 +1006,103 @@ export default async function authRoutes(app) {
           .whereNull('revoked_at')
           .update({ revoked_at: now });
       });
+      return reply.code(204).send();
+    },
+  );
+
+  // ── OPH-406: "I forgot my password" (ADR-0064) ──────────────────────────
+  //
+  // Two public doors under the credential limits (per IP + the address named,
+  // and the shared per-IP ceiling). Neither says whether an account exists:
+  // the forgot form answers the same for every address, and the answer only
+  // describes the server — whether it can send mail at all.
+
+  app.post(
+    '/password/forgot',
+    { schema: forgotSchema, ...credentialLimit },
+    async (request, reply) => {
+      const base = resetLinkBase(app.config);
+      if (!app.mailer || !base) return reply.code(202).send({ delivery: 'admin' });
+
+      const email = request.body.email.trim().toLowerCase();
+      const user = await app
+        .db('users')
+        .where({ email })
+        .whereNull('deleted_at')
+        .first('id', 'email');
+      // Over the hourly count the ask is answered and dropped: the rate limit
+      // stops one address hammering, this stops many addresses filling one
+      // person's inbox.
+      if (user && (await recentEmailResets(app.db, user.id)) < EMAIL_RESETS_PER_HOUR) {
+        const minutes = auth.passwordResetTtlMin;
+        const { token } = await issuePasswordReset(app.db, {
+          userId: user.id,
+          secret: auth.refreshSecret,
+          ttlMs: minutes * 60 * 1000,
+          source: 'email',
+        });
+        const mail = resetMail(request.body.locale, resetLink(base, token), minutes);
+        // Not awaited: an SMTP round trip only for real accounts would be a
+        // timing answer to "does this address exist?". A failure is logged
+        // without the address; the person can ask again.
+        Promise.resolve()
+          .then(() => app.mailer.send({ to: user.email, ...mail }))
+          .catch((err) => request.log.warn({ err: err.message }, 'password reset mail failed'));
+      }
+      return reply.code(202).send({ delivery: 'email' });
+    },
+  );
+
+  /**
+   * Spending a link. Same effects as changing the password (ADR-0006): every
+   * session ends. A second factor stays enrolled — the link replaces the
+   * password, not the authenticator, so the next sign-in still asks for it.
+   */
+  app.post(
+    '/password/reset',
+    { schema: resetSchema, ...credentialLimit },
+    async (request, reply) => {
+      const tokenHash = hashPasswordResetToken(request.body.token, auth.refreshSecret);
+      const now = new Date();
+      const row = await app.db('password_resets').where({ token_hash: tokenHash }).first();
+      if (!row || row.used_at || new Date(row.expires_at).getTime() <= now.getTime()) {
+        throw invalidResetError(app);
+      }
+      const user = await app
+        .db('users')
+        .where({ id: row.user_id })
+        .whereNull('deleted_at')
+        .first('id', 'password_hash');
+      if (!user) throw invalidResetError(app);
+
+      // Before the link is spent: a refused password leaves it usable.
+      await assertPasswordAllowed(app, { user, request, password: request.body.password });
+      const passwordHash = await hashPassword(request.body.password);
+
+      let claimed = 0;
+      await app.db.transaction(async (trx) => {
+        // Atomic claim: of two requests with one link, only one UPDATE matches.
+        claimed = await trx('password_resets')
+          .where({ id: row.id })
+          .whereNull('used_at')
+          .where('expires_at', '>', now)
+          .update({ used_at: now });
+        if (claimed === 0) return;
+        await trx('users')
+          .where({ id: user.id })
+          .update({ password_hash: passwordHash, password_changed_at: now });
+        await trx('refresh_tokens')
+          .where({ user_id: user.id })
+          .whereNull('revoked_at')
+          .update({ revoked_at: now });
+        // Any other link still out there stops working with this one.
+        await trx('password_resets')
+          .where({ user_id: user.id })
+          .whereNull('used_at')
+          .where('expires_at', '>', now)
+          .update({ expires_at: now });
+      });
+      if (claimed === 0) throw invalidResetError(app);
       return reply.code(204).send();
     },
   );

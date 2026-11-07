@@ -21,6 +21,7 @@ in `package.json`.
 | --- | --- |
 | `docker compose up -d mysql redis minio radicale` | local services; one shared `alliswell` stack, so start it from the main checkout, not a throwaway worktree |
 | `npm run db:migrate` / `npm run db:rollback` | migrations |
+| `npm run password:reset-link -- <email>` | a one-use, 24-hour password-reset link, printed (ADR-0064) |
 | `npm run dev` / `npm run start` | API (watch / plain) |
 | `npm run lint` · `npm run format` · `npm run format:check` | ESLint / Prettier (API) |
 | `npm run test` · `npm run test:integration` | API suites |

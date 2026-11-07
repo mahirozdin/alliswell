@@ -237,16 +237,16 @@ function assertPushComplete(config) {
   }
 }
 
-function assertSmtpComplete(config) {
-  const { smtp } = config.ee;
-  const required = { EE_SMTP_HOST: smtp.host, EE_SMTP_FROM: smtp.from };
+function assertSmtpComplete(smtp, prefix, extra = {}) {
+  const required = { [`${prefix}SMTP_HOST`]: smtp.host, [`${prefix}SMTP_FROM`]: smtp.from };
   if (!Object.values(required).some(Boolean)) return; // not configured at all
+  Object.assign(required, extra);
   const missing = Object.entries(required)
     .filter(([, value]) => !value)
     .map(([name]) => name);
   // An anonymous relay is legitimate; half a credential is not.
   if (Boolean(smtp.user) !== Boolean(smtp.password)) {
-    missing.push(smtp.user ? 'EE_SMTP_PASSWORD' : 'EE_SMTP_USER');
+    missing.push(smtp.user ? `${prefix}SMTP_PASSWORD` : `${prefix}SMTP_USER`);
   }
   if (missing.length > 0) {
     throw new Error(
@@ -338,6 +338,32 @@ export function loadConfig(env = process.env) {
       // every second factor in the install. Dev fallback is labeled insecure
       // like its siblings.
       totpKey: env.AUTH_TOTP_KEY || DEV_TOTP_KEY,
+      // OPH-406 (ADR-0064) — how long an e-mailed reset link works. An hour is
+      // long enough to find the mail and short enough that an inbox read
+      // tomorrow is not a way in. The server-side command's link has its own,
+      // longer lifetime (it travels by hand).
+      passwordResetTtlMin: toInt(env.PASSWORD_RESET_TTL_MIN, 60, 'PASSWORD_RESET_TTL_MIN'),
+    }),
+    // OPH-406 (ADR-0064) — where the web app is served, e.g.
+    // https://alliswell.example or https://alliswell.space/app. A reset link
+    // opens `<this>/#/reset-password?token=…`. Not CORS_ORIGIN: that is an
+    // origin (no path) and may be a list.
+    appPublicUrl: (env.APP_PUBLIC_URL || '').trim().replace(/\/+$/, '') || null,
+    // Core's outgoing mail (OPH-406): password-reset links and nothing else.
+    // All-or-nothing like the extension's block below — a half-filled one is a
+    // boot error. Absent = this server cannot send mail, and the forgot form
+    // answers `delivery: "admin"` (the operator issues the link by command).
+    mail: Object.freeze({
+      smtp: Object.freeze({
+        host: env.SMTP_HOST || null,
+        port: env.SMTP_HOST ? toInt(env.SMTP_PORT, 587, 'SMTP_PORT') : null,
+        user: env.SMTP_USER || null,
+        password: env.SMTP_PASSWORD || null,
+        from: env.SMTP_FROM || null,
+        // false = STARTTLS on 587 (the default); true = TLS from the first
+        // byte, usually port 465.
+        secure: toBool(env.SMTP_SECURE, false, 'SMTP_SECURE'),
+      }),
     }),
     // Google Calendar (Epic 08). The integration is OPTIONAL — endpoints answer
     // GOOGLE_NOT_CONFIGURED without credentials. Base URLs are configurable so
@@ -636,7 +662,16 @@ export function loadConfig(env = process.env) {
   if (!/^[0-9a-fA-F]{64}$/.test(config.ee.monitorKey)) {
     throw new Error('EE_MONITOR_KEY must be 64 hex characters (openssl rand -hex 32)');
   }
-  assertSmtpComplete(config);
+  assertSmtpComplete(config.ee.smtp, 'EE_');
+  // OPH-406: core's own mail sends reset links, and a link needs the address
+  // of the web app it opens — so that address is part of the block.
+  assertSmtpComplete(config.mail.smtp, '', { APP_PUBLIC_URL: config.appPublicUrl });
+  if (config.appPublicUrl && !/^https?:\/\//.test(config.appPublicUrl)) {
+    throw new Error('APP_PUBLIC_URL must start with http:// or https://');
+  }
+  if (config.auth.passwordResetTtlMin < 5 || config.auth.passwordResetTtlMin > 1440) {
+    throw new Error('PASSWORD_RESET_TTL_MIN must be between 5 and 1440 minutes');
+  }
   assertPushComplete(config);
   if (config.ai.heartbeatMs < 1000 || config.ai.heartbeatMs > 60000) {
     throw new Error('AI_HEARTBEAT_MS must be between 1000 and 60000 (proxies time out above that)');

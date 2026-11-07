@@ -124,6 +124,7 @@
     "passwordTooShort": "Parola en az 8 karakter olmalı",
     "showPassword": "Parolayı göster",
     "hidePassword": "Parolayı gizle",
+    "forgotLink": "Parolamı unuttum",
     "signIn": "Giriş yap",
     "createAccount": "Hesap oluştur",
     "toRegister": "Yeni misin? Hesap oluştur",
@@ -140,6 +141,30 @@
       "enterCode": "Doğrulama uygulamandaki kodu gir.",
       "invalid": "Kod doğru değil. Kontrol edip tekrar dene.",
       "verify": "Doğrula"
+    },
+    "forgot": {
+      "title": "Parolanı sıfırla",
+      "body": "Hesabının e-posta adresini yaz. Parolanı sıfırlaman için bir bağlantı gönderelim.",
+      "send": "Bağlantıyı gönder",
+      "sentTitle": "E-postanı kontrol et",
+      "sentBody": "{email} adresiyle bir hesap varsa sıfırlama bağlantısı birkaç dakika içinde gelir. Gelmezse gereksiz klasörüne bak.",
+      "adminTitle": "Bu sunucu e-posta göndermiyor",
+      "adminBody": "Sunucuyu yöneten kişiden bir sıfırlama bağlantısı iste. Yönetici bağlantıyı sunucuda şu komutla oluşturur:",
+      "copyCommand": "Komutu kopyala",
+      "copied": "Komut kopyalandı",
+      "haveLink": "Bağlantım var",
+      "backToLogin": "Girişe dön"
+    },
+    "reset": {
+      "title": "Yeni parola belirle",
+      "linkLabel": "Sıfırlama bağlantısı",
+      "linkHelper": "E-postadaki ya da yöneticinin verdiği bağlantıyı yapıştır",
+      "linkMissing": "Bağlantıyı yapıştır",
+      "newPassword": "Yeni parola",
+      "save": "Parolayı kaydet",
+      "doneTitle": "Parolan değişti",
+      "doneBody": "Bütün cihazlarda oturumun kapandı. Yeni parolanla giriş yap.",
+      "requestNew": "Yeni bağlantı iste"
     }
   },
   "settings": {
@@ -770,6 +795,7 @@
     "AUTH_MFA_REQUIRED": "Bu hesap doğrulama kodu istiyor.",
     "AUTH_MFA_INVALID": "Kod doğru değil. Kontrol edip tekrar dene.",
     "AUTH_SIGN_IN_REFUSED": "Bu hesapla şu an giriş yapılamıyor.",
+    "AUTH_RESET_INVALID": "Bu bağlantı artık çalışmıyor: kullanılmış ya da süresi dolmuş. Yeni bir bağlantı iste.",
     "NETWORK_ERROR": "Sunucuya ulaşılamadı. Bağlantını ve sunucu adresini kontrol et.",
     "server": "Sunucu bu isteği tamamlayamadı. Biraz sonra tekrar dene.",
     "notFound": "Bulunamadı — kaldırılmış ya da taşınmış olabilir.",
