@@ -36,18 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-390 — Çıkış ve sunucu değiştirme veriyi temizler
-
-Kritik yol: auth. E-01, E-02. `features/auth/providers.dart:136` CircularDependencyError
-(`ref.exists(syncEnginesProvider)`), `sign_out.dart:63`, `server_url_sheet.dart:66-69` GoRouter assert.
-
-- [ ] Çıkış iki yoldan da çalışır (Ayarlar ve oturum süresi dolunca); widget testi.
-- [ ] Sunucu değişince oturum, sync motorları, yerel önbellek ve takım kökeni temizlenir; eski hesabın
-      verisi ve takım kromu görünmez (test).
-- [ ] Testler release modunda da geçer (debug assert'e bağlı değil). Önce release derlemesinde tekrar
-      üret; canlı kullanıcıyı etkiliyorsa sahibe hemen haber ver (hotfix sahibin kararı).
-- **Cihazda bakılacak:** iPhone ve Android'de çıkış → başka sunucuya giriş → eski veri yok.
-
 ### OPH-391 — İtilen ekranlarda ölü şerit, durum çubuğu, iOS izin metinleri TR
 
 E-09, E-13, U-43. İtilen ekranların altındaki ~100 pt ölü şerit (görev detayı, ayarlar, notlar ve

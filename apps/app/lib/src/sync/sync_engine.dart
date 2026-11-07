@@ -103,6 +103,10 @@ class SyncEngine {
     await syncNow();
   }
 
+  /// Whether [stop] (or [halt]) ran and no [start] re-armed it since —
+  /// what sign-out leaves every engine in (OPH-390).
+  bool get isStopped => _stopped;
+
   void stop() {
     _stopped = true;
     _debounceTimer?.cancel();

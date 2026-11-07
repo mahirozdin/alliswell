@@ -24,6 +24,20 @@ final syncApiProvider = Provider<SyncApi>(
   (ref) => SyncApi(ref.watch(apiClientProvider)),
 );
 
+/// Every [SyncEngine] alive right now (OPH-390), kept by the engines
+/// themselves: one is added when [syncEngineForProvider] builds it and taken
+/// out when that provider lets it go.
+///
+/// It exists for sign-out. The engines hang off the session
+/// (`syncEnginesProvider` → workspaces → `authControllerProvider`), so the
+/// controller cannot read them through the graph — Riverpod reports that as a
+/// dependency loop and the sign-out never ran (E-01). This set depends on
+/// nothing, so the controller can stop every engine without depending on the
+/// providers that depend on it.
+final runningSyncEnginesProvider = Provider<Set<SyncEngine>>(
+  (_) => <SyncEngine>{},
+);
+
 /// Periodic re-pull cadence (the interim update channel until OPH-057's
 /// socket lands). Widget tests override this with `null` so no timer outlives
 /// a test body.
@@ -96,11 +110,22 @@ final syncEngineForProvider = Provider.autoDispose.family<SyncEngine, String>((
   final repull = ref
       .read(sharedWorkspacesProvider)
       .any((w) => w.id == workspaceId && w.reportsOwnership);
+  final running = ref.read(runningSyncEnginesProvider)..add(engine);
   var disposed = false;
   ref.onDispose(() {
     disposed = true;
+    running.remove(engine);
     engine.dispose();
   });
+  // No session, no engine (OPH-390). A screen still holding the engines when
+  // the session ends — the shell covered by Settings — rebuilds this one as
+  // the workspace leaves; started, it wrote its state row into the replica
+  // the sign-out had just wiped and pulled with no token. It stays stopped
+  // until a session builds it again.
+  if (ref.watch(currentUserIdProvider) == null) {
+    engine.stop();
+    return engine;
+  }
   unawaited(() async {
     if (repull) await repullOnceForCreatedBy(db, workspaceId);
     // `start` re-arms a stopped engine, so it must not run after disposal.
@@ -145,6 +170,10 @@ Future<void> repullOnceForCreatedBy(AwDatabase db, String workspaceId) async {
 final syncEnginesProvider = Provider<Map<String, SyncEngine>>((ref) {
   ref.listen<List<String>>(syncWorkspaceIdsProvider, (previous, next) {
     if (previous == null) return;
+    // Signed out, every workspace leaves at once and none of them is a lost
+    // access: the sign-out stopped the engines and wiped the replica, and a
+    // probe would write its state row into it again (OPH-390).
+    if (ref.read(currentUserIdProvider) == null) return;
     for (final gone in previous.where((id) => !next.contains(id))) {
       final probe = SyncEngine(
         db: ref.read(databaseProvider),

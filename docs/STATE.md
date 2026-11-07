@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-390** — çıkış ve sunucu değiştirme veriyi temizler (⚠ auth) |
-| Last completed           | OPH-389 — ana sayfa (EN/TR) Dusk + SSR + `check:home`/`check:media`, 9 döngü + 2 film (`media/hyperframes`), README WebP animasyonları, OG kartları `og/home-dusk*`; kurumsal sayfa değişmedi. |
+| ➡️ **Next task**         | **OPH-391** — itilen ekranlarda ölü şerit, durum çubuğu, iOS izin metinleri TR |
+| Last completed           | OPH-390 — çıkış motorları bağımlılıksız kayıttan durdurur (debug döngü hatası gitti); sunucu değişimi önce eski sunucuda çıkış yapar, dialog işten önce kapanır; oturumsuz sync motoru başlamaz, çıkışta erişim yoklaması yapılmaz. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

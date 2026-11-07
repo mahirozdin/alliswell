@@ -129,14 +129,17 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // token cannot be sent to, whatever the server still believes (OPH-319).
     await ref.read(pushMessagingProvider).forgetToken();
     // Every engine stops and finishes the round it is in, so no pull lands
-    // on the replica after the wipe below. Only engines that exist: reading
-    // the provider cold would START them. Bounded: a request hanging on a
+    // on the replica after the wipe below. Bounded: a request hanging on a
     // dead network must not hold the sign-out — a late page is still caught
     // by the next sign-in's owner check (`LocalDataGuard.claimFor`).
-    if (ref.exists(syncEnginesProvider)) {
+    //
+    // Through the registry, never `syncEnginesProvider` (OPH-390, E-01): the
+    // engines hang off this very session, so reading them from here is a
+    // dependency loop — Riverpod threw on it and the sign-out never ran.
+    final engines = ref.read(runningSyncEnginesProvider).toList();
+    if (engines.isNotEmpty) {
       await Future.wait([
-        for (final engine in ref.read(syncEnginesProvider).values)
-          engine.halt(),
+        for (final engine in engines) engine.halt(),
       ]).timeout(const Duration(seconds: 5), onTimeout: () => const []);
     }
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);

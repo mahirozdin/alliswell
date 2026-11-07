@@ -23,6 +23,28 @@ Future<void> showServerUrlSheet(BuildContext context) => showDialog<void>(
   builder: (_) => const _ServerUrlDialog(),
 );
 
+/// Points this install at [target] (OPH-390, E-01).
+///
+/// Signed in, the session ends FIRST, while the address is still the server
+/// that issued it: the refresh token is revoked where it means something, the
+/// device leaves that server's push registry, and the engines stop and the
+/// replica and the person's cached facts go (OPH-355) — before anything is
+/// asked of the new server. Moving the address first sent the old refresh
+/// token to the new host and briefly restored the old account against it.
+///
+/// Takes the container, not a widget's ref: the dialog that asked is closed
+/// by the time this runs.
+Future<void> switchServer(ProviderContainer container, String target) async {
+  if (container.read(authControllerProvider).value != null) {
+    await container.read(authControllerProvider.notifier).logout();
+  }
+  // Stored as "" when it matches the built-in default, so the app keeps
+  // following that default if it ever changes.
+  await container
+      .read(serverUrlOverrideProvider.notifier)
+      .set(target == compiledApiBaseUrl ? '' : target);
+}
+
 class _ServerUrlDialog extends ConsumerStatefulWidget {
   const _ServerUrlDialog();
 
@@ -44,29 +66,29 @@ class _ServerUrlDialogState extends ConsumerState<_ServerUrlDialog> {
   }
 
   Future<void> _apply(String? normalized) async {
-    final current = ref.read(apiBaseUrlProvider);
     final target = normalized ?? compiledApiBaseUrl;
-    setState(() => _saving = true);
-
     // Only disturb the session when the address actually moves.
-    if (target != current) {
-      final signedIn = ref.read(authControllerProvider).value != null;
-      // The sign-out below deletes the replica (OPH-355): ask BEFORE the
-      // address moves, while backing out still leaves everything as it was.
-      if (signedIn && !await confirmSignOut(context, ref)) {
-        if (mounted) setState(() => _saving = false);
-        return;
-      }
-      // Store the override as "" when it matches the built-in default, so the
-      // app keeps following that default if it ever changes.
-      await ref
-          .read(serverUrlOverrideProvider.notifier)
-          .set(target == compiledApiBaseUrl ? '' : target);
-      if (signedIn) {
-        await ref.read(authControllerProvider.notifier).logout();
-      }
+    if (target == ref.read(apiBaseUrlProvider)) {
+      Navigator.of(context).pop();
+      return;
     }
-    if (mounted) Navigator.of(context).pop();
+    setState(() => _saving = true);
+    // The sign-out deletes the replica (OPH-355): ask BEFORE anything moves,
+    // while backing out still leaves everything as it was.
+    final signedIn = ref.read(authControllerProvider).value != null;
+    if (signedIn && !await confirmSignOut(context, ref)) {
+      if (mounted) setState(() => _saving = false);
+      return;
+    }
+    if (!mounted) return;
+    // Close FIRST, while the page under the dialog is still the one it was
+    // opened over (OPH-390, E-02). The switch rebuilds the session, and the
+    // router answers by replacing that page — a pop after it took the
+    // router's last page instead of this dialog. The work goes on in the
+    // container, which outlives the dialog.
+    final container = ProviderScope.containerOf(context, listen: false);
+    Navigator.of(context).pop();
+    await switchServer(container, target);
   }
 
   @override

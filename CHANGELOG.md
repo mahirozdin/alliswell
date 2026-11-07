@@ -7,6 +7,11 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+### Fixed
+
+- **Signing out works again**, and changing the server now signs you out of the old one first:
+  nothing of the previous account, its team or its sync stays on screen.
+
 ## [1.18.2] — 2026-10-30
 
 ### Changed

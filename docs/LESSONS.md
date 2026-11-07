@@ -114,7 +114,7 @@
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
 - **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn; `localKv` örneği tutar → yazan test siler.
-- **DERS** Oturumda adres değişince örtülü ekranın provider'ları build içinde kurulur → adres geçişi Ana sayfadan (ADR-0046).
+- **DERS** Adres değişince örtülü ekran provider'ı build'de kurulur → takım geçişi Ana sayfada (ADR-0046); sunucu değişimi eskide çıkar (OPH-390).
 - **DERS** Sheet controller'ını await eden fonksiyon dispose ederse kapanış animasyonu çöker → State'e ver (OPH-360).
 - **DERS** `buildTextSpan` ezen controller IME composing'de `super` döner (OPH-373).
 
