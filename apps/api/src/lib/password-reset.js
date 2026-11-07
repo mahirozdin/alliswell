@@ -61,15 +61,29 @@ export function retirePasswordResets(db, userId, now) {
  * working (their `expires_at` becomes now): the newest mail is the one that
  * counts, and an old one forwarded or left open is not a second way in.
  *
+ * With `perHourLimit`, the account's e-mailed links of the last hour are
+ * counted in the same transaction, under a lock on the account's row: two
+ * asks arriving together queue on that lock, so the second one counts the
+ * first one's link. Over the limit nothing is issued and it returns `null`.
+ *
  * @param {import('knex').Knex} db
- * @param {{ userId: string, secret: string, ttlMs: number, source: 'email'|'admin' }} opts
- * @returns {Promise<{ token: string, expiresAt: Date }>}
+ * @param {{ userId: string, secret: string, ttlMs: number, source: 'email'|'admin',
+ *           perHourLimit?: number }} opts
+ * @returns {Promise<{ token: string, expiresAt: Date } | null>}
  */
-export async function issuePasswordReset(db, { userId, secret, ttlMs, source }) {
+export async function issuePasswordReset(db, { userId, secret, ttlMs, source, perHourLimit }) {
   const token = crypto.randomBytes(32).toString('base64url');
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttlMs);
+  let issued = true;
   await db.transaction(async (trx) => {
+    if (perHourLimit !== undefined) {
+      await trx('users').where({ id: userId }).forUpdate().first('id');
+      if ((await recentEmailResets(trx, userId)) >= perHourLimit) {
+        issued = false;
+        return;
+      }
+    }
     await retirePasswordResets(trx, userId, now);
     await trx('password_resets').insert({
       id: newId(),
@@ -80,14 +94,14 @@ export async function issuePasswordReset(db, { userId, secret, ttlMs, source }) 
       created_at: now,
     });
   });
-  return { token, expiresAt };
+  return issued ? { token, expiresAt } : null;
 }
 
 /**
  * E-mailed links this account was sent in the last hour (admin links are not
  * counted: the operator is not the abuse the throttle is for).
  *
- * @param {import('knex').Knex} db
+ * @param {import('knex').Knex} db  a transaction, or the pool
  * @param {string} userId
  */
 export async function recentEmailResets(db, userId) {

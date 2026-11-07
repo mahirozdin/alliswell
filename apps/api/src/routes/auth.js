@@ -8,7 +8,6 @@ import { hashPasswordResetToken, hashRefreshToken } from '../lib/tokens.js';
 import {
   EMAIL_RESETS_PER_HOUR,
   issuePasswordReset,
-  recentEmailResets,
   resetLink,
   resetLinkBase,
   resetMail,
@@ -1035,15 +1034,19 @@ export default async function authRoutes(app) {
         .first('id', 'email');
       // Over the hourly count the ask is answered and dropped: the rate limit
       // stops one address hammering, this stops many addresses filling one
-      // person's inbox.
-      if (user && (await recentEmailResets(app.db, user.id)) < EMAIL_RESETS_PER_HOUR) {
-        const minutes = auth.passwordResetTtlMin;
-        const { token } = await issuePasswordReset(app.db, {
+      // person's inbox. The count and the issue are one locked step.
+      const minutes = auth.passwordResetTtlMin;
+      const issued =
+        user &&
+        (await issuePasswordReset(app.db, {
           userId: user.id,
           secret: auth.refreshSecret,
           ttlMs: minutes * 60 * 1000,
           source: 'email',
-        });
+          perHourLimit: EMAIL_RESETS_PER_HOUR,
+        }));
+      if (issued) {
+        const { token } = issued;
         const mail = resetMail(request.body.locale, resetLink(base, token), minutes);
         // Not awaited: an SMTP round trip only for real accounts would be a
         // timing answer to "does this address exist?". A failure is logged

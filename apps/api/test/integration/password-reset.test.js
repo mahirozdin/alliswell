@@ -3,6 +3,11 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { run as resetLinkCli } from '../../src/cli/password-reset-link.js';
+import {
+  EMAIL_RESETS_PER_HOUR,
+  issuePasswordReset,
+  recentEmailResets,
+} from '../../src/lib/password-reset.js';
 
 // Needs real MySQL + Redis with migrations applied (see integration/ready.test.js).
 const enabled = process.env.INTEGRATION === '1';
@@ -195,6 +200,28 @@ describe.runIf(enabled)('integration: password reset', () => {
     expect(fourth.statusCode).toBe(202);
     expect(fourth.json()).toEqual({ delivery: 'email' });
     expect(mailer.sent).toHaveLength(before);
+  });
+
+  it('holds the hourly limit when two asks for one account arrive together', async () => {
+    // E35 G-C review r1: the count and the insert are one locked step, so two
+    // concurrent asks cannot both see "two sent" and both send a third.
+    const email = `${emailPrefix}-racing@example.com`;
+    await register(email);
+    for (let i = 0; i < 2; i += 1) await mailedToken(email);
+    const user = await app.db('users').where({ email }).first('id');
+
+    const ask = () =>
+      issuePasswordReset(app.db, {
+        userId: user.id,
+        secret: app.config.auth.refreshSecret,
+        ttlMs: 60_000,
+        source: 'email',
+        perHourLimit: EMAIL_RESETS_PER_HOUR,
+      });
+    const results = await Promise.all([ask(), ask()]);
+
+    expect(results.filter((r) => r === null)).toHaveLength(1);
+    expect(await recentEmailResets(app.db, user.id)).toBe(EMAIL_RESETS_PER_HOUR);
   });
 
   it('puts both doors behind the credential rate limit', async () => {
