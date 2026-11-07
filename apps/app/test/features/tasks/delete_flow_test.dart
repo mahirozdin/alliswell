@@ -325,9 +325,10 @@ void main() {
     await tester.pumpWidget(await app(api));
     await tester.pumpAndSettle();
 
-    // OPH-213: the view switch is an app-bar ICON now, not a labelled
-    // segment — one tap, showing the view it will switch to.
-    await tester.tap(find.byKey(const Key('home-view-toggle')));
+    // OPH-398: on a phone the switch is an entry of the "View ⌄" menu.
+    await tester.tap(find.byKey(const Key('home-view-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-view-board')));
     await tester.pumpAndSettle();
     expect(find.text('Panodan'), findsOneWidget);
     // The pager owns the horizontal gesture, so the card is deliberately not

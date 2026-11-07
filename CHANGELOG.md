@@ -40,6 +40,9 @@ This file holds the unreleased changes and the latest release; at each release t
   list fades out under the bar instead of running under it. Quick Access also opens from the
   search screen's "Shortcuts" or a long press on Home; turned on, its button stays fully on screen
   and only shows on the main screens. On an iPad mini Home keeps one column under the phone bar.
+- **Home's top bar on a phone has three buttons**: ⚡, "View" and Settings. "View" holds list or
+  board, the calendar and the sort order in one menu. To filter Home's list, pull the list down;
+  the search button beside the tab bar still searches everything. The title no longer gets cut off.
 
 ## [1.18.2] — 2026-10-30
 

@@ -650,6 +650,18 @@ _(Added 2026-07-27. Round 9 #2 — the OPH-103 philosophy taken to its end:
   in the parent (a sliver scrolled past the cache extent is disposed), and
   focusing it scrolls it back into view (`Scrollable.ensureVisible`). Typed text
   surviving a scroll is a correctness requirement, not a nicety.
+- **H5 — A phone's Home bar is three targets (OPH-398, [ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md) §6).**
+  Below the rail (< 800 px): ⚡ (only while the Quick Access bubble is off), **"View ⌄"**
+  (`HomeViewMenuButton`: the current view's glyph + ⌄, tooltip "View", ≥ 48 × 48) and Settings.
+  The menu holds List/Board (checked), the calendar's show/hide and the §34 order with "Reverse";
+  on the board, "Edit view" (columns) instead of calendar and order. No magnifier in the bar: the
+  orb beside the tab bar is the one search glyph (ADR-0055). Home's local filter (§12) is a body
+  field, `filter_list` glyph and clear (×), the first sliver of `home-scroll`; the list rests one
+  field-height down (a short list is padded so it still can), a pull reveals it, and the same pull
+  carried past the top refreshes (`AwRefresh(triggerMode: anywhere)`); a live query keeps it in
+  sight. The section title scales down to fit rather than "Ana S…" (AppBar already clamps it at
+  1.34×). Wide layouts keep their bar. Measured: `home_app_bar_test` (360/375/393/430 × 1.0/1.3/2.0
+  × TR/EN, list and board: ≤ 3 targets ≥ 48, no magnifier, title not cut).
 
 ## 17. Date & time display (round 9 — OPH-174)
 
@@ -1674,7 +1686,8 @@ contract.
 ## 40. Search everywhere (OPH-374)
 
 One palette finds tasks, projects, notes, tags and file names from the replica, offline
-([ADR-0055](adr/0055-global-search-palette.md)). Per-screen search (§12) stays as it is.
+([ADR-0055](adr/0055-global-search-palette.md)). Per-screen search (§12) stays beside it; on a
+phone Home's moved from the bar to a pull-down field with a filter glyph (§16 H5, OPH-398).
 
 | # | Rule | Why |
 | --- | --- | --- |

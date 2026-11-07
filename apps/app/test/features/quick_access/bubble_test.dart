@@ -319,10 +319,8 @@ void main() {
     }
   });
 
-  testWidgets('switched off, an open Home search still fits the app bar — the '
-      '⚡ steps aside while the field is open and comes back after', (
-    tester,
-  ) async {
+  testWidgets('switched off, the ⚡ is one of the phone bar\'s three targets '
+      'and stays while the list\'s filter is open (OPH-398)', (tester) async {
     final api = FakeApi();
     api.seedQuickLink(
       kind: 'url',
@@ -339,15 +337,18 @@ void main() {
     await tester.pumpWidget(await signedInApp(api, bubbleEnabled: false));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
+    expect(find.byKey(const Key('home-view-menu')), findsOneWidget);
+    // The magnifier left the bar (ADR-0062 §6): nothing has to step aside.
+    expect(find.byKey(const Key('search-open')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('search-open')));
+    await tester.drag(
+      find.byKey(const Key('home-scroll')),
+      const Offset(0, 80),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('home-search')), 'site');
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull, reason: 'app bar overflowed');
-    expect(find.byKey(const Key('home-search')), findsOneWidget);
-    expect(find.byKey(const Key('quick-appbar-button')), findsNothing);
-
-    await tester.tap(find.byKey(const Key('search-close')));
-    await tester.pumpAndSettle();
     expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
   });
 

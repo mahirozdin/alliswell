@@ -277,6 +277,7 @@
     "quickAddHint": "Quick add a task…",
     "quickAddForDay": "Quick add for {date}…",
     "hideCalendar": "Hide calendar",
+    "viewMenu": "View",
     "showCalendar": "Show calendar",
     "bucket": {
       "selectedDay": "Selected day",

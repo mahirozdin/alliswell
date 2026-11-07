@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-398** — Telefon uygulama çubuğu en çok 3 hedef |
-| Last completed           | OPH-397 — yüzen öğeler tek ızgarada (DESIGN §44): 16 pt oluk (430'da 20), kapsül + 56 pt küre aynı merkezde, mikrofon (48) "+"nın solunda tek küme, sol alt boş, kaydırınca 16 pt iner; bar altında sayfa renginde solma; Home iPad mini'de tek sütun; masaüstünde mikrofon rail'de değil. Hızlı Erişim: palette "Kısayollar", Ana Sayfa'ya uzun basma; balon açıksa güvenli alan içinde, yalnız kabukta, tanıtım kartı sistem çubuğunun üstünde. |
+| ➡️ **Next task**         | **OPH-399** — Platform tracking, Glass Type v1, tabular rakam, kontrast, check:typography |
+| Last completed           | OPH-398 — telefonda Ana Sayfa uygulama çubuğu 3 hedef (DESIGN §16 H5): ⚡, "Görünüm ⌄" (liste/pano, takvim, sıralama; panoda sütunlar) ve Ayarlar; yerel arama büyüteci kalktı, süzme alanı listeyi aşağı çekince açılıyor (huni ikonu), aynı çekiş devam edince yeniler; bölüm başlığı sığmazsa küçülür, kesilmez. Geniş ekran çubuğu aynı. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

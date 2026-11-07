@@ -489,8 +489,19 @@ Locale screenshotLocale([String fallback = 'tr']) => Locale(
 /// Flip Home into the board view. Keyed, not by label: OPH-213 moved the
 /// list/board switch out of a segmented control and into an app-bar icon whose
 /// only text is a tooltip, which silently broke the old `find.text` lookup.
-Future<void> openBoard(WidgetTester tester) =>
-    tester.tap(find.byKey(const Key('home-view-toggle')));
+///
+/// OPH-398: on a phone (no rail) the switch is an entry of the app bar's
+/// "View ⌄" menu; wide layouts keep the icon.
+Future<void> openBoard(WidgetTester tester) async {
+  final menu = find.byKey(const Key('home-view-menu'));
+  if (menu.evaluate().isEmpty) {
+    await tester.tap(find.byKey(const Key('home-view-toggle')));
+    return;
+  }
+  await tester.tap(menu);
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(const Key('home-view-board')));
+}
 
 /// Open a top-level section from the shell (rail on tablet/desktop widths).
 Future<void> openSection(WidgetTester tester, AppSection section) =>

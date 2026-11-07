@@ -36,15 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-398 — Telefon uygulama çubuğu en çok 3 hedef
-
-R-05, A-06, C-03.
-
-- [ ] ⚡, "Görünüm ⌄" (liste/pano, takvim göster/gizle, sıralama tek menüde), Ayarlar.
-- [ ] Ana Sayfa'nın yerel arama büyüteci kalkar; yerel süzme listeyi aşağı çekince açılan alana taşınır
-      (ADR-0055 korunur).
-- **Kabul:** widget testi; 2.0× metinde başlık kesilmez.
-
 ### OPH-399 — Platform tracking, Glass Type v1, tabular rakam, kontrast, check:typography
 
 T-01…T-06, U-15, U-16; [ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md).

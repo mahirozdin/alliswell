@@ -118,7 +118,15 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(heading, maxLines: 1, overflow: TextOverflow.ellipsis),
+        // OPH-398 (Kabul: the title is never cut at 2.0×): a heading wider
+        // than what the actions leave is scaled down to fit, never "Ana S…".
+        // AppBar already clamps its title's text scale at 1.34, so with the
+        // phone bar's three targets this only bites in a narrow corner.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(heading, maxLines: 1),
+        ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [

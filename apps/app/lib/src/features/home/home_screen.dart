@@ -1,4 +1,8 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/date_format.dart';
@@ -38,6 +42,7 @@ import '../tasks/ui/task_tile.dart';
 import '../workspaces/workspaces.dart';
 import 'home_board.dart';
 import 'home_create.dart';
+import 'home_view_menu.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
 import '../ee/ui/team_address_views.dart' show EeTeamAddressBanner;
@@ -81,6 +86,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _quickAddController = QuickAddTextController();
   final _quickAddFocus = FocusNode();
   final _quickAddKey = GlobalKey();
+
+  /// OPH-398 (ADR-0062 §6): on a phone Home's local filter is a field the
+  /// list reveals when pulled down — not a magnifier in the app bar beside
+  /// the search orb. Its text lives here for the H4 reason: it is a sliver.
+  final _filterController = TextEditingController();
+  Timer? _filterDebounce;
+
+  /// The field's sliver extent at the current text scale — the offset the
+  /// phone list rests at, so the field waits just above the quick add.
+  double _filterExtent = 0;
+  late final _homeScroll = _HomeScrollController(
+    () => ref.read(homeSearchQueryProvider).trim().isEmpty ? _filterExtent : 0,
+  );
+
+  void _onFilterChanged(String value) {
+    _filterDebounce?.cancel();
+    _filterDebounce = Timer(
+      const Duration(milliseconds: 250),
+      () => ref.read(homeSearchQueryProvider.notifier).set(value.trim()),
+    );
+    setState(() {}); // the clear (×) follows the text
+  }
+
+  void _clearFilter() {
+    _filterDebounce?.cancel();
+    _filterController.clear();
+    ref.read(homeSearchQueryProvider.notifier).set('');
+    setState(() {});
+  }
 
   @override
   void initState() {
@@ -133,6 +167,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _quickAddFocus.removeListener(_keepQuickAddVisible);
     _quickAddController.dispose();
     _quickAddFocus.dispose();
+    _filterDebounce?.cancel();
+    _filterController.dispose();
+    _homeScroll.dispose();
     super.dispose();
   }
 
@@ -142,7 +179,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!_quickAddFocus.hasFocus) return;
     final context = _quickAddKey.currentContext;
     if (context == null) return; // wide layout: nothing can scroll it away
-    if (Scrollable.maybeOf(context) == null) return;
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable == null) return;
+    // OPH-398: already in full view — leave the list where it is. The phone
+    // list rests one filter-field down; aligning the bar at 10 % would pull
+    // the filter into sight (and move the bar under the finger) on every tap.
+    final box = context.findRenderObject();
+    final viewport = box == null ? null : RenderAbstractViewport.maybeOf(box);
+    if (box != null && viewport != null) {
+      final pixels = scrollable.position.pixels;
+      final atTop = viewport.getOffsetToReveal(box, 0).offset;
+      final atBottom = viewport.getOffsetToReveal(box, 1).offset;
+      if (pixels <= atTop && pixels >= atBottom) return;
+    }
     Scrollable.ensureVisible(
       context,
       duration: AwMotion.base,
@@ -221,6 +270,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // subscribes providers.
     final calendarVisible = ref.watch(homeCalendarVisibleProvider);
     final dateFormat = ref.watch(dateFormatProvider);
+    // OPH-398 (ADR-0062 §6): a phone — no rail — gets the three-target bar
+    // and the pull-down filter; wide windows keep the bar below unchanged.
+    final phone = MediaQuery.sizeOf(context).width < kAwWideBreakpoint;
+    final sort = AwSortState.parse(
+      ref.watch(tasksSortProvider),
+      kTaskSortChoices,
+    );
+    void setView(String view) {
+      // OPH-306: leaving for the board drops the tag filter. The board is
+      // the one Home view with nowhere to put the filter's bar, and an
+      // active filter whose bar nobody can see is exactly what Epic 17's
+      // rule forbids — the same reason hiding the calendar clears the
+      // selected day.
+      if (view == 'board') ref.read(tagFilterProvider.notifier).clear();
+      ref.read(homeViewProvider.notifier).set(view);
+    }
+
+    void toggleCalendar() {
+      // Hiding the calendar clears the selection: a filter you can no
+      // longer see must not keep dimming Home (feedback round 6).
+      if (calendarVisible) {
+        ref.read(selectedDayProvider.notifier).select(null);
+      }
+      ref.read(homeCalendarVisibleProvider.notifier).toggle();
+    }
+
+    final textScaler = MediaQuery.textScalerOf(context);
+    _filterExtent = _HomeFilterField.extentFor(textScaler);
 
     // OPH-213 (DESIGN §16 H1, revised): the view controls left the scroll and
     // became app-bar icons — the Notes pattern. An icon shows the view it will
@@ -244,15 +321,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         icon: Icon(
           isBoard ? Icons.view_agenda_outlined : Icons.view_kanban_outlined,
         ),
-        onPressed: () {
-          // OPH-306: leaving for the board drops the tag filter. The board is
-          // the one Home view with nowhere to put the filter's bar, and an
-          // active filter whose bar nobody can see is exactly what Epic 17's
-          // rule forbids — the same reason hiding the calendar clears the
-          // selected day.
-          ref.read(tagFilterProvider.notifier).clear();
-          ref.read(homeViewProvider.notifier).set(isBoard ? 'list' : 'board');
-        },
+        onPressed: () => setView(isBoard ? 'list' : 'board'),
       ),
       if (isBoard)
         IconButton(
@@ -270,10 +339,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         AwSortMenuButton(
           key: const Key('home-sort'),
           choices: kTaskSortChoices,
-          sort: AwSortState.parse(
-            ref.watch(tasksSortProvider),
-            kTaskSortChoices,
-          ),
+          sort: sort,
           onChanged: (next) =>
               ref.read(tasksSortProvider.notifier).set(next.encode()),
         ),
@@ -288,15 +354,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ? Icons.calendar_month
                 : Icons.calendar_month_outlined,
           ),
-          onPressed: () {
-            // Hiding the calendar clears the selection: a filter you can no
-            // longer see must not keep dimming Home (feedback round 6).
-            if (calendarVisible) {
-              ref.read(selectedDayProvider.notifier).select(null);
-            }
-            ref.read(homeCalendarVisibleProvider.notifier).toggle();
-          },
+          onPressed: toggleCalendar,
         ),
+    ];
+
+    // OPH-398 (ADR-0062 §6, R-05): a phone's bar is ⚡ + this + Settings.
+    // The magnifier is gone — the orb beside the tab bar is the one search
+    // glyph (ADR-0055) — and view, calendar, order and the board's columns
+    // are one labelled menu.
+    final phoneActions = <Widget>[
+      HomeViewMenuButton(
+        isBoard: isBoard,
+        calendarVisible: calendarVisible,
+        sortChoices: kTaskSortChoices,
+        sort: sort,
+        onView: setView,
+        onToggleCalendar: toggleCalendar,
+        onSort: (next) =>
+            ref.read(tasksSortProvider.notifier).set(next.encode()),
+        onEditColumns: () => showBoardColumnsSheet(context, ref),
+      ),
     ];
 
     // The create FAB is rendered by HomeShell's own Scaffold (OPH-101), so it
@@ -314,7 +391,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // bubble off by default, ADR-0062 #5, this is the common case).
         leadingActions: [if (!_searchOpen) const QuickAccessAppBarButton()],
         // OPH-213: the view + calendar controls, left of settings.
-        trailingActions: viewActions,
+        trailingActions: phone ? phoneActions : viewActions,
       ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -486,14 +563,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // scrolls with them (OPH-103's philosophy, finished); only the
               // app bar is pinned. The search field's sliver position is the
               // same in both modes, so it never remounts mid-typing (OPH-167).
+              // OPH-398: on a phone the list rests with the filter field just
+              // above it (`_homeScroll`); a pull reveals it, and the same pull
+              // carried on past the top refreshes (`anywhere`).
+              final filterExtent = _filterExtent;
               return AwRefresh(
                 indicatorKey: const Key('home-refresh'),
                 onRefresh: () => refreshSection(ref, AppSection.home),
+                triggerMode: phone
+                    ? RefreshIndicatorTriggerMode.anywhere
+                    : RefreshIndicatorTriggerMode.onEdge,
                 child: CustomScrollView(
                   key: const Key('home-scroll'),
+                  controller: phone ? _homeScroll : null,
                   // A short list (or the empty state) must still be pullable.
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    if (phone)
+                      SliverToBoxAdapter(
+                        child: _HomeFilterField(
+                          controller: _filterController,
+                          height: filterExtent,
+                          onChanged: _onFilterChanged,
+                          onClear: _clearFilter,
+                        ),
+                      ),
                     const SliverToBoxAdapter(child: banner),
                     SliverToBoxAdapter(
                       // The key rides a KeyedSubtree so `ensureVisible` has a
@@ -533,6 +627,22 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               context,
                               groups,
                               onTagTap: onTagTap,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // A short list still rests with the field out of sight:
+                    // the content is made at least one field taller than the
+                    // viewport, so the resting offset exists.
+                    if (phone)
+                      SliverLayoutBuilder(
+                        builder: (context, c) => SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: math.max(
+                              0,
+                              c.viewportMainAxisExtent +
+                                  filterExtent -
+                                  c.precedingScrollExtent,
                             ),
                           ),
                         ),
@@ -893,4 +1003,77 @@ class _DelayedProgressState extends State<_DelayedProgress> {
           child: LinearProgressIndicator(minHeight: 2),
         )
       : const SizedBox.shrink();
+}
+
+/// The scroll controller of Home's phone list (OPH-398): it starts with the
+/// filter field scrolled away, unless a query is live — then the field the
+/// query is typed in stays in sight. Not kept in PageStorage: a remount
+/// (board → list) comes back to the resting place, not to a stale offset.
+class _HomeScrollController extends ScrollController {
+  _HomeScrollController(this._restingOffset) : super(keepScrollOffset: false);
+
+  final double Function() _restingOffset;
+
+  @override
+  double get initialScrollOffset => _restingOffset();
+}
+
+/// Home's local filter on a phone (OPH-398, DESIGN §12 S1, §16 H5): the
+/// body-level field — never in the glass bar (G1) — that the list reveals
+/// when pulled down. Its glyph is a filter, not a magnifier: the magnifier
+/// means "search everywhere" (the orb, ADR-0055), and one glyph with two
+/// scopes is what R-05 measured.
+class _HomeFilterField extends StatelessWidget {
+  const _HomeFilterField({
+    required this.controller,
+    required this.height,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+
+  /// The sliver's whole extent ([extentFor]).
+  final double height;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  static const double _top = AwSpace.x2;
+
+  /// The field box grows with the text (one 16/24 line + 12 above and
+  /// below), never below the 48 dp target.
+  static double extentFor(TextScaler scaler) =>
+      _top + math.max(48.0, scaler.scale(16) * 1.5 + AwSpace.x6);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, _top, AwSpace.x4, 0),
+      child: SizedBox(
+        height: height - _top,
+        child: TextField(
+          key: const Key('home-search'),
+          controller: controller,
+          textInputAction: TextInputAction.search,
+          textAlignVertical: TextAlignVertical.center,
+          maxLines: 1,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            hintText: 'home.searchHint'.tr(),
+            prefixIcon: const Icon(Icons.filter_list),
+            suffixIcon: controller.text.isEmpty
+                ? null
+                : IconButton(
+                    key: const Key('home-search-clear'),
+                    tooltip: 'common.clear'.tr(),
+                    icon: const Icon(Icons.close),
+                    onPressed: onClear,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
 }
