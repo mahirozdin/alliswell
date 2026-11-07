@@ -6,7 +6,7 @@ import 'package:alliswell/src/features/ee/ui/team_chip.dart';
 import 'package:alliswell/src/features/workspaces/ui/workspace_switcher.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
-import 'package:alliswell/src/widgets/glass.dart';
+import 'package:alliswell/src/widgets/tab_capsule.dart';
 
 import 'shell_harness.dart';
 
@@ -33,7 +33,7 @@ void main() {
 
     final fab = find.byKey(const Key('ticket-new'));
     expect(fab, findsOneWidget);
-    final bar = tester.getRect(find.byType(NavigationBar));
+    final bar = tester.getRect(find.byType(AwTabCapsule));
     final button = tester.getRect(fab);
     expect(
       button.bottom,
@@ -47,25 +47,31 @@ void main() {
     expect(appRouter().state.uri.path, '/tickets/new');
   });
 
-  testWidgets('UI-AUDIT #58: six sections — the labels sit inside the '
-      'capsule\'s curve and only the selected one is written', (tester) async {
+  // OPH-396 (ADR-0062) replaced "only the selected label" with five
+  // labelled slots: the sixth section goes behind "More".
+  testWidgets('UI-AUDIT #58: six sections — five labelled slots inside the '
+      'capsule\'s curve, the last one "More"', (tester) async {
     sizeTo(tester, const Size(390, 844));
     await tester.pumpWidget(await teamApp(teamApi()));
     await tester.pumpAndSettle();
 
-    final navBar = find.byType(NavigationBar);
-    final bar = tester.widget<NavigationBar>(navBar);
-    expect(bar.destinations, hasLength(6));
+    final capsule = tester.getRect(find.byType(AwTabCapsule));
+    final labels = find.descendant(
+      of: find.byType(AwTabCapsule),
+      matching: find.byKey(const Key('tab-label')),
+    );
+    expect(labels, findsNWidgets(5));
     expect(
-      bar.labelBehavior,
-      NavigationDestinationLabelBehavior.onlyShowSelected,
+      find.descendant(
+        of: find.byType(AwTabCapsule),
+        matching: find.text('More'),
+      ),
+      findsOneWidget,
     );
-    final capsule = tester.getRect(
-      find.ancestor(of: navBar, matching: find.byType(GlassSurface)),
-    );
-    final inner = tester.getRect(navBar);
-    expect(inner.left - capsule.left, greaterThanOrEqualTo(12));
-    expect(capsule.right - inner.right, greaterThanOrEqualTo(12));
+    final first = tester.getRect(labels.first);
+    final last = tester.getRect(labels.last);
+    expect(first.left - capsule.left, greaterThanOrEqualTo(12));
+    expect(capsule.right - last.right, greaterThanOrEqualTo(12));
   });
 
   testWidgets('UI-AUDIT #58: the empty Home says its sentence where no '

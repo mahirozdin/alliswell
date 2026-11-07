@@ -21,6 +21,7 @@ import 'package:alliswell/src/search/search_recents.dart';
 import 'package:alliswell/src/search/ui/global_search_entry.dart';
 import 'package:alliswell/src/search/ui/global_search_palette.dart';
 import 'package:alliswell/src/sync/providers.dart';
+import 'package:alliswell/src/widgets/tab_capsule.dart';
 
 import '../features/auth/test_support.dart';
 import '../features/projects/fake_api.dart';
@@ -298,22 +299,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('global-search-orb')), findsOneWidget);
-    final bar = tester.getRect(find.byType(NavigationBar));
+    final bar = tester.getRect(find.byType(AwTabCapsule));
     final orb = tester.getRect(find.byKey(const Key('global-search-orb')));
     expect(orb.left, greaterThanOrEqualTo(bar.right));
     expect((orb.center.dy - bar.center.dy).abs(), lessThan(8));
-    // The selected label stays on one line in a slot narrower than the
-    // word (TR "Ana Sayfa" wrapped under the pill and was clipped).
-    final label = tester.widget<RichText>(
-      find
-          .descendant(
-            of: find.descendant(
-              of: find.byType(NavigationBar),
-              matching: find.text('Home'),
-            ),
-            matching: find.byType(RichText),
-          )
-          .first,
+    // Every tab's label stays on one line (TR "Ana Sayfa" wrapped under the
+    // pill and was clipped); OPH-396 writes all of them.
+    final label = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(AwTabCapsule),
+        matching: find.text('Home'),
+      ),
     );
     expect(label.softWrap, isFalse);
     expect(label.maxLines, 1);

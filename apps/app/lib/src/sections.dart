@@ -21,8 +21,10 @@ enum AppSection {
     titleKey: 'nav.inbox',
     descriptionKey: 'nav.inboxDesc',
     path: '/inbox',
-    icon: Icons.inbox_outlined,
-    selectedIcon: Icons.inbox,
+    // OPH-396 (U-46): a light bulb — the section is "Fikirler" (ideas) in
+    // Turkish, and a tray read as an e-mail inbox to two personas.
+    icon: Icons.lightbulb_outline,
+    selectedIcon: Icons.lightbulb,
   ),
   projects(
     titleKey: 'nav.projects',
@@ -42,8 +44,10 @@ enum AppSection {
     titleKey: 'nav.files',
     descriptionKey: 'nav.filesDesc',
     path: '/files',
-    icon: Icons.folder_copy_outlined,
-    selectedIcon: Icons.folder_copy,
+    // OPH-396 (U-46): a paperclip, not a second folder — Projects' folder
+    // and this one were the same silhouette at 24 px in an unlabelled bar.
+    icon: Icons.attach_file,
+    selectedIcon: Icons.attach_file,
   ),
 
   /// The service desk (EE-084). LAST on purpose: the branch list and this enum
@@ -134,3 +138,25 @@ int branchIndexFor(List<AppSection> visible, int destinationIndex) =>
 /// but must not crash if it does.
 int destinationIndexFor(List<AppSection> visible, int branchIndex) =>
     visible.indexOf(AppSection.values[branchIndex]);
+
+// ── The phone capsule's slots (OPH-396, ADR-0062 §2) ─────────────────────────
+
+/// The phone capsule never holds more than five slots: past five sections
+/// each slot would fall under DESIGN G4's 48 dp at 360 dp.
+const int kAwMaxPhoneTabs = 5;
+
+/// Which drawn sections get their own slot on a phone, and which move behind
+/// the last slot, "More". Up to five every section is a slot; past five the
+/// first four keep theirs and the rest open from "More" — in enum order, so
+/// the sections people use most (Home, Inbox, Projects, Notes) never move.
+({List<AppSection> direct, List<AppSection> overflow}) phoneTabLayout(
+  List<AppSection> visible,
+) {
+  if (visible.length <= kAwMaxPhoneTabs) {
+    return (direct: visible, overflow: const []);
+  }
+  return (
+    direct: visible.sublist(0, kAwMaxPhoneTabs - 1),
+    overflow: visible.sublist(kAwMaxPhoneTabs - 1),
+  );
+}

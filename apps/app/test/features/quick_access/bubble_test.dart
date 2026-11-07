@@ -21,6 +21,7 @@ import 'package:go_router/go_router.dart';
 import 'package:alliswell/src/screens/settings_screen.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 import 'package:alliswell/src/widgets/glass.dart';
+import 'package:alliswell/src/widgets/tab_capsule.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -334,7 +335,7 @@ void main() {
     }
 
     Future<void> openSettings(WidgetTester tester) async {
-      GoRouter.of(tester.element(find.byType(NavigationBar))).push('/settings');
+      GoRouter.of(tester.element(find.byType(AwTabCapsule))).push('/settings');
       await tester.pumpAndSettle();
     }
 
@@ -343,7 +344,7 @@ void main() {
           '(${brightness.name})', (tester) async {
         await pumpPhone(tester, brightness: brightness);
         final button = tester.getRect(bubble);
-        final bar = tester.getRect(find.byType(NavigationBar));
+        final bar = tester.getRect(find.byType(AwTabCapsule));
         expect(
           button.overlaps(bar),
           isFalse,

@@ -148,7 +148,7 @@ void main() {
     final homeIcon = tester.getCenter(
       find.descendant(
         of: find.byType(NavigationRail),
-        matching: find.byIcon(Icons.inbox_outlined),
+        matching: find.byIcon(Icons.lightbulb_outline),
       ),
     );
     final approvalsIcon = tester.getCenter(

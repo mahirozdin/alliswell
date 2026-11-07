@@ -106,7 +106,9 @@
     "files": "Dosyalar",
     "filesDesc": "Alanındaki her dosya — klasörler, yüklemeler, ekler",
     "tickets": "Talepler",
-    "ticketsDesc": "Birimin gelen kutusu"
+    "ticketsDesc": "Birimin gelen kutusu",
+    "more": "Diğer",
+    "moreTitle": "Diğer bölümler"
   },
   "auth": {
     "signInTitle": "Alanına giriş yap",

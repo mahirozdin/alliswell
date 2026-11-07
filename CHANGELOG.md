@@ -30,6 +30,10 @@ This file holds the unreleased changes and the latest release; at each release t
   with a tap above it even with the keyboard up, the alarm log reads in words with the raw line
   under "Details", a connector address on localhost carries a warning, and the app calls itself
   source-available rather than open source.
+- **The phone's bottom bar names every tab** and no longer shifts when you pick one: five equal
+  tabs that stay inside the bar at every phone width, a "More" tab when there is a sixth section,
+  a light bulb for Inbox and a paperclip for Files. With very large text, press and hold a tab to
+  see its name.
 
 ## [1.18.2] — 2026-10-30
 

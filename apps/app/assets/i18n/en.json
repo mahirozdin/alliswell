@@ -107,7 +107,9 @@
     "files": "Files",
     "filesDesc": "Every file in your space — folders, uploads, attachments",
     "tickets": "Requests",
-    "ticketsDesc": "The unit's inbox"
+    "ticketsDesc": "The unit's inbox",
+    "more": "More",
+    "moreTitle": "More sections"
   },
   "auth": {
     "signInTitle": "Sign in to your space",

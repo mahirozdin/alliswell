@@ -36,21 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-396 — Telefon alt barı: AwTabCapsule (B+)
-
-R-01, R-02, R-04, A-01, A-02, U-01; [ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md).
-
-- [ ] `AwTabCapsule` M3 `NavigationBar`'ın yerine: 64 pt kapsül, beş eşit yuva (her biri ≥48 dp/44 pt),
-      ikon 22–24 + 11/13 w600 etiket her sekmede; seçimde hiçbir öğe yer değiştirmez; etiket kapsül
-      dışına çıkmaz (`overflow: visible` kalkar).
-- [ ] Etiket ölçeği 1.3'te kısıtlanır; daha büyükte uzun basınca büyük etiket balonu. Semantik: seçili,
-      "sekme 2 / 5".
-- [ ] 6. bölüm (uzantı) varsa 5. yuva "Diğer" ve bir sayfa açar. Fikirler ikonu ampul; Projeler ve
-      Dosyalar ayırt edilir.
-- [ ] DESIGN §43 + ADR-0062'nin güncellediği §23 Q4 / §24 AI1 satırları.
-- **Kabul:** golden/ölçüm matrisi; sekme ≥48 dp her genişlikte (test); etiket kapsül içinde (test).
-- **Cihazda bakılacak:** iPhone 393/430 ve Android 360/412'de bar; 2.0× metinde uzun basma balonu.
-
 ### OPH-397 — Yüzen öğeler, ızgara, alt örtü, Hızlı Erişim girişi
 
 R-03, R-06, R-07, R-12, A-03, U-02, U-03; ADR-0062.

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/sections.dart';
@@ -71,6 +72,34 @@ void main() {
       expect(branchIndexFor(visible, projects), projects + 1);
       // And a branch nobody draws answers -1 rather than throwing.
       expect(destinationIndexFor(visible, projects), -1);
+    });
+  });
+
+  // OPH-396 (U-46): in a bar people read at a glance, two sections must not
+  // share a silhouette — Projects' folder and Files' folder_copy did.
+  group('section icons', () {
+    test('no two sections share a glyph', () {
+      final glyphs = {
+        for (final s in AppSection.values) ...[
+          s.icon.codePoint,
+          s.selectedIcon.codePoint,
+        ],
+      };
+      final perSection = {
+        for (final s in AppSection.values)
+          s: {s.icon.codePoint, s.selectedIcon.codePoint},
+      };
+      expect(
+        glyphs.length,
+        perSection.values.fold<int>(0, (n, set) => n + set.length),
+      );
+    });
+
+    test('Inbox ("Fikirler") is a light bulb; Files is not a folder', () {
+      expect(AppSection.inbox.icon, Icons.lightbulb_outline);
+      expect(AppSection.inbox.selectedIcon, Icons.lightbulb);
+      expect(AppSection.files.icon, isNot(Icons.folder_copy_outlined));
+      expect(AppSection.files.icon, isNot(Icons.folder_outlined));
     });
   });
 }

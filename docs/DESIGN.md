@@ -148,7 +148,7 @@ Tabular figures for day numbers and timers.
   errors ALWAYS a Retry action. Inline form errors use `AwInlineError`
   (icon + errorContainer band above the submit button).
 - **Navigation floats** (Liquid Glass functional layer, v2): on phones
-  (<800 px) the `NavigationBar` lives in a **floating glass capsule**
+  (<800 px) the `AwTabCapsule` (§43) is a **floating glass capsule**
   (`GlassSurface(floating: true, radius: AwRadius.pill)`, 12 px side/bottom
   margins, `extendBody: true` so content scrolls and peeks beneath it); on
   wide layouts (≥800 px) the `NavigationRail` lives in a **floating glass
@@ -983,7 +983,7 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   that band is the dock: the button rests in the glass bar's own row, centred on it, on its
   edge (right by default), and **the layout keeps that lane free** rather than the button
   covering whatever is there. The shell's capsule ends a gap short of it (`AwBubbleDock.width`,
-  72 px on a phone; past four sections only the selected tab is labelled). A page OUTSIDE the
+  72 px on a phone). A page OUTSIDE the
   shell — a root-navigator page route, go_router's or a pushed one — has no bar and so no dock:
   while one is on top a docked button steps aside (`AwModalRouteObserver.outsideShell`) and the
   page keeps the whole screen (OPH-391, E-09; until then it ended a lane above the bottom, a
@@ -1002,7 +1002,10 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on
   auth/onboarding screens, the bubble is hidden entirely — a floating control over
-  a modal is two competing surfaces.
+  a modal is two competing surfaces. _(Amended by ADR-0062 §5: on phones the bubble is off by
+  default and, when turned on, no longer docks in the bar's row — OPH-397 builds it; until then
+  the docked factory position above still ships, and with it the capsule's slots (§43) are
+  narrower than 48 dp.)_
 - **Q4a — The recede is paint, never the hit box (OPH-196).** Q4's two clauses
   fight: a 56 px control translated half off-screen leaves a 28 px target and
   breaks §5's 44 px floor. So the gesture/`Semantics` box stays fully on-screen at
@@ -1092,7 +1095,9 @@ opens I can lift my finger and it stays open.")_
 - **AI1 — Two FABs, two corners, forever.** The quick-create FAB stays bottom-right;
   the AI FAB lives bottom-left. Neither moves, neither replaces the other, and no
   screen shows a third floating action. On rail layouts the AI entry sits at the
-  rail's bottom; desktop gets click-to-talk plus a keyboard shortcut.
+  rail's bottom; desktop gets click-to-talk plus a keyboard shortcut. _(Amended by
+  ADR-0062 §3: on phones the microphone joins "+" in one cluster on the right and the
+  bottom-left corner stays empty; AI2 is unchanged. OPH-397 builds it.)_
 - **AI2 — The gesture machine is fixed:** press-and-hold (≥250 ms) opens the bubble
   and records with a live partial transcript; dragging left ≥80 px cancels (haptic);
   **releasing the finger locks recording and keeps the bubble open** — lift-to-lock,
@@ -1668,7 +1673,7 @@ One palette finds tasks, projects, notes, tags and file names from the replica, 
 
 | # | Rule | Why |
 | --- | --- | --- |
-| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 64 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row; no app-bar icon. Below 64 px per tab only the selected label is written, on ONE line (TR "Ana Sayfa" never wraps under the pill). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
+| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 64 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row; no app-bar icon. Every tab is labelled, on ONE line (§43, ADR-0062 — until OPH-396 only the selected one was below 64 px per tab). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
 | P2 | **Surface.** A SOLID dialog (`dialogTheme`, G1) on the root navigator: wide (≥ 600) top-aligned 72 px down, ≤ 640 wide and ≤ min(560, 70 %) tall, radius `xl`; phone full screen with a back button beside the field. The field is the theme's filled input (G3) with a search prefix and a clear suffix. | Glass under body text fails contrast; the root navigator keeps it above the glass bar. |
 | P3 | **Groups and rows.** Fixed order Tasks · Projects · Notes · Tags · Files, ≤ 5 rows each; the header (`labelLarge`, `onSurfaceVariant`, `Semantics(header)`) adds "5 of 23" when there are more. Rows ≥ 48 px: kind icon (`onSurfaceVariant`; files by type), one-line title, a context line (`bodySmall`, `onSurfaceVariant`) saying WHERE it hit (S3: `#tag`, body snippet) or the project; a completed task shows a check icon and "Completed", an archived project "Archived"; a tag row says "Shows Home filtered by this tag". | One glance tells what and where; G5 — never colour alone. |
 | P4 | **Keyboard and active row.** The field keeps focus: ↑/↓ move the active row (wrapping, scrolled into view), Enter opens it, Esc closes. The active row has a `surfaceContainerHighest` fill AND a ⏎ glyph, and reports `selected` to screen readers; hover moves it. A live region reads the result count. | Keyboard-only use, and a selection that is not colour-only (G5). |
@@ -1702,3 +1707,20 @@ Shown when sign-in (e-mail + password, Google or Apple) answers `AUTH_MFA_REQUIR
 | T2 | **One field for both kinds of code.** Text keyboard, capitals, no autocorrect, `oneTimeCode` autofill, 32 characters; the helper line says a recovery code works too. | The server tells them apart; asking which one it is would be a question the person cannot answer quickly. |
 | T3 | **A wrong code keeps the dialog open** with an `AwInlineError` ("That code is not right…"); any other refusal (rate limit, policy) uses the shared error sentence in the same place. Cancel closes it and leaves the sign-in screen exactly as it was, with no error. The screen's own spinner stops when the dialog opens; the Verify button carries the progress. | One retype, not a new sign-in; backing out is not a failure. |
 | T4 | **Both themes are shot:** `second-factor-prompt-*` and `second-factor-wrong-code-*` (`test/features/auth/second_factor_screenshot_test.dart`, `shotLocale=tr` for Turkish); only existing tokens. | Rule 11. |
+
+## 43. The phone tab capsule (OPH-396)
+
+The phone's bottom navigation is `AwTabCapsule` (`widgets/tab_capsule.dart`), not Material 3's
+`NavigationBar` ([ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md)). Rails
+(≥ 800 px) are unchanged.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| N1 | **A 64 px glass capsule, equal slots.** `GlassSurface(floating)`, radius `pill`, 12 px inner side padding (concentric with the 20 px selection), at most five slots of equal width, each ≥ 48 dp from 360 dp up with the search orb beside it. | G4 at every phone width; nothing touches the clipped curve (R-02). |
+| N2 | **Every slot is labelled; selecting moves nothing.** Icon 22 over an 11/13 w600 label, letter spacing 0, one shared glyph centre line. The selection is a 40 px `primaryContainer` pill the width of its slot (`onPrimaryContainer` icon and label; others `onSurfaceVariant` on glass, the measured pairs); it fades in `AwMotion.fast`, instantly with reduced motion. Selected = filled glyph. | One baseline (R-01); unlabelled icons could not be told apart (U-01). |
+| N3 | **A label never leaves its slot.** One line, no wrap; a label wider than its slot is scaled down to fit (TR "Ana Sayfa" at 360 dp), never ellipsized mid-word and never `overflow: visible`. Its box has the same height in every slot. | "Dosyala", "Taleple" (E-11). |
+| N4 | **Label scaling stops at 1.3.** Above 1.3× text a long press shows the name and glyph in a large solid bubble above the capsule (iOS's large content viewer); moving the finger follows the slots and lifting it selects the one under it. | The capsule cannot grow; the name must still be readable. |
+| N5 | **Past five sections the fifth slot is "More"** (`nav.more`), which opens a sheet with the remaining sections (icon, name, line; the open one marked) and is selected while one of them is open (`phoneTabLayout`: the first four keep their slots). | HIG/M3: 3–5 destinations; the grid never compresses. |
+| N6 | **Distinct glyphs.** Inbox (TR "Fikirler") is a light bulb; Files a paperclip, not a second folder beside Projects (`sections_test`). | Two personas read the twin folders as one (U-46). |
+| N7 | **Semantics.** One node per slot: button, selected state, label "Home\nTab 1 of 5" (`MaterialLocalizations.tabLabel`). | The same reading `NavigationBar` gave. |
+| N8 | **Measured, not eyeballed:** `test/features/shell/tab_capsule_test.dart` runs 360/375/393/412/430 × 1.0/1.3/2.0 × TR/EN × light/dark × 5/6 sections and asserts slot width, equal widths, label containment in the capsule's curve, one glyph line and the 1.3 clamp; `phone_home_*` in `test/design_screenshots_test.dart` shoots it. | R-13: the shots never saw the bar's failures. |

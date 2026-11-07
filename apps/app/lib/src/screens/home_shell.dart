@@ -48,6 +48,8 @@ import '../widgets/document_surface.dart';
 import '../widgets/fab_clearance.dart';
 import '../widgets/glass.dart';
 import '../widgets/refreshable.dart';
+import '../widgets/sheets.dart';
+import '../widgets/tab_capsule.dart';
 
 /// Adaptive shell: floating Liquid Glass chrome — a glass rail panel on wide
 /// layouts (desktop/web/tablet), a glass capsule bottom bar on narrow ones
@@ -84,7 +86,11 @@ class HomeShell extends ConsumerWidget {
     final section = step.section;
     if (section == null) return null;
     final keys = _navKeys[section]!;
-    return _rectOf(keys.icon) ?? _rectOf(keys.selected);
+    // A section behind the phone's "More" slot points at that slot.
+    return _rectOf(keys.icon) ??
+        _rectOf(keys.selected) ??
+        _rectOf(_moreKey) ??
+        _rectOf(_moreSelectedKey);
   }
 
   void _goBranch(int index) {
@@ -169,6 +175,103 @@ class HomeShell extends ConsumerWidget {
       ),
       AppSection.inbox || AppSection.files => null,
     };
+  }
+
+  /// The phone's [AwTabCapsule] (OPH-396, ADR-0062): every drawn section
+  /// up to five, or the first four and "More" (`phoneTabLayout`).
+  Widget _phoneTabs(BuildContext context, List<AppSection> visible) {
+    final layout = phoneTabLayout(visible);
+    final current = AppSection.values[navigationShell.currentIndex];
+    final direct = layout.direct.indexOf(current);
+    final hasMore = layout.overflow.isNotEmpty;
+    final selected = direct >= 0
+        ? direct
+        : hasMore && layout.overflow.contains(current)
+        ? layout.direct.length
+        : -1;
+    return AwTabCapsule(
+      selectedIndex: selected,
+      onSelected: (i) {
+        if (i < layout.direct.length) {
+          _goBranch(layout.direct[i].index);
+        } else {
+          unawaited(_showMoreSections(context, layout.overflow, current));
+        }
+      },
+      items: [
+        for (final section in layout.direct)
+          AwTabItem(
+            icon: section.icon,
+            selectedIcon: section.selectedIcon,
+            label: section.title,
+            iconKey: _navKeys[section]!.icon,
+            selectedIconKey: _navKeys[section]!.selected,
+          ),
+        if (hasMore)
+          AwTabItem(
+            icon: Icons.more_horiz,
+            selectedIcon: Icons.more_horiz,
+            label: 'nav.more'.tr(),
+            iconKey: _moreKey,
+            selectedIconKey: _moreSelectedKey,
+          ),
+      ],
+    );
+  }
+
+  static final GlobalKey _moreKey = GlobalKey(debugLabel: 'nav-more');
+  static final GlobalKey _moreSelectedKey = GlobalKey(
+    debugLabel: 'nav-sel-more',
+  );
+
+  /// "More" opens the sections that have no slot of their own (ADR-0062 §2):
+  /// a sheet with each one's icon, name and line, the open one marked.
+  Future<void> _showMoreSections(
+    BuildContext context,
+    List<AppSection> sections,
+    AppSection current,
+  ) async {
+    final picked = await showAwSheet<AppSection>(
+      context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          key: const Key('nav-more-sheet'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AwSpace.x5,
+                0,
+                AwSpace.x5,
+                AwSpace.x2,
+              ),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  'nav.moreTitle'.tr(),
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                ),
+              ),
+            ),
+            for (final section in sections)
+              ListTile(
+                key: Key('nav-more-${section.name}'),
+                leading: Icon(
+                  section == current ? section.selectedIcon : section.icon,
+                ),
+                title: Text(section.title),
+                subtitle: Text(section.description),
+                selected: section == current,
+                onTap: () => Navigator.of(sheetContext).pop(section),
+              ),
+            const SizedBox(height: AwSpace.x2),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) _goBranch(picked.index);
   }
 
   @override
@@ -438,72 +541,9 @@ class HomeShell extends ConsumerWidget {
               // (DESIGN §40 P1) — glass beside glass, one row of chrome.
               child: Row(
                 children: [
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, bar) => GlassSurface(
-                        floating: true,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(AwRadius.pill),
-                        ),
-                        // OPH-359 (UI-AUDIT #58): the capsule's pill corners
-                        // clipped the outermost labels ("Ana Sayfa",
-                        // "Talepler"), so the bar sits inside the curve.
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AwSpace.x3,
-                          ),
-                          child: NavigationBar(
-                            // Every label is written while each tab has room
-                            // for one; below that only the selected one is,
-                            // and the rest keep their icon and tooltip. Width
-                            // rather than count since OPH-374: the search
-                            // button takes a tab's width of the row, as the
-                            // docked Quick Access bubble does (OPH-362).
-                            labelBehavior:
-                                (bar.maxWidth - 2 * AwSpace.x3) /
-                                        visibleSections.length >=
-                                    kAwBarLabelSlot
-                                ? NavigationDestinationLabelBehavior.alwaysShow
-                                : NavigationDestinationLabelBehavior
-                                      .onlyShowSelected,
-                            selectedIndex: destinationIndexFor(
-                              visibleSections,
-                              navigationShell.currentIndex,
-                            ).clamp(0, visibleSections.length - 1),
-                            onDestinationSelected: (i) =>
-                                _goVisible(visibleSections, i),
-                            destinations: [
-                              for (final section in visibleSections)
-                                // A tab narrower than its label (TR "Ana
-                                // Sayfa" in a ~54 px slot beside the search
-                                // button) must not wrap the selected label
-                                // onto a second, clipped line. One line; in
-                                // `onlyShowSelected` the neighbours carry no
-                                // label for it to run into. Per destination:
-                                // the bar's Material resets any style above.
-                                DefaultTextStyle.merge(
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.visible,
-                                  child: NavigationDestination(
-                                    icon: KeyedSubtree(
-                                      key: _navKeys[section]!.icon,
-                                      child: Icon(section.icon),
-                                    ),
-                                    selectedIcon: KeyedSubtree(
-                                      key: _navKeys[section]!.selected,
-                                      child: Icon(section.selectedIcon),
-                                    ),
-                                    label: section.title,
-                                    tooltip: section.title,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
+                  // OPH-396 (ADR-0062): equal labelled slots; a sixth
+                  // section puts "More" in the fifth.
+                  Expanded(child: _phoneTabs(context, visibleSections)),
                   const SizedBox(width: AwSpace.x2),
                   const AwGlobalSearchOrb(),
                 ],
@@ -713,10 +753,6 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 }
 
 const _shareStatusBudget = Duration(seconds: 2);
-
-/// The narrowest tab that still writes its label (OPH-374): "Ana Sayfa" and
-/// "Projeler" at the bar's label size fit 64 px; below it they ellipsize.
-const double kAwBarLabelSlot = 64;
 
 /// The phone bar's outer margins: [AwSpace.x3] each side, and on the side the
 /// Quick Access bubble docks, the bubble's lane instead (OPH-362).
