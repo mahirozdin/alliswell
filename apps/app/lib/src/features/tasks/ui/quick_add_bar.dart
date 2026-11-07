@@ -352,6 +352,10 @@ class _SubmitButton extends StatelessWidget {
       child: Semantics(
         button: true,
         label: 'task.addTask'.tr(),
+        // excludeSemantics drops the InkResponse's own tap action with its
+        // node, so the one button node carries it — or a screen reader could
+        // announce ↑ but never press it (E35 G-B review r1).
+        onTap: onPressed,
         excludeSemantics: true,
         child: InkResponse(
           key: const Key('quick-add-submit'),

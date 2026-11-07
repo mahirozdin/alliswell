@@ -1,11 +1,13 @@
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/day_boundary.dart';
+import 'package:alliswell/src/features/tasks/data/quick_add_apply.dart';
 import 'package:alliswell/src/features/tasks/ui/quick_add_bar.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
@@ -14,6 +16,7 @@ import 'package:alliswell/src/theme/theme.dart';
 Future<void> _pumpBar(
   WidgetTester tester, {
   Future<void> Function(String text)? onParse,
+  Future<void> Function(QuickAddSubmission submission)? onAdd,
   bool parseProject = false,
 }) async {
   SharedPreferences.setMockInitialValues({});
@@ -27,7 +30,7 @@ Future<void> _pumpBar(
         home: Scaffold(
           body: QuickAddBar(
             hintText: 'Add',
-            onAdd: (_) async {},
+            onAdd: onAdd ?? (_) async {},
             onParse: onParse,
             parseProject: parseProject,
           ),
@@ -156,6 +159,28 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(submit, findsNothing);
     expect(parse, findsNothing);
+  });
+
+  testWidgets('E35 G-B review r1: a screen reader can activate ↑ — its one '
+      'button node carries the tap action and adds the task', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final added = <String>[];
+    await _pumpBar(tester, onAdd: (s) async => added.add(s.raw));
+    await tester.tap(find.byType(TextField));
+    await _type(tester, 'süt al');
+    final node = tester.getSemantics(submit);
+    final data = node.getSemanticsData();
+    expect(data.flagsCollection.isButton, isTrue);
+    expect(
+      data.hasAction(SemanticsAction.tap),
+      isTrue,
+      reason: 'VoiceOver/TalkBack activate a button through its tap action',
+    );
+    node.owner!.performAction(node.id, SemanticsAction.tap);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(added, ['süt al']);
+    semantics.dispose();
   });
 
   testWidgets('without AI, typing brings ↑ alone', (tester) async {
