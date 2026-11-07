@@ -198,13 +198,15 @@ void main() {
             expect(s.letterSpacing, awTracking(size, apple: apple));
           }
 
-          spec(r.sectionLabel, 15, 20, FontWeight.w600);
+          spec(r.sectionLabel, 15, 20, FontWeight.w700);
+          spec(r.dayNumber, 17, 22, FontWeight.w600);
           spec(r.meta, 13, 18, FontWeight.w400);
           spec(r.metaStrong, 13, 18, FontWeight.w500);
           spec(r.rowTitle, 16, 22, FontWeight.w400);
           const tabular = FontFeature.tabularFigures();
           expect(r.sectionLabel.fontFeatures, contains(tabular));
           expect(r.meta.fontFeatures, contains(tabular));
+          expect(r.dayNumber.fontFeatures, contains(tabular));
           expect(r.tracking(11), awTracking(11, apple: apple));
         }
       });

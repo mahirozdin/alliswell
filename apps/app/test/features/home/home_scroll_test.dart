@@ -139,9 +139,13 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(AllisWellApp)),
     );
+    // OPH-401: a phone opens on the week strip — pick a day in it.
     final today = DateTime.now();
-    final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
-    final target = DateTime(today.year, today.month, targetDay);
+    final target = DateTime(
+      today.year,
+      today.month,
+      today.day + (today.weekday == DateTime.sunday ? -1 : 1),
+    );
     // By full date, not by number: the grid shows adjacent months, so "7" is
     // two cells whenever the window reaches next month's 7th.
     await tester.tap(

@@ -173,7 +173,14 @@ void main() {
       expect(find.text('Plan the offsite'), findsOneWidget);
       expect(find.text('Book the room'), findsNothing);
       expect(find.text('Send the invites'), findsNothing);
-      expect(find.textContaining('No date · 1'), findsOneWidget);
+      // OPH-401: the header's count is its own text.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('home-section-noDate')),
+          matching: find.text('1'),
+        ),
+        findsOneWidget,
+      );
 
       await tester.tap(find.text('Plan the offsite'));
       await tester.pumpAndSettle();

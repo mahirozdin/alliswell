@@ -206,6 +206,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
     required this.meta,
     required this.metaStrong,
     required this.rowTitle,
+    required this.dayNumber,
   });
 
   /// Builds the roles for a theme whose body ink is [ink].
@@ -223,18 +224,19 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
     final meta = awTabular(style(13, 18, FontWeight.w400));
     return AwTextRoles(
       apple: apple,
-      sectionLabel: awTabular(style(15, 20, FontWeight.w600)),
+      sectionLabel: awTabular(style(15, 20, FontWeight.w700)),
       meta: meta,
       metaStrong: meta.copyWith(fontWeight: FontWeight.w500),
       rowTitle: style(16, 22, FontWeight.w400),
+      dayNumber: awTabular(style(17, 22, FontWeight.w600)),
     );
   }
 
   /// Whether tracking follows Apple's table (see [awTracking]).
   final bool apple;
 
-  /// A list section's header ("Overdue · 3"): 15/20 w600, sentence case,
-  /// tabular count.
+  /// A list section's header ("Overdue  3"): 15/20 w700 (OPH-401, DESIGN
+  /// §47 S1), sentence case, tabular count.
   final TextStyle sectionLabel;
 
   /// A row's meta line (date · repeat · alarm): 13/18 w400, tabular.
@@ -245,6 +247,9 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
 
   /// A task or note row's title: 16/22 w400.
   final TextStyle rowTitle;
+
+  /// A day number in Home's week strip (DESIGN §47 W2): 17/22 w600, tabular.
+  final TextStyle dayNumber;
 
   /// Tracking for a size this theme draws that is not one of its roles (a
   /// fixed-size bar label).
@@ -260,12 +265,14 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
     TextStyle? meta,
     TextStyle? metaStrong,
     TextStyle? rowTitle,
+    TextStyle? dayNumber,
   }) => AwTextRoles(
     apple: apple ?? this.apple,
     sectionLabel: sectionLabel ?? this.sectionLabel,
     meta: meta ?? this.meta,
     metaStrong: metaStrong ?? this.metaStrong,
     rowTitle: rowTitle ?? this.rowTitle,
+    dayNumber: dayNumber ?? this.dayNumber,
   );
 
   @override
@@ -277,6 +284,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
       meta: TextStyle.lerp(meta, other.meta, t)!,
       metaStrong: TextStyle.lerp(metaStrong, other.metaStrong, t)!,
       rowTitle: TextStyle.lerp(rowTitle, other.rowTitle, t)!,
+      dayNumber: TextStyle.lerp(dayNumber, other.dayNumber, t)!,
     );
   }
 }

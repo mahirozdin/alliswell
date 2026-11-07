@@ -36,16 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-401 — Ana Sayfa: hafta şeridi, bölüm başlıkları, hızlı ekleme
-
-U-04, U-13, C-06, R-11; metin persona Ek A-67.
-
-- [ ] Telefonda (<600 pt) takvim varsayılan hafta şeridi; ay bir dokunuşla; tercih saklanır.
-- [ ] Bölüm başlıkları 15/20 w700 + ayrı sayaç + katlanabilir.
-- [ ] Hızlı ekleme boşken sağda kontrol yok, yazınca ✨ ve ↑; "?" odakta ipucu çip şeridi; süs "+" kalkar.
-- [ ] Gönderince "Eklendi: {başlık} · {zaman}" + "Geri al", satır vurgulanır ve görünür olur.
-- **Kabul:** widget testleri; demo verisinde ilk ekranda Geciken + Bugün'den ≥3 satır.
-
 ### OPH-402 — Mikrofon: sağlayıcı yokken dikte
 
 U-07, U-14; metinler persona Ek A-66, A-07.

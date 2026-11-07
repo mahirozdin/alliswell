@@ -285,7 +285,12 @@ void main() {
     await tester.pumpAndSettle();
     // A full-view bar is not "kept visible" by scrolling: the list stays put
     // and the field above it stays out of sight.
-    expect(tester.getRect(find.byKey(const Key('home-quick-add'))), before);
+    // OPH-401: focus grows the bar downwards (its examples strip); its top
+    // does not move.
+    expect(
+      tester.getRect(find.byKey(const Key('home-quick-add'))).top,
+      before.top,
+    );
     expect(find.byKey(const Key('home-search')).hitTestable(), findsNothing);
   });
 

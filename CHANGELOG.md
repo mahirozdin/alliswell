@@ -52,6 +52,10 @@ This file holds the unreleased changes and the latest release; at each release t
   under the title. Icons appear only when something is out of the ordinary, such as a high
   priority, a status other than open, or a reminder that will not ring through Silent. A pasted
   link reads as "site › path", and with large text the row stacks instead of squeezing the title.
+- **Home shows more of your day on a phone**: the calendar opens as one week, with the month one
+  tap away (your choice is kept). Section headings are bolder, show their count apart, and fold
+  with a tap. The quick-add box stays plain until you type, shows examples when you tap it, and
+  after adding says "Added: … · Undo", highlights the new task and scrolls to it.
 
 ## [1.18.2] — 2026-10-30
 

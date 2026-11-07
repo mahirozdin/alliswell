@@ -92,14 +92,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Home is the initial section. No date now sits directly under Overdue.
-    expect(find.textContaining('Overdue ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-overdue')), findsOneWidget);
     expect(find.text('Gecikmiş iş'), findsOneWidget);
-    expect(find.textContaining('No date ·'), findsOneWidget);
-    expect(find.textContaining('Today ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-noDate')), findsOneWidget);
+    expect(find.byKey(const Key('home-section-today')), findsOneWidget);
 
     // Scroll the far group into view; the 30-day horizon keeps '+40d' off Home.
     await tester.dragUntilVisible(
-      find.textContaining('Next 30 days ·'),
+      find.byKey(const Key('home-section-next30Days')),
       find.byType(ListView),
       const Offset(0, -120),
     );
@@ -157,7 +157,7 @@ void main() {
     await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Selected day ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-selectedDay')), findsOneWidget);
     expect(find.text('Seçilen gün işi'), findsOneWidget);
     // Today is a current debt, not a future plan — it must never look
     // disabled while some other day is selected (feedback round 6).
@@ -166,7 +166,7 @@ void main() {
       find.byType(ListView),
       const Offset(0, -120),
     );
-    expect(find.textContaining('Today ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-today')), findsOneWidget);
     // OPH-301: recession is the CARD'S COLOUR now, not an `Opacity` layer over
     // the row. These assertions used to read the wrapper's alpha, which is
     // exactly why nothing noticed that the alpha put the text at 2.13:1 —
@@ -205,7 +205,7 @@ void main() {
     // Tapping the same day again clears the selection.
     await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Selected day ·'), findsNothing);
+    expect(find.byKey(const Key('home-section-selectedDay')), findsNothing);
   });
 
   testWidgets('home quick-add chains rapid entries without losing focus', (
@@ -238,7 +238,7 @@ void main() {
     expect(find.text('Birinci'), findsOneWidget);
     expect(find.text('İkinci'), findsOneWidget);
     // Dateless quick adds land in the No date group, visible immediately.
-    expect(find.textContaining('No date ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-noDate')), findsOneWidget);
     expect(api.tasks.every((t) => t['dueAt'] == null), isTrue);
     // Skipping the date skips the derived reminder too — but the round-14
     // creation defaults (medium priority, urgent alarm on) always apply.
@@ -286,7 +286,7 @@ void main() {
       api.tasks.single['remindAt'] as String,
     ).toLocal();
     expect(due.difference(remind), const Duration(hours: 1));
-    expect(find.textContaining('Selected day ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-selectedDay')), findsOneWidget);
     expect(find.text('Seçili güne iş'), findsOneWidget);
   });
 

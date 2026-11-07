@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Ana Sayfa ilk ekranı (2026-11-07)
+
+- OPH-401 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa hafta şeridiyle açılıyor (bugün dolu mavi daire, görev noktası), "Ayı göster" ayı açıyor ve uygulama yeniden açılınca seçim kalıyor; ilk ekranda Geciken satırı ve altındaki bölümler görünüyor. Bölüm başlığına dokununca bölüm katlanıp açılıyor, ok dönüyor; VoiceOver/TalkBack "Geciken bölümünü daralt, N görev" okuyor. Hızlı eklemeye dokununca altta örnek şeridi + "Daha fazla", yazınca ✨ (AI varsa) ve mavi ↑ geliyor; gönderince "Eklendi: … · Geri al" 3 sn görünüyor, satır kısa süre vurgulanıyor, tarihsiz görevde liste ona kayıyor ve klavye açıkken hızlı ekleme alanı yazmaya devam edilince geri geliyor. **Metin boyutu en büyük**: şeritte rakamlar dairenin içinde.
+
 ## Görev satırı (2026-11-07)
 
 - OPH-400 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa'da uzun başlık en çok 2 satır + "…", onay dairesi ilk satırın ortasında; açık/orta öncelikli/acil alarmlı görevde sağda ve meta satırında simge yok, "Gecikti" yalnız sözcük kırmızı; proje rozeti ilk satır hizasında; yapıştırılmış URL tek satır "alanadı › yol". Pano kartında "Taşı" düğmesi başlığın ilk satırında, başlığın üstüne binmiyor. **Metin boyutu en büyük (iOS AX5 / Android 2.0)**: satır dikey, kelime ortasından kırılma yok, meta öğeleri başlığın altına sarıyor.

@@ -347,6 +347,10 @@ void main() {
     await tester.pumpWidget(await _app(api));
     await tester.pumpAndSettle();
 
+    // OPH-401 (§47 Q3): the way in is "More" at the end of the examples a
+    // focused, empty bar shows.
+    await tester.tap(find.byKey(const Key('home-quick-add')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quick-add-help')).first);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('quick-add-help-sheet')), findsOneWidget);

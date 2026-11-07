@@ -104,4 +104,107 @@ void main() {
     );
     handle.dispose();
   });
+
+  // ── OPH-401 (U-04, DESIGN §47 W1–W2): the week strip ─────────────────────
+
+  int cells(WidgetTester tester) => find
+      .byWidgetPredicate(
+        (w) =>
+            w.key is ValueKey<String> &&
+            (w.key as ValueKey<String>).value.startsWith('calendar-day-'),
+      )
+      .evaluate()
+      .length;
+
+  Future<List<String>> pumpWeek(
+    WidgetTester tester, {
+    DateTime? selected,
+    DateTime? initial,
+  }) async {
+    final modes = <String>[];
+    var mode = AwCalendarMode.week;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAwTheme(Brightness.light),
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) => SingleChildScrollView(
+              child: MonthCalendar(
+                markedDays: {DateTime(2026, 10, 2)},
+                selectedDay: selected,
+                onDaySelected: (_) {},
+                initialMonth: initial ?? DateTime(2026, 10),
+                mode: mode,
+                onModeChanged: (next) {
+                  modes.add(next.name);
+                  setState(() => mode = next);
+                },
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return modes;
+  }
+
+  testWidgets('week mode draws one row of seven days, Monday first', (
+    tester,
+  ) async {
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    await pumpWeek(tester);
+    expect(cells(tester), 7);
+    // 1 Oct 2026 is a Thursday: its week runs 28 Sep – 4 Oct.
+    expect(find.byKey(const Key('calendar-day-2026-9-28')), findsOneWidget);
+    expect(find.byKey(const Key('calendar-day-2026-10-4')), findsOneWidget);
+    expect(find.text('October 2026'), findsOneWidget);
+    // ≈64 pt: weekday 11 + day 17 in a 32 pt circle + the dot.
+    final strip = tester.getSize(find.byKey(const Key('calendar-week-strip')));
+    expect(strip.height, inInclusiveRange(56, 68));
+    final day = find.byKey(const Key('calendar-day-2026-10-1'));
+    expect(tester.getSize(day).height, greaterThanOrEqualTo(48));
+  });
+
+  testWidgets('the arrows move a week; the toggle asks for the month', (
+    tester,
+  ) async {
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    final modes = await pumpWeek(tester);
+    await tester.tap(find.byTooltip('Next week'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('calendar-day-2026-10-5')), findsOneWidget);
+    expect(find.byKey(const Key('calendar-day-2026-10-4')), findsNothing);
+    await tester.tap(find.byTooltip('Previous week'));
+    await tester.tap(find.byTooltip('Previous week'));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('calendar-day-2026-9-21')), findsOneWidget);
+
+    final toggle = find.byKey(const Key('calendar-mode-toggle'));
+    expect(tester.getSize(toggle), const Size(48, 48));
+    expect(find.byTooltip('Show month'), findsOneWidget);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(modes, ['month']);
+    expect(cells(tester), 42);
+    expect(find.byTooltip('Show week'), findsOneWidget);
+  });
+
+  testWidgets('week mode opens on the selected day\'s week, today filled', (
+    tester,
+  ) async {
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    await pumpWeek(tester, selected: DateTime(2026, 11, 18));
+    expect(find.byKey(const Key('calendar-day-2026-11-16')), findsOneWidget);
+    expect(find.byKey(const Key('calendar-day-2026-11-22')), findsOneWidget);
+    expect(find.text('November 2026'), findsOneWidget);
+  });
+
+  testWidgets('without onModeChanged (the wide panel) there is no toggle', (
+    tester,
+  ) async {
+    await pump(tester, month: DateTime(2026, 10));
+    expect(find.byKey(const Key('calendar-mode-toggle')), findsNothing);
+    expect(cells(tester), 42);
+  });
 }

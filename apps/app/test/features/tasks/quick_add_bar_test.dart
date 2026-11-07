@@ -11,7 +11,11 @@ import 'package:alliswell/src/theme/theme.dart';
 
 /// The bar on its own: what typing does to focus and to dismissed chips.
 
-Future<void> _pumpBar(WidgetTester tester) async {
+Future<void> _pumpBar(
+  WidgetTester tester, {
+  Future<void> Function(String text)? onParse,
+  bool parseProject = false,
+}) async {
   SharedPreferences.setMockInitialValues({});
   await tester.pumpWidget(
     ProviderScope(
@@ -24,7 +28,8 @@ Future<void> _pumpBar(WidgetTester tester) async {
           body: QuickAddBar(
             hintText: 'Add',
             onAdd: (_) async {},
-            parseProject: false,
+            onParse: onParse,
+            parseProject: parseProject,
           ),
         ),
       ),
@@ -107,5 +112,91 @@ void main() {
     await _type(tester, 'yarın kir');
     await _type(tester, 'yarın kira öde');
     expect(find.byKey(const Key('quick-add-token-due')), findsNothing);
+  });
+
+  // ── OPH-401 (C-06, R-11, U-30; DESIGN §47 W5) ────────────────────────────
+  // The bar used to carry four controls — a decorative "+", "?", ✨ and ↑ —
+  // and two of them did nothing while it was empty.
+
+  final submit = find.byKey(const Key('quick-add-submit'));
+  final parse = find.byKey(const Key('quick-add-parse'));
+  final hints = find.byKey(const Key('quick-add-hints'));
+
+  testWidgets('empty: no control on the right and no decorative "+"', (
+    tester,
+  ) async {
+    await _pumpBar(tester, onParse: (_) async {});
+    expect(submit, findsNothing);
+    expect(parse, findsNothing);
+    expect(find.byKey(const Key('quick-add-help')), findsNothing);
+    expect(find.byIcon(Icons.add), findsNothing);
+    expect(find.byIcon(Icons.help_outline), findsNothing);
+  });
+
+  testWidgets('typing brings ✨ and ↑; clearing takes them away', (
+    tester,
+  ) async {
+    await _pumpBar(tester, onParse: (_) async {});
+    await tester.tap(find.byType(TextField));
+    await _type(tester, 'süt al');
+    expect(submit, findsOneWidget);
+    expect(parse, findsOneWidget);
+    // ↑ is the primary: a 32 pt filled circle inside a 48 pt target.
+    expect(tester.getSize(submit), const Size(48, 48));
+    final dot = tester.widget<Container>(
+      find.descendant(
+        of: submit,
+        matching: find.byKey(const Key('quick-add-submit-dot')),
+      ),
+    );
+    final deco = dot.decoration! as BoxDecoration;
+    expect(deco.shape, BoxShape.circle);
+    expect(dot.constraints!.maxWidth, 32);
+    await _type(tester, '');
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(submit, findsNothing);
+    expect(parse, findsNothing);
+  });
+
+  testWidgets('without AI, typing brings ↑ alone', (tester) async {
+    await _pumpBar(tester);
+    await tester.tap(find.byType(TextField));
+    await _type(tester, 'süt al');
+    expect(submit, findsOneWidget);
+    expect(parse, findsNothing);
+  });
+
+  testWidgets('focus shows the hint strip with "More"; it opens the sheet', (
+    tester,
+  ) async {
+    // The project tab's bar does not read +Project, so it does not hint it;
+    // Home's does (home_first_screen_test).
+    await _pumpBar(tester);
+    expect(hints, findsNothing, reason: 'not before the field is focused');
+    await tester.tap(find.byType(TextField));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(hints, findsOneWidget);
+    for (final example in const ['tomorrow 9am', '#home', 'p1']) {
+      expect(
+        find.descendant(of: hints, matching: find.text(example)),
+        findsOneWidget,
+      );
+    }
+    expect(
+      find.descendant(of: hints, matching: find.text('+Work')),
+      findsNothing,
+    );
+    // Once typing, the recognized chips take the row (§39 Q2).
+    await _type(tester, 'yarın kira');
+    expect(hints, findsNothing);
+    expect(find.byKey(const Key('quick-add-help-inline')), findsOneWidget);
+    await _type(tester, '');
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(hints, findsOneWidget);
+    final more = find.byKey(const Key('quick-add-help'));
+    expect(tester.getSize(more).height, greaterThanOrEqualTo(48));
+    await tester.tap(more);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('quick-add-help-sheet')), findsOneWidget);
   });
 }

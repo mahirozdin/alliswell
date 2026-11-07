@@ -233,9 +233,16 @@ void main() {
               of: list,
               matching: find.byType(Checkbox),
             );
+            // OPH-401: a header is a name + a count, keyed by section.
             final headers = find.descendant(
               of: list,
-              matching: find.textContaining(' · '),
+              matching: find.byWidgetPredicate(
+                (w) =>
+                    w.key is ValueKey<String> &&
+                    (w.key! as ValueKey<String>).value.startsWith(
+                      'home-section-',
+                    ),
+              ),
             );
             expect(circles, findsWidgets);
             expect(headers, findsWidgets);

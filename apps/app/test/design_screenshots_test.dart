@@ -469,6 +469,11 @@ Future<void> _openSection(WidgetTester tester, String label) async {
 /// that can drift.
 Future<void> loadRealFontsForStore() => _loadRealFonts();
 
+/// The store set's workspace and app, for tests that measure what a phone's
+/// first screen holds with the real fonts (OPH-401's Kabul).
+FakeApi seededStoreApi() => _seededApi();
+Future<Widget> signedInStoreApp(FakeApi api) => _signedInScreenshotApp(api);
+
 /// The locale a shot renders in, overridable from the command line:
 ///
 ///   flutter test --update-goldens --dart-define=screenshots=true \
@@ -838,6 +843,9 @@ void main() {
         brightness: brightness,
         name: 'phone_quick_add_help_$suffix',
         navigate: (t) async {
+          // OPH-401: "More" sits under the focused, empty bar.
+          await t.tap(find.byKey(const Key('home-quick-add')));
+          await t.pumpAndSettle();
           final help = find.byKey(const Key('quick-add-help')).first;
           await t.ensureVisible(help);
           await t.pumpAndSettle();

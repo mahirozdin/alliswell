@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-401** — Ana Sayfa: hafta şeridi, bölüm başlıkları, hızlı ekleme |
-| Last completed           | OPH-400 — görev satırı (DESIGN §46): onay dairesi başlığın ilk satırında; başlık en çok 2 satır + "…" (büyük metinde 3); tek meta satırı (13/18 tabular, sığmayan sondan düşer) yalnız varsayılandan sapanı gösterir — açık durumda kum saati, orta öncelikte bayrak, acil alarmda zil yok; "Gecikti" sözcüğü kırmızı, tarih nötr; ilk etiket + N; sağda tek öğe (ekran eylemi, avatar ya da proje rozeti); çıplak URL "alanadı › yol" + bağlantı glifi; metin ölçeği >1.3'te dikey düzen. |
+| ➡️ **Next task**         | **OPH-402** — Mikrofon: sağlayıcı yokken dikte |
+| Last completed           | OPH-401 — Ana Sayfa'nın ilk ekranı (DESIGN §47): telefonda (<600 pt) takvim hafta şeridiyle açılır, ay bir dokunuşla, seçim cihazda saklanır; bölüm başlıkları 15/20 w700 + ayrı sayaç, dokununca katlanır; hızlı ekleme boşken sağda kontrol yok, yazınca ✨ ve ↑ (32 pt dolu daire), odakta örnek şeridi + "Daha fazla", süs "+" kalktı; gönderince "Eklendi: {başlık} · {zaman}" + "Geri al" (A-67), yeni satır vurgulanır ve görünmüyorsa liste ona kayar. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

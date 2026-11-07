@@ -377,9 +377,15 @@ void main() {
     await tester.pumpWidget(widget);
     await tester.pumpAndSettle();
 
-    // The header carries the group's COUNT ("Tomorrow · 1"), which is exactly
+    // The header carries the group's COUNT ("Tomorrow  1"), which is exactly
     // what would go stale if the pending row were only hidden by the row widget.
-    expect(find.text('Tomorrow · 1'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-section-tomorrow')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
     await swipeAndDelete(tester, task['id'] as String);
 
     // The row hides itself, but the GROUPING is computed from the raw list —
