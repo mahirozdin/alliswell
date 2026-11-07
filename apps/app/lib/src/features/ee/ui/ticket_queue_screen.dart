@@ -31,6 +31,8 @@ import '../unit_scope_providers.dart';
 import '../../workspaces/ui/workspace_switcher.dart';
 import '../../workspaces/workspaces.dart';
 import '../../../widgets/segment_label.dart';
+import '../../../widgets/list_detail.dart';
+import '../../../theme/typography.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
 ///
@@ -92,6 +94,39 @@ class EeTicketQueueScreen extends ConsumerWidget {
       ticketSelectionProvider.select((ids) => ids.isNotEmpty),
     );
 
+    // OPH-410 (DESIGN §51 D2): from the desktop width a request opens in a
+    // pane beside the list — the queue and the across-units list alike —
+    // and the list keeps its place. Below it the detail is pushed as before.
+    return AwListDetailScope(
+      kind: kEeTicketPane,
+      child: AwListDetailPane(
+        kind: kEeTicketPane,
+        detailBuilder: (context, id, close) =>
+            EeTicketDetailScreen(ticketId: id),
+        child: _queueScaffold(
+          context,
+          ref,
+          tickets: tickets,
+          allUnits: allUnits,
+          filter: filter,
+          query: query,
+          searching: searching,
+          selecting: selecting,
+        ),
+      ),
+    );
+  }
+
+  Widget _queueScaffold(
+    BuildContext context,
+    WidgetRef ref, {
+    required AsyncValue<List<TicketRecord>> tickets,
+    required bool allUnits,
+    required TicketFilter filter,
+    required String query,
+    required bool searching,
+    required bool selecting,
+  }) {
     return Scaffold(
       // EE-225: the way in to filing one, where the desk already stands.
       // Hidden without `tickets.create` (EE-052's cache): a button that
@@ -372,6 +407,7 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     onRetry: () => ref.invalidate(ticketQueueProvider),
                   ),
                   data: (rows) {
+                    final dense = eeDenseTicketRows(context);
                     if (rows.isEmpty) {
                       // Two different emptinesses, and telling them apart is the
                       // whole value of the state: "nothing came in" is good news,
@@ -414,11 +450,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
                               message: 'ee.tickets.emptyFilteredBody'.tr(),
                             );
                     }
-                    return ListView.builder(
+                    // OPH-410: ↑/↓ in the pane walk the rows as drawn.
+                    final list = ListView.builder(
                       // Clears the "new request" button (EE-225).
                       padding: awListPadding(
                         context,
-                        top: AwSpace.x4,
+                        top: dense ? AwSpace.x2 : AwSpace.x4,
                         fab: true,
                       ),
                       // EE-266: a search that found live requests may still be
@@ -437,6 +474,19 @@ class EeTicketQueueScreen extends ConsumerWidget {
                               ),
                               onTap: () => _openArchive(context, query),
                             ),
+                    );
+                    final ordered = AwListOrder(
+                      ids: [for (final row in rows) row.id],
+                      child: list,
+                    );
+                    if (!dense) return ordered;
+                    // The dense table's column names, over the rows they
+                    // name (OPH-410, a desk at a desktop scans columns).
+                    return Column(
+                      children: [
+                        const _DenseHeader(),
+                        Expanded(child: ordered),
+                      ],
                     );
                   },
                 ),
@@ -675,6 +725,78 @@ class _TicketCard extends ConsumerWidget {
         : ref.watch(
             eeMemberNamesProvider.select((names) => names.value?[requesterId]),
           );
+    // OPH-410: the row whose request the desktop pane shows is outlined and
+    // says so to a screen reader (DESIGN §51 D2); its context lets ↑/↓
+    // scroll it into view.
+    final pane = AwListDetailScope.maybeOf(context, kEeTicketPane);
+    final inPane = pane != null && pane.selectedId == ticket.id;
+    AwListOrder.registerRow(context, ticket.id);
+    final assigneeNames = [
+      for (final a in assignees)
+        a.isKnown
+            ? (a.displayName ?? a.initials ?? '?')
+            : 'ee.assign.formerMember'.tr(),
+    ];
+    final leading = selecting
+        ? Checkbox(
+            key: Key('ticket-select-${ticket.id}'),
+            value: selected,
+            onChanged: (_) => toggle(),
+            // OPH-359 (UI-AUDIT #64): a box a screen reader can name.
+            semanticLabel: 'ee.tickets.selectRow'.tr(
+              args: {
+                'ticket': ticket.number == null
+                    ? ticket.subject
+                    : '#${ticket.number} ${ticket.subject}',
+              },
+            ),
+          )
+        : _PriorityMark(priority: ticket.priority, muted: finished);
+    final shape = inPane
+        ? RoundedRectangleBorder(
+            borderRadius: const BorderRadius.all(Radius.circular(AwRadius.l)),
+            side: BorderSide(color: theme.colorScheme.primary, width: 2),
+          )
+        : null;
+    void open() => awOpenTicket(context, ticket.id);
+    if (eeDenseTicketRows(context)) {
+      return Padding(
+        padding: kAwListRowPadding,
+        child: Card(
+          key: Key('ticket-${ticket.id}'),
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          // Inside the card: the card is the row's one semantics node.
+          child: Semantics(
+            selected: inPane ? true : null,
+            child: InkWell(
+              onTap: selecting ? toggle : open,
+              onLongPress: toggle,
+              child: _DenseRow(
+                rowKey: ticket.id,
+                leading: leading,
+                number: ticket.number,
+                subject: ticket.subject,
+                status: [
+                  'ee.tickets.status.${ticket.status}'.tr(),
+                  'ee.tickets.priority.${ticket.priority}'.tr(),
+                ].join(' · '),
+                people: EeTicketPeopleLine(
+                  rowKey: ticket.id,
+                  requester: askedBy,
+                  assignees: assigneeNames,
+                  muted: finished,
+                  maxLines: 1,
+                  warning: context.awTokens.warning,
+                ),
+                sla: AwSlaChip(ticket: ticket, muted: finished),
+                muted: finished,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     // DESIGN §4's rhythm: without it the cards sat border on border (the
     // theme's card margin is zero on purpose). The key stays on the CARD, so
     // what a test measures is the card, not the space around it.
@@ -682,93 +804,239 @@ class _TicketCard extends ConsumerWidget {
       padding: kAwListRowPadding,
       child: Card(
         key: Key('ticket-${ticket.id}'),
-        child: ListTile(
-          // While selecting, the box takes the dot's place: the priority is
-          // still a WORD on the status line below, so nothing is lost.
-          leading: selecting
-              ? Checkbox(
-                  key: Key('ticket-select-${ticket.id}'),
-                  value: selected,
-                  onChanged: (_) => toggle(),
-                  // OPH-359 (UI-AUDIT #64): a box a screen reader can name.
-                  semanticLabel: 'ee.tickets.selectRow'.tr(
-                    args: {
-                      'ticket': ticket.number == null
-                          ? ticket.subject
-                          : '#${ticket.number} ${ticket.subject}',
-                    },
-                  ),
-                )
-              : _PriorityMark(priority: ticket.priority, muted: finished),
-          title: Text(
-            // EE-167: the number leads, because it is what the person on the
-            // phone says. Nullable while a request pulled before the numbering
-            // has not been touched again — a bare subject is the honest shape
-            // then, not a `#null`.
-            ticket.number == null
-                ? ticket.subject
-                : '#${ticket.number} · ${ticket.subject}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: finished
-                // Muted, never struck through: the work happened, it is simply
-                // not waiting for anybody (the units screen settled this shape).
-                ? theme.textTheme.titleMedium?.copyWith(
-                    color: theme.disabledColor,
-                  )
-                : null,
+        shape: shape,
+        child: Semantics(
+          selected: inPane ? true : null,
+          child: ListTile(
+            // While selecting, the box takes the dot's place: the priority is
+            // still a WORD on the status line below, so nothing is lost.
+            leading: leading,
+            title: Text(
+              // EE-167: the number leads, because it is what the person on the
+              // phone says. Nullable while a request pulled before the numbering
+              // has not been touched again — a bare subject is the honest shape
+              // then, not a `#null`.
+              ticket.number == null
+                  ? ticket.subject
+                  : '#${ticket.number} · ${ticket.subject}',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: finished
+                  // Muted, never struck through: the work happened, it is simply
+                  // not waiting for anybody (the units screen settled this shape).
+                  ? theme.textTheme.titleMedium?.copyWith(
+                      color: theme.disabledColor,
+                    )
+                  : null,
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // EE-097: the due chip sits with the status line rather than on a
+                // row of its own — a queue is scanned vertically, and a fourth
+                // line per card would cost the screen about three tickets.
+                // `Wrap` because Turkish labels are longer and a narrow phone must
+                // fold rather than clip.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      [
+                        'ee.tickets.status.${ticket.status}'.tr(),
+                        'ee.tickets.priority.${ticket.priority}'.tr(),
+                      ].join(' · '),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    AwSlaChip(ticket: ticket, muted: finished),
+                  ],
+                ),
+                // OPH-409 (U-19): "whose is it" in words — who asked and who
+                // has it, and a marked "nobody yet": the question a manager
+                // opens the queue to answer. Before, only the asker was named
+                // and the avatars below were initials nobody could read.
+                EeTicketPeopleLine(
+                  rowKey: ticket.id,
+                  requester: askedBy,
+                  assignees: assigneeNames,
+                  muted: finished,
+                  warning: context.awTokens.warning,
+                ),
+                // Item 9's avatars, on the ticket card. Empty when nobody is on it
+                // — the widget draws nothing rather than a placeholder, because
+                // "unassigned" is a real and common state of a queue.
+                AwAssigneeStrip(assignees: assignees),
+              ],
+            ),
+            onTap: selecting ? toggle : open,
+            onLongPress: toggle,
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // EE-097: the due chip sits with the status line rather than on a
-              // row of its own — a queue is scanned vertically, and a fourth
-              // line per card would cost the screen about three tickets.
-              // `Wrap` because Turkish labels are longer and a narrow phone must
-              // fold rather than clip.
-              Wrap(
-                spacing: 8,
-                runSpacing: 2,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    [
-                      'ee.tickets.status.${ticket.status}'.tr(),
-                      'ee.tickets.priority.${ticket.priority}'.tr(),
-                    ].join(' · '),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  AwSlaChip(ticket: ticket, muted: finished),
-                ],
-              ),
-              // OPH-409 (U-19): "whose is it" in words — who asked and who
-              // has it, and a marked "nobody yet": the question a manager
-              // opens the queue to answer. Before, only the asker was named
-              // and the avatars below were initials nobody could read.
-              EeTicketPeopleLine(
-                rowKey: ticket.id,
-                requester: askedBy,
-                assignees: [
-                  for (final a in assignees)
-                    a.isKnown
-                        ? (a.displayName ?? a.initials ?? '?')
-                        : 'ee.assign.formerMember'.tr(),
-                ],
-                muted: finished,
-                warning: context.awTokens.warning,
-              ),
-              // Item 9's avatars, on the ticket card. Empty when nobody is on it
-              // — the widget draws nothing rather than a placeholder, because
-              // "unassigned" is a real and common state of a queue.
-              AwAssigneeStrip(assignees: assignees),
-            ],
-          ),
-          onTap: selecting ? toggle : () => awOpenTicket(context, ticket.id),
-          onLongPress: toggle,
         ),
       ),
     );
   }
+}
+
+/// OPH-410: from the desktop width a request is one line of aligned columns
+/// rather than a card — a desk scans twenty of them, not five. The phone and
+/// the tablet keep the card.
+bool eeDenseTicketRows(BuildContext context) =>
+    MediaQuery.sizeOf(context).width >= kAwPaneBreakpoint;
+
+/// The dense table's columns, by the width the list has: the subject always,
+/// the status from [_kStatusColumnFrom], who asked and who has it from
+/// [_kPeopleColumnFrom] — with the pane open the list is narrower, and a
+/// column that would squeeze the subject to a word steps aside.
+const double _kNumberColumn = 64;
+const double _kStatusColumn = 168;
+const double _kSlaColumn = 168;
+const double _kStatusColumnFrom = 640;
+const double _kPeopleColumnFrom = 880;
+const double _kDenseRowHeight = 56;
+
+class _DenseHeader extends StatelessWidget {
+  const _DenseHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    Text label(String key) => Text(
+      key.tr(),
+      style: style,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    return Padding(
+      key: const Key('ticket-dense-header'),
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x3, AwSpace.x4, 0),
+      child: _DenseColumns(
+        leading: const SizedBox.shrink(),
+        number: const SizedBox.shrink(),
+        subject: label('ee.tickets.columns.subject'),
+        status: label('ee.tickets.columns.status'),
+        people: label('ee.tickets.columns.people'),
+        sla: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: label('ee.tickets.columns.sla'),
+        ),
+      ),
+    );
+  }
+}
+
+class _DenseRow extends StatelessWidget {
+  const _DenseRow({
+    required this.rowKey,
+    required this.leading,
+    required this.number,
+    required this.subject,
+    required this.status,
+    required this.people,
+    required this.sla,
+    required this.muted,
+  });
+
+  final String rowKey;
+  final Widget leading;
+  final int? number;
+  final String subject;
+  final String status;
+  final Widget people;
+  final Widget sla;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final quiet = theme.colorScheme.onSurfaceVariant;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _kDenseRowHeight),
+      child: _DenseColumns(
+        leading: leading,
+        number: Text(
+          number == null ? '' : '#$number',
+          key: Key('ticket-dense-number-$rowKey'),
+          maxLines: 1,
+          style: awTabular(theme.textTheme.labelLarge!.copyWith(color: quiet)),
+        ),
+        subject: Text(
+          subject,
+          key: Key('ticket-dense-subject-$rowKey'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          // Muted, never struck through — the card's rule.
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: muted ? theme.disabledColor : null,
+          ),
+        ),
+        status: Text(
+          status,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall,
+        ),
+        people: people,
+        sla: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerEnd,
+            child: sla,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One layout for the header and every row, so the columns line up.
+class _DenseColumns extends StatelessWidget {
+  const _DenseColumns({
+    required this.leading,
+    required this.number,
+    required this.subject,
+    required this.status,
+    required this.people,
+    required this.sla,
+  });
+
+  final Widget leading;
+  final Widget number;
+  final Widget subject;
+  final Widget status;
+  final Widget people;
+  final Widget sla;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(end: AwSpace.x4),
+        child: Row(
+          children: [
+            SizedBox(width: 44, child: Center(child: leading)),
+            SizedBox(width: _kNumberColumn, child: number),
+            Expanded(flex: 3, child: subject),
+            const SizedBox(width: AwSpace.x3),
+            if (width >= _kStatusColumnFrom) ...[
+              SizedBox(width: _kStatusColumn, child: status),
+              const SizedBox(width: AwSpace.x3),
+            ],
+            if (width >= _kPeopleColumnFrom) ...[
+              Expanded(flex: 2, child: people),
+              const SizedBox(width: AwSpace.x3),
+            ],
+            SizedBox(width: _kSlaColumn, child: sla),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// A dot AND a word. The dot is scannable, the word is what survives a

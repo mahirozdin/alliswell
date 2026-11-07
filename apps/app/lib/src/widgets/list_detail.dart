@@ -67,13 +67,20 @@ class AwListDetailScope extends StatefulWidget {
   final Widget child;
 
   /// The nearest scope of [kind] when its pane can show, else null.
-  static AwListDetailController? maybeOf(BuildContext context, String kind) {
+  ///
+  /// [listen] false asks without subscribing — for a tap handler, which is
+  /// not a build (OPH-410: the extension's "open this request" helper).
+  static AwListDetailController? maybeOf(
+    BuildContext context,
+    String kind, {
+    bool listen = true,
+  }) {
     var element = context
         .getElementForInheritedWidgetOfExactType<_AwListDetailInherited>();
     while (element != null) {
       final scope = element.widget as _AwListDetailInherited;
       if (scope.kind == kind) {
-        context.dependOnInheritedElement(element);
+        if (listen) context.dependOnInheritedElement(element);
         return scope.active ? scope.controller : null;
       }
       InheritedElement? outer;
@@ -270,44 +277,51 @@ class AwListDetailPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final controller = AwListDetailScope.maybeOf(context, kind);
     final selected = controller?.selectedId;
-    if (controller == null || selected == null) return child;
     final scheme = Theme.of(context).colorScheme;
+    // One shape open or closed (OPH-410): the list stays the same element
+    // when the pane opens beside it, so it keeps its scroll offset and the
+    // order ↑/↓ were handed — returning the bare child when closed rebuilt
+    // the list from scratch on every open.
     return Row(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(child: child),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            0,
-            AwSpace.x3,
-            AwSpace.x3,
-            AwSpace.x3,
-          ),
-          child: SizedBox(
-            key: const Key('list-detail-pane'),
-            width: kAwDetailPaneWidth,
-            // Content, not chrome (G1): a solid surface with a hairline, the
-            // same radius as the rail's panel on the other side.
-            child: Material(
-              color: scheme.surface,
-              clipBehavior: Clip.antiAlias,
-              shape: RoundedRectangleBorder(
-                borderRadius: const BorderRadius.all(
-                  Radius.circular(AwRadius.xl),
+        if (controller != null && selected != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              0,
+              AwSpace.x3,
+              AwSpace.x3,
+              AwSpace.x3,
+            ),
+            child: SizedBox(
+              key: const Key('list-detail-pane'),
+              width: kAwDetailPaneWidth,
+              // Content, not chrome (G1): a solid surface with a hairline, the
+              // same radius as the rail's panel on the other side.
+              child: Material(
+                color: scheme.surface,
+                clipBehavior: Clip.antiAlias,
+                shape: RoundedRectangleBorder(
+                  borderRadius: const BorderRadius.all(
+                    Radius.circular(AwRadius.xl),
+                  ),
+                  side: BorderSide(color: scheme.outlineVariant),
                 ),
-                side: BorderSide(color: scheme.outlineVariant),
-              ),
-              child: Semantics(
-                container: true,
-                explicitChildNodes: true,
-                child: KeyedSubtree(
-                  key: ValueKey('list-detail-$selected'),
-                  child: detailBuilder(context, selected, controller.close),
+                child: Semantics(
+                  container: true,
+                  explicitChildNodes: true,
+                  child: KeyedSubtree(
+                    key: ValueKey('list-detail-$selected'),
+                    child: AwPaneCloser(
+                      close: controller.close,
+                      child: detailBuilder(context, selected, controller.close),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -378,4 +392,23 @@ class _AwListOrderInherited extends InheritedWidget {
 
   @override
   bool updateShouldNotify(_AwListOrderInherited old) => false;
+}
+
+/// How a page drawn inside an [AwListDetailPane] leaves it (OPH-410).
+///
+/// A screen that also lives as a page reaches its way out through
+/// `awRouteLeading`; inside the pane that way out is the pane's close, never
+/// a back button that would pop the list behind it. Every screen the pane
+/// shows — a request's detail and the pages that stand in for it when the
+/// device holds no copy — gets the same close without knowing it is in one.
+class AwPaneCloser extends InheritedWidget {
+  const AwPaneCloser({super.key, required this.close, required super.child});
+
+  final VoidCallback close;
+
+  static VoidCallback? maybeOf(BuildContext context) =>
+      context.getInheritedWidgetOfExactType<AwPaneCloser>()?.close;
+
+  @override
+  bool updateShouldNotify(AwPaneCloser old) => false;
 }

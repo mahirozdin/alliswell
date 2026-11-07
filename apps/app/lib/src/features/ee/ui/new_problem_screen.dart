@@ -11,6 +11,7 @@ import '../data/problems_models.dart';
 import '../problems_providers.dart';
 import 'problem_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/form_width.dart';
 
 /// Raising a problem record from the phone (EE-270 box 2, EE-280).
 ///
@@ -110,91 +111,93 @@ class _EeNewProblemScreenState extends ConsumerState<EeNewProblemScreen> {
               : 'ee.problems.create.knownErrorTitle'.tr(),
         ),
       ),
-      body: ListView(
-        padding: awListPadding(context, top: AwSpace.x4),
-        children: [
-          if (source != null) ...[
-            Row(
-              key: const Key('problem-new-source'),
-              children: [
-                const Icon(Icons.support_agent, size: 20),
-                const SizedBox(width: AwSpace.x2),
-                Expanded(
-                  child: Text(
-                    'ee.problems.create.fromTicket'.tr(
-                      args: {
-                        'ticket': [
-                          if (source.number != null) '#${source.number}',
-                          source.subject,
-                        ].join(' · '),
-                      },
+      body: AwFormWidth(
+        child: ListView(
+          padding: awListPadding(context, top: AwSpace.x4),
+          children: [
+            if (source != null) ...[
+              Row(
+                key: const Key('problem-new-source'),
+                children: [
+                  const Icon(Icons.support_agent, size: 20),
+                  const SizedBox(width: AwSpace.x2),
+                  Expanded(
+                    child: Text(
+                      'ee.problems.create.fromTicket'.tr(
+                        args: {
+                          'ticket': [
+                            if (source.number != null) '#${source.number}',
+                            source.subject,
+                          ].join(' · '),
+                        },
+                      ),
+                      style: theme.textTheme.bodyMedium,
                     ),
-                    style: theme.textTheme.bodyMedium,
                   ),
-                ),
-              ],
+                ],
+              ),
+              const SizedBox(height: AwSpace.x4),
+            ],
+            TextField(
+              key: const Key('problem-new-title'),
+              controller: _title,
+              maxLength: 200,
+              decoration: InputDecoration(
+                labelText: 'ee.problems.create.name'.tr(),
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-            const SizedBox(height: AwSpace.x4),
-          ],
-          TextField(
-            key: const Key('problem-new-title'),
-            controller: _title,
-            maxLength: 200,
-            decoration: InputDecoration(
-              labelText: 'ee.problems.create.name'.tr(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: AwSpace.x2),
-          TextField(
-            key: const Key('problem-new-symptom'),
-            controller: _symptom,
-            minLines: 2,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: 'ee.problems.symptom'.tr(),
-              helperText: 'ee.problems.create.symptomHelp'.tr(),
-              helperMaxLines: 2,
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: AwSpace.x3),
-          TextField(
-            key: const Key('problem-new-workaround'),
-            controller: _workaround,
-            minLines: 2,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: 'ee.problems.create.workaround'.tr(),
-              helperText: 'ee.problems.create.workaroundHelp'.tr(),
-              helperMaxLines: 2,
-            ),
-          ),
-          const SizedBox(height: AwSpace.x4),
-          if (_error != null) ...[
-            AwInlineError(
-              textKey: const Key('problem-new-error'),
-              message: localizedError(_error!),
+            const SizedBox(height: AwSpace.x2),
+            TextField(
+              key: const Key('problem-new-symptom'),
+              controller: _symptom,
+              minLines: 2,
+              maxLines: 6,
+              decoration: InputDecoration(
+                labelText: 'ee.problems.symptom'.tr(),
+                helperText: 'ee.problems.create.symptomHelp'.tr(),
+                helperMaxLines: 2,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AwSpace.x3),
-          ],
-          FilledButton(
-            key: const Key('problem-new-save'),
-            onPressed: _complete && !_saving && !offline ? _save : null,
-            child: Text('ee.problems.create.save'.tr()),
-          ),
-          if (offline)
-            Padding(
-              key: const Key('problem-new-offline'),
-              padding: const EdgeInsets.only(top: AwSpace.x2),
-              child: Text(
-                'ee.problems.create.offline'.tr(),
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
+            TextField(
+              key: const Key('problem-new-workaround'),
+              controller: _workaround,
+              minLines: 2,
+              maxLines: 6,
+              decoration: InputDecoration(
+                labelText: 'ee.problems.create.workaround'.tr(),
+                helperText: 'ee.problems.create.workaroundHelp'.tr(),
+                helperMaxLines: 2,
               ),
             ),
-        ],
+            const SizedBox(height: AwSpace.x4),
+            if (_error != null) ...[
+              AwInlineError(
+                textKey: const Key('problem-new-error'),
+                message: localizedError(_error!),
+              ),
+              const SizedBox(height: AwSpace.x3),
+            ],
+            FilledButton(
+              key: const Key('problem-new-save'),
+              onPressed: _complete && !_saving && !offline ? _save : null,
+              child: Text('ee.problems.create.save'.tr()),
+            ),
+            if (offline)
+              Padding(
+                key: const Key('problem-new-offline'),
+                padding: const EdgeInsets.only(top: AwSpace.x2),
+                child: Text(
+                  'ee.problems.create.offline'.tr(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

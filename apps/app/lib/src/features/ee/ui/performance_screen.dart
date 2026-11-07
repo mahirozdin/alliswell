@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/error_messages.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../theme/typography.dart';
 import '../../../widgets/status_views.dart';
 import '../data/performance_models.dart';
 import '../performance_providers.dart';
@@ -219,9 +220,18 @@ class _Rows extends StatelessWidget {
   /// Units and kinds of work have an SLA figure; people do not.
   final bool showCompliance;
 
+  String _fallback() =>
+      unnamedKey == null ? 'ee.perfPanel.noUnit'.tr() : unnamedKey!.tr();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    // OPH-410 (U-23): on a desktop the rows are one table — a unit beside a
+    // unit, columns aligned, sortable by any of them. The phone keeps a
+    // card per row.
+    final table =
+        rows.isNotEmpty &&
+        MediaQuery.sizeOf(context).width >= kAwPaneBreakpoint;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -229,6 +239,15 @@ class _Rows extends StatelessWidget {
         const SizedBox(height: AwSpace.x2),
         if (rows.isEmpty)
           Text(emptyKey.tr(), style: theme.textTheme.bodyMedium)
+        else if (table)
+          _Table(
+            key: Key('perf-table-$titleKey'),
+            section: titleKey.split('.').last,
+            rows: rows,
+            labelOf: (row) => labelOf?.call(row) ?? row.label ?? _fallback(),
+            showCsat: showCsat,
+            showCompliance: showCompliance,
+          )
         else
           ...rows.map(
             (row) => _RowCard(
@@ -239,15 +258,42 @@ class _Rows extends StatelessWidget {
               // A null key on the people axis is work nobody was there for.
               // Named rather than dropped: the rows have to add up to the
               // desk's totals or somebody spends an afternoon reconciling them.
-              fallbackLabel: unnamedKey == null
-                  ? 'ee.perfPanel.noUnit'.tr()
-                  : unnamedKey!.tr(),
+              fallbackLabel: _fallback(),
             ),
           ),
       ],
     );
   }
 }
+
+/// An average with its denominator, or a dash. Never a bare number and never
+/// a zero standing in for "nothing measured".
+String _avg(EeTimedAverage a) {
+  if (a.minutes == null) return '—';
+  // UI-AUDIT #88 / OPH-408: "3 gün 21 saat", not "5587.5 dk".
+  final value = awFormatDuration(a.minutes!.round());
+  return a.isPartial ? '$value (${a.measured}/${a.total})' : value;
+}
+
+String _csat(EeCsatFigure c) {
+  if (c.average == null) return '—';
+  return '${awFormatNumber(c.average!, decimals: 1)} (${c.answered}/${c.sent})';
+}
+
+/// U-20: a share of nothing is "—", never a percentage borrowed from
+/// elsewhere.
+bool _complianceShown(EePerformanceRow row) =>
+    row.compliance != null && row.judged != 0;
+
+String _complianceValue(EePerformanceRow row) =>
+    _complianceShown(row) ? awFormatPercent(row.compliance) : kAwNoValue;
+
+String? _complianceCaption(EePerformanceRow row) =>
+    !_complianceShown(row) || row.judged == null
+    ? null
+    : 'ee.perfPanel.complianceOf'.tr(
+        args: {'judged': awFormatNumber(row.judged!)},
+      );
 
 class _RowCard extends StatelessWidget {
   const _RowCard({
@@ -263,20 +309,6 @@ class _RowCard extends StatelessWidget {
   final String? label;
   final bool showCsat;
   final bool showCompliance;
-
-  /// An average with its denominator, or a dash. Never a bare number and never
-  /// a zero standing in for "nothing measured".
-  String _avg(EeTimedAverage a) {
-    if (a.minutes == null) return '—';
-    // UI-AUDIT #88 / OPH-408: "3 gün 21 saat", not "5587.5 dk".
-    final value = awFormatDuration(a.minutes!.round());
-    return a.isPartial ? '$value (${a.measured}/${a.total})' : value;
-  }
-
-  String _csat(EeCsatFigure c) {
-    if (c.average == null) return '—';
-    return '${awFormatNumber(c.average!, decimals: 1)} (${c.answered}/${c.sent})';
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -320,17 +352,8 @@ class _RowCard extends StatelessWidget {
                     _Figure(
                       key: Key('perf-compliance-${row.key ?? 'none'}'),
                       labelKey: 'ee.perfPanel.compliance',
-                      value: row.compliance == null || row.judged == 0
-                          ? kAwNoValue
-                          : awFormatPercent(row.compliance),
-                      caption:
-                          row.compliance == null ||
-                              row.judged == null ||
-                              row.judged == 0
-                          ? null
-                          : 'ee.perfPanel.complianceOf'.tr(
-                              args: {'judged': awFormatNumber(row.judged!)},
-                            ),
+                      value: _complianceValue(row),
+                      caption: _complianceCaption(row),
                     ),
                 ],
               ),
@@ -379,6 +402,291 @@ class _Figure extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+/// A column of the desktop table (OPH-410, U-23): its header, how a row
+/// reads in it, and what it sorts by.
+class _Column {
+  const _Column({
+    required this.id,
+    required this.labelKey,
+    required this.value,
+    required this.sortKey,
+    this.caption,
+  });
+
+  final String id;
+  final String labelKey;
+  final String Function(EePerformanceRow row) value;
+
+  /// Null sorts last whichever way the column is sorted: "nothing measured"
+  /// is neither the best nor the worst.
+  final num? Function(EePerformanceRow row) sortKey;
+  final String? Function(EePerformanceRow row)? caption;
+}
+
+/// The rows as one table: a name column, then the figures right-aligned in
+/// tabular digits so a unit's number sits under the one above it. A header
+/// sorts by its column — first tap the highest first (the name A→Z), the
+/// second tap the other way.
+class _Table extends StatefulWidget {
+  const _Table({
+    super.key,
+    required this.section,
+    required this.rows,
+    required this.labelOf,
+    required this.showCsat,
+    required this.showCompliance,
+  });
+
+  final String section;
+  final List<EePerformanceRow> rows;
+  final String Function(EePerformanceRow row) labelOf;
+  final bool showCsat;
+  final bool showCompliance;
+
+  @override
+  State<_Table> createState() => _TableState();
+}
+
+class _TableState extends State<_Table> {
+  /// Null: the server's order.
+  String? _sortBy;
+  bool _descending = true;
+
+  static const double _figureWidth = 152;
+  static const double _rowHeight = 48;
+
+  List<_Column> get _columns => [
+    _Column(
+      id: 'opened',
+      labelKey: 'ee.perfPanel.opened',
+      value: (r) => awFormatNumber(r.opened),
+      sortKey: (r) => r.opened,
+    ),
+    _Column(
+      id: 'resolved',
+      labelKey: 'ee.perfPanel.resolved',
+      value: (r) => awFormatNumber(r.resolved),
+      sortKey: (r) => r.resolved,
+    ),
+    _Column(
+      id: 'mtta',
+      labelKey: 'ee.perfPanel.mtta',
+      value: (r) => _avg(r.mtta),
+      sortKey: (r) => r.mtta.minutes,
+    ),
+    _Column(
+      id: 'mttr',
+      labelKey: 'ee.perfPanel.mttr',
+      value: (r) => _avg(r.mttr),
+      sortKey: (r) => r.mttr.minutes,
+    ),
+    if (widget.showCsat)
+      _Column(
+        id: 'csat',
+        labelKey: 'ee.perfPanel.csat',
+        value: (r) => _csat(r.csat),
+        sortKey: (r) => r.csat.average,
+      ),
+    if (widget.showCompliance &&
+        widget.rows.any((r) => r.compliance != null || r.judged != null))
+      _Column(
+        id: 'compliance',
+        labelKey: 'ee.perfPanel.compliance',
+        value: _complianceValue,
+        caption: _complianceCaption,
+        sortKey: (r) => _complianceShown(r) ? r.compliance : null,
+      ),
+  ];
+
+  List<EePerformanceRow> _sorted(List<_Column> columns) {
+    final by = _sortBy;
+    if (by == null) return widget.rows;
+    final rows = [...widget.rows];
+    if (by == 'name') {
+      rows.sort((a, b) {
+        final c = widget
+            .labelOf(a)
+            .toLowerCase()
+            .compareTo(widget.labelOf(b).toLowerCase());
+        return _descending ? -c : c;
+      });
+      return rows;
+    }
+    final column = columns.firstWhere((c) => c.id == by);
+    rows.sort((a, b) {
+      final x = column.sortKey(a);
+      final y = column.sortKey(b);
+      if (x == null && y == null) return 0;
+      if (x == null) return 1;
+      if (y == null) return -1;
+      final c = x.compareTo(y);
+      return _descending ? -c : c;
+    });
+    return rows;
+  }
+
+  void _sort(String id) {
+    setState(() {
+      if (_sortBy == id) {
+        _descending = !_descending;
+      } else {
+        _sortBy = id;
+        // A name reads A→Z first; a figure, the largest first.
+        _descending = id != 'name';
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final columns = _columns;
+    final rows = _sorted(columns);
+    final figure = awTabular(theme.textTheme.bodyMedium!);
+    final caption = awTabular(
+      theme.textTheme.labelSmall!.copyWith(color: scheme.onSurfaceVariant),
+    );
+
+    Widget header(String id, String labelKey, {required bool end}) {
+      final active = _sortBy == id;
+      final label = labelKey.tr();
+      return Semantics(
+        button: true,
+        label: active
+            ? 'ee.perfPanel.sortedBy'.tr(
+                args: {
+                  'column': label,
+                  'direction':
+                      (_descending
+                              ? 'ee.perfPanel.sortDescending'
+                              : 'ee.perfPanel.sortAscending')
+                          .tr(),
+                },
+              )
+            : 'ee.perfPanel.sortBy'.tr(args: {'column': label}),
+        excludeSemantics: true,
+        child: InkWell(
+          key: Key('perf-sort-${widget.section}-$id'),
+          onTap: () => _sort(id),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: _rowHeight),
+            child: Row(
+              mainAxisAlignment: end
+                  ? MainAxisAlignment.end
+                  : MainAxisAlignment.start,
+              children: [
+                Flexible(
+                  child: Text(
+                    label,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: end ? TextAlign.end : TextAlign.start,
+                    style: theme.textTheme.labelMedium?.copyWith(
+                      color: active
+                          ? scheme.onSurface
+                          : scheme.onSurfaceVariant,
+                      fontWeight: active ? FontWeight.w700 : null,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AwSpace.x1),
+                // The arrow is where the sort is, and only there.
+                SizedBox(
+                  width: 16,
+                  child: active
+                      ? Icon(
+                          _descending
+                              ? Icons.arrow_downward
+                              : Icons.arrow_upward,
+                          size: 14,
+                          color: scheme.onSurface,
+                        )
+                      : null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    Widget line(List<Widget> cells, {Key? key, bool divider = true}) =>
+        Container(
+          key: key,
+          constraints: const BoxConstraints(minHeight: _rowHeight),
+          padding: const EdgeInsets.symmetric(horizontal: AwSpace.x4),
+          decoration: divider
+              ? BoxDecoration(
+                  border: Border(top: BorderSide(color: scheme.outlineVariant)),
+                )
+              : null,
+          child: Row(children: cells),
+        );
+
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          line(divider: false, [
+            Expanded(
+              child: header(
+                'name',
+                widget.section == 'byAgent'
+                    ? 'ee.perfPanel.columnPerson'
+                    : widget.section == 'byUnit'
+                    ? 'ee.perfPanel.columnUnit'
+                    : 'ee.perfPanel.columnKind',
+                end: false,
+              ),
+            ),
+            for (final c in columns)
+              SizedBox(
+                width: _figureWidth,
+                child: header(c.id, c.labelKey, end: true),
+              ),
+          ]),
+          for (final row in rows)
+            line(key: Key('perf-row-${row.key ?? 'none'}'), [
+              Expanded(
+                child: Text(
+                  widget.labelOf(row),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.titleSmall,
+                ),
+              ),
+              for (final c in columns)
+                SizedBox(
+                  width: _figureWidth,
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.only(end: AwSpace.x5),
+                    child: Column(
+                      key: c.id == 'compliance'
+                          ? Key('perf-compliance-${row.key ?? 'none'}')
+                          : null,
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          c.value(row),
+                          textAlign: TextAlign.end,
+                          style: figure,
+                        ),
+                        if (c.caption?.call(row) case final String text)
+                          Text(text, textAlign: TextAlign.end, style: caption),
+                      ],
+                    ),
+                  ),
+                ),
+            ]),
+        ],
+      ),
     );
   }
 }

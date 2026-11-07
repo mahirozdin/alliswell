@@ -53,8 +53,12 @@ class EeTicketPeopleLine extends StatelessWidget {
     this.requester,
     this.assignees,
     this.muted = false,
+    this.maxLines = 2,
     required this.warning,
   });
+
+  /// OPH-410: one in the desktop's dense row.
+  final int maxLines;
 
   final String rowKey;
   final String? requester;
@@ -92,7 +96,7 @@ class EeTicketPeopleLine extends StatelessWidget {
         Expanded(
           child: Text(
             parts.join(' · '),
-            maxLines: 2,
+            maxLines: maxLines,
             overflow: TextOverflow.ellipsis,
             style: style,
           ),

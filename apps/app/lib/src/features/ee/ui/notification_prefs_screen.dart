@@ -9,6 +9,7 @@ import '../../../widgets/status_views.dart';
 import '../data/notification_prefs_api.dart';
 import '../notification_prefs_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/form_width.dart';
 
 /// The preference screen (EE-077, on EE-076's matrix).
 ///
@@ -29,16 +30,18 @@ class EeNotificationPrefsScreen extends ConsumerWidget {
         leading: awRouteLeading(context),
         title: Text('ee.notif.prefsTitle'.tr()),
       ),
-      body: prefs.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(message: localizedError(error)),
-        data: (data) => ListView(
-          padding: awListPadding(context),
-          children: [
-            for (final row in data.matrix) _ClassRow(row: row),
-            const Divider(height: 32),
-            _QuietHours(prefs: data),
-          ],
+      body: AwFormWidth(
+        child: prefs.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AwErrorState(message: localizedError(error)),
+          data: (data) => ListView(
+            padding: awListPadding(context),
+            children: [
+              for (final row in data.matrix) _ClassRow(row: row),
+              const Divider(height: 32),
+              _QuietHours(prefs: data),
+            ],
+          ),
         ),
       ),
     );

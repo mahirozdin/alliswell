@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Uzantı geniş ekran (2026-11-08)
+
+- OPH-410 — **1440 px web ve macOS (geniş pencere) + 1000 px pencere, uzantılı takım, bir birimde ajan; açık ve koyu tema**: Talepler kuyruğu "Talep · Durum · Öncelik · Açan · Alan · SLA" başlıklı, satır başına tek satır (~56 px), sütunlar hizalı; satıra tıklayınca talep sağda 480 px panelde açılıyor, liste kaymıyor, açık satır mavi çerçeveli; ↑/↓ önceki/sonraki talep, Esc ve sol üstteki ✕ kapatıyor; panel açıkken "Yeni talep" düğmesi listenin üstünde kalıyor; "Tüm birimler" listesinden de panel açılıyor. İş yükü sekmesi birim/kişi/tür için tek tablo, rakamlar sağa yaslı ve hizalı, başlığa tıklayınca ok ve sıra değişiyor, ikinci tıklama ters çeviriyor. Yeni talep, Yeni değişiklik, Bilinen arıza, Takım ayarları, Takım kimliği, Bildirim tercihleri ve adresle açılan talep içerik olarak en çok 720 px, ortada. 1000 px'te kart görünümü ve itilen detay sayfası aynen eski hâli; telefonda hiçbir şey değişmemiş.
+
 ## Uzantı listeleri (2026-11-08)
 
 - OPH-409 — **iPhone + Android + 1440 px web, uzantılı takım, iki birimli yönetici ve birimsiz üye; açık ve koyu tema, 2.0× metin**: Talepler takımın genel alanında "Tüm birimler" seçili açılıyor, satırlarda birim adı, süzgeç çipleri yok; bir birim çipine dokununca o birimin kuyruğu ve çipler geliyor, "Tüm birimler" geri getiriyor. Satırda "Açan: … · Alan: …", atanmamışta turuncu simge + "Alan: atanmadı". Başlıkta Talepler | SLA | İş yükü sekmeleri 360 px'te kesilmeden; SLA'da "Şu an açık talepler" ayrı, "Hedef: %90", kapsam satırı; İş yükünde uyum "—" ya da "%51,4 / 144 talepten". Ana Sayfa'da üyeye "Yeni talep açın" + "Açık taleplerim (N)", yöneticiye "Birimleriniz: N talep gecikti · Onayınızı bekleyen N" (dokununca listesi). Takım üyesi olmayan Taleplerim'de "Yeni talep" görmüyor; `#/settings/team/assignments` "Atamalar Ana Sayfa'ya taşındı" diyor.

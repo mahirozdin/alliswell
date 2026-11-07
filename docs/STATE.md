@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-409 uzantı listeleri; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-410 uzantı geniş ekran; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-410** — Uzantı geniş ekran düzeni ⚠️ extension-seam |
-| Last completed           | OPH-409 — uzantı listeleri (U-18…U-20, U-22, E-03, E-19): talep kuyruğu birim değilken "Tüm birimler"le açılır (canlı, satırda birim), birim çipi o birimin kuyruğuna süzer, süzgeç çipleri birim seçilince; satırda "Açan · Alan", atanmamış işaretli; SLA ve İş yükü talepler başlığında sekme; her sayının yanında kapsamı, payda 0'da "—"; Ana Sayfa'da talep kartları; üye olmayana "Yeni talep" yok; eski atamalar adresi nereye taşındığını söyler. |
+| ➡️ **Next task**         | **OPH-411** — README ilk ekranı |
+| Last completed           | OPH-410 — uzantı geniş ekran (U-23, U-08'in uzantı yarısı; DESIGN §51 D6): ≥1200 px'te talep kuyruğu sütun başlıklı tek satırlık yoğun liste, talep listenin sağındaki 480 px panelde açılır (OPH-405 deseni; Esc, ↑/↓, kapat düğmesi — panelde `awRouteLeading` geri değil kapat verir); İş yükü raporu sıralanabilir tek tablo (sağa yaslı tabular rakam); uzantı formları ve sayfa olarak açılan talep en çok 720 px (`AwFormWidth`, `kAwFormMaxWidth`). Panel açılınca liste artık yeniden kurulmuyor (kaydırma ve ↑/↓ sırası korunur). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

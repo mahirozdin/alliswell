@@ -16,6 +16,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Team screens use a desktop's width**: from 1200 px the requests list is one aligned line per
+  request, a request opens beside the list (Esc closes, ↑/↓ moves), the workload report is one
+  table you can sort by any column, and team forms stay 720 px wide.
 - **Team request lists answer "what, whose, how many" at a glance**: the requests list opens on
   all your units instead of an empty "choose a unit", a row names who opened it and who has it,
   every count says what it counts ("open now" apart from all time), and a share of nothing reads

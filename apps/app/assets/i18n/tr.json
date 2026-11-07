@@ -2889,6 +2889,12 @@
         "takenBy": "Alan: {names}",
         "unassigned": "Alan: atanmadı",
         "more": "{names} +{count}"
+      },
+      "columns": {
+        "subject": "Talep",
+        "status": "Durum · Öncelik",
+        "people": "Açan · Alan",
+        "sla": "SLA"
       }
     },
     "sla": {
@@ -2963,7 +2969,14 @@
         "request": "İstekler"
       },
       "complianceOf": "{judged} talepten",
-      "scope": "Rakamlar: seçili dönemde açılan talepler"
+      "scope": "Rakamlar: seçili dönemde açılan talepler",
+      "columnUnit": "Birim",
+      "columnPerson": "Kişi",
+      "columnKind": "İşin türü",
+      "sortBy": "{column} sütununa göre sırala",
+      "sortedBy": "{column}, {direction} sıralı",
+      "sortDescending": "azalan",
+      "sortAscending": "artan"
     },
     "slaAdmin": {
       "title": "SLA yönetimi",

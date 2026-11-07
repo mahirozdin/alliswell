@@ -2890,6 +2890,12 @@
         "takenBy": "Taken by: {names}",
         "unassigned": "Taken by: nobody yet",
         "more": "{names} +{count}"
+      },
+      "columns": {
+        "subject": "Request",
+        "status": "Status · Priority",
+        "people": "Opened by · Taken by",
+        "sla": "SLA"
       }
     },
     "sla": {
@@ -2964,7 +2970,14 @@
         "request": "Service requests"
       },
       "complianceOf": "of {judged} requests",
-      "scope": "Figures: requests opened in the chosen period"
+      "scope": "Figures: requests opened in the chosen period",
+      "columnUnit": "Unit",
+      "columnPerson": "Person",
+      "columnKind": "Kind of work",
+      "sortBy": "Sort by {column}",
+      "sortedBy": "{column}, sorted {direction}",
+      "sortDescending": "descending",
+      "sortAscending": "ascending"
     },
     "slaAdmin": {
       "title": "SLA management",

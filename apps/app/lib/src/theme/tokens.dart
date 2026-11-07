@@ -45,6 +45,11 @@ const double kAwExtendedRailBreakpoint = 1160;
 const double kAwPaneBreakpoint = 1200;
 const double kAwDetailPaneWidth = 480;
 
+/// The widest a form or a settings page's content grows (OPH-410, DESIGN
+/// §51 D6): past it a label and its field drift apart across the window.
+/// The page keeps its full width; its content stands in a centred column.
+const double kAwFormMaxWidth = 720;
+
 /// The rail's collapsed width — also the column its destination icons are
 /// centred in when extended. Anything drawn in the rail beside them (the
 /// Approvals entry) uses the same column, or it sits out of line (OPH-359).

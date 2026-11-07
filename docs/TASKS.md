@@ -36,14 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-410 — Uzantı geniş ekran düzeni ⚠️ Çift kapanış ↔
-
-Kritik yol: extension-seam. ⚠️ **Çift kapanış:** ↔ uzantı deposundaki eş iş. OPH-405'in detay paneli
-desenini kullanır. Ayrıntı yalnız uzantı deposunda (I-14).
-
-- [ ] ≥1200 px'te uzantı ekranları uzantı kaydındaki geniş ekran kabulünü karşılar.
-- **Kabul:** 1440 golden; iki depo birlikte kapanır.
-
 ### OPH-411 — README ilk ekranı
 
 N1–N10, D#1, CT-01; `github-growth.md` §4.
