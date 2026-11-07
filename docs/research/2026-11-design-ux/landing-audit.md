@@ -158,9 +158,9 @@ Kurumsal sayfa ayrı bir dünya. Fabrika talep yönetimi satıyor, ayrı bir gö
 | Vikunja (vikunja.io) | Sahiplik H1'i, "Self-host it or let us run it", nav'da **Demo (no sign-up)**, Pricing, Changelog | Aynı vaadi zaten söylüyor: ayrışmak için alarm ya da MCP öne alınmalı. Demo eksiğimiz burada görünür |
 | Plane (plane.so) | "Get started free" + "Talk to a human", "Cloud, self-hosted and air-gapped ready" satırı, "Trusted by teams at" logoları, nav'da Self-host | Dağıtım seçeneklerini tek satırda söylemek; ekip ve kurumsal yolu ayrı bir düğmeyle açmak |
 | Linear (linear.app) | Tek iddia, tek birincil CTA, ürün ekranı okunur ölçekte | Ürün ekranını okunur ölçekte göstermek (K1) |
-| Todoist (todoist.com) | Kısa duygusal H1, meta açıklamada sayılı kanıt ("Trusted by 30 million…"), "Start for free" tekrarı | Kanıtı ilk ekrana koymak. Bizde sayı yoksa sürüm ritmi ve açık kaynak kanıtı |
+| Todoist (todoist.com) | Kısa duygusal H1, meta açıklamada sayılı kanıt ("Trusted by 30 million…"), "Start for free" tekrarı | Kanıtı ilk ekrana koymak. Bizde sayı yoksa sürüm ritmi ve kaynak kodu açık (source-available) kanıtı: GitHub, sürüm sayısı |
 | TickTick (ticktick.com) | "Start for free" + platform senkronu bölümü | Platform rozetleri hero'ya yakın |
-| Cal.com (cal.com) | Açık kaynak + "Book a demo" + Pricing, GitHub vurgusu | Açık kaynak ile B2B'yi aynı sitede iki net yolla taşımak |
+| Cal.com (cal.com) | Açık kaynak + "Book a demo" + Pricing, GitHub vurgusu | Kendi sunucunda kullanımla B2B'yi aynı sitede iki net yolla taşımak (bizde lisans source-available) |
 
 Kaynak dosyalar: ham kanıt. Yalnız ana sayfa HTML'i incelendi; görsel ve akış karşılaştırması **yapılmadı**.
 
