@@ -9,6 +9,7 @@ import '../../../core/list_sort.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/list_detail.dart';
 import '../../../widgets/sort_menu.dart';
 import '../../files/data/file_attachment.dart';
 import '../../../widgets/status_views.dart';
@@ -463,14 +464,18 @@ class _ProjectTasksTab extends ConsumerWidget {
               // Until OPH-338 this list came in creation order (the query's
               // `id DESC`), which no user ever chose.
               final items = orderTasks(raw, sort);
-              return ListView.builder(
-                padding: awListPadding(context),
-                itemCount: items.length,
-                // Every row here is this project — the badge would be noise.
-                itemBuilder: (context, index) => TaskTile(
-                  task: items[index],
-                  showProjectBadge: false,
-                  showUnit: false,
+              // OPH-405: the desktop pane's ↑/↓ follow this order.
+              return AwListOrder(
+                ids: [for (final task in items) task.id],
+                child: ListView.builder(
+                  padding: awListPadding(context),
+                  itemCount: items.length,
+                  // Every row here is this project — the badge would be noise.
+                  itemBuilder: (context, index) => TaskTile(
+                    task: items[index],
+                    showProjectBadge: false,
+                    showUnit: false,
+                  ),
                 ),
               );
             },

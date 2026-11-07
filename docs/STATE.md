@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-405** — Masaüstü: rail her yerde, detay paneli, kısayollar |
-| Last completed           | OPH-404 — ilk açılış (DESIGN §50): tanıtım turu 7 adımdan 4'e indi — hızlı yaz ("yarın 15:00 diş hekimi #sağlık"), sesle ekle (yalnız mikrofon çiziliyse), acil alarm, her yerde ara; her adım kendi denetimini aydınlatır, "Atla" kartın içinde "İleri"nin solunda; kurumsal turda mikrofonun yerini Talepler alır. Boş Ana Sayfa ikiye ayrıldı: hiç görevi olmayan hesapta "Henüz görev yok" + "İlk görevini ekle" (hızlı ekleme alanına odaklanır) + "Todoist ya da TickTick'ten taşı"; işi bitmişte "Bugünlük bu kadar / Açık görevin kalmadı." (A-12), şemsiye yerine onay dairesi. |
+| ➡️ **Next task**         | **OPH-406** — Şifre sıfırlama |
+| Last completed           | OPH-405 — masaüstü (DESIGN §51): ≥1200 px'te ray Ayarlar'da, adresle açılan görevde ve bütün oturumlu sayfalarda da açık (`AwRailFrame`); listedeki görev 480 px sağ panelde açılır (`AwListDetailScope`/`AwListDetailPane`/`AwListOrder`, uzantı ekranları için ortak), Esc kapatır (alandaysa önce alandan çıkar), ↑/↓ önceki/sonraki; pano dört sütunu genişliğe sığdırır (en az 260 px), fazlası görünür çubukla yana kayar, sağ kenar solar; N yeni görev, / arama (yazarken ikisi de karakter). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

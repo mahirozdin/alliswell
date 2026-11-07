@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/ee/providers.dart';
-import '../features/ee/team_origin.dart';
-import '../features/ee/ui/approvals_entry.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
@@ -28,12 +27,12 @@ import '../core/deep_link.dart';
 import '../core/persisted_prefs.dart';
 import '../features/tasks/data/capture_inbox.dart';
 import '../features/tasks/data/task_text.dart';
+import '../features/tasks/ui/task_detail_screen.dart';
 import '../features/workspaces/workspaces.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
 import '../features/quick_access/ui/quick_access_panel.dart';
-import '../features/quick_access/ui/quick_access_rail_section.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../i18n/i18n.dart';
 import '../notifications/alarm_overlay.dart';
@@ -48,7 +47,8 @@ import '../widgets/offline_strip.dart';
 import '../widgets/document_surface.dart';
 import '../widgets/fab_cluster.dart';
 import '../widgets/fab_clearance.dart';
-import '../widgets/glass.dart';
+import '../widgets/list_detail.dart';
+import 'shell_rail.dart';
 import '../widgets/refreshable.dart';
 import '../widgets/sheets.dart';
 import '../widgets/tab_capsule.dart';
@@ -166,7 +166,10 @@ class HomeShell extends ConsumerWidget {
         null,
       AppSection.notes when !ref.watch(canProvider('notes.create')) => null,
       AppSection.home => FloatingActionButton(
-        tooltip: 'shell.fabNewTask'.tr(),
+        // OPH-405: on a desktop the tooltip names the N key.
+        tooltip: MediaQuery.sizeOf(context).width >= kAwPaneBreakpoint
+            ? 'shell.fabNewTaskShortcut'.tr()
+            : 'shell.fabNewTask'.tr(),
         // The widget's "+" opens this same sheet (OPH-333) — one function.
         onPressed: () => showHomeTaskCreateSheet(context, ref),
         child: const Icon(Icons.add),
@@ -291,6 +294,117 @@ class HomeShell extends ConsumerWidget {
     if (picked != null) _goBranch(picked.index);
   }
 
+  static const _newTaskKey = SingleActivator(LogicalKeyboardKey.keyN);
+
+  Widget _shellLayout(
+    BuildContext context,
+    WidgetRef ref,
+    List<AppSection> visibleSections,
+    Widget? fab,
+    double fabClearance,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= kAwWideBreakpoint;
+        final extendedRail = constraints.maxWidth >= kAwExtendedRailBreakpoint;
+        if (isWide) {
+          // OPH-405 (U-08): from the desktop width a task opens in a pane
+          // beside the list; the floating cluster then stands left of it.
+          final paneOpen = AwListDetailScope.isOpen(context, kAwTaskPane);
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            // R-12: the cluster stands at the window's end, never on the
+            // rail (the microphone used to sit on its glass corner).
+            floatingActionButton: fab,
+            floatingActionButtonLocation: AwFabLocation(
+              kAwFloatGutter + (paneOpen ? kAwDetailPaneWidth : 0),
+            ),
+            body: Row(
+              children: [
+                AwShellRail(
+                  sections: visibleSections,
+                  extended: extendedRail,
+                  selected: destinationIndexFor(
+                    visibleSections,
+                    navigationShell.currentIndex,
+                  ).clamp(0, visibleSections.length - 1),
+                  onSelected: (i) => _goVisible(visibleSections, i),
+                  navKeys: _navKeys,
+                  tourAnchors: true,
+                ),
+                // OPH-359 (UI-AUDIT #12): the content is its own semantics
+                // container. The section's Navigator paints its page route's
+                // ModalBarrier, and a barrier is a `BlockSemantics`: it hides
+                // every node painted BEFORE it in the same container. Without
+                // a boundary here that container was the shell's, and the
+                // rail — painted first in this Row — vanished from the
+                // accessibility tree: no screen reader, no Tab on the web.
+                // The phone's bar is painted after the body, which is why
+                // only the wide layout lost it.
+                Expanded(
+                  child: AwListDetailPane(
+                    kind: kAwTaskPane,
+                    detailBuilder: (context, id, close) =>
+                        TaskDetailScreen(taskId: id, onClose: close),
+                    child: Semantics(
+                      key: const Key('shell-content'),
+                      container: true,
+                      child: AwFabClearance(
+                        extent: fabClearance,
+                        child: navigationShell,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        // ADR-0062 §4 (OPH-397): one gutter for everything that floats.
+        final gutter = awFloatGutter(constraints.maxWidth);
+        return AwFabScrollScope(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            floatingActionButton: fab == null ? null : AwFabDrop(child: fab),
+            floatingActionButtonLocation: AwFabLocation(gutter),
+            // OPH-392 (E-22): the phone has no refresh button to fail, so the
+            // lost server is said here, above whichever section is open.
+            body: AwOfflineStrip(
+              child: _ShellBody(
+                fabClearance: fabClearance,
+                child: navigationShell,
+              ),
+            ),
+            bottomNavigationBar: Padding(
+              // The bar's row belongs to the capsule and the orb alone: the
+              // Quick Access bubble no longer docks in it (ADR-0062 §5).
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(bottom: AwSpace.x3),
+                // OPH-374: the capsule shares its row with the search button
+                // (DESIGN §40 P1) — glass beside glass, one centre line.
+                child: Row(
+                  children: [
+                    // OPH-396 (ADR-0062): equal labelled slots; a sixth
+                    // section puts "More" in the fifth.
+                    Expanded(child: _phoneTabs(context, visibleSections)),
+                    const SizedBox(width: AwSpace.x2),
+                    const TourAnchor(
+                      target: TourTarget.search,
+                      child: AwGlobalSearchOrb(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Keep the live sync:changed socket (OPH-057) and the OS notification
@@ -310,21 +424,8 @@ class HomeShell extends ConsumerWidget {
     ref.watch(widgetSyncProvider);
     // EE-225's draft courier and "sent" listener live on the app itself
     // (`AllisWellApp`), not here: a page opened by its address has no shell.
-    // EE-084: which sections are DRAWN. Not the same list as the branches —
-    // `sections.dart` says why that distinction exists.
-    //
-    // EE-290: the service desk is drawn only in a TEAM's window. The license
-    // is the instance's, the desk is a team's, and every request endpoint
-    // answers only on the team's own address — which `teamOriginProvider`
-    // reads from the address this person signed in to and the cached status,
-    // so it is right offline. On the hosted service's own address somebody on
-    // their own has no desk, no catalogue and nobody to ask: the tab opened
-    // onto a list that could not load and a form that could not send.
-    final visibleSections = visibleAppSections(
-      itsm:
-          ref.watch(eeFeatureProvider('itsm')) &&
-          ref.watch(teamOriginProvider) != null,
-    );
+    // EE-084 / EE-290: which sections are DRAWN (`shellVisibleSections`).
+    final visibleSections = shellVisibleSections(ref);
     // …and a shell sitting on a branch it does not draw (an address typed or
     // restored on the web, a license that lapsed) moves to Home — once the
     // answer is SETTLED. While the status is still loading, the tab is hidden
@@ -415,167 +516,30 @@ class HomeShell extends ConsumerWidget {
     // every list inside the shell (see [AwFabClearance]).
     final fab = _fabCluster(context, ref);
     final fabClearance = fab == null ? 0.0 : AwFabClearance.lane;
-    final shell = LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= kAwWideBreakpoint;
-        final extendedRail = constraints.maxWidth >= kAwExtendedRailBreakpoint;
-        if (isWide) {
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            // R-12: the cluster stands at the window's end, never on the
-            // rail (the microphone used to sit on its glass corner).
-            floatingActionButton: fab,
-            floatingActionButtonLocation: const AwFabLocation(kAwFloatGutter),
-            body: Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AwSpace.x3,
-                    AwSpace.x3,
-                    0,
-                    AwSpace.x3,
-                  ),
-                  child: GlassSurface(
-                    floating: true,
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(AwRadius.xl),
-                    ),
-                    child: SafeArea(
-                      right: false,
-                      child: NavigationRail(
-                        extended: extendedRail,
-                        labelType: extendedRail
-                            ? NavigationRailLabelType.none
-                            : NavigationRailLabelType.all,
-                        selectedIndex: destinationIndexFor(
-                          visibleSections,
-                          navigationShell.currentIndex,
-                        ).clamp(0, visibleSections.length - 1),
-                        onDestinationSelected: (i) =>
-                            _goVisible(visibleSections, i),
-                        minWidth: kAwRailMinWidth,
-                        groupAlignment: -0.9,
-                        // OPH-374: search everywhere heads the rail — the
-                        // first thing on the left, as in every desktop app
-                        // with a palette (DESIGN §40 P1).
-                        leading: TourAnchor(
-                          target: TourTarget.search,
-                          child: AwGlobalSearchRailEntry(
-                            extended: extendedRail,
-                          ),
-                        ),
-                        // OPH-199: the shortcut section sits right under the
-                        // destinations. `scrollable` is not optional — a full
-                        // rail on a short window would otherwise overflow.
-                        scrollable: true,
-                        trailing: SizedBox(
-                          // The rail lives in an unbounded Row, and
-                          // `minExtendedWidth` is only a floor, so a long
-                          // shortcut title would otherwise widen the whole rail.
-                          width: extendedRail ? 256 : kAwRailMinWidth,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // EE-294: Approvals, directly under Requests —
-                              // the rail's last destination. A link rather
-                              // than a section (`approvals_entry.dart` says
-                              // why), drawn only for approval authority.
-                              EeApprovalsRailEntry(extended: extendedRail),
-                              extendedRail
-                                  ? const QuickAccessRailSection()
-                                  : const QuickAccessRailButton(),
-                            ],
-                          ),
-                        ),
-                        destinations: [
-                          for (final section in visibleSections)
-                            NavigationRailDestination(
-                              icon: KeyedSubtree(
-                                key: _navKeys[section]!.icon,
-                                child: Tooltip(
-                                  message: section.description,
-                                  waitDuration: const Duration(
-                                    milliseconds: 600,
-                                  ),
-                                  child: Icon(section.icon),
-                                ),
-                              ),
-                              selectedIcon: KeyedSubtree(
-                                key: _navKeys[section]!.selected,
-                                child: Icon(section.selectedIcon),
-                              ),
-                              label: Text(section.title),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // OPH-359 (UI-AUDIT #12): the content is its own semantics
-                // container. The section's Navigator paints its page route's
-                // ModalBarrier, and a barrier is a `BlockSemantics`: it hides
-                // every node painted BEFORE it in the same container. Without
-                // a boundary here that container was the shell's, and the
-                // rail — painted first in this Row — vanished from the
-                // accessibility tree: no screen reader, no Tab on the web.
-                // The phone's bar is painted after the body, which is why
-                // only the wide layout lost it.
-                Expanded(
-                  child: Semantics(
-                    container: true,
-                    child: AwFabClearance(
-                      extent: fabClearance,
-                      child: navigationShell,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+    // OPH-405: the task pane's state and keys (Esc, ↑/↓) sit above both
+    // layouts; switching sections closes it. N opens a new task anywhere
+    // in the shell (DESIGN §51 D4).
+    final canCreateTask = ref.watch(canProvider('tasks.create'));
+    final shell = Focus(
+      canRequestFocus: false,
+      includeSemantics: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        if (!canCreateTask ||
+            !_newTaskKey.accepts(event, HardwareKeyboard.instance) ||
+            awTextInputFocused() ||
+            ref.read(tourControllerProvider).running ||
+            ref.read(alarmOverlayControllerProvider).ringing != null) {
+          return KeyEventResult.ignored;
         }
-        // ADR-0062 §4 (OPH-397): one gutter for everything that floats.
-        final gutter = awFloatGutter(constraints.maxWidth);
-        return AwFabScrollScope(
-          child: Scaffold(
-            backgroundColor: Colors.transparent,
-            extendBody: true,
-            floatingActionButton: fab == null ? null : AwFabDrop(child: fab),
-            floatingActionButtonLocation: AwFabLocation(gutter),
-            // OPH-392 (E-22): the phone has no refresh button to fail, so the
-            // lost server is said here, above whichever section is open.
-            body: AwOfflineStrip(
-              child: _ShellBody(
-                fabClearance: fabClearance,
-                child: navigationShell,
-              ),
-            ),
-            bottomNavigationBar: Padding(
-              // The bar's row belongs to the capsule and the orb alone: the
-              // Quick Access bubble no longer docks in it (ADR-0062 §5).
-              padding: EdgeInsets.symmetric(horizontal: gutter),
-              child: SafeArea(
-                top: false,
-                minimum: const EdgeInsets.only(bottom: AwSpace.x3),
-                // OPH-374: the capsule shares its row with the search button
-                // (DESIGN §40 P1) — glass beside glass, one centre line.
-                child: Row(
-                  children: [
-                    // OPH-396 (ADR-0062): equal labelled slots; a sixth
-                    // section puts "More" in the fifth.
-                    Expanded(child: _phoneTabs(context, visibleSections)),
-                    const SizedBox(width: AwSpace.x2),
-                    const TourAnchor(
-                      target: TourTarget.search,
-                      child: AwGlobalSearchOrb(),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
+        unawaited(showHomeTaskCreateSheet(context, ref));
+        return KeyEventResult.handled;
       },
+      child: AwListDetailScope(
+        kind: kAwTaskPane,
+        resetToken: navigationShell.currentIndex,
+        child: _shellLayout(context, ref, visibleSections, fab, fabClearance),
+      ),
     );
 
     if (!tour.running && ringing == null) return shell;

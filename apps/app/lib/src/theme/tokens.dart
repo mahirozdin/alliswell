@@ -38,6 +38,13 @@ abstract final class AwRadius {
 const double kAwWideBreakpoint = 800;
 const double kAwExtendedRailBreakpoint = 1160;
 
+/// The desktop (OPH-405, U-08, DESIGN §51): from this window width the rail
+/// stays on every signed-in page — task detail and Settings included — and
+/// a list opens its item in a [kAwDetailPaneWidth] pane beside itself
+/// instead of pushing a page over it.
+const double kAwPaneBreakpoint = 1200;
+const double kAwDetailPaneWidth = 480;
+
 /// The rail's collapsed width — also the column its destination icons are
 /// centred in when extended. Anything drawn in the rail beside them (the
 /// Approvals entry) uses the same column, or it sits out of line (OPH-359).

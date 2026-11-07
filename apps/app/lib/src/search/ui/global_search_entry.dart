@@ -13,6 +13,7 @@ import '../../notifications/alarm_overlay.dart';
 import '../../router.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/glass.dart';
+import '../../widgets/list_detail.dart';
 import '../search_recents.dart';
 import 'global_search_palette.dart';
 
@@ -103,6 +104,10 @@ class _AwGlobalSearchHostState extends ConsumerState<AwGlobalSearchHost> {
     });
   }
 
+  /// By the character, so a layout that types "/" with Shift (Turkish Q:
+  /// Shift+7) reaches it too.
+  static const _slash = CharacterActivator('/');
+
   void _open() {
     // The same gates the Quick Access bubble keeps: no session, the tour or
     // a ringing alarm (both paint inside the shell, under this layer).
@@ -117,11 +122,27 @@ class _AwGlobalSearchHostState extends ConsumerState<AwGlobalSearchHost> {
   @override
   Widget build(BuildContext context) {
     ref.listen(globalSearchRequestProvider, (_, _) => _open());
-    return CallbackShortcuts(
-      bindings: {
-        for (final activator in globalSearchActivators()) activator: _open,
+    return Focus(
+      canRequestFocus: false,
+      includeSemantics: false,
+      skipTraversal: true,
+      // OPH-405 (DESIGN §51 D4): "/" opens it too, as in every list app on
+      // a desktop — but never from a text field, where "/" is a character
+      // (the note editor's slash menu begins with one).
+      onKeyEvent: (node, event) {
+        if (!_slash.accepts(event, HardwareKeyboard.instance) ||
+            awTextInputFocused()) {
+          return KeyEventResult.ignored;
+        }
+        _open();
+        return KeyEventResult.handled;
       },
-      child: widget.child,
+      child: CallbackShortcuts(
+        bindings: {
+          for (final activator in globalSearchActivators()) activator: _open,
+        },
+        child: widget.child,
+      ),
     );
   }
 }

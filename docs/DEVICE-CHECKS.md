@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Masaüstü: ray, görev paneli, kısayollar (2026-11-07)
+
+- OPH-405 — **Web (Chrome, Safari) ve macOS/Windows uygulaması, 1440 ve 1280 px, TR, açık ve koyu**: Ana Sayfa'da bir göreve tıklayınca liste yerinde kalıyor, görev sağda 480 px panelde açılıyor (takvim paneli o sırada gizli), "+" ve mikrofon panelin solunda; ↓/↑ sıradaki/önceki görevi açıyor ve liste o satıra kayıyor; başlık alanındayken oklar imleci oynatıyor, ilk Esc alandan çıkarıyor, ikincisi paneli kapatıyor; panelde "Sil" paneli kapatıyor, geri al çalışıyor. Ayarlar ve bir görev bağlantısı (yeni sekmede `/tasks/…`) solda rayla açılıyor, raydan bir bölüme gidiliyor. Pano dört sütunu kesmeden gösteriyor; "Görünümü düzenle"den beşinci sütun açılınca altta kaydırma çubuğu ve sağ kenarda solma çıkıyor, fareyle çubuktan ve trackpad'le yana kayıyor. Bir alana odaklı değilken N yeni görev penceresini, / aramayı açıyor; Türkçe Q klavyede Shift+7 ile de. 1199 px'e daraltınca panel kapanıyor ve görev eskisi gibi kendi sayfasında açılıyor. VoiceOver/NVDA açık satırı "seçili" okuyor.
+
 ## İlk açılış: tur ve boş Ana Sayfa (2026-11-07)
 
 - OPH-404 — **iPhone 393 ve Android 360, TR, açık ve koyu; ayrıca masaüstü ≥1200 px**: yeni hesapla ilk girişte (ya da Ayarlar → Uygulama turu) tur 4 adım: "Hızlı yaz" kartı hızlı ekleme alanının altında ve alan aydınlık; "Sesle ekle" mikrofonu, "Her yerde ara" alttaki büyüteci (masaüstünde raydaki arama kutusunu) çerçeveliyor; "Acil alarm" ortada. "Atla" kartın içinde "İleri"nin solunda, "İleri" adımlar arasında yer değiştirmiyor; kart hiçbir adımda ekran dışına taşmıyor. Turu bitirince boş Ana Sayfa'da "Henüz görev yok" + "İlk görevini ekle" (dokununca klavye hızlı ekleme alanında açılıyor) + "Todoist ya da TickTick'ten taşı" (içe aktarma sihirbazını açıyor); metin yüzen düğmelerin altında kalmıyor. Bir görevi tamamlayınca "Bugünlük bu kadar / Açık görevin kalmadı." ve onay dairesi. VoiceOver/TalkBack kartı "Uygulama turu, adım 1/4" diye okuyor.

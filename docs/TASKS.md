@@ -36,16 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-405 — Masaüstü: rail her yerde, detay paneli, kısayollar
-
-U-08; `ux-core-screens.md` §3.3, §6.
-
-- [ ] ≥1200 px: rail görev detayı ve Ayarlar'da da açık.
-- [ ] Görev detayı listenin sağında ~480 px panel; Esc kapatır, ↑/↓ önceki/sonraki. Desen uzantı
-      ekranlarının da kullanacağı bir bileşen olarak kurulur.
-- [ ] Pano 4+ sütunu yatay kaydırır; kısayollar N (yeni görev), / (ara), Esc.
-- **Kabul:** 1440 genişlikte widget testleri.
-
 ### OPH-406 — Şifre sıfırlama
 
 Kritik yol: auth. C-13; `ux-core-screens.md` §4.2. Yeni tablo gerekirse Kritik yol: migrations.

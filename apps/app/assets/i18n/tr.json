@@ -263,6 +263,7 @@
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",
+    "fabNewTaskShortcut": "Seçeneklerle yeni görev (N)",
     "fabNewProject": "Yeni proje",
     "fabNewNote": "Yeni not",
     "settingsTooltip": "Ayarlar"
@@ -372,6 +373,7 @@
     "discardKeep": "Yazmaya devam et",
     "discardConfirm": "Sil",
     "detailTitle": "Görev",
+    "paneClose": "Kapat (Esc)",
     "complete": "Tamamla",
     "reopen": "Yeniden aç",
     "completeNamed": "“{title}” tamamla",

@@ -9,6 +9,7 @@ import '../../../core/linkify.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/list_detail.dart';
 import '../../../widgets/meta_line.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../ai/data/ai_quick_add.dart';
@@ -108,6 +109,10 @@ class TaskTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final dateFormat = ref.watch(dateFormatProvider);
+    // OPH-405: the desktop's task pane, when this row is under one.
+    final pane = AwListDetailScope.maybeOf(context, kAwTaskPane);
+    final inPane = pane != null && pane.selectedId == task.id;
+    AwListOrder.registerRow(context, task.id);
     // `select` keeps a change on one task from rebuilding the whole list.
     final assignees = ref.watch(
       workspaceAssigneesProvider.select(
@@ -567,14 +572,30 @@ class TaskTile extends ConsumerWidget {
           : dimmed
           ? awRecededSurface(scheme)
           : null,
-      shape: highlighted
+      // OPH-405 (DESIGN §51 D2): the row open in the pane is outlined, not
+      // filled — the fill is the selected day's, and the text keeps its
+      // measured pair either way.
+      shape: inPane
+          ? RoundedRectangleBorder(
+              borderRadius: const BorderRadius.all(Radius.circular(AwRadius.l)),
+              side: BorderSide(color: scheme.primary, width: 2),
+            )
+          : highlighted
           ? RoundedRectangleBorder(
               borderRadius: const BorderRadius.all(Radius.circular(AwRadius.l)),
               side: BorderSide(color: scheme.primary.withValues(alpha: 0.45)),
             )
           : null,
       child: InkWell(
-        onTap: () => context.push('/tasks/${task.id}'),
+        // OPH-405 (DESIGN §51): on a desktop the row opens its task in the
+        // pane beside the list; elsewhere it pushes the detail page.
+        onTap: () {
+          if (pane != null) {
+            pane.open(task.id, order: AwListOrder.maybeOf(context));
+          } else {
+            context.push('/tasks/${task.id}');
+          }
+        },
         child: body,
       ),
     );
@@ -597,7 +618,11 @@ class TaskTile extends ConsumerWidget {
     // No `Opacity` here any more (DESIGN §20 C3): recession is the card's
     // colour, decided above, so the text keeps its full-strength token and
     // `contrast.py` can see the pair.
-    return Padding(padding: kAwListRowPadding, child: swipeable);
+    return Padding(
+      padding: kAwListRowPadding,
+      // Always the same wrapper, so opening a row never rebuilds its subtree.
+      child: Semantics(selected: inPane ? true : null, child: swipeable),
+    );
   }
 }
 

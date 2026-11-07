@@ -28,7 +28,13 @@ import 'shell_harness.dart';
 void main() {
   setUp(() => AwI18n.instance.setActiveCached(const Locale('en')));
 
-  final plus = find.byTooltip('shell.fabNewTask'.tr());
+  // From 1200 the tooltip also names the N key (OPH-405).
+  final plus = find.byWidgetPredicate(
+    (w) =>
+        w is Tooltip &&
+        (w.message == 'shell.fabNewTask'.tr() ||
+            w.message == 'shell.fabNewTaskShortcut'.tr()),
+  );
   final mic = find.byKey(const Key('ai-fab'));
   final capsule = find.byKey(const Key('tab-capsule'));
   final orb = find.ancestor(

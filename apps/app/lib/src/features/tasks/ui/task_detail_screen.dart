@@ -48,38 +48,56 @@ typedef TaskAction = Future<Object?> Function(TaskStore store, String taskId);
 /// and checklist — every control writes the local replica (instant) and syncs
 /// in the background; failed writes surface as snackbars instead of vanishing.
 class TaskDetailScreen extends ConsumerWidget {
-  const TaskDetailScreen({super.key, required this.taskId});
+  const TaskDetailScreen({super.key, required this.taskId, this.onClose});
 
   final String taskId;
+
+  /// Set when the detail is the desktop pane beside a list (OPH-405,
+  /// DESIGN §51): the app bar leads with a close button instead of back,
+  /// and deleting the task closes the pane instead of popping a route.
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(taskDetailProvider(taskId));
     return task.when(
-      loading: () => _TaskDetailWaiting(taskId: taskId),
+      loading: () => _TaskDetailWaiting(taskId: taskId, onClose: onClose),
       error: (error, _) => Scaffold(
-        appBar: AppBar(leading: awRouteLeading(context)),
+        appBar: AppBar(leading: _leading(context, onClose)),
         body: Center(child: Text('$error')),
       ),
-      data: (value) => _TaskDetail(task: value),
+      data: (value) => _TaskDetail(task: value, onClose: onClose),
     );
   }
 }
+
+/// The app bar's leading button: the pane's close, or the route's own.
+Widget? _leading(BuildContext context, VoidCallback? onClose) => onClose == null
+    ? awRouteLeading(context)
+    : IconButton(
+        key: const Key('task-pane-close'),
+        icon: const Icon(Icons.close),
+        tooltip: 'task.paneClose'.tr(),
+        onPressed: onClose,
+      );
 
 /// The detail's row is not in the replica (yet). A spinner while the server
 /// says the task exists — the pull brings it — and an answer otherwise
 /// (OPH-392, E-17): a link to a deleted or foreign task, or one opened
 /// offline before it ever synced, used to spin forever.
 class _TaskDetailWaiting extends ConsumerWidget {
-  const _TaskDetailWaiting({required this.taskId});
+  const _TaskDetailWaiting({required this.taskId, this.onClose});
 
   final String taskId;
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final absence = ref.watch(taskAbsenceProvider(taskId)).value;
     return Scaffold(
-      appBar: absence == null ? null : AppBar(leading: awRouteLeading(context)),
+      appBar: absence == null
+          ? null
+          : AppBar(leading: _leading(context, onClose)),
       body: switch (absence) {
         null => const Center(child: CircularProgressIndicator()),
         TaskAbsence.gone => AwErrorState(
@@ -100,9 +118,10 @@ class _TaskDetailWaiting extends ConsumerWidget {
 }
 
 class _TaskDetail extends ConsumerStatefulWidget {
-  const _TaskDetail({required this.task});
+  const _TaskDetail({required this.task, this.onClose});
 
   final Task task;
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<_TaskDetail> createState() => _TaskDetailState();
@@ -187,7 +206,9 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     final work = ref.watch(ticketWorkOfTaskProvider(task.id)).value;
     return Scaffold(
       appBar: AppBar(
-        leading: awRouteLeading(context),
+        leading: _leading(context, widget.onClose),
+        // The pane has no route under it to imply a back button from.
+        automaticallyImplyLeading: widget.onClose == null,
         title: Text('task.detailTitle'.tr()),
         actions: [
           // EE-069 / item 10: the task's own history. Present only where there
@@ -230,7 +251,12 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
                 final router = GoRouter.of(context);
+                final close = widget.onClose;
                 await deleteTaskWithUndo(context, ref, task);
+                if (close != null) {
+                  close();
+                  return;
+                }
                 // Pop first: the row is already hidden everywhere, and staying on
                 // the detail of a deleted task would strand the user.
                 if (router.canPop()) {

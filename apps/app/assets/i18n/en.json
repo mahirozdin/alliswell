@@ -264,6 +264,7 @@
   },
   "shell": {
     "fabNewTask": "New task with options",
+    "fabNewTaskShortcut": "New task with options (N)",
     "fabNewProject": "New project",
     "fabNewNote": "New note",
     "settingsTooltip": "Settings"
@@ -373,6 +374,7 @@
     "discardKeep": "Keep editing",
     "discardConfirm": "Discard",
     "detailTitle": "Task",
+    "paneClose": "Close (Esc)",
     "complete": "Complete",
     "reopen": "Reopen",
     "completeNamed": "Complete “{title}”",

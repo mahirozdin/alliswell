@@ -125,9 +125,16 @@ void main() {
 
     // The detail screen grew When and Duration rows (OPH-372): the tag field
     // is past the lazy list's first build — scroll it in.
+    // At 1280 the task opens in the desktop pane (OPH-405), where the
+    // form is narrower: scroll the detail's own list.
     await tester.dragUntilVisible(
       find.byKey(const Key('tag-input')),
-      find.byKey(const Key('duration-row')),
+      find
+          .descendant(
+            of: find.byKey(const Key('list-detail-pane')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
       const Offset(0, -200),
     );
     await tester.pumpAndSettle();

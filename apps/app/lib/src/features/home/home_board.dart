@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +11,7 @@ import '../../i18n/i18n.dart';
 import '../../sections.dart';
 import '../../sync/refresh.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/list_detail.dart';
 import '../../widgets/refreshable.dart';
 import '../../widgets/snackbars.dart';
 import '../tasks/data/task.dart';
@@ -38,13 +42,25 @@ class HomeBoard extends ConsumerStatefulWidget {
 }
 
 class _HomeBoardState extends ConsumerState<HomeBoard> {
-  static const _columnWidth = 320.0;
-
   PageController? _pager;
+  final ScrollController _columnsScroll = ScrollController();
+
+  /// Whether the wide board has columns past its right edge (the fade).
+  final ValueNotifier<bool> _moreRight = ValueNotifier(true);
+
+  bool _trackEdge(ScrollNotification notification) {
+    final metrics = notification.metrics;
+    if (notification.depth == 0 && metrics.axis == Axis.horizontal) {
+      _moreRight.value = metrics.extentAfter > 0.5;
+    }
+    return false;
+  }
 
   @override
   void dispose() {
     _pager?.dispose();
+    _columnsScroll.dispose();
+    _moreRight.dispose();
     super.dispose();
   }
 
@@ -177,33 +193,78 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = awWideContent(context, constraints);
+        // OPH-405: a task open in the desktop pane narrows the board; it
+        // keeps its columns (scrolling sideways) rather than turning into the
+        // phone's pager.
+        final paneOpen = AwListDetailScope.isOpen(context, kAwTaskPane);
+        final isWide = paneOpen || awWideContent(context, constraints);
         if (isWide) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AwSpace.x3,
-              vertical: AwSpace.x2,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final status in columns)
-                  SizedBox(
-                    width: _columnWidth,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AwSpace.x1,
-                      ),
-                      child: _BoardColumn(
-                        status: status,
-                        tasks: byStatus[status] ?? const [],
-                        onDropped: _setStatus,
-                        onMoveRequested: _showMoveSheet,
-                        onRefresh: _refresh,
-                      ),
-                    ),
+          // U-36 (DESIGN §51 D5): four columns share the width, none narrower
+          // than [kBoardMinColumnWidth]; a fifth — or a narrow window — scrolls
+          // sideways under a visible bar, and the edge that has more fades.
+          final available = constraints.maxWidth - 2 * AwSpace.x3;
+          final columnWidth = boardColumnWidth(available);
+          final overflowing = columns.length * columnWidth > available + 0.5;
+          // Metrics, not only scrolling: a column added or a pane opened
+          // changes what is past the edge without moving the scroll.
+          final board = NotificationListener<ScrollNotification>(
+            onNotification: _trackEdge,
+            child: NotificationListener<ScrollMetricsNotification>(
+              onNotification: (n) => _trackEdge(n.asScrollUpdate()),
+              child: Scrollbar(
+                controller: _columnsScroll,
+                thumbVisibility: overflowing,
+                trackVisibility: overflowing,
+                child: SingleChildScrollView(
+                  key: const Key('board-columns'),
+                  controller: _columnsScroll,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(
+                    AwSpace.x3,
+                    AwSpace.x2,
+                    AwSpace.x3,
+                    AwSpace.x4,
                   ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final status in columns)
+                        SizedBox(
+                          width: columnWidth,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AwSpace.x1,
+                            ),
+                            child: _BoardColumn(
+                              status: status,
+                              tasks: byStatus[status] ?? const [],
+                              onDropped: _setStatus,
+                              onMoveRequested: _showMoveSheet,
+                              onRefresh: _refresh,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+          return AwListOrder(
+            // ↑/↓ in the pane walk the board as it reads: down a column,
+            // then on to the next one.
+            ids: [
+              for (final status in columns)
+                for (final entry in foldBoardSeries(
+                  status,
+                  byStatus[status] ?? const [],
+                ))
+                  entry.task.id,
+            ],
+            child: Stack(
+              children: [
+                board,
+                if (overflowing) _ColumnsEdgeFade(more: _moreRight),
               ],
             ),
           );
@@ -663,6 +724,53 @@ class _BoardColumnsSheetState extends ConsumerState<_BoardColumnsSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The narrowest a board column gets on a wide layout (U-36).
+const double kBoardMinColumnWidth = 260;
+
+/// A wide board column: a quarter of [available], never below
+/// [kBoardMinColumnWidth] — so four columns fit a desktop window and a fifth
+/// is one scroll away instead of a cut-off edge (OPH-405).
+double boardColumnWidth(double available) =>
+    math.max(kBoardMinColumnWidth, available / 4);
+
+/// The 24 px fade on the edge of the board that has more columns past it
+/// (consolidated §3: a horizontal row ends in a fade, so a cut card reads as
+/// "more", not as a fault). Paint in the page colour, never glass (G1), and
+/// it takes no touches.
+class _ColumnsEdgeFade extends StatelessWidget {
+  const _ColumnsEdgeFade({required this.more});
+
+  /// Whether there are columns past the right edge.
+  final ValueListenable<bool> more;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.awTokens;
+    final page = Color.alphaBlend(tokens.veil, tokens.auroraBottom);
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      right: 0,
+      width: AwSpace.x6,
+      child: IgnorePointer(
+        child: ValueListenableBuilder<bool>(
+          valueListenable: more,
+          builder: (context, more, _) => more
+              ? DecoratedBox(
+                  key: const Key('board-edge-fade'),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [page.withValues(alpha: 0), page],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ),
     );

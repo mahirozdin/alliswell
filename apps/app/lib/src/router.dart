@@ -93,6 +93,7 @@ import 'widgets/glass.dart';
 import 'widgets/status_views.dart';
 import 'i18n/i18n.dart';
 import 'widgets/route_leading.dart';
+import 'screens/shell_rail.dart';
 
 const _authLocations = {'/login', '/register'};
 
@@ -115,7 +116,12 @@ Widget _page(Widget child) => AwPageBackground(child: child);
 /// forever for a copy that never came. Every such page keeps the replica
 /// current itself. The auth screens, the splash and the operator console do
 /// not use this: there is no person's replica there to keep.
-Widget _contentPage(Widget child) => _page(AwKeepReplicaCurrent(child: child));
+///
+/// OPH-405 (U-08): from the desktop width (`kAwPaneBreakpoint`) such a page
+/// keeps the rail beside it ([AwRailFrame]) — Settings and a task opened by
+/// its address no longer drop the navigation.
+Widget _contentPage(Widget child) =>
+    _page(AwKeepReplicaCurrent(child: AwRailFrame(child: child)));
 
 /// A team route behind its door (OPH-356, UI-AUDIT #7 and #61): the team's
 /// address first, then — for the administration — who may open it. See

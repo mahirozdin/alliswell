@@ -19,6 +19,7 @@ import '../../screens/home_shell.dart';
 import '../../sections.dart';
 import '../../sync/refresh.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/list_detail.dart';
 import '../../widgets/refreshable.dart';
 import '../../widgets/status_views.dart';
 import '../../search/providers.dart';
@@ -652,9 +653,15 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ],
           );
 
+          final collapsed = ref.watch(homeCollapsedSectionsProvider);
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = awWideContent(context, constraints);
+              // OPH-405 (DESIGN §51 D3): with a task open in the desktop pane
+              // the list keeps its wide form — it only gives the calendar
+              // panel's room to the pane — instead of turning into the phone
+              // layout (and losing its scroll position) on every open.
+              final paneOpen = AwListDetailScope.isOpen(context, kAwTaskPane);
+              final isWide = paneOpen || awWideContent(context, constraints);
 
               // H2 — wide layouts are unchanged: there is room for pinned
               // chrome, and the calendar is a side panel.
@@ -689,37 +696,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   AlwaysScrollableScrollPhysics(),
                                               slivers: [_HomeSearchResults()],
                                             )
-                                          : _GroupedTaskList(
-                                              groups: groups,
-                                              onTagTap: onTagTap,
-                                              dateFormat: dateFormat,
-                                              controller: _wideScroll,
-                                              flashId: _flashId,
-                                              flashKey: _flashKey,
-                                              quickAddFocus: _quickAddFocus,
+                                          : AwListOrder(
+                                              ids: [
+                                                for (final group in groups)
+                                                  if (!collapsed.contains(
+                                                    homeSectionKey(group),
+                                                  ))
+                                                    for (final item
+                                                        in group.items)
+                                                      if (item is TaskItem)
+                                                        item.task.id,
+                                              ],
+                                              child: _GroupedTaskList(
+                                                groups: groups,
+                                                onTagTap: onTagTap,
+                                                dateFormat: dateFormat,
+                                                controller: _wideScroll,
+                                                flashId: _flashId,
+                                                flashKey: _flashKey,
+                                                quickAddFocus: _quickAddFocus,
+                                              ),
                                             ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            SizedBox(
-                              width: 356,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AwSpace.x1,
-                                  AwSpace.x2,
-                                  AwSpace.x4,
-                                  AwSpace.x4,
-                                ),
-                                child: Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(AwSpace.x3),
-                                    child: calendar,
+                            if (!paneOpen)
+                              SizedBox(
+                                width: 356,
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    AwSpace.x1,
+                                    AwSpace.x2,
+                                    AwSpace.x4,
+                                    AwSpace.x4,
+                                  ),
+                                  child: Card(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(AwSpace.x3),
+                                      child: calendar,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
