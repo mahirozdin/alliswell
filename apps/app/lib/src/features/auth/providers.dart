@@ -130,8 +130,8 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     await ref.read(pushMessagingProvider).forgetToken();
     // Every engine stops and finishes the round it is in, so no pull lands
     // on the replica after the wipe below. Bounded: a request hanging on a
-    // dead network must not hold the sign-out — a late page is still caught
-    // by the next sign-in's owner check (`LocalDataGuard.claimFor`).
+    // dead network must not hold the sign-out — a stopped engine drops the
+    // page that answers late instead of applying it (`SyncEngine._pullAll`).
     //
     // Through the registry, never `syncEnginesProvider` (OPH-390, E-01): the
     // engines hang off this very session, so reading them from here is a

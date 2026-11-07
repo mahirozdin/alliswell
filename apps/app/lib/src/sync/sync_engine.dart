@@ -468,12 +468,19 @@ class SyncEngine {
 
   Future<void> _pullAll() async {
     while (true) {
+      if (_stopped) return;
       final state = await _ensureState();
       final page = await api.pull(
         workspaceId,
         sinceRevision: state.lastRevision,
         limit: pullPageSize,
       );
+      // Stopped while the request was out: sign-out gives up waiting after a
+      // bound and wipes the replica, and somebody else may already be signed
+      // in. A page answered after that belongs to nobody on this device — it
+      // is dropped, never applied (E35 G-A review r1). The revision is not
+      // advanced, so a running engine would simply pull it again.
+      if (_stopped) return;
       if (page.changes.isNotEmpty || page.toRevision != state.lastRevision) {
         await applyPulledChanges(
           db,

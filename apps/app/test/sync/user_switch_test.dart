@@ -236,6 +236,32 @@ void main() {
       engine.dispose();
     },
   );
+
+  test('a pull answered after sign-out gave up waiting writes nothing '
+      '(E35 G-A review r1)', () async {
+    // Sign-out bounds its wait on the engines (5 s): a pull hanging on a
+    // dead network is left behind, the replica is wiped and somebody else
+    // may sign in. When that late answer finally arrives, the stopped
+    // engine must drop it — the next sign-in's owner check ran before it.
+    final gate = Completer<void>();
+    final api = _GatedSyncApi(gate.future);
+    final engine = SyncEngine(db: db, api: api, workspaceId: ws);
+    final round = engine.syncNow();
+    await api.pulling.future;
+
+    // Sign-out's bounded wait runs out with the pull still out.
+    await engine.halt().timeout(
+      const Duration(milliseconds: 10),
+      onTimeout: () {},
+    );
+    await wipeReplica(db);
+
+    gate.complete();
+    await round;
+    expect(await db.select(db.notifications).get(), isEmpty);
+    expect(await db.select(db.syncStates).get(), isEmpty);
+    engine.dispose();
+  });
 }
 
 class _GatedSyncApi implements SyncApi {
