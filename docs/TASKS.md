@@ -36,20 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-399 — Platform tracking, Glass Type v1, tabular rakam, kontrast, check:typography
-
-T-01…T-06, U-15, U-16; [ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md).
-
-- [ ] `awTracking`: Apple'da HIG tablosu, diğerlerinde 0; Glass Type v1 ölçeği (araştırmada
-      `mobbin-design.md` §1.2, `typography-system.md` §4.2); tarih, saat ve sayaçta tabular rakam.
-- [ ] Kontrast: kırmızı bölüm başlığı aurora lekesi üstünde ≥4.5:1; `Colors.amber` yıldız → token;
-      `scripts/design/contrast.py` sayfa zemini üstündeki metni de ölçer.
-- [ ] Yeni kapı `check:typography` (ham `fontSize`, ham `TextStyle`, ızgara dışı boşluk; taban dosyası,
-      sayı yalnız azalabilir) `verify:batch`'e girer; `commands.md` satırı.
-- [ ] DESIGN §3.3 güncellenir.
-- **Kabul:** tema testleri. **Cihazda bakılacak:** iOS simülatöründe SF genişlik ölçümü
-  (`typography-sf-verification.md` §1 yöntemi) — DEVICE-CHECKS satırı.
-
 ### OPH-400 — Görev satırı (DESIGN §44)
 
 R-09, T-02, U-06, U-12.

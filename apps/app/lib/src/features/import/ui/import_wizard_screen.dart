@@ -13,6 +13,7 @@ import '../data/import_api.dart';
 import '../data/import_file_reader.dart';
 import '../data/import_models.dart';
 import '../providers.dart';
+import '../../../theme/typography.dart';
 
 /// Moving in from Todoist or TickTick (OPH-371, DESIGN §37).
 ///
@@ -363,7 +364,11 @@ class _Count extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('$value', key: countKey, style: theme.textTheme.headlineSmall),
+          Text(
+            '$value',
+            key: countKey,
+            style: awTabular(theme.textTheme.headlineSmall!),
+          ),
           Text(
             label,
             style: theme.textTheme.bodySmall?.copyWith(

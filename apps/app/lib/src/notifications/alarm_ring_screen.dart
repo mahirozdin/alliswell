@@ -13,6 +13,7 @@ import 'reminder_profile.dart';
 import 'alarm_overlay.dart';
 import 'planner.dart';
 import 'providers.dart';
+import '../theme/typography.dart';
 
 /// Full-screen "alarm ringing" surface (OPH-143). Shown while an URGENT alarm is
 /// due and the app is open — desktop/web's only alarm surface, and the
@@ -323,8 +324,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                                     },
                                   )
                                 : time,
-                            style: text.titleMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
+                            style: awTabular(
+                              text.titleMedium!.copyWith(
+                                color: scheme.onSurfaceVariant,
+                              ),
                             ),
                           ),
                         ],
@@ -407,7 +410,6 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                         'alarm.ringing.snooze'.tr(),
                         style: text.labelMedium?.copyWith(
                           color: scheme.onSurfaceVariant,
-                          letterSpacing: 0.4,
                         ),
                       ),
                       const SizedBox(height: AwSpace.x2),

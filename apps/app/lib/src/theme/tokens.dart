@@ -110,6 +110,7 @@ class AwTokens extends ThemeExtension<AwTokens> {
   const AwTokens({
     required this.success,
     required this.warning,
+    required this.errorOnPage,
     required this.link,
     required this.hairline,
     required this.glassTint,
@@ -139,6 +140,13 @@ class AwTokens extends ThemeExtension<AwTokens> {
 
   /// Favorites/pinned stars and caution accents (≥ 3:1 as icon on surface).
   final Color warning;
+
+  /// Error-coloured TEXT drawn on the page itself (the aurora + veil), not on
+  /// a card: the "Overdue" section header. `scheme.error` is tuned for the
+  /// card and measured 4.32:1 (light) / 4.34:1 (dark) over the wash's
+  /// brightest blob (ADR-0063 #4) — under the 4.5:1 floor. This tone holds
+  /// ≥ 4.8:1 on every ground `contrast.py` derives from the wash.
+  final Color errorOnPage;
 
   /// Text-button/link foreground — darker than primary in light mode so
   /// small link text stays ≥ 4.5:1 on the background.
@@ -209,6 +217,7 @@ class AwTokens extends ThemeExtension<AwTokens> {
   static const light = AwTokens(
     success: Color(0xFF0D7A33),
     warning: Color(0xFFC77700),
+    errorOnPage: Color(0xFFC40013),
     link: Color(0xFF0B54D0),
     hairline: Color(0x140F1B2E),
     glassTint: Color(0xBDF6F9FF),
@@ -236,6 +245,7 @@ class AwTokens extends ThemeExtension<AwTokens> {
   static const dark = AwTokens(
     success: Color(0xFF30D158),
     warning: Color(0xFFFFC400),
+    errorOnPage: Color(0xFFFF655C),
     link: Color(0xFF3E9BFF),
     hairline: Color(0x1FEAF0FD),
     glassTint: Color(0xB8111A38),
@@ -264,6 +274,7 @@ class AwTokens extends ThemeExtension<AwTokens> {
   AwTokens copyWith({
     Color? success,
     Color? warning,
+    Color? errorOnPage,
     Color? link,
     Color? hairline,
     Color? glassTint,
@@ -290,6 +301,7 @@ class AwTokens extends ThemeExtension<AwTokens> {
     return AwTokens(
       success: success ?? this.success,
       warning: warning ?? this.warning,
+      errorOnPage: errorOnPage ?? this.errorOnPage,
       link: link ?? this.link,
       hairline: hairline ?? this.hairline,
       glassTint: glassTint ?? this.glassTint,
@@ -322,6 +334,7 @@ class AwTokens extends ThemeExtension<AwTokens> {
     return AwTokens(
       success: mix(success, other.success),
       warning: mix(warning, other.warning),
+      errorOnPage: mix(errorOnPage, other.errorOnPage),
       link: mix(link, other.link),
       hairline: mix(hairline, other.hairline),
       glassTint: mix(glassTint, other.glassTint),

@@ -104,6 +104,8 @@ const steps = [
   ),
   gate('fab', 'npm run -s check:fab', under('apps/app/lib/', 'scripts/design/')),
   gate('opacity', 'npm run -s check:opacity', under('apps/app/lib/', 'scripts/design/')),
+  // ADR-0063 #5: raw fontSize / TextStyle / off-grid spacing may only go down.
+  gate('typography', 'npm run -s check:typography', under('apps/app/lib/', 'scripts/design/')),
   gate(
     'push-payload',
     'npm run -s check:push-payload',

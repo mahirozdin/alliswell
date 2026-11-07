@@ -104,14 +104,43 @@ two verified lightnesses.
 ### 3.3 Typography
 
 Platform system fonts on purpose (SF Pro on Apple, Roboto/Segoe elsewhere,
-Roboto on web) — zero network fetch, native feel. On the web "Roboto" is the
-app's own: `pubspec.yaml` registers `assets/fonts/Roboto-*` (400/500/700 +
-italics) under that exact family name, and `web/flutter_bootstrap.js` loads
-CanvasKit from the bundle, so the browser calls no Google host (OPH-395,
-ADR-0063 #7, `web_fonts_offline_test.dart`). Weights/tracking tuned in
-`theme.dart`: headlines w700 with negative tracking, titles w600, labels
-w600, body 16/1.5. Use `textTheme` roles; never ad-hoc `fontSize`.
-Tabular figures for day numbers and timers.
+Roboto on web) — zero network fetch, native feel; the family does not change
+(ADR-0005 #6, owner 2026-11-07). On the web "Roboto" is the app's own:
+`pubspec.yaml` registers `assets/fonts/Roboto-*` (400/500/700 + italics) under
+that exact family name, and `web/flutter_bootstrap.js` loads CanvasKit from the
+bundle, so the browser calls no Google host (OPH-395, ADR-0063 #7,
+`web_fonts_offline_test.dart`).
+
+**Glass Type v1** ([ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md),
+`theme/typography.dart`, OPH-399): Material's sizes, our line heights, weights
+and tracking.
+
+- **Tracking comes from the font, never a widget** — `awTracking(size)`: on
+  iOS/macOS the HIG SF Pro table (11 +0.06 · 12 0 · 13 −0.08 · 14 −0.15 ·
+  15 −0.23 · 16 −0.31 · 17 −0.43 · 20 −0.45 · 22 −0.26 · 24 +0.07 · 28 +0.38 ·
+  34 +0.40), everywhere else 0. Flutter draws SF without Apple's dynamic
+  tracking, so Material's Roboto values (+0.5 body) made row titles ~10 %
+  wider than native. No `letterSpacing:` at a call site; a fixed-size label
+  takes `context.awText.tracking(size)`.
+- **Roles** (size/line · weight): titleLarge 22/28 · 700 (app bar) ·
+  headlineSmall 24/30 · 700 · titleMedium 16/22 · 600 · titleSmall 14/20 · 600 ·
+  **bodyLarge 16/22 · 400 (row title, input; the list tile title is w400)** ·
+  bodyMedium 14/20 · 400 · bodySmall 12/16 · 400 · labelLarge 14/20 · 600 ·
+  labelMedium 12/16 · 600 · labelSmall 11/14 · 500 · displaySmall 36/44 · 700
+  tabular. Long-form notes keep their own line height.
+- **Semantic roles**, `context.awText`: `sectionLabel` 15/20 w600 tabular
+  (list section headers — Home, Completed, task detail cards), `meta` 13/18
+  w400 tabular, `metaStrong` (w500), `rowTitle` 16/22 w400, `numeric(style)`.
+  Use these instead of copying a `copyWith` chain.
+- **Weights:** 400/500/600/700 only; w800 is the alarm label's alone. State is
+  colour, not weight.
+- **Tabular figures** (`awTabular`) for dates, times, counters, badges, the
+  alarm time, import counts and calendar day numbers.
+- **Gate:** `npm run check:typography` counts raw `fontSize:`, bare
+  `TextStyle(` and off-grid `EdgeInsets`/gap `SizedBox` literals per file in
+  `apps/app/lib` (theme and print exporters excluded) against
+  `scripts/design/typography-baseline.json`; the counts may only go down.
+- Goldens draw Roboto, so SF widths are a device check (DEVICE-CHECKS).
 
 ## 4. Component rules (all themed centrally in `theme.dart`)
 
@@ -169,6 +198,9 @@ Tabular figures for day numbers and timers.
   never be see-through to the route beneath it.**
 - **Overdue** dates render in `error` color w600 with the word "Overdue".
 - **Stars (favorite/pin)** use `AwTokens.warning`, never `Colors.amber`.
+- **Error text on the page** (not on a card) — the "Overdue" section header —
+  uses `AwTokens.errorOnPage` (`#C40013` / `#FF655C`): `scheme.error` is tuned
+  for cards and falls to 4.32:1 over the aurora's brightest blob (OPH-399).
 - **Project badge (task rows — added 2026-07-17, feedback round 4, OPH-104):**
   a FILLED pill in the project's color, rightmost element of the row's
   trailing cluster. Radius `AwRadius.s`, padding 8×2, `labelSmall` w600,
@@ -220,6 +252,11 @@ python3 scripts/design/contrast.py
 ```
 
 It must print `FAILURES: 0` before a palette change ships.
+
+**Text on the page is measured too (OPH-399, ADR-0063 #4).** Section headers sit
+on the aurora + `veil`, not a card. The script derives those grounds from
+`tokens.dart` (the veil over each blob's peak on the gradient's two ends, plus
+the plain wash) and checks each page ink against the worst one.
 
 **Round 17 (OPH-247) added one token group and no other colours:** six
 syntax-highlighting inks (`codeKeyword`, `codeString`, `codeComment`,

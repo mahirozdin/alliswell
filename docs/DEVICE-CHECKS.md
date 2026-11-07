@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Tipografi: Glass Type v1 (2026-11-07)
+
+- OPH-399 — **iOS simülatörü (iPhone 393 ve 440), demo tohumu, açık ve koyu**: satır başlığı, meta ve bar etiketi genişliği yerel UILabel ile aynı (±0.2 pt; yöntem `research/2026-11-design-ux/typography-sf-verification.md` §1: 3x ekran görüntüsü + simülatör içinde `sfmeasure.swift`); beklenen satır başlığında −%10…−12, geciken meta tek satır. Ana Sayfa'da "Geciken · N" kırmızısı aurora lekesinin üstünde rahat okunuyor; sayaçlar, tarih ve saatler değişirken yanındaki metin kaymıyor (tabular). **Android 360 ve web (Chrome)**: harf aralığı 0, metin önceki hâlinden belirgin dar değil; web'de w600 başlıklar (SemiBold dosyası yok) kalın çiziliyor mu bak.
+
 ## Telefon alt barı: AwTabCapsule (2026-11-07)
 
 - OPH-398 — **iPhone 393 ve Android 360, açık ve koyu, TR**: Ana Sayfa çubuğunda yalnız ⚡, Görünüm (ikon + ⌄) ve Ayarlar; "Ana Sayfa" başlığı tam. Görünüm menüsü: Liste/Pano, Takvimi gizle/göster, Sıralama; panoda "Görünümü düzenle". Açılışta süzme alanı görünmüyor, listeyi biraz aşağı çekince huni ikonlu alan çıkıyor; çekmeye devam edince yenileme dönüyor (iOS'ta tek hareket, Android'de de). Kısa listede (1–2 görev) de alan saklı başlıyor. **Metin boyutu en büyük**: başlık kesilmiyor, alan yazıyı kesmiyor.

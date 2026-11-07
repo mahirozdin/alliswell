@@ -21,6 +21,7 @@ import '../providers.dart';
 import 'repeat_row.dart';
 import 'task_visuals.dart';
 import '../../../widgets/status_views.dart';
+import '../../../theme/typography.dart';
 
 /// The row form of the user's chosen format (OPH-174, DESIGN §17 D4): short
 /// date + time, no year — "Jul 15, 09:30" in English, "15 Tem 09:30" in Turkish,
@@ -315,16 +316,20 @@ class TaskTile extends ConsumerWidget {
                           : 'task.dueOn'.tr(
                               args: {'date': _formatDue(due, dateFormat)},
                             ),
-                      style: isOverdue
-                          ? theme.textTheme.bodyMedium?.copyWith(
-                              color: scheme.error,
-                              fontWeight: FontWeight.w600,
-                            )
-                          : completed
-                          ? theme.textTheme.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            )
-                          : null,
+                      // ADR-0063 #3: a date is data — tabular figures.
+                      style: awTabular(
+                        (isOverdue
+                                ? theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.error,
+                                    fontWeight: FontWeight.w600,
+                                  )
+                                : completed
+                                ? theme.textTheme.bodyMedium?.copyWith(
+                                    color: scheme.onSurfaceVariant,
+                                  )
+                                : null) ??
+                            const TextStyle(),
+                      ),
                     ),
                   if (showDuration)
                     Semantics(

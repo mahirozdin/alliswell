@@ -32,6 +32,7 @@ in `package.json`.
 
 `npm run check:no-ts` · `npm run check:no-ee` · `npm run check:i18n` · `npm run check:pages` ·
 `npm run check:copy` · `npm run check:fab` · `npm run check:opacity` ·
+`npm run check:typography` (raw type/spacing may only go down; `-- --update` after a cleanup) ·
 `npm run check:push-payload` · `npm run check:notify-matrix` · `npm run check:openapi` ·
 `npm run check:apidocs` · `npm run check:postman` · `npm run check:sync-fields` ·
 `npm run check:search-reachable`

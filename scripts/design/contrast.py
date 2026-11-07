@@ -7,6 +7,9 @@ with apps/app/lib/src/theme/{tokens,theme}.dart — a palette change ships
 only when this prints `FAILURES: 0`.
 """
 
+import re
+from pathlib import Path
+
 
 def _lum(hexc: str) -> float:
     hexc = hexc.lstrip('#')
@@ -357,6 +360,70 @@ PAIRS = [
     ('D approval reply meta / pill', '#AAB6D6', '#26345E', 4.5),
     ('L approval status strip', '#3A32A8', '#E4E1FF', 4.5),
     ('D approval status strip', '#E6E1FF', '#3B3583', 4.5),
+    # ADR-0063 #4 (OPH-399): the favourite star on a project's chip
+    # (`surfaceContainerLow`). It was `Colors.amber` — 1.55:1 on light.
+    ('L favourite star on chip', '#C77700', '#F6F9FF', 3.0),
+    ('D favourite star on chip', '#FFC400', '#121B36', 3.0),
+]
+
+# ── Text on the PAGE (ADR-0063 #4, OPH-399) ──
+# Everything above is ink on a card, a container or glass. Section headers
+# sit on the page itself: the aurora wash with the scaffold `veil` over it.
+# That ground is not one colour — each of the three radial blobs peaks at its
+# centre — so it was never a pair here, and the red "Overdue" header measured
+# 4.32:1 (light) / 4.34:1 (dark) over the brightest peak while this script
+# printed FAILURES: 0.
+#
+# The grounds are DERIVED from tokens.dart, not typed in: veil over (blob over
+# the gradient's top or bottom colour), plus the plain wash. A change to any
+# wash token moves these numbers without anyone having to remember to. The
+# worst ground per ink is reported; overlapping blob edges are fainter than a
+# peak and are not modelled.
+_TOKENS = Path(__file__).resolve().parents[2] / 'apps/app/lib/src/theme/tokens.dart'
+
+
+def _tokens(theme: str) -> dict:
+    src = _TOKENS.read_text(encoding='utf-8')
+    block = re.search(rf'static const {theme} = AwTokens\((.*?)\n  \);', src, re.S)
+    if block is None:
+        raise SystemExit(f'contrast.py: no `static const {theme} = AwTokens(` in {_TOKENS}')
+    return dict(re.findall(r'(\w+): Color\(0x([0-9A-Fa-f]{8})\)', block.group(1)))
+
+
+def _over(argb: str, bg: str) -> str:
+    """`argb` (an AARRGGBB token) painted over the opaque `bg`."""
+    a = int(argb[:2], 16) / 255
+    fg = [int(argb[i : i + 2], 16) for i in (2, 4, 6)]
+    b = [int(bg.lstrip('#')[i : i + 2], 16) for i in (0, 2, 4)]
+    return '#' + ''.join(f'{round(a * x + (1 - a) * y):02X}' for x, y in zip(fg, b))
+
+
+def page_grounds(theme: str) -> dict:
+    t = _tokens(theme)
+    grounds = {}
+    for end in ('auroraTop', 'auroraBottom'):
+        wash = '#' + t[end][2:]
+        grounds[f'{end} flat'] = _over(t['veil'], wash)
+        for blob in ('blobA', 'blobB', 'blobC'):
+            grounds[f'{blob} peak on {end}'] = _over(t['veil'], _over(t[blob], wash))
+    return grounds
+
+
+def _token(theme: str, name: str) -> str:
+    return '#' + _tokens(theme)[name][2:]
+
+
+# (name, ink, theme, minimum): the ink against EVERY page ground of its theme.
+# Token inks are read from tokens.dart; scheme inks are theme.dart's values.
+PAGE_INKS = [
+    ('L overdue section header (errorOnPage)', ('light', 'errorOnPage'), 'light', 4.5),
+    ('L selected-day header (link)', ('light', 'link'), 'light', 4.5),
+    ('L section header (onSurfaceVariant)', '#44536F', 'light', 4.5),
+    ('L body ink on the page', '#0F1B2E', 'light', 4.5),
+    ('D overdue section header (errorOnPage)', ('dark', 'errorOnPage'), 'dark', 4.5),
+    ('D selected-day header (link)', ('dark', 'link'), 'dark', 4.5),
+    ('D section header (onSurfaceVariant)', '#AAB6D6', 'dark', 4.5),
+    ('D body ink on the page', '#EAF0FD', 'dark', 4.5),
 ]
 
 
@@ -367,6 +434,16 @@ def main() -> int:
         ok = r >= need
         failures += 0 if ok else 1
         print(f"{'OK  ' if ok else 'FAIL'} {r:5.2f} (need {need})  {name}: {fg} on {bg}")
+    for name, ink, theme, need in PAGE_INKS:
+        fg = _token(*ink) if isinstance(ink, tuple) else ink
+        ground, bg = min(page_grounds(theme).items(), key=lambda kv: ratio(fg, kv[1]))
+        r = ratio(fg, bg)
+        ok = r >= need
+        failures += 0 if ok else 1
+        print(
+            f"{'OK  ' if ok else 'FAIL'} {r:5.2f} (need {need})  {name}: {fg} on the page "
+            f'(worst: {ground} {bg})'
+        )
     print(f'\nFAILURES: {failures}')
     return 1 if failures else 0
 

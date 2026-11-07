@@ -116,7 +116,6 @@ class _MonthCalendarState extends State<MonthCalendar> {
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                       fontWeight: FontWeight.w600,
-                      letterSpacing: 0.4,
                     ),
                   ),
                 ),

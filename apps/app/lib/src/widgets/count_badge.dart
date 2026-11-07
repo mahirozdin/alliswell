@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../theme/typography.dart';
 
 /// "3", "99+" — what a count badge prints.
 String awCountLabel(int count, {int max = 99}) =>
@@ -65,9 +66,12 @@ class AwCountBadge extends StatelessWidget {
         child: Text(
           awCountLabel(count, max: max),
           textAlign: TextAlign.center,
-          style: theme.textTheme.labelSmall?.copyWith(
-            color: scheme.onError,
-            fontWeight: FontWeight.w700,
+          // ADR-0063 #3: a count is tabular, so 9 → 10 does not jitter.
+          style: awTabular(
+            theme.textTheme.labelSmall!.copyWith(
+              color: scheme.onError,
+              fontWeight: FontWeight.w700,
+            ),
           ),
         ),
       ),

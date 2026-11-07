@@ -15,6 +15,7 @@ import '../data/task.dart';
 import '../providers.dart';
 import 'task_tile.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../theme/typography.dart';
 
 /// Everything the user has finished (OPH-186, DESIGN §20 C4).
 ///
@@ -199,10 +200,8 @@ class _HeaderRow implements _Row {
       ),
       child: Text(
         _label,
-        style: theme.textTheme.labelLarge?.copyWith(
+        style: context.awText.sectionLabel.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
-          fontWeight: FontWeight.w700,
-          letterSpacing: 0.4,
         ),
       ),
     );

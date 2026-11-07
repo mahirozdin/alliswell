@@ -9,6 +9,7 @@ import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/theme/tokens.dart';
 
 import '../auth/test_support.dart';
 import 'fake_api.dart';
@@ -90,6 +91,28 @@ void main() {
     expect(find.text('paused'), findsNothing);
     expect(find.byIcon(Icons.star), findsOneWidget); // favorite filled
     expect(find.byIcon(Icons.star_border), findsOneWidget);
+  });
+
+  // OPH-399 (T-06, DESIGN §4): the favourite star on the detail chip was
+  // `Colors.amber` — 1.55:1 on the light chip. It is the warning token.
+  testWidgets('a favourite project\'s star is the warning token', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Yıldızlı', isFavorite: true);
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Yıldızlı'));
+    await tester.pumpAndSettle();
+
+    final star = tester.widget<Icon>(
+      find.byKey(const Key('project-favorite-star')),
+    );
+    final context = tester.element(
+      find.byKey(const Key('project-favorite-star')),
+    );
+    expect(star.color, context.awTokens.warning);
+    expect(star.color, isNot(Colors.amber));
   });
 
   testWidgets('the edit sheet has no status picker, and never sends one', (

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../theme/tokens.dart';
 import 'glass.dart';
+import '../theme/typography.dart';
 
 /// One slot of the phone's [AwTabCapsule].
 class AwTabItem {
@@ -300,7 +301,10 @@ class _TabSlot extends StatelessWidget {
                           fontSize: kAwTabLabelSize,
                           height: kAwTabLabelLineHeight / kAwTabLabelSize,
                           fontWeight: FontWeight.w600,
-                          letterSpacing: 0,
+                          // ADR-0063: the font's own tracking for 11 pt.
+                          letterSpacing: context.awText.tracking(
+                            kAwTabLabelSize,
+                          ),
                           color: foreground,
                         ),
                       ),

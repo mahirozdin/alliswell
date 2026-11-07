@@ -46,6 +46,7 @@ import 'home_view_menu.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
 import '../ee/ui/team_address_views.dart' show EeTeamAddressBanner;
+import '../../theme/typography.dart';
 
 /// Home (feedback round 1): the one place everything shows. Chronological
 /// task list (overdue → today → tomorrow → this week → later → no date) with
@@ -811,14 +812,15 @@ List<Widget> buildHomeGroupRows(
           // more, and nothing is lost: the SELECTED day's header is the one
           // that differs (it takes the accent), so fading the other six was a
           // second encoding of a fact already stated once.
-          style: theme.textTheme.labelLarge?.copyWith(
+          // OPH-399 (ADR-0063): the section role, tabular count. The header
+          // sits on the page, not a card, so overdue takes the page-safe red
+          // — `scheme.error` measured 4.32:1 over the wash's brightest blob.
+          style: context.awText.sectionLabel.copyWith(
             color: switch (group.bucket) {
-              HomeBucket.overdue => theme.colorScheme.error,
+              HomeBucket.overdue => context.awTokens.errorOnPage,
               HomeBucket.selectedDay => context.awTokens.link,
               _ => theme.colorScheme.onSurfaceVariant,
             },
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
           ),
         ),
       ),

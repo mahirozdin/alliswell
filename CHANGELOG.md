@@ -43,6 +43,10 @@ This file holds the unreleased changes and the latest release; at each release t
 - **Home's top bar on a phone has three buttons**: ⚡, "View" and Settings. "View" holds list or
   board, the calendar and the sort order in one menu. To filter Home's list, pull the list down;
   the search button beside the tab bar still searches everything. The title no longer gets cut off.
+- **Text on iPhone and Mac reads like the system's own**: letter spacing now follows Apple's
+  tables instead of Android's, so titles are tighter and fit more per line. Dates, times and
+  counts keep their width as they change, and the red "Overdue" heading and the favourite star
+  are easier to read.
 
 ## [1.18.2] — 2026-10-30
 

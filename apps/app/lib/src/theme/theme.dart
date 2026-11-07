@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'tokens.dart';
+import 'typography.dart';
 
 /// AllisWell brand seed — matches the API's default project color
 /// (`#2563EB`, BLUEPRINT §10.2). Kept exported for the palette pickers.
@@ -130,9 +131,14 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
           surfaceTint: Colors.transparent,
         );
 
-  // Platform system fonts (SF Pro on Apple, Roboto/Segoe elsewhere) with an
-  // Apple-like tightening of the display sizes. No network fonts on purpose:
-  // the app must feel native and work fully offline.
+  // Platform system fonts (SF Pro on Apple, Roboto/Segoe elsewhere, the app's
+  // own Roboto on the web) — no network fonts: the app must feel native and
+  // work fully offline. Glass Type v1 (ADR-0063, DESIGN §3.3) sets the line
+  // heights, weights and the platform's own tracking; see `typography.dart`.
+  final apple = awUsesAppleSystemFont(
+    platform: defaultTargetPlatform,
+    fontFamilyOverride: fontFamilyOverride,
+  );
   final baseText =
       Typography.material2021(
         platform: defaultTargetPlatform,
@@ -142,25 +148,8 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
         displayColor: scheme.onSurface,
         fontFamily: fontFamilyOverride,
       );
-  final textTheme = baseText.copyWith(
-    headlineMedium: baseText.headlineMedium?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.5,
-    ),
-    headlineSmall: baseText.headlineSmall?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.4,
-    ),
-    titleLarge: baseText.titleLarge?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.3,
-    ),
-    titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-    titleSmall: baseText.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-    labelLarge: baseText.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-    bodyLarge: baseText.bodyLarge?.copyWith(height: 1.5),
-    bodyMedium: baseText.bodyMedium?.copyWith(height: 1.45),
-  );
+  final textTheme = buildAwTextTheme(baseText, apple: apple);
+  final textRoles = AwTextRoles.build(apple: apple, ink: scheme.onSurface);
 
   final hairlineSide = BorderSide(color: tokens.hairline);
   OutlineInputBorder inputBorder(Color color, {double width = 1}) =>
@@ -173,7 +162,7 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
     colorScheme: scheme,
     brightness: brightness,
     textTheme: textTheme,
-    extensions: <ThemeExtension<dynamic>>[tokens],
+    extensions: <ThemeExtension<dynamic>>[tokens, textRoles],
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     // OPH-194 (DESIGN §21 T2): ONE transition family, every platform. Leaving
@@ -225,9 +214,8 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
         borderRadius: BorderRadius.all(Radius.circular(AwRadius.m)),
       ),
       iconColor: scheme.onSurfaceVariant,
-      titleTextStyle: textTheme.bodyLarge?.copyWith(
-        fontWeight: FontWeight.w500,
-      ),
+      // Glass Type v1: the row title is bodyLarge 16/22 w400 (was w500).
+      titleTextStyle: textTheme.bodyLarge,
       subtitleTextStyle: textTheme.bodyMedium?.copyWith(
         color: scheme.onSurfaceVariant,
       ),

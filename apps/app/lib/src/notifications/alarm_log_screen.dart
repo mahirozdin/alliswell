@@ -11,6 +11,7 @@ import '../widgets/status_views.dart';
 import 'alarm_log.dart';
 import 'providers.dart';
 import '../widgets/route_leading.dart';
+import '../theme/typography.dart';
 
 /// The alarm log (OPH-176, DESIGN §11 A6): a plain, read-only list of what this
 /// device DID about alarms, newest first, plus one sentence of honest scope.
@@ -186,7 +187,9 @@ class _AlarmLogRowState extends State<_AlarmLogRow> {
             ),
             trailing: Text(
               awFormatShort(row.at, format: widget.dateFormat),
-              style: theme.textTheme.labelSmall?.copyWith(color: muted),
+              style: awTabular(
+                theme.textTheme.labelSmall!.copyWith(color: muted),
+              ),
             ),
           ),
           Padding(

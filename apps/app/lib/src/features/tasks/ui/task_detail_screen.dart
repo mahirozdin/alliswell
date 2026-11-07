@@ -37,6 +37,7 @@ import 'task_visuals.dart';
 import '../../ee/assignments_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../theme/typography.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
 /// replica instantly and sync in the background (OPH-054/055).
@@ -677,10 +678,8 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: theme.textTheme.labelLarge?.copyWith(
+              style: context.awText.sectionLabel.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
               ),
             ),
             const SizedBox(height: AwSpace.x3),

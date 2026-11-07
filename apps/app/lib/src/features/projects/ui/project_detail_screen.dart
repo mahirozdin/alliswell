@@ -235,7 +235,14 @@ class _OverviewTab extends ConsumerWidget {
             ),
             if (project.isFavorite)
               Chip(
-                avatar: const Icon(Icons.star, size: 18, color: Colors.amber),
+                // ADR-0063 #4 / DESIGN §4: the star is the warning token —
+                // `Colors.amber` measured 1.55:1 on the light chip.
+                avatar: Icon(
+                  Icons.star,
+                  key: const Key('project-favorite-star'),
+                  size: 18,
+                  color: context.awTokens.warning,
+                ),
                 label: Text('project.favorite'.tr()),
               ),
             if (project.dueAt != null)
