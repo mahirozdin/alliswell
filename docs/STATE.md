@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-392** — Web: soğuk derin bağlantı, Google düğmesi, çevrimdışı göstergesi |
-| Last completed           | OPH-391 — itilen ekran ekranın altına iner (yerleşik Hızlı Erişim balonu bar olmayan sayfada gizlenir, şerit kalktı); durum çubuğu temaya göre (`awSystemOverlayStyle`); iOS izin metinleri TR (`Runner/tr.lproj/InfoPlist.strings`, Xcode'a bağlı). |
+| ➡️ **Next task**         | **OPH-393** ⚠push-notifications — İzin ve alarm şeritleri suç yüklemez |
+| Last completed           | OPH-392 — soğuk `/#/tasks/<id>` açılışı göreve gider (restore sırasında hedef saklanır; yerelde ve sunucuda olmayan görev "Bulunamadı" + Ana sayfa der, çevrimdışıysa söyler); `GET /auth/providers` → giriş ekranı yalnız sunucunun desteklediği Google/Apple düğmesini gösterir; telefonda sunucuya ulaşılamıyorken `AwOfflineStrip`. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

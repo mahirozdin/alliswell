@@ -14,6 +14,9 @@ This file holds the unreleased changes and the latest release; at each release t
 - **Pushed screens use the whole screen again** (task detail, settings, a note): no empty band
   at the bottom. The status bar stays readable in the light theme, and on an iPhone in Turkish
   the microphone, speech, camera, photos, calendar and alarm permission prompts are in Turkish.
+- **A task link opened in a fresh web tab opens the task**, instead of spinning forever; a link to
+  a task that is gone says so. "Continue with Google" appears only when your server supports it, and
+  a phone now says when it can't reach the server.
 
 ## [1.18.2] — 2026-10-30
 

@@ -150,3 +150,20 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 /// Google / Apple sign-in (ADR-0026). Overridden in widget tests with a fake so
 /// no test ever reaches a real provider.
 final socialSignInProvider = Provider<SocialSignIn>((_) => SocialSignIn());
+
+/// The social sign-ins the server on the address can complete (OPH-392,
+/// E-23), or null when it could not say — an older server without the
+/// question, or no answer at all. Null keeps the platform's own rule
+/// ([SocialSignIn.googleAvailable]); an answer narrows it, so a server with
+/// no Google client no longer offers a Google button that can only fail.
+/// Follows the address: a server change asks the new one.
+final serverSignInProvidersProvider = FutureProvider<ServerSignInProviders?>((
+  ref,
+) async {
+  final api = ref.watch(authApiProvider);
+  try {
+    return await api.signInProviders();
+  } on Object {
+    return null;
+  }
+});

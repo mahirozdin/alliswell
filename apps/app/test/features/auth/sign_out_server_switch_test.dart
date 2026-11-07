@@ -50,6 +50,10 @@ void main() {
 
   /// Every auth request, with the server it went to.
   late List<String> authCalls;
+
+  /// The sign-in screen's `GET /auth/providers` (OPH-392), kept apart: it
+  /// carries no token, and it SHOULD go to the address on screen.
+  late List<String> providerAsks;
   late InMemorySecretStore store;
   late bool refuseRefresh;
 
@@ -58,6 +62,7 @@ void main() {
     AwI18n.instance.setActiveCached(const Locale('en'));
     await localKv.removeWhere((_) => true);
     authCalls = [];
+    providerAsks = [];
     store = InMemorySecretStore();
     refuseRefresh = false;
   });
@@ -82,6 +87,10 @@ void main() {
             final base = ref.watch(apiBaseUrlProvider);
             final dio = fakeDio(
               FakeHttpClientAdapter((options, body) async {
+                if (options.path == '/api/v1/auth/providers') {
+                  providerAsks.add(base);
+                  return jsonBody(200, {'google': false, 'apple': false});
+                }
                 authCalls.add('$base ${options.path}');
                 if (options.path == '/api/v1/auth/logout') {
                   return emptyBody(204);
@@ -257,5 +266,7 @@ void main() {
     expect(container.read(apiBaseUrlProvider), newServer);
     expect(find.textContaining('other.example.com'), findsOneWidget);
     expect(authCalls, isEmpty);
+    // The sign-in screen asked the NEW server which providers it has.
+    expect(providerAsks.last, newServer);
   });
 }

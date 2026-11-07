@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { coded } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
 import { hashPassword, verifyPassword } from '../lib/passwords.js';
-import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
+import { OauthIdentityError, audiencesFor, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identities.js';
 import { hashRefreshToken } from '../lib/tokens.js';
 import { uniqueSlug } from '../lib/slug.js';
@@ -250,6 +250,35 @@ export default async function authRoutes(app) {
     onRequest: [app.credentialIpCeiling],
     config: credentialRateLimit(app),
   };
+
+  // OPH-392 (E-23) — which social sign-ins this server can complete, asked by
+  // the sign-in screen before it offers a button. Without it the app offered
+  // Google everywhere, and on a server with no SIGN_IN_GOOGLE_* client the tap
+  // ended in OAUTH_PROVIDER_NOT_CONFIGURED. Booleans only — the client ids are
+  // not secrets, but nothing needs them here. Public, like the doors it
+  // describes; the global limiter is enough for a read with no lookup.
+  app.get(
+    '/providers',
+    {
+      schema: {
+        response: {
+          200: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['google', 'apple'],
+            properties: {
+              google: { type: 'boolean' },
+              apple: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async () => ({
+      google: audiencesFor(app.config, 'google').length > 0,
+      apple: audiencesFor(app.config, 'apple').length > 0,
+    }),
+  );
 
   // Baseline argon2id hash so unknown-email logins burn the same verify cost as
   // wrong-password logins (no email-existence timing oracle).

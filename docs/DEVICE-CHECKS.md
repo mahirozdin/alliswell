@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Web soğuk bağlantı, Google düğmesi, çevrimdışı şeridi (2026-11-07)
+
+- OPH-392 — **Web, telefon genişliği (393) ve 1440**, oturum açıkken: bir görevin adresini (`/#/tasks/<id>`) yeni sekmede aç → kısa splash'ten sonra görev detayı açılıyor; silinmiş bir görevin adresi → "Bulunamadı" + "Ana sayfaya dön". Oturum kapalıyken aynı bağlantı → giriş → giriş sonrası görev açılıyor. **Google istemcisi olmayan sunucu** (yerel compose) → giriş ekranında "Google ile devam et" yok, "veya" çizgisi de yok; hosted sunucuda düğme (iOS'ta Apple ile birlikte) duruyor. **Telefon genişliği**, Ana sayfa açıkken ağı kes (DevTools offline / uçak modu) → bir sonraki çekmede durum çubuğunun altında "Sunucuya ulaşılamıyor — son eşitlenen veriyi görüyorsun." şeridi, uygulama çubuğu şeridin altında ve iki kez boşluk yok; açık ve koyu temada okunur; ağ gelince şerit kendiliğinden kalkıyor. **iPhone ve Android** aynı şerit.
+
 ## İtilen ekranlar, durum çubuğu, iOS izin metinleri (2026-11-07)
 
 - OPH-391 — **iPhone, iOS dili Türkçe**, temiz kurulum: Ana sayfada mikrofona dokun → mikrofon ve konuşma tanıma izin pencereleri Türkçe (Ek A-65 metni); bir göreve fotoğraf ekle → kamera/fotoğraflar metni Türkçe; takvim ve (iOS 26) alarm izni de Türkçe. iOS dili İngilizce → aynı pencereler İngilizce. **iPhone, açık tema**: Ana sayfada, görev detayında ve Ayarlar'da saat, sinyal ve pil koyu ve okunur; koyu temada beyaz. Hızlı Erişim balonu bar satırına yerleşikken görev detayı, Ayarlar ve bir not ekranın altına kadar iniyor (altta boş şerit yok), balon orada görünmüyor; geri dönünce bar satırında yine duruyor. Balon yukarı taşınmışsa itilen ekranlarda da görünüyor. **Android telefon**, açık/koyu tema: durum çubuğu simgeleri aynı kurala uyuyor, gezinme çubuğu değişmemiş.

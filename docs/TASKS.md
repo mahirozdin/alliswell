@@ -36,14 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-392 — Web: soğuk derin bağlantı, Google düğmesi, çevrimdışı göstergesi
-
-E-17, E-22, E-23.
-
-- [ ] `/#/tasks/<id>` ile soğuk açılış sonsuz yüklenmez (test).
-- [ ] "Google ile devam et" yalnız sunucu destekliyorsa görünür (yetenek bayrağı testi).
-- [ ] Telefon genişliğinde çevrimdışı göstergesi görünür.
-
 ### OPH-393 — İzin ve alarm şeritleri suç yüklemez
 
 Kritik yol: push-notifications. U-05, E-14, E-20; metinler persona Ek A.

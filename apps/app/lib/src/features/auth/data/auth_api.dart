@@ -3,6 +3,10 @@ import 'package:dio/dio.dart';
 import '../../../core/api_exception.dart';
 import 'models.dart';
 
+/// What `GET /auth/providers` answers: the social sign-ins a server has a
+/// client for (OPH-392).
+typedef ServerSignInProviders = ({bool google, bool apple});
+
 /// Raw HTTP calls to `/api/v1/auth/*`. No Authorization header is required by
 /// these endpoints, so this client uses the bare (interceptor-free) dio — the
 /// auth interceptor itself calls [refresh] and must not recurse.
@@ -59,6 +63,20 @@ class AuthApi {
     '/api/v1/auth/refresh',
     {'refreshToken': refreshToken},
   ).then(AuthSession.fromJson);
+
+  /// Which social sign-ins this server can complete (OPH-392, E-23). A server
+  /// older than the question answers 404 — the caller treats any failure as
+  /// "unknown", not as "none".
+  Future<ServerSignInProviders> signInProviders() async {
+    try {
+      final res = await _dio.get<dynamic>('/api/v1/auth/providers');
+      final data = res.data;
+      final map = data is Map<String, dynamic> ? data : const {};
+      return (google: map['google'] == true, apple: map['apple'] == true);
+    } on DioException catch (e) {
+      throw _asAuthException(e);
+    }
+  }
 
   Future<void> logout(String refreshToken, {bool allDevices = false}) async {
     await _post('/api/v1/auth/logout', {

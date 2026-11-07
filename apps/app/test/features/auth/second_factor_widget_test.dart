@@ -53,6 +53,13 @@ void main() {
           AuthApi(
             fakeDio(
               FakeHttpClientAdapter((options, body) {
+                // The sign-in screen first asks which providers the server
+                // has (OPH-392): a read, not one of the requests counted here.
+                if (options.path == '/api/v1/auth/providers') {
+                  return Future.value(
+                    jsonBody(200, {'google': true, 'apple': true}),
+                  );
+                }
                 bodies.add(body);
                 return handler(options, body);
               }),

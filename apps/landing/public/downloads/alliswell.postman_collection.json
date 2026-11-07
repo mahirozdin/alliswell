@@ -1110,6 +1110,29 @@
           }
         },
         {
+          "name": "GET /api/v1/auth/providers",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/providers",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "providers"
+              ]
+            },
+            "description": "No credentials required.",
+            "auth": {
+              "type": "noauth"
+            }
+          }
+        },
+        {
           "name": "POST /api/v1/auth/refresh",
           "request": {
             "method": "POST",

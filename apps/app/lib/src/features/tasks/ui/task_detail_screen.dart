@@ -55,13 +55,45 @@ class TaskDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(taskDetailProvider(taskId));
     return task.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => _TaskDetailWaiting(taskId: taskId),
       error: (error, _) => Scaffold(
         appBar: AppBar(leading: awRouteLeading(context)),
         body: Center(child: Text('$error')),
       ),
       data: (value) => _TaskDetail(task: value),
+    );
+  }
+}
+
+/// The detail's row is not in the replica (yet). A spinner while the server
+/// says the task exists — the pull brings it — and an answer otherwise
+/// (OPH-392, E-17): a link to a deleted or foreign task, or one opened
+/// offline before it ever synced, used to spin forever.
+class _TaskDetailWaiting extends ConsumerWidget {
+  const _TaskDetailWaiting({required this.taskId});
+
+  final String taskId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final absence = ref.watch(taskAbsenceProvider(taskId)).value;
+    return Scaffold(
+      appBar: absence == null ? null : AppBar(leading: awRouteLeading(context)),
+      body: switch (absence) {
+        null => const Center(child: CircularProgressIndicator()),
+        TaskAbsence.gone => AwErrorState(
+          key: const Key('task-detail-gone'),
+          message: 'error.notFound'.tr(),
+          retryLabel: 'error.goHome'.tr(),
+          retryIcon: Icons.home_outlined,
+          onRetry: () => GoRouter.of(context).go(AppSection.home.path),
+        ),
+        TaskAbsence.unreachable => AwErrorState(
+          key: const Key('task-detail-unreachable'),
+          message: 'error.NETWORK_ERROR'.tr(),
+          onRetry: () => ref.invalidate(taskAbsenceProvider(taskId)),
+        ),
+      },
     );
   }
 }

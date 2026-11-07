@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
+import '../../core/api_exception.dart';
 import '../../core/day_boundary.dart';
 import '../../sync/providers.dart';
+import '../auth/providers.dart' show apiClientProvider;
 import '../ee/assignments_providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/quick_add_apply.dart';
@@ -12,6 +14,7 @@ import 'data/series_store.dart';
 import 'data/task.dart';
 import 'data/task_scope.dart';
 import 'data/task_store.dart';
+import 'data/tasks_api.dart';
 
 export 'data/task_store.dart' show kPlanningStatuses;
 export 'data/task_scope.dart' show TaskScope;
@@ -222,6 +225,38 @@ final taskDetailProvider = StreamProvider.family<Task, String>((ref, taskId) {
   ref.watch(syncEnginesProvider);
   return ref.watch(taskStoreProvider).watchDetail(taskId);
 });
+
+/// Why a task's detail has nothing to show (OPH-392, E-17).
+enum TaskAbsence {
+  /// The server has no such task for this person: deleted, or never theirs.
+  gone,
+
+  /// The task is not on this device and the server could not be asked.
+  unreachable,
+}
+
+/// The detail screen's answer while its row is absent from the replica.
+///
+/// [taskDetailProvider] drops a missing row, so a link to a task that is not
+/// on the device waited on it forever: a cold web start on `/#/tasks/<id>`
+/// for a task deleted since, or not yet pulled, was an endless spinner. Asked
+/// once: when the server still has the task, null — the pull brings it, and
+/// the spinner is the truth; otherwise the reason, which the screen says.
+final taskAbsenceProvider = FutureProvider.autoDispose
+    .family<TaskAbsence?, String>((ref, taskId) async {
+      final store = ref.watch(taskStoreProvider);
+      if (await store.detailOnce(taskId) != null) return null;
+      try {
+        await TasksApi(ref.watch(apiClientProvider)).get(taskId);
+        return null;
+      } on ApiException catch (error) {
+        return switch (error.statusCode) {
+          403 || 404 => TaskAbsence.gone,
+          null => TaskAbsence.unreachable,
+          _ => null,
+        };
+      }
+    });
 
 /// Checkbox behavior shared by every task tile: complete an open task,
 /// reopen a completed one. The replica updates instantly; sync follows.

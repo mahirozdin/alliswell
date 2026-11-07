@@ -43,6 +43,7 @@ import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
 import '../search/ui/global_search_entry.dart';
 import '../theme/tokens.dart';
+import '../widgets/offline_strip.dart';
 import '../widgets/document_surface.dart';
 import '../widgets/fab_clearance.dart';
 import '../widgets/glass.dart';
@@ -418,7 +419,14 @@ class HomeShell extends ConsumerWidget {
           floatingActionButtonLocation: aiFabVisible(ref)
               ? FloatingActionButtonLocation.centerFloat
               : FloatingActionButtonLocation.endFloat,
-          body: _ShellBody(fabClearance: fabClearance, child: navigationShell),
+          // OPH-392 (E-22): the phone has no refresh button to fail, so the
+          // lost server is said here, above whichever section is open.
+          body: AwOfflineStrip(
+            child: _ShellBody(
+              fabClearance: fabClearance,
+              child: navigationShell,
+            ),
+          ),
           bottomNavigationBar: Padding(
             // OPH-362: the docked Quick Access bubble rests in this row, so
             // the capsule ends short of it instead of sliding under it.

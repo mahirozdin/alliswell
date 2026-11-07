@@ -18,6 +18,7 @@
     "next": "Sonraki",
     "no": "Hayır",
     "ok": "Tamam",
+    "offline": "Sunucuya ulaşılamıyor — son eşitlenen veriyi görüyorsun.",
     "previous": "Önceki",
     "refresh": "Yenile",
     "refreshFailed": "Yenilenemedi — son eşitlenen veriyi görüyorsun.",

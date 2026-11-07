@@ -19,6 +19,7 @@
     "next": "Next",
     "no": "No",
     "ok": "OK",
+    "offline": "Can't reach the server — you're seeing the last synced data.",
     "previous": "Previous",
     "refresh": "Refresh",
     "refreshFailed": "Couldn't refresh — you're seeing the last synced data.",

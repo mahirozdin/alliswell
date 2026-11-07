@@ -383,6 +383,9 @@ class PendingDeepLink extends Notifier<String?> {
 
   void remember(String location) => state = location;
 
+  /// [remember], unless a destination is already waiting.
+  void rememberIfNone(String location) => state ??= location;
+
   /// Reads and clears in one step — a destination may only be replayed once.
   String? take() {
     final pending = state;
@@ -516,16 +519,37 @@ final routerProvider = Provider<GoRouter>((ref) {
       // never remembered. Replaying it after sign-in would replay an
       // unroutable location; the payload it announces waits in the App Group
       // and the shell drains it the moment it mounts.
-      if (auth.value == null &&
-          !auth.isLoading &&
+      //
+      // OPH-392 (E-17): a RESTORING session too. A cold start on the web opens
+      // straight at the URL (`/#/tasks/<id>` from a notification or a shared
+      // link); the restore parks it on /splash, and the splash then went to
+      // Home — the destination was never written down. Remembered here, the
+      // replay above takes it once the session exists. While restoring the
+      // previous value may still be there, which is why this does not ask
+      // `auth.value == null` then. The first redirect of a cold start runs
+      // while the app builds, where Riverpod refuses a write — the routing
+      // error that followed landed on /not-found and looped — so the restore
+      // case writes a microtask later; the restore itself takes far longer.
+      // An `alliswell://` link parked itself above, already resolved.
+      if ((auth.isLoading || auth.value == null) &&
+          appLink == null &&
           !awIsShareCallback(state.uri)) {
         final wanted = awRouteForUri(state.uri) ?? state.matchedLocation;
         // A join link is reachable signed out (it remembers itself, query
         // and all, when it sends somebody to sign in).
         if (!_authLocations.contains(wanted) &&
             wanted != '/splash' &&
+            wanted != _kNotFound &&
             !isJoinLocation(wanted)) {
-          ref.read(pendingDeepLinkProvider.notifier).remember(wanted);
+          final pending = ref.read(pendingDeepLinkProvider.notifier);
+          if (auth.isLoading) {
+            // The FIRST destination wins while restoring: the redirects that
+            // follow it are the app's own (`alliswell://add` → `/home?add=1`
+            // → `/home`), and each would overwrite it with less.
+            _outsideBuild(() => pending.rememberIfNone(wanted));
+          } else {
+            pending.remember(wanted);
+          }
         }
       }
       return decision;
