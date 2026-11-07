@@ -222,9 +222,11 @@ class AwGlobalSearchRailEntry extends ConsumerWidget {
 /// (G1). The app bars stay as they are: Home's phone bar is full, and a sixth
 /// icon would cut its title again (OPH-359).
 class AwGlobalSearchOrb extends ConsumerWidget {
-  const AwGlobalSearchOrb({super.key, this.size = 64});
+  const AwGlobalSearchOrb({super.key, this.size = kAwSearchOrbSize});
 
-  /// The capsule's height, so the two read as one row.
+  /// 56 beside the 64 capsule, on the same centre line, 8 apart (ADR-0062
+  /// §4) — until OPH-397 it was the capsule's height, and its centre sat
+  /// 8 pt off the "+" above it (R-06).
   final double size;
 
   @override

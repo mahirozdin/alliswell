@@ -401,4 +401,40 @@ void main() {
       }
     });
   }
+
+  // OPH-397 (ADR-0062 §5): with the bubble off by default on phones, the
+  // empty palette is one of Quick Access's ways in — above "Recent".
+  testWidgets('phone: the empty palette lists the shortcuts, and one opens '
+      'where the panel would open it', (tester) async {
+    await surface(tester, phone);
+    final api = FakeApi();
+    final task = api.seedTask(title: 'Faturalar');
+    api.seedQuickLink(
+      kind: 'task',
+      targetId: task['id'] as String,
+      title: 'Fatura işi',
+    );
+    await tester.pumpWidget(await app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-search-orb')));
+    await tester.pumpAndSettle();
+    expect(find.text('Shortcuts'), findsOneWidget);
+    final header = find.byKey(const Key('global-search-shortcuts'));
+    expect(header, findsOneWidget);
+    final row = find.byKey(
+      Key('global-search-shortcut-${api.quickLinks.single['id']}'),
+    );
+    expect(row, findsOneWidget);
+    expect(find.text('Fatura işi'), findsOneWidget);
+    expect(
+      tester.getTopLeft(row).dy,
+      greaterThan(tester.getTopLeft(header).dy),
+    );
+
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsNothing);
+    expect(location(), '/tasks/${task['id']}');
+  });
 }

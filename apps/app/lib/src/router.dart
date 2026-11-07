@@ -679,8 +679,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       StatefulShellRoute.indexedStack(
-        // OPH-362: a named page, so the Quick Access dock inset leaves the
-        // shell alone — it docks the bubble beside its own bar instead.
+        // OPH-362: a named page, so the Quick Access layer can tell the shell
+        // (where its button floats) from a page pushed over it (OPH-397).
         pageBuilder: (context, state, navigationShell) => MaterialPage<void>(
           key: state.pageKey,
           name: kAwShellPageName,

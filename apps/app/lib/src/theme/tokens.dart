@@ -43,6 +43,39 @@ const double kAwExtendedRailBreakpoint = 1160;
 /// Approvals entry) uses the same column, or it sits out of line (OPH-359).
 const double kAwRailMinWidth = 84;
 
+/// The narrowest CONTENT width that gets a two-column page (Home's calendar
+/// panel, the board's columns) — and only beside the rail: under the phone
+/// capsule (window < [kAwWideBreakpoint]) a page stays one column, so an
+/// iPad mini at 744 is one layout, not half of each (R-12, OPH-397).
+const double kAwWideContentMinWidth = 720;
+
+/// Whether a page laid out in [constraints] takes its two-column form.
+bool awWideContent(BuildContext context, BoxConstraints constraints) =>
+    constraints.maxWidth >= kAwWideContentMinWidth &&
+    MediaQuery.sizeOf(context).width >= kAwWideBreakpoint;
+
+/// The phone's floating grid (ADR-0062 §4, DESIGN §44): ONE gutter for the
+/// capsule, the search orb, the action cluster and the Quick Access bubble —
+/// 16, and 20 from [kAwFloatGutterWideFrom] (the Pro Max class) up.
+const double kAwFloatGutter = AwSpace.x4;
+const double kAwFloatGutterWide = AwSpace.x5;
+const double kAwFloatGutterWideFrom = 430;
+
+double awFloatGutter(double screenWidth) =>
+    screenWidth >= kAwFloatGutterWideFrom ? kAwFloatGutterWide : kAwFloatGutter;
+
+/// The round search button beside the capsule: same centre line, 8 apart.
+const double kAwSearchOrbSize = 56;
+
+/// The action cluster (ADR-0062 §3): "+" 56, the microphone 48 to its left,
+/// [kAwFabClusterGap] between them, centres on one line.
+const double kAwMicFabSize = 48;
+const double kAwFabClusterGap = AwSpace.x2;
+
+/// How far the cluster drops while the list is scrolled down (150 ms,
+/// [AwMotion.fast]; instant with reduced motion).
+const double kAwFabScrollDrop = AwSpace.x4;
+
 /// Motion tokens: quick, physical, never decorative-slow.
 abstract final class AwMotion {
   static const Duration fast = Duration(milliseconds: 150);

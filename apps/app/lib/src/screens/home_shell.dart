@@ -32,6 +32,7 @@ import '../features/workspaces/workspaces.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
+import '../features/quick_access/ui/quick_access_panel.dart';
 import '../features/quick_access/ui/quick_access_rail_section.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../i18n/i18n.dart';
@@ -45,6 +46,7 @@ import '../search/ui/global_search_entry.dart';
 import '../theme/tokens.dart';
 import '../widgets/offline_strip.dart';
 import '../widgets/document_surface.dart';
+import '../widgets/fab_cluster.dart';
 import '../widgets/fab_clearance.dart';
 import '../widgets/glass.dart';
 import '../widgets/refreshable.dart';
@@ -113,26 +115,30 @@ class HomeShell extends ConsumerWidget {
   /// used to own these FABs, but as nested Scaffolds their FAB was painted
   /// behind the bar and could not be tapped (OPH-101). Sections with no create
   /// action (Inbox) get none.
-  /// OPH-223 (DESIGN §24 AI1): two FABs, two corners. The AI FAB sits
-  /// bottom-left, the create FAB stays bottom-right; a full-width Row with
-  /// space-between is the standard two-corner recipe. When AI is off, the
-  /// section FAB is returned alone (unchanged behavior).
-  Widget? _fabBar(BuildContext context, WidgetRef ref) {
+  /// OPH-397 (ADR-0062 §3, amending DESIGN §24 AI1): ONE action cluster on
+  /// the right — the microphone (48) beside the "+" (56), centres on one
+  /// line, the bottom-left corner empty. Until OPH-397 the microphone sat
+  /// bottom-left, on the section headers and the column of check circles,
+  /// and a tap meant for a task opened it (R-07, E-10). [AwFabLocation]
+  /// puts the cluster's end on the gutter, so the "+" stands in the same
+  /// place with AI on or off.
+  Widget? _fabCluster(BuildContext context, WidgetRef ref) {
     // OPH-271: the note editor takes the screen, so nothing floats over it —
     // neither "new note" nor the AI button. Someone writing is not shopping
     // for a second thing to start.
     if (awIsDocumentRoute(GoRouterState.of(context).uri.path)) return null;
     final section = _sectionFab(context, ref);
     if (!aiFabVisible(ref)) return section;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const AiFab(),
-          if (section != null) section else const SizedBox.shrink(),
+    return Row(
+      key: const Key('shell-fab-cluster'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const AiFab(),
+        if (section != null) ...[
+          const SizedBox(width: kAwFabClusterGap),
+          section,
         ],
-      ),
+      ],
     );
   }
 
@@ -206,6 +212,15 @@ class HomeShell extends ConsumerWidget {
             label: section.title,
             iconKey: _navKeys[section]!.icon,
             selectedIconKey: _navKeys[section]!.selected,
+            // ADR-0062 §5: with the bubble off by default, a long press on
+            // Home is one of Quick Access's ways in (with the ⚡ and the
+            // search palette's "Shortcuts").
+            onLongPress: section == AppSection.home
+                ? () => showQuickAccessPanel(context)
+                : null,
+            longPressHint: section == AppSection.home
+                ? 'nav.homeLongPressHint'.tr()
+                : null,
           ),
         if (hasMore)
           AwTabItem(
@@ -396,9 +411,8 @@ class HomeShell extends ConsumerWidget {
 
     // OPH-359 (UI-AUDIT #58): what the floating buttons cover, said once for
     // every list inside the shell (see [AwFabClearance]).
-    final fabClearance = _fabBar(context, ref) == null
-        ? 0.0
-        : AwFabClearance.lane;
+    final fab = _fabCluster(context, ref);
+    final fabClearance = fab == null ? 0.0 : AwFabClearance.lane;
     final shell = LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= kAwWideBreakpoint;
@@ -406,10 +420,10 @@ class HomeShell extends ConsumerWidget {
         if (isWide) {
           return Scaffold(
             backgroundColor: Colors.transparent,
-            floatingActionButton: _fabBar(context, ref),
-            floatingActionButtonLocation: aiFabVisible(ref)
-                ? FloatingActionButtonLocation.centerFloat
-                : FloatingActionButtonLocation.endFloat,
+            // R-12: the cluster stands at the window's end, never on the
+            // rail (the microphone used to sit on its glass corner).
+            floatingActionButton: fab,
+            floatingActionButtonLocation: const AwFabLocation(kAwFloatGutter),
             body: Row(
               children: [
                 Padding(
@@ -515,38 +529,40 @@ class HomeShell extends ConsumerWidget {
             ),
           );
         }
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          extendBody: true,
-          floatingActionButton: _fabBar(context, ref),
-          floatingActionButtonLocation: aiFabVisible(ref)
-              ? FloatingActionButtonLocation.centerFloat
-              : FloatingActionButtonLocation.endFloat,
-          // OPH-392 (E-22): the phone has no refresh button to fail, so the
-          // lost server is said here, above whichever section is open.
-          body: AwOfflineStrip(
-            child: _ShellBody(
-              fabClearance: fabClearance,
-              child: navigationShell,
+        // ADR-0062 §4 (OPH-397): one gutter for everything that floats.
+        final gutter = awFloatGutter(constraints.maxWidth);
+        return AwFabScrollScope(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            floatingActionButton: fab == null ? null : AwFabDrop(child: fab),
+            floatingActionButtonLocation: AwFabLocation(gutter),
+            // OPH-392 (E-22): the phone has no refresh button to fail, so the
+            // lost server is said here, above whichever section is open.
+            body: AwOfflineStrip(
+              child: _ShellBody(
+                fabClearance: fabClearance,
+                child: navigationShell,
+              ),
             ),
-          ),
-          bottomNavigationBar: Padding(
-            // OPH-362: the docked Quick Access bubble rests in this row, so
-            // the capsule ends short of it instead of sliding under it.
-            padding: _barPadding(AwBubbleDock.maybeOf(context)),
-            child: SafeArea(
-              top: false,
-              minimum: const EdgeInsets.only(bottom: AwSpace.x3),
-              // OPH-374: the capsule shares its row with the search button
-              // (DESIGN §40 P1) — glass beside glass, one row of chrome.
-              child: Row(
-                children: [
-                  // OPH-396 (ADR-0062): equal labelled slots; a sixth
-                  // section puts "More" in the fifth.
-                  Expanded(child: _phoneTabs(context, visibleSections)),
-                  const SizedBox(width: AwSpace.x2),
-                  const AwGlobalSearchOrb(),
-                ],
+            bottomNavigationBar: Padding(
+              // The bar's row belongs to the capsule and the orb alone: the
+              // Quick Access bubble no longer docks in it (ADR-0062 §5).
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(bottom: AwSpace.x3),
+                // OPH-374: the capsule shares its row with the search button
+                // (DESIGN §40 P1) — glass beside glass, one centre line.
+                child: Row(
+                  children: [
+                    // OPH-396 (ADR-0062): equal labelled slots; a sixth
+                    // section puts "More" in the fifth.
+                    Expanded(child: _phoneTabs(context, visibleSections)),
+                    const SizedBox(width: AwSpace.x2),
+                    const AwGlobalSearchOrb(),
+                  ],
+                ),
               ),
             ),
           ),
@@ -754,17 +770,6 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 
 const _shareStatusBudget = Duration(seconds: 2);
 
-/// The phone bar's outer margins: [AwSpace.x3] each side, and on the side the
-/// Quick Access bubble docks, the bubble's lane instead (OPH-362).
-EdgeInsets _barPadding(AwBubbleDock? dock) {
-  const side = AwSpace.x3;
-  if (dock == null) return const EdgeInsets.symmetric(horizontal: side);
-  final lane = math.max(side, dock.width);
-  return dock.edge == AwDockEdge.left
-      ? EdgeInsets.only(left: lane, right: side)
-      : EdgeInsets.only(left: side, right: lane);
-}
-
 /// The phone shell's body (OPH-359, UI-AUDIT #10).
 ///
 /// `extendBody` lets the content scroll under the glass bar, and Scaffold
@@ -784,16 +789,58 @@ class _ShellBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final covered = media.padding.bottom;
-    return MediaQuery(
-      data: media.copyWith(
-        viewPadding: media.viewPadding.copyWith(
-          bottom: math.max(media.viewPadding.bottom, covered),
+    final tokens = context.awTokens;
+    // The page's own colour at the bottom of the screen: the veil over the
+    // aurora's lower stop (`AuroraBackground`).
+    final page = Color.alphaBlend(tokens.veil, tokens.auroraBottom);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: MediaQuery(
+            data: media.copyWith(
+              viewPadding: media.viewPadding.copyWith(
+                bottom: math.max(media.viewPadding.bottom, covered),
+              ),
+            ),
+            child: AwFabClearance(extent: fabClearance, child: child),
+          ),
         ),
-      ),
-      child: AwFabClearance(extent: fabClearance, child: child),
+        // R-03 (OPH-397, ADR-0062 §4): content no longer runs under the bar
+        // at full contrast. A passive fade in the PAGE colour — paint, not
+        // glass (G1), no motion, no touches — from 24 above the capsule to
+        // the screen's edge. No text rests here: every list ends above the
+        // action cluster (`awListPadding`).
+        if (covered > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: covered + kAwBottomScrimReach,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                key: const Key('shell-bottom-scrim'),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      page.withValues(alpha: 0),
+                      page.withValues(alpha: kAwBottomScrimAlpha),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
+
+/// How far above the capsule the bottom fade starts, and how opaque it is
+/// at the screen's edge (Mobbin §1.5: 0 → 92 %).
+const double kAwBottomScrimReach = AwSpace.x6;
+const double kAwBottomScrimAlpha = 0.92;
 
 /// Below this width a section's app bar puts the team and unit under its
 /// title (OPH-359) — the switcher's own compact width, so the two agree.

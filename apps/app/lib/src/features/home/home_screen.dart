@@ -401,7 +401,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 720;
+              final isWide = awWideContent(context, constraints);
 
               // H2 — wide layouts are unchanged: there is room for pinned
               // chrome, and the calendar is a side panel.

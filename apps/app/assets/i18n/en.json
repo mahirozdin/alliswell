@@ -53,6 +53,7 @@
       "openWithShortcut": "Search everywhere ({shortcut})",
       "hint": "Search tasks, projects, notes, tags and files…",
       "recent": "Recent",
+      "shortcuts": "Shortcuts",
       "emptyHint": "Type to search your tasks, projects, notes, tags and files — it works offline too.",
       "shortcutTip": "Tip: {shortcut} opens this from anywhere.",
       "noResultsTitle": "No results",
@@ -109,7 +110,8 @@
     "tickets": "Requests",
     "ticketsDesc": "The unit's inbox",
     "more": "More",
-    "moreTitle": "More sections"
+    "moreTitle": "More sections",
+    "homeLongPressHint": "Opens Quick Access"
   },
   "auth": {
     "signInTitle": "Sign in to your space",

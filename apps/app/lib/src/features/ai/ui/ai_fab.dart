@@ -5,13 +5,16 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../theme/tokens.dart';
 import '../providers.dart';
 import 'ai_bubble.dart';
 import 'ai_bubble_controller.dart';
 import 'ai_ptt_machine.dart';
 
-/// The press-to-talk AI FAB (OPH-223, DESIGN §24 AI1): bottom-LEFT, distinct
-/// from the bottom-right create FAB. Hold ≥250 ms to talk; lift locks and keeps
+/// The press-to-talk AI FAB (OPH-223, DESIGN §24 AI2). Since OPH-397
+/// (ADR-0062 §3) it is the 48 px half of the shell's action cluster, beside
+/// the "+" on the right — no longer a corner of its own. Hold ≥250 ms to
+/// talk; lift locks and keeps
 /// the bubble open; swipe left to cancel; a plain tap opens the bubble in
 /// text + mic mode (the tap path is never the only way — AI2/AI10).
 ///
@@ -101,7 +104,8 @@ class _AiFabState extends ConsumerState<AiFab> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
     return Listener(
       onPointerDown: _onDown,
       onPointerMove: _onMove,
@@ -115,13 +119,25 @@ class _AiFabState extends ConsumerState<AiFab> {
         hint: 'ai.voice.fabHint'.tr(),
         excludeSemantics: true,
         onTap: _onActivated,
-        child: FloatingActionButton(
-          key: const Key('ai-fab'),
-          heroTag: 'ai-fab',
-          backgroundColor: scheme.secondaryContainer,
-          foregroundColor: scheme.onSecondaryContainer,
-          onPressed: _onActivated,
-          child: const Icon(Icons.mic_none_outlined),
+        // 48, not 56: the secondary action of the cluster, still a full
+        // Android target (G4).
+        child: Theme(
+          data: theme.copyWith(
+            floatingActionButtonTheme: theme.floatingActionButtonTheme.copyWith(
+              sizeConstraints: const BoxConstraints.tightFor(
+                width: kAwMicFabSize,
+                height: kAwMicFabSize,
+              ),
+            ),
+          ),
+          child: FloatingActionButton(
+            key: const Key('ai-fab'),
+            heroTag: 'ai-fab',
+            backgroundColor: scheme.secondaryContainer,
+            foregroundColor: scheme.onSecondaryContainer,
+            onPressed: _onActivated,
+            child: const Icon(Icons.mic_none_outlined),
+          ),
         ),
       ),
     );

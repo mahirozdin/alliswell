@@ -35,6 +35,11 @@ This file holds the unreleased changes and the latest release; at each release t
   a light bulb for Inbox and a paperclip for Files. With very large text, press and hold a tab to
   see its name. On a phone the floating Quick Access button is now off unless you turn it on in
   Settings; the ⚡ in the Home bar opens Quick Access.
+- **Nothing floating covers your tasks any more** on a phone: the microphone sits beside "+" on
+  the right, both step down while you scroll, the bar and the buttons share one margin, and the
+  list fades out under the bar instead of running under it. Quick Access also opens from the
+  search screen's "Shortcuts" or a long press on Home; turned on, its button stays fully on screen
+  and only shows on the main screens. On an iPad mini Home keeps one column under the phone bar.
 
 ## [1.18.2] — 2026-10-30
 

@@ -36,22 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-397 — Yüzen öğeler, ızgara, alt örtü, Hızlı Erişim girişi
-
-R-03, R-06, R-07, R-12, A-03, U-02, U-03; ADR-0062.
-
-- [ ] Mikrofon (48) + "+" (56) sağda tek küme, merkezleri hizalı, "+" alt kenarı kapsül üstü + 16; sol
-      alt boş; kaydırınca FAB'lar 150 ms'de 16 pt iner (azaltılmış harekette anında).
-- [ ] Tek 16 pt oluk (≥430 pt'de 20); kapsül ve arama küresi (56) aynı merkez çizgisi, 8 pt ara; alt örtü
-      sayfa renginden gradyan (cam değil); liste sonu dolgusu = bar + FAB + 24, bar yoksa güvenli alan + 24.
-- [ ] Hızlı Erişim balonu telefonda varsayılan kapalı (Ayarlar'dan açılır; varsayılan OPH-396'da kapandı); giriş uygulama çubuğunda ⚡,
-      arama paletinin boş halinde "Kısayollar" ve Ana Sayfa sekmesine uzun basma; açıksa balon güvenli
-      alan içinde, itilen ekranlarda gizli; tanıtım kartı sistem çubuğunun üstünde.
-- [ ] Masaüstünde AI düğmesi rail'e binmez; iPad 720–799 pt tek kırılım.
-- **Kabul:** hiçbir yüzen öğe ilk görevin onay dairesini ya da bölüm başlığını örtmez (test); balon
-  güvenli alan içinde (test).
-- **Cihazda bakılacak:** Android 360 dp'de tanıtım kartı ve son satırın FAB'ın üstünde kalması.
-
 ### OPH-398 — Telefon uygulama çubuğu en çok 3 hedef
 
 R-05, A-06, C-03.

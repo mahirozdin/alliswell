@@ -1002,12 +1002,15 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on
   auth/onboarding screens, the bubble is hidden entirely — a floating control over
-  a modal is two competing surfaces. _(Amended by ADR-0062 §5: on phones the bubble is off by
-  default — so the factory phone layout has no dock and the capsule's slots (§43) are ≥ 48 dp,
-  `bubble_test` "factory phone layout"; when turned on it no longer docks in the bar's row —
-  OPH-397 builds that, and until then a person who turns it on and leaves it docked gets slots
-  narrower than 48 dp.)_
-- **Q4a — The recede is paint, never the hit box (OPH-196).** Q4's two clauses
+  a modal is two competing surfaces. _(Amended by ADR-0062 §5, built by OPH-397: on phones the
+  bubble is off by default, and its ways in are the ⚡, the palette's "Shortcuts" and a long press
+  on Home (§44 F6). Turned on, there is no dock: it rests inside the safe area on the floating
+  gutter, at the bottom of its band just above the "+" (`kBubbleFactoryPosition`), shows on the
+  shell only (gone on every pushed page, which gives up nothing for it), and its idle state only
+  fades — nothing slides past the screen's edge (U-03); the intro card opens above it, clear of
+  the system bar (A-03).)_
+- **Q4a — The recede is paint, never the hit box (OPH-196; the slide is gone since OPH-397 —
+  only the 40 % fade remains, U-03).** Q4's two clauses
   fight: a 56 px control translated half off-screen leaves a 28 px target and
   breaks §5's 44 px floor. So the gesture/`Semantics` box stays fully on-screen at
   56×56 and never moves; only the painted circle inside it slides toward the edge
@@ -1023,8 +1026,8 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   implements it, never re-derived. **While the button carries a count (Q10) it
   neither recedes nor dims at rest** — a count is text somebody is asked to read,
   which is exactly what this exception excludes (EE-294). **While the content
-  under it scrolls it recedes whatever it carries** (OPH-359): the count is painted
-  outside the slide and the fade, so it is never dimmed.
+  under it scrolls it fades whatever it carries** (OPH-359): the count is painted
+  outside the fade, so it is never dimmed.
 - **Q4c — The bubble is not a FAB (OPH-196).** Material's rule is one FAB per
   screen for the screen's single most important action; the quick-add FAB owns
   that slot and does not move. The bubble is a persistent *navigation* control,
@@ -1098,7 +1101,8 @@ opens I can lift my finger and it stays open.")_
   screen shows a third floating action. On rail layouts the AI entry sits at the
   rail's bottom; desktop gets click-to-talk plus a keyboard shortcut. _(Amended by
   ADR-0062 §3: on phones the microphone joins "+" in one cluster on the right and the
-  bottom-left corner stays empty; AI2 is unchanged. OPH-397 builds it.)_
+  bottom-left corner stays empty; AI2 is unchanged. Built by OPH-397, §44; on rail layouts the
+  same cluster stands at the window's end, never on the rail.)_
 - **AI2 — The gesture machine is fixed:** press-and-hold (≥250 ms) opens the bubble
   and records with a live partial transcript; dragging left ≥80 px cancels (haptic);
   **releasing the finger locks recording and keeps the bubble open** — lift-to-lock,
@@ -1674,7 +1678,7 @@ One palette finds tasks, projects, notes, tags and file names from the replica, 
 
 | # | Rule | Why |
 | --- | --- | --- |
-| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 64 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row; no app-bar icon. Every tab is labelled, on ONE line (§43, ADR-0062 — until OPH-396 only the selected one was below 64 px per tab). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
+| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 56 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row, on the capsule's centre line, 8 px from it (§44 F2; 64 px until OPH-397); no app-bar icon. Every tab is labelled, on ONE line (§43, ADR-0062 — until OPH-396 only the selected one was below 64 px per tab). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
 | P2 | **Surface.** A SOLID dialog (`dialogTheme`, G1) on the root navigator: wide (≥ 600) top-aligned 72 px down, ≤ 640 wide and ≤ min(560, 70 %) tall, radius `xl`; phone full screen with a back button beside the field. The field is the theme's filled input (G3) with a search prefix and a clear suffix. | Glass under body text fails contrast; the root navigator keeps it above the glass bar. |
 | P3 | **Groups and rows.** Fixed order Tasks · Projects · Notes · Tags · Files, ≤ 5 rows each; the header (`labelLarge`, `onSurfaceVariant`, `Semantics(header)`) adds "5 of 23" when there are more. Rows ≥ 48 px: kind icon (`onSurfaceVariant`; files by type), one-line title, a context line (`bodySmall`, `onSurfaceVariant`) saying WHERE it hit (S3: `#tag`, body snippet) or the project; a completed task shows a check icon and "Completed", an archived project "Archived"; a tag row says "Shows Home filtered by this tag". | One glance tells what and where; G5 — never colour alone. |
 | P4 | **Keyboard and active row.** The field keeps focus: ↑/↓ move the active row (wrapping, scrolled into view), Enter opens it, Esc closes. The active row has a `surfaceContainerHighest` fill AND a ⏎ glyph, and reports `selected` to screen readers; hover moves it. A live region reads the result count. | Keyboard-only use, and a selection that is not colour-only (G5). |
@@ -1725,3 +1729,19 @@ The phone's bottom navigation is `AwTabCapsule` (`widgets/tab_capsule.dart`), no
 | N6 | **Distinct glyphs.** Inbox (TR "Fikirler") is a light bulb; Files a paperclip, not a second folder beside Projects (`sections_test`). | Two personas read the twin folders as one (U-46). |
 | N7 | **Semantics.** One node per slot: button, selected state, label "Home\nTab 1 of 5" (`MaterialLocalizations.tabLabel`). | The same reading `NavigationBar` gave. |
 | N8 | **Measured, not eyeballed:** `test/features/shell/tab_capsule_test.dart` runs 360/375/393/412/430 × 1.0/1.3/2.0 × TR/EN × light/dark × 5/6 sections and asserts slot width, equal widths, label containment in the capsule's curve, one glyph line and the 1.3 clamp; `phone_home_*` in `test/design_screenshots_test.dart` shoots it. | R-13: the shots never saw the bar's failures. |
+
+## 44. What floats on a phone, and the grid it floats on (OPH-397)
+
+[ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md) §3–§5. Rails keep their layout;
+the action cluster is the same on both.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| F1 | **One gutter.** Capsule, search orb, action cluster and the Quick Access bubble keep `awFloatGutter`: 16, and 20 from 430 pt (`kAwFloatGutter*`). | Four insets (8/12/16, the dock) read as an accident (R-06). |
+| F2 | **The bar's row:** capsule (64) + 8 + orb (56, `kAwSearchOrbSize`), one centre line; nothing else docks in it. | Two circles 8 pt apart (R-06); the dock cost the slots G4 (R-04). |
+| F3 | **One action cluster on the right** (`AwFabLocation`): "+" 56 on the gutter, its bottom 16 above the capsule; the microphone 48 (`kAwMicFabSize`, `secondaryContainer`) 8 to its left, same centre. The "+" stands in the same place with AI on or off; the bottom-left corner is empty. While a list scrolls down the cluster drops 16 in `AwMotion.fast` — at once with reduced motion — and returns on the way up or after 600 ms still (`AwFabScrollScope`); a translation, never a fade. | The left microphone sat on the headers and check circles (R-07, E-10). |
+| F4 | **Bottom fade** (`shell-bottom-scrim`): from 24 above the capsule to the screen's edge, the page colour (veil over `auroraBottom`) 0 → 92 %; paint, not glass (G1), no motion, `IgnorePointer`. | Content ran under the bar at full contrast (R-03). |
+| F5 | **Where a list ends:** bar + FAB lane (72) + 24 (`awListPadding`); a page without the bar ends at the safe area + 24. | E-09: the end of every list is reachable. |
+| F6 | **Quick Access on a phone:** bubble off by default; ways in are the ⚡ in Home's app bar, "Shortcuts" (≤ 6) above "Recent" in the empty search palette, and a long press on the Home tab (hint `nav.homeLongPressHint`; not while the large content viewer owns the long press, §43 N4). | ADR-0062 §5. |
+| F7 | **One breakpoint:** a page is two-column only beside the rail (`awWideContent`: content ≥ 720 AND window ≥ 800) — an iPad mini at 744 is the phone layout throughout. | Home went wide at 720 under the phone capsule (R-12). |
+| F8 | **Measured:** `test/features/shell/floating_grid_test.dart` (360/393/430, AI on/off, bubble on/off: no floating object covers a check circle or a header, at rest and scrolled); `bubble_test` (inside the safe area at rest and idle, gone on pushed pages, intro above the system bar). | Kabul of OPH-397. |

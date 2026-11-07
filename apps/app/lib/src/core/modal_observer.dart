@@ -19,9 +19,9 @@ import '../widgets/fab_clearance.dart';
 ///
 /// [outsideShell] (OPH-391): whether the top PAGE on the root navigator is a
 /// page outside the shell — task detail, settings, a note opened by address.
-/// The docked bubble rests in the shell bar's row; such a page has no bar, so
-/// the bubble steps aside there instead of the page giving up a lane for it
-/// (E-09: that lane was a ~100 pt dead band under every pushed screen).
+/// The Quick Access bubble shows on the shell only (OPH-397, U-03): such a
+/// page has no button and gives up no lane for one (E-09: that lane was a
+/// ~100 pt dead band under every pushed screen).
 class AwModalRouteObserver extends NavigatorObserver {
   final ValueNotifier<int> depth = ValueNotifier<int>(0);
   final ValueNotifier<bool> outsideShell = ValueNotifier<bool>(false);

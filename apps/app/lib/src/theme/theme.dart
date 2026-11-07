@@ -539,9 +539,9 @@ class AwPageTransitionsBuilder extends PageTransitionsBuilder {
             begin: Offset.zero,
             end: const Offset(-slide, 0),
           ).animate(outgoing),
-          // OPH-391: no page gives up a lane to the docked Quick Access
-          // bubble any more (it steps aside outside the shell) — the page
-          // reaches the bottom edge (E-09).
+          // OPH-391: no page gives up a lane to the Quick Access bubble
+          // (it shows on the shell only, OPH-397) — the page reaches the
+          // bottom edge (E-09).
           child: child ?? const SizedBox.shrink(),
         ),
       ),

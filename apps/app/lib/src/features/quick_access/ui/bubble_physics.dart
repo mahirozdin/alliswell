@@ -10,54 +10,58 @@ import 'dart:math' as math;
 import 'package:flutter/foundation.dart';
 import 'package:flutter/painting.dart';
 
+import '../../../theme/tokens.dart';
+
 /// Which side the button is parked on.
 enum BubbleEdge { left, right }
 
-/// Diameter — also the tap target, which is why the idle recede is paint-only
-/// (a translated box would leave 28 px and break the 44 px floor, §5).
+/// Diameter — also the tap target; the idle state only fades, so the whole
+/// 56 px stays on screen and tappable (§5, U-03).
 const double kBubbleDiameter = 56;
 
-/// Breathing room between the button and the screen edge.
-const double kBubbleEdgeMargin = 8;
+/// Breathing room above and below the button inside its band. Sideways it
+/// keeps the floating gutter instead ([awFloatGutter], ADR-0062 §4): the
+/// same 16 (20 on the widest phones) as the capsule, the orb and the "+",
+/// so at rest on the right it stands in the "+"'s column.
+const double kBubbleEdgeMargin = AwSpace.x2;
 
-/// Idle delay before the button recedes, and how faint it gets.
+/// Idle delay before the button fades, and how faint it gets.
 ///
 /// 40 % is not a taste call: it is the platform's own default ("the
 /// AssistiveTouch button fades to 40 % opacity a few seconds after you stop
-/// using it"). OPH-196 measured the idiom before the number was fixed.
+/// using it"). OPH-196 measured the idiom before the number was fixed. It
+/// only FADES: since OPH-397 (U-03) nothing of it slides past the safe area —
+/// half a circle beyond the screen's edge read as broken.
 const Duration kBubbleIdleDelay = Duration(seconds: 3);
 const double kBubbleIdleOpacity = 0.40;
 
-/// How much of the circle hides past the edge when idle (paint only).
-const double kBubbleRecedeFraction = 0.5;
-
-/// What the bottom of a phone screen already holds: the glass navigation bar
-/// (80 px and its 12 px float) and, above it, the FAB lane (a 56 px button and
-/// its 16 px margin). The band the button may rest in stops above both
-/// (OPH-359, UI-AUDIT #57) — parked over the bar it hid a tab, and parked over
-/// the FAB it hid the screen's one primary action.
-const double kBubbleBottomReserve = 92 + 72;
-
 /// The phone's bottom bar, as the shell draws it: a 64 px glass capsule
-/// (`navigationBarTheme.height`) floating 12 px above the safe area
-/// (`AwSpace.x3`, the shell's `SafeArea.minimum`). The dock is that row.
+/// (`kAwTabCapsuleHeight`) floating at least 12 px above the screen's edge
+/// (`AwSpace.x3`, the shell's `SafeArea.minimum`).
 const double kBubbleBarHeight = 64;
 const double kBubbleBarFloat = 12;
 
-/// Factory position: DOCKED (OPH-362, UI-AUDIT #57's rest) — right edge, in
-/// the bottom bar's row, beside the capsule.
+/// The shell's action cluster above the bar: Material's 16 px float and the
+/// 56 px "+" (`AwFabClearance.lane`).
+const double kBubbleFabLane = 16 + 56;
+
+/// How much of the screen's bottom, above the safe area's floor, the band
+/// the button may rest in leaves to the bar and the action cluster (OPH-359,
+/// UI-AUDIT #57): parked over the bar it hid a tab, over the "+" the screen's
+/// one primary action.
+double bubbleBottomReserve(EdgeInsets safeArea) =>
+    math.max(safeArea.bottom, kBubbleBarFloat) +
+    kBubbleBarHeight +
+    kBubbleFabLane;
+
+/// Factory position: the bottom of the band on the right — just above the
+/// "+", in its column (OPH-397).
 ///
-/// Every earlier rest sat over content. In the middle of the right edge
-/// (35 %, until OPH-359) it covered every row's ⋮ menu and form switch; just
-/// above the FAB lane (OPH-359) it covered whatever a page drew at that
-/// height on first sight — a member's ⋮, the second approval's "Approve", the
-/// right end of a "Save" — and only scrolling uncovered them. Padding the end
-/// of a list cannot fix the top of a screen. So the bubble does not rest ON
-/// content at all: it rests in a lane of its own, which the layout keeps
-/// free — the shell shortens its bar to make room in the bar's row, and every
-/// page outside the shell ends above it (`AwBubbleDock`). A position the
-/// person drags elsewhere is theirs (and padded for, `bubbleClearance`); the
-/// bottom of the band is the dock again.
+/// History. OPH-362 docked the button in the bar's own row beside the
+/// capsule (UI-AUDIT #57: every rest above it covered something); that lane
+/// left the capsule's slots under 48 dp (ADR-0062), so the bubble is off by
+/// default on phones now and, switched on, rests above the cluster again —
+/// where `awListPadding` lets every list end above it (`AwBubbleClearance`).
 const BubblePosition kBubbleFactoryPosition = BubblePosition(
   edge: BubbleEdge.right,
   heightFraction: 1,
@@ -74,10 +78,6 @@ class BubblePosition {
 
   final BubbleEdge edge;
   final double heightFraction;
-
-  /// At the bottom of its band = in the dock (OPH-362). The band's floor is
-  /// where a release below the free band lands too, so "drag it down" docks.
-  bool get docked => heightFraction >= 1;
 
   @override
   bool operator ==(Object other) =>
@@ -103,10 +103,7 @@ class BubblePosition {
   // The keyboard eats from the bottom; the safe-area bottom is already inside
   // it when both are present, hence the max rather than the sum. The bar and
   // the FAB lane sit above the safe area, and a keyboard covers them both.
-  final bottomInset = math.max(
-    safeArea.bottom + kBubbleBottomReserve,
-    keyboardInset,
-  );
+  final bottomInset = math.max(bubbleBottomReserve(safeArea), keyboardInset);
   final bottom = viewport.height - bottomInset - kBubbleEdgeMargin;
   final height = math.max(kBubbleDiameter, bottom - top);
   return (top: top, height: height);
@@ -137,19 +134,11 @@ Offset bubbleOrigin(
   EdgeInsets safeArea,
   double keyboardInset,
 ) {
-  final left = safeArea.left + kBubbleEdgeMargin;
-  final right =
-      viewport.width - safeArea.right - kBubbleEdgeMargin - kBubbleDiameter;
+  // Inside the safe area, on the floating gutter (U-03, ADR-0062 §4).
+  final gutter = awFloatGutter(viewport.width);
+  final left = safeArea.left + gutter;
+  final right = viewport.width - safeArea.right - gutter - kBubbleDiameter;
   final dx = position.edge == BubbleEdge.left ? left : math.max(left, right);
-  // Docked and no keyboard: centred on the bottom bar's row. A keyboard
-  // covers that row (and the host hides a docked button under it), so the
-  // band's floor above the keyboard is where it would stand.
-  if (position.docked && keyboardInset <= 0) {
-    final barBottom =
-        viewport.height - math.max(safeArea.bottom, kBubbleBarFloat);
-    final dy = barBottom - (kBubbleBarHeight + kBubbleDiameter) / 2;
-    return Offset(dx, math.max(safeArea.top + kBubbleEdgeMargin, dy));
-  }
   final band = bubbleBand(viewport, safeArea, keyboardInset);
   final travel = math.max(0.0, band.height - kBubbleDiameter);
   final dy = band.top + travel * position.heightFraction.clamp(0.0, 1.0);
@@ -164,26 +153,6 @@ Offset bubbleOrigin(
 double bubbleClearance(Offset origin, Size viewport) {
   if (origin.dy < viewport.height / 2) return 0;
   return viewport.height - origin.dy + kBubbleEdgeMargin;
-}
-
-/// The lane a DOCKED button keeps for itself (OPH-362): how much of the
-/// screen's bottom a page outside the shell gives up ([bubbleClearance] of
-/// the docked origin — the button plus a gap above it), and how much of the
-/// bar's row the shell's capsule gives up on that edge (the button, its edge
-/// margin and the same gap on the inner side).
-({double height, double width}) bubbleDockLane(Offset origin, Size viewport) =>
-    (
-      height: bubbleClearance(origin, viewport),
-      width: origin.dx < viewport.width / 2
-          ? origin.dx + kBubbleDiameter + kBubbleEdgeMargin
-          : viewport.width - origin.dx + kBubbleEdgeMargin,
-    );
-
-/// How far the PAINTED circle slides toward its edge when idle. The gesture
-/// box never moves — see [kBubbleDiameter].
-double recedePaintDx(BubbleEdge edge, double t) {
-  final distance = kBubbleDiameter * kBubbleRecedeFraction * t.clamp(0.0, 1.0);
-  return edge == BubbleEdge.left ? -distance : distance;
 }
 
 /// `right:0.350` — the stored form (localKv holds strings).

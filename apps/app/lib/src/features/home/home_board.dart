@@ -177,7 +177,7 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 720;
+        final isWide = awWideContent(context, constraints);
         if (isWide) {
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,

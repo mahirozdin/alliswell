@@ -126,7 +126,7 @@ class _ScreenshotApp extends ConsumerWidget {
       // OPH-374: the palette's host, as app.dart mounts it — the rail and
       // phone entries only ask it to open.
       // OPH-391: and the Quick Access host, as app.dart mounts it — a shot
-      // of a pushed page has to show what the docked button does there.
+      // of a pushed page has to show that the button is gone there.
       builder: (context, child) => AuroraBackground(
         child: AwGlobalSearchHost(
           child: QuickAccessBubbleHost(child: child ?? const SizedBox.shrink()),
@@ -710,7 +710,7 @@ void main() {
     });
 
     // OPH-391 (E-09, U-25): a pushed page on a phone with a home indicator
-    // (47 / 34 pt safe area) and a docked Quick Access button in the shell.
+    // (47 / 34 pt safe area) and the Quick Access button on in the shell.
     // The page once ended ~100 pt above the screen, a band of wash cutting
     // the content with a straight line; the shot is the picture of the fix,
     // and the asserts make the run fail if the band comes back.
@@ -741,8 +741,8 @@ void main() {
                 find.byType(QuickAccessBubble),
                 findsOneWidget,
                 reason:
-                    'the shell has the docked button the page used to '
-                    'make room for',
+                    'the shell has the button the page used to make '
+                    'room for',
               );
               if (route == null) {
                 await openSeededDetail(t);

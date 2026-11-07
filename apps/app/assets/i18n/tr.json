@@ -52,6 +52,7 @@
       "openWithShortcut": "Her yerde ara ({shortcut})",
       "hint": "Görev, proje, not, etiket ve dosya ara…",
       "recent": "Son açılanlar",
+      "shortcuts": "Kısayollar",
       "emptyHint": "Görevlerini, projelerini, notlarını, etiketlerini ve dosyalarını aramak için yaz — internetsiz de çalışır.",
       "shortcutTip": "İpucu: {shortcut} bunu her yerden açar.",
       "noResultsTitle": "Sonuç yok",
@@ -108,7 +109,8 @@
     "tickets": "Talepler",
     "ticketsDesc": "Birimin gelen kutusu",
     "more": "Diğer",
-    "moreTitle": "Diğer bölümler"
+    "moreTitle": "Diğer bölümler",
+    "homeLongPressHint": "Hızlı Erişim'i açar"
   },
   "auth": {
     "signInTitle": "Alanına giriş yap",

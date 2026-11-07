@@ -11,6 +11,8 @@ class AwTabItem {
     required this.label,
     this.iconKey,
     this.selectedIconKey,
+    this.onLongPress,
+    this.longPressHint,
   });
 
   final IconData icon;
@@ -20,6 +22,12 @@ class AwTabItem {
   /// Anchors for the onboarding tour's spotlight (only one is mounted).
   final Key? iconKey;
   final Key? selectedIconKey;
+
+  /// A second way in through this slot (Home's long press opens Quick
+  /// Access, ADR-0062 §5), and what a screen reader says it does. Not
+  /// offered while the large content viewer owns the long press (N4).
+  final VoidCallback? onLongPress;
+  final String? longPressHint;
 }
 
 /// The capsule's height (ADR-0062 §1, DESIGN §43 N1).
@@ -164,6 +172,9 @@ class _AwTabCapsuleState extends State<AwTabCapsule> {
                             '${widget.items[i].label}\n'
                             '${localizations.tabLabel(tabIndex: i + 1, tabCount: count)}',
                         onTap: () => widget.onSelected(i),
+                        onLongPress: bigText
+                            ? null
+                            : widget.items[i].onLongPress,
                       ),
                     ),
                 ],
@@ -198,12 +209,14 @@ class _TabSlot extends StatelessWidget {
     required this.selected,
     required this.semanticLabel,
     required this.onTap,
+    this.onLongPress,
   });
 
   final AwTabItem item;
   final bool selected;
   final String semanticLabel;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context) {
@@ -226,8 +239,11 @@ class _TabSlot extends StatelessWidget {
       label: semanticLabel,
       excludeSemantics: true,
       onTap: onTap,
+      onLongPress: onLongPress,
+      onLongPressHint: onLongPress == null ? null : item.longPressHint,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         borderRadius: const BorderRadius.all(
           Radius.circular(kAwTabSelectionHeight / 2),
         ),

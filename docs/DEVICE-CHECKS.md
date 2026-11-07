@@ -7,6 +7,7 @@
 
 ## Telefon alt barı: AwTabCapsule (2026-11-07)
 
+- OPH-397 — **Android 360 dp (3 düğmeli ve hareketli gezinme) ve iPhone 393, açık ve koyu**: AI açıkken mikrofon "+"nın solunda, ikisi aynı hizada, sol alt boş; aşağı kaydırınca ikisi biraz iniyor, yukarı ya da durunca dönüyor; listenin sonu "+"nın üstünde bitiyor, bar altındaki içerik sayfa rengine soluyor (cam değil). **Ayarlar ▸ Hızlı Erişim balonu açık**: balon "+"nın üstünde, ekran kenarına taşmıyor, bekleyince yalnız soluyor; görev detayı/Ayarlar'da yok; ilk gösterimdeki tanıtım kartı balonun üstünde ve sistem çubuğunun üstünde. Ana Sayfa sekmesine uzun basınca Hızlı Erişim açılıyor; arama boşken "Kısayollar". **iPad mini dikey (744)**: Ana Sayfa tek sütun, alt kapsül.
 - OPH-396 — **iPhone 393 ve 430, Android 360 ve 412, açık ve koyu tema, TR**: alt barda beş sekme eşit genişlikte, hepsinin etiketi kapsülün içinde ve tek satırda ("Ana Sayfa" 360'ta küçülerek sığıyor, kesilmiyor); sekme değiştirince ikonlar ve etiketler yerinde kalıyor, yalnız seçim hapı ve dolu ikon değişiyor; Fikirler ampul, Dosyalar ataş. **Ayarlar ▸ metin boyutu en büyük (2.0×)**: etiketler 1.3'te kalıyor; bir sekmeye uzun basınca kapsülün üstünde büyük ad balonu, parmak kayınca balon izliyor, bırakınca o sekme açılıyor. **Altı bölümlü bir adreste**: 5. yuva "Diğer", dokununca Dosyalar ve altıncı bölümün sayfası; birini açınca "Diğer" seçili. VoiceOver/TalkBack: "Ana Sayfa, sekme 1 / 5, seçili". **Temiz kurulumda**: Hızlı Erişim balonu yok, Ana Sayfa çubuğunda ⚡ var.
 
 ## Küçük kırıklar ve source-available (2026-11-07)
