@@ -167,6 +167,16 @@ class AwI18n extends ChangeNotifier {
     return out;
   }
 
+  /// [key] in [language] when that catalogue is loaded, else in the active
+  /// one. The formatter names "Yarın" in the language it was asked for, which
+  /// in the app is always the active one; tests and the widget pass it in.
+  String translateIn(String language, String key) {
+    if (language == _locale.languageCode) return translate(key);
+    final catalogue = _cache[language];
+    final value = catalogue == null ? null : _lookup(catalogue, key);
+    return value ?? translate(key);
+  }
+
   // ── Test/boot seams ───────────────────────────────────────────────────────
 
   /// Loads locales into the cache without changing the active one. Used by the

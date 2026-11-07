@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'dart:async';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
@@ -602,7 +602,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
-                          subtitle: Text(formatBytes(file.sizeBytes)),
+                          subtitle: Text(awFormatFileSize(file.sizeBytes)),
                           trailing: IconButton(
                             tooltip: 'common.remove'.tr(),
                             icon: const Icon(Icons.close, size: 18),
@@ -737,7 +737,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
               title: 'task.duration'.tr(),
               subtitle: _estimatedMinutes == null
                   ? 'task.notSet'.tr()
-                  : awFormatDuration(_estimatedMinutes!),
+                  : awFormatDuration(_estimatedMinutes!, days: false),
               isSet: _estimatedMinutes != null,
               clearTooltip: 'task.clearDuration'.tr(),
               onClear: () => setState(() => _estimatedMinutes = null),

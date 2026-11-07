@@ -185,7 +185,9 @@ void main() {
     for (final label in _answers.map((a) => a.label)) {
       expect(find.text(label), findsOneWidget);
     }
-    expect(find.text('48500'), findsOneWidget);
+    // OPH-408: a number answer reads in the region's separators.
+    expect(find.text('48.500'), findsOneWidget);
+    expect(find.text('48500'), findsNothing);
     expect(find.text('Arıza'), findsOneWidget);
     // A date reads the way every other date in the app does, and a ticked
     // box reads as a word rather than as `true`.
@@ -237,7 +239,7 @@ void main() {
       );
 
       expect(find.byKey(const Key('ticket-answers')), findsOneWidget);
-      expect(find.text('48500'), findsOneWidget);
+      expect(find.text('48.500'), findsOneWidget);
     },
   );
 

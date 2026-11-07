@@ -87,7 +87,7 @@ void main() {
     await scrollToAttachments(tester);
 
     expect(find.text('Sunum taslağı.pdf'), findsOneWidget);
-    expect(find.textContaining('3.0 MB'), findsOneWidget);
+    expect(find.textContaining('3\u00A0MB'), findsOneWidget);
     expect(find.byType(FileRowTile), findsOneWidget);
   });
 

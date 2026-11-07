@@ -224,7 +224,7 @@
     },
     "dateFormat": {
       "title": "Tarih biçimi",
-      "system": "Uygulama diline uy"
+      "system": "Cihazının bölgesine uyar"
     },
     "quickBubble": "Yüzen hızlı erişim düğmesi",
     "quickBubbleSub": "İstediğin yere sürükle; dokununca kısayollar açılır",
@@ -380,11 +380,6 @@
     "clearReminder": "Hatırlatıcıyı temizle",
     "duration": "Süre",
     "clearDuration": "Süreyi temizle",
-    "durationValue": {
-      "minutes": "{m} dk",
-      "hours": "{h} sa",
-      "hoursMinutes": "{h} sa {m} dk"
-    },
     "durationDialog": {
       "title": "Ne kadar sürer?",
       "custom": "Dakika",
@@ -596,7 +591,7 @@
     "exportFormatDocx": "Word belgesi",
     "exporting": "{format} hazırlanıyor…",
     "exportReady": "{format} hazır",
-    "exportFile": "{name} · {size} KB",
+    "exportFile": "{name} · {size}",
     "exportShare": "Paylaş",
     "exportShareHint": "Paylaşım menüsünü açar — Dosyalara Kaydet, Mail, AirDrop…",
     "exportSave": "Dosyalara kaydet",
@@ -615,7 +610,7 @@
     "mdImported": "{name} içe aktarıldı",
     "mdImportFailed": "Dosya içe aktarılamadı.",
     "mdOpenFailed": "Dosya açılamadı.",
-    "mdTooLarge": "Bu dosya {size} MB — not olarak içe aktarmak için fazla büyük.",
+    "mdTooLarge": "Bu dosya {size}. Not olarak içe aktarmak için fazla büyük.",
     "mdProject": "Proje",
     "mdProjectHint": "İsteğe bağlı — not bu projenin altına düşer",
     "modeReading": "Oku",
@@ -3800,13 +3795,6 @@
       "body": "Rolünüz bu ayarları açmaya izin vermiyor. Burada bir şeyin değişmesi gerekiyorsa takım yöneticinize yazın.",
       "back": "Ana sayfaya dön"
     },
-    "duration": {
-      "minutes": "{m} dk",
-      "hours": "{h} sa",
-      "hoursMinutes": "{h} sa {m} dk",
-      "days": "{d} g",
-      "daysHours": "{d} g {h} sa"
-    },
     "unitScope": {
       "chooseTitle": "Hangi birimin taleplerini görmek istersiniz?",
       "chooseBody": "Talepler birim birim tutulur. Bir birim seçin ya da tümünü görün.",
@@ -4300,5 +4288,21 @@
     "added": "Eklendi: {title} · {due}",
     "addedInbox": "Fikirler'e eklendi: {title}",
     "open": "Aç"
+  },
+  "format": {
+    "today": "Bugün",
+    "tomorrow": "Yarın",
+    "yesterday": "Dün",
+    "duration": {
+      "minutesOne": "{n} dk",
+      "minutesOther": "{n} dk",
+      "hoursOne": "{n} saat",
+      "hoursOther": "{n} saat",
+      "daysOne": "{n} gün",
+      "daysOther": "{n} gün"
+    },
+    "fileSize": {
+      "underKb": "1 KB'den küçük"
+    }
   }
 }

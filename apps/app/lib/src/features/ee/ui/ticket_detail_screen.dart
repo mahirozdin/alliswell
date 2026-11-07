@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/fold.dart';
 import '../../../core/persisted_prefs.dart';
@@ -1376,6 +1376,8 @@ class EeTicketAnswersView extends StatelessWidget {
       final day? => awFormatDate(day, format: dateFormat),
       null => answer.value,
     },
+    // OPH-408: "48.500", not the "48500" the form stored.
+    'number' => awFormatNumberText(answer.value),
     _ => answer.value,
   };
 

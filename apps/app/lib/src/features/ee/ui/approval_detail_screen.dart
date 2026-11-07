@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_exception.dart';
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/day_boundary.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
@@ -350,7 +350,7 @@ class _EeApprovalDetailScreenState
               ),
               subtitle: Text(
                 [
-                  _size(file.sizeBytes),
+                  awFormatFileSize(file.sizeBytes),
                   if (file.internal) 'ee.approvals.internal'.tr(),
                 ].join(' · '),
               ),
@@ -560,12 +560,6 @@ class _EeApprovalDetailScreenState
       ),
     ];
   }
-}
-
-String _size(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(0)} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
 }
 
 /// Where the approval stands, in one line at the top.

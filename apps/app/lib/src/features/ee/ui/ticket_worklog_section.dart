@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../theme/tokens.dart';
@@ -115,7 +115,7 @@ class _Row extends ConsumerWidget {
       title: Text(
         'ee.worklogs.entry'.tr(
           args: {
-            'duration': eeDurationText(row.minutes),
+            'duration': awFormatDuration(row.minutes, days: false),
             // UI-AUDIT #71: the day in the person's own date format, not the
             // wire's `YYYY-MM-DD`.
             'date': _day(row.workedOn, ref.watch(dateFormatProvider)),
@@ -133,7 +133,7 @@ class _Row extends ConsumerWidget {
         children: [
           if (row.hasCost)
             Text(
-              eeMoneyText(row.costMinor!, row.currency!),
+              awFormatMoney(row.costMinor!, row.currency!),
               key: Key('worklog-cost-${row.id}'),
               style: theme.textTheme.labelLarge,
             ),
@@ -203,7 +203,7 @@ class _Totals extends StatelessWidget {
       children: [
         Text(
           'ee.worklogs.totalHours'.tr(
-            args: {'duration': eeDurationText(totals.minutes)},
+            args: {'duration': awFormatDuration(totals.minutes, days: false)},
           ),
           key: const Key('worklog-total-hours'),
           style: theme.textTheme.bodyMedium,
@@ -211,14 +211,19 @@ class _Totals extends StatelessWidget {
         // One line per currency. The list IS the refusal to add them.
         for (final money in totals.byCurrency)
           Text(
-            eeMoneyText(money.costMinor, money.currency),
+            awFormatMoney(money.costMinor, money.currency),
             key: Key('worklog-total-${money.currency}'),
             style: theme.textTheme.labelLarge,
           ),
         if (totals.unpricedMinutes > 0)
           Text(
             'ee.worklogs.unpriced'.tr(
-              args: {'duration': eeDurationText(totals.unpricedMinutes)},
+              args: {
+                'duration': awFormatDuration(
+                  totals.unpricedMinutes,
+                  days: false,
+                ),
+              },
             ),
             key: const Key('worklog-unpriced'),
             style: theme.textTheme.bodySmall,

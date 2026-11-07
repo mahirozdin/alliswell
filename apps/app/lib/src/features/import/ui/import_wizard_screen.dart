@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/api_exception.dart';
 import '../../../core/error_messages.dart';
+import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/route_leading.dart';
@@ -232,12 +233,6 @@ class _SourceStep extends StatelessWidget {
 
 // ── Step 2: which file ────────────────────────────────────────────────────
 
-String _size(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
-  return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
-}
-
 class _FileStep extends StatelessWidget {
   const _FileStep({required this.state, required this.controller});
 
@@ -288,7 +283,7 @@ class _FileStep extends StatelessWidget {
                   leading: const Icon(Icons.description_outlined),
                   title: Text(f.name),
                   trailing: Text(
-                    _size(f.bytes),
+                    awFormatFileSize(f.bytes),
                     style: theme.textTheme.labelSmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),

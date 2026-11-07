@@ -25,8 +25,6 @@
 /// way round 16 pinned `web/index.html`.
 library;
 
-import 'package:intl/intl.dart';
-
 import '../../core/date_format.dart';
 
 /// How old the entry being rendered may be before the clock is dropped.
@@ -48,15 +46,17 @@ const int kWidgetClockHorizonMinutes = 240;
 
 /// The ICU pattern the header clock is drawn with — "HH:mm", "h:mm a", …
 ///
-/// [format] is the user's `AwDateFormatSpec` id; the "follow the language"
-/// default resolves to the locale's own clock, which is where 12h vs 24h comes
-/// from when the user has not chosen otherwise.
-String widgetClockPattern({required String format, required String locale}) {
-  final spec = awDateFormatSpec(format);
-  // A chosen format states its own time pattern; only the system default has to
-  // be asked of the locale.
-  return spec.time ?? DateFormat.jm(locale).pattern!;
-}
+/// [format] is the user's `AwDateFormatSpec` id; the "system" default resolves
+/// to the device region's clock, which is where 12h vs 24h comes from when the
+/// user has not chosen otherwise.
+String widgetClockPattern({
+  required String format,
+  required String locale,
+  String? region,
+}) =>
+    // A chosen format states its own time pattern; the system default takes
+    // the device region's clock (OPH-408) — the same one the app's rows use.
+    awTimePattern(format: format, locale: locale, region: region);
 
 /// Whether a timeline entry drawn at [renderedAt] may still show its clock (C3).
 ///

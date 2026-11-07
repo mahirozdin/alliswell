@@ -36,14 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-408 — Tek biçimlendirici awFormat*
-
-U-09; ADR-0063.
-
-- [ ] Tarih, saat, süre, para, yüzde, dosya boyutu tek yerden; 12/24 saat ve sıra dil değil bölgeye göre.
-- [ ] Uzantı ekranları dahil bütün çağrı yerleri buna geçer.
-- **Kabul:** birim testleri (TR, EN-US, EN-DE).
-
 ### OPH-409 — Uzantı listeleri: varsayılan görünüm, kimde, sayıların kapsamı ⚠️ Çift kapanış ↔
 
 Kritik yol: extension-seam. ⚠️ **Çift kapanış:** ↔ uzantı deposundaki eş iş (kimliği uzantı kaydında

@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/day_boundary.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
@@ -260,7 +260,7 @@ class _Provenance extends ConsumerWidget {
 String? _price(EeAsset asset) {
   final minor = asset.purchaseCostMinor;
   if (minor == null) return null;
-  return eeMoneyText(minor, asset.currency);
+  return awFormatMoney(minor, asset.currency);
 }
 
 /// A day the record keeps as typed (`YYYY-MM-DD`), in the reader's date
@@ -459,7 +459,7 @@ class _HistoryBody extends StatelessWidget {
               'open': '${data.stats.openTicketCount}',
               // UI-AUDIT #78: minutes and hours as said, never "0 hours"
               // for a request that stayed open forty minutes.
-              'duration': eeDurationText(data.stats.openMinutes),
+              'duration': awFormatDuration(data.stats.openMinutes, days: false),
             },
           ),
           key: const Key('asset-history-counts'),
@@ -489,7 +489,12 @@ class _HistoryBody extends StatelessWidget {
           // hours, twenty minutes of recorded work read as "0".
           Text(
             'ee.assets.history.labour'.tr(
-              args: {'duration': eeDurationText(data.stats.labourMinutes)},
+              args: {
+                'duration': awFormatDuration(
+                  data.stats.labourMinutes,
+                  days: false,
+                ),
+              },
             ),
             key: const Key('asset-history-labour'),
             style: theme.textTheme.bodyMedium,
@@ -498,7 +503,7 @@ class _HistoryBody extends StatelessWidget {
           for (final money in data.stats.labourByCurrency)
             Text(
               'ee.assets.history.labourCost'.tr(
-                args: {'money': eeMoneyText(money.costMinor, money.currency)},
+                args: {'money': awFormatMoney(money.costMinor, money.currency)},
               ),
               key: Key('asset-history-labour-${money.currency}'),
               style: theme.textTheme.bodySmall,
@@ -507,7 +512,10 @@ class _HistoryBody extends StatelessWidget {
             Text(
               'ee.assets.history.labourUnpriced'.tr(
                 args: {
-                  'duration': eeDurationText(data.stats.labourUnpricedMinutes),
+                  'duration': awFormatDuration(
+                    data.stats.labourUnpricedMinutes,
+                    days: false,
+                  ),
                 },
               ),
               key: const Key('asset-history-labour-unpriced'),
@@ -553,11 +561,14 @@ class _HistoryBody extends StatelessWidget {
                   if (ticket.labour != null && ticket.labour!.minutes > 0) ...[
                     'ee.assets.history.ticketLabour'.tr(
                       args: {
-                        'duration': eeDurationText(ticket.labour!.minutes),
+                        'duration': awFormatDuration(
+                          ticket.labour!.minutes,
+                          days: false,
+                        ),
                       },
                     ),
                     for (final money in ticket.labour!.byCurrency)
-                      eeMoneyText(money.costMinor, money.currency),
+                      awFormatMoney(money.costMinor, money.currency),
                   ],
                 ].join(' · '),
                 key: Key('asset-ticket-meta-${ticket.id}'),

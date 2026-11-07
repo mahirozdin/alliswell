@@ -7,6 +7,7 @@ import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
 import '../../../core/list_sort.dart';
 import '../../../core/persisted_prefs.dart';
+import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/list_detail.dart';
@@ -707,7 +708,7 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
               'file.usage'.tr(
                 args: {
                   'count': '${usage.fileCount}',
-                  'size': formatBytes(usage.totalBytes),
+                  'size': awFormatFileSize(usage.totalBytes),
                 },
               ),
               style: theme.textTheme.bodySmall?.copyWith(

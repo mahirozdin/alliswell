@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-407 metin geçişi; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-408 tek biçimlendirici; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-408** — Tek biçimlendirici awFormat* |
-| Last completed           | OPH-407 — metin geçişi (DESIGN §45): kişisel uygulama "sen", uzantı ekranları "siz", karışık dize yok; `check:i18n` hitabı (`scripts/i18n/tone.mjs`, `surfaces.json`) ve "open source/açık kaynak" yasağını tutar; Ek A metinleri ve terim sözlüğü (Son tarih, Planlanan gün, Proje özeti, Hizmet, Birim, Ekipman, Tekrarlayan arıza…) iki katalogda; segment etiketi kelime ortasında kırılmaz (`AwSegmentLabel`), proje sekmeleri kayar. |
+| ➡️ **Next task**         | **OPH-409** — Uzantı listeleri: varsayılan görünüm, kimde, sayıların kapsamı ⚠️ extension-seam |
+| Last completed           | OPH-408 — tek biçimlendirici (DESIGN §17 D6–D8, ADR-0063 #6): tarih, saat, süre, para, yüzde, dosya boyutu `core/format.dart`'tan; sıra, 12/24 saat ve ayırıcılar dil değil cihaz bölgesine göre (`core/format_region.dart`); varsayılan biçim sayısal tarih yazmaz ("13:47", "Yarın 11:00", "7 Kas, 13:47"); uzantı ekranları dahil bütün çağrı yerleri geçti; `format_single_source_test` ham `NumberFormat`/`DateFormat`/`toStringAsFixed`'i yakalar. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/linkify.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
@@ -24,7 +24,6 @@ import '../../tags/tags.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../data/task_defaults.dart';
-import '../data/task_when.dart';
 import '../providers.dart';
 import 'repeat_row.dart';
 import 'task_visuals.dart';
@@ -384,7 +383,7 @@ class TaskTile extends ConsumerWidget {
       if (showDuration)
         Semantics(
           label: 'task.durationSemantic'.tr(
-            args: {'duration': awFormatDuration(duration)},
+            args: {'duration': awFormatDuration(duration, days: false)},
           ),
           excludeSemantics: true,
           child: Row(
@@ -394,7 +393,7 @@ class TaskTile extends ConsumerWidget {
               glyphIcon(Icons.timelapse_outlined),
               const SizedBox(width: AwSpace.x1),
               Text(
-                awFormatDuration(duration),
+                awFormatDuration(duration, days: false),
                 maxLines: 1,
                 softWrap: false,
                 style: metaStyle,

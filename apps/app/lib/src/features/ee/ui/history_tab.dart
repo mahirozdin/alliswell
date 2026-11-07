@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/history_models.dart';
-import '../data/labour_models.dart';
 import '../data/ticket_write_api.dart';
 import '../history_providers.dart';
 import '../ticket_write_providers.dart';
@@ -321,7 +320,7 @@ class _TicketChange {
     if (diff['minutes'] case final num minutes when minutes > 0) {
       return _TicketChange(
         line: 'ee.history.ticket.worklog'.tr(
-          args: {'duration': eeDurationText(minutes.toInt())},
+          args: {'duration': awFormatDuration(minutes.toInt(), days: false)},
         ),
       );
     }

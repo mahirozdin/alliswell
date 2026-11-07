@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../quick_access/data/quick_link.dart';
@@ -28,7 +28,6 @@ import '../../tags/ui/tag_input.dart';
 import '../../tags/ui/tag_manage_sheet.dart';
 import '../data/task.dart';
 import '../data/task_store.dart';
-import '../data/task_when.dart';
 import '../providers.dart';
 import 'duration_picker.dart';
 import 'task_tile.dart' show TaskTile, deleteTaskWithUndo;
@@ -859,7 +858,9 @@ class _DurationRow extends StatelessWidget {
       leading: const Icon(Icons.timelapse_outlined),
       title: Text(label),
       subtitle: Text(
-        value == null ? 'task.notSet'.tr() : awFormatDuration(value),
+        value == null
+            ? 'task.notSet'.tr()
+            : awFormatDuration(value, days: false),
         style: TextStyle(
           color: value == null ? scheme.onSurfaceVariant : scheme.onSurface,
           fontWeight: value == null ? null : FontWeight.w600,

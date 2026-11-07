@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:alliswell/src/features/ee/data/worklog_models.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_worklog_section.dart';
 import 'package:alliswell/src/features/ee/worklog_providers.dart';
+import 'package:alliswell/src/core/format.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
@@ -95,7 +96,7 @@ void main() {
       ),
     );
     expect(find.byKey(const Key('worklog-cost-w2')), findsOneWidget);
-    expect(find.textContaining('450.00'), findsWidgets);
+    expect(find.textContaining('450\u00A0TL'), findsWidgets);
     expect(find.byKey(const Key('worklog-unpriced')), findsNothing);
   });
 
@@ -164,7 +165,7 @@ void main() {
   // ── OPH-358 (UI-AUDIT #71) ───────────────────────────────────────────────
 
   testWidgets(
-    'UI-AUDIT #71: the day in the reader\'s format, and minutes as said — "45 dk", "1 sa 30 dk"',
+    'UI-AUDIT #71: the day in the reader\'s format, and minutes as said — "45 dk", "1 saat 30 dk"',
     (tester) async {
       AwI18n.instance.setActiveCached(const Locale('tr'));
       addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
@@ -182,9 +183,15 @@ void main() {
           ),
         ),
       );
-      expect(find.text('18.09.2026 — 45 dk'), findsOneWidget);
-      expect(find.text('18.09.2026 — 1 sa 30 dk'), findsOneWidget);
-      expect(find.text('Toplam 2 sa 15 dk'), findsOneWidget);
+      // OPH-408: the default never writes a numeric date, and hours are words.
+      final day = awFormatDate(
+        DateTime(2026, 9, 18),
+        format: kAwSystemDateFormat,
+      );
+      expect(find.text('$day — 45 dk'), findsOneWidget);
+      expect(find.text('$day — 1 saat 30 dk'), findsOneWidget);
+      expect(find.text('Toplam 2 saat 15 dk'), findsOneWidget);
+      expect(find.textContaining('18.09.2026'), findsNothing);
       expect(find.textContaining('2026-09-18'), findsNothing);
       expect(find.textContaining('0.8'), findsNothing);
     },

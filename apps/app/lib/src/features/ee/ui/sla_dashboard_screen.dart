@@ -7,7 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/sla_dashboard_models.dart';
 import '../sla_dashboard_providers.dart';
-import 'report_format.dart';
+import '../../../core/format.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket;
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
@@ -160,7 +160,7 @@ class _Compliance extends StatelessWidget {
                   ? '—'
                   // UI-AUDIT #88: the reader's locale writes it — "%40,3" in
                   // Turkish, "40.3%" in English, not a fixed English point.
-                  : eePercentText(value!),
+                  : awFormatPercent(value),
               key: const Key('sla-compliance'),
               style: theme.textTheme.displaySmall?.copyWith(color: colour),
             ),

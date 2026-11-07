@@ -249,9 +249,9 @@ void main() {
     // device since EE-191, drawn since EE-271 — in the record's own currency.
     expect(find.text('ee.assets.field.purchased'.tr()), findsOneWidget);
     // UI-AUDIT #78: in the reader's date and number format.
-    expect(find.text('15.03.2024'), findsOneWidget);
+    expect(find.text('15 Mar 2024'), findsOneWidget);
     expect(find.text('ee.assets.field.purchaseCost'.tr()), findsOneWidget);
-    expect(find.text('12.500,00 EUR'), findsOneWidget);
+    expect(find.text('€12.500'), findsOneWidget);
 
     await tester.ensureVisible(key('asset-open-request'));
     await tester.tap(key('asset-open-request'));

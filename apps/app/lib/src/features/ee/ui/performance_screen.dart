@@ -7,7 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/performance_models.dart';
 import '../performance_providers.dart';
-import 'report_format.dart';
+import '../../../core/format.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
 
@@ -243,14 +243,14 @@ class _RowCard extends StatelessWidget {
   /// a zero standing in for "nothing measured".
   String _avg(EeTimedAverage a) {
     if (a.minutes == null) return '—';
-    // UI-AUDIT #88: "3 g 21 sa", not "5587.5 dk".
-    final value = eeSpanText(a.minutes!);
+    // UI-AUDIT #88 / OPH-408: "3 gün 21 saat", not "5587.5 dk".
+    final value = awFormatDuration(a.minutes!.round());
     return a.isPartial ? '$value (${a.measured}/${a.total})' : value;
   }
 
   String _csat(EeCsatFigure c) {
     if (c.average == null) return '—';
-    return '${eeDecimalText(c.average!)} (${c.answered}/${c.sent})';
+    return '${awFormatNumber(c.average!, decimals: 1)} (${c.answered}/${c.sent})';
   }
 
   @override
@@ -290,7 +290,7 @@ class _RowCard extends StatelessWidget {
                   if (row.compliance != null)
                     _Figure(
                       labelKey: 'ee.perfPanel.compliance',
-                      value: eePercentText(row.compliance!),
+                      value: awFormatPercent(row.compliance),
                     ),
                 ],
               ),

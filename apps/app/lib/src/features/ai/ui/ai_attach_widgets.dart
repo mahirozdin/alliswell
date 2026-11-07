@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 
+import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
 import '../../../search/global_search.dart';
 import '../../../search/search_recents.dart';
@@ -99,8 +99,7 @@ String _refusalText(AiAttachmentRefusal refusal) => switch (refusal) {
   AiAttachmentRefusal.empty => 'ai.attach.refused.empty'.tr(),
 };
 
-String _count(int n) =>
-    NumberFormat.decimalPattern(AwI18n.instance.locale.toString()).format(n);
+String _count(int n) => awFormatNumber(n);
 
 // ── the composer's pending chips ──────────────────────────────────────────
 

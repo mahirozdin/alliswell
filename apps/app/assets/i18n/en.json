@@ -225,7 +225,7 @@
     },
     "dateFormat": {
       "title": "Date format",
-      "system": "Follow the app language"
+      "system": "Follows your device's region"
     },
     "quickBubble": "Floating quick-access button",
     "quickBubbleSub": "Drag it anywhere; tap to open your shortcuts",
@@ -381,11 +381,6 @@
     "clearReminder": "Clear reminder",
     "duration": "Duration",
     "clearDuration": "Clear duration",
-    "durationValue": {
-      "minutes": "{m} min",
-      "hours": "{h} h",
-      "hoursMinutes": "{h} h {m} min"
-    },
     "durationDialog": {
       "title": "How long will it take?",
       "custom": "Minutes",
@@ -597,7 +592,7 @@
     "exportFormatDocx": "Word document",
     "exporting": "Preparing the {format}…",
     "exportReady": "{format} ready",
-    "exportFile": "{name} · {size} KB",
+    "exportFile": "{name} · {size}",
     "exportShare": "Share",
     "exportShareHint": "Opens the share sheet — Save to Files, Mail, AirDrop…",
     "exportSave": "Save to Files",
@@ -616,7 +611,7 @@
     "mdImported": "Imported {name}",
     "mdImportFailed": "Couldn't import the file.",
     "mdOpenFailed": "Couldn't open the file.",
-    "mdTooLarge": "That file is {size} MB — too large to import as a note.",
+    "mdTooLarge": "That file is {size}, too large to import as a note.",
     "mdProject": "Project",
     "mdProjectHint": "Optional — the note is filed under it",
     "modeReading": "Read",
@@ -3801,13 +3796,6 @@
       "body": "Your role does not open these settings. If something here needs changing, ask your team admin.",
       "back": "Go to Home"
     },
-    "duration": {
-      "minutes": "{m} min",
-      "hours": "{h} h",
-      "hoursMinutes": "{h} h {m} min",
-      "days": "{d} d",
-      "daysHours": "{d} d {h} h"
-    },
     "unitScope": {
       "chooseTitle": "Which unit's requests do you want to see?",
       "chooseBody": "Requests are kept per unit. Pick a unit or see them all.",
@@ -4301,5 +4289,21 @@
     "added": "Added: {title} · {due}",
     "addedInbox": "Added to Inbox: {title}",
     "open": "Open"
+  },
+  "format": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "yesterday": "Yesterday",
+    "duration": {
+      "minutesOne": "{n} min",
+      "minutesOther": "{n} min",
+      "hoursOne": "{n} hour",
+      "hoursOther": "{n} hours",
+      "daysOne": "{n} day",
+      "daysOther": "{n} days"
+    },
+    "fileSize": {
+      "underKb": "Under 1 KB"
+    }
   }
 }

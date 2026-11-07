@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/persisted_prefs.dart';
 
 import '../../../core/api_exception.dart';
@@ -19,23 +19,6 @@ import '../../../widgets/status_views.dart';
 /// Shared attachment UI (OPH-154/155, DESIGN §10): one row anatomy for task
 /// attachments, the project Files tab and note media — F1 says these three
 /// homes render the SAME row, so it lives here once.
-
-/// `1.2 MB` style human size — file sizes are display data (F6: users never
-/// see raw byte counts, keys or URLs).
-String formatBytes(int bytes) {
-  if (bytes < 1024) return '$bytes B';
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  var value = bytes.toDouble();
-  var unit = -1;
-  do {
-    value /= 1024;
-    unit += 1;
-  } while (value >= 1024 && unit < units.length - 1);
-  final text = value >= 100
-      ? value.toStringAsFixed(0)
-      : value.toStringAsFixed(1);
-  return '$text ${units[unit]}';
-}
 
 IconData fileKindIcon(String mime) {
   if (mime.startsWith('image/')) return Icons.image_outlined;
@@ -120,7 +103,7 @@ class FileRowTile extends ConsumerWidget {
     final theme = Theme.of(context);
     final when = file.createdAt;
     final subtitle = [
-      formatBytes(file.sizeBytes),
+      awFormatFileSize(file.sizeBytes),
       if (when != null)
         awFormatDate(when, format: ref.watch(dateFormatProvider)),
     ].join(' · ');
@@ -302,7 +285,7 @@ Future<void> showFileActionsSheet(
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
-            subtitle: Text(formatBytes(file.sizeBytes)),
+            subtitle: Text(awFormatFileSize(file.sizeBytes)),
           ),
           const Divider(height: 1),
           for (final action in extraActions)

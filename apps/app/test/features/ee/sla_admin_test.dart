@@ -352,7 +352,7 @@ void main() {
           expect(find.byKey(Key('sla-target-$p-resolve')), findsOneWidget);
         }
         // The stored target is shown, and read back as a span.
-        expect(find.text('8 h'), findsOneWidget);
+        expect(find.text('8 hours'), findsOneWidget);
         await tester.enterText(
           find.byKey(const Key('sla-target-urgent-first')),
           '30',
@@ -362,7 +362,7 @@ void main() {
           '2880',
         );
         await tester.pump();
-        expect(find.text('2 d'), findsOneWidget);
+        expect(find.text('2 days'), findsOneWidget);
         await tester.ensureVisible(find.byKey(const Key('sla-policy-save')));
         await tester.tap(find.byKey(const Key('sla-policy-save')));
         await tester.pumpAndSettle();

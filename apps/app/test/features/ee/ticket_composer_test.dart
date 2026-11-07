@@ -19,6 +19,7 @@ import 'package:alliswell/src/features/ee/ui/ticket_composer.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/features/ee/worklog_providers.dart';
 import 'package:alliswell/src/features/files/providers.dart';
+import 'package:alliswell/src/core/format.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -707,7 +708,8 @@ void main() {
                 ),
               )
               .data,
-          '07.10.2026 tarihinde iptal edildi',
+          '${awFormatDate(DateTime(2026, 10, 7, 12), format: kAwSystemDateFormat)} '
+          'tarihinde iptal edildi',
         );
       },
     );

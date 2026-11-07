@@ -744,6 +744,21 @@ ayarlardan kullanıcı seçebilecek".)_
   _Amended 2026-10-16 (OPH-372):_ "When" stores a DAY, not an instant, so it asks for a
   day only (`awPickDate`, same bounds and the same tomorrow opening). D5 is about fields
   that store a time.
+- **D6 — Region, not language** _(OPH-408, ADR-0063 #6, U-09):_ the factory default's words
+  follow the app language; the order of a date's parts, the 12/24-hour clock and the number
+  separators follow the device **region** (`core/format_region.dart`). English UI on a German phone →
+  `7 Nov 2026, 13:47`, `6,3 MB`. D3's "follows the app language" is replaced by this.
+- **D7 — The default never writes a numeric date.** Rows: today `13:47`, `Yarın 11:00`, this year
+  `7 Kas, 13:47`, another year `7 Kas 2025, 13:47`; a detail line says `Bugün 13:47`; a date alone
+  carries the year only when it is not this year. A no-break space keeps a date with its time. The
+  explicit numeric choices of D2 stay for whoever picks one.
+- **D8 — One formatter for every figure** (`core/format.dart`): `awFormatNumber`, `awFormatPercent`
+  (`%51,4` / `51.4%`; a ratio over 0 is `—`), `awFormatMoney` (`48.500 TL`, never the code `TRY`;
+  `,00` dropped on whole amounts), `awFormatFileSize` (`1 KB'den küçük`, then at most one decimal),
+  `awFormatDuration` (`2 gün 12 saat` / `2 days 12 hours`; no `g`/`sa`; estimates and logged work
+  keep counting hours). `test/core/format_single_source_test.dart` fails on a raw `NumberFormat`,
+  `DateFormat`, `toStringAsFixed` or hand-built "MB" outside the formatter (names of months and
+  weekdays are allow-listed).
 
 ## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
 

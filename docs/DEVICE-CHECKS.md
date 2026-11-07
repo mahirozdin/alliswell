@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Tek biçimlendirici (2026-11-08)
+
+- OPH-408 — **iPhone + Android + web; cihaz dili/bölgesi Türkçe-Türkiye, İngilizce-ABD ve İngilizce-Almanya (uygulama İngilizce)**: Ana Sayfa satırlarında bugün yalnız saat, yarın "Yarın 11:00"/"Tomorrow 11:00 AM", sonrası "7 Kas, 13:47"/"Nov 7, 1:47 PM"/"7 Nov, 13:47"; görev detayında "Bugün 13:47"; Almanya bölgesinde 24 saat, ABD'de 12 saat; hiçbir ekranda "07.11.2026" ya da "11/7/2026" yok (Ayarlar'da sayısal biçim seçilmediyse). Ek boyutları "6,3 MB" (TR/DE) ve "6.3 MB" (ABD), 1 KB altı "1 KB'den küçük"; süre "1 saat 30 dk". Ana ekran widget'ının saati bölgeye göre 12/24. Uzantılı takımda tutar "48.500 TL", yüzde "%51,4", form sayısı "48.500". Satır sonu tarih ile saati ayırmıyor; 2.0× metinde meta satırı taşmıyor.
+
 ## Metin geçişi (2026-11-08)
 
 - OPH-407 — **iPhone (en dar), Türkçe, 1.0× ve en büyük metin, açık ve koyu**: Ayarlar › Bildirimler › Hatırlatıcılar'da "Sakin · Standart · Israrcı · Özel" tek satırda, kelime ortasında kırılmıyor; bir projenin sekmeleri ("Özet · Görevler · Notlar · Dosyalar") kesilmeden kayıyor; Dosyalar'da "Klasörlerim · Görev ve not ekleri" ve notta "Düzenle · Oku" tek satır; büyük metinde Ana Sayfa'nın hızlı ekleme ipucu "Görev ekle". Uzantılı bir takımda uzantı ekranları baştan sona "siz", kişisel ekranlar "sen" diye konuşuyor; üye olmayan hesapla takım adresinde e-posta adresi ve "Hesap değiştir" görünüyor.
