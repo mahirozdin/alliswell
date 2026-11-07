@@ -100,6 +100,28 @@ void main() {
       ], now: now);
       expect(titles(groups.single), ['Child']);
     });
+
+    test('a subtask due today stays when its parent is beyond the horizon '
+        '(E35 G-A review r1)', () {
+      // The parent is on the list but Home drops it (45 days out): hiding
+      // the child under a parent that is not shown would lose today's work.
+      final groups = groupTasksForHome([
+        task('Parent', due: DateTime(2026, 12, 22, 9)),
+        task('Child', parent: 'Parent', due: DateTime(2026, 11, 7, 18)),
+      ], now: now);
+      expect(groups.map((g) => g.bucket), [HomeBucket.today]);
+      expect(titles(groups.single), ['Child']);
+    });
+
+    test('a subtask stays hidden under a parent that is itself tucked under '
+        'a shown grandparent', () {
+      final groups = groupTasksForHome([
+        task('Grandparent'),
+        task('Parent', parent: 'Grandparent', due: DateTime(2026, 12, 22, 9)),
+        task('Child', parent: 'Parent', due: DateTime(2026, 11, 7, 18)),
+      ], now: now);
+      expect(titles(groups.single), ['Grandparent']);
+    });
   });
 
   group('E-25 — a series on the Board', () {

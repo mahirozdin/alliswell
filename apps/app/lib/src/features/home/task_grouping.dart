@@ -239,13 +239,9 @@ List<HomeGroup> groupTasksForHome(
     return null; // beyond the horizon
   }
 
-  // OPH-394 (E-07): a subtask lives in its parent's detail, not as a row of
-  // its own — unless its parent is not on this list (finished on another day,
-  // a capture, someone else's), where hiding it would lose the work.
-  final ids = {for (final task in tasks) task.id};
-
-  for (final task in tasks) {
-    if (task.parentTaskId != null && ids.contains(task.parentTaskId)) continue;
+  /// The bucket a task's own dates file it under, or null when Home drops it
+  /// (a plan day beyond the horizon).
+  HomeBucket? bucketOf(Task task) {
     final due = task.dueAt;
     // OPH-394 (E-06): the row says "Overdue" in red the moment its deadline
     // passes, so the Overdue group takes it the same moment — a red row under
@@ -258,21 +254,40 @@ List<HomeGroup> groupTasksForHome(
     if (selectedDay != null &&
         ((due != null && dayOf(due) == selectedDay) ||
             (planDay != null && planDay == selectedDay))) {
-      byBucket[HomeBucket.selectedDay]!.add(TaskItem(task));
-      continue;
+      return HomeBucket.selectedDay;
     }
-    if (overdue) {
-      // A task's deadline CAN be in the past — that is the whole point of
-      // Overdue (a beyond-horizon FUTURE task, by contrast, is simply dropped).
-      // A "when" never overrides it (ADR-0053).
-      byBucket[HomeBucket.overdue]!.add(TaskItem(task));
-      continue;
-    }
-    if (planDay == null) {
-      byBucket[HomeBucket.noDate]!.add(TaskItem(task));
-      continue;
-    }
-    final bucket = futureBucketForDay(planDay);
+    // A task's deadline CAN be in the past — that is the whole point of
+    // Overdue (a beyond-horizon FUTURE task, by contrast, is simply dropped).
+    // A "when" never overrides it (ADR-0053).
+    if (overdue) return HomeBucket.overdue;
+    if (planDay == null) return HomeBucket.noDate;
+    return futureBucketForDay(planDay);
+  }
+
+  // OPH-394 (E-07): a subtask lives in its parent's detail, not as a row of
+  // its own — unless its parent is not reachable from Home: not on this list
+  // (finished on another day, a capture, someone else's) or on it but dropped
+  // (beyond the horizon), where hiding it would lose the work (E35 G-A r1).
+  final byId = {for (final task in tasks) task.id: task};
+  final buckets = {for (final task in tasks) task.id: bucketOf(task)};
+  final reachable = <String, bool>{};
+
+  /// Whether [task] can be found from Home: as a row of its own, or inside
+  /// an ancestor that is. The chain is followed with a guard against a cycle.
+  bool onHome(Task task, [Set<String> seen = const {}]) {
+    final known = reachable[task.id];
+    if (known != null) return known;
+    final parent = byId[task.parentTaskId];
+    final result = (parent != null && !seen.contains(parent.id))
+        ? onHome(parent, {...seen, task.id}) || buckets[task.id] != null
+        : buckets[task.id] != null;
+    return reachable[task.id] = result;
+  }
+
+  for (final task in tasks) {
+    final parent = byId[task.parentTaskId];
+    if (parent != null && onHome(parent, {task.id})) continue;
+    final bucket = buckets[task.id];
     if (bucket != null) byBucket[bucket]!.add(TaskItem(task));
   }
 
