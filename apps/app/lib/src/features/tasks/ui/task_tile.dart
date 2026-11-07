@@ -1,21 +1,28 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/date_format.dart';
+import '../../../core/linkify.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/meta_line.dart';
 import '../../../widgets/swipe_actions.dart';
 import '../../ai/data/ai_quick_add.dart';
 import '../../ee/assignments_providers.dart';
 import '../../ee/ticket_work_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
 import '../../ee/ui/ticket_work_section.dart';
+import '../../projects/data/project.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_badge.dart';
 import '../../tags/tags.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
+import '../data/task_defaults.dart';
 import '../data/task_when.dart';
 import '../providers.dart';
 import 'repeat_row.dart';
@@ -29,10 +36,15 @@ import '../../../theme/typography.dart';
 String _formatDue(DateTime due, String dateFormat) =>
     awFormatShort(due, format: dateFormat);
 
-/// Shared task row: a rounded surface card with checkbox (complete/reopen),
-/// due date (overdue turns red), colored priority flag, status icon and
-/// urgent marker. `highlighted` tints the row (selected calendar day);
-/// `dimmed` fades it.
+/// Above this text scale the task row lays itself out vertically (OPH-400,
+/// DESIGN §46 R5): at 1.3 a two-column row still reads; past it the title
+/// column is too narrow for Turkish words.
+const double kAwRowVerticalTextScale = 1.3;
+
+/// Shared task row (DESIGN §46): check circle on the title's first line, a
+/// title of at most two lines, ONE meta line that only shows what differs from
+/// a new task's defaults, and at most one item on the right. `highlighted`
+/// tints the row (selected calendar day); `dimmed` recedes it.
 class TaskTile extends ConsumerWidget {
   const TaskTile({
     super.key,
@@ -63,8 +75,9 @@ class TaskTile extends ConsumerWidget {
   /// horizontal pager owns the horizontal gesture (DESIGN §19 D6).
   final bool swipeToDelete;
 
-  /// An extra control before the status icon — the Completed screen's
-  /// "Reopen", for instance. Rows without one are unchanged.
+  /// The screen's own control for this row — the Completed screen's
+  /// "Reopen", the board's "Move". It takes the row's one right-hand slot
+  /// (§46 R6); the project then moves into the meta line.
   final Widget? trailingAction;
 
   /// What a tap on an inline tag chip does (OPH-306), or null for a row whose
@@ -140,8 +153,8 @@ class TaskTile extends ConsumerWidget {
     final unit = showUnit
         ? ref.watch(unitLabelsProvider.select((m) => m[task.workspaceId]))
         : null;
-    // OPH-165 (DESIGN T4): at most 2 inline tags + "+N" — typographic, so the
-    // row never grows past its card rhythm.
+    // OPH-165 (DESIGN T4), amended by OPH-400: the first tag + "+N" —
+    // typographic, so the meta line stays one line.
     final tagsById = task.tagIds.isEmpty
         ? const <String, Tag>{}
         : ref.watch(tagsByIdProvider);
@@ -149,6 +162,374 @@ class TaskTile extends ConsumerWidget {
       for (final id in task.tagIds)
         if (tagsById[id] case final Tag tag) tag,
     ];
+
+    // OPH-400 (DESIGN §46): the row's anatomy. Everything below is measured
+    // by `task_row_test.dart`; read §46 before moving a piece.
+    final roles = context.awText;
+    final scaler = MediaQuery.textScalerOf(context);
+    // R5: above 1.3× the row goes vertical — the title takes the full width
+    // and the meta line wraps under it (U-12).
+    final vertical = scaler.scale(1) > kAwRowVerticalTextScale;
+    final metaStyle = roles.meta.copyWith(color: scheme.onSurfaceVariant);
+    final glyph = scaler.clamp(maxScaleFactor: 1.5).scale(14);
+    final titleStyle = completed
+        ? roles.rowTitle.copyWith(
+            decoration: TextDecoration.lineThrough,
+            color: scheme.onSurfaceVariant,
+          )
+        : roles.rowTitle;
+    final rowTitle = awRowTitle(task.title);
+    // R1: the check circle sits on the title's FIRST line, not the card's
+    // middle. Its 48 pt target is centred on that line; the title starts 12 pt
+    // down, or lower when a large line would push the target off the card.
+    final lineHeight =
+        scaler.scale(titleStyle.fontSize!) * (titleStyle.height ?? 1.0);
+    final lineCenter = math.max(
+      kMinInteractiveDimension / 2,
+      AwSpace.x3 + lineHeight / 2,
+    );
+    final titleTop = lineCenter - lineHeight / 2;
+
+    final Widget titleText = Text(
+      rowTitle.text,
+      key: Key('task-title-${task.id}'),
+      // R4: two lines and "…" (three in the vertical row); the detail screen
+      // shows the rest. A bare link is one line.
+      maxLines: rowTitle.isLink ? 1 : (vertical ? 3 : 2),
+      overflow: TextOverflow.ellipsis,
+      style: titleStyle,
+    );
+    final Widget title = rowTitle.isLink
+        ? Row(
+            children: [
+              Icon(
+                Icons.link,
+                key: Key('task-link-${task.id}'),
+                size: scaler.clamp(maxScaleFactor: 1.5).scale(16),
+                color: scheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: AwSpace.x1),
+              Expanded(child: titleText),
+            ],
+          )
+        : titleText;
+
+    // R6: at most ONE thing on the right. A screen's own action wins (the
+    // Completed screen's "Reopen", the board's "Move"), then who is on it,
+    // then the project. Whatever loses its place moves into the meta line.
+    final Widget? right =
+        trailingAction ??
+        (assignees.isNotEmpty
+            ? AwAssigneeAvatarRow(
+                key: Key('assignees-${task.id}'),
+                taskId: task.id,
+              )
+            : project != null
+            ? ProjectBadge(name: project.name, color: project.color)
+            : null);
+    final projectInMeta = project != null && (right is! ProjectBadge);
+    final assigneesInMeta = assignees.isNotEmpty && trailingAction != null;
+
+    // R3: one meta line — date · repeat · alarm · status · priority · first
+    // tag +N, then the rest — and only what differs from a new task's
+    // defaults (open, medium, urgent-armed; §26 C1) earns a glyph.
+    Widget glyphIcon(IconData icon, {Key? key, Color? color, String? label}) =>
+        Icon(
+          icon,
+          key: key,
+          size: glyph,
+          color: color ?? scheme.onSurfaceVariant,
+          semanticLabel: label,
+        );
+    final enriching = ref.watch(
+      aiEnrichingTasksProvider.select((s) => s.contains(task.id)),
+    );
+    final meta = <Widget>[
+      if (due != null)
+        Text.rich(
+          key: Key('task-due-${task.id}'),
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+          style: metaStyle,
+          // ADR-0063 #3: a date is data — tabular figures ([metaStyle]).
+          // R3: the WORD is red, the date beside it stays neutral (G5: the
+          // word, not only the colour, says it).
+          isOverdue
+              ? TextSpan(
+                  children: [
+                    TextSpan(
+                      text: 'task.overdueWord'.tr(),
+                      style: roles.metaStrong.copyWith(color: scheme.error),
+                    ),
+                    TextSpan(
+                      text: ' ${_formatDue(due, dateFormat)}',
+                      style: metaStyle,
+                    ),
+                  ],
+                )
+              : TextSpan(
+                  text: 'task.dueOn'.tr(
+                    args: {'date': _formatDue(due, dateFormat)},
+                  ),
+                ),
+        ),
+      // DESIGN §25 R6: one occurrence of a series says so, quietly.
+      if (recurring)
+        Tooltip(
+          message: 'repeat.badgeTooltip'.tr(),
+          excludeFromSemantics: true,
+          child: glyphIcon(
+            Icons.repeat,
+            key: Key('repeat-badge-${task.id}'),
+            label: 'repeat.badgeTooltip'.tr(),
+          ),
+        ),
+      // §11 A5: a snoozed or silenced alarm keeps saying so, with its one-tap
+      // way back. Otherwise the urgent alarm is the default and draws nothing;
+      // an alarm that will NOT ring through silent is the deviation.
+      if (snoozed)
+        Row(
+          key: Key('task-alarm-${task.id}'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            glyphIcon(Icons.snooze),
+            const SizedBox(width: AwSpace.x1),
+            Text(
+              'task.snoozedUntil'.tr(
+                args: {'time': awFormatTime(snoozedUntil, format: dateFormat)},
+              ),
+              maxLines: 1,
+              softWrap: false,
+              style: roles.metaStrong.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          ],
+        )
+      else if (muted)
+        Row(
+          key: Key('task-alarm-${task.id}'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            glyphIcon(Icons.notifications_off, label: 'task.alarmsMuted'.tr()),
+            TextButton(
+              key: Key('unmute-${task.id}'),
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                textStyle: roles.metaStrong,
+              ),
+              onPressed: () => unmuteTaskAlarms(context, ref, task),
+              child: Text('task.unmuteAlarms'.tr(), maxLines: 1),
+            ),
+          ],
+        )
+      else if (!completed && !task.isUrgent && task.remindAt != null)
+        Tooltip(
+          key: Key('task-alarm-${task.id}'),
+          message: 'task.alarmNotUrgent'.tr(),
+          excludeFromSemantics: true,
+          child: glyphIcon(
+            Icons.notifications_none,
+            label: 'task.alarmNotUrgent'.tr(),
+          ),
+        ),
+      // R3: "open" is what every task starts as — an hourglass on it said
+      // nothing. Only another state earns its glyph.
+      if (!completed && task.status != 'open')
+        Tooltip(
+          key: Key('task-status-${task.id}'),
+          message: taskStatusLabel(task.status),
+          excludeFromSemantics: true,
+          child: glyphIcon(
+            taskStatusIcon(task.status),
+            label: 'task.statusSemantic'.tr(
+              args: {'status': taskStatusLabel(task.status)},
+            ),
+          ),
+        ),
+      // G5: colour AND a flag — and only off the default (medium).
+      if (priorityColor != null && task.priority != kAwDefaultPriority)
+        glyphIcon(
+          Icons.flag,
+          key: Key('task-priority-${task.id}'),
+          color: priorityColor,
+          label: 'task.prioritySemantic'.tr(
+            args: {'priority': taskPriorityLabel(task.priority)},
+          ),
+        ),
+      if (showDuration)
+        Semantics(
+          label: 'task.durationSemantic'.tr(
+            args: {'duration': awFormatDuration(duration)},
+          ),
+          excludeSemantics: true,
+          child: Row(
+            key: Key('task-duration-${task.id}'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              glyphIcon(Icons.timelapse_outlined),
+              const SizedBox(width: AwSpace.x1),
+              Text(
+                awFormatDuration(duration),
+                maxLines: 1,
+                softWrap: false,
+                style: metaStyle,
+              ),
+            ],
+          ),
+        ),
+      // T4, amended by R3: the first tag, then "+N".
+      if (rowTags.isNotEmpty) _InlineTag(tag: rowTags.first, onTap: onTagTap),
+      if (rowTags.length > 1)
+        Tooltip(
+          message: [
+            for (final tag in rowTags.skip(1)) '#${tag.name}',
+          ].join('  '),
+          child: Text(
+            '+${rowTags.length - 1}',
+            maxLines: 1,
+            style: roles.metaStrong.copyWith(color: scheme.onSurfaceVariant),
+          ),
+        ),
+      if (projectInMeta)
+        _ProjectDot(key: Key('task-project-${task.id}'), project: project),
+      if (unit != null)
+        Row(
+          key: Key('task-unit-${task.id}'),
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            glyphIcon(Icons.workspaces_outline),
+            const SizedBox(width: AwSpace.x1),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 160),
+              child: Text(
+                unit,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: metaStyle,
+              ),
+            ),
+          ],
+        ),
+      if (work != null) AwTicketWorkChip(work: work),
+      if (assigneesInMeta)
+        AwAssigneeAvatarRow(key: Key('assignees-${task.id}'), taskId: task.id),
+      // Round 14: the ✨ quick add already created this row; the spinner is
+      // the promise that the AI is still filling fields in. Last, so it never
+      // pushes a fact off the line.
+      if (enriching)
+        Tooltip(
+          message: 'ai.quickAdd.enriching'.tr(),
+          child: SizedBox(
+            key: Key('ai-enriching-${task.id}'),
+            width: glyph,
+            height: glyph,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: scheme.primary,
+              semanticsLabel: 'ai.quickAdd.enriching'.tr(),
+            ),
+          ),
+        ),
+    ];
+
+    final check = SizedBox.square(
+      dimension: kMinInteractiveDimension,
+      child: Center(
+        child: Checkbox(
+          value: task.isCompleted,
+          onChanged: (_) => _toggle(context, ref),
+          semanticLabel: task.isCompleted
+              ? 'task.reopenNamed'.tr(args: {'title': task.title})
+              : 'task.completeNamed'.tr(args: {'title': task.title}),
+        ),
+      ),
+    );
+    final rightSlot = right == null
+        ? null
+        : KeyedSubtree(key: Key('task-right-${task.id}'), child: right);
+
+    final Widget body;
+    if (!vertical) {
+      body = Padding(
+        padding: const EdgeInsetsDirectional.only(
+          start: AwSpace.x1,
+          end: AwSpace.x3,
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _OnFirstLine(center: lineCenter, child: check),
+            const SizedBox(width: AwSpace.x1),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.only(top: titleTop, bottom: AwSpace.x2),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    title,
+                    if (meta.isNotEmpty) ...[
+                      const SizedBox(height: 2),
+                      AwMetaLine(
+                        key: Key('task-meta-${task.id}'),
+                        children: meta,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            if (rightSlot != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: AwSpace.x2),
+                child: _OnFirstLine(center: lineCenter, child: rightSlot),
+              ),
+          ],
+        ),
+      );
+    } else {
+      body = Padding(
+        padding: const EdgeInsetsDirectional.only(
+          start: AwSpace.x1,
+          end: AwSpace.x3,
+          bottom: AwSpace.x2,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _OnFirstLine(center: lineCenter, child: check),
+                const SizedBox(width: AwSpace.x1),
+                Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(top: titleTop),
+                    child: title,
+                  ),
+                ),
+              ],
+            ),
+            if (meta.isNotEmpty || rightSlot != null)
+              Padding(
+                padding: const EdgeInsetsDirectional.only(
+                  start: kMinInteractiveDimension + AwSpace.x1,
+                  top: 2,
+                ),
+                child: AwMetaLine(
+                  key: Key('task-meta-${task.id}'),
+                  wrap: true,
+                  children: [...meta, ?rightSlot],
+                ),
+              ),
+          ],
+        ),
+      );
+    }
 
     final tile = Card(
       clipBehavior: Clip.antiAlias,
@@ -175,281 +556,9 @@ class TaskTile extends ConsumerWidget {
               side: BorderSide(color: scheme.primary.withValues(alpha: 0.45)),
             )
           : null,
-      child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
-        leading: Checkbox(
-          value: task.isCompleted,
-          onChanged: (_) => _toggle(context, ref),
-          semanticLabel: task.isCompleted
-              ? 'task.reopenNamed'.tr(args: {'title': task.title})
-              : 'task.completeNamed'.tr(args: {'title': task.title}),
-        ),
-        title: Text(
-          task.title,
-          style: task.isCompleted
-              ? theme.textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  decoration: TextDecoration.lineThrough,
-                  color: scheme.onSurfaceVariant,
-                )
-              : null,
-        ),
-        // Item 9's avatar row lives in the subtitle, so it sits UNDER the
-        // title exactly as the mandate describes — and `assignees` joins the
-        // subtitle's own emptiness test, because a task whose only extra fact
-        // is "three people are on it" still owes the reader that row.
-        subtitle:
-            (due == null &&
-                rowTags.isEmpty &&
-                !snoozed &&
-                !muted &&
-                !recurring &&
-                !showDuration &&
-                assignees.isEmpty &&
-                unit == null &&
-                work == null)
-            ? null
-            : Wrap(
-                spacing: AwSpace.x2,
-                runSpacing: 2,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  if (work != null) AwTicketWorkChip(work: work),
-                  if (unit != null)
-                    Row(
-                      key: Key('task-unit-${task.id}'),
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.workspaces_outline,
-                          size: 14,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 160),
-                          child: Text(
-                            unit,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (recurring)
-                    Tooltip(
-                      message: 'repeat.badgeTooltip'.tr(),
-                      child: Icon(
-                        Icons.repeat,
-                        key: Key('repeat-badge-${task.id}'),
-                        size: 16,
-                        color: scheme.onSurfaceVariant,
-                        semanticLabel: 'repeat.badgeTooltip'.tr(),
-                      ),
-                    ),
-                  if (muted)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.notifications_off,
-                          size: 16,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'task.alarmsMuted'.tr(),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        TextButton(
-                          key: Key('unmute-${task.id}'),
-                          style: TextButton.styleFrom(
-                            visualDensity: VisualDensity.compact,
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AwSpace.x2,
-                            ),
-                            minimumSize: const Size(0, 32),
-                          ),
-                          onPressed: () => unmuteTaskAlarms(context, ref, task),
-                          child: Text('task.unmuteAlarms'.tr()),
-                        ),
-                      ],
-                    ),
-                  if (snoozed)
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.snooze,
-                          size: 16,
-                          color: scheme.onSurfaceVariant,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          'task.snoozedUntil'.tr(
-                            args: {
-                              'time': awFormatTime(
-                                snoozedUntil,
-                                format: dateFormat,
-                              ),
-                            },
-                          ),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  if (due != null)
-                    Text(
-                      isOverdue
-                          ? 'task.overdueDue'.tr(
-                              args: {'date': _formatDue(due, dateFormat)},
-                            )
-                          : 'task.dueOn'.tr(
-                              args: {'date': _formatDue(due, dateFormat)},
-                            ),
-                      // ADR-0063 #3: a date is data — tabular figures.
-                      style: awTabular(
-                        (isOverdue
-                                ? theme.textTheme.bodyMedium?.copyWith(
-                                    color: scheme.error,
-                                    fontWeight: FontWeight.w600,
-                                  )
-                                : completed
-                                ? theme.textTheme.bodyMedium?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  )
-                                : null) ??
-                            const TextStyle(),
-                      ),
-                    ),
-                  if (showDuration)
-                    Semantics(
-                      label: 'task.durationSemantic'.tr(
-                        args: {'duration': awFormatDuration(duration)},
-                      ),
-                      excludeSemantics: true,
-                      child: Row(
-                        key: Key('task-duration-${task.id}'),
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.timelapse_outlined,
-                            size: 14,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            awFormatDuration(duration),
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  for (final tag in rowTags.take(2))
-                    _InlineTag(tag: tag, onTap: onTagTap),
-                  if (rowTags.length > 2)
-                    Tooltip(
-                      message: [
-                        for (final tag in rowTags.skip(2)) '#${tag.name}',
-                      ].join('  '),
-                      child: Text(
-                        '+${rowTags.length - 2}',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  // EE-068 — who is on it. Nothing at all when nobody is
-                  // (item 9: "atanmamışsa boş"), and nothing ever on a build
-                  // with no overlay, because the table is empty there.
-                  if (assignees.isNotEmpty)
-                    AwAssigneeAvatarRow(
-                      key: Key('assignees-${task.id}'),
-                      taskId: task.id,
-                    ),
-                ],
-              ),
-        // The STATUS icon is always the rightmost element so it forms a
-        // consistent scan column; the badge, priority flag and urgent marker
-        // fill in to its left (feedback round 5).
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Round 14: the ✨ quick add already created this row; the badge
-            // is the async promise that the AI is still filling fields in.
-            // `select` keeps the whole list from rebuilding per set change.
-            if (ref.watch(
-              aiEnrichingTasksProvider.select((s) => s.contains(task.id)),
-            )) ...[
-              Tooltip(
-                message: 'ai.quickAdd.enriching'.tr(),
-                child: SizedBox(
-                  key: Key('ai-enriching-${task.id}'),
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: scheme.primary,
-                    semanticsLabel: 'ai.quickAdd.enriching'.tr(),
-                  ),
-                ),
-              ),
-              const SizedBox(width: AwSpace.x2),
-            ],
-            if (project != null) ...[
-              ProjectBadge(name: project.name, color: project.color),
-              const SizedBox(width: AwSpace.x2),
-            ],
-            if (priorityColor != null) ...[
-              Icon(
-                Icons.flag,
-                size: 18,
-                color: priorityColor,
-                semanticLabel: 'task.prioritySemantic'.tr(
-                  args: {'priority': taskPriorityLabel(task.priority)},
-                ),
-              ),
-              const SizedBox(width: AwSpace.x2),
-            ],
-            // Hidden once done: the urgent marker is an ALARM state, and a
-            // completed task has no alarms — leaving it on would be the kind of
-            // claim DESIGN §11 A5 forbids, not just visual noise.
-            if (task.isUrgent && !completed) ...[
-              Icon(
-                Icons.notification_important,
-                size: 18,
-                color: scheme.error,
-                semanticLabel: 'task.urgent'.tr(),
-              ),
-              const SizedBox(width: AwSpace.x2),
-            ],
-            if (trailingAction != null) ...[
-              trailingAction!,
-              const SizedBox(width: AwSpace.x2),
-            ],
-            Icon(
-              taskStatusIcon(task.status),
-              size: 18,
-              color: scheme.onSurfaceVariant,
-              semanticLabel: 'task.statusSemantic'.tr(
-                args: {'status': taskStatusLabel(task.status)},
-              ),
-            ),
-          ],
-        ),
+      child: InkWell(
         onTap: () => context.push('/tasks/${task.id}'),
+        child: body,
       ),
     );
 
@@ -547,7 +656,7 @@ Future<void> deleteTaskWithUndo(
 
 /// Compact inline tag for list rows (T4): color dot + `#name` in caption ink.
 /// Typography only — no pill container, so contrast and row height are the
-/// subtitle's own.
+/// meta line's own.
 class _InlineTag extends StatelessWidget {
   const _InlineTag({required this.tag, this.onTap});
 
@@ -561,17 +670,17 @@ class _InlineTag extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         CircleAvatar(backgroundColor: tag.color, radius: 4),
-        const SizedBox(width: 3),
-        // Flexible so a long tag ellipsizes in a tight column (board cards,
-        // narrow phones) instead of overflowing the row.
-        Flexible(
+        const SizedBox(width: AwSpace.x1),
+        // A cap rather than `Flexible`: the meta line measures each item at
+        // its natural width (§46 R3), so a long tag ellipsizes at 120 pt.
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 120),
           child: Text(
             '#${tag.name}',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: theme.textTheme.bodySmall?.copyWith(
+            style: context.awText.metaStrong.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
             ),
           ),
         ),
@@ -594,5 +703,121 @@ class _InlineTag extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+/// The project, when the row's right slot went to something else (§46 R6):
+/// an 8 pt dot in its colour and its name, in the meta line's ink.
+class _ProjectDot extends StatelessWidget {
+  const _ProjectDot({super.key, required this.project});
+
+  final Project project;
+
+  @override
+  Widget build(BuildContext context) {
+    final roles = context.awText;
+    return Tooltip(
+      message: project.name,
+      excludeFromSemantics: true,
+      child: Semantics(
+        label: 'task.projectSemantic'.tr(args: {'project': project.name}),
+        excludeSemantics: true,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(backgroundColor: project.color, radius: 4),
+            const SizedBox(width: AwSpace.x1),
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 120),
+              child: Text(
+                project.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: roles.meta.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Places [child] so its vertical centre is [center] pt below the top
+/// (§46 R1: the check circle and the right item sit on the title's first
+/// line). The box is as tall as it needs to be to hold the child there.
+class _OnFirstLine extends SingleChildRenderObjectWidget {
+  const _OnFirstLine({required this.center, required super.child});
+
+  final double center;
+
+  @override
+  _RenderOnFirstLine createRenderObject(BuildContext context) =>
+      _RenderOnFirstLine(center);
+
+  @override
+  void updateRenderObject(
+    BuildContext context,
+    _RenderOnFirstLine renderObject,
+  ) => renderObject.center = center;
+}
+
+class _RenderOnFirstLine extends RenderShiftedBox {
+  _RenderOnFirstLine(this._center) : super(null);
+
+  double _center;
+  set center(double value) {
+    if (value == _center) return;
+    _center = value;
+    markNeedsLayout();
+  }
+
+  Size _place(Size child) =>
+      Size(child.width, math.max(0, _center - child.height / 2) + child.height);
+
+  @override
+  Size computeDryLayout(covariant BoxConstraints constraints) {
+    final child = this.child;
+    if (child == null) return constraints.smallest;
+    return constraints.constrain(
+      _place(child.getDryLayout(constraints.loosen())),
+    );
+  }
+
+  @override
+  void performLayout() {
+    final child = this.child;
+    if (child == null) {
+      size = constraints.smallest;
+      return;
+    }
+    child.layout(constraints.loosen(), parentUsesSize: true);
+    size = constraints.constrain(_place(child.size));
+    (child.parentData! as BoxParentData).offset = Offset(
+      0,
+      math.max(0, _center - child.size.height / 2),
+    );
+  }
+
+  @override
+  double computeMinIntrinsicWidth(double height) =>
+      child?.getMinIntrinsicWidth(height) ?? 0;
+
+  @override
+  double computeMaxIntrinsicWidth(double height) =>
+      child?.getMaxIntrinsicWidth(height) ?? 0;
+
+  @override
+  double computeMinIntrinsicHeight(double width) {
+    final h = child?.getMinIntrinsicHeight(width) ?? 0;
+    return math.max(0, _center - h / 2) + h;
+  }
+
+  @override
+  double computeMaxIntrinsicHeight(double width) {
+    final h = child?.getMaxIntrinsicHeight(width) ?? 0;
+    return math.max(0, _center - h / 2) + h;
   }
 }

@@ -2,8 +2,8 @@
   "note": "OPH-399 / ADR-0063 #5: counts may only go down. Regenerate with `npm run check:typography -- --update`.",
   "total": {
     "fontSize": 4,
-    "textStyle": 34,
-    "offGrid": 19
+    "textStyle": 33,
+    "offGrid": 18
   },
   "files": {
     "apps/app/lib/src/features/ai/ui/ai_settings_screen.dart": {
@@ -155,11 +155,6 @@
       "fontSize": 0,
       "textStyle": 4,
       "offGrid": 0
-    },
-    "apps/app/lib/src/features/tasks/ui/task_tile.dart": {
-      "fontSize": 0,
-      "textStyle": 1,
-      "offGrid": 1
     },
     "apps/app/lib/src/screens/settings_screen.dart": {
       "fontSize": 0,

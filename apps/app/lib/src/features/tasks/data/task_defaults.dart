@@ -8,6 +8,10 @@
 ///   a suggestion, not a law: the user can move or clear it afterwards.
 library;
 
+/// The priority a new task is born with. The task row draws a priority flag
+/// only when a task differs from it (OPH-400, DESIGN §46 R3).
+const String kAwDefaultPriority = 'medium';
+
 /// How far before the deadline the auto-reminder lands.
 const Duration kAwAutoReminderGap = Duration(hours: 1);
 
@@ -19,7 +23,7 @@ DateTime? awAutoReminderFor(DateTime? dueAt) =>
 /// The detailed sheet applies the same values through its own fields instead,
 /// so the user sees them before saving.
 Map<String, dynamic> awQuickTaskDefaults({DateTime? dueAt}) => {
-  'priority': 'medium',
+  'priority': kAwDefaultPriority,
   'isUrgent': true,
   if (dueAt != null) 'dueAt': dueAt.toUtc().toIso8601String(),
   if (dueAt != null)

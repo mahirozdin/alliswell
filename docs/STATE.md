@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-400** — Görev satırı (DESIGN §44) |
-| Last completed           | OPH-399 — Glass Type v1 (ADR-0063, DESIGN §3.3): Apple'da harf aralığı HIG SF tablosundan (`awTracking`), diğer platformlarda 0; satır yükseklikleri ve ağırlıklar (400/500/600/700) temada, `context.awText` rolleri (sectionLabel, meta, rowTitle); tarih, saat, sayaçta tabular rakam; Geciken başlığı sayfa zemini için `errorOnPage` (≥4.8:1), yıldız `warning`; `contrast.py` aurora zeminini ölçer; yeni kapı `check:typography` (taban yalnız azalır). |
+| ➡️ **Next task**         | **OPH-401** — Ana Sayfa: hafta şeridi, bölüm başlıkları, hızlı ekleme |
+| Last completed           | OPH-400 — görev satırı (DESIGN §46): onay dairesi başlığın ilk satırında; başlık en çok 2 satır + "…" (büyük metinde 3); tek meta satırı (13/18 tabular, sığmayan sondan düşer) yalnız varsayılandan sapanı gösterir — açık durumda kum saati, orta öncelikte bayrak, acil alarmda zil yok; "Gecikti" sözcüğü kırmızı, tarih nötr; ilk etiket + N; sağda tek öğe (ekran eylemi, avatar ya da proje rozeti); çıplak URL "alanadı › yol" + bağlantı glifi; metin ölçeği >1.3'te dikey düzen. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

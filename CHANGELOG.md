@@ -47,6 +47,11 @@ This file holds the unreleased changes and the latest release; at each release t
   tables instead of Android's, so titles are tighter and fit more per line. Dates, times and
   counts keep their width as they change, and the red "Overdue" heading and the favourite star
   are easier to read.
+- **Task rows are calmer and shorter**: a title takes at most two lines (the task itself shows all
+  of it), the check circle lines up with the first line, and everything else sits on one small line
+  under the title. Icons appear only when something is out of the ordinary, such as a high
+  priority, a status other than open, or a reminder that will not ring through Silent. A pasted
+  link reads as "site › path", and with large text the row stacks instead of squeezing the title.
 
 ## [1.18.2] — 2026-10-30
 

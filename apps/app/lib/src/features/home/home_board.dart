@@ -386,28 +386,25 @@ class _BoardCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final tile = Stack(
-      children: [
-        // No project badge on the board: a 320-px status column has no room
-        // for it beside the title + status icons, and the column is already a
-        // status grouping. (The move affordance sits where the badge would.)
-        //
-        // No swipe-to-delete either (OPH-184, DESIGN §19 D6): the horizontal
-        // gesture belongs to the phone pager, and a 200 ms long-press drag
-        // already competes for this card. Delete lives in the move sheet.
-        TaskTile(task: task, showProjectBadge: false, swipeToDelete: false),
-        PositionedDirectional(
-          top: 10,
-          end: AwSpace.x1,
-          child: IconButton(
-            key: Key('board-move-button-${task.id}'),
-            tooltip: 'board.move'.tr(),
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.swap_horiz, size: 18),
-            onPressed: () => onMoveRequested(task),
-          ),
-        ),
-      ],
+    // No project badge on the board: a 320-px status column has no room for
+    // it beside the title, and the column is already a status grouping. The
+    // move affordance takes the row's one right-hand slot instead (DESIGN §46
+    // R6), on the title's first line.
+    //
+    // No swipe-to-delete either (OPH-184, DESIGN §19 D6): the horizontal
+    // gesture belongs to the phone pager, and a 200 ms long-press drag already
+    // competes for this card. Delete lives in the move sheet.
+    final tile = TaskTile(
+      task: task,
+      showProjectBadge: false,
+      swipeToDelete: false,
+      trailingAction: IconButton(
+        key: Key('board-move-button-${task.id}'),
+        tooltip: 'board.move'.tr(),
+        visualDensity: VisualDensity.compact,
+        icon: const Icon(Icons.swap_horiz, size: 18),
+        onPressed: () => onMoveRequested(task),
+      ),
     );
     final card = moreOccurrences == 0
         ? tile

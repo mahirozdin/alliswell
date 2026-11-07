@@ -36,17 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-400 — Görev satırı (DESIGN §44)
-
-R-09, T-02, U-06, U-12.
-
-- [ ] Başlık en çok 2 satır + "…" (detay tam); onay dairesi ilk satıra hizalı; kelime ortasında kırılma yok.
-- [ ] Tek meta satırı 13/18 tabular: tarih · tekrar · alarm · öncelik (yalnız varsayılandan sapınca) ·
-      ilk etiket +N; "Gecikti" sözcüğü kırmızı, tarih nötr; kum saati yalnız varsayılan olmayan durumda.
-- [ ] Sağda en çok 1 öğe (proje rozeti ya da avatar); çıplak URL "alanadı › yol…" + bağlantı glifi.
-- [ ] Metin ölçeği >1.3'te dikey düzen. Acil alarm varsayılanı DEĞİŞMEZ; satır yalnız sapmayı gösterir.
-- **Kabul:** golden + 2.0× testi.
-
 ### OPH-401 — Ana Sayfa: hafta şeridi, bölüm başlıkları, hızlı ekleme
 
 U-04, U-13, C-06, R-11; metin persona Ek A-67.

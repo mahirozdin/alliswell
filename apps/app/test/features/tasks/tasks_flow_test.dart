@@ -541,9 +541,10 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    // Priority flag (colored) + status icon on the tile (open → hourglass).
+    // Priority flag (colored): high is not the default (medium), so it shows.
+    // OPH-400: open IS the default status, so no hourglass any more.
     expect(find.byIcon(Icons.flag), findsOneWidget);
-    expect(find.byIcon(Icons.hourglass_empty), findsOneWidget);
+    expect(find.byIcon(Icons.hourglass_empty), findsNothing);
   });
 
   testWidgets('task title edits in place and autosaves', (tester) async {

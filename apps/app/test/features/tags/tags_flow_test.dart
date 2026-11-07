@@ -154,7 +154,7 @@ void main() {
     expect(api.tags, isEmpty); // pushed delete reached the server
   });
 
-  testWidgets('task rows show at most two inline tags plus +N (T4)', (
+  testWidgets('task rows show the first inline tag plus +N (T4, OPH-400)', (
     tester,
   ) async {
     await wideSurface(tester);
@@ -171,8 +171,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('#birinci'), findsOneWidget);
-    expect(find.text('#ikinci'), findsOneWidget);
-    expect(find.text('#üçüncü'), findsNothing); // overflowed…
-    expect(find.text('+1'), findsOneWidget); // …into the +N marker
+    expect(find.text('#ikinci'), findsNothing); // overflowed…
+    expect(find.text('#üçüncü'), findsNothing);
+    expect(find.text('+2'), findsOneWidget); // …into the +N marker
   });
 }

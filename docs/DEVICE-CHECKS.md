@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Görev satırı (2026-11-07)
+
+- OPH-400 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa'da uzun başlık en çok 2 satır + "…", onay dairesi ilk satırın ortasında; açık/orta öncelikli/acil alarmlı görevde sağda ve meta satırında simge yok, "Gecikti" yalnız sözcük kırmızı; proje rozeti ilk satır hizasında; yapıştırılmış URL tek satır "alanadı › yol". Pano kartında "Taşı" düğmesi başlığın ilk satırında, başlığın üstüne binmiyor. **Metin boyutu en büyük (iOS AX5 / Android 2.0)**: satır dikey, kelime ortasından kırılma yok, meta öğeleri başlığın altına sarıyor.
+
 ## Tipografi: Glass Type v1 (2026-11-07)
 
 - OPH-399 — **iOS simülatörü (iPhone 393 ve 440), demo tohumu, açık ve koyu**: satır başlığı, meta ve bar etiketi genişliği yerel UILabel ile aynı (±0.2 pt; yöntem `research/2026-11-design-ux/typography-sf-verification.md` §1: 3x ekran görüntüsü + simülatör içinde `sfmeasure.swift`); beklenen satır başlığında −%10…−12, geciken meta tek satır. Ana Sayfa'da "Geciken · N" kırmızısı aurora lekesinin üstünde rahat okunuyor; sayaçlar, tarih ve saatler değişirken yanındaki metin kaymıyor (tabular). **Android 360 ve web (Chrome)**: harf aralığı 0, metin önceki hâlinden belirgin dar değil; web'de w600 başlıklar (SemiBold dosyası yok) kalın çiziliyor mu bak.

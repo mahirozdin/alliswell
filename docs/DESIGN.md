@@ -197,6 +197,8 @@ and tracking.
   through the incoming one and read as a stuck, ghosting screen. **A route must
   never be see-through to the route beneath it.**
 - **Overdue** dates render in `error` color w600 with the word "Overdue".
+  _Task row (OPH-400, §46 R3): only the word is red (`metaStrong` w500,
+  `error`); the date beside it stays neutral._
 - **Stars (favorite/pin)** use `AwTokens.warning`, never `Colors.amber`.
 - **Error text on the page** (not on a card) — the "Overdue" section header —
   uses `AwTokens.errorOnPage` (`#C40013` / `#FF655C`): `scheme.error` is tuned
@@ -204,7 +206,8 @@ and tracking.
 - **Project badge (task rows — added 2026-07-17, feedback round 4, OPH-104):**
   a FILLED pill in the project's color, rightmost element of the row's
   trailing cluster. Radius `AwRadius.s`, padding 8×2, `labelSmall` w600,
-  min height 22, tap-transparent (the row handles taps). Label = the project
+  min height 22, tap-transparent (the row handles taps). _Since OPH-400 it is
+  the row's one right-hand item (§46 R6), on the title's first line._ Label = the project
   name, truncated to its first 6 characters + "…" when longer (grapheme-safe
   via `Characters`); the FULL name is always available through `Tooltip`
   (hover + long-press) and `semanticLabel` (`Project: <name>`). The foreground
@@ -486,7 +489,8 @@ detail Tags card — BLUEPRINT §12.4.)_
 - **T4 — Same component, both surfaces.** The create sheet and the detail card
   mount the identical widget — no divergent tag UIs. In lists, task rows show
   at most 2 tag chips + "+N" overflow (tooltip lists the rest); chips never
-  wrap a list row taller than its card rhythm.
+  wrap a list row taller than its card rhythm. _Amended (OPH-400, §46 R3): the
+  first tag + "+N", on the row's one meta line._
 
 ## 14. Kanban board (round 8 — OPH-168)
 
@@ -498,7 +502,8 @@ entry; product decisions in BLUEPRINT §12.11.)_
   toggle sits at the top; the choice is device-local and persistent. Board
   columns = task statuses, rendered with the §4 card language (columns are
   `surfaceContainer` wells at `AwRadius.l`; cards are the task-row DNA:
-  status icon, priority flag, project badge, due).
+  status icon, priority flag, project badge, due). _Since OPH-400 the card is
+  the §46 row: glyphs only off the defaults, "Move" in its right slot._
 - **K2 — Columns belong to the user.** "Görünümü düzenle" (app-bar action)
   opens a sheet with visibility toggles + drag-reorder of statuses; hidden
   columns stay reachable as move targets (K3). Default visible: open,
@@ -1795,3 +1800,18 @@ the action cluster is the same on both.
 | F6 | **Quick Access on a phone:** bubble off by default; ways in are the ⚡ in Home's app bar, "Shortcuts" (≤ 6) above "Recent" in the empty search palette, and a long press on the Home tab (hint `nav.homeLongPressHint`; not while the large content viewer owns the long press, §43 N4). | ADR-0062 §5. |
 | F7 | **One breakpoint:** a page is two-column only beside the rail (`awWideContent`: content ≥ 720 AND window ≥ 800) — an iPad mini at 744 is the phone layout throughout. | Home went wide at 720 under the phone capsule (R-12). |
 | F8 | **Measured:** `test/features/shell/floating_grid_test.dart` (360/393/430, AI on/off, bubble on/off: no floating object covers a check circle or a header, at rest and scrolled); `bubble_test` (inside the safe area at rest and idle, gone on pushed pages, intro above the system bar). | Kabul of OPH-397. |
+
+## 46. The task row (OPH-400)
+
+R-09, T-02, U-06, U-12 ([research](research/2026-11-design-ux/ux-shell-mobile.md)). One widget,
+`TaskTile`, on Home, the board, Completed, a project's Tasks tab and the subtask list.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| R1 | **The check circle sits on the title's first line.** Its 48 pt target is centred on that line; the title starts 12 pt down (lower only when a large line needs it). Indent: 4 + 48 + 4. | The circle sat in the middle of a five-line card (U-06). |
+| R2 | **Title:** `rowTitle` 16/22 w400, at most **2 lines + "…"** (3 in the vertical row, R5); the detail screen shows all of it. A done row is struck through in `onSurfaceVariant`. | A short title broke into 3–5 lines beside the right column. |
+| R3 | **One meta line** (`AwMetaLine`, `meta` 13/18 tabular, 8 apart, glyphs 14): date · repeat · alarm · status · priority · duration · first tag "+N" · the rest. Only what differs from a new task's defaults (§26 C1: open, medium, urgent-armed) gets a glyph: no hourglass on an open task, no flag on medium, no bell on an urgent alarm. The alarm item shows a snooze, a silenced alarm with its "turn back on" (§11 A5), or a plain bell for a reminder that is NOT urgent. "Overdue" is the red word (`metaStrong`, `error`), the date stays neutral. An item that does not fit whole is dropped from the end; only the date may shrink. | A flag, a bell and an hourglass on nearly every row said "default" (K6). |
+| R4 | **A bare link is one line:** a title that is only a URL reads "host › path" after a link glyph (`awRowTitle`). A URL inside a title gets zero-width breaks after `/ ? & =`. No row breaks inside a word. | A pasted URL took five lines (U-12). |
+| R5 | **Above 1.3× text the row goes vertical** (`kAwRowVerticalTextScale`): circle + title at full width, then the meta items (and the right item) wrapping under the title. | The title column was one word wide at large text. |
+| R6 | **At most one item on the right**, centred on the first line: the screen's own action (Completed's "Reopen", the board's "Move"), else the assignee avatars, else the project badge. A project that loses the slot shows in the meta line as an 8 pt dot and its name. | The right column took 25–35 % of the width. |
+| R7 | **Measured:** `test/features/tasks/task_row_test.dart` — 360/375/393/430 × 1.0/1.3 × TR/EN × light/dark (≤ 2 title lines, circle on the first line, one meta line); 2.0× with the real Roboto/DejaVu (no mid-word break, ≤ 3 lines, the long row ≤ 240 pt). Goldens `phone_task_rows_*` with `--dart-define=screenshots=true`. | Kabul of OPH-400. |
