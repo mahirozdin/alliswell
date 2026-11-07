@@ -207,6 +207,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
     required this.metaStrong,
     required this.rowTitle,
     required this.dayNumber,
+    required this.barAction,
   });
 
   /// Builds the roles for a theme whose body ink is [ink].
@@ -229,6 +230,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
       metaStrong: meta.copyWith(fontWeight: FontWeight.w500),
       rowTitle: style(16, 22, FontWeight.w400),
       dayNumber: awTabular(style(17, 22, FontWeight.w600)),
+      barAction: style(17, 22, FontWeight.w600),
     );
   }
 
@@ -251,6 +253,10 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
   /// A day number in Home's week strip (DESIGN §47 W2): 17/22 w600, tabular.
   final TextStyle dayNumber;
 
+  /// A sheet header's text action ("Add" / "Cancel", DESIGN §49 N1):
+  /// 17/22 w600, the iOS bar-button size; Cancel drops to w400.
+  final TextStyle barAction;
+
   /// Tracking for a size this theme draws that is not one of its roles (a
   /// fixed-size bar label).
   double tracking(double size) => awTracking(size, apple: apple);
@@ -266,6 +272,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
     TextStyle? metaStrong,
     TextStyle? rowTitle,
     TextStyle? dayNumber,
+    TextStyle? barAction,
   }) => AwTextRoles(
     apple: apple ?? this.apple,
     sectionLabel: sectionLabel ?? this.sectionLabel,
@@ -273,6 +280,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
     metaStrong: metaStrong ?? this.metaStrong,
     rowTitle: rowTitle ?? this.rowTitle,
     dayNumber: dayNumber ?? this.dayNumber,
+    barAction: barAction ?? this.barAction,
   );
 
   @override
@@ -285,6 +293,7 @@ class AwTextRoles extends ThemeExtension<AwTextRoles> {
       metaStrong: TextStyle.lerp(metaStrong, other.metaStrong, t)!,
       rowTitle: TextStyle.lerp(rowTitle, other.rowTitle, t)!,
       dayNumber: TextStyle.lerp(dayNumber, other.dayNumber, t)!,
+      barAction: TextStyle.lerp(barAction, other.barAction, t)!,
     );
   }
 }

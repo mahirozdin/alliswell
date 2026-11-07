@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-403** — Yeni görev sayfası: Vazgeç / Ekle |
-| Last completed           | OPH-402 — sağlayıcısız mikrofon (DESIGN §48): AI açık ama sağlayıcı bağlı değilken mikrofona dokunmak ya da basılı tutmak sohbet yerine dikte sayfasını açar; izin beklenirken "Mikrofon izni bekleniyor" (sohbette de, A-66), dinlerken "Söylediğin görev olarak eklenecek" + canlı döküm + "Bitir"; söylenen hızlı ekleme alanına düşer, ↑ Fikirler kuralıyla kaydeder (tarihsiz → Fikirler, tarihli → açık görev); sohbetin sağlayıcısız yüzünde yeni metin + "Sağlayıcı bağla" / "Fikirler'e kaydet" (A-07), Enter Fikirler'e kaydeder. |
+| ➡️ **Next task**         | **OPH-404** — Tanıtım turu 4 adım, boş Ana Sayfa'da eylem |
+| Last completed           | OPH-403 — yeni görev sayfası (DESIGN §49): başlık satırında solda "Vazgeç", sağda "Ekle" (düzenlemede "Kaydet"; 17/22 w600, başlık boşken pasif), alttaki düğme kalktı; klavyenin "Bitti"si başlık doluysa oluşturur; ≥800 px'te 640 px iletişim kutusu, Ctrl/⌘+Enter oluşturur; yazılmış bir şey varken Vazgeç, karartı, Geri, Esc ve aşağı kaydırma "Yazdıkların silinsin mi?" diye sorar. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

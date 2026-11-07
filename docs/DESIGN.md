@@ -1846,3 +1846,15 @@ U-07, U-14; copy A-66, A-07. `ai/ui/dictation_sheet.dart`.
 | V3 | **Nothing is saved before ↑.** The field is the Inbox bar's: same parse, `createCapture` (ADR-0057 §3) — dateless → Inbox, dated → an open task — then the sheet closes with "Fikirler'e eklendi: …" / "Eklendi: … · {date}". Cancel or a swipe down discards. | The transcript is always editable (AI9); one capture rule. |
 | V4 | **The bubble's unconfigured face has two buttons:** "Sağlayıcı bağla" (→ `/settings/ai`) and "Fikirler'e kaydet" (disabled until something is typed); Enter there saves to the Inbox, as the copy promises. | A-07: the face named a fix and offered no button. |
 | K1 | `test/features/ai/dictation_test.dart` (10 widget tests). | Kabul of OPH-402. |
+
+## 49. The new-task sheet: Cancel / Add (OPH-403)
+
+U-11 (research `ux-core-screens.md` Q8); U-08's desktop dialog. `tasks/ui/task_create_sheet.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| N1 | **The header is the action row:** "Vazgeç" left (w400), the sheet's name centred (`titleMedium`, one line), "Ekle" right — "Kaydet" when triaging — in `barAction` 17/22 w600, `link` colour, 48 pt tall; dead while the title is blank. It sits above the scrolling form, so it is on the first screen with the keyboard up. No create button at the end of the form. | The only way to save was at the bottom of a long scroll, under the keyboard (U-11). |
+| N2 | **The keyboard's Done creates** when the title has text (empty: it just closes the keyboard); **Ctrl/⌘+Enter creates from any field**, the multi-line description included. | One gesture from typing to done. |
+| N3 | **Nothing typed is lost without a question:** once the title, description or picked files differ from what the sheet opened with, Cancel, the scrim, Back, Escape and a swipe down ask "Yazdıkların silinsin mi?" — "Yazmaya devam et" / "Sil". A swipe ends in `Navigator.pop`, past `PopScope`, so the sheet's own route refuses it in `didPop` and drives the sheet back up. An untouched sheet closes at once. | A swipe meant to peek threw a half-written task away. |
+| N4 | **From `kAwWideBreakpoint` (800) the form is a centred 640 px dialog**, same header and rules (no sticky footer yet: U-08's shell round). | A phone sheet stretched across a desktop window. |
+| K1 | `test/features/tasks/create_sheet_header_test.dart` (7 widget tests). | Kabul of OPH-403. |

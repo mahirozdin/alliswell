@@ -36,14 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-403 — Yeni görev sayfası: Vazgeç / Ekle
-
-U-11.
-
-- [ ] Başlıkta "Vazgeç / Ekle" (başlık boşken pasif); klavye onayı oluşturur.
-- [ ] Masaüstünde iletişim kutusu + ⌘/Ctrl+Enter; aşağı kaydırınca yazılan kaybolmadan önce uyarı.
-- **Kabul:** widget testleri.
-
 ### OPH-404 — Tanıtım turu 4 adım, boş Ana Sayfa'da eylem
 
 `ux-core-screens.md` §4.1.

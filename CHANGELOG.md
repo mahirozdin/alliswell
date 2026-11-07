@@ -60,6 +60,9 @@ This file holds the unreleased changes and the latest release; at each release t
   the quick-add box and add it; with no date it goes to your Inbox. While the phone asks for the
   microphone, the screen says so, and the assistant's "no provider" screen now has "Connect a
   provider" and "Save to Inbox" buttons.
+- **The new-task form has Cancel and Add at the top**, so you never scroll to save; the keyboard's
+  Done adds the task too. On a computer it opens as a dialog and Ctrl/⌘+Enter adds it, and
+  swiping the form away asks before throwing away what you typed.
 
 ## [1.18.2] — 2026-10-30
 

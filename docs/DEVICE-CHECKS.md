@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Yeni görev sayfası (2026-11-07)
+
+- OPH-403 — **iPhone 393 ve Android 360, TR, açık ve koyu**: Ana Sayfa'daki + ile sayfa açılınca klavye açıkken başlık satırında solda "Vazgeç", sağda mavi "Ekle" görünüyor; başlık boşken "Ekle" soluk ve basılmıyor; klavyedeki "Bitti"/✓ görevi oluşturup sayfayı kapatıyor. Bir şey yazıp tutamaktan aşağı kaydırınca sayfa geri yukarı çıkıp "Yazdıkların silinsin mi?" soruyor, "Yazmaya devam et" metni koruyor; boş sayfa soru sormadan kapanıyor. Android'de Geri tuşu da soruyor. **Masaüstü (macOS/Windows/web ≥800 px)**: form ortada iletişim kutusu, Ctrl/⌘+Enter oluşturuyor, Esc yazılmışsa soruyor. VoiceOver/TalkBack "Ekle" düğmesini başlık boşken devre dışı okuyor.
+
 ## Sağlayıcısız mikrofon (2026-11-07)
 
 - OPH-402 — **iPhone, AI açık ama sağlayıcı bağlı değil, TR, açık ve koyu**: mikrofona ilk dokunuşta iOS izin soruları açıkken sayfada "Mikrofon izni bekleniyor" yazıyor (arkada "Dinliyorum…" yok); izin verilince "Söylediğin görev olarak eklenecek" ve söylenen canlı görünüyor; "Bitir"e basınca metin hızlı ekleme alanında, ↑ ile "Fikirler'e eklendi: …" çıkıyor ve görev Fikirler'de; "yarın 9'da …" denince tarihli görev Ana Sayfa'da. Basılı tutunca da aynı sayfa açılıp dinliyor. İzin reddedilince sayfa yazma alanıyla açılıyor. VoiceOver düğmeyi "Sesle görev ekle" diye okuyor. **Android'de** aynı akış (TalkBack).

@@ -16,6 +16,7 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/tags/tags.dart';
+import 'package:alliswell/src/features/tasks/ui/task_create_sheet.dart';
 import 'package:alliswell/src/router.dart';
 import 'package:alliswell/src/search/search_recents.dart';
 import 'package:alliswell/src/search/ui/global_search_entry.dart';
@@ -233,8 +234,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_field, findsNothing);
+    // At desktop width the create form is a dialog (OPH-403).
     final sheetTitle = find.descendant(
-      of: find.byType(BottomSheet),
+      of: find.byType(TaskCreateSheet),
       matching: find.byType(TextField),
     );
     expect(sheetTitle, findsWidgets);
