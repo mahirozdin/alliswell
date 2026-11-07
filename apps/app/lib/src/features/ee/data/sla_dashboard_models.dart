@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'unit_tickets_api.dart' show EeFigureScope;
+
 /// One axis entry on the SLA dashboard (EE-098).
 ///
 /// `key` is the server's own identifier and `label` is what a person reads;
@@ -80,6 +82,9 @@ class EeSlaDashboard {
     this.byService = const [],
     this.bySla = const [],
     this.breaches = const [],
+    this.openBreached,
+    this.openWarned,
+    this.scope,
     // A public `judged` getter falls back to `bySla`, so the stored value
     // stays private — and a private named parameter is not portable yet.
     // ignore: prefer_initializing_formals
@@ -98,6 +103,16 @@ class EeSlaDashboard {
   final List<EeSlaBucket> byService;
   final List<EeSlaBucket> bySla;
   final List<EeSlaBreach> breaches;
+
+  /// OPH-409 (U-20): requests OPEN RIGHT NOW whose SLA is past / close —
+  /// the same scope as "Birimlerim"'s counts. Everything else on the board
+  /// is the stock (open and closed alike), which is why "missed 70" and
+  /// "past SLA 24" can both be true. Null from an older server.
+  final int? openBreached;
+  final int? openWarned;
+
+  /// Whose requests the figures cover; null from an older server.
+  final EeFigureScope? scope;
 
   int get total => byStatus.fold(0, (n, b) => n + b.count);
 
@@ -130,5 +145,8 @@ class EeSlaDashboard {
     breaches: ((json['breaches'] as List?) ?? const [])
         .map((b) => EeSlaBreach.fromJson(b as Map<String, dynamic>))
         .toList(),
+    openBreached: ((json['open'] as Map?)?['breached'] as num?)?.toInt(),
+    openWarned: ((json['open'] as Map?)?['warned'] as num?)?.toInt(),
+    scope: EeFigureScope.fromJson(json['scope']),
   );
 }

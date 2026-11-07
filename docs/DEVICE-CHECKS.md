@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Uzantı listeleri (2026-11-08)
+
+- OPH-409 — **iPhone + Android + 1440 px web, uzantılı takım, iki birimli yönetici ve birimsiz üye; açık ve koyu tema, 2.0× metin**: Talepler takımın genel alanında "Tüm birimler" seçili açılıyor, satırlarda birim adı, süzgeç çipleri yok; bir birim çipine dokununca o birimin kuyruğu ve çipler geliyor, "Tüm birimler" geri getiriyor. Satırda "Açan: … · Alan: …", atanmamışta turuncu simge + "Alan: atanmadı". Başlıkta Talepler | SLA | İş yükü sekmeleri 360 px'te kesilmeden; SLA'da "Şu an açık talepler" ayrı, "Hedef: %90", kapsam satırı; İş yükünde uyum "—" ya da "%51,4 / 144 talepten". Ana Sayfa'da üyeye "Yeni talep açın" + "Açık taleplerim (N)", yöneticiye "Birimleriniz: N talep gecikti · Onayınızı bekleyen N" (dokununca listesi). Takım üyesi olmayan Taleplerim'de "Yeni talep" görmüyor; `#/settings/team/assignments` "Atamalar Ana Sayfa'ya taşındı" diyor.
+
 ## Tek biçimlendirici (2026-11-08)
 
 - OPH-408 — **iPhone + Android + web; cihaz dili/bölgesi Türkçe-Türkiye, İngilizce-ABD ve İngilizce-Almanya (uygulama İngilizce)**: Ana Sayfa satırlarında bugün yalnız saat, yarın "Yarın 11:00"/"Tomorrow 11:00 AM", sonrası "7 Kas, 13:47"/"Nov 7, 1:47 PM"/"7 Nov, 13:47"; görev detayında "Bugün 13:47"; Almanya bölgesinde 24 saat, ABD'de 12 saat; hiçbir ekranda "07.11.2026" ya da "11/7/2026" yok (Ayarlar'da sayısal biçim seçilmediyse). Ek boyutları "6,3 MB" (TR/DE) ve "6.3 MB" (ABD), 1 KB altı "1 KB'den küçük"; süre "1 saat 30 dk". Ana ekran widget'ının saati bölgeye göre 12/24. Uzantılı takımda tutar "48.500 TL", yüzde "%51,4", form sayısı "48.500". Satır sonu tarih ile saati ayırmıyor; 2.0× metinde meta satırı taşmıyor.

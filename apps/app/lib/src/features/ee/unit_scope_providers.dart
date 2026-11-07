@@ -97,3 +97,37 @@ final eeUnitHereProvider = Provider<EeUnitHere>((ref) {
   }
   return (state: EeUnitHereState.notUnit, unit: null, units: units);
 });
+
+/// OPH-409 (U-18) — the request queue's "all units" view.
+///
+/// A manager of eight units opened the queue onto the team's general space,
+/// which is not a unit, and got "choose a unit" as the first picture of the
+/// product. "All units" is now the queue's default wherever the selected
+/// space is not one of the person's units; inside a unit the unit's own
+/// queue stays the default (the person chose it), and the chip still offers
+/// all of them. Choosing a unit chip clears the choice again.
+final eeQueueAllUnitsChosenProvider =
+    NotifierProvider<EeQueueAllUnitsChosen, bool>(EeQueueAllUnitsChosen.new);
+
+class EeQueueAllUnitsChosen extends Notifier<bool> {
+  @override
+  bool build() {
+    // A new person, or a new unit list, starts from the default.
+    ref.watch(currentUserIdProvider);
+    return false;
+  }
+
+  void set(bool value) => state = value;
+}
+
+/// True when the queue shows every unit's open requests (the live list)
+/// instead of one unit's replica. Never on "unknown": with no answer about
+/// units the queue draws what it always drew.
+final eeQueueShowsAllUnitsProvider = Provider<bool>((ref) {
+  final here = ref.watch(eeUnitHereProvider);
+  return switch (here.state) {
+    EeUnitHereState.unknown => false,
+    EeUnitHereState.notUnit => here.units.isNotEmpty,
+    EeUnitHereState.unit => ref.watch(eeQueueAllUnitsChosenProvider),
+  };
+});

@@ -19,6 +19,7 @@ import 'features/ee/admin/ui/admin_packages_screen.dart';
 import 'features/ee/admin/ui/admin_shell.dart';
 import 'features/ee/admin/ui/admin_teams_screen.dart';
 import 'features/ee/admin/ui/admin_usage_screen.dart';
+import 'features/ee/ui/assignments_moved_screen.dart';
 import 'features/ee/ui/join_screen.dart';
 import 'features/ee/ui/team_address_views.dart';
 import 'features/files/ui/files_screen.dart';
@@ -1121,11 +1122,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // EE-068's "assigned to me" list, retired by EE-296: in an
       // organisation Home IS the person's work — everything assigned to them,
       // from every unit — so a second list of the same work would be the
-      // thing to explain. The address stays, for links and habits, and lands
-      // where that work now is.
+      // thing to explain. The address stays, for links and habits. OPH-409
+      // (E-19): it used to redirect to Home silently; it now says where the
+      // list went and offers the way there.
       GoRoute(
         path: '/settings/team/assignments',
-        redirect: (context, state) => '/',
+        builder: (context, state) =>
+            _contentPage(const EeAssignmentsMovedScreen()),
       ),
       // EE-087: "my requests". Reachable by anyone in a team — asking for
       // something is the least privileged act in the product.

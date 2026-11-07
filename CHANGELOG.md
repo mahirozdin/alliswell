@@ -16,6 +16,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Team request lists answer "what, whose, how many" at a glance**: the requests list opens on
+  all your units instead of an empty "choose a unit", a row names who opened it and who has it,
+  every count says what it counts ("open now" apart from all time), and a share of nothing reads
+  "—". Home shows your open requests, or what is late in your units.
 - **Dates and numbers read the way your region writes them**: "13:47", "Yarın 11:00", "7 Kas,
   13:47" instead of "07.11.2026 17:00"; an English app on a German phone shows "7 Nov, 13:47";
   amounts, percentages, file sizes ("6,3 MB") and durations ("2 gün 12 saat") follow the same rules

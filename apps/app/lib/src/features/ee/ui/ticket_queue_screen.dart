@@ -26,8 +26,11 @@ import 'ticket_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
 import 'unit_scope.dart';
 import 'csv_download.dart';
-import '../unit_scope_providers.dart' show eeUnitHereProvider;
+import 'figure_scope.dart';
+import '../unit_scope_providers.dart';
 import '../../workspaces/ui/workspace_switcher.dart';
+import '../../workspaces/workspaces.dart';
+import '../../../widgets/segment_label.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
 ///
@@ -48,9 +51,38 @@ import '../../workspaces/ui/workspace_switcher.dart';
 class EeTicketQueueScreen extends ConsumerWidget {
   const EeTicketQueueScreen({super.key});
 
+  /// OPH-409: the SLA board and the workload report were two entries in the
+  /// ⋮ menu that nobody found; they are tabs of the requests header now, next
+  /// to the queue they are about. Their addresses stay for links.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => DefaultTabController(
+    length: 3,
+    child: Builder(
+      builder: (context) {
+        final tabs = DefaultTabController.of(context);
+        return ListenableBuilder(
+          listenable: tabs,
+          builder: (context, _) => tabs.index == 0
+              ? _queue(context, ref)
+              : Scaffold(
+                  appBar: AppBar(
+                    leading: awRouteLeading(context),
+                    title: Text('ee.tickets.queueTitle'.tr()),
+                    bottom: const _QueueTabs(),
+                  ),
+                  body: tabs.index == 1
+                      ? const EeSlaDashboardScreen(embedded: true)
+                      : const EePerformanceScreen(embedded: true),
+                ),
+        );
+      },
+    ),
+  );
+
+  Widget _queue(BuildContext context, WidgetRef ref) {
     final tickets = ref.watch(filteredTicketsProvider);
+    // U-18: every unit's open requests, live, until a unit is chosen.
+    final allUnits = ref.watch(eeQueueShowsAllUnitsProvider);
     final filter = ref.watch(ticketFilterProvider);
     final query = ref.watch(ticketSearchQueryProvider).trim();
     final searching = query.isNotEmpty;
@@ -77,7 +109,11 @@ class EeTicketQueueScreen extends ConsumerWidget {
           ? EeBulkAppBar(visible: tickets.value ?? const [])
           : AppBar(
               leading: awRouteLeading(context),
-              title: EeUnitScopedTitle(title: 'ee.tickets.queueTitle'.tr()),
+              title: EeUnitScopedTitle(
+                title: 'ee.tickets.queueTitle'.tr(),
+                allUnits: allUnits,
+              ),
+              bottom: const _QueueTabs(),
               actions: [
                 // EE-169. The house search shape (DESIGN §12 S1, round 13 #5): an
                 // icon until somebody wants it. It reads the REPLICA, so it answers
@@ -152,27 +188,19 @@ class EeTicketQueueScreen extends ConsumerWidget {
                       context.push(value);
                       return;
                     }
-                    // EE-205 / EE-267: the SLA dashboard, the performance
-                    // board and "Birimlerim" sit on the same shelf. OPH-359
-                    // (UI-AUDIT #59) gave them addresses, so they open the
+                    // EE-267: "Birimlerim" sits on the same shelf. OPH-359
+                    // (UI-AUDIT #59) gave it an address, so it opens the
                     // way the rest of the shelf does and a reload or a link
-                    // lands on them.
+                    // lands on it. (The SLA board and the workload report
+                    // are the header's tabs since OPH-409.)
                     if (GoRouter.maybeOf(context) != null) {
-                      context.push(switch (value) {
-                        'perf' => kAwPerformancePath,
-                        'units' => kAwMyUnitsPath,
-                        _ => kAwSlaDashboardPath,
-                      });
+                      context.push(kAwMyUnitsPath);
                       return;
                     }
                     // Hosted without a router (one screen under test).
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => switch (value) {
-                          'perf' => const EePerformanceScreen(),
-                          'units' => const EeMyUnitsScreen(),
-                          _ => const EeSlaDashboardScreen(),
-                        },
+                        builder: (_) => const EeMyUnitsScreen(),
                       ),
                     );
                   },
@@ -283,22 +311,6 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    PopupMenuItem(
-                      key: const Key('ticket-sla-dashboard'),
-                      value: 'sla',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.query_stats_outlined),
-                          const SizedBox(width: AwSpace.x2),
-                          Flexible(
-                            child: Text(
-                              'ee.slaDash.title'.tr(),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     // EE-205: no permission gate here either, for EE-098's reason —
                     // counting is membership (ADR-0007 §1) and the endpoint scopes
                     // itself to the caller's own desks, so everybody sees a TRUE
@@ -323,25 +335,9 @@ class EeTicketQueueScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                    PopupMenuItem(
-                      key: const Key('ticket-performance'),
-                      value: 'perf',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.groups_outlined),
-                          const SizedBox(width: AwSpace.x2),
-                          Flexible(
-                            child: Text(
-                              'ee.perfPanel.title'.tr(),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
-                if (!filter.isEmpty)
+                if (!filter.isEmpty && !allUnits)
                   TextButton(
                     key: const Key('ticket-filter-clear'),
                     onPressed: () =>
@@ -356,83 +352,96 @@ class EeTicketQueueScreen extends ConsumerWidget {
           // EE-267 (AW-E19): the other units' SLA alerts, live — the one
           // thing on this screen that is not the replica, and it says so by
           // leading to "Birimlerim". Out of the way while a batch is open.
-          if (!selecting) const EeOtherUnitsAlertStrip(),
-          const _FilterBar(),
-          Expanded(
-            child: EeUnitScopeGate(
-              child: tickets.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => AwErrorState(
-                  message: localizedError(error),
-                  onRetry: () => ref.invalidate(ticketQueueProvider),
-                ),
-                data: (rows) {
-                  if (rows.isEmpty) {
-                    // Two different emptinesses, and telling them apart is the
-                    // whole value of the state: "nothing came in" is good news,
-                    // "your filters exclude everything" is a mistake somebody is
-                    // one tap from fixing.
-                    // EE-169 adds a THIRD emptiness, and it is the one that
-                    // would otherwise lie: a search finds nothing here when the
-                    // request is on the server but no longer on the device
-                    // (EE-091 sweeps finished work off it). "No results" would
-                    // read as "no such request", so the state says where the
-                    // rest of them are (ADR-0016 D16.3 wrote this bill down;
-                    // this is where it is paid).
-                    //
-                    // EE-266 pays the rest of it: the sentence used to send the
-                    // person to an archive the app could not open. Now the
-                    // same words open it, with the query they typed.
-                    if (searching) {
-                      return AwEmptyState(
-                        key: const Key('ticket-search-empty'),
-                        icon: Icons.search_off_outlined,
-                        title: 'ee.tickets.searchEmptyTitle'.tr(),
-                        message: 'ee.tickets.searchEmptyBody'.tr(),
-                        action: FilledButton.tonalIcon(
-                          key: const Key('ticket-search-archive'),
-                          onPressed: () => _openArchive(context, query),
-                          icon: const Icon(Icons.inventory_2_outlined),
-                          label: Text('ee.tickets.archive.searchAction'.tr()),
-                        ),
-                      );
-                    }
-                    return filter.isEmpty
-                        ? AwEmptyState(
-                            icon: Icons.inbox_outlined,
-                            title: 'ee.tickets.emptyTitle'.tr(),
-                            message: 'ee.tickets.emptyBody'.tr(),
-                          )
-                        : AwEmptyState(
-                            icon: Icons.filter_alt_off_outlined,
-                            title: 'ee.tickets.emptyFilteredTitle'.tr(),
-                            message: 'ee.tickets.emptyFilteredBody'.tr(),
-                          );
-                  }
-                  return ListView.builder(
-                    // Clears the "new request" button (EE-225).
-                    padding: awListPadding(context, top: AwSpace.x4, fab: true),
-                    // EE-266: a search that found live requests may still be
-                    // missing the one somebody wants — it closed last spring.
-                    // The last row asks the archive the same question.
-                    itemCount: rows.length + (searching ? 1 : 0),
-                    itemBuilder: (_, i) => i < rows.length
-                        ? _TicketCard(ticket: rows[i])
-                        : ListTile(
+          // U-18: "All units" first, then each unit — the scope is a filter
+          // on this screen, not a place somewhere else.
+          if (!selecting) const _UnitScopeBar(),
+          if (!selecting && !allUnits) const EeOtherUnitsAlertStrip(),
+          // The chips filter the unit's replica; across units they would
+          // filter nothing, so they wait for a unit (U-18).
+          if (!allUnits) const _FilterBar(),
+          if (allUnits)
+            const Expanded(child: EeMyUnitsScreen(embedded: true))
+          else
+            Expanded(
+              child: EeUnitScopeGate(
+                child: tickets.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => AwErrorState(
+                    message: localizedError(error),
+                    onRetry: () => ref.invalidate(ticketQueueProvider),
+                  ),
+                  data: (rows) {
+                    if (rows.isEmpty) {
+                      // Two different emptinesses, and telling them apart is the
+                      // whole value of the state: "nothing came in" is good news,
+                      // "your filters exclude everything" is a mistake somebody is
+                      // one tap from fixing.
+                      // EE-169 adds a THIRD emptiness, and it is the one that
+                      // would otherwise lie: a search finds nothing here when the
+                      // request is on the server but no longer on the device
+                      // (EE-091 sweeps finished work off it). "No results" would
+                      // read as "no such request", so the state says where the
+                      // rest of them are (ADR-0016 D16.3 wrote this bill down;
+                      // this is where it is paid).
+                      //
+                      // EE-266 pays the rest of it: the sentence used to send the
+                      // person to an archive the app could not open. Now the
+                      // same words open it, with the query they typed.
+                      if (searching) {
+                        return AwEmptyState(
+                          key: const Key('ticket-search-empty'),
+                          icon: Icons.search_off_outlined,
+                          title: 'ee.tickets.searchEmptyTitle'.tr(),
+                          message: 'ee.tickets.searchEmptyBody'.tr(),
+                          action: FilledButton.tonalIcon(
                             key: const Key('ticket-search-archive'),
-                            leading: const Icon(Icons.inventory_2_outlined),
-                            title: Text(
-                              'ee.tickets.archive.searchFooter'.tr(
-                                args: {'query': query},
-                              ),
-                            ),
-                            onTap: () => _openArchive(context, query),
+                            onPressed: () => _openArchive(context, query),
+                            icon: const Icon(Icons.inventory_2_outlined),
+                            label: Text('ee.tickets.archive.searchAction'.tr()),
                           ),
-                  );
-                },
+                        );
+                      }
+                      return filter.isEmpty
+                          ? AwEmptyState(
+                              icon: Icons.inbox_outlined,
+                              title: 'ee.tickets.emptyTitle'.tr(),
+                              message: 'ee.tickets.emptyBody'.tr(),
+                            )
+                          : AwEmptyState(
+                              icon: Icons.filter_alt_off_outlined,
+                              title: 'ee.tickets.emptyFilteredTitle'.tr(),
+                              message: 'ee.tickets.emptyFilteredBody'.tr(),
+                            );
+                    }
+                    return ListView.builder(
+                      // Clears the "new request" button (EE-225).
+                      padding: awListPadding(
+                        context,
+                        top: AwSpace.x4,
+                        fab: true,
+                      ),
+                      // EE-266: a search that found live requests may still be
+                      // missing the one somebody wants — it closed last spring.
+                      // The last row asks the archive the same question.
+                      itemCount: rows.length + (searching ? 1 : 0),
+                      itemBuilder: (_, i) => i < rows.length
+                          ? _TicketCard(ticket: rows[i])
+                          : ListTile(
+                              key: const Key('ticket-search-archive'),
+                              leading: const Icon(Icons.inventory_2_outlined),
+                              title: Text(
+                                'ee.tickets.archive.searchFooter'.tr(
+                                  args: {'query': query},
+                                ),
+                              ),
+                              onTap: () => _openArchive(context, query),
+                            ),
+                    );
+                  },
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -726,14 +735,27 @@ class _TicketCard extends ConsumerWidget {
                     [
                       'ee.tickets.status.${ticket.status}'.tr(),
                       'ee.tickets.priority.${ticket.priority}'.tr(),
-                      // Last, so on a narrow phone it is the name that folds
-                      // to the next line, never the status.
-                      ?askedBy,
                     ].join(' · '),
                     style: theme.textTheme.bodySmall,
                   ),
                   AwSlaChip(ticket: ticket, muted: finished),
                 ],
+              ),
+              // OPH-409 (U-19): "whose is it" in words — who asked and who
+              // has it, and a marked "nobody yet": the question a manager
+              // opens the queue to answer. Before, only the asker was named
+              // and the avatars below were initials nobody could read.
+              EeTicketPeopleLine(
+                rowKey: ticket.id,
+                requester: askedBy,
+                assignees: [
+                  for (final a in assignees)
+                    a.isKnown
+                        ? (a.displayName ?? a.initials ?? '?')
+                        : 'ee.assign.formerMember'.tr(),
+                ],
+                muted: finished,
+                warning: context.awTokens.warning,
               ),
               // Item 9's avatars, on the ticket card. Empty when nobody is on it
               // — the widget draws nothing rather than a placeholder, because
@@ -828,6 +850,88 @@ class _TagPicker extends StatelessWidget {
               onTap: () => Navigator.of(context).pop(name),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// OPH-409 — the requests header's three tabs: the queue, the SLA board and
+/// the workload report.
+class _QueueTabs extends StatelessWidget implements PreferredSizeWidget {
+  const _QueueTabs();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kTextTabBarHeight);
+
+  @override
+  Widget build(BuildContext context) => TabBar(
+    key: const Key('ticket-tabs'),
+    tabs: [
+      Tab(
+        key: const Key('ticket-tab-queue'),
+        child: AwSegmentLabel('ee.tickets.tabs.queue'.tr()),
+      ),
+      Tab(
+        key: const Key('ticket-tab-sla'),
+        child: AwSegmentLabel('ee.tickets.tabs.sla'.tr()),
+      ),
+      Tab(
+        key: const Key('ticket-tab-workload'),
+        child: AwSegmentLabel('ee.tickets.tabs.workload'.tr()),
+      ),
+    ],
+  );
+}
+
+/// U-18 — "All units" and each of the person's units, as one choice. Drawn
+/// only when the units are known: with no answer the queue is what it was.
+class _UnitScopeBar extends ConsumerWidget {
+  const _UnitScopeBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final here = ref.watch(eeUnitHereProvider);
+    if (here.state == EeUnitHereState.unknown || here.units.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final all = ref.watch(eeQueueShowsAllUnitsProvider);
+    final chosen = ref.read(eeQueueAllUnitsChosenProvider.notifier);
+    return Semantics(
+      container: true,
+      label: 'ee.unitScope.chipsLabel'.tr(),
+      child: SingleChildScrollView(
+        key: const Key('ticket-unit-scope'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(
+          AwSpace.x4,
+          AwSpace.x2,
+          AwSpace.x4,
+          0,
+        ),
+        child: Row(
+          children: [
+            ChoiceChip(
+              key: const Key('ticket-unit-all'),
+              label: Text('ee.unitScope.all'.tr()),
+              selected: all,
+              onSelected: (_) => chosen.set(true),
+            ),
+            for (final unit in here.units) ...[
+              const SizedBox(width: AwSpace.x2),
+              ChoiceChip(
+                key: Key('ticket-unit-${unit.workspaceId}'),
+                label: Text(unit.unitName),
+                selected: !all && here.unit?.workspaceId == unit.workspaceId,
+                onSelected: (_) {
+                  chosen.set(false);
+                  ref
+                      .read(selectedWorkspaceIdProvider.notifier)
+                      .select(unit.workspaceId);
+                },
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

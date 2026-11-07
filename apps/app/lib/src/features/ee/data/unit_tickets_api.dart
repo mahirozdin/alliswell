@@ -23,6 +23,8 @@ class EeUnitTicket {
     this.slaStatus,
     this.slaDueAt,
     this.updatedAt,
+    this.requesterName,
+    this.assigneeNames,
   });
 
   factory EeUnitTicket.fromJson(Map<String, dynamic> json) => EeUnitTicket(
@@ -37,6 +39,13 @@ class EeUnitTicket {
     unitName: json['unitName'] as String,
     workspaceId: json['workspaceId'] as String,
     updatedAt: _date(json['updatedAt']),
+    requesterName: json['requesterName'] as String?,
+    assigneeNames: json['assigneeNames'] is List
+        ? [
+            for (final n in json['assigneeNames'] as List)
+              if (n is String) n,
+          ]
+        : null,
   );
 
   final String id;
@@ -52,6 +61,12 @@ class EeUnitTicket {
   /// The desk to open to reach it — the device syncs one at a time.
   final String workspaceId;
   final DateTime? updatedAt;
+
+  /// OPH-409 (U-19): who asked and who has it, when the server says. Both
+  /// are optional on the wire: null means "not told", never "nobody" — a
+  /// row says "taken by: nobody yet" only on an empty list it was given.
+  final String? requesterName;
+  final List<String>? assigneeNames;
 }
 
 /// A unit in the list's scope: the ones this person works in.
@@ -80,6 +95,8 @@ class EeUnitTicketsPage {
     this.tickets = const [],
     this.breached = 0,
     this.warned = 0,
+    this.unassigned,
+    this.scope,
     this.nextCursor,
   });
 
@@ -96,6 +113,8 @@ class EeUnitTicketsPage {
       ],
       breached: (alerts['breached'] as num?)?.toInt() ?? 0,
       warned: (alerts['warned'] as num?)?.toInt() ?? 0,
+      unassigned: (alerts['unassigned'] as num?)?.toInt(),
+      scope: EeFigureScope.fromJson(json['scope']),
       nextCursor: json['nextCursor'] as String?,
     );
   }
@@ -104,6 +123,13 @@ class EeUnitTicketsPage {
   final List<EeUnitTicket> tickets;
   final int breached;
   final int warned;
+
+  /// OPH-409 (U-22): open requests nobody has taken, when the server counts
+  /// them; null when it does not (the figure is then not shown, not zero).
+  final int? unassigned;
+
+  /// What the counts cover (U-20); null from an older server.
+  final EeFigureScope? scope;
   final String? nextCursor;
 
   bool get hasMore => nextCursor != null;
@@ -141,3 +167,23 @@ class EeUnitTicketsApi {
 
 DateTime? _date(Object? raw) =>
     raw is String ? DateTime.tryParse(raw)?.toUtc() : null;
+
+/// OPH-409 (U-20) — what a figure counts, as the server words it: whose
+/// requests (`team`, the person's units, or one key's unit) and how many
+/// units that is. Every count on the desk's screens carries it beside the
+/// number, so 24 here and 70 there stop reading as one figure disagreeing.
+class EeFigureScope {
+  const EeFigureScope({this.reach, this.unitCount});
+
+  static EeFigureScope? fromJson(Object? raw) {
+    if (raw is! Map) return null;
+    return EeFigureScope(
+      reach: raw['reach'] as String?,
+      unitCount: (raw['unitCount'] as num?)?.toInt(),
+    );
+  }
+
+  /// `team`, `member` or `key`; anything else is not labelled.
+  final String? reach;
+  final int? unitCount;
+}

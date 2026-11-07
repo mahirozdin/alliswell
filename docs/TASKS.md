@@ -36,17 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-409 — Uzantı listeleri: varsayılan görünüm, kimde, sayıların kapsamı ⚠️ Çift kapanış ↔
-
-Kritik yol: extension-seam. ⚠️ **Çift kapanış:** ↔ uzantı deposundaki eş iş (kimliği uzantı kaydında
-verilir); core'daki uzantı arayüzü bu depoda, sunucu tarafı uzantıda. Ayrıntı yalnız uzantı deposunda
-(I-14).
-
-- [ ] Core'daki uzantı listeleri uzantı kaydındaki kabul kriterlerini karşılar (varsayılan görünüm,
-      satırda sorumlu, sayıların yanında kapsamı, payda 0'da "—").
-- [ ] Core tarafı yalnız nötr dikiş ve uzantıya ait arayüz; `check:no-ee` yeşil.
-- **Kabul:** widget testleri; iki depo birlikte kapanır.
-
 ### OPH-410 — Uzantı geniş ekran düzeni ⚠️ Çift kapanış ↔
 
 Kritik yol: extension-seam. ⚠️ **Çift kapanış:** ↔ uzantı deposundaki eş iş. OPH-405'in detay paneli

@@ -2879,6 +2879,17 @@
         "apply": "Transfer",
         "done": "Transferred to {where}",
         "unchanged": "It is already there"
+      },
+      "tabs": {
+        "queue": "Requests",
+        "sla": "SLA",
+        "workload": "Workload"
+      },
+      "row": {
+        "openedBy": "Opened by: {name}",
+        "takenBy": "Taken by: {names}",
+        "unassigned": "Taken by: nobody yet",
+        "more": "{names} +{count}"
       }
     },
     "sla": {
@@ -2921,7 +2932,12 @@
       "outcomeWarned": "Close to the limit",
       "outcomeMet": "Kept",
       "noDefaultTitle": "No default SLA policy",
-      "noDefaultBody": "New requests whose service or company names no policy get no SLA at all, so they are not counted here. Mark a policy as the default under SLA management."
+      "noDefaultBody": "New requests whose service or company names no policy get no SLA at all, so they are not counted here. Mark a policy as the default under SLA management.",
+      "openNow": "Open right now",
+      "openBreached": "Past SLA",
+      "openWarned": "Due soon",
+      "stockScope": "The percentage and the counts below: every request not archived, open or closed, with no date limit",
+      "target": "Target: {target}"
     },
     "perfPanel": {
       "title": "Workload report",
@@ -2946,7 +2962,9 @@
       "processType": {
         "incident": "Incidents",
         "request": "Service requests"
-      }
+      },
+      "complianceOf": "of {judged} requests",
+      "scope": "Figures: requests opened in the chosen period"
     },
     "slaAdmin": {
       "title": "SLA management",
@@ -3744,7 +3762,7 @@
       "title": "My units",
       "live": "Live data · needs a connection",
       "scope": "Your units: {units}",
-      "counts": "{breached} SLA missed · {warned} due soon",
+      "counts": "Open now: {breached} requests past SLA · {warned} due soon",
       "alertsOnly": "SLA alerts only",
       "more": "Show more",
       "emptyTitle": "Nothing open",
@@ -3800,7 +3818,9 @@
       "chooseTitle": "Which unit's requests do you want to see?",
       "chooseBody": "Requests are kept per unit. Pick a unit or see them all.",
       "noUnitsBody": "This list belongs to a unit, and you are not in one yet. A team admin can add you to a unit.",
-      "switcherTitle": "Choose a unit"
+      "switcherTitle": "Choose a unit",
+      "all": "All units",
+      "chipsLabel": "Which unit's requests"
     },
     "csv": {
       "download": "Export to CSV",
@@ -4161,6 +4181,25 @@
         "TICKET_SERVICE_UNROUTED": "No unit answers the target service.",
         "TICKET_UNIT_REQUIRED": "Several units answer the target service, so the rule cannot pick one."
       }
+    },
+    "home": {
+      "newTicket": "Open a new request",
+      "myOpenTickets": "My open requests ({count})",
+      "unitsTitle": "Your units",
+      "breached": "{count} requests late",
+      "unassigned": "{count} requests unassigned",
+      "approvals": "Waiting for your approval: {count}"
+    },
+    "assignmentsMoved": {
+      "title": "Assignments",
+      "heading": "Assignments moved to Home",
+      "body": "Everything assigned to you, from any unit, is now on Home.",
+      "action": "Go to Home"
+    },
+    "scope": {
+      "team": "Scope: the whole team",
+      "member": "Scope: your units ({count})",
+      "key": "Scope: this unit"
     }
   },
   "perm": {

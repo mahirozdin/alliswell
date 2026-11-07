@@ -424,6 +424,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('#223 · Yazıcı arızası'), findsOneWidget);
         expect(find.text('#224 · Yazıcı arızası'), findsOneWidget);
+        // The open-now card and the scope lines push the list down.
+        await tester.ensureVisible(find.byKey(const Key('sla-breach-T2')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('sla-breach-T2')));
         await tester.pumpAndSettle();
         expect(find.text('ticket T2'), findsOneWidget);

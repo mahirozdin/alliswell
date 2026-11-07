@@ -15,14 +15,22 @@ import '../unit_scope_providers.dart';
 /// so an empty list could not be told from the wrong one. The unit's name
 /// rides under the title whenever it is known.
 class EeUnitScopedTitle extends ConsumerWidget {
-  const EeUnitScopedTitle({super.key, required this.title});
+  const EeUnitScopedTitle({
+    super.key,
+    required this.title,
+    this.allUnits = false,
+  });
 
   final String title;
+
+  /// OPH-409 (U-18): the request queue across every unit says so.
+  final bool allUnits;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final unit = ref.watch(eeUnitHereProvider).unit;
-    if (unit == null) return Text(title);
+    final scopeName = allUnits ? 'ee.unitScope.all'.tr() : unit?.unitName;
+    if (scopeName == null) return Text(title);
     final theme = Theme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -30,7 +38,7 @@ class EeUnitScopedTitle extends ConsumerWidget {
       children: [
         Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
         Text(
-          unit.unitName,
+          scopeName,
           key: const Key('ee-unit-scope-name'),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,

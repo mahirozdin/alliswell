@@ -49,6 +49,7 @@ import 'home_create.dart';
 import 'home_view_menu.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
+import '../ee/ui/home_ticket_cards.dart';
 import '../ee/ui/team_address_views.dart' show EeTeamAddressBanner;
 import '../../theme/typography.dart';
 
@@ -652,6 +653,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               EeTeamAddressBanner(),
+              // OPH-409 (U-22): requests on Home for an organisation's
+              // people; nothing on a plain build or a personal space.
+              EeHomeTicketCards(),
               AlarmDegradationBanner(),
               MissedAlarmCard(),
             ],

@@ -10,6 +10,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
 import '../../../widgets/status_views.dart';
 import '../data/my_tickets_api.dart';
+import '../data/team_address_api.dart' show EeNoTeamHereException;
 import '../my_tickets_providers.dart';
 import '../providers.dart';
 import 'ticket_archive_screen.dart' show EeMyArchivedTicketsScreen;
@@ -59,7 +60,13 @@ class EeMyTicketsScreen extends ConsumerWidget {
       // EE-225: the requester's own list is where asking for something new
       // belongs — and filing works with no signal (a draft), even though this
       // list does not.
-      floatingActionButton: ref.watch(canProvider('tickets.create'))
+      //
+      // OPH-409 (E-03): somebody signed in on a team's address who is not on
+      // that team got the "not in this team" state AND this button, which led
+      // to a form the server refuses. No team here, no way to file into it.
+      floatingActionButton:
+          ref.watch(canProvider('tickets.create')) &&
+              tickets.error is! EeNoTeamHereException
           ? AwExtendedFab(
               key: const Key('my-tickets-new'),
               onPressed: () => context.push('/tickets/new'),

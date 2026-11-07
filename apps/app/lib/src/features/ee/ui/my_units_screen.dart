@@ -13,6 +13,7 @@ import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/unit_tickets_api.dart';
 import '../unit_tickets_providers.dart';
+import 'figure_scope.dart';
 import 'sla_chip.dart';
 import '../../../widgets/route_leading.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket;
@@ -50,10 +51,19 @@ Future<void> openTicketAcrossUnits(
 /// and when it cannot ask it shows THAT, never the list it last had. An old
 /// copy drawn as if it were current is the one failure D17.9 rules out.
 class EeMyUnitsScreen extends ConsumerStatefulWidget {
-  const EeMyUnitsScreen({this.alertsOnly = false, super.key});
+  const EeMyUnitsScreen({
+    this.alertsOnly = false,
+    this.embedded = false,
+    super.key,
+  });
 
   /// Opened from the queue's strip: the alerts, not the whole list.
   final bool alertsOnly;
+
+  /// OPH-409 (U-18): the request queue's "all units" view draws this list
+  /// under its own bar — no second app bar, and room for its "new request"
+  /// button under the last row.
+  final bool embedded;
 
   @override
   ConsumerState<EeMyUnitsScreen> createState() => _EeMyUnitsScreenState();
@@ -91,77 +101,83 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
   @override
   Widget build(BuildContext context) {
     final first = ref.watch(eeUnitTicketsPageProvider(_key('')));
+    final body = first.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => unitTicketsNeedConnection(error)
+          ? AwEmptyState(
+              key: const Key('my-units-offline'),
+              icon: Icons.cloud_off_outlined,
+              title: 'ee.myUnits.offlineTitle'.tr(),
+              message: 'ee.myUnits.offlineBody'.tr(),
+              action: OutlinedButton.icon(
+                onPressed: _refresh,
+                icon: const Icon(Icons.refresh),
+                label: Text('common.retry'.tr()),
+              ),
+            )
+          : AwErrorState(message: localizedError(error), onRetry: _refresh),
+      data: (page) => RefreshIndicator(
+        key: const Key('my-units-refresh'),
+        onRefresh: _refresh,
+        child: ListView(
+          padding: awListPadding(
+            context,
+            top: AwSpace.x2,
+            fab: widget.embedded,
+          ),
+          children: [
+            _Header(
+              page: page,
+              alertsOnly: _alertsOnly,
+              onAlertsOnly: _setAlertsOnly,
+            ),
+            if (page.units.isEmpty)
+              AwEmptyState(
+                key: const Key('my-units-no-units'),
+                icon: Icons.groups_outlined,
+                title: 'ee.myUnits.noUnitsTitle'.tr(),
+                message: 'ee.myUnits.noUnitsBody'.tr(),
+              )
+            else if (page.tickets.isEmpty)
+              _alertsOnly
+                  ? AwEmptyState(
+                      key: const Key('my-units-no-alerts'),
+                      icon: Icons.verified_outlined,
+                      title: 'ee.myUnits.noAlertsTitle'.tr(),
+                      message: 'ee.myUnits.noAlertsBody'.tr(),
+                    )
+                  : AwEmptyState(
+                      key: const Key('my-units-empty'),
+                      icon: Icons.inbox_outlined,
+                      title: 'ee.myUnits.emptyTitle'.tr(),
+                      message: 'ee.myUnits.emptyBody'.tr(),
+                    )
+            else ...[
+              for (final ticket in page.tickets) _Row(ticket: ticket),
+              for (var i = 1; i < _cursors.length; i += 1)
+                _Page(
+                  key: ValueKey(_key(_cursors[i])),
+                  pageKey: _key(_cursors[i]),
+                  last: i == _cursors.length - 1,
+                  onMore: (cursor) => setState(() => _cursors.add(cursor)),
+                ),
+              if (_cursors.length == 1 && page.hasMore)
+                _MoreButton(
+                  onPressed: () =>
+                      setState(() => _cursors.add(page.nextCursor!)),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+    if (widget.embedded) return body;
     return Scaffold(
       appBar: AppBar(
         leading: awRouteLeading(context),
         title: Text('ee.myUnits.title'.tr()),
       ),
-      body: first.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => unitTicketsNeedConnection(error)
-            ? AwEmptyState(
-                key: const Key('my-units-offline'),
-                icon: Icons.cloud_off_outlined,
-                title: 'ee.myUnits.offlineTitle'.tr(),
-                message: 'ee.myUnits.offlineBody'.tr(),
-                action: OutlinedButton.icon(
-                  onPressed: _refresh,
-                  icon: const Icon(Icons.refresh),
-                  label: Text('common.retry'.tr()),
-                ),
-              )
-            : AwErrorState(message: localizedError(error), onRetry: _refresh),
-        data: (page) => RefreshIndicator(
-          key: const Key('my-units-refresh'),
-          onRefresh: _refresh,
-          child: ListView(
-            padding: awListPadding(context, top: AwSpace.x2),
-            children: [
-              _Header(
-                page: page,
-                alertsOnly: _alertsOnly,
-                onAlertsOnly: _setAlertsOnly,
-              ),
-              if (page.units.isEmpty)
-                AwEmptyState(
-                  key: const Key('my-units-no-units'),
-                  icon: Icons.groups_outlined,
-                  title: 'ee.myUnits.noUnitsTitle'.tr(),
-                  message: 'ee.myUnits.noUnitsBody'.tr(),
-                )
-              else if (page.tickets.isEmpty)
-                _alertsOnly
-                    ? AwEmptyState(
-                        key: const Key('my-units-no-alerts'),
-                        icon: Icons.verified_outlined,
-                        title: 'ee.myUnits.noAlertsTitle'.tr(),
-                        message: 'ee.myUnits.noAlertsBody'.tr(),
-                      )
-                    : AwEmptyState(
-                        key: const Key('my-units-empty'),
-                        icon: Icons.inbox_outlined,
-                        title: 'ee.myUnits.emptyTitle'.tr(),
-                        message: 'ee.myUnits.emptyBody'.tr(),
-                      )
-              else ...[
-                for (final ticket in page.tickets) _Row(ticket: ticket),
-                for (var i = 1; i < _cursors.length; i += 1)
-                  _Page(
-                    key: ValueKey(_key(_cursors[i])),
-                    pageKey: _key(_cursors[i]),
-                    last: i == _cursors.length - 1,
-                    onMore: (cursor) => setState(() => _cursors.add(cursor)),
-                  ),
-                if (_cursors.length == 1 && page.hasMore)
-                  _MoreButton(
-                    onPressed: () =>
-                        setState(() => _cursors.add(page.nextCursor!)),
-                  ),
-              ],
-            ],
-          ),
-        ),
-      ),
+      body: body,
     );
   }
 }
@@ -234,6 +250,8 @@ class _Header extends StatelessWidget {
               style: muted,
             ),
           ],
+          // U-20: whose requests the counts are.
+          EeFigureScopeLine(scope: page.scope),
           const SizedBox(height: AwSpace.x2),
           FilterChip(
             key: const Key('my-units-alerts'),
@@ -287,6 +305,13 @@ class _Row extends ConsumerWidget {
                 AwSlaChip.values(
                   slaStatus: ticket.slaStatus,
                   slaDueAt: ticket.slaDueAt,
+                ),
+                // U-19: who asked and who has it — when the server says.
+                EeTicketPeopleLine(
+                  rowKey: ticket.id,
+                  requester: ticket.requesterName,
+                  assignees: ticket.assigneeNames,
+                  warning: context.awTokens.warning,
                 ),
               ],
             ),

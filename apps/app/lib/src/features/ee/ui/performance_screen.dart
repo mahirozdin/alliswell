@@ -9,6 +9,7 @@ import '../data/performance_models.dart';
 import '../performance_providers.dart';
 import '../../../core/format.dart';
 import '../../../widgets/route_leading.dart';
+import 'figure_scope.dart';
 import '../../../widgets/fab_clearance.dart';
 
 /// The performance panel (EE-205) — the same numbers per unit and per person.
@@ -44,78 +45,95 @@ import '../../../widgets/fab_clearance.dart';
 /// are timed, so on a desk where half the services promised nothing the bare
 /// number is a true statement about a minority and a false one about the desk.
 class EePerformanceScreen extends ConsumerWidget {
-  const EePerformanceScreen({super.key});
+  const EePerformanceScreen({super.key, this.embedded = false});
+
+  /// OPH-409: drawn as a tab of the requests header, under its bar.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final panel = ref.watch(eePerformanceProvider);
     final days = ref.watch(eePerformanceRangeProvider);
 
+    final body = panel.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
+      // again — never the exception's own text.
+      error: (error, _) => AwErrorState(
+        message: localizedError(error),
+        onRetry: () => ref.invalidate(eePerformanceProvider),
+      ),
+      data: (data) {
+        if (data == null) {
+          return AwEmptyState(
+            icon: Icons.groups_outlined,
+            title: 'ee.perfPanel.unavailable'.tr(),
+            message: 'ee.perfPanel.unavailableBody'.tr(),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(eePerformanceProvider.notifier).refresh(),
+          child: ListView(
+            padding: awPagePadding(context, AwSpace.x4),
+            children: [
+              _Caution(text: data.closedIsNotPerformance),
+              const SizedBox(height: AwSpace.x4),
+              _RangePicker(
+                days: days,
+                onChanged: (value) {
+                  ref.read(eePerformanceRangeProvider.notifier).set(value);
+                },
+              ),
+              const SizedBox(height: AwSpace.x2),
+              // U-20: what every figure below counts, and whose.
+              Text(
+                'ee.perfPanel.scope'.tr(),
+                key: const Key('perf-scope'),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+              EeFigureScopeLine(scope: data.scope),
+              const SizedBox(height: AwSpace.x6),
+              // EE-268 (AW-E21): "how long do repairs take, apart from
+              // access requests?" — first, because it is the question
+              // this panel is opened to answer.
+              _Rows(
+                titleKey: 'ee.perfPanel.byProcessType',
+                emptyKey: 'ee.perfPanel.noProcessTypes',
+                rows: data.processTypes,
+                showCsat: false,
+                labelOf: (row) => row.key == null
+                    ? 'ee.perfPanel.processTypeNone'.tr()
+                    : 'ee.perfPanel.processType.${row.key}'.tr(),
+              ),
+              const SizedBox(height: AwSpace.x6),
+              _Rows(
+                titleKey: 'ee.perfPanel.byUnit',
+                emptyKey: 'ee.perfPanel.noUnits',
+                rows: data.units,
+              ),
+              const SizedBox(height: AwSpace.x6),
+              _Rows(
+                titleKey: 'ee.perfPanel.byAgent',
+                emptyKey: 'ee.perfPanel.noAgents',
+                rows: data.agents,
+                unnamedKey: 'ee.perfPanel.unattributed',
+                // A person has no SLA of their own: no compliance figure.
+                showCompliance: false,
+              ),
+            ],
+          ),
+        );
+      },
+    );
+    if (embedded) return body;
     return Scaffold(
       appBar: AppBar(
         leading: awRouteLeading(context),
         title: Text('ee.perfPanel.title'.tr()),
       ),
-      body: panel.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
-        // again — never the exception's own text.
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eePerformanceProvider),
-        ),
-        data: (data) {
-          if (data == null) {
-            return AwEmptyState(
-              icon: Icons.groups_outlined,
-              title: 'ee.perfPanel.unavailable'.tr(),
-              message: 'ee.perfPanel.unavailableBody'.tr(),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () => ref.read(eePerformanceProvider.notifier).refresh(),
-            child: ListView(
-              padding: awPagePadding(context, AwSpace.x4),
-              children: [
-                _Caution(text: data.closedIsNotPerformance),
-                const SizedBox(height: AwSpace.x4),
-                _RangePicker(
-                  days: days,
-                  onChanged: (value) {
-                    ref.read(eePerformanceRangeProvider.notifier).set(value);
-                  },
-                ),
-                const SizedBox(height: AwSpace.x6),
-                // EE-268 (AW-E21): "how long do repairs take, apart from
-                // access requests?" — first, because it is the question
-                // this panel is opened to answer.
-                _Rows(
-                  titleKey: 'ee.perfPanel.byProcessType',
-                  emptyKey: 'ee.perfPanel.noProcessTypes',
-                  rows: data.processTypes,
-                  showCsat: false,
-                  labelOf: (row) => row.key == null
-                      ? 'ee.perfPanel.processTypeNone'.tr()
-                      : 'ee.perfPanel.processType.${row.key}'.tr(),
-                ),
-                const SizedBox(height: AwSpace.x6),
-                _Rows(
-                  titleKey: 'ee.perfPanel.byUnit',
-                  emptyKey: 'ee.perfPanel.noUnits',
-                  rows: data.units,
-                ),
-                const SizedBox(height: AwSpace.x6),
-                _Rows(
-                  titleKey: 'ee.perfPanel.byAgent',
-                  emptyKey: 'ee.perfPanel.noAgents',
-                  rows: data.agents,
-                  unnamedKey: 'ee.perfPanel.unattributed',
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+      body: body,
     );
   }
 }
@@ -183,6 +201,7 @@ class _Rows extends StatelessWidget {
     this.unnamedKey,
     this.labelOf,
     this.showCsat = true,
+    this.showCompliance = true,
   });
 
   final String titleKey;
@@ -196,6 +215,9 @@ class _Rows extends StatelessWidget {
 
   /// Satisfaction is asked per unit and per person, never per kind of work.
   final bool showCsat;
+
+  /// Units and kinds of work have an SLA figure; people do not.
+  final bool showCompliance;
 
   @override
   Widget build(BuildContext context) {
@@ -213,6 +235,7 @@ class _Rows extends StatelessWidget {
               row: row,
               label: labelOf?.call(row),
               showCsat: showCsat,
+              showCompliance: showCompliance,
               // A null key on the people axis is work nobody was there for.
               // Named rather than dropped: the rows have to add up to the
               // desk's totals or somebody spends an afternoon reconciling them.
@@ -232,12 +255,14 @@ class _RowCard extends StatelessWidget {
     required this.fallbackLabel,
     this.label,
     this.showCsat = true,
+    this.showCompliance = true,
   });
 
   final EePerformanceRow row;
   final String fallbackLabel;
   final String? label;
   final bool showCsat;
+  final bool showCompliance;
 
   /// An average with its denominator, or a dash. Never a bare number and never
   /// a zero standing in for "nothing measured".
@@ -287,10 +312,25 @@ class _RowCard extends StatelessWidget {
                       labelKey: 'ee.perfPanel.csat',
                       value: _csat(row.csat),
                     ),
-                  if (row.compliance != null)
+                  // U-20: the share with its denominator, and "—" when
+                  // nothing was judged — a row that opened nothing is at no
+                  // percentage, not at one borrowed from elsewhere.
+                  if (showCompliance &&
+                      (row.compliance != null || row.judged != null))
                     _Figure(
+                      key: Key('perf-compliance-${row.key ?? 'none'}'),
                       labelKey: 'ee.perfPanel.compliance',
-                      value: awFormatPercent(row.compliance),
+                      value: row.compliance == null || row.judged == 0
+                          ? kAwNoValue
+                          : awFormatPercent(row.compliance),
+                      caption:
+                          row.compliance == null ||
+                              row.judged == null ||
+                              row.judged == 0
+                          ? null
+                          : 'ee.perfPanel.complianceOf'.tr(
+                              args: {'judged': awFormatNumber(row.judged!)},
+                            ),
                     ),
                 ],
               ),
@@ -304,10 +344,18 @@ class _RowCard extends StatelessWidget {
 
 /// One figure: a word above a number, both readable in black and white.
 class _Figure extends StatelessWidget {
-  const _Figure({required this.labelKey, required this.value});
+  const _Figure({
+    super.key,
+    required this.labelKey,
+    required this.value,
+    this.caption,
+  });
 
   final String labelKey;
   final String value;
+
+  /// What the number is out of (U-20), under it.
+  final String? caption;
 
   @override
   Widget build(BuildContext context) {
@@ -323,6 +371,13 @@ class _Figure extends StatelessWidget {
           ),
         ),
         Text(value, style: theme.textTheme.titleMedium),
+        if (caption != null)
+          Text(
+            caption!,
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
       ],
     );
   }

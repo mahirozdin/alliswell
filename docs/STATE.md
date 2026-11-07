@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-408 tek biçimlendirici; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-409 uzantı listeleri; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-409** — Uzantı listeleri: varsayılan görünüm, kimde, sayıların kapsamı ⚠️ extension-seam |
-| Last completed           | OPH-408 — tek biçimlendirici (DESIGN §17 D6–D8, ADR-0063 #6): tarih, saat, süre, para, yüzde, dosya boyutu `core/format.dart`'tan; sıra, 12/24 saat ve ayırıcılar dil değil cihaz bölgesine göre (`core/format_region.dart`); varsayılan biçim sayısal tarih yazmaz ("13:47", "Yarın 11:00", "7 Kas, 13:47"); uzantı ekranları dahil bütün çağrı yerleri geçti; `format_single_source_test` ham `NumberFormat`/`DateFormat`/`toStringAsFixed`'i yakalar. |
+| ➡️ **Next task**         | **OPH-410** — Uzantı geniş ekran düzeni ⚠️ extension-seam |
+| Last completed           | OPH-409 — uzantı listeleri (U-18…U-20, U-22, E-03, E-19): talep kuyruğu birim değilken "Tüm birimler"le açılır (canlı, satırda birim), birim çipi o birimin kuyruğuna süzer, süzgeç çipleri birim seçilince; satırda "Açan · Alan", atanmamış işaretli; SLA ve İş yükü talepler başlığında sekme; her sayının yanında kapsamı, payda 0'da "—"; Ana Sayfa'da talep kartları; üye olmayana "Yeni talep" yok; eski atamalar adresi nereye taşındığını söyler. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
