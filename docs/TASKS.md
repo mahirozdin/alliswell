@@ -36,15 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-402 — Mikrofon: sağlayıcı yokken dikte
-
-U-07, U-14; metinler persona Ek A-66, A-07.
-
-- [ ] AI sağlayıcısı yokken dokunuş dikteye girer, sonuç hızlı ekleme alanına yazılır (ADR-0057:
-      tarihsiz → Fikirler); sağlayıcı varken bugünkü davranış.
-- [ ] İzin beklenirken "Mikrofon izni bekleniyor"; AI sohbetinin sağlayıcısız çıkmazına iki düğme.
-- **Kabul:** widget testleri. **Cihazda bakılacak:** iPhone'da sağlayıcısız dikte → Fikirler.
-
 ### OPH-403 — Yeni görev sayfası: Vazgeç / Ekle
 
 U-11.

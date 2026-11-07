@@ -402,7 +402,14 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
                 children: [
                   Icon(Icons.mic, color: Theme.of(context).colorScheme.primary),
                   const SizedBox(width: AwSpace.x2),
-                  Text('ai.voice.listening'.tr()),
+                  // A-66: not "Listening…" behind an unanswered OS prompt.
+                  Flexible(
+                    child: Text(
+                      state.awaitingMic
+                          ? 'ai.voice.waitingPermission'.tr()
+                          : 'ai.voice.listening'.tr(),
+                    ),
+                  ),
                 ],
               ),
               if (state.partial.isNotEmpty) ...[
@@ -472,8 +479,29 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
               title: 'ai.bubble.unconfiguredTitle'.tr(),
               message: 'ai.bubble.unconfiguredBody'.tr(),
             ),
-            if (state.input.trim().isNotEmpty)
-              _saveToInboxButton(state.input.trim()),
+            // A-07: the two ways out, always on screen — the face used to
+            // name a fix and offer no button for it (U-07).
+            Padding(
+              padding: const EdgeInsets.only(top: AwSpace.x3),
+              child: Wrap(
+                alignment: WrapAlignment.center,
+                spacing: AwSpace.x2,
+                runSpacing: AwSpace.x2,
+                children: [
+                  OutlinedButton.icon(
+                    key: const Key('ai-connect-provider'),
+                    icon: const Icon(Icons.link),
+                    label: Text('ai.bubble.connectProvider'.tr()),
+                    onPressed: () {
+                      final router = GoRouter.of(context);
+                      Navigator.of(context).pop();
+                      router.push('/settings/ai');
+                    },
+                  ),
+                  _saveToInboxAction(state.input.trim()),
+                ],
+              ),
+            ),
           ],
         );
       default:
@@ -485,23 +513,27 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
   /// or unconfigured: nothing said is lost, and it works with zero AI.
   Widget _saveToInboxButton(String text) => Padding(
     padding: const EdgeInsets.only(top: AwSpace.x3),
-    child: FilledButton.tonalIcon(
-      key: const Key('ai-save-inbox'),
-      icon: const Icon(Icons.inbox_outlined),
-      label: Text('ai.bubble.saveToInbox'.tr()),
-      onPressed: () async {
-        final navigator = Navigator.of(context);
-        final messenger = ScaffoldMessenger.of(context);
-        await ref
-            .read(aiBubbleControllerProvider.notifier)
-            .captureToInbox(text);
-        navigator.pop();
-        messenger.showSnackBar(
-          SnackBar(content: Text('ai.voice.savedToInbox'.tr())),
-        );
-      },
-    ),
+    child: _saveToInboxAction(text),
   );
+
+  /// Disabled while there is nothing to save (the unconfigured face shows it
+  /// before anything is typed).
+  Widget _saveToInboxAction(String text) => FilledButton.tonalIcon(
+    key: const Key('ai-save-inbox'),
+    icon: const Icon(Icons.inbox_outlined),
+    label: Text('ai.bubble.saveToInbox'.tr()),
+    onPressed: text.isEmpty ? null : () => _captureToInbox(text),
+  );
+
+  Future<void> _captureToInbox(String text) async {
+    final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+    await ref.read(aiBubbleControllerProvider.notifier).captureToInbox(text);
+    navigator.pop();
+    messenger.showSnackBar(
+      SnackBar(content: Text('ai.voice.savedToInbox'.tr())),
+    );
+  }
 
   Widget _composer(AiBubbleState state, AiBubbleController controller) {
     // While recording, the composer is Cancel + Stop (the transcript shows
@@ -590,7 +622,9 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
             },
             onChanged: controller.editInput,
             decoration: InputDecoration(
-              hintText: 'ai.bubble.hint'.tr(),
+              hintText: state.phase == AiBubblePhase.unconfigured
+                  ? 'ai.bubble.hintUnconfigured'.tr()
+                  : 'ai.bubble.hint'.tr(),
               border: const OutlineInputBorder(),
             ),
           ),
@@ -759,6 +793,13 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
     AiBubbleState state,
     AiBubbleController controller,
   ) async {
+    // OPH-402 (A-07): with no provider, everything typed goes to the Inbox
+    // — the face says so — instead of a chat turn nobody can answer.
+    if (state.phase == AiBubblePhase.unconfigured) {
+      final text = _input.text.trim();
+      if (text.isNotEmpty) await _captureToInbox(text);
+      return;
+    }
     if (state.phase != AiBubblePhase.reviewing) {
       // Round 15b: the field is the truth at tap time — sync, then clear
       // INSTANTLY. The old flow cleared only after the intent gate answered,

@@ -1354,9 +1354,11 @@
       "sharedContent": "Paylaşılan içerik",
       "offlineTitle": "Çevrimdışısın",
       "offlineBody": "Yapay zekâ bağlantı ister. Yine de bunu Fikirler'e kaydedebilirsin.",
-      "unconfiguredTitle": "Henüz yapay zekâ sağlayıcısı yok",
-      "unconfiguredBody": "Ayarlar'dan bir sağlayıcı ekle, ya da bunu Fikirler'e kaydet.",
-      "saveToInbox": "Fikirler'e kaydet"
+      "unconfiguredTitle": "Asistan için bir yapay zekâ sağlayıcısı bağla",
+      "unconfiguredBody": "Bağlayana kadar yazdığın her şey Fikirler'e kaydedilir.",
+      "saveToInbox": "Fikirler'e kaydet",
+      "connectProvider": "Sağlayıcı bağla",
+      "hintUnconfigured": "Fikirler'e kaydedilecek bir şey yaz…"
     },
     "confirm": {
       "title": "Bu işleri gözden geçir",
@@ -1380,7 +1382,11 @@
       "cancel": "Vazgeç",
       "mic": "Konuş",
       "savedToInbox": "Fikirler'e kaydedildi",
-      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Fikirler'e kaydet."
+      "noIntent": "Bunu bir göreve dönüştüremedim. Farklı söyle ya da Fikirler'e kaydet.",
+      "waitingPermission": "Mikrofon izni bekleniyor",
+      "dictateTitle": "Söylediğin görev olarak eklenecek",
+      "done": "Bitir",
+      "dictateLabel": "Sesle görev ekle"
     },
     "share": {
       "makeTask": "Görev yap",

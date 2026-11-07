@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-402** — Mikrofon: sağlayıcı yokken dikte |
-| Last completed           | OPH-401 — Ana Sayfa'nın ilk ekranı (DESIGN §47): telefonda (<600 pt) takvim hafta şeridiyle açılır, ay bir dokunuşla, seçim cihazda saklanır; bölüm başlıkları 15/20 w700 + ayrı sayaç, dokununca katlanır; hızlı ekleme boşken sağda kontrol yok, yazınca ✨ ve ↑ (32 pt dolu daire), odakta örnek şeridi + "Daha fazla", süs "+" kalktı; gönderince "Eklendi: {başlık} · {zaman}" + "Geri al" (A-67), yeni satır vurgulanır ve görünmüyorsa liste ona kayar. |
+| ➡️ **Next task**         | **OPH-403** — Yeni görev sayfası: Vazgeç / Ekle |
+| Last completed           | OPH-402 — sağlayıcısız mikrofon (DESIGN §48): AI açık ama sağlayıcı bağlı değilken mikrofona dokunmak ya da basılı tutmak sohbet yerine dikte sayfasını açar; izin beklenirken "Mikrofon izni bekleniyor" (sohbette de, A-66), dinlerken "Söylediğin görev olarak eklenecek" + canlı döküm + "Bitir"; söylenen hızlı ekleme alanına düşer, ↑ Fikirler kuralıyla kaydeder (tarihsiz → Fikirler, tarihli → açık görev); sohbetin sağlayıcısız yüzünde yeni metin + "Sağlayıcı bağla" / "Fikirler'e kaydet" (A-07), Enter Fikirler'e kaydeder. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

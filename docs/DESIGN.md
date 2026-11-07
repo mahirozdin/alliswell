@@ -1169,7 +1169,9 @@ opens I can lift my finger and it stays open.")_
 - **AI4 — Every state has a face, and no state lies.** Listening (waveform),
   thinking (indicator), streaming (tokens + a live Stop), error (the
   `status_views.dart` idiom + retry), offline/unconfigured (honest copy + "save to
-  Inbox" — voice capture works with zero AI). Latency budgets: partials <300 ms
+  Inbox" — voice capture works with zero AI; since OPH-402 the unconfigured face
+  also has "Connect a provider", and with no provider the microphone dictates
+  instead of opening the bubble, §48). Latency budgets: partials <300 ms
   cadence, finalize ≤500 ms, first token <2 s, full card <4 s; exceeding them shows
   progress, never a frozen surface.
 - **AI5 — Proposals are cards, commits are human.** Extraction output renders as a
@@ -1832,3 +1834,15 @@ U-04, U-13, C-06, R-11 ([research](research/2026-11-design-ux/mobbin-design.md) 
 | Q6 | **Home says what quick add did:** a 3 s snackbar "Eklendi: {title} · {when}" (A-67; {when} is the short date, or "Tarihsiz") with "Geri al", which deletes the task (and stops a typed repeat's series). | The field emptied with no sign, and people typed it twice (U-13). |
 | Q7 | **The new row is lit and brought into sight:** a `primary` 16 % wash fading over 1.2 s (held for 2 s with reduced motion); when the row is off screen — or in a folded section, which opens — the list moves to it (alignment 0.3). | The row could be under the calendar or at the end of a long list. |
 | K1 | **Measured:** `test/features/home/home_first_screen_test.dart` (strip default/persisted/600 pt, headers, fold, snackbar + undo, reveal; first screen at 393×852 and 390×844 with the store set and the real Roboto), `month_calendar_test`, `quick_add_bar_test`. With the store set's dateless rows, No date sits between Overdue and Today (OPH-102), so the "Overdue + Today ≥ 3 rows" check runs on the set without them; with them, Overdue and two more rows are on the first screen. | Kabul of OPH-401. |
+
+## 48. The microphone without an AI provider (OPH-402)
+
+U-07, U-14; copy A-66, A-07. `ai/ui/dictation_sheet.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| V1 | **AI on, no provider → the microphone dictates** (`aiDictationMode`). Tap, hold and a screen reader's activation open the dictation sheet, not the bubble; the button reads "Sesle görev ekle". An unknown status (loading) keeps the bubble, which re-reads it. With a provider nothing changes. | The chat could not answer and led to a dead end (U-07). |
+| V2 | **Three faces, none lies:** while the engine starts — on first use, behind the OS prompt — "Mikrofon izni bekleniyor"; listening: "Söylediğin görev olarak eklenecek" (`titleMedium`), the live words in `headlineSmall` w400, Cancel and a filled stop labelled "Bitir" under it; then the words in a quick-add field (§39/§47, hint "Fikirler'e kaydedilecek bir şey yaz…"). No mic or no permission → the field at once, with the denied line. The bubble's own listening face uses the same waiting line. | "Dinliyorum…" sat behind an unanswered permission prompt (U-14, A-66). |
+| V3 | **Nothing is saved before ↑.** The field is the Inbox bar's: same parse, `createCapture` (ADR-0057 §3) — dateless → Inbox, dated → an open task — then the sheet closes with "Fikirler'e eklendi: …" / "Eklendi: … · {date}". Cancel or a swipe down discards. | The transcript is always editable (AI9); one capture rule. |
+| V4 | **The bubble's unconfigured face has two buttons:** "Sağlayıcı bağla" (→ `/settings/ai`) and "Fikirler'e kaydet" (disabled until something is typed); Enter there saves to the Inbox, as the copy promises. | A-07: the face named a fix and offered no button. |
+| K1 | `test/features/ai/dictation_test.dart` (10 widget tests). | Kabul of OPH-402. |

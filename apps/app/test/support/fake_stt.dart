@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:alliswell/src/features/ai/data/stt.dart';
 
 /// A scripted SttController for tests (OPH-223) — no platform channel. Feed it
@@ -19,9 +21,15 @@ class FakeSttController implements SttController {
   final List<String> calls = [];
   void Function(String text, bool isFinal)? _onResult;
 
+  /// Holds [initialize] open — the OS permission prompt still on screen
+  /// (OPH-402). Complete it to answer the prompt.
+  Completer<void>? initGate;
+
   @override
   Future<SttInit> initialize() async {
     calls.add('initialize');
+    final gate = initGate;
+    if (gate != null) await gate.future;
     return SttInit(available: available, onDevice: onDevice);
   }
 

@@ -56,6 +56,10 @@ This file holds the unreleased changes and the latest release; at each release t
   tap away (your choice is kept). Section headings are bolder, show their count apart, and fold
   with a tap. The quick-add box stays plain until you type, shows examples when you tap it, and
   after adding says "Added: … · Undo", highlights the new task and scrolls to it.
+- **The microphone adds tasks by voice even without an AI provider**: say it, check the words in
+  the quick-add box and add it; with no date it goes to your Inbox. While the phone asks for the
+  microphone, the screen says so, and the assistant's "no provider" screen now has "Connect a
+  provider" and "Save to Inbox" buttons.
 
 ## [1.18.2] — 2026-10-30
 

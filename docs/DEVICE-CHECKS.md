@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Sağlayıcısız mikrofon (2026-11-07)
+
+- OPH-402 — **iPhone, AI açık ama sağlayıcı bağlı değil, TR, açık ve koyu**: mikrofona ilk dokunuşta iOS izin soruları açıkken sayfada "Mikrofon izni bekleniyor" yazıyor (arkada "Dinliyorum…" yok); izin verilince "Söylediğin görev olarak eklenecek" ve söylenen canlı görünüyor; "Bitir"e basınca metin hızlı ekleme alanında, ↑ ile "Fikirler'e eklendi: …" çıkıyor ve görev Fikirler'de; "yarın 9'da …" denince tarihli görev Ana Sayfa'da. Basılı tutunca da aynı sayfa açılıp dinliyor. İzin reddedilince sayfa yazma alanıyla açılıyor. VoiceOver düğmeyi "Sesle görev ekle" diye okuyor. **Android'de** aynı akış (TalkBack).
+
 ## Ana Sayfa ilk ekranı (2026-11-07)
 
 - OPH-401 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa hafta şeridiyle açılıyor (bugün dolu mavi daire, görev noktası), "Ayı göster" ayı açıyor ve uygulama yeniden açılınca seçim kalıyor; ilk ekranda Geciken satırı ve altındaki bölümler görünüyor. Bölüm başlığına dokununca bölüm katlanıp açılıyor, ok dönüyor; VoiceOver/TalkBack "Geciken bölümünü daralt, N görev" okuyor. Hızlı eklemeye dokununca altta örnek şeridi + "Daha fazla", yazınca ✨ (AI varsa) ve mavi ↑ geliyor; gönderince "Eklendi: … · Geri al" 3 sn görünüyor, satır kısa süre vurgulanıyor, tarihsiz görevde liste ona kayıyor ve klavye açıkken hızlı ekleme alanı yazmaya devam edilince geri geliyor. **Metin boyutu en büyük**: şeritte rakamlar dairenin içinde.

@@ -351,6 +351,7 @@ class AiBubbleController extends Notifier<AiBubbleState> {
       state = _machine.openComposing(state);
       return;
     }
+    state = _machine.micReady(state);
     await stt.start(
       localeId: _sttLocaleId(),
       onResult: (text, isFinal) {

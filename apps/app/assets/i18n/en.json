@@ -1355,9 +1355,11 @@
       "sharedContent": "Shared content",
       "offlineTitle": "You're offline",
       "offlineBody": "The AI needs a connection. You can still save this to your Inbox.",
-      "unconfiguredTitle": "No AI provider yet",
-      "unconfiguredBody": "Add a provider in Settings, or save this to your Inbox.",
-      "saveToInbox": "Save to Inbox"
+      "unconfiguredTitle": "Connect an AI provider to use the assistant",
+      "unconfiguredBody": "Until then, anything you type is saved to your Inbox.",
+      "saveToInbox": "Save to Inbox",
+      "connectProvider": "Connect a provider",
+      "hintUnconfigured": "Type something to save to your Inbox…"
     },
     "confirm": {
       "title": "Review these tasks",
@@ -1381,7 +1383,11 @@
       "cancel": "Cancel",
       "mic": "Speak",
       "savedToInbox": "Saved to your Inbox",
-      "noIntent": "I couldn't turn that into a task. Try rephrasing, or save it to your Inbox."
+      "noIntent": "I couldn't turn that into a task. Try rephrasing, or save it to your Inbox.",
+      "waitingPermission": "Waiting for microphone permission",
+      "dictateTitle": "What you say will be added as a task",
+      "done": "Done",
+      "dictateLabel": "Add a task by voice"
     },
     "share": {
       "makeTask": "Make a task",

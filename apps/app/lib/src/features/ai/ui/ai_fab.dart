@@ -10,6 +10,7 @@ import '../providers.dart';
 import 'ai_bubble.dart';
 import 'ai_bubble_controller.dart';
 import 'ai_ptt_machine.dart';
+import 'dictation_sheet.dart';
 
 /// The press-to-talk AI FAB (OPH-223, DESIGN §24 AI2). Since OPH-397
 /// (ADR-0062 §3) it is the 48 px half of the shell's action cluster, beside
@@ -44,7 +45,12 @@ class _AiFabState extends ConsumerState<AiFab> {
     super.dispose();
   }
 
+  /// OPH-402: AI on, no provider — the microphone dictates into a quick add
+  /// instead of opening a chat that cannot answer (U-07).
+  bool get _dictating => aiDictationMode(ref.read(aiStatusProvider).value);
+
   void _run(List<AiPttAction> actions) {
+    if (_dictating) return _runDictation(actions);
     for (final action in actions) {
       switch (action) {
         case AiPttAction.hapticStart:
@@ -63,6 +69,29 @@ class _AiFabState extends ConsumerState<AiFab> {
           ref.read(aiBubbleControllerProvider.notifier).stopListening();
         case AiPttAction.cancelStt:
           ref.read(aiBubbleControllerProvider.notifier).cancelListening();
+      }
+    }
+  }
+
+  /// The same gesture over the dictation sheet: tap and hold both open it
+  /// (the sheet starts listening itself); a cancel goes to the session.
+  /// Note: pushing the sheet makes the Navigator cancel the active pointer,
+  /// so after the sheet opens the sheet's own Cancel is the way out.
+  void _runDictation(List<AiPttAction> actions) {
+    for (final action in actions) {
+      switch (action) {
+        case AiPttAction.hapticStart:
+          HapticFeedback.mediumImpact();
+        case AiPttAction.hapticCancel:
+          HapticFeedback.heavyImpact();
+        case AiPttAction.openBubbleComposing:
+        case AiPttAction.openBubbleListening:
+          showDictationSheet(context);
+        case AiPttAction.cancelStt:
+          ref.read(dictationControllerProvider.notifier).cancel();
+        case AiPttAction.startStt:
+        case AiPttAction.finalizeStt:
+          break;
       }
     }
   }
@@ -99,13 +128,18 @@ class _AiFabState extends ConsumerState<AiFab> {
   /// nothing at all. It opens the bubble the way a plain tap does.
   void _onActivated() {
     if (_pointerAnswered) return;
-    showAiBubble(context);
+    if (_dictating) {
+      showDictationSheet(context);
+    } else {
+      showAiBubble(context);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
+    final dictating = aiDictationMode(ref.watch(aiStatusProvider).value);
     return Listener(
       onPointerDown: _onDown,
       onPointerMove: _onMove,
@@ -115,8 +149,10 @@ class _AiFabState extends ConsumerState<AiFab> {
       // button beside it — two stops for a screen reader, one of them silent.
       child: Semantics(
         button: true,
-        label: 'ai.voice.fabLabel'.tr(),
-        hint: 'ai.voice.fabHint'.tr(),
+        label: dictating
+            ? 'ai.voice.dictateLabel'.tr()
+            : 'ai.voice.fabLabel'.tr(),
+        hint: dictating ? null : 'ai.voice.fabHint'.tr(),
         excludeSemantics: true,
         onTap: _onActivated,
         // 48, not 56: the secondary action of the cluster, still a full
