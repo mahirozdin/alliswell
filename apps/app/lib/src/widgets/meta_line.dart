@@ -10,9 +10,10 @@ import 'package:flutter/widgets.dart';
 /// is everything after it — the order is the priority, so what is cut is
 /// always the least important end. Only the first item may be squeezed (it is
 /// the date, and a date that ellipsizes beats a row with no date) — and an
-/// item wrapped in [AwMetaShrink], which takes the width that is left when at
-/// least its `minWidth` is (a state that must never silently vanish, like a
-/// silenced alarm). A dropped item is neither painted, hit nor read out.
+/// item wrapped in [AwMetaShrink], which takes the width that is left (a state
+/// that must never silently vanish, like a silenced alarm). The items before
+/// it hold its `minWidth` back: the date squeezes and the others drop rather
+/// than crowd it out. A dropped item is neither painted, hit nor read out.
 ///
 /// With [wrap] (the large-text row) the items flow onto as many lines as they
 /// need instead, [runSpacing] apart.
@@ -155,19 +156,28 @@ class RenderAwMetaLine extends RenderBox
     final lines = <List<(RenderBox, Size)>>[[]];
     final hidden = <RenderBox>[];
     var x = 0.0;
+    // Once an item is dropped, only a later [AwMetaShrink] item may still be
+    // placed; everything else after the drop goes too.
+    var dropping = false;
     var stopped = false;
     var index = 0;
     for (var child = firstChild; child != null; index++) {
-      final next = (child.parentData! as _MetaParentData).nextSibling;
-      if (stopped) {
+      final data = child.parentData! as _MetaParentData;
+      final next = data.nextSibling;
+      final shrinkTo = data.shrinkTo;
+      if (stopped || (dropping && shrinkTo == null)) {
         hidden.add(child);
         child = next;
         continue;
       }
+      // E35 G-B review r2: the room a later shrinkable item needs is held
+      // back, so a long date (1.3× text) cannot leave it less than its
+      // minimum and drop it. The squeezable first item yields that room.
+      final reserve = _wrap ? 0.0 : _reserveAfter(next);
+      final room = maxWidth - reserve;
       var size = measure(child, loose);
       final gap = lines.last.isEmpty ? 0.0 : _spacing;
-      if (x + gap + size.width > maxWidth) {
-        final shrinkTo = (child.parentData! as _MetaParentData).shrinkTo;
+      if (x + gap + size.width > (shrinkTo == null ? room : maxWidth)) {
         final left = maxWidth - x - gap;
         if (_wrap) {
           if (lines.last.isNotEmpty) {
@@ -178,14 +188,21 @@ class RenderAwMetaLine extends RenderBox
             size = measure(child, BoxConstraints(maxWidth: maxWidth));
           }
         } else if (index == 0) {
-          size = measure(child, BoxConstraints(maxWidth: maxWidth));
+          size = measure(
+            child,
+            BoxConstraints(maxWidth: room > 0 ? room : maxWidth),
+          );
         } else if (shrinkTo != null && left >= shrinkTo) {
           // It takes the rest of the line, so nothing after it fits.
           size = measure(child, BoxConstraints(maxWidth: left));
           stopped = true;
         } else {
-          stopped = true;
           hidden.add(child);
+          if (reserve > 0) {
+            dropping = true;
+          } else {
+            stopped = true;
+          }
           child = next;
           continue;
         }
@@ -227,6 +244,18 @@ class RenderAwMetaLine extends RenderBox
       }
     }
     return out;
+  }
+
+  /// The width the first [AwMetaShrink] item from [child] on needs (its
+  /// minimum plus the gap before it); 0 when there is none.
+  double _reserveAfter(RenderBox? child) {
+    while (child != null) {
+      final data = child.parentData! as _MetaParentData;
+      final shrinkTo = data.shrinkTo;
+      if (shrinkTo != null) return shrinkTo + _spacing;
+      child = data.nextSibling;
+    }
+    return 0;
   }
 
   @override
