@@ -50,7 +50,7 @@ void main() {
     // Initial route is /home: title in the app bar + nav destination, and the
     // empty state shows since the fake workspace has no tasks.
     expect(find.text('Home'), findsWidgets);
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
   });
 
   testWidgets('navigating to another section swaps the screen', (tester) async {

@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-404** — Tanıtım turu 4 adım, boş Ana Sayfa'da eylem |
-| Last completed           | OPH-403 — yeni görev sayfası (DESIGN §49): başlık satırında solda "Vazgeç", sağda "Ekle" (düzenlemede "Kaydet"; 17/22 w600, başlık boşken pasif), alttaki düğme kalktı; klavyenin "Bitti"si başlık doluysa oluşturur; ≥800 px'te 640 px iletişim kutusu, Ctrl/⌘+Enter oluşturur; yazılmış bir şey varken Vazgeç, karartı, Geri, Esc ve aşağı kaydırma "Yazdıkların silinsin mi?" diye sorar. |
+| ➡️ **Next task**         | **OPH-405** — Masaüstü: rail her yerde, detay paneli, kısayollar |
+| Last completed           | OPH-404 — ilk açılış (DESIGN §50): tanıtım turu 7 adımdan 4'e indi — hızlı yaz ("yarın 15:00 diş hekimi #sağlık"), sesle ekle (yalnız mikrofon çiziliyse), acil alarm, her yerde ara; her adım kendi denetimini aydınlatır, "Atla" kartın içinde "İleri"nin solunda; kurumsal turda mikrofonun yerini Talepler alır. Boş Ana Sayfa ikiye ayrıldı: hiç görevi olmayan hesapta "Henüz görev yok" + "İlk görevini ekle" (hızlı ekleme alanına odaklanır) + "Todoist ya da TickTick'ten taşı"; işi bitmişte "Bugünlük bu kadar / Açık görevin kalmadı." (A-12), şemsiye yerine onay dairesi. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

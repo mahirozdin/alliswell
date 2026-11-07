@@ -63,6 +63,9 @@ This file holds the unreleased changes and the latest release; at each release t
 - **The new-task form has Cancel and Add at the top**, so you never scroll to save; the keyboard's
   Done adds the task too. On a computer it opens as a dialog and Ctrl/⌘+Enter adds it, and
   swiping the form away asks before throwing away what you typed.
+- **The first-run tour is four short steps** — typing a task with its time and tag, adding by
+  voice, the urgent alarm and search — each pointing at its own button. A new account's empty
+  Home now offers "Add your first task" and a way to move in from Todoist or TickTick.
 
 ## [1.18.2] — 2026-10-30
 

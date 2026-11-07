@@ -1858,3 +1858,14 @@ U-11 (research `ux-core-screens.md` Q8); U-08's desktop dialog. `tasks/ui/task_c
 | N3 | **Nothing typed is lost without a question:** once the title, description or picked files differ from what the sheet opened with, Cancel, the scrim, Back, Escape and a swipe down ask "Yazdıkların silinsin mi?" — "Yazmaya devam et" / "Sil". A swipe ends in `Navigator.pop`, past `PopScope`, so the sheet's own route refuses it in `didPop` and drives the sheet back up. An untouched sheet closes at once. | A swipe meant to peek threw a half-written task away. |
 | N4 | **From `kAwWideBreakpoint` (800) the form is a centred 640 px dialog**, same header and rules (no sticky footer yet: U-08's shell round). | A phone sheet stretched across a desktop window. |
 | K1 | `test/features/tasks/create_sheet_header_test.dart` (7 widget tests). | Kabul of OPH-403. |
+
+## 50. First run: the four-step tour and the empty Home (OPH-404)
+
+U-33, U-28; copy A-12. Research `ux-core-screens.md` §4.1. `onboarding/tour.dart`, `home/home_screen.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| F1 | **Four steps, each something to do:** Hızlı yaz (the syntax, with an example the offline parser reads — "yarın 15:00 diş hekimi #sağlık") · Sesle ekle · Acil alarm · Her yerde ara. Sesle ekle only where the microphone is drawn (`aiStatus.enabled`); a team's window puts Talepler in its place. No tab-by-tab steps, no welcome or farewell card. | Seven steps toured Notes and Files and never said how to add a task (U-33). |
+| F2 | **Each step spotlights its own control** through a `TourAnchor` (quick-add field, microphone, search orb or rail entry); the alarm step, or a target not on screen, is a centred card. The card goes below an anchor in the top half, above one in the bottom half, right of a rail item; it is placed in the overlay's own box. "Atla" sits in the card left of "İleri", so "İleri" never moves; the last step has only "Bitti". | The spotlight used to point at unlabelled tab icons, and Skip sat on the settings gear. |
+| F3 | **Two empty Homes:** no task of any status in scope (`hasAnyTaskProvider`) → "Henüz görev yok" / "Yukarıdaki kutuya yazarak ilk görevini ekle." + a filled "İlk görevini ekle" (focuses the quick-add field; only with `tasks.create`) + a text button "Todoist ya da TickTick'ten taşı" (→ `/settings/import`, §37). Otherwise "Bugünlük bu kadar" / "Açık görevin kalmadı." with a check circle. Unknown reads as done. | "Her şey tamam" and a beach umbrella were said to somebody who had never added a task (U-28). |
+| K1 | `test/features/onboarding/tour_test.dart`, `test/features/home/home_empty_test.dart`. | Kabul of OPH-404. |

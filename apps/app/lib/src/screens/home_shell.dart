@@ -83,8 +83,10 @@ class HomeShell extends ConsumerWidget {
 
   /// The on-screen rect of the step's specific nav destination — works for both
   /// the bottom bar and the rail (whichever icon is mounted). Null for
-  /// welcome/farewell cards or an anchor that isn't laid out yet (graceful).
+  /// centred cards or an anchor that isn't laid out yet (graceful).
   static Rect? _anchorRect(TourStep step) {
+    final target = step.target;
+    if (target != null) return TourAnchor.rectOf(target);
     final section = step.section;
     if (section == null) return null;
     final keys = _navKeys[section]!;
@@ -133,7 +135,7 @@ class HomeShell extends ConsumerWidget {
       key: const Key('shell-fab-cluster'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        const AiFab(),
+        const TourAnchor(target: TourTarget.voice, child: AiFab()),
         if (section != null) ...[
           const SizedBox(width: kAwFabClusterGap),
           section,
@@ -456,8 +458,11 @@ class HomeShell extends ConsumerWidget {
                         // OPH-374: search everywhere heads the rail — the
                         // first thing on the left, as in every desktop app
                         // with a palette (DESIGN §40 P1).
-                        leading: AwGlobalSearchRailEntry(
-                          extended: extendedRail,
+                        leading: TourAnchor(
+                          target: TourTarget.search,
+                          child: AwGlobalSearchRailEntry(
+                            extended: extendedRail,
+                          ),
                         ),
                         // OPH-199: the shortcut section sits right under the
                         // destinations. `scrollable` is not optional — a full
@@ -560,7 +565,10 @@ class HomeShell extends ConsumerWidget {
                     // section puts "More" in the fifth.
                     Expanded(child: _phoneTabs(context, visibleSections)),
                     const SizedBox(width: AwSpace.x2),
-                    const AwGlobalSearchOrb(),
+                    const TourAnchor(
+                      target: TourTarget.search,
+                      child: AwGlobalSearchOrb(),
+                    ),
                   ],
                 ),
               ),
@@ -578,7 +586,7 @@ class HomeShell extends ConsumerWidget {
           Positioned.fill(
             child: TourOverlay(
               state: tour,
-              anchorRect: _anchorRect(tour.current),
+              resolveAnchor: () => _anchorRect(tour.current),
               onNext: () => ref.read(tourControllerProvider.notifier).next(),
               onSkip: () => ref.read(tourControllerProvider.notifier).skip(),
             ),

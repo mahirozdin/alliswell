@@ -133,7 +133,7 @@ void main() {
 
     await submitCode(tester, '123456');
     expect(find.byKey(const Key('second-factor-dialog')), findsNothing);
-    expect(find.text('All caught up'), findsOneWidget, reason: 'in the shell');
+    expect(find.text('No tasks yet'), findsOneWidget, reason: 'in the shell');
 
     expect(bodies, hasLength(3));
     for (final body in bodies) {
@@ -174,7 +174,7 @@ void main() {
     await typePassword(tester);
     await submitCode(tester, 'ABCDE-12345');
 
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
   });
 
   testWidgets('Google sign-in asks for the code and resends the SAME token '
@@ -203,7 +203,7 @@ void main() {
     );
     await submitCode(tester, '123456');
 
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
     expect(social.googleCalls, 1);
     expect(bodies, hasLength(3));
     for (final body in bodies) {
@@ -249,7 +249,7 @@ void main() {
     await typePassword(tester);
 
     expect(find.byKey(const Key('second-factor-dialog')), findsNothing);
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
     expect(bodies.single?.containsKey('totpCode'), isFalse);
   });
 }

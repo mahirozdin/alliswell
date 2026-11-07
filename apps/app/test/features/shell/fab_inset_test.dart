@@ -81,7 +81,7 @@ void main() {
     await tester.pumpWidget(await teamApp(api));
     await tester.pumpAndSettle();
 
-    final sentence = find.text('home.allCaughtUpBody'.tr());
+    final sentence = find.text('home.firstRunBody'.tr());
     expect(sentence, findsOneWidget);
     final text = tester.getRect(sentence);
     final fabs = find.byType(FloatingActionButton);

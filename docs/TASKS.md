@@ -36,14 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-404 — Tanıtım turu 4 adım, boş Ana Sayfa'da eylem
-
-`ux-core-screens.md` §4.1.
-
-- [ ] Tur 7 → 4 adım: hızlı ekleme sözdizimi, sesle ekleme, acil alarm, arama.
-- [ ] Boş Ana Sayfa'da "İlk görevini ekle" + içe aktar bağlantısı.
-- **Kabul:** widget testleri.
-
 ### OPH-405 — Masaüstü: rail her yerde, detay paneli, kısayollar
 
 U-08; `ux-core-screens.md` §3.3, §6.

@@ -273,7 +273,7 @@
   },
   "home": {
     "allCaughtUp": "All caught up",
-    "allCaughtUpBody": "No open tasks — capture one in the Inbox.",
+    "allCaughtUpBody": "Nothing left open.",
     "quickAddHint": "Quick add a task…",
     "quickAddForDay": "Quick add for {date}…",
     "added": "Added: {title} · {when}",
@@ -293,7 +293,11 @@
     },
     "searchHint": "Search tasks, captures and your calendar…",
     "searchEmptyTitle": "No results",
-    "searchEmptyBody": "Nothing matches “{query}”."
+    "searchEmptyBody": "Nothing matches “{query}”.",
+    "firstRunTitle": "No tasks yet",
+    "firstRunBody": "Type in the box above to add your first task.",
+    "firstRunAdd": "Add your first task",
+    "firstRunImport": "Move in from Todoist or TickTick"
   },
   "board": {
     "viewList": "List",
@@ -745,23 +749,16 @@
     "next": "Next",
     "done": "Done",
     "stepOf": "App tour, step {step} of {total}",
-    "welcomeTitle": "Welcome to AllisWell",
-    "welcomeBody": "A 30-second tour of the essentials. You can skip it anytime.",
-    "homeTitle": "Home",
-    "homeBody": "Your day in one chronological list — overdue, dateless work, today, and the next 30 days. Quick-add at the top; the + button opens the full form.",
-    "inboxTitle": "Inbox",
-    "inboxBody": "Capture a thought fast. It stays here — out of Home — until you plan it, so nothing gets lost and nothing clutters your day.",
-    "projectsTitle": "Projects",
-    "projectsBody": "Group work with a color and a README overview, with its own tasks and notes. Archive a project when it is done.",
-    "notesTitle": "Notes",
-    "notesBody": "Rich notes you can pin, archive, and link to tasks and projects.",
-    "doneTitle": "You’re all set",
-    "doneBody": "Reopen this tour anytime from Settings → App tour.",
-    "filesTitle": "Files",
-    "filesBody": "Your whole space’s files: personal folders plus everything attached to projects, tasks and notes.",
     "ticketsTitle": "Requests",
     "ticketsBody": "Report a problem or ask for something, and follow it until it is done. Your requests and their answers live here.",
-    "filesBodyTeam": "Your unit's files: everything attached to projects, tasks and notes, in one place."
+    "quickAddTitle": "Type it fast",
+    "quickAddBody": "Type your task in this box. Add the time and a tag on the same line: “tomorrow 3pm dentist #health”.",
+    "voiceTitle": "Add by voice",
+    "voiceBody": "Use the microphone button to say your task instead of typing it.",
+    "alarmTitle": "Urgent alarm",
+    "alarmBody": "A task with a time rings as an alarm when it is due, even with the phone on silent. Turn Urgent alarm off in a task's details when you don't want it.",
+    "searchTitle": "Search everywhere",
+    "searchBody": "Find your tasks, notes, projects and files in one place. Ctrl+K (⌘K on a Mac) opens it from the keyboard."
   },
   "error": {
     "unknown": "Something went wrong. Please try again.",

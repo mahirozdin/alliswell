@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## İlk açılış: tur ve boş Ana Sayfa (2026-11-07)
+
+- OPH-404 — **iPhone 393 ve Android 360, TR, açık ve koyu; ayrıca masaüstü ≥1200 px**: yeni hesapla ilk girişte (ya da Ayarlar → Uygulama turu) tur 4 adım: "Hızlı yaz" kartı hızlı ekleme alanının altında ve alan aydınlık; "Sesle ekle" mikrofonu, "Her yerde ara" alttaki büyüteci (masaüstünde raydaki arama kutusunu) çerçeveliyor; "Acil alarm" ortada. "Atla" kartın içinde "İleri"nin solunda, "İleri" adımlar arasında yer değiştirmiyor; kart hiçbir adımda ekran dışına taşmıyor. Turu bitirince boş Ana Sayfa'da "Henüz görev yok" + "İlk görevini ekle" (dokununca klavye hızlı ekleme alanında açılıyor) + "Todoist ya da TickTick'ten taşı" (içe aktarma sihirbazını açıyor); metin yüzen düğmelerin altında kalmıyor. Bir görevi tamamlayınca "Bugünlük bu kadar / Açık görevin kalmadı." ve onay dairesi. VoiceOver/TalkBack kartı "Uygulama turu, adım 1/4" diye okuyor.
+
 ## Yeni görev sayfası (2026-11-07)
 
 - OPH-403 — **iPhone 393 ve Android 360, TR, açık ve koyu**: Ana Sayfa'daki + ile sayfa açılınca klavye açıkken başlık satırında solda "Vazgeç", sağda mavi "Ekle" görünüyor; başlık boşken "Ekle" soluk ve basılmıyor; klavyedeki "Bitti"/✓ görevi oluşturup sayfayı kapatıyor. Bir şey yazıp tutamaktan aşağı kaydırınca sayfa geri yukarı çıkıp "Yazdıkların silinsin mi?" soruyor, "Yazmaya devam et" metni koruyor; boş sayfa soru sormadan kapanıyor. Android'de Geri tuşu da soruyor. **Masaüstü (macOS/Windows/web ≥800 px)**: form ortada iletişim kutusu, Ctrl/⌘+Enter oluşturuyor, Esc yazılmışsa soruyor. VoiceOver/TalkBack "Ekle" düğmesini başlık boşken devre dışı okuyor.

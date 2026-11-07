@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
@@ -32,6 +33,7 @@ import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
 import '../ee/providers.dart';
+import '../onboarding/tour.dart' show TourAnchor, TourTarget;
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/quick_add_apply.dart';
@@ -616,20 +618,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           // OPH-222: the ✨ parse rider — only when AI is configured.
           final aiConfigured =
               ref.watch(aiStatusProvider).value?.configured ?? false;
-          final quickAdd = QuickAddBar(
-            key: const Key('home-quick-add'),
-            // Hoisted state (H4) — see [_quickAddController].
-            controller: _quickAddController,
-            focusNode: _quickAddFocus,
-            hintText: selectedDay == null
-                ? 'home.quickAddHint'.tr()
-                : 'home.quickAddForDay'.tr(
-                    args: {
-                      'date': awFormatDate(selectedDay, format: dateFormat),
-                    },
-                  ),
-            onAdd: _quickAdd,
-            onParse: aiConfigured ? _parseWithAi : null,
+          final quickAdd = TourAnchor(
+            target: TourTarget.quickAdd,
+            child: QuickAddBar(
+              key: const Key('home-quick-add'),
+              // Hoisted state (H4) — see [_quickAddController].
+              controller: _quickAddController,
+              focusNode: _quickAddFocus,
+              hintText: selectedDay == null
+                  ? 'home.quickAddHint'.tr()
+                  : 'home.quickAddForDay'.tr(
+                      args: {
+                        'date': awFormatDate(selectedDay, format: dateFormat),
+                      },
+                    ),
+              onAdd: _quickAdd,
+              onParse: aiConfigured ? _parseWithAi : null,
+            ),
           );
 
           // Honest alarm-degradation banner (OPH-143): only shown when the OS
@@ -691,6 +696,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                               controller: _wideScroll,
                                               flashId: _flashId,
                                               flashKey: _flashKey,
+                                              quickAddFocus: _quickAddFocus,
                                             ),
                                     ),
                                   ),
@@ -784,12 +790,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                         ),
                       ),
                     if (!searching && groups.isEmpty)
-                      const SliverFillRemaining(
+                      SliverFillRemaining(
                         hasScrollBody: false,
                         // Inside the scroll view already: its own scroll view
                         // must not eat the pull.
                         child: _HomeEmpty(
-                          physics: NeverScrollableScrollPhysics(),
+                          physics: const NeverScrollableScrollPhysics(),
+                          quickAddFocus: _quickAddFocus,
                         ),
                       ),
                     if (!searching && groups.isNotEmpty)
@@ -846,6 +853,7 @@ class _GroupedTaskList extends StatelessWidget {
     this.controller,
     this.flashId,
     this.flashKey,
+    this.quickAddFocus,
   });
 
   final List<HomeGroup> groups;
@@ -855,11 +863,17 @@ class _GroupedTaskList extends StatelessWidget {
   final String? flashId;
   final GlobalKey? flashKey;
 
+  /// The quick-add field the first-run empty state's button focuses.
+  final FocusNode? quickAddFocus;
+
   @override
   Widget build(BuildContext context) {
     // Both branches are the scrollable the pull gesture needs (OPH-171).
     if (groups.isEmpty) {
-      return const _HomeEmpty(physics: AlwaysScrollableScrollPhysics());
+      return _HomeEmpty(
+        physics: const AlwaysScrollableScrollPhysics(),
+        quickAddFocus: quickAddFocus,
+      );
     }
     return ListView(
       controller: controller,
@@ -880,12 +894,15 @@ class _GroupedTaskList extends StatelessWidget {
 /// Home's "nothing to do" state — shared by both layouts so it reads the same
 /// in the wide ListView and the narrow SliverFillRemaining.
 class _HomeEmpty extends ConsumerWidget {
-  const _HomeEmpty({this.physics});
+  const _HomeEmpty({this.physics, this.quickAddFocus});
 
   /// See [AwEmptyState.physics]: always-scrollable in the wide layout (it IS
   /// the scrollable), never-scrollable inside the narrow sliver (the
   /// CustomScrollView above it owns the gesture).
   final ScrollPhysics? physics;
+
+  /// See [_GroupedTaskList.quickAddFocus].
+  final FocusNode? quickAddFocus;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -912,8 +929,43 @@ class _HomeEmpty extends ConsumerWidget {
         ],
       );
     }
+    // OPH-404 (U-28, A-12, DESIGN §50 F3): "all caught up" said to someone
+    // who has never added a task is the wrong sentence. An account with no
+    // task of any status gets a first-run state with the way in; one whose
+    // work is done gets a done state. Unknown (the query has not answered)
+    // reads as done — the first-run face appearing a frame later is fine,
+    // telling a busy user "no tasks yet" is not.
+    if (ref.watch(hasAnyTaskProvider).value == false) {
+      final canCreate = ref.watch(canProvider('tasks.create'));
+      return AwEmptyState(
+        key: const Key('home-empty-first-run'),
+        icon: Icons.add_task,
+        title: 'home.firstRunTitle'.tr(),
+        message: 'home.firstRunBody'.tr(),
+        physics: physics,
+        action: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canCreate)
+              FilledButton.icon(
+                key: const Key('home-empty-add-first'),
+                onPressed: () => quickAddFocus?.requestFocus(),
+                icon: const Icon(Icons.add),
+                label: Text('home.firstRunAdd'.tr()),
+              ),
+            const SizedBox(height: AwSpace.x2),
+            TextButton(
+              key: const Key('home-empty-import'),
+              onPressed: () => context.push('/settings/import'),
+              child: Text('home.firstRunImport'.tr()),
+            ),
+          ],
+        ),
+      );
+    }
     return AwEmptyState(
-      icon: Icons.beach_access_outlined,
+      key: const Key('home-empty-done'),
+      icon: Icons.check_circle_outline,
       title: 'home.allCaughtUp'.tr(),
       message: 'home.allCaughtUpBody'.tr(),
       physics: physics,

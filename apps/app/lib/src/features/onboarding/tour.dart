@@ -1,8 +1,11 @@
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/kv/local_kv.dart';
 import '../../i18n/i18n.dart';
 import '../../sections.dart';
+import '../ai/providers.dart' show aiStatusProvider;
 import '../ee/providers.dart' show eeFeatureProvider, eeStatusProvider;
 import '../ee/team_origin.dart' show teamOriginProvider;
 
@@ -14,12 +17,24 @@ const kOnboardingSeenKey = 'alliswell_onboarding_seen_v1';
 /// never covers the app under test (OPH-111).
 final tourAutoStartProvider = Provider<bool>((_) => true);
 
-/// One step of the tour. [section] anchors the spotlight to a nav destination;
-/// a null section is a plain centered card (welcome / farewell).
+/// What a step points at besides a nav destination (OPH-404). Each one is
+/// marked in the tree by a [TourAnchor]; a target that is not on screen
+/// (a narrow window, a section that hides it) falls back to a centred card.
+enum TourTarget { quickAdd, voice, search }
+
+/// One step of the tour. [target] or [section] anchors the spotlight; both
+/// null is a plain centred card (the urgent alarm has nothing on Home to
+/// point at).
 class TourStep {
-  const TourStep({this.section, required this.titleKey, required this.bodyKey});
+  const TourStep({
+    this.section,
+    this.target,
+    required this.titleKey,
+    required this.bodyKey,
+  });
 
   final AppSection? section;
+  final TourTarget? target;
   final String titleKey;
   final String bodyKey;
 
@@ -27,88 +42,137 @@ class TourStep {
   String get body => bodyKey.tr();
 }
 
-/// The tour script: a welcome card, one spotlight per nav section, and a
-/// farewell pointing at Settings. Section copy stays close to each
-/// `AppSection.description` so the tour and the tooltips don't drift.
+/// OPH-404 (U-33, research `ux-core-screens.md` §4.1, DESIGN §50): four
+/// things a person does on day one, not a walk past every tab. The old
+/// seven steps toured Notes and Files and never said how to add a task.
+const TourStep kTourQuickAdd = TourStep(
+  target: TourTarget.quickAdd,
+  titleKey: 'tour.quickAddTitle',
+  bodyKey: 'tour.quickAddBody',
+);
+const TourStep kTourVoice = TourStep(
+  target: TourTarget.voice,
+  titleKey: 'tour.voiceTitle',
+  bodyKey: 'tour.voiceBody',
+);
+const TourStep kTourAlarm = TourStep(
+  titleKey: 'tour.alarmTitle',
+  bodyKey: 'tour.alarmBody',
+);
+const TourStep kTourSearch = TourStep(
+  target: TourTarget.search,
+  titleKey: 'tour.searchTitle',
+  bodyKey: 'tour.searchBody',
+);
+
+/// The personal tour. [kTourVoice] only where the microphone is drawn
+/// (`aiFabVisible`): a server without AI has no voice entry, and a step
+/// about a button that is not there is worse than one step fewer.
 const List<TourStep> kTourSteps = [
-  TourStep(titleKey: 'tour.welcomeTitle', bodyKey: 'tour.welcomeBody'),
-  TourStep(
-    section: AppSection.home,
-    titleKey: 'tour.homeTitle',
-    bodyKey: 'tour.homeBody',
-  ),
-  TourStep(
-    section: AppSection.inbox,
-    titleKey: 'tour.inboxTitle',
-    bodyKey: 'tour.inboxBody',
-  ),
-  TourStep(
-    section: AppSection.projects,
-    titleKey: 'tour.projectsTitle',
-    bodyKey: 'tour.projectsBody',
-  ),
-  TourStep(
-    section: AppSection.notes,
-    titleKey: 'tour.notesTitle',
-    bodyKey: 'tour.notesBody',
-  ),
-  TourStep(
-    section: AppSection.files,
-    titleKey: 'tour.filesTitle',
-    bodyKey: 'tour.filesBody',
-  ),
-  TourStep(titleKey: 'tour.doneTitle', bodyKey: 'tour.doneBody'),
+  kTourQuickAdd,
+  kTourVoice,
+  kTourAlarm,
+  kTourSearch,
 ];
 
 /// The same tour for somebody in an organisation's window (OPH-356,
-/// UI-AUDIT #83): the service desk is in their navigation, so the tour shows
-/// them where to ask for something and follow it — and Files does not promise
-/// "personal folders" in an app where the organisation's handbook says there
-/// is no personal space.
+/// UI-AUDIT #83): the service desk is what they came for, so its step takes
+/// the microphone's place (OPH-404).
 const List<TourStep> kTeamTourSteps = [
-  TourStep(titleKey: 'tour.welcomeTitle', bodyKey: 'tour.welcomeBody'),
-  TourStep(
-    section: AppSection.home,
-    titleKey: 'tour.homeTitle',
-    bodyKey: 'tour.homeBody',
-  ),
+  kTourQuickAdd,
   TourStep(
     section: AppSection.tickets,
     titleKey: 'tour.ticketsTitle',
     bodyKey: 'tour.ticketsBody',
   ),
-  TourStep(
-    section: AppSection.inbox,
-    titleKey: 'tour.inboxTitle',
-    bodyKey: 'tour.inboxBody',
-  ),
-  TourStep(
-    section: AppSection.projects,
-    titleKey: 'tour.projectsTitle',
-    bodyKey: 'tour.projectsBody',
-  ),
-  TourStep(
-    section: AppSection.notes,
-    titleKey: 'tour.notesTitle',
-    bodyKey: 'tour.notesBody',
-  ),
-  TourStep(
-    section: AppSection.files,
-    titleKey: 'tour.filesTitle',
-    bodyKey: 'tour.filesBodyTeam',
-  ),
-  TourStep(titleKey: 'tour.doneTitle', bodyKey: 'tour.doneBody'),
+  kTourAlarm,
+  kTourSearch,
 ];
 
 /// Which script this window gets: the team's where the service desk is drawn
 /// — the same two answers the navigation asks (`home_shell`, EE-290) — and
-/// the personal one everywhere else.
+/// the personal one everywhere else, without the voice step when AI is off.
 final tourStepsProvider = Provider<List<TourStep>>((ref) {
   final desk =
       ref.watch(eeFeatureProvider('itsm')) &&
       ref.watch(teamOriginProvider) != null;
-  return desk ? kTeamTourSteps : kTourSteps;
+  if (desk) return kTeamTourSteps;
+  final mic = ref.watch(aiStatusProvider).value?.enabled ?? false;
+  if (mic) return kTourSteps;
+  return [
+    for (final s in kTourSteps)
+      if (s != kTourVoice) s,
+  ];
 });
+
+/// Marks the widget a [TourTarget] step spotlights (OPH-404). A registry of
+/// mounted contexts, not a GlobalKey: the search entry and the microphone
+/// are rebuilt by layout switches and FAB transitions, where a GlobalKey
+/// mounted twice for a frame is a crash and a stale context is only a
+/// missing spotlight.
+class TourAnchor extends StatefulWidget {
+  const TourAnchor({super.key, required this.target, required this.child});
+
+  final TourTarget target;
+  final Widget child;
+
+  static final Map<TourTarget, BuildContext> _mounted = {};
+
+  /// Bumped after an anchor mounts or leaves, once its frame is laid out:
+  /// Home's field arrives after the tour has started, and the overlay must
+  /// move its spotlight onto it rather than keep a centred card.
+  static final ValueNotifier<int> changes = ValueNotifier(0);
+
+  static void _announce() {
+    SchedulerBinding.instance.addPostFrameCallback((_) => changes.value++);
+  }
+
+  /// The target's on-screen rect, or null when it is not laid out.
+  static Rect? rectOf(TourTarget target) {
+    final context = _mounted[target];
+    if (context == null || !context.mounted) return null;
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !box.attached) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  @override
+  State<TourAnchor> createState() => _TourAnchorState();
+}
+
+class _TourAnchorState extends State<TourAnchor> {
+  @override
+  void initState() {
+    super.initState();
+    TourAnchor._mounted[widget.target] = context;
+    TourAnchor._announce();
+  }
+
+  @override
+  void didUpdateWidget(TourAnchor old) {
+    super.didUpdateWidget(old);
+    if (old.target != widget.target) {
+      _release(old.target);
+      TourAnchor._mounted[widget.target] = context;
+    }
+  }
+
+  void _release(TourTarget target) {
+    if (identical(TourAnchor._mounted[target], context)) {
+      TourAnchor._mounted.remove(target);
+      TourAnchor._announce();
+    }
+  }
+
+  @override
+  void dispose() {
+    _release(widget.target);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
 
 /// Tour position. [running] gates the overlay; [step] indexes [steps] — the
 /// script fixed when the tour started, so a window that changes under a
@@ -157,6 +221,14 @@ class TourController extends Notifier<TourState> {
       try {
         await ref
             .read(eeStatusProvider.future)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {}
+    }
+    // The voice step depends on whether the microphone is drawn (OPH-404).
+    if (ref.read(aiStatusProvider).isLoading) {
+      try {
+        await ref
+            .read(aiStatusProvider.future)
             .timeout(const Duration(seconds: 3));
       } catch (_) {}
     }

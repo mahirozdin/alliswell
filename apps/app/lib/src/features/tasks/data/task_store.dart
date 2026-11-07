@@ -76,6 +76,17 @@ class TaskStore {
     (t) => taskScopeFilter(_db, t, scope),
   );
 
+  /// Whether the scope holds any task at all, of any status (OPH-404): the
+  /// line between Home's first-run empty state and its "all done" one. One
+  /// row, no join — Home watches it beside its own list.
+  Stream<bool> watchHasAnyIn(TaskScope scope) {
+    final query = _db.selectOnly(_db.tasks)
+      ..addColumns([_db.tasks.id])
+      ..where(taskScopeFilter(_db, _db.tasks, scope))
+      ..limit(1);
+    return query.watch().map((rows) => rows.isNotEmpty);
+  }
+
   Stream<List<Task>> watchInbox(String workspaceId) =>
       watchInboxIn(TaskScope.workspace(workspaceId));
 

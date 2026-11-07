@@ -128,6 +128,19 @@ final boardTasksProvider = StreamProvider<List<Task>>((ref) async* {
   yield* ref.watch(taskStoreProvider).watchAllIn(scope);
 });
 
+/// Whether this scope has ever held a task (OPH-404) — see
+/// [TaskStore.watchHasAnyIn]. No scope yet answers true: the first-run face
+/// is only for an account the replica KNOWS is empty.
+final hasAnyTaskProvider = StreamProvider<bool>((ref) async* {
+  ref.watch(syncEnginesProvider);
+  final scope = await ref.watch(taskScopeProvider.selectAsync((s) => s));
+  if (scope == null) {
+    yield true;
+    return;
+  }
+  yield* ref.watch(taskStoreProvider).watchHasAnyIn(scope);
+});
+
 /// The calendar day selected on Home/Calendar (shared so the selection is
 /// consistent across both tabs). Null = no selection.
 class SelectedDayController extends Notifier<DateTime?> {
