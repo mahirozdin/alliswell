@@ -57,9 +57,14 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   AlarmFeedback? _feedback;
   bool _busy = false;
 
-  /// Silent because the user said so, not because the platform refused. The
+  /// Silent because of a setting, not because the platform refused. The
   /// screen has to tell those apart: one is a setting, the other is a failure.
-  bool _silentByChoice = false;
+  bool _silent = false;
+
+  /// ...and whether the person picked that setting, or it is the browser's
+  /// default nobody chose (OPH-393, E-20). Only the first may be claimed as
+  /// theirs.
+  bool _silenceChosen = false;
 
   @override
   void initState() {
@@ -77,8 +82,9 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     // `start()` is a no-op, which would make the manual "start the sound" a
     // dead button, and an offer that does nothing is the same lie as an alarm
     // that looks like it is ringing.
-    _silentByChoice = !widget.missed && ref.read(alarmSilentByChoiceProvider);
-    if (!_silentByChoice) feedback.start();
+    _silent = !widget.missed && ref.read(alarmOpensSilentProvider);
+    _silenceChosen = _silent && ref.read(alarmSilenceChosenProvider);
+    if (!_silent) feedback.start();
     // The one alarm surface we can prove rang (OPH-176): this screen.
     ref
         .read(alarmLogProvider)
@@ -232,238 +238,252 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       // A MISSED one may be backed out of — it is history being reviewed, and
       // trapping someone in a screen about Tuesday would be its own bug.
       canPop: widget.missed,
-      child: Material(
-        key: const Key('alarm-ring'),
-        color: background,
-        child: SafeArea(
-          child: Center(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(AwSpace.x6),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ScaleTransition(
-                      scale: Tween<double>(begin: 0.92, end: 1.08).animate(
-                        CurvedAnimation(
-                          parent: _pulse,
-                          curve: Curves.easeInOut,
-                        ),
-                      ),
-                      child: Container(
-                        width: 108,
-                        height: 108,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: tokens.prioUrgent.withValues(alpha: 0.14),
-                          border: Border.all(
-                            color: tokens.prioUrgent,
-                            width: 2,
+      // OPH-393 (E-20): the shell layers this screen OVER Home in a Stack
+      // (`home_shell.dart`), and Home's controls stayed in the semantics tree
+      // underneath — a screen reader could land behind a ringing alarm. This
+      // drops everything painted before it, as a route's barrier does.
+      child: BlockSemantics(
+        child: Material(
+          key: const Key('alarm-ring'),
+          color: background,
+          child: SafeArea(
+            child: Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(AwSpace.x6),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 460),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ScaleTransition(
+                        scale: Tween<double>(begin: 0.92, end: 1.08).animate(
+                          CurvedAnimation(
+                            parent: _pulse,
+                            curve: Curves.easeInOut,
                           ),
                         ),
-                        child: Icon(
-                          Icons.alarm,
-                          size: 52,
+                        child: Container(
+                          width: 108,
+                          height: 108,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: tokens.prioUrgent.withValues(alpha: 0.14),
+                            border: Border.all(
+                              color: tokens.prioUrgent,
+                              width: 2,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.alarm,
+                            size: 52,
+                            color: tokens.prioUrgent,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: AwSpace.x5),
+                      Text(
+                        (widget.missed
+                                ? 'alarm.missed.label'.tr()
+                                : 'alarm.ringing.label'.tr())
+                            .toUpperCase(),
+                        style: text.labelLarge?.copyWith(
                           color: tokens.prioUrgent,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
                         ),
                       ),
-                    ),
-                    const SizedBox(height: AwSpace.x5),
-                    Text(
-                      (widget.missed
-                              ? 'alarm.missed.label'.tr()
-                              : 'alarm.ringing.label'.tr())
-                          .toUpperCase(),
-                      style: text.labelLarge?.copyWith(
-                        color: tokens.prioUrgent,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: AwSpace.x2),
-                    Text(
-                      widget.alarm.taskTitle,
-                      textAlign: TextAlign.center,
-                      style: text.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: scheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: AwSpace.x2),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.schedule,
-                          size: 18,
-                          color: scheme.onSurfaceVariant,
+                      const SizedBox(height: AwSpace.x2),
+                      Text(
+                        widget.alarm.taskTitle,
+                        textAlign: TextAlign.center,
+                        style: text.headlineSmall?.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: scheme.onSurface,
                         ),
-                        const SizedBox(width: AwSpace.x1),
-                        Text(
-                          widget.missed
-                              ? 'alarm.missed.ago'.tr(
-                                  args: {
-                                    'time': time,
-                                    'ago': awRelativePast(
-                                      alarmFireAt(widget.alarm),
-                                      ref.read(alarmClockProvider)(),
-                                    ),
-                                  },
-                                )
-                              : time,
-                          style: text.titleMedium?.copyWith(
+                      ),
+                      const SizedBox(height: AwSpace.x2),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.schedule,
+                            size: 18,
                             color: scheme.onSurfaceVariant,
                           ),
-                        ),
-                      ],
-                    ),
-                    // OPH-316: silence the user chose, declared. Without this
-                    // line the screen is indistinguishable from an alarm that
-                    // failed to ring — which is the one outcome
-                    // NOTIFICATIONS §3 forbids.
-                    if (_silentByChoice)
-                      Padding(
-                        padding: const EdgeInsets.only(top: AwSpace.x4),
-                        child: Column(
-                          children: [
-                            Text(
-                              'alarm.silentByChoice'.tr(),
-                              key: const Key('alarm-silent-declared'),
-                              textAlign: TextAlign.center,
-                              style: text.bodyMedium?.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: AwSpace.x2),
-                            OutlinedButton.icon(
-                              key: const Key('alarm-start-sound'),
-                              onPressed: () => _feedback?.start(),
-                              icon: const Icon(Icons.volume_up, size: 18),
-                              label: Text('alarm.startSound'.tr()),
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      // OPH-180: when the platform refused to make noise (a
-                      // browser's autoplay policy, no audio device), say so and
-                      // offer to start it — never pretend the room is loud.
-                      ValueListenableBuilder<bool>(
-                        valueListenable: _feedback!.soundBlocked,
-                        builder: (context, blocked, _) => blocked
-                            ? Padding(
-                                padding: const EdgeInsets.only(top: AwSpace.x4),
-                                child: OutlinedButton.icon(
-                                  key: const Key('alarm-start-sound'),
-                                  onPressed: () => _feedback?.start(),
-                                  icon: const Icon(Icons.volume_up, size: 18),
-                                  label: Text('alarm.startSound'.tr()),
-                                ),
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                    const SizedBox(height: AwSpace.x6),
-                    SizedBox(
-                      width: double.infinity,
-                      child: FilledButton.icon(
-                        key: const Key('alarm-acknowledge'),
-                        onPressed: _busy ? null : _acknowledge,
-                        style: FilledButton.styleFrom(
-                          backgroundColor: scheme.error,
-                          foregroundColor: scheme.onError,
-                          padding: const EdgeInsets.symmetric(
-                            vertical: AwSpace.x4,
-                          ),
-                          textStyle: text.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        icon: const Icon(Icons.notifications_active),
-                        label: Text('notif.action.acknowledge'.tr()),
-                      ),
-                    ),
-                    const SizedBox(height: AwSpace.x5),
-                    Text(
-                      'alarm.ringing.snooze'.tr(),
-                      style: text.labelMedium?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                        letterSpacing: 0.4,
-                      ),
-                    ),
-                    const SizedBox(height: AwSpace.x2),
-                    Wrap(
-                      alignment: WrapAlignment.center,
-                      spacing: AwSpace.x2,
-                      runSpacing: AwSpace.x2,
-                      children: [
-                        // The user's own order (OPH-179 N4).
-                        for (final preset in ref.watch(
-                          snoozePresetOrderProvider,
-                        ))
-                          OutlinedButton(
-                            key: Key('alarm-snooze-$preset'),
-                            onPressed: _busy ? null : () => _snooze(preset),
-                            // The offset AND the instant it lands on: "5 dk"
-                            // alone made the user ask what happens next.
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(kSnoozePresetLabels[preset]!.tr()),
-                                Text(
-                                  'alarm.snoozeRingsAt'.tr(
+                          const SizedBox(width: AwSpace.x1),
+                          Text(
+                            widget.missed
+                                ? 'alarm.missed.ago'.tr(
                                     args: {
-                                      'time': awFormatTime(
-                                        TaskStore.snoozeUntilFor(preset),
-                                        format: dateFormat,
+                                      'time': time,
+                                      'ago': awRelativePast(
+                                        alarmFireAt(widget.alarm),
+                                        ref.read(alarmClockProvider)(),
                                       ),
                                     },
-                                  ),
-                                  style: text.labelSmall?.copyWith(
-                                    color: scheme.onSurfaceVariant,
-                                  ),
-                                ),
-                              ],
+                                  )
+                                : time,
+                            style: text.titleMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
                             ),
                           ),
-                        OutlinedButton(
-                          key: const Key('alarm-snooze-custom'),
-                          onPressed: _busy ? null : _snoozeCustom,
-                          child: Text('alarm.snoozeCustom'.tr()),
-                        ),
-                        // OPH-178: the way out that does NOT require lying
-                        // about the task being done.
-                        OutlinedButton.icon(
-                          key: const Key('alarm-silence'),
-                          onPressed: _busy ? null : _silence,
-                          icon: const Icon(Icons.notifications_off, size: 18),
-                          label: Text('alarm.silence'.tr()),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AwSpace.x4),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        TextButton.icon(
-                          key: const Key('alarm-complete'),
-                          onPressed: _busy ? null : _complete,
-                          icon: const Icon(
-                            Icons.check_circle_outline,
-                            size: 18,
+                        ],
+                      ),
+                      // OPH-316: a silence the settings asked for, declared.
+                      // Without this line the screen is indistinguishable from
+                      // an alarm that failed to ring — which is the one outcome
+                      // NOTIFICATIONS §3 forbids. OPH-393: "you set this" only
+                      // when the person did; a fresh browser is silent by
+                      // default and says that instead (E-20).
+                      if (_silent)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AwSpace.x4),
+                          child: Column(
+                            children: [
+                              Text(
+                                _silenceChosen
+                                    ? 'alarm.silentByChoice'.tr()
+                                    : 'alarm.silentByDefault'.tr(),
+                                key: _silenceChosen
+                                    ? const Key('alarm-silent-declared')
+                                    : const Key('alarm-silent-default'),
+                                textAlign: TextAlign.center,
+                                style: text.bodyMedium?.copyWith(
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: AwSpace.x2),
+                              OutlinedButton.icon(
+                                key: const Key('alarm-start-sound'),
+                                onPressed: () => _feedback?.start(),
+                                icon: const Icon(Icons.volume_up, size: 18),
+                                label: Text('alarm.startSound'.tr()),
+                              ),
+                            ],
                           ),
-                          label: Text('notif.action.complete'.tr()),
+                        )
+                      else
+                        // OPH-180: when the platform refused to make noise (a
+                        // browser's autoplay policy, no audio device), say so and
+                        // offer to start it — never pretend the room is loud.
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _feedback!.soundBlocked,
+                          builder: (context, blocked, _) => blocked
+                              ? Padding(
+                                  padding: const EdgeInsets.only(
+                                    top: AwSpace.x4,
+                                  ),
+                                  child: OutlinedButton.icon(
+                                    key: const Key('alarm-start-sound'),
+                                    onPressed: () => _feedback?.start(),
+                                    icon: const Icon(Icons.volume_up, size: 18),
+                                    label: Text('alarm.startSound'.tr()),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
                         ),
-                        const SizedBox(width: AwSpace.x2),
-                        TextButton.icon(
-                          key: const Key('alarm-open'),
-                          onPressed: _busy ? null : _open,
-                          icon: const Icon(Icons.open_in_new, size: 18),
-                          label: Text('notif.action.open'.tr()),
+                      const SizedBox(height: AwSpace.x6),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FilledButton.icon(
+                          key: const Key('alarm-acknowledge'),
+                          onPressed: _busy ? null : _acknowledge,
+                          style: FilledButton.styleFrom(
+                            backgroundColor: scheme.error,
+                            foregroundColor: scheme.onError,
+                            padding: const EdgeInsets.symmetric(
+                              vertical: AwSpace.x4,
+                            ),
+                            textStyle: text.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          icon: const Icon(Icons.notifications_active),
+                          label: Text('notif.action.acknowledge'.tr()),
                         ),
-                      ],
-                    ),
-                  ],
+                      ),
+                      const SizedBox(height: AwSpace.x5),
+                      Text(
+                        'alarm.ringing.snooze'.tr(),
+                        style: text.labelMedium?.copyWith(
+                          color: scheme.onSurfaceVariant,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                      const SizedBox(height: AwSpace.x2),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        spacing: AwSpace.x2,
+                        runSpacing: AwSpace.x2,
+                        children: [
+                          // The user's own order (OPH-179 N4).
+                          for (final preset in ref.watch(
+                            snoozePresetOrderProvider,
+                          ))
+                            OutlinedButton(
+                              key: Key('alarm-snooze-$preset'),
+                              onPressed: _busy ? null : () => _snooze(preset),
+                              // The offset AND the instant it lands on: "5 dk"
+                              // alone made the user ask what happens next.
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(kSnoozePresetLabels[preset]!.tr()),
+                                  Text(
+                                    'alarm.snoozeRingsAt'.tr(
+                                      args: {
+                                        'time': awFormatTime(
+                                          TaskStore.snoozeUntilFor(preset),
+                                          format: dateFormat,
+                                        ),
+                                      },
+                                    ),
+                                    style: text.labelSmall?.copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          OutlinedButton(
+                            key: const Key('alarm-snooze-custom'),
+                            onPressed: _busy ? null : _snoozeCustom,
+                            child: Text('alarm.snoozeCustom'.tr()),
+                          ),
+                          // OPH-178: the way out that does NOT require lying
+                          // about the task being done.
+                          OutlinedButton.icon(
+                            key: const Key('alarm-silence'),
+                            onPressed: _busy ? null : _silence,
+                            icon: const Icon(Icons.notifications_off, size: 18),
+                            label: Text('alarm.silence'.tr()),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: AwSpace.x4),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          TextButton.icon(
+                            key: const Key('alarm-complete'),
+                            onPressed: _busy ? null : _complete,
+                            icon: const Icon(
+                              Icons.check_circle_outline,
+                              size: 18,
+                            ),
+                            label: Text('notif.action.complete'.tr()),
+                          ),
+                          const SizedBox(width: AwSpace.x2),
+                          TextButton.icon(
+                            key: const Key('alarm-open'),
+                            onPressed: _busy ? null : _open,
+                            icon: const Icon(Icons.open_in_new, size: 18),
+                            label: Text('notif.action.open'.tr()),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),

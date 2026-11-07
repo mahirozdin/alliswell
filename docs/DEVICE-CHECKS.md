@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## İzin ve alarm şeritleri (2026-11-07)
+
+- OPH-393 — **iPhone, temiz kurulum**: giriş yap → bildirim izni penceresi açıkken arkada şerit yok; "İzin ver" → Ana Sayfa'da şerit kalmıyor; "İzin verme" → pencere kapanınca amber şerit "Bildirimler kapalı. Hatırlatıcılar sana ulaşamaz." + "Aç" düğmesi, "×" basınca kayboluyor ve uygulama yeniden açılınca da gelmiyor. Ayarlar ▸ Erişilebilirlik ▸ Daha Büyük Metin en büyükte düğme metnin altında, tam genişlikte; açık ve koyu temada okunur. **Web, VAPID anahtarı olmayan sunucu (yerel compose)**: izin verilmiş tarayıcıda "Bu sunucuda tarayıcı bildirimleri kurulu değil. Sunucu yöneticine haber ver." şeridi, düğmesiz, yalnız "×". **Web, Sessiz'e hiç dokunulmamış tarayıcı**: acil alarm kaplaması "varsayılan olarak sessiz" der, "bilerek sessiz" demez; Ayarlar'da Sessiz seçilince "Bilerek sessiz" der. VoiceOver / ekran okuyucu kaplama açıkken alttaki Ana Sayfa'ya geçmiyor.
+
 ## Web soğuk bağlantı, Google düğmesi, çevrimdışı şeridi (2026-11-07)
 
 - OPH-392 — **Web, telefon genişliği (393) ve 1440**, oturum açıkken: bir görevin adresini (`/#/tasks/<id>`) yeni sekmede aç → kısa splash'ten sonra görev detayı açılıyor; silinmiş bir görevin adresi → "Bulunamadı" + "Ana sayfaya dön". Oturum kapalıyken aynı bağlantı → giriş → giriş sonrası görev açılıyor. **Google istemcisi olmayan sunucu** (yerel compose) → giriş ekranında "Google ile devam et" yok, "veya" çizgisi de yok; hosted sunucuda düğme (iOS'ta Apple ile birlikte) duruyor. **Telefon genişliği**, Ana sayfa açıkken ağı kes (DevTools offline / uçak modu) → bir sonraki çekmede durum çubuğunun altında "Sunucuya ulaşılamıyor — son eşitlenen veriyi görüyorsun." şeridi, uygulama çubuğu şeridin altında ve iki kez boşluk yok; açık ve koyu temada okunur; ağ gelince şerit kendiliğinden kalkıyor. **iPhone ve Android** aynı şerit.

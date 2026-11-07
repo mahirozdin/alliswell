@@ -28,6 +28,7 @@ class NotificationScheduler {
     this.maxPending = 40,
     this.onForeground,
     this.refillEvery = const Duration(hours: 6),
+    this.onPermissionAsk,
     DateTime Function()? clock,
   }) : _now = clock ?? (() => DateTime.now().toUtc());
 
@@ -70,6 +71,11 @@ class NotificationScheduler {
   /// The safety net behind [onForeground]: how often to re-fill the window
   /// even if nothing happens at all.
   final Duration refillEvery;
+
+  /// Told `true` just before [start] asks the OS for permission and `false`
+  /// once every prompt it shows has been answered (OPH-393): the Home strip
+  /// waits for the answer instead of naming the problem behind the prompt.
+  final void Function(bool asking)? onPermissionAsk;
 
   final DateTime Function() _now;
 
@@ -116,6 +122,28 @@ class NotificationScheduler {
   }
 
   Future<void> start() async {
+    onPermissionAsk?.call(true);
+    try {
+      await _askForPermissions();
+    } finally {
+      onPermissionAsk?.call(false);
+    }
+    _subscription = alarms.listen((list) {
+      _latest = list;
+      unawaited(_apply());
+    });
+
+    // K3, the other half. The plan is a WINDOW over the soonest [maxPending]
+    // fire times, and until now it only ever moved when the replica emitted.
+    // A week in which no task changed was a week in which the window never
+    // advanced — NOTIFICATIONS §2 has always said "re-fill on every app
+    // foreground", and nothing was doing it.
+    _lifecycle = onForeground?.call(() => unawaited(_apply()));
+    _heartbeat = Timer.periodic(refillEvery, (_) => unawaited(_apply()));
+  }
+
+  /// Every prompt [start] shows, in order: notifications, then AlarmKit.
+  Future<void> _askForPermissions() async {
     try {
       await gateway.initialize();
       await gateway.requestPermissions();
@@ -140,18 +168,6 @@ class NotificationScheduler {
       _alarmKitSupported = false;
       _alarmKitActive = false;
     }
-    _subscription = alarms.listen((list) {
-      _latest = list;
-      unawaited(_apply());
-    });
-
-    // K3, the other half. The plan is a WINDOW over the soonest [maxPending]
-    // fire times, and until now it only ever moved when the replica emitted.
-    // A week in which no task changed was a week in which the window never
-    // advanced — NOTIFICATIONS §2 has always said "re-fill on every app
-    // foreground", and nothing was doing it.
-    _lifecycle = onForeground?.call(() => unawaited(_apply()));
-    _heartbeat = Timer.periodic(refillEvery, (_) => unawaited(_apply()));
   }
 
   void dispose() {

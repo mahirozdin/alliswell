@@ -1141,9 +1141,9 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
                 problem != null
                     ? Icons.alarm_off_outlined
                     : Icons.alarm_on_outlined,
-                color: problem != null
-                    ? Theme.of(context).colorScheme.error
-                    : null,
+                // OPH-393: a delivery problem is a warning (amber), not an
+                // error — red is for overdue and destructive (§3.3).
+                color: problem != null ? context.awTokens.warning : null,
               ),
               title: Text('settings.alarms.title'.tr()),
               subtitle: Text(subtitle),

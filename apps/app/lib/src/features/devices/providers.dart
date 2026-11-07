@@ -16,10 +16,22 @@ final deviceApiProvider = Provider<DeviceApi>(
   (ref) => HttpDeviceApi(ref.watch(apiClientProvider)),
 );
 
-/// The instance's VAPID public key, or null when this server does not do push.
-/// Read once per session: a server does not grow keys while a tab is open.
+/// What the instance said about browser push. Read once per session: a server
+/// does not grow keys while a tab is open.
+final pushKeyLookupProvider = FutureProvider<PushKeyLookup>(
+  (ref) => ref.watch(deviceApiProvider).lookupPushKey(),
+);
+
+/// The instance's VAPID public key, or null when this server does not do push
+/// (or could not be asked).
 final pushPublicKeyProvider = FutureProvider<String?>(
-  (ref) => ref.watch(deviceApiProvider).pushPublicKey(),
+  (ref) async => (await ref.watch(pushKeyLookupProvider.future)).key,
+);
+
+/// Whether the server does browser push: false only on its 404, null when it
+/// could not be asked (OPH-393).
+final pushServerConfiguredProvider = FutureProvider<bool?>(
+  (ref) async => (await ref.watch(pushKeyLookupProvider.future)).configured,
 );
 
 /// How a sender can reach this install, once something has subscribed.

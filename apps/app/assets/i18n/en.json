@@ -880,7 +880,11 @@
       "snooze": "Snooze"
     },
     "banner": {
-      "fix": "Fix"
+      "turnOn": "Turn on",
+      "allow": "Allow",
+      "finishSetup": "Finish setup",
+      "showHow": "Show me how",
+      "close": "Hide for 7 days"
     },
     "snoozeRingsAt": "rings at {time}",
     "snoozeConfirmed": "Rings again at {time}",
@@ -889,17 +893,18 @@
     "startSound": "Start the sound",
     "snoozePast": "That time has already passed — pick a later one.",
     "problem": {
-      "notificationsOff": "Notifications are off — nothing can reach you. Tap to fix.",
-      "webPermissionPrompt": "Notifications aren’t allowed in this browser yet — nothing can reach you. Tap to allow them.",
-      "webPermissionBlocked": "Notifications are blocked for this site — nothing can reach you. Tap to see how to unblock them.",
-      "webUnsupported": "This browser can’t show notifications — nothing can reach you here. Tap to see why.",
-      "webPushOff": "Notifications are allowed but nothing can reach this browser — tap to finish setting it up.",
-      "provisional": "Notifications arrive silently — no banner, no sound. Tap to fix.",
-      "soundOff": "Sound is off for AllisWell — alarms arrive without a sound. Tap to fix.",
-      "alertOff": "Banners are off — alarms only appear in Notification Centre. Tap to fix.",
-      "exactAlarmsOff": "Alarms may arrive late — allow “Alarms & reminders”. Tap to fix.",
-      "timeSensitiveOff": "Time Sensitive is off — Focus and Sleep will bury your alarms. Tap to fix.",
-      "alarmKitOff": "Alarm permission is off — urgent alarms can be silenced by the mute switch. Tap to fix."
+      "notificationsOff": "Notifications are off. Reminders can't reach you.",
+      "webPermissionPrompt": "You haven't allowed notifications in this browser yet.",
+      "webPermissionBlocked": "Notifications are blocked for this site, so reminders can't reach this tab.",
+      "webUnsupported": "This browser can't show notifications.",
+      "webPushOff": "Reminders can't reach this browser yet.",
+      "provisional": "Notifications arrive silently, with no banner or sound.",
+      "soundOff": "Sound is off for AllisWell. Alarms arrive without a sound.",
+      "alertOff": "Banners are off. Alarms only appear in Notification Centre.",
+      "exactAlarmsOff": "Alarms may arrive late. “Alarms & reminders” is off.",
+      "timeSensitiveOff": "Time Sensitive is off. Focus and Sleep may hide your alarms.",
+      "alarmKitOff": "Alarm permission is off. Urgent alarms may not ring in Silent mode.",
+      "webPushUnconfigured": "Browser notifications aren't set up on this server. Let your server admin know."
     },
     "fix": {
       "open": "Open settings",
@@ -915,7 +920,8 @@
       "alertOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Lock Screen” and “Banners”.",
       "exactAlarmsOff": "Grant “Alarms & reminders” so an alarm can ring at the exact minute instead of whenever the system next wakes up.",
       "timeSensitiveOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Time Sensitive Notifications”. Without it every Focus mode — including Sleep — hides your alarms.",
-      "alarmKitOff": "Open Settings ▸ AllisWell and allow Alarms. This is what lets an urgent alarm ring through silent mode and Focus."
+      "alarmKitOff": "Open Settings ▸ AllisWell and allow Alarms. This is what lets an urgent alarm ring through silent mode and Focus.",
+      "webPushUnconfigured": "A browser can't schedule a reminder by itself, so the server sends it. This server has no keys for browser notifications (VAPID), so nothing can be sent to any browser. Whoever runs the server can add them; reminders then reach this browser too. The apps on phones and computers are not affected."
     },
     "missed": {
       "label": "Missed alarm",
@@ -923,7 +929,8 @@
       "cardTitle": "Missed alarm",
       "cardMore": "+{n} more"
     },
-    "silentByChoice": "Silent on purpose — you set this browser to Silent."
+    "silentByChoice": "Silent on purpose: you set this browser to Silent.",
+    "silentByDefault": "Alarms in this browser are silent by default. You can turn sound on in Settings."
   },
   "alarmLog": {
     "title": "Alarm log",

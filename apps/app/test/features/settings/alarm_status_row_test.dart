@@ -81,7 +81,7 @@ void main() {
     expect(
       find.descendant(
         of: row,
-        matching: find.textContaining('allowed in this browser yet'),
+        matching: find.textContaining('allowed notifications in this browser yet'),
       ),
       findsOneWidget,
     );

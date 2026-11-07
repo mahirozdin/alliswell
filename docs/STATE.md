@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-393** ⚠push-notifications — İzin ve alarm şeritleri suç yüklemez |
-| Last completed           | OPH-392 — soğuk `/#/tasks/<id>` açılışı göreve gider (restore sırasında hedef saklanır; yerelde ve sunucuda olmayan görev "Bulunamadı" + Ana sayfa der, çevrimdışıysa söyler); `GET /auth/providers` → giriş ekranı yalnız sunucunun desteklediği Google/Apple düğmesini gösterir; telefonda sunucuya ulaşılamıyorken `AwOfflineStrip`. |
+| ➡️ **Next task**         | **OPH-394** — Veri doğruluğu: sayaçlar, alt görevler, pano tekrarları, arama |
+| Last completed           | OPH-393 — izin/alarm şeridi amber uyarı (Ek A metinleri, fiil düğmesi, "×" 7 gün, büyük metinde düğme alta); `/push/public-key` 404 → yöneticiye yönelik `webPushUnconfigured`; izin penceresi açıkken şerit yok, kapanınca yeniden yoklanır; alarm kaplaması "bilerek sessiz"i yalnız Sessiz seçildiyse der, `BlockSemantics`. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

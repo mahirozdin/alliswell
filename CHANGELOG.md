@@ -17,6 +17,11 @@ This file holds the unreleased changes and the latest release; at each release t
 - **A task link opened in a fresh web tab opens the task**, instead of spinning forever; a link to
   a task that is gone says so. "Continue with Google" appears only when your server supports it, and
   a phone now says when it can't reach the server.
+- **Notification warnings are calmer and can be closed**: an amber strip with one short sentence
+  and a button that says what it does, hidden for a week with "×". A server without browser-push
+  keys now says so as a note for its admin instead of blaming you, the strip no longer appears
+  behind the permission prompt, and the alarm screen only says "you set this browser to Silent"
+  when you did.
 
 ## [1.18.2] — 2026-10-30
 

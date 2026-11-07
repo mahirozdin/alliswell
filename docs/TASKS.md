@@ -36,16 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-393 — İzin ve alarm şeritleri suç yüklemez
-
-Kritik yol: push-notifications. U-05, E-14, E-20; metinler persona Ek A.
-
-- [ ] Sunucuda web-push anahtarı yoksa (`/push/public-key` 404) yöneticiye yönelik, kapatılabilir amber
-      uyarı; izin verildiyse şerit kalmaz.
-- [ ] Alarm kaplamasındaki "bilerek sessiz" iddiası yalnız gerçekten seçildiyse; kaplama açıkken
-      alttaki içerik `BlockSemantics`.
-- [ ] Her durum için widget testi; push yükü yalnız kimlik taşır (I-13).
-
 ### OPH-394 — Veri doğruluğu: sayaçlar, alt görevler, pano tekrarları, arama
 
 E-06, E-07, E-12, E-25.

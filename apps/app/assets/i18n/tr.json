@@ -879,7 +879,11 @@
       "snooze": "Ertele"
     },
     "banner": {
-      "fix": "Düzelt"
+      "turnOn": "Aç",
+      "allow": "İzin ver",
+      "finishSetup": "Kurulumu tamamla",
+      "showHow": "Nasıl açılır?",
+      "close": "7 gün gizle"
     },
     "snoozeRingsAt": "{time}’de çalar",
     "snoozeConfirmed": "{time}’de tekrar çalacak",
@@ -888,17 +892,18 @@
     "startSound": "Sesi başlat",
     "snoozePast": "O saat geçmiş — ileri bir saat seçin.",
     "problem": {
-      "notificationsOff": "Bildirimler kapalı — hiçbir şey size ulaşamaz. Düzeltmek için dokunun.",
-      "webPermissionPrompt": "Bu tarayıcıda bildirimlere henüz izin verilmedi — hiçbir şey size ulaşamaz. İzin vermek için dokunun.",
-      "webPermissionBlocked": "Bu site için bildirimler engellendi — hiçbir şey size ulaşamaz. Engeli nasıl kaldıracağınızı görmek için dokunun.",
-      "webUnsupported": "Bu tarayıcı bildirim gösteremiyor — burada hiçbir şey size ulaşamaz. Nedenini görmek için dokunun.",
-      "webPushOff": "Bildirimlere izin verildi ama bu tarayıcıya hiçbir şey ulaşamıyor — kurulumu tamamlamak için dokun.",
-      "provisional": "Bildirimler sessiz geliyor — ne banner ne ses. Düzeltmek için dokunun.",
-      "soundOff": "AllisWell için ses kapalı — alarmlar sessiz geliyor. Düzeltmek için dokunun.",
-      "alertOff": "Banner'lar kapalı — alarmlar yalnızca Bildirim Merkezi'nde görünüyor. Düzeltmek için dokunun.",
-      "exactAlarmsOff": "Alarmlar geç gelebilir — “Alarmlar ve anımsatıcılar” iznini verin. Düzeltmek için dokunun.",
-      "timeSensitiveOff": "Zaman Duyarlı kapalı — Odak ve Uyku modları alarmlarınızı gömecek. Düzeltmek için dokunun.",
-      "alarmKitOff": "Alarm izni kapalı — acil alarmlar sessiz düğmesiyle susturulabilir. Düzeltmek için dokunun."
+      "notificationsOff": "Bildirimler kapalı. Hatırlatıcılar sana ulaşamaz.",
+      "webPermissionPrompt": "Bu tarayıcıda bildirimlere henüz izin vermedin.",
+      "webPermissionBlocked": "Bu sitede bildirimler engelli, hatırlatıcılar bu sekmeye ulaşamaz.",
+      "webUnsupported": "Bu tarayıcı bildirim gösteremiyor.",
+      "webPushOff": "Bu tarayıcıya henüz bildirim gelmiyor.",
+      "provisional": "Bildirimler sessiz geliyor, şerit ve ses yok.",
+      "soundOff": "AllisWell'in sesi kapalı. Alarmlar sessiz gelir.",
+      "alertOff": "Bildirim şeritleri kapalı. Alarmlar yalnız Bildirim Merkezi'nde görünür.",
+      "exactAlarmsOff": "Alarmlar geç gelebilir. “Alarmlar ve anımsatıcılar” izni kapalı.",
+      "timeSensitiveOff": "Zaman Duyarlı kapalı. Odak ve Uyku modları alarmlarını gizleyebilir.",
+      "alarmKitOff": "Alarm izni kapalı. Sessiz modda acil alarmlar çalmayabilir.",
+      "webPushUnconfigured": "Bu sunucuda tarayıcı bildirimleri kurulu değil. Sunucu yöneticine haber ver."
     },
     "fix": {
       "open": "Ayarları aç",
@@ -914,7 +919,8 @@
       "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın; “Kilit Ekranı” ve “Banner'lar”ı açın.",
       "exactAlarmsOff": "“Alarmlar ve anımsatıcılar” iznini verin ki alarm sistemin bir sonraki uyanışında değil, tam dakikasında çalsın.",
       "timeSensitiveOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Zaman Duyarlı Bildirimler”i açın. Kapalıyken Uyku dahil her Odak modu alarmlarınızı gizler.",
-      "alarmKitOff": "Ayarlar ▸ AllisWell'i açın ve Alarmlara izin verin. Acil bir alarmın sessiz modu ve Odak'ı aşarak çalmasını sağlayan izin budur."
+      "alarmKitOff": "Ayarlar ▸ AllisWell'i açın ve Alarmlara izin verin. Acil bir alarmın sessiz modu ve Odak'ı aşarak çalmasını sağlayan izin budur.",
+      "webPushUnconfigured": "Bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz, onu sunucu gönderir. Bu sunucuda tarayıcı bildirimleri için anahtar (VAPID) tanımlı değil, bu yüzden hiçbir tarayıcıya gönderim yapılamıyor. Sunucuyu yöneten kişi anahtarları eklediğinde hatırlatıcılar bu tarayıcıya da gelir. Telefon ve bilgisayar uygulamaları bundan etkilenmez."
     },
     "missed": {
       "label": "Kaçırılan alarm",
@@ -922,7 +928,8 @@
       "cardTitle": "Kaçırılan alarm",
       "cardMore": "+{n} tane daha"
     },
-    "silentByChoice": "Bilerek sessiz — bu tarayıcıyı Sessiz olarak ayarladınız."
+    "silentByChoice": "Bilerek sessiz: bu tarayıcıyı Sessiz olarak ayarladın.",
+    "silentByDefault": "Bu tarayıcıda alarmlar varsayılan olarak sessiz. Sesi Ayarlar'dan açabilirsin."
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

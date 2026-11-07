@@ -530,4 +530,55 @@ void main() {
     expect(gateway.cancelled, isNot(contains(kAlarmTestNotificationId)));
     expect(gateway.scheduled.containsKey(kAlarmTestNotificationId), isTrue);
   });
+
+  // ── OPH-393: the strip waits for the prompt (U-05, ios/05) ──────────────
+  group('says when it is asking for permission', () {
+    test('brackets the OS prompt, and only the prompt', () async {
+      final asks = <bool>[];
+      final asking = _AskingGateway();
+      final s = NotificationScheduler(
+        gateway: asking,
+        // The group's own stream: `tearDown` closes it, which waits for a
+        // listener on a single-subscription controller.
+        alarms: alarms.stream,
+        privacyMode: false,
+        clock: () => now,
+        onPermissionAsk: asks.add,
+      );
+      addTearDown(s.dispose);
+      await s.start();
+      expect(asks, [true, false]);
+      expect(asking.requested, 1);
+    });
+
+    test('a prompt that throws still ends the ask', () async {
+      final asks = <bool>[];
+      final s = NotificationScheduler(
+        gateway: _AskingGateway(fail: true),
+        // The group's own stream: `tearDown` closes it, which waits for a
+        // listener on a single-subscription controller.
+        alarms: alarms.stream,
+        privacyMode: false,
+        clock: () => now,
+        onPermissionAsk: asks.add,
+      );
+      addTearDown(s.dispose);
+      await s.start();
+      expect(asks, [true, false], reason: 'a stuck "asking" hides the strip');
+    });
+  });
+}
+
+class _AskingGateway extends FakeNotificationsGateway {
+  _AskingGateway({this.fail = false});
+
+  final bool fail;
+  int requested = 0;
+
+  @override
+  Future<bool> requestPermissions() async {
+    requested += 1;
+    if (fail) throw StateError('no platform');
+    return true;
+  }
 }

@@ -102,12 +102,14 @@ class _FakeCache implements AlertCache {
 WebNotificationsGateway _gatewayFor(
   _FakeHost host, {
   String? vapidKey = 'server-vapid-key',
+  bool? serverHasPush = true,
   void Function()? onChanged,
   AlertCache? cache,
   WebAlertMode mode = WebAlertMode.silent,
 }) => WebNotificationsGateway(
   host: host,
   readVapidKey: () async => vapidKey,
+  serverHasPush: () async => serverHasPush,
   onSubscriptionChanged: onChanged,
   cache: cache ?? _FakeCache(),
   fallback: const AlertText(title: 'AllisWell', body: 'You have a reminder'),
@@ -202,13 +204,66 @@ void main() {
 
     test('permission without a subscription is its OWN problem', () async {
       // The dishonest outcome this guards against: permission is granted, the
-      // banner is therefore quiet, and nothing can reach the browser anyway
-      // because the server has no keys. NOTIFICATIONS §3 forbids exactly that.
+      // banner is therefore quiet, and nothing can reach the browser anyway.
+      // NOTIFICATIONS §3 forbids exactly that. A key lookup that could not
+      // get an answer (offline, a 500) is not the server's fault either, so
+      // it stays the person's "finish setup" (OPH-393).
       final host = _FakeHost(granted: WebPushPermission.granted);
-      final support = await _gatewayFor(host, vapidKey: null).alarmSupport();
+      final support = await _gatewayFor(
+        host,
+        vapidKey: null,
+        serverHasPush: null,
+      ).alarmSupport();
 
       expect(support.notificationsEnabled, isTrue);
+      expect(support.webPushServerConfigured, isNull);
       expect(support.worstProblem, AlarmProblem.webPushOff);
+    });
+
+    // ── OPH-393 (E-14): the server's gap is not the person's fault ────────
+    test(
+      'a 404 from /push/public-key names the server, not the person',
+      () async {
+        final host = _FakeHost(granted: WebPushPermission.granted);
+        final support = await _gatewayFor(
+          host,
+          vapidKey: null,
+          serverHasPush: false,
+        ).alarmSupport();
+
+        expect(support.webPushServerConfigured, isFalse);
+        expect(support.worstProblem, AlarmProblem.webPushUnconfigured);
+      },
+    );
+
+    test('without server keys, asking for permission fixes nothing', () async {
+      // An unanswered prompt on a keyless server: "allow notifications" would
+      // send the person to grant something that still delivers nothing.
+      final support = await _gatewayFor(
+        _FakeHost(),
+        vapidKey: null,
+        serverHasPush: false,
+      ).alarmSupport();
+
+      expect(support.worstProblem, AlarmProblem.webPushUnconfigured);
+    });
+
+    test('a subscribed browser never asks the server again', () async {
+      var asked = 0;
+      final gateway = WebNotificationsGateway(
+        host: _FakeHost(),
+        readVapidKey: () async => 'server-vapid-key',
+        serverHasPush: () async {
+          asked += 1;
+          return true;
+        },
+        cache: _FakeCache(),
+        fallback: const AlertText(title: 'AllisWell', body: 'x'),
+      );
+      await gateway.requestPermissions();
+      final support = await gateway.alarmSupport();
+      expect(support.worstProblem, isNull);
+      expect(asked, 0, reason: 'a live subscription proves the keys exist');
     });
 
     test('a subscription the browser refused reads the same way', () async {

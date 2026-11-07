@@ -519,8 +519,8 @@ its text.
   degrade to visual + haptic and offer an explicit "start sound" button — never
   pretend it rang.
 - **A4 — Degradation banner is honest, at the top of Home.** When the OS can't
-  ring reliably, `AlarmDegradationBanner` says so on `errorContainer`
-  (`onErrorContainer` ink, `alarm_off` icon, radius `m`) with a one-tap fix —
+  ring reliably, `AlarmDegradationBanner` says so (amber since OPH-393, below;
+  radius `m`) with a fix —
   worst-problem-first, the same cascade as the Settings status row (OPH-139).
   Healthy delivery shows nothing: never nag a user whose alarms already work.
   **Round 19 (OPH-277)** widened it and moved the cascade onto the model
@@ -534,6 +534,18 @@ its text.
   "Fix" button could not fix anything. On the web the sheet never links anywhere
   (#19): it asks the browser, or names the address bar's site-info icon and
   offers "Check again", or — with no web push — shows no button at all.
+  **OPH-393 (U-05, E-14) — a warning, not an alarm.** The strip is amber:
+  `AwTokens.warning` at 10% over `surface`, the warning colour on the 20 pt icon
+  only, `onSurface` words (§7). One calm sentence (persona Ek A, "sen", no
+  "tap", no "nothing can reach you"), a verb button on the right ("Aç",
+  "İzin ver", "Kurulumu tamamla", "Nasıl açılır?") and a 48 pt "×" that hides
+  that problem for 7 days (device-local; a different problem still shows). At
+  text scale > 1.3 the button drops below the sentence at full width. It is not
+  shown while a permission prompt is open, and the probe runs again when the
+  prompt closes. A server without VAPID keys (`/push/public-key` 404) is
+  `webPushUnconfigured`: an admin-facing sentence, no button. Red stays for
+  overdue and destructive actions; the Settings status row uses the warning
+  icon too.
 - **A5 — Silencing is a state, not a disappearance (round 9, OPH-178).** An
   alarm the user muted indefinitely ("Süresiz ertele") must keep saying so: the
   task row carries a `notifications_off` chip with a one-tap "Geri aç", the
