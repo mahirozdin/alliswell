@@ -33,7 +33,8 @@ This file holds the unreleased changes and the latest release; at each release t
 - **The phone's bottom bar names every tab** and no longer shifts when you pick one: five equal
   tabs that stay inside the bar at every phone width, a "More" tab when there is a sixth section,
   a light bulb for Inbox and a paperclip for Files. With very large text, press and hold a tab to
-  see its name.
+  see its name. On a phone the floating Quick Access button is now off unless you turn it on in
+  Settings; the ⚡ in the Home bar opens Quick Access.
 
 ## [1.18.2] — 2026-10-30
 

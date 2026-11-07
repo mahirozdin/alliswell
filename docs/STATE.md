@@ -18,7 +18,7 @@
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
 | ➡️ **Next task**         | **OPH-397** — Yüzen öğeler, ızgara, alt örtü, Hızlı Erişim girişi |
-| Last completed           | OPH-396 — telefon alt barı `AwTabCapsule` (ADR-0062, DESIGN §43): 64 pt kapsül, en çok beş eşit yuva (360 dp'de ≥48), her sekme etiketli, seçim hiçbir şeyi kaydırmaz, etiket 1.3'te kısıtlı + büyük metinde uzun basma balonu, 6. bölümde "Diğer" sayfası; Fikirler ampul, Dosyalar ataş. Balon dokta iken yuvalar hâlâ dar (OPH-397). |
+| Last completed           | OPH-396 — telefon alt barı `AwTabCapsule` (ADR-0062, DESIGN §43): 64 pt kapsül, en çok beş eşit yuva (360 dp'de ≥48), her sekme etiketli, seçim hiçbir şeyi kaydırmaz, etiket 1.3'te kısıtlı + büyük metinde uzun basma balonu, 6. bölümde "Diğer" sayfası; Fikirler ampul, Dosyalar ataş. Hızlı Erişim balonu telefonda varsayılan kapalı (⚡ uygulama çubuğunda), varsayılan düzende yuvalar 360'ta ≥48; balonu açıp dokta bırakana yuvalar hâlâ dar (OPH-397). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -44,7 +44,7 @@ R-03, R-06, R-07, R-12, A-03, U-02, U-03; ADR-0062.
       alt boş; kaydırınca FAB'lar 150 ms'de 16 pt iner (azaltılmış harekette anında).
 - [ ] Tek 16 pt oluk (≥430 pt'de 20); kapsül ve arama küresi (56) aynı merkez çizgisi, 8 pt ara; alt örtü
       sayfa renginden gradyan (cam değil); liste sonu dolgusu = bar + FAB + 24, bar yoksa güvenli alan + 24.
-- [ ] Hızlı Erişim balonu telefonda varsayılan kapalı (Ayarlar'dan açılır); giriş uygulama çubuğunda ⚡,
+- [ ] Hızlı Erişim balonu telefonda varsayılan kapalı (Ayarlar'dan açılır; varsayılan OPH-396'da kapandı); giriş uygulama çubuğunda ⚡,
       arama paletinin boş halinde "Kısayollar" ve Ana Sayfa sekmesine uzun basma; açıksa balon güvenli
       alan içinde, itilen ekranlarda gizli; tanıtım kartı sistem çubuğunun üstünde.
 - [ ] Masaüstünde AI düğmesi rail'e binmez; iPad 720–799 pt tek kırılım.

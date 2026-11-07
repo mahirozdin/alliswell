@@ -230,6 +230,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Round 13 #5: search is an app-bar action too, so the list keeps its
       // line. Closing it clears the query (see AwSearchAction).
       AwSearchAction(
+        // Keyed: the actions before it change while it is open (the ⚡
+        // steps aside), and an unkeyed field would lose its open state.
+        key: const ValueKey('home-search-action'),
         fieldKey: const Key('home-search'),
         hintText: 'home.searchHint'.tr(),
         onQuery: (q) => ref.read(homeSearchQueryProvider.notifier).set(q),
@@ -306,7 +309,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onRefresh: () => refreshSection(ref, AppSection.home),
         // OPH-200: the entry point when the floating button is switched off —
         // the widget hides itself everywhere else (DESIGN §23 Q5).
-        leadingActions: const [QuickAccessAppBarButton()],
+        // The ⚡ steps aside while the search field is open, like the sort
+        // menu: a phone's bar has no room for both (OPH-396 — with the
+        // bubble off by default, ADR-0062 #5, this is the common case).
+        leadingActions: [if (!_searchOpen) const QuickAccessAppBarButton()],
         // OPH-213: the view + calendar controls, left of settings.
         trailingActions: viewActions,
       ),

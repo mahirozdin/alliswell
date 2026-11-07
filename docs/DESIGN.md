@@ -1003,8 +1003,9 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on
   auth/onboarding screens, the bubble is hidden entirely — a floating control over
   a modal is two competing surfaces. _(Amended by ADR-0062 §5: on phones the bubble is off by
-  default and, when turned on, no longer docks in the bar's row — OPH-397 builds it; until then
-  the docked factory position above still ships, and with it the capsule's slots (§43) are
+  default — so the factory phone layout has no dock and the capsule's slots (§43) are ≥ 48 dp,
+  `bubble_test` "factory phone layout"; when turned on it no longer docks in the bar's row —
+  OPH-397 builds that, and until then a person who turns it on and leaves it docked gets slots
   narrower than 48 dp.)_
 - **Q4a — The recede is paint, never the hit box (OPH-196).** Q4's two clauses
   fight: a 56 px control translated half off-screen leaves a 28 px target and
@@ -1030,7 +1031,7 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   which is why it must live on the opposite side of the screen, must be
   switch-off-able (Q5), and must never render while a FAB-bearing modal is up.
 - **Q5 — The bubble is optional and never the only way.** Settings owns a toggle
-  (factory: on). The bubble only appears when the list is non-empty. When the
+  (factory: off on phones since ADR-0062 §5; it was on). The bubble only appears when the list is non-empty. When the
   toggle is off — or on platforms without the bubble — the entry point is a `bolt`
   icon in the Home app bar. A gesture-only or overlay-only feature would repeat
   the mistake §19 D2 exists to prevent.
@@ -1716,7 +1717,7 @@ The phone's bottom navigation is `AwTabCapsule` (`widgets/tab_capsule.dart`), no
 
 | # | Rule | Why |
 | --- | --- | --- |
-| N1 | **A 64 px glass capsule, equal slots.** `GlassSurface(floating)`, radius `pill`, 12 px inner side padding (concentric with the 20 px selection), at most five slots of equal width, each ≥ 48 dp from 360 dp up with the search orb beside it. | G4 at every phone width; nothing touches the clipped curve (R-02). |
+| N1 | **A 64 px glass capsule, equal slots.** `GlassSurface(floating)`, radius `pill`, 12 px inner side padding (concentric with the 20 px selection), at most five slots of equal width, each ≥ 48 dp from 360 dp up with the search orb beside it — the factory layout, where the Quick Access bubble is off (§23 Q4/Q5). | G4 at every phone width; nothing touches the clipped curve (R-02). |
 | N2 | **Every slot is labelled; selecting moves nothing.** Icon 22 over an 11/13 w600 label, letter spacing 0, one shared glyph centre line. The selection is a 40 px `primaryContainer` pill the width of its slot (`onPrimaryContainer` icon and label; others `onSurfaceVariant` on glass, the measured pairs); it fades in `AwMotion.fast`, instantly with reduced motion. Selected = filled glyph. | One baseline (R-01); unlabelled icons could not be told apart (U-01). |
 | N3 | **A label never leaves its slot.** One line, no wrap; a label wider than its slot is scaled down to fit (TR "Ana Sayfa" at 360 dp), never ellipsized mid-word and never `overflow: visible`. Its box has the same height in every slot. | "Dosyala", "Taleple" (E-11). |
 | N4 | **Label scaling stops at 1.3.** Above 1.3× text a long press shows the name and glyph in a large solid bubble above the capsule (iOS's large content viewer); moving the finger follows the slots and lifting it selects the one under it. | The capsule cannot grow; the name must still be readable. |

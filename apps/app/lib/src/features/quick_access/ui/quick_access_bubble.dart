@@ -13,11 +13,13 @@ import '../../../widgets/count_badge.dart';
 import 'bubble_physics.dart';
 import 'quick_access_row.dart';
 
-/// Is the floating button switched on? Factory: yes (DESIGN §23 Q5) — and the
-/// feature is never gesture-only, so switching it off moves the entry point to
-/// the Home app bar rather than removing it.
+/// Is the floating button switched on? Factory: no (ADR-0062 decision 5,
+/// amending DESIGN §23 Q4) — docked in the bar's row it left the tab capsule
+/// slots under 48 dp at 360 dp (G4). The feature is never gesture-only: off,
+/// the entry point is the Home app bar's button, and Settings turns the
+/// bubble back on. Only phones read it; wide layouts use the rail.
 final quickBubbleEnabledProvider = NotifierProvider<PersistedToggle, bool>(
-  () => PersistedToggle('alliswell_quick_bubble_enabled', fallback: true),
+  () => PersistedToggle('alliswell_quick_bubble_enabled', fallback: false),
 );
 
 /// Where the user parked it — device-local, tolerant of junk.

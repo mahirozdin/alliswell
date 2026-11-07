@@ -28,14 +28,18 @@ import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
 
 /// OPH-200 — the phone's floating quick-access button (DESIGN §23 Q4/Q5).
-Future<Widget> signedInApp(FakeApi api, {bool bubbleEnabled = true}) async {
+///
+/// [bubbleEnabled] null = nothing stored, i.e. the factory setting, which is
+/// OFF on phones since ADR-0062 decision 5; the button's own tests switch it
+/// on the way Settings does.
+Future<Widget> signedInApp(FakeApi api, {bool? bubbleEnabled = true}) async {
   SharedPreferences.setMockInitialValues({});
   // localKv is a process-wide singleton; mock values alone do not reset it.
   await resetQuickAccessPrefs();
   // The real preference path, not an override: the toggle hydrates from
   // localKv, which is exactly what a returning user's launch does.
-  if (!bubbleEnabled) {
-    await localKv.set('alliswell_quick_bubble_enabled', 'false');
+  if (bubbleEnabled != null) {
+    await localKv.set('alliswell_quick_bubble_enabled', '$bubbleEnabled');
   }
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
@@ -280,6 +284,70 @@ void main() {
     await tester.tap(find.byKey(const Key('quick-appbar-button')));
     await tester.pumpAndSettle();
     expect(find.byType(QuickAccessPanel), findsOneWidget);
+  });
+
+  testWidgets('ADR-0062 #5 / G4: the factory phone layout has no bubble, the '
+      'app bar carries the entry, and every tab slot is at least 48 dp at '
+      '360 dp', (tester) async {
+    final api = FakeApi();
+    api.seedQuickLink(
+      kind: 'url',
+      url: 'https://alliswell.space',
+      title: 'Site',
+    );
+
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(await signedInApp(api, bubbleEnabled: null));
+    await tester.pumpAndSettle();
+
+    expect(bubble, findsNothing);
+    expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
+    for (var i = 0; i < 5; i++) {
+      final slot = find.byKey(Key('tab-slot-$i'));
+      expect(slot, findsOneWidget);
+      expect(
+        tester.getSize(slot).width,
+        greaterThanOrEqualTo(kAwMinTabSlot - 0.01),
+        reason: 'slot $i under 48 dp (G4)',
+      );
+    }
+  });
+
+  testWidgets('switched off, an open Home search still fits the app bar — the '
+      '⚡ steps aside while the field is open and comes back after', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    api.seedQuickLink(
+      kind: 'url',
+      url: 'https://alliswell.space',
+      title: 'Site',
+    );
+
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(await signedInApp(api, bubbleEnabled: false));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('search-open')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'app bar overflowed');
+    expect(find.byKey(const Key('home-search')), findsOneWidget);
+    expect(find.byKey(const Key('quick-appbar-button')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('search-close')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
   });
 
   testWidgets('never rides along on the sign-in screens', (tester) async {
