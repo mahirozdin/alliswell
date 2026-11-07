@@ -186,6 +186,10 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
 
   int _active = 0;
   final _rowKeys = <int, GlobalKey>{};
+
+  /// The groups opened with "Show N more" (OPH-394, E-12) — for this query
+  /// only; a new query starts every group closed again.
+  final _expanded = <GlobalSearchKind>{};
   bool _chosen = false;
 
   static const _debounceDelay = Duration(milliseconds: 150);
@@ -209,7 +213,9 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
         if (mounted) setState(() => _progressDue = true);
       });
       setState(() {
-        _query = _controller.text.trim();
+        final query = _controller.text.trim();
+        if (query != _query) _expanded.clear();
+        _query = query;
         _progressDue = false;
         _active = 0;
       });
@@ -279,10 +285,24 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
     }
     final groups = searching ? _shown : const <GlobalSearchGroup>[];
 
+    // OPH-394 (E-12): each group opens with its first few rows and a "Show N
+    // more" row; five rows of every kind pushed the later groups — notes,
+    // files — below the dialog's edge, where a header with a count and
+    // nothing to tap read as a dead end.
+    List<GlobalSearchItem> shownOf(GlobalSearchGroup group) {
+      if (!_expanded.contains(group.kind)) {
+        return group.items.take(kGlobalSearchGroupPreview).toList();
+      }
+      final all = ref.watch(globalSearchKindProvider((_shownFor, group.kind)));
+      return all.value ?? group.items;
+    }
+
+    final shownItems = {for (final group in groups) group.kind: shownOf(group)};
+
     final entries = <_Entry>[
       if (!searching) ...[for (final item in recents) _Entry.item(item)],
       for (final group in groups) ...[
-        for (final item in group.items) _Entry.item(item),
+        for (final item in shownItems[group.kind]!) _Entry.item(item),
       ],
       if (text.isNotEmpty && canCreate) _Entry.create(text),
     ];
@@ -353,16 +373,24 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
       }
     }
     for (final group in groups) {
-      final label = _groupLabel(group.kind);
+      // A-18: the header says how many matched; the row below says how many
+      // more there are to see.
       children.add(
-        _GroupHeader(
-          label: group.total > group.items.length
-              ? '$label · ${'search.global.groupCount'.tr(args: {'shown': '${group.items.length}', 'total': '${group.total}'})}'
-              : label,
-        ),
+        _GroupHeader(label: '${_groupLabel(group.kind)} · ${group.total}'),
       );
-      for (final item in group.items) {
+      final items = shownItems[group.kind]!;
+      for (final item in items) {
         children.add(row(_Entry.item(item)));
+      }
+      final remaining = group.total - items.length;
+      if (remaining > 0 && !_expanded.contains(group.kind)) {
+        children.add(
+          _ShowMoreRow(
+            key: Key('global-search-more-${group.kind.name}'),
+            remaining: remaining,
+            onTap: () => setState(() => _expanded.add(group.kind)),
+          ),
+        );
       }
     }
     final createEntry = entries.isNotEmpty && entries.last.create != null
@@ -437,12 +465,13 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
 
     final count = Semantics(
       liveRegion: true,
-      child: Padding(
+      child: Container(
+        alignment: AlignmentDirectional.centerStart,
         padding: const EdgeInsets.fromLTRB(
           AwSpace.x5,
           AwSpace.x1,
           AwSpace.x5,
-          AwSpace.x3,
+          AwSpace.x1,
         ),
         child: Text(
           searching && !loading
@@ -490,10 +519,12 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
                 ),
               ),
               progress,
+              // OPH-394 (E-12): the total sits under the field it answers,
+              // not at the foot of the screen where it floated mid-list.
+              count,
               Expanded(
                 child: Align(alignment: Alignment.topCenter, child: body),
               ),
-              count,
             ],
           ),
         ),
@@ -520,8 +551,8 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
           children: [
             Padding(padding: const EdgeInsets.all(AwSpace.x4), child: field),
             progress,
-            Flexible(child: body),
             count,
+            Flexible(child: body),
           ],
         ),
       ),
@@ -553,6 +584,29 @@ IconData _kindIcon(GlobalSearchItem item) => switch (item.kind) {
   GlobalSearchKind.tag => Icons.sell_outlined,
   GlobalSearchKind.file => fileKindIcon(item.mime ?? ''),
 };
+
+/// "Show 4 more" under a group that has more than it shows (OPH-394, A-18).
+class _ShowMoreRow extends StatelessWidget {
+  const _ShowMoreRow({required this.remaining, required this.onTap, super.key});
+
+  final int remaining;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
+        ),
+        onPressed: onTap,
+        child: Text('search.global.showMore'.tr(args: {'count': '$remaining'})),
+      ),
+    );
+  }
+}
 
 class _GroupHeader extends StatelessWidget {
   const _GroupHeader({required this.label});

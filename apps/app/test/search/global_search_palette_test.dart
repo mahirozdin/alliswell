@@ -107,12 +107,13 @@ void main() {
     expect(field.focusNode!.hasFocus, isTrue);
 
     await type(tester, 'fatura');
-    expect(find.text('Tasks'), findsWidgets);
-    expect(find.text('Projects'), findsWidgets);
-    expect(find.text('Files'), findsWidgets);
-    final tasksY = tester.getTopLeft(find.text('Tasks').last).dy;
-    final projectsY = tester.getTopLeft(find.text('Projects').last).dy;
-    final filesY = tester.getTopLeft(find.text('Files').last).dy;
+    // A-18 (OPH-394): a header carries its group's total.
+    expect(find.text('Tasks · 2'), findsOneWidget);
+    expect(find.text('Projects · 1'), findsOneWidget);
+    expect(find.text('Files · 1'), findsOneWidget);
+    final tasksY = tester.getTopLeft(find.text('Tasks · 2')).dy;
+    final projectsY = tester.getTopLeft(find.text('Projects · 1')).dy;
+    final filesY = tester.getTopLeft(find.text('Files · 1')).dy;
     expect(tasksY, lessThan(projectsY));
     expect(projectsY, lessThan(filesY));
     expect(find.byKey(const Key('global-search-count')), findsOneWidget);
@@ -283,7 +284,7 @@ void main() {
     expect(find.bySemanticsLabel('Task: Bütçe'), findsOneWidget);
     final node = tester.getSemantics(find.bySemanticsLabel('Task: Bütçe'));
     expect(node.flagsCollection.isSelected, Tristate.isTrue);
-    final header = tester.getSemantics(find.text('Tasks').last);
+    final header = tester.getSemantics(find.text('Tasks · 1').last);
     expect(header.flagsCollection.isHeader, isTrue);
     semantics.dispose();
   });
@@ -343,4 +344,65 @@ void main() {
       debugDefaultTargetPlatformOverride = null;
     }
   });
+
+  // OPH-394 (E-12): the count sits under the field, every group opens with
+  // three rows and a "Show N more" row that expands it — notes included.
+  for (final size in [desktop, phone]) {
+    testWidgets('the count is under the field and a long group expands '
+        '(${size.width.toInt()} px)', (tester) async {
+      await surface(tester, size);
+      final api = FakeApi();
+      for (var i = 1; i <= 6; i++) {
+        api.seedTask(title: 'Invoice task $i');
+      }
+      for (var i = 1; i <= 9; i++) {
+        api.seedNote(title: 'Invoice note $i');
+      }
+      await tester.pumpWidget(await app(api));
+      await tester.pumpAndSettle();
+
+      if (size == desktop) {
+        await ctrlK(tester);
+      } else {
+        await tester.tap(find.byKey(const Key('global-search-orb')));
+        await tester.pumpAndSettle();
+      }
+      await type(tester, 'invoice');
+
+      final count = find.byKey(const Key('global-search-count'));
+      expect(find.text('15 results'), findsOneWidget);
+      final fieldBottom = tester.getBottomLeft(_field).dy;
+      final countTop = tester.getTopLeft(count).dy;
+      final firstHeader = find.text('Tasks · 6');
+      expect(firstHeader, findsOneWidget);
+      expect(countTop, greaterThanOrEqualTo(fieldBottom));
+      expect(countTop, lessThan(tester.getTopLeft(firstHeader).dy));
+
+      // Three of each, and the way to the rest.
+      expect(find.text('Notes · 9'), findsOneWidget);
+      expect(find.textContaining('Invoice note'), findsNWidgets(3));
+      final more = find.byKey(const Key('global-search-more-note'));
+      expect(find.text('Show 6 more'), findsOneWidget);
+      expect(find.text('Show 3 more'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        more,
+        100,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('global-search-results')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(
+        find.descendant(of: more, matching: find.byType(TextButton)),
+      );
+      await tester.pumpAndSettle();
+      expect(more, findsNothing);
+      for (var i = 1; i <= 9; i++) {
+        expect(
+          find.text('Invoice note $i', skipOffstage: false),
+          findsOneWidget,
+        );
+      }
+    });
+  }
 }

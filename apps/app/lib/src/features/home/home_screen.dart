@@ -689,7 +689,7 @@ List<Widget> buildHomeGroupRows(
           // OPH-307: a split group is named by its day, not by the bucket it
           // came from — "Perşembe · 16 Tem" rather than a fourth "Bu hafta".
           '${group.day == null ? group.bucket.label : awFormatDayHeading(group.day!, format: dateFormat)}'
-          ' · ${group.items.length}',
+          ' · ${group.count}',
           // OPH-301: the dimmed header used to take `onSurfaceVariant` at
           // α=0.70 — 3.63:1, under the 4.5:1 floor. There is no header dim any
           // more, and nothing is lost: the SELECTED day's header is the one

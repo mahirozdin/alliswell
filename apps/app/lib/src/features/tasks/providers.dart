@@ -226,6 +226,15 @@ final taskDetailProvider = StreamProvider.family<Task, String>((ref, taskId) {
   return ref.watch(taskStoreProvider).watchDetail(taskId);
 });
 
+/// The subtasks a task's detail lists (OPH-394, E-07).
+final subtasksProvider = StreamProvider.family<List<Task>, String>((
+  ref,
+  parentTaskId,
+) {
+  ref.watch(syncEnginesProvider);
+  return ref.watch(taskStoreProvider).watchSubtasks(parentTaskId);
+});
+
 /// Why a task's detail has nothing to show (OPH-392, E-17).
 enum TaskAbsence {
   /// The server has no such task for this person: deleted, or never theirs.

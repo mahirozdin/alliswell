@@ -77,6 +77,13 @@ class HomeGroup {
   /// The calendar day this group covers, for buckets that are split per day
   /// (OPH-307). Null for the buckets that are one heap by design.
   final DateTime? day;
+
+  /// The number the header shows (OPH-394, E-06): what is still owed. Today's
+  /// finished work stays visible at the bottom of its group (DESIGN §20 C1),
+  /// but a struck-through row is not work, so the header does not count it.
+  int get count => items
+      .where((item) => !(item is TaskItem && item.task.isCompleted))
+      .length;
 }
 
 DateTime dayOf(DateTime value) {
@@ -232,9 +239,21 @@ List<HomeGroup> groupTasksForHome(
     return null; // beyond the horizon
   }
 
+  // OPH-394 (E-07): a subtask lives in its parent's detail, not as a row of
+  // its own — unless its parent is not on this list (finished on another day,
+  // a capture, someone else's), where hiding it would lose the work.
+  final ids = {for (final task in tasks) task.id};
+
   for (final task in tasks) {
+    if (task.parentTaskId != null && ids.contains(task.parentTaskId)) continue;
     final due = task.dueAt;
-    final overdue = taskIsOverdueOn(task, today);
+    // OPH-394 (E-06): the row says "Overdue" in red the moment its deadline
+    // passes, so the Overdue group takes it the same moment — a red row under
+    // Today made the Overdue count disagree with what the eye counts. Finished
+    // work keeps the day rule: it is not owed any more.
+    final overdue =
+        taskIsOverdueOn(task, today) ||
+        (!task.isCompleted && due != null && due.isBefore(now));
     final planDay = overdue ? null : taskPlanDay(task, today);
     if (selectedDay != null &&
         ((due != null && dayOf(due) == selectedDay) ||

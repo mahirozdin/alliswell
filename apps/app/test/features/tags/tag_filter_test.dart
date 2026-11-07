@@ -126,15 +126,17 @@ void main() {
       final api = FakeApi();
       final rapor = api.seedTag(name: 'rapor');
       // Chronologically: "sonra" is the earlier one. By priority it is not.
+      // Tomorrow, not today: a deadline that passed earlier today is Overdue
+      // (OPH-394), so a today-09:00 row would change groups after 9 a.m.
       api.seedTask(
         title: 'Acil rapor',
-        dueAt: isoAt(DateTime(today.year, today.month, today.day, 20)),
+        dueAt: isoAt(DateTime(today.year, today.month, today.day + 1, 20)),
         priority: 'urgent',
         tagIds: [rapor['id'] as String],
       );
       api.seedTask(
         title: 'Sakin rapor',
-        dueAt: isoAt(DateTime(today.year, today.month, today.day, 9)),
+        dueAt: isoAt(DateTime(today.year, today.month, today.day + 1, 9)),
         priority: 'low',
         tagIds: [rapor['id'] as String],
       );

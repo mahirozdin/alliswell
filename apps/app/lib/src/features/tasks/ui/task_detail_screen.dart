@@ -31,7 +31,7 @@ import '../data/task_store.dart';
 import '../data/task_when.dart';
 import '../providers.dart';
 import 'duration_picker.dart';
-import 'task_tile.dart' show deleteTaskWithUndo;
+import 'task_tile.dart' show TaskTile, deleteTaskWithUndo;
 import 'repeat_row.dart';
 import 'task_visuals.dart';
 import '../../ee/assignments_providers.dart';
@@ -609,6 +609,29 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 ),
                 const SizedBox(height: AwSpace.x3),
               ],
+              // OPH-394 (E-07): a subtask is listed here, under its parent,
+              // and not as a row of its own on Home. Only when there is one:
+              // subtasks are written through the API and MCP, and an empty
+              // card would promise a control this screen does not have.
+              if (ref.watch(subtasksProvider(task.id)).value
+                  case final subtasks? when subtasks.isNotEmpty) ...[
+                _SectionCard(
+                  key: const Key('task-subtasks'),
+                  title: 'task.subtasks'.tr(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final subtask in subtasks)
+                        TaskTile(
+                          task: subtask,
+                          showProjectBadge: false,
+                          swipeToDelete: false,
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AwSpace.x3),
+              ],
               _SectionCard(
                 title: 'task.checklist'.tr(),
                 child: _Checklist(
@@ -638,7 +661,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
 
 /// Rounded surface card with a small uppercase-ish section header.
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
+  const _SectionCard({required this.title, required this.child, super.key});
 
   final String title;
   final Widget child;

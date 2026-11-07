@@ -72,9 +72,11 @@ void main() {
         title: 'Gecikmiş iş',
         dueAt: isoAt(today.subtract(const Duration(days: 2, hours: -9))),
       )
+      // 23:59: a deadline that passed earlier today is Overdue (OPH-394), so
+      // a fixed afternoon hour would change groups with the clock.
       ..seedTask(
         title: 'Bugünkü iş',
-        dueAt: isoAt(today.add(const Duration(hours: 17))),
+        dueAt: isoAt(today.add(const Duration(hours: 23, minutes: 59))),
       )
       ..seedTask(title: 'Tarihsiz iş')
       ..seedTask(
@@ -142,7 +144,7 @@ void main() {
       ..seedTask(title: 'Seçilen gün işi', dueAt: isoAt(target))
       ..seedTask(
         title: 'Bugünkü iş',
-        dueAt: isoAt(today.add(const Duration(hours: 18))),
+        dueAt: isoAt(today.add(const Duration(hours: 23, minutes: 59))),
       )
       ..seedTask(
         title: 'Yarınki iş',

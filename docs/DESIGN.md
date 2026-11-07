@@ -462,7 +462,9 @@ entry; product decisions in BLUEPRINT §12.11.)_
   opens a sheet with visibility toggles + drag-reorder of statuses; hidden
   columns stay reachable as move targets (K3). Default visible: open,
   in_progress, waiting, completed. Column headers pin name + count while the
-  column scrolls.
+  column scrolls. _OPH-394 (E-25): in an open column a series shows only its
+  next occurrence, with "+N next" under the card; the count is the cards shown.
+  Finished occurrences all stay._
 - **K3 — Two coequal move paths, always.** (a) Drag: desktop/web full
   multi-column drag; phone long-press (~200 ms, haptic on lift) — feedback is
   the card scaled ~1.04 at ~85% opacity, origin dims to a placeholder; the
@@ -803,6 +805,11 @@ bir yerden görmek gibi bişey olabilmeli".)_
   leaves the planning lists immediately — "Geciken" holding a struck-through row
   says nothing ("the task was late, and now it is done" is the archive's
   sentence, not the planner's). Its address is §C4 from the moment of the tap._
+  _Rev. 2026-11-07 (OPH-394, E-06): a group header's number counts what is still
+  owed — a done row stays visible but is not counted. A deadline that passed
+  earlier today files the row under Overdue, the moment the row turns red; a
+  subtask is listed in its parent's detail, not as a Home row (unless its parent
+  is not on the list)._
 - **C2 — Done work is quiet, not dead.** _Scope, made explicit 2026-08-24
   (OPH-281): this section is about the TASK ROW. A checklist inside a note body
   is a §29 object and follows the reading view — green tick, text untouched. The

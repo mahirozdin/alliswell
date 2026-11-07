@@ -66,6 +66,11 @@ class GlobalSearchGroup {
 /// where a long list belongs.
 const int kGlobalSearchGroupLimit = 5;
 
+/// Rows a group shows in the palette before its "Show N more" row (OPH-394,
+/// U-35): three of each keeps every kind's header — and something under it to
+/// tap — on one screen.
+const int kGlobalSearchGroupPreview = 3;
+
 /// The statuses the palette finds tasks in: what Home plans with, the inbox,
 /// and completed work (shown with a check). Cancelled work is out — it was
 /// decided against, and finding it from everywhere would put it back in play.
@@ -85,33 +90,9 @@ final globalSearchProvider = FutureProvider.autoDispose
     .family<List<GlobalSearchGroup>, String>((ref, rawQuery) async {
       final query = rawQuery.trim();
       if (query.isEmpty) return const [];
-      final service = ref.watch(searchServiceProvider);
-      final db = ref.watch(databaseProvider);
+      final hits = await _globalSearchHits(ref, query);
       final words = SearchService.queryWords(query);
-
-      final scope = await ref.watch(taskScopeProvider.future);
-      final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
-
-      final hits = <GlobalSearchKind, List<SearchHit>>{
-        GlobalSearchKind.task: scope == null
-            ? const []
-            : await searchTasksInScope(
-                service: service,
-                store: ref.read(taskStoreProvider),
-                scope: scope,
-                query: query,
-                statuses: kGlobalSearchTaskStatuses,
-              ),
-        if (workspaceId != null) ...{
-          GlobalSearchKind.project: await service.searchProjects(
-            workspaceId,
-            query,
-          ),
-          GlobalSearchKind.note: await service.searchNotes(workspaceId, query),
-          GlobalSearchKind.tag: await service.searchTags(workspaceId, query),
-          GlobalSearchKind.file: await service.searchFiles(workspaceId, query),
-        },
-      };
+      final db = ref.watch(databaseProvider);
 
       final groups = <GlobalSearchGroup>[];
       for (final kind in GlobalSearchKind.values) {
@@ -132,6 +113,72 @@ final globalSearchProvider = FutureProvider.autoDispose
       }
       return groups;
     });
+
+/// The most rows one expanded group lists (OPH-394, E-12). Past this the
+/// kind's own screen, with its own search, is where the list belongs.
+const int kGlobalSearchExpandedLimit = 50;
+
+/// Every row of ONE kind for [query] — what a group shows once the palette's
+/// "Show N more" row is tapped (OPH-394, E-12). A group that said "9" and
+/// showed nothing to tap was a dead end.
+final globalSearchKindProvider = FutureProvider.autoDispose
+    .family<List<GlobalSearchItem>, (String, GlobalSearchKind)>((
+      ref,
+      key,
+    ) async {
+      final (rawQuery, kind) = key;
+      final query = rawQuery.trim();
+      if (query.isEmpty) return const [];
+      final hits = await _globalSearchHits(ref, query, only: kind);
+      final shown = (hits[kind] ?? const <SearchHit>[])
+          .take(kGlobalSearchExpandedLimit)
+          .toList();
+      return resolveGlobalSearchItems(
+        ref.watch(databaseProvider),
+        kind,
+        [for (final hit in shown) hit.id],
+        tiers: {for (final hit in shown) hit.id: hit.tier},
+        words: SearchService.queryWords(query),
+      );
+    });
+
+/// The ranked hits per kind — every kind, or [only] one.
+Future<Map<GlobalSearchKind, List<SearchHit>>> _globalSearchHits(
+  Ref ref,
+  String query, {
+  GlobalSearchKind? only,
+}) async {
+  final service = ref.watch(searchServiceProvider);
+  final scope = await ref.watch(taskScopeProvider.future);
+  final workspaceId = await ref.watch(activeWorkspaceIdProvider.future);
+  bool wanted(GlobalSearchKind kind) => only == null || only == kind;
+
+  return {
+    if (wanted(GlobalSearchKind.task))
+      GlobalSearchKind.task: scope == null
+          ? const []
+          : await searchTasksInScope(
+              service: service,
+              store: ref.read(taskStoreProvider),
+              scope: scope,
+              query: query,
+              statuses: kGlobalSearchTaskStatuses,
+            ),
+    if (workspaceId != null) ...{
+      if (wanted(GlobalSearchKind.project))
+        GlobalSearchKind.project: await service.searchProjects(
+          workspaceId,
+          query,
+        ),
+      if (wanted(GlobalSearchKind.note))
+        GlobalSearchKind.note: await service.searchNotes(workspaceId, query),
+      if (wanted(GlobalSearchKind.tag))
+        GlobalSearchKind.tag: await service.searchTags(workspaceId, query),
+      if (wanted(GlobalSearchKind.file))
+        GlobalSearchKind.file: await service.searchFiles(workspaceId, query),
+    },
+  };
+}
 
 /// Reads [ids] of one [kind] from the replica, IN THE ORDER GIVEN, dropping
 /// any that are gone. [tiers] (search hits) decide the context line; without

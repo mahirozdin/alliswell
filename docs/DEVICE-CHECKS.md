@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Ana Sayfa sayıları, alt görevler, Pano tekrarları, arama (2026-11-07)
+
+- OPH-394 — **iPhone ve web 1440**: demo verisinde Ana Sayfa "Geciken · N" kırmızı "Gecikti" satır sayısına eşit, üstü çizili satırlar başlık sayısına girmiyor; alt görevi olan görevin detayında "Alt görevler" kartı, alt görev Ana Sayfa'da ayrı satır değil; Pano "Açık" sütununda "Invoice Acme" bir kez ve altında "+2 sonraki"; arama "invoice": "N sonuç" alanın hemen altında, "Notlar · 9" altında 3 not + "6 sonuç daha göster" dokununca açılıyor; açık ve koyu tema.
+
 ## İzin ve alarm şeritleri (2026-11-07)
 
 - OPH-393 — **iPhone, temiz kurulum**: giriş yap → bildirim izni penceresi açıkken arkada şerit yok; "İzin ver" → Ana Sayfa'da şerit kalmıyor; "İzin verme" → pencere kapanınca amber şerit "Bildirimler kapalı. Hatırlatıcılar sana ulaşamaz." + "Aç" düğmesi, "×" basınca kayboluyor ve uygulama yeniden açılınca da gelmiyor. Ayarlar ▸ Erişilebilirlik ▸ Daha Büyük Metin en büyükte düğme metnin altında, tam genişlikte; açık ve koyu temada okunur. **Web, VAPID anahtarı olmayan sunucu (yerel compose)**: izin verilmiş tarayıcıda "Bu sunucuda tarayıcı bildirimleri kurulu değil. Sunucu yöneticine haber ver." şeridi, düğmesiz, yalnız "×". **Web, Sessiz'e hiç dokunulmamış tarayıcı**: acil alarm kaplaması "varsayılan olarak sessiz" der, "bilerek sessiz" demez; Ayarlar'da Sessiz seçilince "Bilerek sessiz" der. VoiceOver / ekran okuyucu kaplama açıkken alttaki Ana Sayfa'ya geçmiyor.

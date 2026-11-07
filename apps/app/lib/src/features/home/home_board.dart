@@ -11,6 +11,7 @@ import '../../theme/tokens.dart';
 import '../../widgets/refreshable.dart';
 import '../../widgets/snackbars.dart';
 import '../tasks/data/task.dart';
+import 'board_series.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/task_create_sheet.dart';
 import '../tasks/ui/task_tile.dart';
@@ -282,6 +283,9 @@ class _BoardColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // OPH-394 (E-25): a series shows its next occurrence once, and the count
+    // is the cards the column shows.
+    final entries = foldBoardSeries(status, tasks);
     return DragTarget<Task>(
       onWillAcceptWithDetails: (details) => details.data.status != status,
       onAcceptWithDetails: (details) => onDropped(details.data, status),
@@ -322,7 +326,7 @@ class _BoardColumn extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${tasks.length}',
+                      '${entries.length}',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -334,7 +338,7 @@ class _BoardColumn extends StatelessWidget {
                 // OPH-171: each column's card list pulls to refresh (§15). The
                 // horizontal pager is untouched, and a quick drag down beats
                 // the card's 200 ms long-press drag, so both gestures live.
-                child: tasks.isEmpty
+                child: entries.isEmpty
                     ? _EmptyColumn(status: status, dragging: highlighted)
                     : AwRefresh(
                         indicatorKey: Key('board-refresh-$status'),
@@ -347,9 +351,10 @@ class _BoardColumn extends StatelessWidget {
                             AwSpace.x2,
                             AwSpace.x2,
                           ),
-                          itemCount: tasks.length,
+                          itemCount: entries.length,
                           itemBuilder: (context, index) => _BoardCard(
-                            task: tasks[index],
+                            task: entries[index].task,
+                            moreOccurrences: entries[index].moreOccurrences,
                             onMoveRequested: onMoveRequested,
                           ),
                         ),
@@ -366,14 +371,22 @@ class _BoardColumn extends StatelessWidget {
 /// A draggable task card: the task row's DNA (K5) plus an explicit move
 /// affordance — the non-drag path is never hidden (K3b).
 class _BoardCard extends StatelessWidget {
-  const _BoardCard({required this.task, required this.onMoveRequested});
+  const _BoardCard({
+    required this.task,
+    required this.onMoveRequested,
+    this.moreOccurrences = 0,
+  });
 
   final Task task;
   final void Function(Task task) onMoveRequested;
 
+  /// Later occurrences of this series the card stands for (OPH-394, E-25).
+  final int moreOccurrences;
+
   @override
   Widget build(BuildContext context) {
-    final card = Stack(
+    final theme = Theme.of(context);
+    final tile = Stack(
       children: [
         // No project badge on the board: a 320-px status column has no room
         // for it beside the title + status icons, and the column is already a
@@ -396,6 +409,32 @@ class _BoardCard extends StatelessWidget {
         ),
       ],
     );
+    final card = moreOccurrences == 0
+        ? tile
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              tile,
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AwSpace.x4,
+                  0,
+                  AwSpace.x4,
+                  AwSpace.x2,
+                ),
+                child: Text(
+                  'board.moreOccurrences'.tr(
+                    args: {'count': '$moreOccurrences'},
+                  ),
+                  key: Key('board-more-${task.id}'),
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          );
     return LongPressDraggable<Task>(
       data: task,
       delay: const Duration(milliseconds: 200),

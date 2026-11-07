@@ -96,6 +96,17 @@ class TaskStore {
         (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
   );
 
+  /// A task's subtasks (OPH-394, E-07): what its detail lists. Open and
+  /// completed ones — a finished step is progress, shown ticked; cancelled and
+  /// archived ones were decided against. Oldest first: the order they were
+  /// written down in.
+  Stream<List<Task>> watchSubtasks(String parentTaskId) => _watchList(
+    parentTaskId,
+    (t) =>
+        t.parentTaskId.equals(parentTaskId) &
+        t.status.isIn([...kPlanningStatuses, 'inbox', 'completed']),
+  ).map((tasks) => tasks.reversed.toList());
+
   /// The ids [scope] covers among [statuses] — what a search over several
   /// workspaces narrows its hits to, so a member's Home search finds their own
   /// work and not a colleague's task that happens to share the words.

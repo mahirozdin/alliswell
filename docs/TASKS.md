@@ -36,15 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-394 — Veri doğruluğu: sayaçlar, alt görevler, pano tekrarları, arama
-
-E-06, E-07, E-12, E-25.
-
-- [ ] Ana Sayfa sayaçları görünen öğeye eşit, tamamlananlar sayılmaz.
-- [ ] Alt görevler üst görevin detayında listelenir, Ana Sayfa'da ayrı satır olmaz.
-- [ ] Pano tekrarlı görevin yalnız sıradaki örneğini + "+N" gösterir.
-- [ ] Arama sonuç etiketi yerinde, Notlar grubu genişler. Her biri için birim/widget testi.
-
 ### OPH-395 — Küçük kırıklar ve "source-available"
 
 E-24, E-26, E-27, E-28, E-29, T-04; metinler persona Ek A-36, A-77.
