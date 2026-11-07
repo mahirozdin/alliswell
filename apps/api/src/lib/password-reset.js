@@ -40,6 +40,23 @@ export function resetLink(base, token) {
 }
 
 /**
+ * Every link of this account still out there stops working (its `expires_at`
+ * becomes `now`). Each door that sets a password calls it in its own
+ * transaction: a link sent before the change must not undo it.
+ *
+ * @param {import('knex').Knex} db  a transaction, or the pool
+ * @param {string} userId
+ * @param {Date} now
+ */
+export function retirePasswordResets(db, userId, now) {
+  return db('password_resets')
+    .where({ user_id: userId })
+    .whereNull('used_at')
+    .where('expires_at', '>', now)
+    .update({ expires_at: now });
+}
+
+/**
  * Mints a link for one account. Earlier unused links of that account stop
  * working (their `expires_at` becomes now): the newest mail is the one that
  * counts, and an old one forwarded or left open is not a second way in.
@@ -53,11 +70,7 @@ export async function issuePasswordReset(db, { userId, secret, ttlMs, source }) 
   const now = new Date();
   const expiresAt = new Date(now.getTime() + ttlMs);
   await db.transaction(async (trx) => {
-    await trx('password_resets')
-      .where({ user_id: userId })
-      .whereNull('used_at')
-      .where('expires_at', '>', now)
-      .update({ expires_at: now });
+    await retirePasswordResets(trx, userId, now);
     await trx('password_resets').insert({
       id: newId(),
       user_id: userId,

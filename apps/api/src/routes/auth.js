@@ -12,6 +12,7 @@ import {
   resetLink,
   resetLinkBase,
   resetMail,
+  retirePasswordResets,
 } from '../lib/password-reset.js';
 import { uniqueSlug } from '../lib/slug.js';
 import { credentialRateLimit } from '../lib/rate-limit.js';
@@ -1005,6 +1006,8 @@ export default async function authRoutes(app) {
           .where({ user_id: user.id })
           .whereNull('revoked_at')
           .update({ revoked_at: now });
+        // A reset link sent before this change must not undo it (OPH-406).
+        await retirePasswordResets(trx, user.id, now);
       });
       return reply.code(204).send();
     },
@@ -1072,8 +1075,16 @@ export default async function authRoutes(app) {
         .db('users')
         .where({ id: row.user_id })
         .whereNull('deleted_at')
-        .first('id', 'password_hash');
+        .first('id', 'password_hash', 'password_changed_at');
       if (!user) throw invalidResetError(app);
+      // A link older than the current password is not spent by a door that
+      // forgot to retire it: the password it was sent to replace is gone.
+      if (
+        user.password_changed_at &&
+        new Date(row.created_at).getTime() < new Date(user.password_changed_at).getTime()
+      ) {
+        throw invalidResetError(app);
+      }
 
       // Before the link is spent: a refused password leaves it usable.
       await assertPasswordAllowed(app, { user, request, password: request.body.password });
@@ -1096,11 +1107,7 @@ export default async function authRoutes(app) {
           .whereNull('revoked_at')
           .update({ revoked_at: now });
         // Any other link still out there stops working with this one.
-        await trx('password_resets')
-          .where({ user_id: user.id })
-          .whereNull('used_at')
-          .where('expires_at', '>', now)
-          .update({ expires_at: now });
+        await retirePasswordResets(trx, user.id, now);
       });
       if (claimed === 0) throw invalidResetError(app);
       return reply.code(204).send();

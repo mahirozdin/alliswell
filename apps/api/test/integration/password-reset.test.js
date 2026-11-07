@@ -163,6 +163,27 @@ describe.runIf(enabled)('integration: password reset', () => {
     expect((await reset({ token: newer, password: 'new-password-1' })).statusCode).toBe(204);
   });
 
+  it('a password changed while signed in retires every link sent before it', async () => {
+    // E35 G-C review r1: the change door must end outstanding links too, or a
+    // link from before the change replaces the password the owner just chose.
+    const email = `${emailPrefix}-changed@example.com`;
+    const registered = (await register(email)).json();
+    const token = await mailedToken(email);
+
+    const change = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: { authorization: `Bearer ${registered.tokens.accessToken}` },
+      payload: { currentPassword: 'old-password-1', newPassword: 'changed-password-1' },
+    });
+    expect(change.statusCode).toBe(204);
+
+    const spent = await reset({ token, password: 'attacker-password-1' });
+    expect(spent.statusCode).toBe(400);
+    expect(spent.json().code).toBe('AUTH_RESET_INVALID');
+    expect((await login(email, 'changed-password-1')).statusCode).toBe(200);
+  });
+
   it('sends at most three links an hour to one account, and still answers the same', async () => {
     const email = `${emailPrefix}-hourly@example.com`;
     await register(email);
