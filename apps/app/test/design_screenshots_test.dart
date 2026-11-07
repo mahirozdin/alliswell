@@ -29,8 +29,12 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/calendar/apple/apple_calendar_gateway.dart';
 import 'package:alliswell/src/features/calendar/apple/providers.dart';
+import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart';
+import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble_host.dart';
+import 'package:alliswell/src/features/tasks/ui/task_detail_screen.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/router.dart';
+import 'package:alliswell/src/screens/settings_screen.dart';
 import 'package:alliswell/src/search/search_recents.dart';
 import 'package:alliswell/src/search/ui/global_search_entry.dart';
 import 'package:alliswell/src/sections.dart';
@@ -121,8 +125,12 @@ class _ScreenshotApp extends ConsumerWidget {
       ],
       // OPH-374: the palette's host, as app.dart mounts it — the rail and
       // phone entries only ask it to open.
+      // OPH-391: and the Quick Access host, as app.dart mounts it — a shot
+      // of a pushed page has to show what the docked button does there.
       builder: (context, child) => AuroraBackground(
-        child: AwGlobalSearchHost(child: child ?? const SizedBox.shrink()),
+        child: AwGlobalSearchHost(
+          child: QuickAccessBubbleHost(child: child ?? const SizedBox.shrink()),
+        ),
       ),
       routerConfig: router,
     );
@@ -401,13 +409,22 @@ Future<void> _shoot(
   FakeApi Function() seed = _seededApi,
   AiStreamClient? aiStreamClient,
   List<Override> overrides = const [],
+  EdgeInsets safeArea = EdgeInsets.zero,
 }) async {
   tester.view.physicalSize = size * 2;
   tester.view.devicePixelRatio = 2.0;
+  // [safeArea] is LOGICAL, like [size]; the view takes physical pixels.
+  tester.view.padding = FakeViewPadding(
+    left: safeArea.left * 2,
+    top: safeArea.top * 2,
+    right: safeArea.right * 2,
+    bottom: safeArea.bottom * 2,
+  );
   tester.platformDispatcher.platformBrightnessTestValue = brightness;
   addTearDown(() {
     tester.view.resetPhysicalSize();
     tester.view.resetDevicePixelRatio();
+    tester.view.resetPadding();
     tester.platformDispatcher.clearPlatformBrightnessTestValue();
   });
   // `localKv` is a process-wide singleton that CACHES its SharedPreferences
@@ -691,6 +708,71 @@ void main() {
         navigate: openSeededDetail,
       );
     });
+
+    // OPH-391 (E-09, U-25): a pushed page on a phone with a home indicator
+    // (47 / 34 pt safe area) and a docked Quick Access button in the shell.
+    // The page once ended ~100 pt above the screen, a band of wash cutting
+    // the content with a straight line; the shot is the picture of the fix,
+    // and the asserts make the run fail if the band comes back.
+    for (final (route, shot, page) in [
+      ('/settings', 'settings', find.byType(SettingsScreen)),
+      (null, 'task_detail', find.byType(TaskDetailScreen)),
+    ]) {
+      testWidgets(
+        'phone pushed $shot reaches the bottom with the safe area '
+        '— $suffix',
+        skip: !_enabled,
+        (tester) async {
+          await withShotLocale();
+          await _shoot(
+            tester,
+            size: const Size(390, 844),
+            brightness: brightness,
+            safeArea: const EdgeInsets.only(top: 47, bottom: 34),
+            name: 'phone_pushed_${shot}_safe_area_$suffix',
+            seed: () => _seededApi()
+              ..seedQuickLink(
+                kind: 'url',
+                url: 'https://alliswell.space',
+                title: 'Site',
+              ),
+            navigate: (t) async {
+              expect(
+                find.byType(QuickAccessBubble),
+                findsOneWidget,
+                reason:
+                    'the shell has the docked button the page used to '
+                    'make room for',
+              );
+              if (route == null) {
+                await openSeededDetail(t);
+              } else {
+                GoRouter.of(t.element(find.byType(Scaffold).first)).push(route);
+                await t.pumpAndSettle();
+              }
+              expect(t.getRect(page).bottom, 844);
+              expect(
+                t
+                    .getRect(
+                      find
+                          .descendant(
+                            of: page,
+                            matching: find.byType(Scrollable),
+                          )
+                          .first,
+                    )
+                    .bottom,
+                844,
+                reason:
+                    'the content runs to the edge, under the home indicator',
+              );
+              expect(MediaQuery.paddingOf(t.element(page)).bottom, 34);
+              expect(find.byType(QuickAccessBubble), findsNothing);
+            },
+          );
+        },
+      );
+    }
 
     testWidgets('phone repeat after completion — $suffix', skip: !_enabled, (
       tester,
