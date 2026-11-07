@@ -114,7 +114,7 @@
     "homeLongPressHint": "Opens Quick Access"
   },
   "auth": {
-    "signInTitle": "Sign in to your space",
+    "signInTitle": "Sign in to your account",
     "registerTitle": "Create your account",
     "email": "Email",
     "password": "Password",
@@ -202,7 +202,7 @@
     },
     "defaultTaskTime": {
       "title": "Default task time",
-      "sub": "Day-only tasks are due at {time}"
+      "sub": "Tasks without a time are due at {time}"
     },
     "deleteAccount": {
       "title": "Delete account",
@@ -231,14 +231,14 @@
     "quickBubbleSub": "Drag it anywhere; tap to open your shortcuts",
     "group": {
       "general": "General",
-      "generalSub": "Language, dates, default time, tour",
+      "generalSub": "Language, date format, default time, app tour",
       "generalSubWidget": "Language, dates, default time, widget, tour",
       "notifications": "Notifications",
-      "notificationsSub": "Alarms, private notifications, reminders",
+      "notificationsSub": "Alarms, hiding content on the lock screen, reminders",
       "integrations": "Integrations",
       "integrationsSub": "Google Calendar, Apple Calendar, AI, Claude / ChatGPT",
       "developer": "API access and management",
-      "developerSub": "Your API keys, and the reference for using them",
+      "developerSub": "API keys and documentation",
       "data": "Data",
       "dataSub": "Import, completed work, share log",
       "account": "Account",
@@ -274,12 +274,12 @@
     "noteSourceStyling": {
       "title": "Editor formatting",
       "plain": "Plain text — no colour at all",
-      "markersOnly": "Markers only — syntax stays visible, text stays plain",
+      "markersOnly": "Markers only: Markdown marks stay visible, no formatting",
       "live": "Live — headings, bold and highlight painted as you type"
     },
     "widget": {
       "title": "Widget",
-      "compact": "Compact widget",
+      "compact": "Compact widget (fits more tasks)",
       "compactSub": "Tighter rows, more tasks at a glance",
       "private": "Private widget",
       "privateSub": "Hide task titles on your home-screen and lock-screen widgets — they never leave the app"
@@ -300,7 +300,7 @@
   "home": {
     "allCaughtUp": "All caught up",
     "allCaughtUpBody": "Nothing left open.",
-    "quickAddHint": "Quick add a task…",
+    "quickAddHint": "Add a task… e.g. tomorrow 3pm #work",
     "quickAddForDay": "Quick add for {date}…",
     "added": "Added: {title} · {when}",
     "hideCalendar": "Hide calendar",
@@ -323,7 +323,8 @@
     "firstRunTitle": "No tasks yet",
     "firstRunBody": "Type in the box above to add your first task.",
     "firstRunAdd": "Add your first task",
-    "firstRunImport": "Move in from Todoist or TickTick"
+    "firstRunImport": "Move in from Todoist or TickTick",
+    "quickAddHintShort": "Add a task"
   },
   "board": {
     "viewList": "List",
@@ -431,7 +432,7 @@
     "deleteSemantic": "Delete {title}",
     "deleted": "“{title}” deleted",
     "movedInCalendar": "Moved in your calendar — {date}",
-    "movedInCalendarSub": "You dragged this task’s event, so it stays at that time instead of following the deadline.",
+    "movedInCalendarSub": "You dragged this task’s event, so it stays at that time instead of following the due date.",
     "resetSchedule": "Reset",
     "quickParse": {
       "due": "Due {date}",
@@ -450,14 +451,14 @@
         "dates": "today · tomorrow · day after tomorrow\nfriday · next friday · in 3 days · next week\nNov 15 · 15.11 · 2026-11-15 · end of month",
         "timesTitle": "Times",
         "times": "9am · 3:30pm · at 15:00 · noon\n\"pay rent tomorrow 9am\"",
-        "dueWhenTitle": "Deadline or When",
-        "dueWhen": "A date on its own is the deadline: \"report friday\".\nSay \"due\" or \"by\" to be explicit: \"by tomorrow\".\n\"start\" sets When, the day you plan to do it: \"start mon due fri\".",
+        "dueWhenTitle": "Due date or When",
+        "dueWhen": "A date on its own is the due date: \"report friday\".\nSay \"due\" or \"by\" to be explicit: \"by tomorrow\".\n\"start\" sets When, the day you plan to do it: \"start mon due fri\".",
         "repeatTitle": "Repeat",
         "repeat": "every day · every monday · every weekday\nevery other week · every 15th · every last day of the month",
         "marksTitle": "Tags, project, priority",
         "marks": "#home adds a tag (created if it is new)\n+Work files it in one of your projects\np1 high · p2 medium · p3 low · p4 none · !urgent",
         "undoTitle": "Not what you meant?",
-        "undo": "Recognized words are highlighted and shown as chips under the bar.\nTap ✕ on a chip and its words stay in the title."
+        "undo": "Recognized words are highlighted and shown as chips under the bar.\nThe ✕ on a chip undoes it; its words stay in the title."
       }
     }
   },
@@ -508,11 +509,11 @@
     "unarchive": "Unarchive",
     "favorite": "Favorite",
     "dueOn": "Due {date}",
-    "readme": "README",
-    "editReadme": "Edit README",
-    "noReadme": "No README yet — the note that opens with this project, like a repo home page.",
-    "createReadme": "Create README",
-    "emptyReadme": "Empty README — open it with the pencil to start writing.",
+    "readme": "Overview",
+    "editReadme": "Edit overview",
+    "noReadme": "No overview yet. It is the note that opens first with this project.",
+    "createReadme": "Create overview",
+    "emptyReadme": "The overview is empty. Open it with the pencil to start writing.",
     "addTaskHint": "Add a task to this project…",
     "allClear": "All clear",
     "noOpenTasks": "No open tasks in this project",
@@ -577,7 +578,7 @@
     "filterAll": "All",
     "filterPinned": "Pinned",
     "filterArchived": "Archive",
-    "filterReadmes": "READMEs",
+    "filterReadmes": "Project overviews",
     "emptyPreview": "*Empty note*",
     "edited": "Edited {date}",
     "created": "Created {date}",
@@ -618,8 +619,8 @@
     "mdTooLarge": "That file is {size} MB — too large to import as a note.",
     "mdProject": "Project",
     "mdProjectHint": "Optional — the note is filed under it",
-    "modeReading": "Reading",
-    "modeSource": "Source",
+    "modeReading": "Read",
+    "modeSource": "Edit",
     "sourceHint": "Write markdown…",
     "paletteHint": "Search commands…",
     "paletteEmpty": "No command matches that.",
@@ -694,7 +695,7 @@
     "apple": "Apple Calendar",
     "calendar": "Calendar",
     "checking": "Checking…",
-    "notSetUpServer": "Google Calendar is not set up on this server",
+    "notSetUpServer": "Google Calendar isn't configured on this server. Admins: add a Google OAuth client to the server's .env — see Self-hosting guide → Google Calendar.",
     "notSetUpYet": "Google Calendar is not set up on this server yet.",
     "reauthLong": "Google needs you to sign in again. Disconnect and reconnect.",
     "networkError": "Could not reach the server. Check your connection.",
@@ -938,7 +939,7 @@
     "snoozeCustom": "Pick a time…",
     "silence": "Silence indefinitely",
     "startSound": "Start the sound",
-    "snoozePast": "That time has already passed — pick a later one.",
+    "snoozePast": "That time has already passed. Pick a later one.",
     "problem": {
       "notificationsOff": "Notifications are off. Reminders can't reach you.",
       "webPermissionPrompt": "You haven't allowed notifications in this browser yet.",
@@ -958,12 +959,12 @@
       "allow": "Allow notifications",
       "checkAgain": "Check again",
       "notificationsOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Allow Notifications”.",
-      "webPermissionPrompt": "Allow notifications when your browser asks, so a reminder can reach you even with this tab closed. If no prompt appears, click the site-info icon (the padlock) at the left of the address bar and set Notifications to Allow.",
-      "webPermissionBlocked": "Once notifications are blocked, your browser won’t ask again. Click the site-info icon (the padlock) at the left of the address bar, set Notifications to Allow, then come back and press “Check again”.",
-      "webUnsupported": "This browser can’t receive notifications from a website. On an iPhone or iPad, open AllisWell in Safari, tap Share ▸ Add to Home Screen and use it from there; on a computer, use a current version of Chrome, Edge, Firefox or Safari.",
-      "webPushOff": "Notifications are allowed here, but a browser cannot schedule a reminder on its own, so the server has to send it. Make sure the server you are signed in to has push configured, then press “Check again”. On an iPhone, this works only for AllisWell added to the Home Screen.",
+      "webPermissionPrompt": "Allow notifications when your browser asks, so a reminder can reach you even with this tab closed. If no prompt appears, open the site-info icon (the padlock) at the left of the address bar and set Notifications to Allow.",
+      "webPermissionBlocked": "Once notifications are blocked, your browser won’t ask again. Open the site-info icon (the padlock) at the left of the address bar, set Notifications to Allow, then come back and choose “Check again”.",
+      "webUnsupported": "This browser can’t receive notifications from a website. On an iPhone or iPad, open AllisWell in Safari, choose Share ▸ Add to Home Screen and use it from there; on a computer, use a current version of Chrome, Edge, Firefox or Safari.",
+      "webPushOff": "Notifications are allowed here, but a browser cannot schedule a reminder on its own, so the server has to send it. Make sure the server you are signed in to has push configured, then choose “Check again”. On an iPhone, this works only for AllisWell added to the Home Screen.",
       "provisional": "Open Settings ▸ Notifications ▸ AllisWell and choose “Deliver Prominently”, then turn on Sounds.",
-      "soundOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Sounds”. Without it an alarm still arrives — in silence.",
+      "soundOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Sounds”. Without it an alarm still arrives, but makes no sound.",
       "alertOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Lock Screen” and “Banners”.",
       "exactAlarmsOff": "Grant “Alarms & reminders” so an alarm can ring at the exact minute instead of whenever the system next wakes up.",
       "timeSensitiveOff": "Open Settings ▸ Notifications ▸ AllisWell and turn on “Time Sensitive Notifications”. Without it every Focus mode — including Sleep — hides your alarms.",
@@ -981,7 +982,7 @@
   },
   "alarmLog": {
     "title": "Alarm log",
-    "sub": "What this device did about alarms",
+    "sub": "Alarms this device rang or missed",
     "scope": "This is what the app DID: alarms it scheduled, ones it took back, the ones you touched, and the times the in-app alarm screen rang. iOS reports nothing about a notification you never touch, so the log never claims one was delivered.",
     "copy": "Copy the log",
     "copied": "Log copied",
@@ -1032,7 +1033,7 @@
       "calm": "Calm",
       "standard": "Standard",
       "insistent": "Insistent",
-      "custom": "Yours"
+      "custom": "Custom"
     },
     "chain": "The alerts",
     "step": "Alert {index}",
@@ -1130,7 +1131,7 @@
     "filterNotes": "Notes",
     "emptyTitle": "No files yet",
     "emptyBody": "Files you add to this project, its tasks or its notes appear here.",
-    "notConfiguredHint": "Set STORAGE_S3_* on the server — see docs/ATTACHMENTS.md.",
+    "notConfiguredHint": "Admins: set STORAGE_S3_* on the server — see docs/ATTACHMENTS.md.",
     "insertImage": "Insert image",
     "insertVideo": "Insert video",
     "attachedNotEmbedded": "Uploaded as an attachment — this file type doesn't embed inline",
@@ -1157,7 +1158,7 @@
   },
   "files": {
     "myFolders": "My folders",
-    "sources": "Sources",
+    "sources": "Task and note attachments",
     "newFolder": "New folder",
     "folderName": "Name",
     "renameFolder": "Rename folder",
@@ -1210,7 +1211,7 @@
     "moveUp": "Move up",
     "moveDown": "Move down",
     "useTargetName": "Use the source's name",
-    "targetRenamed": "Now: {name}",
+    "targetRenamed": "Renamed: {name}",
     "broken": "Source deleted",
     "brokenBody": "This shortcut's source no longer exists.",
     "emojiRecents": "Recently used",
@@ -1612,7 +1613,7 @@
       "settings": {
         "title": "Team settings",
         "name": "Team name",
-        "slugFixed": "Address stays {slug} — links people saved keep working",
+        "slugFixed": "Renaming doesn't change your web address ({slug}); shared links keep working.",
         "language": "Team language",
         "languageUnset": "Follow each person’s own choice",
         "timezone": "Time zone",
@@ -1701,7 +1702,7 @@
         "archive": "Archive",
         "unarchive": "Restore",
         "archived": "archived",
-        "youManage": "you run this one",
+        "youManage": "You run this unit",
         "manager": "Unit manager",
         "promote": "Make unit manager",
         "demote": "Make member",
@@ -2047,7 +2048,7 @@
       },
       "team": {
         "import_members": "Import members in bulk from a file",
-        "import_tickets": "Migrate requests in bulk from another help desk",
+        "import_tickets": "Migrate requests in bulk from another request system",
         "manage_ai_keys": "Manage the team's AI provider keys and the personal-key policy",
         "manage_deliveries": "Notification deliveries",
         "export_data": "Download everything the team has, as one file",
@@ -2383,7 +2384,7 @@
           "body": "{subject}"
         },
         "routed": {
-          "title": "New ticket for {unitName}: {ticketRef}",
+          "title": "New request for {unitName}: {ticketRef}",
           "body": "{subject}"
         },
         "routed_public": {
@@ -2413,7 +2414,7 @@
           "created": "An invitation is sent"
         },
         "ticket": {
-          "routed": "A ticket lands on your unit",
+          "routed": "A request lands on your unit",
           "routed_public": "A request from outside lands on your unit",
           "assigned": "A request is assigned to you",
           "status_changed": "A request you asked for or hold changes status",
@@ -2433,7 +2434,7 @@
           "decided": "An approval you asked for is decided"
         },
         "report": {
-          "weekly": "The weekly service desk report",
+          "weekly": "The weekly request report",
           "savedView": "A saved view you scheduled"
         },
         "asset": {
@@ -2494,7 +2495,7 @@
         "waiting": "Waiting",
         "done": "Finished",
         "mine": "On me",
-        "unassigned": "On nobody",
+        "unassigned": "Unassigned",
         "slaBreached": "SLA missed",
         "slaWarned": "SLA due soon",
         "dates": "Any date",
@@ -2516,7 +2517,7 @@
         "status": "Change the status",
         "priority": "Change the priority",
         "assign": "Assign",
-        "offline": "No connection — a batch goes to the desk; it can be sent when the signal returns.",
+        "offline": "No connection — a batch goes to the unit; it can be sent when the signal returns.",
         "tooMany": "At most {max} requests can be changed at once; narrow the selection.",
         "statusTitle": "Status of {count} requests",
         "priorityTitle": "Priority of {count} requests",
@@ -2532,9 +2533,9 @@
         "reason": {
           "NO_CHANGE": "Already so",
           "NOT_FOUND": "Cannot be done on this request — you are not in its unit, or it is no longer visible",
-          "TICKET_PRIORITY_OVERRIDE_DENIED": "The priority comes from the desk's matrix; you may not override it",
+          "TICKET_PRIORITY_OVERRIDE_DENIED": "The priority comes from the unit's matrix; you may not override it",
           "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "This person is not in the request's unit",
-          "UNKNOWN": "The desk did not change it and gave no reason",
+          "UNKNOWN": "The unit did not change it and gave no reason",
           "TICKET_INVALID_TRANSITION": "Cannot move to that status from where it stands",
           "TICKET_TERMINAL": "Closed or cancelled; it cannot be changed",
           "TICKET_APPROVAL_PENDING": "Waiting for approval; until then it can only be cancelled"
@@ -2561,9 +2562,9 @@
       "waitingReason": "Waiting on",
       "waitingReasonRequired": "Parking a request needs a reason",
       "linkedTasks": "Work this request caused",
-      "linkedTasksEmpty": "No work has been opened from this request yet",
+      "linkedTasksEmpty": "No tasks opened from this request yet.",
       "openAnotherTask": "Open another task",
-      "relatedAction": "This has come up again",
+      "relatedAction": "Mark as reopened",
       "relatedHint": "A closed request is not reopened — a NEW request is opened carrying its summary, and the two are linked.",
       "relatedOpened": "A new request was opened and linked to the old one",
       "affectedAssets": "Affected equipment",
@@ -2576,7 +2577,7 @@
         "reply": "Reply",
         "internal": "Internal note",
         "replyAudience": "The requester reads this.",
-        "internalAudience": "Only your desk reads this — never the requester.",
+        "internalAudience": "Only your unit reads this — never the requester.",
         "replyHint": "Write to the requester…",
         "noteHint": "A note for your colleagues…",
         "sendReply": "Send to requester",
@@ -2584,18 +2585,18 @@
         "canned": "Saved replies",
         "cannedTitle": "Insert a saved reply",
         "cannedEmptyTitle": "No saved replies yet",
-        "cannedEmptyBody": "Your desk's saved replies appear here once someone who manages its services adds them.",
+        "cannedEmptyBody": "Your unit's saved replies appear here once someone who manages its services adds them.",
         "offline": "You're offline. A reply only goes while you're connected — it is not sent on its own; what you've written stays here while the app is open.",
         "replySent": "Reply sent",
         "noteAdded": "Internal note added",
         "closed": "This request is closed, and so is its conversation. If it has come up again, open a related request above.",
-        "replyOwn": "Write to the desk",
-        "replyOwnAudience": "The desk reads this.",
-        "replyOwnHint": "Write to the desk…",
-        "sendOwn": "Send to the desk",
+        "replyOwn": "Write to the unit",
+        "replyOwnAudience": "The unit reads this.",
+        "replyOwnHint": "Write to the unit…",
+        "sendOwn": "Send to the unit",
         "byEmail": "The reply is sent to the requester by email.",
         "customerPortal": "The reply also shows in {name}'s company portal.",
-        "filesInternal": "Files on an internal note are seen by the desk only.",
+        "filesInternal": "Files on an internal note are seen by the unit only.",
         "filesFailed": "Sent, but {count} file(s) could not be uploaded — attach them again."
       },
       "actions": {
@@ -2652,10 +2653,10 @@
         "fab": "New request",
         "title": "New request",
         "service": "Service",
-        "pickService": "What do you need? Pick a service",
+        "pickService": "Choose a request type",
         "serviceSearch": "Search services",
         "searchEmpty": "No service matches that search.",
-        "noServices": "This desk has no service to file a request against.",
+        "noServices": "This unit has no service to file a request against.",
         "catalogUnavailable": "The service list cannot be read right now.",
         "otherCategory": "Other",
         "unit": "Which unit should answer?",
@@ -2664,7 +2665,7 @@
         "subjectHint": "What happened, in short",
         "answers": {
           "title": "The answer may already be written",
-          "hint": "Have a look before sending: the desk's published answers that match your subject.",
+          "hint": "Have a look before sending: the unit's published answers that match your subject.",
           "read": "Read",
           "noSolution": "No solution has been written for this answer yet.",
           "back": "Back to the request",
@@ -2684,13 +2685,13 @@
         "saveDraft": "Save as draft",
         "offline": "No connection — the request is kept on this phone as a draft and sent by itself when the signal returns.",
         "draftCarries": "A draft carries the subject, the description, the service and the asset; the form’s extra questions and the on-behalf field do not travel with it.",
-        "draftMultiUnit": "Several units answer this service and a draft cannot name one: the desk holds the draft until a unit is chosen.",
+        "draftMultiUnit": "Several units answer this service and a draft cannot name one: the draft is held until a unit is chosen.",
         "noDraftHome": "There is no personal space on this device to keep a draft in; try again when the signal returns.",
         "missing": "Missing before it can be sent: {fields}",
         "sent": "Request filed",
         "sentNumbered": "Request filed — #{number}",
         "drafted": "Draft saved — it will be sent when the signal returns",
-        "followUpNote": "You are following up on {ref}, which is closed. The desk can link the two.",
+        "followUpNote": "You are following up on {ref}, which is closed. The unit can link the two.",
         "followUpBody": "Follows up on #{number}: {subject}",
         "followUpBodyNoNumber": "Follows up on: {subject}",
         "asset": "Asset",
@@ -2704,16 +2705,16 @@
         "offlineNoDraft": "No connection, and no personal space on this device to keep a draft in. What you typed stays here; send it when the signal returns.",
         "waitForSignal": "Send when connected",
         "filesFailed": "{count} file(s) could not be attached",
-        "filesDeskOnly": "Files can be added by members of the unit handling the request; the desk will ask if it needs one."
+        "filesDeskOnly": "Files can be added by members of the unit handling the request; the unit will ask if it needs one."
       },
       "drafts": {
         "title": "Drafts",
         "onDevice": "On the phone — it goes when the signal returns",
         "held": {
-          "noService": "Waiting at the desk — no service chosen",
-          "serviceClosed": "Waiting at the desk — this service no longer takes requests",
-          "needsUnit": "Waiting at the desk — several units answer this service and a draft cannot name one",
-          "waiting": "Reached the desk, waiting to become a request"
+          "noService": "Waiting at the unit — no service chosen",
+          "serviceClosed": "Waiting at the unit — this service no longer takes requests",
+          "needsUnit": "Waiting at the unit — several units answer this service and a draft cannot name one",
+          "waiting": "Reached the unit, waiting to become a request"
         },
         "rejected": "Refused — {reason}",
         "sent": "Sent — the request is below",
@@ -2722,25 +2723,25 @@
         "reason": {
           "limit": "your own space can hold at most 200 unsent drafts",
           "notOwn": "a draft can only be written into your own space",
-          "noDesk": "it cannot reach this team’s desk",
-          "other": "the desk did not accept it ({code})"
+          "noDesk": "it cannot reach this team’s unit",
+          "other": "the unit did not accept it ({code})"
         }
       },
       "requester": {
         "updated": "Updated {when}",
-        "waitingOnYou": "Waiting for you — the desk needs something from you. Write it below.",
+        "waitingOnYou": "Waiting for you — the unit needs something from you. Write it below.",
         "yourRequest": "Your request",
         "you": "You",
-        "desk": "Support desk",
-        "replyHint": "Write to the desk…",
+        "desk": "Support unit",
+        "replyHint": "Write to the unit…",
         "send": "Send",
-        "resolvedPrompt": "The desk says this is resolved. Is it?",
+        "resolvedPrompt": "The unit says this is resolved. Is it?",
         "confirmClose": "Resolved — close it",
         "dispute": "Not resolved",
         "closeConfirmTitle": "Close this request?",
         "closeConfirmBody": "A closed request is finished. If the problem comes back, you open a new one.",
         "closedDone": "Request closed",
-        "disputed": "Sent back to the desk",
+        "disputed": "Sent back to the unit",
         "newRequest": "Open a new request",
         "needsConnection": "This request is read from the server, and there is no connection. It opens when you are back online.",
         "closedFooter": "This request is closed, and so is its conversation. If the problem is back, open a new request; this one’s number goes with it.",
@@ -2800,7 +2801,7 @@
         },
         "mineSection": "Archive",
         "mineTitle": "My archived requests",
-        "mineTileBody": "Requests that closed a while ago. Read-only, and they need a connection.",
+        "mineTileBody": "Requests that closed a while ago. View only; needs a connection.",
         "mineEmptyTitle": "Nothing in the archive yet",
         "mineEmptyBody": "A request moves here some time after it closes, and stays readable.",
         "mineMore": "Show older requests",
@@ -2820,7 +2821,7 @@
       "cancelledOn": "Cancelled on {date}",
       "threadMeta": {
         "side": {
-          "desk": "Desk",
+          "desk": "Unit",
           "requester": "Requester",
           "customer": "Company contact",
           "system": "System"
@@ -2877,9 +2878,9 @@
         "notAllowed": "Your role cannot transfer requests. Ask a team admin.",
         "approvalPending": "This request is waiting on an approval. It can be transferred once someone decides.",
         "reason": "Reason (optional)",
-        "reasonHint": "Only the desk sees this",
-        "crossUnit": "{unit} receives it. Everyone on it now is taken off, and the receiving desk is told. The SLA keeps counting from when the request was opened.",
-        "sameUnit": "It stays on this desk, under another service. The SLA keeps counting and is re-aimed on the new service.",
+        "reasonHint": "Only the unit sees this",
+        "crossUnit": "{unit} receives it. Everyone on it now is taken off, and the receiving unit is told. The SLA keeps counting from when the request was opened.",
+        "sameUnit": "It stays in this unit, under another service. The SLA keeps counting and is re-aimed on the new service.",
         "apply": "Transfer",
         "done": "Transferred to {where}",
         "unchanged": "It is already there"
@@ -2909,18 +2910,18 @@
     },
     "slaDash": {
       "title": "SLA dashboard",
-      "compliance": "Promises kept",
-      "complianceOf": "of {total} judged",
+      "compliance": "Resolved within SLA",
+      "complianceOf": "{met} of {total} requests",
       "complianceNone": "Nothing judged yet",
-      "byUnit": "By desk",
+      "byUnit": "By unit",
       "byService": "By service",
       "breaches": "Missed targets",
-      "noBreaches": "No missed targets. Every promise on this desk is still standing.",
-      "noUnits": "No desks with requests yet.",
+      "noBreaches": "No missed targets. Every request in this unit is within its SLA.",
+      "noUnits": "No units with requests yet.",
       "noServices": "No services with requests yet.",
       "noService": "No service",
       "unavailable": "No dashboard here",
-      "unavailableBody": "This address has no team, or you are not on a desk that reports into one.",
+      "unavailableBody": "This address has no team, or you are not in a unit that reports into one.",
       "outcomeBreached": "Missed",
       "outcomeWarned": "Close to the limit",
       "outcomeMet": "Kept",
@@ -2928,9 +2929,9 @@
       "noDefaultBody": "New requests whose service or company names no policy get no SLA at all, so they are not counted here. Mark a policy as the default under SLA management."
     },
     "perfPanel": {
-      "title": "Performance",
+      "title": "Workload report",
       "unavailable": "No panel here",
-      "unavailableBody": "This team has no service desk, or this screen is not yours to see.",
+      "unavailableBody": "This team has no request management, or this screen is not yours to see.",
       "byUnit": "By unit",
       "byAgent": "By person",
       "noUnits": "No unit activity in this period.",
@@ -2946,7 +2947,7 @@
       "compliance": "SLA met",
       "byProcessType": "By kind of work",
       "noProcessTypes": "Nothing in this window.",
-      "processTypeNone": "No kind recorded",
+      "processTypeNone": "Requests with no type",
       "processType": {
         "incident": "Incidents",
         "request": "Service requests"
@@ -2971,7 +2972,7 @@
       "policyName": "Policy name",
       "calendar": "Business calendar",
       "warnPercent": "Warn at",
-      "warnOn": "The desk is warned at {percent}% of the target.",
+      "warnOn": "The unit is warned at {percent}% of the target.",
       "warnOff": "No warning — only the breach itself is announced.",
       "makeDefault": "Use as the team default",
       "makeDefaultBody": "Applies to requests whose service names no policy. Only one policy can be the default.",
@@ -2993,7 +2994,7 @@
       "save": "Save",
       "delete": "Delete",
       "noPolicies": "No policies yet",
-      "noPoliciesBody": "A policy says how fast this desk answers, and against which calendar.",
+      "noPoliciesBody": "A policy says how fast this unit answers, and against which calendar.",
       "noCalendars": "No calendars yet",
       "noCalendarsBody": "A calendar is the working hours a promise is counted against — shifts and holidays included.",
       "noMonitors": "No monitors yet",
@@ -3045,7 +3046,7 @@
       "copied": "Copied",
       "quotaTitle": "Your plan",
       "scanOffTitle": "Files from these links are not virus-scanned",
-      "scanOffBody": "A photo or PDF that someone sends through a public link reaches the desk without a virus scan. Scanning is a server setting; ask whoever runs the server.",
+      "scanOffBody": "A photo or PDF that someone sends through a public link reaches the unit without a virus scan. Scanning is a server setting; ask whoever runs the server.",
       "quotaLinks": "Live links",
       "quotaTickets": "Requests this month",
       "ofMax": "{used} of {max}",
@@ -3072,7 +3073,7 @@
       },
       "catalogue": "Catalogue link",
       "catalogueHelp": "Shows the services you pick instead of one; the visitor chooses.",
-      "catalogueAmbiguous": "Two desks answer this, so it cannot go in a catalogue — use a single-service link.",
+      "catalogueAmbiguous": "Two units answer this, so it cannot go in a catalogue — use a single-service link.",
       "catalogueCount": "{count} services",
       "ttlDays": "{days} days",
       "ttlDayOne": "1 day",
@@ -3235,7 +3236,7 @@
       "deleteTitle": "Remove this endpoint?",
       "deleteBody": "Calls stop immediately and its secret stops being valid. Deliveries already recorded stay readable.",
       "emptyTitle": "No endpoints yet",
-      "emptyBody": "Add one to send this team's events to a system you already run. Only the request number, subject, desk and a link travel — never the text of a request.",
+      "emptyBody": "Add one to send this team's events to a system you already run. Only the request number, subject, unit and a link travel — never the text of a request.",
       "unavailable": "Not available here",
       "unavailableBody": "Outgoing webhooks belong to a team. Open this from a team you administer.",
       "event": {
@@ -3286,13 +3287,13 @@
       "inboxWebhookWarning": "Mail for this box passes through a third party.",
       "inboxSecretTitle": "Copy this secret now",
       "inboxSecretBody": "Paste it into your provider so it can sign what it delivers here. This is the only time it is shown; if you lose it, make a new one.",
-      "inboxTitle": "Mailboxes this desk reads",
+      "inboxTitle": "Mailboxes this unit reads",
       "inboxHint": "This server dials out to your own mail server and turns what arrives into requests. Nothing is opened to the internet, and messages are left unread in the box for your own people.",
       "inboxEmpty": "No mailbox connected yet.",
       "inboxOk": "{host} · {user}",
       "enabled": "Send mail through this relay",
       "enabledBlocked": "Fill these in first: {fields}",
-      "enabledHint": "Notifications, invitations and ticket updates leave through your server.",
+      "enabledHint": "Notifications, invitations and request updates leave through your server.",
       "fromAddress": "From address",
       "fromName": "From name",
       "host": "SMTP server",
@@ -3472,7 +3473,7 @@
       "emptyOnDevice": "Nothing on this device",
       "editOffline": "Editing needs a connection",
       "offDevice": {
-        "title": "From the server — not kept on this device",
+        "title": "Not available offline",
         "offline": "Equipment outside this unit, and retired records untouched for 90 days, are not kept on this device. They show up here once you are back online."
       },
       "card": {
@@ -3535,7 +3536,7 @@
       "notOnDevice": "This change is not on this device",
       "notOnDeviceBody": "Opening it needs a connection.",
       "gone": "Change not found",
-      "goneBody": "It may have been removed, or it belongs to a desk you do not work in.",
+      "goneBody": "It may have been removed, or it belongs to a unit you do not work in.",
       "live": {
         "offline": "Signatures, the calendar and what it touches need a connection."
       },
@@ -3602,7 +3603,7 @@
       "searchHint": "Search problems",
       "new": "New problem record",
       "empty": "No problems in this unit",
-      "emptyBody": "A problem record is the desk's shared understanding of a fault that keeps coming back: what people see, why it happens and what to do until it is fixed. A record opened in another unit is in that unit's list.",
+      "emptyBody": "A problem record is the unit's shared understanding of a fault that keeps coming back: what people see, why it happens and what to do until it is fixed. A record opened in another unit is in that unit's list.",
       "searchEmpty": "No problem matches",
       "searchEmptyBody": "Search looks at a problem's title and what people see.",
       "section": {
@@ -3637,7 +3638,7 @@
       "requestsNone": "No request is linked to it yet.",
       "requestsMore": "…and {count} more",
       "requestsElsewhere": "{count} more in units you do not work in",
-      "fromTicketAction": "Open a known-error record",
+      "fromTicketAction": "Record as a recurring problem",
       "create": {
         "title": "New problem record",
         "knownErrorTitle": "Known-error record",
@@ -3645,7 +3646,7 @@
         "name": "Title",
         "symptomHelp": "Required. What people see, in their words — how anybody recognises it next time.",
         "workaround": "What to do until it is fixed (optional)",
-        "workaroundHelp": "If you already know one, write it down: it is what the desk reads out on the phone.",
+        "workaroundHelp": "If you already know one, write it down: it is what the unit reads out on the phone.",
         "save": "Open the record",
         "offline": "Opening a record needs a connection.",
         "done": "Problem record opened"
@@ -3746,7 +3747,7 @@
     },
     "myUnits": {
       "title": "My units",
-      "live": "Live — needs a connection",
+      "live": "Live data · needs a connection",
       "scope": "Your units: {units}",
       "counts": "{breached} SLA missed · {warned} due soon",
       "alertsOnly": "SLA alerts only",
@@ -3759,8 +3760,8 @@
       "noUnitsBody": "This list shows the open requests of the units you work in.",
       "offlineTitle": "Needs a connection",
       "offlineBody": "This list is read live from the server, so it is never shown from an old copy. The queue of the unit you are in still works offline.",
-      "stripBoth": "Your other units: {breached} SLA missed, {warned} due soon",
-      "stripBreached": "Your other units: {breached} SLA missed",
+      "stripBoth": "In your other units: {breached} requests past SLA, {warned} due soon",
+      "stripBreached": "In your other units: {breached} requests past SLA",
       "stripWarned": "Your other units: {warned} SLA due soon",
       "stripAll": "See all"
     },
@@ -3771,7 +3772,7 @@
       "empty": "No meeting notes in this unit yet",
       "emptyBody": "When a meeting's recording is uploaded, its summary and decisions appear here.",
       "counts": "{decisions} decisions · {ideas} ideas",
-      "upload": "Upload a recording",
+      "upload": "Upload a meeting recording",
       "uploaded": "Recording uploaded — it will be transcribed shortly."
     },
     "ticketWork": {
@@ -3779,7 +3780,7 @@
       "explain": "This task is the request's work: completing it resolves the request, reopening it takes the request back. Title, priority and due date come from the request — if you change one, your value stays.",
       "open": "Open the request",
       "release": "Give the request back",
-      "releaseOffline": "Giving a request back needs a connection — the desk's rules decide it.",
+      "releaseOffline": "Giving a request back needs a connection — the unit's rules decide it.",
       "released": "You gave {ref} back — it is off your list."
     },
     "teamAddress": {
@@ -3790,9 +3791,10 @@
       "bannerBody": "Your team {team} works on its own address, {host}. Requests and approvals are there.",
       "bannerDismiss": "Not now",
       "settingsRowBody": "Team screens open on your team's own address",
-      "settingsRowHint": "{team} is at {host} — tap to switch",
-      "notInTeamTitle": "Not a member of this team",
-      "notInTeamBody": "This address belongs to a team your account is not in."
+      "settingsRowHint": "{team} is at {host}",
+      "notInTeamTitle": "You're not a member of this company's workspace",
+      "notInTeamBody": "The account you're signed in with ({email}) isn't registered here. Ask your admin for an invite or sign in with another account.",
+      "switchAccount": "Switch account"
     },
     "forbidden": {
       "title": "This screen is for the team's admins",
@@ -3807,12 +3809,13 @@
       "daysHours": "{d} d {h} h"
     },
     "unitScope": {
-      "chooseTitle": "Choose a unit",
-      "chooseBody": "This list belongs to a unit, and the space on screen is not one. Pick the unit whose list you want to see.",
-      "noUnitsBody": "This list belongs to a unit, and you are not in one yet. A team admin can add you to a unit."
+      "chooseTitle": "Which unit's requests do you want to see?",
+      "chooseBody": "Requests are kept per unit. Pick a unit or see them all.",
+      "noUnitsBody": "This list belongs to a unit, and you are not in one yet. A team admin can add you to a unit.",
+      "switcherTitle": "Choose a unit"
     },
     "csv": {
-      "download": "Download CSV",
+      "download": "Export to CSV",
       "preparing": "Preparing the file…",
       "saved": "Saved: {name}",
       "savedTruncated": "Saved: {name}. It stopped at the row limit, and the file says so inside. Narrow the filters for the rest."
@@ -3865,7 +3868,7 @@
         },
         "manage_settings": "Edit the team's name, logo, language, time zone and colour",
         "manage_members": "Promote, demote and remove team members",
-        "import_tickets": "Migrate requests in bulk from another help desk"
+        "import_tickets": "Migrate requests in bulk from another request system"
       },
       "assets": {
         "view": "See the asset register",
@@ -3951,7 +3954,7 @@
       "actions": "Actions",
       "keep": "Keep it",
       "archiveTitle": "Archive “{name}”?",
-      "archiveBody": "Its people can no longer sign in to the company portal or open requests, and no new contact can be added. Its open requests stay on the desk. You can restore it later.",
+      "archiveBody": "Its people can no longer sign in to the company portal or open requests, and no new contact can be added. Its open requests stay with the unit. You can restore it later.",
       "archivedNote": "This company is archived: its people cannot sign in or open requests. Restore it from the company list to add or invite anyone.",
       "emptyTitle": "No companies yet",
       "emptyBody": "Add the companies you serve. Their people then sign in to the company portal at your team's address and follow their own requests.",
@@ -4157,9 +4160,9 @@
       },
       "reason": {
         "no_assignee": "No person is chosen.",
-        "not_member": "This person is not on the request's desk.",
-        "nobody_available": "Nobody on the desk is available.",
-        "no_on_call": "The on-call rota names nobody for this desk now.",
+        "not_member": "This person is not in the request's unit.",
+        "nobody_available": "Nobody in the unit is available.",
+        "no_on_call": "The on-call rota names nobody for this unit now.",
         "no_priority": "No priority is chosen.",
         "tag_missing": "The tag no longer exists.",
         "webhook_missing": "The webhook no longer exists.",
@@ -4179,7 +4182,7 @@
   "workspace": {
     "switcher": {
       "title": "Choose a workspace",
-      "tooltip": "{workspace} — tap to switch"
+      "tooltip": "{workspace} · Switch workspace"
     }
   },
   "time": {

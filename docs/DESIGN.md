@@ -1803,6 +1803,21 @@ the action cluster is the same on both.
 | F7 | **One breakpoint:** a page is two-column only beside the rail (`awWideContent`: content ≥ 720 AND window ≥ 800) — an iPad mini at 744 is the phone layout throughout. | Home went wide at 720 under the phone capsule (R-12). |
 | F8 | **Measured:** `test/features/shell/floating_grid_test.dart` (360/393/430, AI on/off, bubble on/off: no floating object covers a check circle or a header, at rest and scrolled); `bubble_test` (inside the safe area at rest and idle, gone on pushed pages, intro above the system bar). | Kabul of OPH-397. |
 
+## 45. Words: one address per surface, one glossary (OPH-407)
+
+U-10 ([persona review](research/2026-11-design-ux/README.md) §3.3–§3.5, Ek A). The texts live in
+`apps/app/assets/i18n/{tr,en}.json`; `check:i18n` and `test/i18n/copy_pass_test.dart` hold them.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| W1 | **Turkish address by surface.** The personal app says **sen**; the extension's screens (`ee.*`, plus the core-named keys in `scripts/i18n/surfaces.json`), the portal, the landing and the enterprise page say **siz**. No string mixes the two. A button stays a bare imperative ("Kaydet") in either. | The alarm strips and a few settings said "siz" inside a "sen" app; one extension form asked "Ne istiyorsun?" above "Seçin" (U-10). |
+| W2 | **`check:i18n` reads the address** (`scripts/i18n/tone.mjs`): siz = the pronoun, the -(ı)nız family, plural imperatives; sen = the pronoun and second-person verb endings. Quotes, `{placeholders}` and code tokens are skipped. A listed key that no longer exists fails, so a rename cannot drift into "sen". | A rule without a gate rots (OPH-127's lesson). |
+| W3 | **The licence is source-available.** "open source" / "açık kaynak" appears in neither catalogue (`check:i18n`), nor in the web shell (`source_available_test`). | ADR-0024; E-26. |
+| W4 | **No device verb, no drama.** A text never says "tap/dokunun to …" — the button names its result ("Aç", "İzin ver", "Hesap değiştir"). A gesture hint ("basılı tut, yazmak için dokun") names a gesture and may stay. No "hiçbir şey size ulaşamaz"; a server gap is written to the admin ("Yöneticiysen …"). | U-05, §3.3. |
+| W5 | **Glossary (§3.4).** Son tarih (not Bitiş) · Planlanan gün (not Ne zaman) · Proje özeti / Overview (not README) · Düzenle · Oku (not Kaynak · Okuma) · Görev ve not ekleri (not Kaynaklar) · due date (not deadline) · Kurumsal (not Enterprise in Turkish); the extension's words follow the same table. The copy test fails on a word that leaves. | One idea, one word, on every screen. |
+| W6 | **A label is never cut inside a word.** Segment labels are `AwSegmentLabel` (one line, drawn smaller when it does not fit); a tab bar that may not fit scrolls (`isScrollable`, the project tabs); the bottom bar is §43. A short name is chosen where the long one cannot fit ("Özet", "Özel"). | "Standar / t", "Genel bak", "Dosyala" (E-11). |
+| W7 | **Measured:** `apps/api/test/unit/i18n-tone.test.js` (the rules, and both catalogues pass), `test/i18n/copy_pass_test.dart` (Ek A word for word, the glossary, a segment at 2.0×), `projects_flow_test` (the project tabs whole at 360 pt, 2.0×). | Kabul of OPH-407. |
+
 ## 46. The task row (OPH-400)
 
 R-09, T-02, U-06, U-12 ([research](research/2026-11-design-ux/ux-shell-mobile.md)). One widget,

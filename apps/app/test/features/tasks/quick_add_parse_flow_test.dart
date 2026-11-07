@@ -355,6 +355,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('quick-add-help-sheet')), findsOneWidget);
     expect(find.text('What quick add understands'), findsWidgets);
-    expect(find.text('Deadline or When'), findsOneWidget);
+    expect(find.text('Due date or When'), findsOneWidget);
   });
 }

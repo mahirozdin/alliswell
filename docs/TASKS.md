@@ -36,17 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-407 — Metin geçişi: ton, sözlük, kırpılan etiketler
-
-U-10; kurallar ve sözlük araştırma özetinde (README "Genel kurallar"), metinler persona Ek A.
-
-- [ ] `tr.json`/`en.json` (uzantı anahtarları dahil): ton kuralı (core "sen"; uzantı, portal, landing,
-      kurumsal "siz"), terim sözlüğü, Ek A metinleri kelimesi kelimesine.
-- [ ] Kırpılan etiketler ("Dosyala", "Genel bak", "Standar/t") düzelir; cihaz fiili ve dramatik dil yok.
-- [ ] `check:i18n` genişler: yüzeye göre sen/siz karışması ve "açık kaynak/open source" yasağı.
-- [ ] DESIGN §45.
-- **Kabul:** `check:i18n` yeşil + yeni kural testleri.
-
 ### OPH-408 — Tek biçimlendirici awFormat*
 
 U-09; ADR-0063.

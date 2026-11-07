@@ -7,6 +7,7 @@ import '../../../core/recurrence.dart';
 import '../../../core/recurrence_text.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/segment_label.dart';
 
 /// The recurrence dialog (OPH-207, DESIGN §25 R1-R9).
 ///
@@ -585,15 +586,15 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
             segments: [
               ButtonSegment(
                 value: _MonthMode.monthDay,
-                label: Text('repeat.mode.monthDay'.tr()),
+                label: AwSegmentLabel('repeat.mode.monthDay'.tr()),
               ),
               ButtonSegment(
                 value: _MonthMode.nthWeekday,
-                label: Text('repeat.mode.nthWeekday'.tr()),
+                label: AwSegmentLabel('repeat.mode.nthWeekday'.tr()),
               ),
               ButtonSegment(
                 value: _MonthMode.afterDay,
-                label: Text('repeat.mode.afterDay'.tr()),
+                label: AwSegmentLabel('repeat.mode.afterDay'.tr()),
               ),
             ],
             selected: {_monthMode},
@@ -745,9 +746,18 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
         key: const Key('repeat-end-mode'),
         showSelectedIcon: false,
         segments: [
-          ButtonSegment(value: 'never', label: Text('repeat.end.never'.tr())),
-          ButtonSegment(value: 'until', label: Text('repeat.end.until'.tr())),
-          ButtonSegment(value: 'count', label: Text('repeat.end.count'.tr())),
+          ButtonSegment(
+            value: 'never',
+            label: AwSegmentLabel('repeat.end.never'.tr()),
+          ),
+          ButtonSegment(
+            value: 'until',
+            label: AwSegmentLabel('repeat.end.until'.tr()),
+          ),
+          ButtonSegment(
+            value: 'count',
+            label: AwSegmentLabel('repeat.end.count'.tr()),
+          ),
         ],
         selected: {_endType},
         onSelectionChanged: (s) => setState(() => _endType = s.first),

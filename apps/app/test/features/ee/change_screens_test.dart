@@ -532,7 +532,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Katalogda olmayan bir servis'), findsNothing);
+    expect(find.text('Katalogda olmayan bir hizmet'), findsNothing);
 
     await pumpAt(tester, '/changes/new');
     expect(find.byKey(const Key('change-new-service-$hat3')), findsOneWidget);

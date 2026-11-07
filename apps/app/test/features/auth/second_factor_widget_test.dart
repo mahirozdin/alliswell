@@ -155,7 +155,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('second-factor-dialog')), findsNothing);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     expect(find.byKey(const Key('login-error')), findsNothing);
     expect(bodies, hasLength(1));
   });
@@ -227,7 +227,7 @@ void main() {
     await tester.tap(find.byKey(const Key('second-factor-cancel')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     expect(find.byKey(const Key('social-sign-in-error')), findsNothing);
     final google = tester.widget<ButtonStyleButton>(
       find.descendant(

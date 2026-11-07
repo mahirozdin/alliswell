@@ -203,7 +203,7 @@ void main() {
     final api = FakeImportApi(preview: (_) => sampleSummary());
     await tester.pumpWidget(wizardApp(importOverrides(api: api)));
     await tester.pumpAndSettle();
-    expect(find.text('Nereden taşınıyorsunuz?'), findsOneWidget);
+    expect(find.text('Nereden taşınıyorsun?'), findsOneWidget);
     await toPreview(tester);
     expect(api.calls.single.options['locale'], 'tr');
     expect(find.text('42 öğeyi içe aktar'), findsOneWidget);

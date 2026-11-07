@@ -258,7 +258,7 @@ void main() {
     await _pump(tester, const EeSlaAdminData());
     // Policies
     expect(find.byKey(const Key('sla-policy-new-empty')), findsOneWidget);
-    expect(find.textContaining('how fast this desk answers'), findsOneWidget);
+    expect(find.textContaining('how fast this unit answers'), findsOneWidget);
     // Calendars
     await tester.tap(find.byKey(const Key('sla-tab-calendars')));
     await tester.pumpAndSettle();

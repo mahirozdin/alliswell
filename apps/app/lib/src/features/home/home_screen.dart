@@ -626,8 +626,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // Hoisted state (H4) — see [_quickAddController].
               controller: _quickAddController,
               focusNode: _quickAddFocus,
+              // A-13: the example does not fit at a large text size.
               hintText: selectedDay == null
-                  ? 'home.quickAddHint'.tr()
+                  ? (MediaQuery.textScalerOf(context).scale(1) > 1.3
+                            ? 'home.quickAddHintShort'
+                            : 'home.quickAddHint')
+                        .tr()
                   : 'home.quickAddForDay'.tr(
                       args: {
                         'date': awFormatDate(selectedDay, format: dateFormat),

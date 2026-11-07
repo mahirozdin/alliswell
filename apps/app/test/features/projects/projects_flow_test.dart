@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -229,6 +230,40 @@ void main() {
     expect(api.tasks.single['projectId'], api.projects.single['id']);
   });
 
+  // OPH-407 (U-58, DESIGN §45): "Genel bakış" was cut to "Genel bak" on a
+  // phone. A tab label is never cut: the tabs scroll instead.
+  testWidgets('project tabs are whole on a narrow phone at 2x text', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Dar');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Dar'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).isScrollable, isTrue);
+    for (final label in ['Overview', 'Tasks', 'Notes', 'Files']) {
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: find.byType(TabBar), matching: find.text(label)),
+      );
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(
+          paragraph.getMaxIntrinsicWidth(double.infinity) - 0.5,
+        ),
+        reason: '$label is cut',
+      );
+    }
+  });
+
   // OPH-338: the Tasks tab takes Home's order AND Home's preference — the
   // pattern the project Files tab already follows with the Files section.
   testWidgets('the project Tasks tab is in the order you chose', (
@@ -388,7 +423,7 @@ void main() {
 
       // Default (All) hides the README; the READMEs chip surfaces it.
       expect(find.text('Dokümanlı'), findsNothing);
-      await tester.tap(find.text('READMEs'));
+      await tester.tap(find.text('Project overviews'));
       await tester.pumpAndSettle();
       expect(find.text('Dokümanlı'), findsOneWidget);
     },

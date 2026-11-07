@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Metin geçişi (2026-11-08)
+
+- OPH-407 — **iPhone (en dar), Türkçe, 1.0× ve en büyük metin, açık ve koyu**: Ayarlar › Bildirimler › Hatırlatıcılar'da "Sakin · Standart · Israrcı · Özel" tek satırda, kelime ortasında kırılmıyor; bir projenin sekmeleri ("Özet · Görevler · Notlar · Dosyalar") kesilmeden kayıyor; Dosyalar'da "Klasörlerim · Görev ve not ekleri" ve notta "Düzenle · Oku" tek satır; büyük metinde Ana Sayfa'nın hızlı ekleme ipucu "Görev ekle". Uzantılı bir takımda uzantı ekranları baştan sona "siz", kişisel ekranlar "sen" diye konuşuyor; üye olmayan hesapla takım adresinde e-posta adresi ve "Hesap değiştir" görünüyor.
+
 ## Parola sıfırlama (2026-11-08)
 
 - OPH-406 — **SMTP'li bir sunucuda (örn. Mailpit), iPhone + Android + web, TR ve EN, açık ve koyu**: girişte "Parolamı unuttum" parola alanının altında, yazılı e-posta formda hazır; "Bağlantıyı gönder" → "E-postanı kontrol et"; gelen e-posta seçili dilde, bağlantı web uygulamasında "Yeni parola belirle"yi token'la açıyor (oturum geri yüklenirken bile — yeni sekmede yapıştır); yeni parola kaydedilince "Parolan değişti", diğer cihazdaki oturum ilk yenilemede kapanıyor; aynı bağlantı ikinci kez "artık çalışmıyor" + "Yeni bağlantı iste". SMTP'siz sunucuda "Bu sunucu e-posta göndermiyor" + kopyalanabilir komut; `docker compose exec api node apps/api/src/cli/password-reset-link.js <e-posta>` bağlantı basıyor; telefonda "Bağlantım var"a yapıştırınca parola değişiyor. 1.3× ve 2.0× metinde kartta taşma yok, düğmeler ≥44 pt.

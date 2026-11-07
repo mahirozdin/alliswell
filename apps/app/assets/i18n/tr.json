@@ -113,7 +113,7 @@
     "homeLongPressHint": "Hızlı Erişim'i açar"
   },
   "auth": {
-    "signInTitle": "Alanına giriş yap",
+    "signInTitle": "Hesabına giriş yap",
     "registerTitle": "Hesabını oluştur",
     "email": "E-posta",
     "password": "Parola",
@@ -132,7 +132,7 @@
     "or": "veya",
     "continueWithGoogle": "Google ile devam et",
     "continueWithApple": "Apple ile devam et",
-    "socialFailed": "Giriş tamamlanamadı. Lütfen tekrar deneyin.",
+    "socialFailed": "Giriş tamamlanamadı. Tekrar dene.",
     "mfa": {
       "title": "Doğrulama kodunu gir",
       "body": "Bu hesapta iki adımlı doğrulama açık. Doğrulama uygulamanı aç ve 6 haneli kodu gir.",
@@ -182,11 +182,11 @@
       "readyCritical": "Hazır — telefon sessizde bile çalar.",
       "ready": "Hazır — Uyku ve Odak modlarını deler. Sessiz anahtarı açıksa iOS ses çaldırmaz.",
       "test": "Test alarmı",
-      "testSub": "Gerçek bir acil alarmı {seconds} saniye sonrası için kurar — telefonu kilitleyin ve dinleyin.",
+      "testSub": "{seconds} saniye sonra çalacak gerçek bir acil alarm kurar. Telefonu kilitle ve dinle.",
       "testTitle": "⏰ Test alarmı",
-      "testBody": "Bunu duyabiliyorsanız acil alarmlar bu cihazda çalışıyor.",
+      "testBody": "Bunu duyuyorsan acil alarmlar bu cihazda çalışıyor.",
       "testArmed": "Test alarmı kuruldu — {seconds} saniye sonra çalacak.",
-      "testFailed": "Test alarmı kurulamadı. Alarm günlüğüne bakın."
+      "testFailed": "Test alarmı kurulamadı. Alarm günlüğüne bak."
     },
     "signOut": "Çıkış yap",
     "signOutUnsent": {
@@ -201,7 +201,7 @@
     },
     "defaultTaskTime": {
       "title": "Varsayılan görev saati",
-      "sub": "Yalnız gün seçilen görevler {time} saatine düşer"
+      "sub": "Saat seçmediğin görevlerin saati: {time}"
     },
     "deleteAccount": {
       "title": "Hesabı sil",
@@ -227,38 +227,38 @@
       "system": "Uygulama diline uy"
     },
     "quickBubble": "Yüzen hızlı erişim düğmesi",
-    "quickBubbleSub": "İstediğiniz yere sürükleyin; dokununca kısayollar açılır",
+    "quickBubbleSub": "İstediğin yere sürükle; dokununca kısayollar açılır",
     "group": {
       "general": "Genel",
-      "generalSub": "Dil, tarih, varsayılan saat, tur",
+      "generalSub": "Dil, tarih biçimi, varsayılan saat, tanıtım turu",
       "generalSubWidget": "Dil, tarih, varsayılan saat, widget, tur",
       "notifications": "Bildirimler",
-      "notificationsSub": "Alarmlar, gizli bildirimler, hatırlatıcılar",
+      "notificationsSub": "Alarmlar, kilit ekranında içerik gizleme, hatırlatıcılar",
       "integrations": "Entegrasyonlar",
       "integrationsSub": "Google Takvim, Apple Takvim, yapay zekâ, Claude / ChatGPT",
       "developer": "API erişimi ve yönetimi",
-      "developerSub": "API anahtarların ve onları kullanmanın dokümantasyonu",
+      "developerSub": "API anahtarları ve kullanım belgeleri",
       "data": "Veri",
       "dataSub": "İçe aktarma, tamamlanan işler, paylaşım günlüğü",
       "account": "Hesap",
       "team": "Takım",
       "teamSub": "Ayarlar, üyeler ve davetler",
       "units": "Birimler",
-      "unitsSub": "Yönettiğiniz birimler",
-      "services": "Servisler",
+      "unitsSub": "Yönettiğin birimler",
+      "services": "Hizmetler",
       "servicesSub": "Talep katalogu ve hangi birimin baktığı",
       "myTickets": "Taleplerim",
-      "myTicketsSub": "Açtığınız talepler ve durumları",
+      "myTicketsSub": "Açtığın talepler ve durumları",
       "sla": "SLA yönetimi",
       "slaSub": "Politikalar, mesai takvimleri ve izleyiciler",
       "portal": "Herkese açık talep bağlantıları",
-      "portalSub": "Takımınız dışındaki kişiler hesap açmadan talep gönderebilsin",
+      "portalSub": "Takımının dışındaki kişiler hesap açmadan talep gönderebilsin",
       "teamAi": "Takım yapay zekâ anahtarları",
       "teamAiSub": "Tüm takım için tek anahtar, ve üyeler kendi anahtarını getirebilir mi",
       "teamIdentity": "Kimlik kaynakları",
       "teamIdentitySub": "Şirketin kendi dizini ve çoklu oturum açma ile giriş",
       "absences": "Devamsızlıklar",
-      "absencesSub": "İzin günleriniz ve nöbette kim var",
+      "absencesSub": "İzin günlerin ve nöbette kim var",
       "teamNotifications": "Ekip bildirimleri",
       "teamNotificationsSub": "Başkalarının yaptıkları: talepler, onaylar, atamalar",
       "meetings": "Toplantılar",
@@ -266,25 +266,25 @@
       "teamAudit": "Denetim günlüğü",
       "teamAuditSub": "Takımda kim neyi ne zaman değiştirdi",
       "customers": "Firmalar",
-      "customersSub": "Hizmet verdiğiniz firmalar ve portalına kimlerin girebileceği",
+      "customersSub": "Hizmet verdiğin firmalar ve portalına kimlerin girebileceği",
       "rules": "Otomasyon kuralları",
       "rulesSub": "Otomatik işler ve yeni taleplerin gideceği yer"
     },
     "noteSourceStyling": {
       "title": "Editör biçimlendirmesi",
       "plain": "Düz metin — hiç renk yok",
-      "markersOnly": "Sadece işaretler — söz dizimi görünür, metin düz kalır",
+      "markersOnly": "Yalnız işaretler: Markdown işaretleri görünür, biçim uygulanmaz",
       "live": "Canlı — başlık, kalın ve vurgu yazarken boyanır"
     },
     "widget": {
       "title": "Widget",
-      "compact": "Sıkı widget",
+      "compact": "Yoğun widget (daha çok görev sığar)",
       "compactSub": "Daha sık satırlar, bir bakışta daha çok görev",
       "private": "Gizli widget",
       "privateSub": "Ana ekran ve kilit ekranı widget'larında görev başlıklarını gizle — başlıklar uygulamadan hiç çıkmaz"
     },
     "teamNotificationPrefs": "Ekip bildirimleri",
-    "teamNotificationPrefsSub": "Başkalarının yaptıkları size hangi kanaldan ulaşsın: uygulama, e-posta, telefon"
+    "teamNotificationPrefsSub": "Başkalarının yaptıkları sana hangi kanaldan ulaşsın: uygulama, e-posta, telefon"
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",
@@ -299,7 +299,7 @@
   "home": {
     "allCaughtUp": "Bugünlük bu kadar",
     "allCaughtUpBody": "Açık görevin kalmadı.",
-    "quickAddHint": "Hızlıca görev ekle…",
+    "quickAddHint": "Görev ekle… örn. yarın 15:00 #iş",
     "quickAddForDay": "{date} için hızlı ekle…",
     "added": "Eklendi: {title} · {when}",
     "hideCalendar": "Takvimi gizle",
@@ -322,7 +322,8 @@
     "firstRunTitle": "Henüz görev yok",
     "firstRunBody": "Yukarıdaki kutuya yazarak ilk görevini ekle.",
     "firstRunAdd": "İlk görevini ekle",
-    "firstRunImport": "Todoist ya da TickTick'ten taşı"
+    "firstRunImport": "Todoist ya da TickTick'ten taşı",
+    "quickAddHintShort": "Görev ekle"
   },
   "board": {
     "viewList": "Liste",
@@ -371,10 +372,10 @@
     "priorityLabel": "Öncelik",
     "statusLabel": "Durum",
     "notSet": "Ayarlanmadı",
-    "when": "Ne zaman",
-    "clearWhen": "Ne zamanı temizle",
-    "due": "Bitiş",
-    "clearDue": "Bitiş tarihini temizle",
+    "when": "Planlanan gün",
+    "clearWhen": "Planlanan günü temizle",
+    "due": "Son tarih",
+    "clearDue": "Son tarihi temizle",
     "remind": "Hatırlat",
     "clearReminder": "Hatırlatıcıyı temizle",
     "duration": "Süre",
@@ -387,12 +388,12 @@
     "durationDialog": {
       "title": "Ne kadar sürer?",
       "custom": "Dakika",
-      "invalid": "1 ile 1440 arasında dakika girin."
+      "invalid": "1 ile 1440 arasında dakika gir."
     },
     "durationSemantic": "Süre: {duration}",
     "clearField": "{field} temizle",
     "urgentAlarm": "Acil alarm",
-    "urgentAlarmSub": "Onaylanması gereken ısrarlı hatırlatıcı",
+    "urgentAlarmSub": "Onaylanması gereken acil alarm",
     "sheetCancel": "Vazgeç",
     "discardTitle": "Yazdıkların silinsin mi?",
     "discardKeep": "Yazmaya devam et",
@@ -417,12 +418,12 @@
     "overdueWord": "Gecikti",
     "alarmNotUrgent": "Hatırlatma (acil değil)",
     "projectSemantic": "Proje: {project}",
-    "dueOn": "Bitiş {date}",
+    "dueOn": "Son tarih {date}",
     "attachments": "Ekler",
     "snoozedUntil": "Ertelendi — {time}",
     "alarmsMuted": "Alarm susturuldu",
     "muteAlarms": "Bu görevin alarmlarını sustur",
-    "alarmsMutedSub": "Sen geri açana dek bu görev için uyarı gelmez",
+    "alarmsMutedSub": "Yeniden açana kadar bu görev için uyarı gelmez.",
     "unmuteAlarms": "Alarmı geri aç",
     "alarmsBackOn": "Alarmlar geri açıldı",
     "alarmTimePassed": "O saat geçti — göreve yeni bir saat ver",
@@ -433,8 +434,8 @@
     "movedInCalendarSub": "Bu görevin etkinliğini takvimde sürüklediğin için bitiş tarihini izlemek yerine o saatte duruyor.",
     "resetSchedule": "Sıfırla",
     "quickParse": {
-      "due": "Bitiş {date}",
-      "when": "Ne zaman {date}",
+      "due": "Son tarih {date}",
+      "when": "Planlanan gün {date}",
       "repeat": "{rule} · ilk {date}",
       "priority": "Öncelik: {label}",
       "keepAsText": "Metin olarak bırak",
@@ -444,19 +445,19 @@
       "more": "Daha fazla",
       "help": {
         "title": "Hızlı ekleme neyi anlar",
-        "intro": "Doğal yazın. Tarih, saat, etiket ve fazlası siz yazarken, internetsiz tanınır. Uygulama dili ne olursa olsun Türkçe de İngilizce de çalışır.",
+        "intro": "Doğal yaz. Tarih, saat, etiket ve fazlası sen yazarken, internetsiz tanınır. Uygulama dili ne olursa olsun Türkçe de İngilizce de çalışır.",
         "datesTitle": "Tarihler",
         "dates": "bugün · yarın · öbür gün\ncuma · cumaya · haftaya cuma · 3 gün sonra\n15 Kasım · 15.11 · ay sonu · hafta sonu",
         "timesTitle": "Saatler",
         "times": "9'da · 14'te · saat 14:30 · akşam 7 · öğlen\n\"yarın 9'da kira\"",
-        "dueWhenTitle": "Bitiş mi, ne zaman mı",
-        "dueWhen": "Tek başına bir tarih bitiş tarihidir: \"rapor cuma\".\nAçıkça söylemek için \"son\" ya da \"…'e kadar\": \"son cuma\", \"cumaya kadar\".\n\"başla\" Ne zaman gününü, yani yapmayı planladığınız günü koyar: \"başla pazartesi son cuma\".",
+        "dueWhenTitle": "Son tarih mi, planlanan gün mü",
+        "dueWhen": "Tek başına bir tarih son tarihtir: \"rapor cuma\".\nAçıkça söylemek için \"son\" ya da \"…'e kadar\": \"son cuma\", \"cumaya kadar\".\n\"başla\" planlanan günü, yani yapmayı planladığın günü koyar: \"başla pazartesi son cuma\".",
         "repeatTitle": "Tekrar",
         "repeat": "her gün · her pazartesi · hafta içi her gün\niki haftada bir · her ayın 15'i · her ayın son günü",
         "marksTitle": "Etiket, proje, öncelik",
-        "marks": "#ev etiket ekler (yoksa oluşturur)\n+İş projelerinizden birine koyar\np1 yüksek · p2 orta · p3 düşük · p4 yok · !acil",
+        "marks": "#ev etiket ekler (yoksa oluşturur)\n+İş projelerinden birine koyar\np1 yüksek · p2 orta · p3 düşük · p4 yok · !acil",
         "undoTitle": "Yanlış mı anladı?",
-        "undo": "Tanınan sözcükler vurgulanır ve çubuğun altında çip olarak görünür.\nÇipteki ✕'e dokunun, sözcükleri başlıkta kalır."
+        "undo": "Tanınan sözcükler vurgulanır ve çubuğun altında çip olarak görünür.\nÇipteki ✕ tanımayı geri alır; sözcükler başlıkta kalır."
       }
     }
   },
@@ -500,18 +501,18 @@
     "deleteBody": "\"{name}\" kaldırılacak. Görevleri çalışma alanında kalır.",
     "color": "Renk",
     "archivedName": "{name} (arşivli)",
-    "tabOverview": "Genel bakış",
+    "tabOverview": "Özet",
     "tabTasks": "Görevler",
     "tabNotes": "Notlar",
     "archivedBanner": "Bu proje arşivlendi.",
     "unarchive": "Arşivden çıkar",
     "favorite": "Favori",
-    "dueOn": "Bitiş {date}",
-    "readme": "README",
-    "editReadme": "README düzenle",
-    "noReadme": "Henüz README yok — bu projeyle açılan, deponun ön sayfası gibi olan not.",
-    "createReadme": "README oluştur",
-    "emptyReadme": "Boş README — yazmaya başlamak için kalemle aç.",
+    "dueOn": "Son tarih {date}",
+    "readme": "Proje özeti",
+    "editReadme": "Özeti düzenle",
+    "noReadme": "Henüz proje özeti yok. Proje açılınca önce bu not görünür.",
+    "createReadme": "Özet oluştur",
+    "emptyReadme": "Özet boş. Yazmaya başlamak için kalemle aç.",
     "addTaskHint": "Bu projeye görev ekle…",
     "allClear": "Her şey tamam",
     "noOpenTasks": "Bu projede açık görev yok",
@@ -559,7 +560,7 @@
   "note": {
     "untitled": "Başlıksız",
     "deleteTitle": "Not silinsin mi?",
-    "deleteBody": "Bu not tüm cihazlarınızdan silinecek.",
+    "deleteBody": "Bu not bütün cihazlarından silinecek.",
     "detailTitle": "Not",
     "pin": "Sabitle",
     "unpin": "Sabitlemeyi kaldır",
@@ -576,7 +577,7 @@
     "filterAll": "Tümü",
     "filterPinned": "Sabitlenen",
     "filterArchived": "Arşiv",
-    "filterReadmes": "README'ler",
+    "filterReadmes": "Proje özetleri",
     "emptyPreview": "*Boş not*",
     "edited": "Düzenlendi {date}",
     "created": "Oluşturuldu {date}",
@@ -617,8 +618,8 @@
     "mdTooLarge": "Bu dosya {size} MB — not olarak içe aktarmak için fazla büyük.",
     "mdProject": "Proje",
     "mdProjectHint": "İsteğe bağlı — not bu projenin altına düşer",
-    "modeReading": "Okuma",
-    "modeSource": "Kaynak",
+    "modeReading": "Oku",
+    "modeSource": "Düzenle",
     "sourceHint": "Markdown yaz…",
     "paletteHint": "Komut ara…",
     "paletteEmpty": "Eşleşen komut yok.",
@@ -686,14 +687,14 @@
     "extRecentsEmpty": "Henüz dosya açılmadı",
     "extNoProject": "Proje yok",
     "extLinkProject": "Bir projeye bağla",
-    "exportUnsupportedBlock": "Desteklenmeyen blok — görmek için notu AllisWell’de açın."
+    "exportUnsupportedBlock": "Desteklenmeyen blok — görmek için notu AllisWell’de aç."
   },
   "calendar": {
     "google": "Google Takvim",
     "apple": "Apple Takvim",
     "calendar": "Takvim",
     "checking": "Kontrol ediliyor…",
-    "notSetUpServer": "Bu sunucuda Google Takvim kurulu değil",
+    "notSetUpServer": "Bu sunucuda Google Takvim kurulu değil. Yöneticiysen sunucunun .env dosyasına bir Google OAuth istemcisi ekle: Kendin barındır rehberi → Google Takvim.",
     "notSetUpYet": "Bu sunucuda Google Takvim henüz kurulu değil.",
     "reauthLong": "Google tekrar giriş yapmanı istiyor. Bağlantıyı kes ve yeniden bağlan.",
     "networkError": "Sunucuya ulaşılamadı. Bağlantını kontrol et.",
@@ -727,7 +728,7 @@
     "disconnectConfirmBody": "AllisWell görevlerini oraya yazmayı bırakır. Takvimde olanlar yerinde kalır, istediğin zaman yeniden bağlayabilirsin.",
     "appleDisconnect": "Bu takvimi kullanmayı bırak",
     "appleDisconnectBody": "AllisWell görevlerini Apple Takvim'e yazmayı bırakır. Takvimde olanlar kalır. İznin kendisi macOS/iOS'te duruyor — tamamen kaldırmak istersen Ayarlar'dan al.",
-    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunuzun alanlarında işleriniz AllisWell'de durur; burada takvim bağlanmaz.",
+    "notInShared": "Takvimler kişinin kendi hesabına bağlanır. Kurumunun alanlarındaki işlerin AllisWell'de durur; burada takvim bağlanmaz.",
     "a11yToday": "bugün",
     "a11yHasTasks": "görev var",
     "appleServerMirrors": "Sunucun görevlerini zaten iCloud takvimine yazıyor; bu yüzden bu cihazdaki Apple Takvim kapalı kalır — yoksa her görev iki kez görünürdü.",
@@ -853,7 +854,7 @@
     "CUSTOMER_USER_DEACTIVATED": "Bu kişinin erişimi kapalı. Yeniden eklemek yerine erişimini açın.",
     "IMPORT_FORMAT_UNRECOGNIZED": "Bu dosya bir Todoist ya da TickTick dışa aktarımı değil.",
     "IMPORT_EMPTY": "Bu dosyada içe aktarılacak bir şey yok.",
-    "IMPORT_INVALID_TIMEZONE": "Profilinizdeki saat dilimi geçersiz; Ayarlar'da yeniden seçin.",
+    "IMPORT_INVALID_TIMEZONE": "Profilindeki saat dilimi geçersiz; Ayarlar'da yeniden seç.",
     "IMPORT_FILE_TOO_LARGE": "Bu dosyada bir kerede aktarılamayacak kadar çok satır ya da sütun var.",
     "IMPORT_ITEM_FAILED": "Bu öğe içe aktarılamadı.",
     "TASK_SERIES_TOO_DENSE": "Bu tekrar kuralı çok fazla görev oluştururdu.",
@@ -875,15 +876,15 @@
     "SLA_RULE_NEEDS_ADDRESS": "Bir e-posta adresi girin.",
     "SLA_RULE_NEEDS_TAG": "Bir etiket seçin.",
     "SLA_RULE_TAG_UNKNOWN": "Bu etiket bu ekibin değil.",
-    "SLA_RULE_SERVICE_UNKNOWN": "Bu servis bu ekibin değil.",
+    "SLA_RULE_SERVICE_UNKNOWN": "Bu hizmet bu ekibin değil.",
     "SLA_RULE_UNIT_UNKNOWN": "Bu birim bu ekibin değil.",
     "SLA_RULE_WEBHOOK_UNKNOWN": "Bu webhook bu ekibin değil.",
     "SLA_RULE_ASSIGNEE_NOT_MEMBER": "Bu kişi bu ekibin üyesi değil.",
     "SLA_RULE_NEEDS_IDLE_DAYS": "Kaç gün işlem görmemenin sayılacağını yazın.",
     "CLASSIFICATION_RULE_NAME_TAKEN": "Bu adda bir kural zaten var.",
-    "CLASSIFICATION_RULE_HAS_NO_ACTION": "Bir kural en az bir şey yapmalı: servis, birim, öncelik ya da etiket.",
+    "CLASSIFICATION_RULE_HAS_NO_ACTION": "Bir kural en az bir şey yapmalı: hizmet, birim, öncelik ya da etiket.",
     "CLASSIFICATION_UNKNOWN_TAG": "Bu etiket bu ekibin değil.",
-    "CLASSIFICATION_UNKNOWN_SERVICE": "Bu servis bu ekibin değil.",
+    "CLASSIFICATION_UNKNOWN_SERVICE": "Bu hizmet bu ekibin değil.",
     "CLASSIFICATION_UNKNOWN_UNIT": "Bu birim bu ekibin değil.",
     "CLASSIFICATION_TOO_MANY_KEYWORDS": "En çok 20 kelime.",
     "CLASSIFICATION_KEYWORD_TOO_LONG": "Bir kelime en çok 60 karakter olabilir.",
@@ -937,7 +938,7 @@
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
     "startSound": "Sesi başlat",
-    "snoozePast": "O saat geçmiş — ileri bir saat seçin.",
+    "snoozePast": "O saat geçti. Daha ileri bir saat seç.",
     "problem": {
       "notificationsOff": "Bildirimler kapalı. Hatırlatıcılar sana ulaşamaz.",
       "webPermissionPrompt": "Bu tarayıcıda bildirimlere henüz izin vermedin.",
@@ -956,17 +957,17 @@
       "open": "Ayarları aç",
       "allow": "Bildirimlere izin ver",
       "checkAgain": "Tekrar kontrol et",
-      "notificationsOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Bildirimlere İzin Ver”i açın.",
-      "webPermissionPrompt": "Tarayıcınız sorduğunda bildirimlere izin verin; böylece bu sekme kapalıyken de hatırlatıcılar size ulaşır. İstem görünmezse adres çubuğunun solundaki site bilgisi simgesine (kilit) tıklayın ve Bildirimler'i “İzin ver” yapın.",
-      "webPermissionBlocked": "Bildirimler bir kez engellenince tarayıcınız bir daha sormaz. Adres çubuğunun solundaki site bilgisi simgesine (kilit) tıklayın, Bildirimler'i “İzin ver” yapın, sonra buraya dönüp “Tekrar kontrol et”e basın.",
-      "webUnsupported": "Bu tarayıcı bir web sitesinden bildirim alamıyor. iPhone ya da iPad'de AllisWell'i Safari'de açın, Paylaş ▸ Ana Ekrana Ekle'ye dokunun ve oradan kullanın; bilgisayarda Chrome, Edge, Firefox ya da Safari'nin güncel bir sürümünü kullanın.",
-      "webPushOff": "Bu tarayıcıda bildirimlere izin var, ama bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz; onu sunucunun göndermesi gerekir. Bağlı olduğunuz sunucuda push’un yapılandırıldığından emin olun, sonra “Tekrar kontrol et”e basın. iPhone’da bu yalnızca Ana Ekran’a eklenmiş AllisWell için çalışır.",
-      "provisional": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın, “Öne Çıkararak Teslim Et”i seçin ve Sesler'i açın.",
-      "soundOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Sesler”i açın. Kapalıyken alarm yine gelir — sessizce.",
-      "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın; “Kilit Ekranı” ve “Banner'lar”ı açın.",
-      "exactAlarmsOff": "“Alarmlar ve anımsatıcılar” iznini verin ki alarm sistemin bir sonraki uyanışında değil, tam dakikasında çalsın.",
-      "timeSensitiveOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i açın ve “Zaman Duyarlı Bildirimler”i açın. Kapalıyken Uyku dahil her Odak modu alarmlarınızı gizler.",
-      "alarmKitOff": "Ayarlar ▸ AllisWell'i açın ve Alarmlara izin verin. Acil bir alarmın sessiz modu ve Odak'ı aşarak çalmasını sağlayan izin budur.",
+      "notificationsOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç ve “Bildirimlere İzin Ver”i aç.",
+      "webPermissionPrompt": "Tarayıcın sorduğunda bildirimlere izin ver; böylece bu sekme kapalıyken de hatırlatıcılar sana ulaşır. İstem görünmezse adres çubuğunun solundaki site bilgisi simgesini (kilit) aç ve Bildirimler’i “İzin ver” yap.",
+      "webPermissionBlocked": "Bildirimler bir kez engellenince tarayıcın bir daha sormaz. Adres çubuğunun solundaki site bilgisi simgesini (kilit) aç, Bildirimler’i “İzin ver” yap, sonra buraya dönüp “Tekrar kontrol et”i seç.",
+      "webUnsupported": "Bu tarayıcı bir web sitesinden bildirim alamıyor. iPhone ya da iPad'de AllisWell'i Safari'de aç, Paylaş ▸ Ana Ekrana Ekle'yi seç ve oradan kullan; bilgisayarda Chrome, Edge, Firefox ya da Safari'nin güncel bir sürümünü kullan.",
+      "webPushOff": "Bu tarayıcıda bildirimlere izin var, ama bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz; onu sunucunun göndermesi gerekir. Bağlı olduğun sunucuda push’un yapılandırıldığından emin ol, sonra “Tekrar kontrol et”i seç. iPhone’da bu yalnızca Ana Ekran’a eklenmiş AllisWell için çalışır.",
+      "provisional": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç, “Öne Çıkararak Teslim Et”i seç ve Sesler'i aç.",
+      "soundOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç ve “Sesler”i aç. Kapalıyken alarm yine gelir ama ses çıkarmaz.",
+      "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç; “Kilit Ekranı” ve “Banner'lar”ı aç.",
+      "exactAlarmsOff": "“Alarmlar ve anımsatıcılar” iznini ver ki alarm sistemin bir sonraki uyanışında değil, tam dakikasında çalsın.",
+      "timeSensitiveOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç ve “Zaman Duyarlı Bildirimler”i aç. Kapalıyken Uyku dahil her Odak modu alarmlarını gizler.",
+      "alarmKitOff": "Ayarlar ▸ AllisWell'i aç ve Alarmlara izin ver. Acil bir alarmın sessiz modu ve Odak'ı aşarak çalmasını sağlayan izin budur.",
       "webPushUnconfigured": "Bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz, onu sunucu gönderir. Bu sunucuda tarayıcı bildirimleri için anahtar (VAPID) tanımlı değil, bu yüzden hiçbir tarayıcıya gönderim yapılamıyor. Sunucuyu yöneten kişi anahtarları eklediğinde hatırlatıcılar bu tarayıcıya da gelir. Telefon ve bilgisayar uygulamaları bundan etkilenmez."
     },
     "missed": {
@@ -980,7 +981,7 @@
   },
   "alarmLog": {
     "title": "Alarm günlüğü",
-    "sub": "Bu cihaz alarmlar için ne yaptı",
+    "sub": "Bu cihazda çalan ve kaçırılan alarmlar",
     "scope": "Burada uygulamanın YAPTIĞI şeyler var: kurduğu alarmlar, geri aldıkları, dokunduğun bildirimler ve uygulama içi alarm ekranının çaldığı anlar. iOS, dokunmadığın bir bildirim hakkında hiçbir şey bildirmez — bu yüzden günlük \"teslim edildi\" demez.",
     "copy": "Günlüğü kopyala",
     "copied": "Günlük kopyalandı",
@@ -1031,7 +1032,7 @@
       "calm": "Sakin",
       "standard": "Standart",
       "insistent": "Israrcı",
-      "custom": "Senin"
+      "custom": "Özel"
     },
     "chain": "Uyarılar",
     "step": "{index}. uyarı",
@@ -1053,16 +1054,16 @@
     "watchSub": "Telefon kilitliyken uyarılar eşleşmiş saate aynalanır — ayrı bir uygulama gerekmez. Ses ve dokunuşları saatten ayarla: Watch → Sesler ve Dokunuşlar.",
     "reset": "Standart’a dön",
     "webAlerts": "Bu tarayıcıda bildirim",
-    "webAlertsSub": "Yalnız bu tarayıcı. Her cihaz size ne kadar yüksek sesle seslendiğine kendi karar verir.",
+    "webAlertsSub": "Yalnız bu tarayıcı. Her cihaz sana ne kadar yüksek sesle seslendiğine kendi karar verir.",
     "webAlert": {
       "off": "Kapalı",
       "silent": "Sessiz",
       "loud": "Sesli"
     },
-    "webAlertOffSub": "Bu tarayıcıya hiçbir şey gelmez. Diğer cihazlarınız etkilenmez.",
-    "webAlertSilentSub": "Pencere sessizce açılır — alarm ekranı da susar ve isterseniz sesi başlatmayı önerir.",
+    "webAlertOffSub": "Bu tarayıcıya hiçbir şey gelmez. Diğer cihazların etkilenmez.",
+    "webAlertSilentSub": "Pencere sessizce açılır; alarm ekranı da susar ve istersen sesi başlatmayı önerir.",
     "webAlertLoudSub": "Pencere açılır ve bu cihaz, bir telefon gibi ses çıkarır.",
-    "webAlertFirefox": "Firefox, sessizlik istediğimizde bile kendi bildirim sesini çalıyor. Burada sessizlikten emin olmak için bu tarayıcıda bildirimleri kapatın ya da Firefox’ta siteyi susturun."
+    "webAlertFirefox": "Firefox, sessizlik istediğimizde bile kendi bildirim sesini çalıyor. Burada sessizlikten emin olmak için bu tarayıcıda bildirimleri kapat ya da Firefox’ta siteyi sustur."
   },
   "sound": {
     "alarmTitle": "Alarm sesi",
@@ -1129,11 +1130,11 @@
     "filterNotes": "Notlar",
     "emptyTitle": "Henüz dosya yok",
     "emptyBody": "Bu projeye, görevlerine veya notlarına eklediğin dosyalar burada görünür.",
-    "notConfiguredHint": "Sunucuda STORAGE_S3_* ayarlayın — bkz. docs/ATTACHMENTS.md.",
+    "notConfiguredHint": "Yöneticiysen sunucuda STORAGE_S3_* ayarla: docs/ATTACHMENTS.md.",
     "insertImage": "Resim ekle",
     "insertVideo": "Video ekle",
     "attachedNotEmbedded": "Ek olarak yüklendi — bu dosya türü satır içinde gösterilmez",
-    "dropHere": "Dosyaları bu nota eklemek için bırakın",
+    "dropHere": "Bu nota eklemek için dosyaları bırak",
     "mediaUnavailable": "Ek şu an açılamıyor",
     "viewerOffline": "Sunucuya ulaşılamıyor — bu görsel bağlantı gerektiriyor.",
     "viewerGone": "Bu dosya artık sunucuda yok.",
@@ -1156,7 +1157,7 @@
   },
   "files": {
     "myFolders": "Klasörlerim",
-    "sources": "Kaynaklar",
+    "sources": "Görev ve not ekleri",
     "newFolder": "Yeni klasör",
     "folderName": "Ad",
     "renameFolder": "Klasörü yeniden adlandır",
@@ -1195,7 +1196,7 @@
     "emoji": "Emoji",
     "color": "Renk",
     "remove": "Hızlı erişimden kaldır",
-    "empty": "Menülerdeki ⚡ ile proje, not veya bağlantı ekleyin",
+    "empty": "Menülerdeki ⚡ ile proje, not veya bağlantı ekle",
     "externalHint": "Tarayıcıda açılır",
     "addTo": "Hızlı erişime ekle",
     "removeFrom": "Hızlı erişimden kaldır",
@@ -1209,17 +1210,17 @@
     "moveUp": "Yukarı taşı",
     "moveDown": "Aşağı taşı",
     "useTargetName": "Kaynağın adını al",
-    "targetRenamed": "Şimdi: {name}",
+    "targetRenamed": "Yeni adı: {name}",
     "broken": "Kaynak silinmiş",
     "brokenBody": "Bu kısayolun kaynağı artık yok.",
     "emojiRecents": "Son kullanılanlar",
-    "emojiCustom": "Ya da bir tane yazın",
-    "invalidEmoji": "Tek bir emoji girin",
+    "emojiCustom": "Ya da bir tane yaz",
+    "invalidEmoji": "Tek bir emoji gir",
     "noColor": "Renk yok",
-    "invalidUrl": "http ya da https adresi girin",
-    "offlineLink": "Çevrimdışısınız — bağlantı açılamıyor",
+    "invalidUrl": "http ya da https adresi gir",
+    "offlineLink": "Çevrimdışısın, bağlantı açılamıyor",
     "emptyPanelTitle": "Henüz kısayol yok",
-    "emptyPanelBody": "Proje, not, dosya ya da bağlantıyı ⚡ menüsünden ekleyin.",
+    "emptyPanelBody": "Proje, not, dosya ya da bağlantıyı ⚡ menüsünden ekle.",
     "bubbleIntro": "Kısayolların burada. İstediğin yere sürükle."
   },
   "repeat": {
@@ -1505,7 +1506,7 @@
     "couldNotLoad": "Sunucuya ulaşılamadı, anahtarların gösterilemiyor.",
     "revokeConfirm": "Anahtarı iptal et",
     "keep": "Vazgeç",
-    "copyFailed": "Anahtar kopyalanamadı. Kaydetmediyseniz bu anahtarı iptal edip yenisini oluşturun — bir daha gösterilemez.",
+    "copyFailed": "Anahtar kopyalanamadı. Kaydetmediysen bu anahtarı iptal edip yenisini oluştur; bir daha gösterilemez.",
     "boundTo": "Aşağıdaki anahtarlar yalnız “{name}” çalışma alanına erişir."
   },
   "versions": {
@@ -1557,8 +1558,8 @@
         "ee_alert_source": "Uyarı kaynağı",
         "ee_announcement": "Duyuru",
         "ee_approval": "Onay",
-        "ee_asset": "Varlık",
-        "ee_asset_import": "Varlık içe aktarımı",
+        "ee_asset": "Ekipman",
+        "ee_asset_import": "Ekipman içe aktarımı",
         "ee_automation_rule": "Otomasyon kuralı",
         "ee_business_calendar": "Mesai takvimi",
         "ee_canned_reply": "Hazır yanıt",
@@ -1580,12 +1581,12 @@
         "ee_member_import": "Üye içe aktarımı",
         "ee_notification_outbox": "Bildirim teslimi",
         "ee_oncall_schedule": "Nöbet listesi",
-        "ee_problem": "Problem",
+        "ee_problem": "Tekrarlayan arıza",
         "ee_public_form": "Herkese açık bağlantı",
         "ee_role": "Rol",
         "ee_saved_view": "Kayıtlı görünüm",
-        "ee_service": "Servis",
-        "ee_service_category": "Servis kategorisi",
+        "ee_service": "Hizmet",
+        "ee_service_category": "Hizmet kategorisi",
         "ee_sla_policy": "SLA politikası",
         "ee_supplier": "Tedarikçi",
         "ee_team": "Takım",
@@ -1604,14 +1605,14 @@
         "workspace": "Çalışma alanı"
       }
     },
-    "badge": "Enterprise",
+    "badge": "Kurumsal",
     "locked": "Bu özellik kurumsal lisans gerektirir.",
     "team": {
       "tooltip": "Takım: {team}",
       "settings": {
         "title": "Takım ayarları",
         "name": "Takım adı",
-        "slugFixed": "Adres {slug} olarak kalır — kaydedilen bağlantılar çalışmaya devam eder",
+        "slugFixed": "Adı değiştirmek web adresinizi ({slug}) değiştirmez; paylaşılan bağlantılar çalışmaya devam eder.",
         "language": "Takım dili",
         "languageUnset": "Herkes kendi seçimini kullansın",
         "timezone": "Saat dilimi",
@@ -1652,8 +1653,8 @@
         "assignRole": "Rol ata…"
       },
       "seats": {
-        "count": "{max} koltuktan {used} tanesi dolu",
-        "unlimited": "{used} kişi, koltuk sınırı yok",
+        "count": "{max} kişilik sınırın {used} kişisi dolu",
+        "unlimited": "{used} kişi · kişi sınırı yok",
         "over": "Plan aşıldı. Kimse erişimini kaybetmez — ama yeni kimse katılamaz.",
         "room": "Yeni kişiler için yer var.",
         "pending": "{n} davet hâlâ bekliyor"
@@ -1700,7 +1701,7 @@
         "archive": "Arşivle",
         "unarchive": "Arşivden çıkar",
         "archived": "arşivlendi",
-        "youManage": "sizin biriminiz",
+        "youManage": "Sorumlusu sizsiniz",
         "manager": "Birim yöneticisi",
         "promote": "Birim yöneticisi yap",
         "demote": "Üye yap",
@@ -1721,30 +1722,30 @@
         "noMembersBody": "Burada çalışan kişileri aşağıdaki düğmeyle ekleyin. Birimin içeriğini yalnız onlar görür."
       },
       "services": {
-        "title": "Servisler",
-        "intro": "Bir servis, çalışanların ne isteyebileceğidir. Hangi birimin baktığını siz belirlersiniz — birim atanmamış bir servis talep alamaz.",
-        "create": "Yeni servis",
+        "title": "Hizmetler",
+        "intro": "Bir hizmet, çalışanların ne isteyebileceğidir. Hangi birimin baktığını siz belirlersiniz — birim atanmamış bir hizmet talep alamaz.",
+        "create": "Yeni hizmet",
         "rename": "Düzenle",
-        "name": "Servis adı",
+        "name": "Hizmet adı",
         "description": "Açıklama",
         "archive": "Arşivle",
         "unarchive": "Arşivden çıkar",
         "archived": "arşivde",
-        "noUnits": "Birim atanmadı — bu servise talep açılamaz",
+        "noUnits": "Birim atanmadı — bu hizmete talep açılamaz",
         "noneTitle": "Bu katalog sizin değil",
-        "noneBody": "Servisleri yalnızca takım yöneticileri düzenleyebilir.",
-        "emptyTitle": "Henüz servis yok",
-        "emptyBody": "İlk servisi ekleyin: çalışanların ne isteyebileceği ve hangi birimin baktığı.",
+        "noneBody": "Hizmetleri yalnızca takım yöneticileri düzenleyebilir.",
+        "emptyTitle": "Henüz hizmet yok",
+        "emptyBody": "İlk hizmeti ekleyin: çalışanların ne isteyebileceği ve hangi birimin baktığı.",
         "units": "Bakan birimler",
-        "unitsHint": "Bu servise açılan talepler seçtiğiniz birimlerin kuyruğuna düşer.",
-        "search": "Servislerde ara",
-        "searchEmpty": "Aramana uyan servis yok.",
+        "unitsHint": "Bu hizmete açılan talepler seçtiğiniz birimlerin kuyruğuna düşer.",
+        "search": "Hizmetlerde ara",
+        "searchEmpty": "Aramanıza uyan hizmet yok.",
         "unshelved": "Rafsız",
-        "shelfEmpty": "Bu rafta servis yok.",
+        "shelfEmpty": "Bu rafta hizmet yok.",
         "shelf": "Raf",
         "shelfNone": "Raf yok (katalogun kökünde)",
         "icon": "İkon",
-        "iconHint": "Talep açan kişi servisi bu işaretle görür.",
+        "iconHint": "Talep açan kişi hizmeti bu işaretle görür.",
         "iconNone": "İkon yok",
         "icons": {
           "wrench": "Bakım ve onarım",
@@ -1765,7 +1766,7 @@
         },
         "approval": {
           "title": "Onay",
-          "hint": "Bu servisten açılan talep önce bir imza bekler; imza gelene kadar SLA saati durur.",
+          "hint": "Bu hizmetten açılan talep önce bir imza bekler; imza gelene kadar SLA saati durur.",
           "none": "Onay gerekmez",
           "manager": "Talep edenin yöneticisi",
           "role": "Bir rol",
@@ -1778,9 +1779,9 @@
         },
         "shelves": {
           "title": "Raflar",
-          "intro": "Katalog iki seviyelidir: raf ve alt raf. Talep açan kişi servisleri bu raflarda görür.",
+          "intro": "Katalog iki seviyelidir: raf ve alt raf. Talep açan kişi hizmetleri bu raflarda görür.",
           "empty": "Henüz raf yok",
-          "emptyBody": "Servisleri gruplamak için bir raf ekle.",
+          "emptyBody": "Hizmetleri gruplamak için bir raf ekleyin.",
           "create": "Raf ekle",
           "addSub": "Alt raf ekle",
           "edit": "Rafı düzenle",
@@ -1790,10 +1791,10 @@
           "parentNone": "Yok (üst seviye)",
           "parentLocked": "Alt rafları olan bir raf başka bir rafın altına giremez; katalog iki seviyelidir.",
           "deleteTitle": "Raf silinsin mi?",
-          "deleteBody": "Üstündeki servisler ve alt raflar kataloğun köküne düşer; hiçbir servis kaybolmaz."
+          "deleteBody": "Üstündeki hizmetler ve alt raflar kataloğun köküne düşer; hiçbir hizmet kaybolmaz."
         },
         "fields": "Özel alanlar",
-        "fieldsHint": "Bu servise özel sorular. Boş bırakılırsa yalnızca konu ve açıklama sorulur.",
+        "fieldsHint": "Bu hizmete özel sorular. Boş bırakılırsa yalnızca konu ve açıklama sorulur.",
         "fieldsNone": "Özel alan yok.",
         "fieldCount": "{count} özel alan",
         "fieldAdd": "Alan ekle",
@@ -1819,7 +1820,7 @@
           "summary": "{count} soru · yayında sürüm {version}",
           "summaryUnnumbered": "{count} soru · yayında, sürüm numarası yok",
           "title": "Form: {service}",
-          "intro": "Bu servisin sorduğu soruları, sorulacakları sırayla ekleyin. Bir soru yalnız üstündeki bir cevaba bağlı olabilir. Yayınlayana kadar hiçbir şey kaydedilmez; yayınlamak yeni bir sürüm doğurur ve açılmış talepler cevaplandıkları sürümü korur.",
+          "intro": "Bu hizmetin sorduğu soruları, sorulacakları sırayla ekleyin. Bir soru yalnız üstündeki bir cevaba bağlı olabilir. Yayınlayana kadar hiçbir şey kaydedilmez; yayınlamak yeni bir sürüm doğurur ve açılmış talepler cevaplandıkları sürümü korur.",
           "version": "Yayında: sürüm {version}",
           "versionNone": "Henüz yayınlanmadı",
           "versionUnnumbered": "Yayında, numarasız — sürümlemeden önce yayınlanmış; bir sonraki yayın sürüm 1 olur",
@@ -1864,9 +1865,9 @@
         "processType": {
           "title": "İşin türü",
           "hint": "Bir talep açılırken bu türü alır. Değiştirmek yalnız bundan sonra açılanları etkiler; geçmiş işin raporları kaymaz.",
-          "incident": "Olay",
+          "incident": "Arıza",
           "incidentHint": "Bir şey bozuldu ya da durdu: arıza, kesinti, kaza.",
-          "request": "Hizmet isteği",
+          "request": "İstek",
           "requestHint": "Birinin bir şeye ihtiyacı var: erişim, cihaz, değişiklik, soru."
         }
       }
@@ -2027,7 +2028,7 @@
         "archive": "Projeleri arşivle ve geri al"
       },
       "services": {
-        "manage": "Servisleri yönet ve hangi birimin baktığını belirle"
+        "manage": "Hizmetleri yönet ve hangi birimin baktığını belirle"
       },
       "sla": {
         "manage": "SLA politikalarını, mesai takvimlerini ve izleyicileri düzenle"
@@ -2046,7 +2047,7 @@
       },
       "team": {
         "import_members": "Üyeleri dosyadan toplu olarak içe aktar",
-        "import_tickets": "Başka bir servis masasından talepleri toplu olarak taşı",
+        "import_tickets": "Başka bir talep sisteminden talepleri toplu olarak taşı",
         "manage_ai_keys": "Takımın yapay zekâ sağlayıcı anahtarlarını ve kişisel anahtar politikasını yönet",
         "manage_deliveries": "Bildirim teslimleri",
         "export_data": "Takımın sahip olduğu her şeyi tek dosya olarak indir",
@@ -2073,7 +2074,7 @@
         "convert": "Talebi işe dönüştür",
         "assign": "Talebi başkasına ver ya da üstünden al",
         "override_priority": "Matrisin üretmeyeceği bir öncelik ver",
-        "link": "Talepleri birbirine ve problemlere bağla",
+        "link": "Talepleri birbirine ve tekrarlayan arızalara bağla",
         "pause_sla": "Talebi hareket ettirmeden SLA saatini durdur ve sürdür",
         "manage_worklog": "Başkasının yazdığı süreyi düzelt ya da sil",
         "transfer": "Talebi başka bir hizmete ya da birime aktar"
@@ -2094,11 +2095,11 @@
         "implement": "Değişikliği yapıldı, başarısız ya da geri alındı işaretle"
       },
       "problems": {
-        "manage": "Problem kaydı aç ve yürüt"
+        "manage": "Tekrarlayan arıza kaydı aç ve yürüt"
       },
       "assets": {
-        "view": "Varlık defterini gör",
-        "manage": "Varlık kaydı aç, düzenle ve durumunu değiştir"
+        "view": "Ekipman defterini gör",
+        "manage": "Ekipman kaydı aç, düzenle ve durumunu değiştir"
       },
       "kb": {
         "write": "Bilgi bankası makalesi yaz ve düzenle",
@@ -2123,15 +2124,15 @@
     "permDomain": {
       "alarms": "Alarmlar",
       "approvals": "Onaylar",
-      "assets": "Varlıklar",
+      "assets": "Ekipmanlar",
       "calendar": "Takvim",
       "changes": "Değişiklikler",
       "files": "Dosyalar",
       "notes": "Notlar",
       "portal": "Genel portal",
-      "problems": "Problemler",
+      "problems": "Tekrarlayan arızalar",
       "projects": "Projeler",
-      "services": "Servisler",
+      "services": "Hizmetler",
       "shares": "Paylaşım",
       "sla": "Hizmet seviyeleri",
       "tasks": "Görevler",
@@ -2171,8 +2172,8 @@
         "pendingDelete": "Silinmek üzere"
       },
       "seats": {
-        "count": "{max} koltuğun {used} tanesi",
-        "unlimited": "{used} koltuk · sınırsız"
+        "count": "{max} kişilik sınırın {used} kişisi",
+        "unlimited": "{used} kişi · sınırsız"
       },
       "usage": {
         "instance": "Bu instance'taki takımlar",
@@ -2183,13 +2184,13 @@
       "teams": {
         "create": "Takım oluştur",
         "createName": "Takım adı",
-        "createSeats": "Koltuk (isteğe bağlı)",
+        "createSeats": "Kişi sınırı (isteğe bağlı)",
         "createSeatsHint": "Boş bırakırsanız paketin kendi limiti geçerli olur",
         "createSlug": "Adres (slug)",
         "createSlugHint": "Takımın kendi web adresi olacak",
         "createSlugSuffix": "alliswell.space",
         "delete": "Silmeyi planla",
-        "deleteBody": "{team} şimdi salt-okunur olur ve instance'ın penceresi dolunca silinir. O ana kadar geri alabilirsin.",
+        "deleteBody": "{team} şimdi salt-okunur olur ve instance'ın penceresi dolunca silinir. O ana kadar geri alabilirsiniz.",
         "deleteTitle": "Bu takım silinmek üzere işaretlensin mi?",
         "emptyBody": "Takım burada oluşturulur, ilk yöneticisi e-postayla davet edilir.",
         "emptyTitle": "Henüz takım yok",
@@ -2198,7 +2199,7 @@
         "noPackage": "Paket yok",
         "restore": "Geri al",
         "resume": "Devam ettir",
-        "scheduled": "Bu takım silinmek üzere. Geri almak için Geri Al'a bas.",
+        "scheduled": "Bu takım silinmek üzere. Geri Al silmeyi durdurur.",
         "suspend": "Askıya al",
         "suspendBody": "{team} salt-okunur olacak. Kimse çıkış yapmaz, hiçbir veri silinmez.",
         "suspendTitle": "Bu takım askıya alınsın mı?"
@@ -2216,12 +2217,12 @@
       "packages": {
         "default": "Varsayılan",
         "limitCount": "{n} limit tanımlı",
-        "help": "Boş bırakmak “bu paket bu konuda konuşmuyor” demektir. Sınırsız için - yaz.",
+        "help": "Boş bırakmak “bu paket bu konuda konuşmuyor” demektir. Sınırsız için - yazın.",
         "notEnforced": "Saklanıyor, henüz zorlanmıyor",
         "saved": "Paket kaydedildi"
       },
       "limit": {
-        "seats": "Koltuk",
+        "seats": "Kişi sınırı",
         "workspaces": "Çalışma alanları",
         "portal_links_active": "Etkin portal bağlantısı",
         "portal_created_monthly": "Aylık portal kaydı",
@@ -2241,16 +2242,16 @@
         "filterAll": "Tümü",
         "back": "Listeye dön",
         "notStated": "Belirtilmedi",
-        "seatsShort": "{count} koltuk",
+        "seatsShort": "{count} kişi",
         "erasedRow": "Gönderenin talebiyle silindi",
-        "erasedNotice": "Bu talebin kişisel bilgileri, gönderenin talebiyle silindi. Talebin kendisi — geliş tarihi, koltuk ve çalışma alanı sayıları ve sonucu — duruyor, yani silme rakamları değiştirmedi.",
+        "erasedNotice": "Bu talebin kişisel bilgileri, gönderenin talebiyle silindi. Talebin kendisi — geliş tarihi, kişi ve çalışma alanı sayıları ve sonucu — duruyor, yani silme rakamları değiştirmedi.",
         "erasedAt": "{date} tarihinde silindi",
         "enquiry": "Talep",
         "contact": "Kim sordu",
         "origin": "Nereden geldi",
         "consent": "Rıza",
         "received": "Geliş",
-        "seats": "Koltuk",
+        "seats": "Kişi sayısı",
         "units": "Çalışma alanı",
         "package": "İlgilendiği paket",
         "language": "Dil",
@@ -2283,7 +2284,7 @@
         "erase": {
           "action": "Kişisel bilgileri sil",
           "title": "Gönderenin bilgileri silinsin mi?",
-          "body": "Ad, e-posta, telefon, mesaj ve geliş bilgileri kalıcı olarak boşaltılır. Talebin kendisi tarihi, koltuk ve çalışma alanı sayıları ve durumuyla listede kalır — yani rakamlarınız değişmez. Bu işlem geri alınamaz.",
+          "body": "Ad, e-posta, telefon, mesaj ve geliş bilgileri kalıcı olarak boşaltılır. Talebin kendisi tarihi, kişi ve çalışma alanı sayıları ve durumuyla listede kalır — yani rakamlarınız değişmez. Bu işlem geri alınamaz.",
           "confirm": "Sil",
           "cancel": "Vazgeç",
           "done": "Gönderenin bilgileri silindi."
@@ -2432,7 +2433,7 @@
           "decided": "İstediğiniz bir onay karara bağlandığında"
         },
         "report": {
-          "weekly": "Haftalık servis masası raporu",
+          "weekly": "Haftalık talep raporu",
           "savedView": "Zamanladığınız kayıtlı görünüm"
         },
         "asset": {
@@ -2493,16 +2494,16 @@
         "waiting": "Beklemede",
         "done": "Bitmiş",
         "mine": "Bende",
-        "unassigned": "Kimsede değil",
-        "slaBreached": "SLA kaçtı",
+        "unassigned": "Atanmamış",
+        "slaBreached": "SLA aşıldı",
         "slaWarned": "SLA yaklaşıyor",
         "dates": "Tarih farketmez",
         "datesSet": "Tarih aralığı",
         "sourcePublic": "Portaldan",
         "sourceHealth": "İzleyici açtı",
         "processType": {
-          "incident": "Olaylar",
-          "request": "Hizmet istekleri"
+          "incident": "Arızalar",
+          "request": "İstekler"
         },
         "tag": "Etiket",
         "tagSet": "Etiket: {tag}",
@@ -2515,7 +2516,7 @@
         "status": "Durumu değiştir",
         "priority": "Önceliği değiştir",
         "assign": "Birine ver",
-        "offline": "Bağlantı yok — toplu işlem masaya gider; bağlantı gelince yapılabilir.",
+        "offline": "Bağlantı yok — toplu işlem birime gider; bağlantı gelince yapılabilir.",
         "tooMany": "Bir seferde en çok {max} talep değiştirilebilir; seçimi daralt.",
         "statusTitle": "{count} talebin durumu",
         "priorityTitle": "{count} talebin önceliği",
@@ -2530,10 +2531,10 @@
         "ok": "Tamam",
         "reason": {
           "NO_CHANGE": "Zaten öyleydi",
-          "NOT_FOUND": "Bu talepte yapılamaz — biriminde değilsin ya da talep artık görünmüyor",
-          "TICKET_PRIORITY_OVERRIDE_DENIED": "Öncelik masanın matrisinden geliyor; değiştirmeye yetkin yok",
+          "NOT_FOUND": "Bu talepte yapılamaz — biriminde değilsiniz ya da talep artık görünmüyor",
+          "TICKET_PRIORITY_OVERRIDE_DENIED": "Öncelik birimin matrisinden geliyor; değiştirmeye yetkiniz yok",
           "TICKET_ASSIGNMENT_INVALID_ASSIGNEE": "Bu kişi talebin biriminde değil",
-          "UNKNOWN": "Masa bir neden söylemeden değiştirmedi",
+          "UNKNOWN": "Birim bir neden söylemeden değiştirmedi",
           "TICKET_INVALID_TRANSITION": "Bulunduğu durumdan bu duruma geçemez",
           "TICKET_TERMINAL": "Talep kapanmış ya da iptal edilmiş; değiştirilemez",
           "TICKET_APPROVAL_PENDING": "Onay bekliyor; onay gelene kadar yalnızca iptal edilebilir"
@@ -2560,9 +2561,9 @@
       "waitingReason": "Bekleme nedeni",
       "waitingReasonRequired": "Bir talebi beklemeye almak için neden gerekir",
       "linkedTasks": "Bu talepten doğan işler",
-      "linkedTasksEmpty": "Bu talepten henüz iş açılmadı",
-      "openAnotherTask": "Bir iş daha aç",
-      "relatedAction": "Bu konu tekrar açıldı",
+      "linkedTasksEmpty": "Bu talepten henüz görev açılmadı.",
+      "openAnotherTask": "Bir görev daha aç",
+      "relatedAction": "Yeniden açıldı olarak işaretle",
       "relatedHint": "Kapalı talep yeniden açılmaz; özeti taşınan YENİ bir talep açılır ve ikisi bağlanır.",
       "relatedOpened": "Yeni talep açıldı ve eskisine bağlandı",
       "affectedAssets": "Etkilenen ekipman",
@@ -2588,13 +2589,13 @@
         "replySent": "Yanıt gönderildi",
         "noteAdded": "İç not eklendi",
         "closed": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yukarıdan ilgili bir talep aç.",
-        "replyOwn": "Masaya yaz",
-        "replyOwnAudience": "Bunu masa okur.",
-        "replyOwnHint": "Masaya yazın…",
-        "sendOwn": "Masaya gönder",
+        "replyOwn": "Birime yaz",
+        "replyOwnAudience": "Bunu birim okur.",
+        "replyOwnHint": "Birime yazın…",
+        "sendOwn": "Birime gönder",
         "byEmail": "Yanıt talep sahibine e-postayla gönderilir.",
         "customerPortal": "Yanıt {name} firma portalında da görünür.",
-        "filesInternal": "İç nota eklenen dosyaları yalnız masa görür.",
+        "filesInternal": "İç nota eklenen dosyaları yalnız birim görür.",
         "filesFailed": "Gönderildi, ama {count} dosya yüklenemedi — dosyayı yeniden ekleyin."
       },
       "actions": {
@@ -2645,25 +2646,25 @@
         "title": "Bu talepte kimler var",
         "manage": "Bu talepte kimlerin olacağını değiştir",
         "nobody": "Bu talebi henüz kimse almadı",
-        "selfOnly": "Başkasını atamak ya da çıkarmak ayrı bir yetki ister; kendini alabilir ya da bırakabilirsin."
+        "selfOnly": "Başkasını atamak ya da çıkarmak ayrı bir yetki ister; talebi kendiniz alabilir ya da bırakabilirsiniz."
       },
       "new": {
         "fab": "Yeni talep",
         "title": "Yeni talep",
-        "service": "Servis",
-        "pickService": "Ne istiyorsun? Bir servis seç",
-        "serviceSearch": "Servislerde ara",
-        "searchEmpty": "Bu aramayla eşleşen bir servis yok.",
-        "noServices": "Bu masada talep açılabilecek bir servis yok.",
-        "catalogUnavailable": "Servis listesi şu an okunamadı.",
+        "service": "Hizmet",
+        "pickService": "Talep türünü seçin",
+        "serviceSearch": "Hizmetlerde ara",
+        "searchEmpty": "Bu aramayla eşleşen bir hizmet yok.",
+        "noServices": "Bu birimde talep açılabilecek bir hizmet yok.",
+        "catalogUnavailable": "Hizmet listesi şu an okunamadı.",
         "otherCategory": "Diğer",
         "unit": "Hangi birim baksın?",
-        "needsApproval": "Bu servis önce bir onay ister; talep onaylanınca ilerler.",
+        "needsApproval": "Bu hizmet önce bir onay ister; talep onaylanınca ilerler.",
         "subject": "Konu",
         "subjectHint": "Ne oldu, kısaca",
         "answers": {
           "title": "Belki cevabı zaten yazılmıştır",
-          "hint": "Göndermeden önce bir bak: masanın yayımladığı cevaplardan konuna uyanlar.",
+          "hint": "Göndermeden önce bir bakın: birimin yayımladığı cevaplardan konunuza uyanlar.",
           "read": "Okundu",
           "noSolution": "Bu cevapta henüz çözüm yazılmamış.",
           "back": "Talebe dön",
@@ -2674,72 +2675,72 @@
         "requiredLabel": "{label} (zorunlu)",
         "pickDate": "Tarih seç",
         "selectHint": "Seç",
-        "invalidNumber": "Bir sayı yaz",
+        "invalidNumber": "Bir sayı yazın",
         "onBehalf": "Başkası adına",
-        "onBehalfHelp": "Hesabı olmayan birini adıyla yaz; adres verirsen ona talebi izleyeceği bir bağlantı, iş bitince de bir memnuniyet anketi e-postayla gider.",
+        "onBehalfHelp": "Hesabı olmayan birinin adını yazın; adres verirseniz ona talebi izleyeceği bir bağlantı, iş bitince de bir memnuniyet anketi e-postayla gider.",
         "requesterName": "Kimin adına",
         "requesterEmail": "E-posta (isteğe bağlı)",
         "send": "Talebi gönder",
         "saveDraft": "Taslak olarak kaydet",
         "offline": "Bağlantı yok — talep taslak olarak bu telefonda tutulur ve bağlantı gelince kendiliğinden gönderilir.",
-        "draftCarries": "Taslak konuyu, açıklamayı, servisi ve varlığı taşır; formun ek soruları ve başkası adına alanı taslakta gitmez.",
-        "draftMultiUnit": "Bu servise birden çok birim bakıyor ve taslak birim seçemez: masa taslağı, birim seçilene kadar bekletir.",
-        "noDraftHome": "Bu cihazda taslağın tutulacağı kişisel bir alan yok; bağlantı gelince yeniden dene.",
+        "draftCarries": "Taslak konuyu, açıklamayı, hizmeti ve ekipmanı taşır; formun ek soruları ve başkası adına alanı taslakta gitmez.",
+        "draftMultiUnit": "Bu hizmete birden çok birim bakıyor ve taslak birim seçemez: taslak, birim seçilene kadar bekletilir.",
+        "noDraftHome": "Bu cihazda taslağın tutulacağı kişisel bir alan yok; bağlantı gelince yeniden deneyin.",
         "missing": "Göndermek için eksik: {fields}",
         "sent": "Talep açıldı",
         "sentNumbered": "Talep açıldı — #{number}",
         "drafted": "Taslak kaydedildi — bağlantı gelince gönderilecek",
-        "followUpNote": "Kapanmış {ref} talebinin devamını açıyorsunuz. Masa ikisini birbirine bağlayabilir.",
+        "followUpNote": "Kapanmış {ref} talebinin devamını açıyorsunuz. Birim ikisini birbirine bağlayabilir.",
         "followUpBody": "Önceki talep #{number}: {subject}",
         "followUpBodyNoNumber": "Önceki talep: {subject}",
-        "asset": "Varlık",
+        "asset": "Ekipman",
         "assetPick": "Bir makineyle mi ilgili? Seçin",
         "assetHelp": "İsteğe bağlı — seçerseniz talep makinenin geçmişinde sayılır",
-        "assetClear": "Varlığı kaldır",
+        "assetClear": "Ekipmanı kaldır",
         "assetPickTitle": "Hangi makine?",
         "assetSearch": "Etiket, ad ya da yer",
-        "assetNoneOnDevice": "Bu birimin cihazda tutulan bir varlığı yok. Makinenin etiketini okutup kartından da talep açabilirsiniz.",
+        "assetNoneOnDevice": "Bu birimin cihazda tutulan bir ekipmanı yok. Makinenin etiketini okutup kartından da talep açabilirsiniz.",
         "assetNoMatch": "Bu aramayla eşleşen bir makine yok.",
         "offlineNoDraft": "Bağlantı yok ve bu cihazda taslağın tutulacağı kişisel bir alan yok. Yazdıklarınız burada duruyor; bağlantı gelince gönderin.",
         "waitForSignal": "Bağlantı gelince gönderin",
         "filesFailed": "{count} dosya eklenemedi",
-        "filesDeskOnly": "Dosyayı talebi alan birimin üyeleri ekleyebilir; gerekirse masa sizden ister."
+        "filesDeskOnly": "Dosyayı talebi alan birimin üyeleri ekleyebilir; gerekirse birim sizden ister."
       },
       "drafts": {
         "title": "Taslaklar",
         "onDevice": "Telefonda — bağlantı gelince gönderilecek",
         "held": {
-          "noService": "Masada bekliyor — servis seçilmedi",
-          "serviceClosed": "Masada bekliyor — bu servis artık talep almıyor",
-          "needsUnit": "Masada bekliyor — bu servise birden çok birim bakıyor ve taslak birim seçemez",
-          "waiting": "Masaya ulaştı, talebe dönüşmesi bekleniyor"
+          "noService": "Birimde bekliyor — hizmet seçilmedi",
+          "serviceClosed": "Birimde bekliyor — bu hizmet artık talep almıyor",
+          "needsUnit": "Birimde bekliyor — bu hizmete birden çok birim bakıyor ve taslak birim seçemez",
+          "waiting": "Birime ulaştı, talebe dönüşmesi bekleniyor"
         },
         "rejected": "Reddedildi — {reason}",
         "sent": "İletildi — talebin aşağıda",
-        "pickService": "Servis seç",
+        "pickService": "Hizmet seç",
         "forget": "Kapat",
         "reason": {
           "limit": "kişisel alanında en fazla 200 gönderilmemiş taslak tutulabilir",
           "notOwn": "taslak yalnız kişisel alanına yazılabilir",
-          "noDesk": "bu takımın masasına ulaşamıyor",
-          "other": "masa kabul etmedi ({code})"
+          "noDesk": "bu takımın birimine ulaşamıyor",
+          "other": "birim kabul etmedi ({code})"
         }
       },
       "requester": {
         "updated": "Son güncelleme: {when}",
-        "waitingOnYou": "Sizden bilgi bekleniyor — masanın sizden bir şeye ihtiyacı var. Aşağıya yazın.",
+        "waitingOnYou": "Sizden bilgi bekleniyor — birimin sizden bir şeye ihtiyacı var. Aşağıya yazın.",
         "yourRequest": "Talebiniz",
         "you": "Siz",
         "desk": "Destek ekibi",
-        "replyHint": "Masaya yazın…",
+        "replyHint": "Birime yazın…",
         "send": "Gönder",
-        "resolvedPrompt": "Masa bu talebin çözüldüğünü söylüyor. Çözüldü mü?",
+        "resolvedPrompt": "Birim bu talebin çözüldüğünü söylüyor. Çözüldü mü?",
         "confirmClose": "Çözüldü, kapat",
         "dispute": "Çözülmedi",
         "closeConfirmTitle": "Talep kapansın mı?",
         "closeConfirmBody": "Kapanan talep sonuçlanmış olur. Sorun geri dönerse yeni bir talep açarsınız.",
         "closedDone": "Talep kapandı",
-        "disputed": "Masaya geri gönderildi",
+        "disputed": "Birime geri gönderildi",
         "newRequest": "Yeni talep aç",
         "needsConnection": "Bu talep sunucudan okunur ve şu an bağlantı yok. Tekrar bağlandığınızda açılır.",
         "closedFooter": "Bu talep kapandı, yazışması da. Sorun yeniden çıktıysa yeni bir talep açın; bu talebin numarası yenisine taşınır.",
@@ -2799,7 +2800,7 @@
         },
         "mineSection": "Arşiv",
         "mineTitle": "Arşivdeki taleplerim",
-        "mineTileBody": "Kapanalı bir süre olan talepleriniz. Salt okunur, bağlantı ister.",
+        "mineTileBody": "Bir süre önce kapanan talepleriniz. Yalnız görüntülenir; internet bağlantısı gerekir.",
         "mineEmptyTitle": "Arşivde henüz talebiniz yok",
         "mineEmptyBody": "Bir talep kapandıktan bir süre sonra buraya taşınır ve okunabilir kalır.",
         "mineMore": "Daha eski talepleri göster",
@@ -2819,7 +2820,7 @@
       "cancelledOn": "{date} tarihinde iptal edildi",
       "threadMeta": {
         "side": {
-          "desk": "Masa",
+          "desk": "Birim",
           "requester": "Talep sahibi",
           "customer": "Firma kişisi",
           "system": "Sistem"
@@ -2876,9 +2877,9 @@
         "notAllowed": "Rolünüz talep aktaramıyor. Bir takım yöneticisine sorun.",
         "approvalPending": "Bu talep bir onay bekliyor. Karar verildikten sonra aktarılabilir.",
         "reason": "Gerekçe (isteğe bağlı)",
-        "reasonHint": "Bunu yalnız masa görür",
-        "crossUnit": "Talebi {unit} alır. Şu an üstünde olan herkes bırakılır ve yeni masaya haber verilir. SLA, talebin açıldığı andan saymaya devam eder.",
-        "sameUnit": "Talep bu masada, başka bir hizmet altında kalır. SLA saymaya devam eder ve yeni hizmete göre yeniden hesaplanır.",
+        "reasonHint": "Bunu yalnız birim görür",
+        "crossUnit": "Talebi {unit} alır. Şu an üstünde olan herkes bırakılır ve yeni birime haber verilir. SLA, talebin açıldığı andan saymaya devam eder.",
+        "sameUnit": "Talep bu birimde, başka bir hizmet altında kalır. SLA saymaya devam eder ve yeni hizmete göre yeniden hesaplanır.",
         "apply": "Aktar",
         "done": "{where} için aktarıldı",
         "unchanged": "Talep zaten orada"
@@ -2908,28 +2909,28 @@
     },
     "slaDash": {
       "title": "SLA panosu",
-      "compliance": "Tutulan sözler",
-      "complianceOf": "{total} değerlendirilen",
+      "compliance": "Süresinde çözülen talepler",
+      "complianceOf": "{total} talepten {met}",
       "complianceNone": "Henüz değerlendirilen yok",
       "byUnit": "Birime göre",
-      "byService": "Servise göre",
+      "byService": "Hizmete göre",
       "breaches": "Aşılan süreler",
-      "noBreaches": "Aşılan süre yok. Bu masadaki her söz hâlâ ayakta.",
+      "noBreaches": "Süresi aşılan talep yok. Bu birimdeki her talep süresinde.",
       "noUnits": "Henüz talebi olan birim yok.",
-      "noServices": "Henüz talebi olan servis yok.",
-      "noService": "Servissiz",
+      "noServices": "Henüz talebi olan hizmet yok.",
+      "noService": "Hizmeti yok",
       "unavailable": "Burada pano yok",
-      "unavailableBody": "Bu adreste bir takım yok ya da bir masaya bağlı değilsiniz.",
+      "unavailableBody": "Bu adreste bir takım yok ya da bir birime bağlı değilsiniz.",
       "outcomeBreached": "Aşıldı",
       "outcomeWarned": "Yaklaşıyor",
       "outcomeMet": "Tutuldu",
       "noDefaultTitle": "Varsayılan SLA politikası yok",
-      "noDefaultBody": "Servisi ya da firması politika belirtmeyen yeni taleplere hiç SLA uygulanmıyor, bu yüzden burada sayılmıyorlar. SLA yönetiminde bir politikayı varsayılan yapın."
+      "noDefaultBody": "Hizmeti ya da firması politika belirtmeyen yeni taleplere hiç SLA uygulanmıyor, bu yüzden burada sayılmıyorlar. SLA yönetiminde bir politikayı varsayılan yapın."
     },
     "perfPanel": {
-      "title": "Performans panosu",
+      "title": "İş yükü raporu",
       "unavailable": "Pano burada yok",
-      "unavailableBody": "Bu takımda servis masası açık değil ya da bu ekranı göremiyorsunuz.",
+      "unavailableBody": "Bu takımda talep yönetimi açık değil ya da bu ekranı göremiyorsunuz.",
       "byUnit": "Birime göre",
       "byAgent": "Kişiye göre",
       "noUnits": "Bu dönemde birim hareketi yok.",
@@ -2945,10 +2946,10 @@
       "compliance": "SLA uyumu",
       "byProcessType": "İşin türüne göre",
       "noProcessTypes": "Bu aralıkta iş yok.",
-      "processTypeNone": "Türü kaydedilmemiş",
+      "processTypeNone": "Türü seçilmemiş talepler",
       "processType": {
-        "incident": "Olaylar",
-        "request": "Hizmet istekleri"
+        "incident": "Arızalar",
+        "request": "İstekler"
       }
     },
     "slaAdmin": {
@@ -2970,10 +2971,10 @@
       "policyName": "Politika adı",
       "calendar": "Mesai takvimi",
       "warnPercent": "Uyarı eşiği",
-      "warnOn": "Masa, hedefin %{percent}'inde uyarılır.",
+      "warnOn": "Birim, hedefin %{percent}'inde uyarılır.",
       "warnOff": "Uyarı yok — yalnız aşımın kendisi duyurulur.",
       "makeDefault": "Takımın varsayılanı yap",
-      "makeDefaultBody": "Servisi politika belirtmeyen taleplere uygulanır. Yalnız bir politika varsayılan olabilir.",
+      "makeDefaultBody": "Hizmeti politika belirtmeyen taleplere uygulanır. Yalnız bir politika varsayılan olabilir.",
       "newCalendar": "Yeni takvim",
       "editCalendar": "Takvimi düzenle",
       "calendarName": "Takvim adı",
@@ -2992,7 +2993,7 @@
       "save": "Kaydet",
       "delete": "Sil",
       "noPolicies": "Henüz politika yok",
-      "noPoliciesBody": "Politika, bu masanın ne kadar hızlı ve hangi takvime göre yanıt verdiğini söyler.",
+      "noPoliciesBody": "Politika, bu birimin ne kadar hızlı ve hangi takvime göre yanıt verdiğini söyler.",
       "noCalendars": "Henüz takvim yok",
       "noCalendarsBody": "Takvim, bir sözün sayıldığı mesai saatleridir — vardiyalar ve tatiller dahil.",
       "noMonitors": "Henüz izleyici yok",
@@ -3023,7 +3024,7 @@
       "keep": "Vazgeç",
       "defaultDeleteTitle": "Varsayılan politika silinemez",
       "deletePolicyTitle": "“{name}” silinsin mi?",
-      "deletePolicyBody": "Bu politikayı kullanan servis ve firmaların yeni talepleri takımın varsayılan politikasıyla ölçülür. Hedef süreleri de silinir. Bu işlem geri alınamaz.",
+      "deletePolicyBody": "Bu politikayı kullanan hizmet ve firmaların yeni talepleri takımın varsayılan politikasıyla ölçülür. Hedef süreleri de silinir. Bu işlem geri alınamaz.",
       "deleteCalendarTitle": "“{name}” silinsin mi?",
       "deleteCalendarBody": "Vardiyaları ve tatilleri de silinir. Şu an bu takvime göre sayan bir politika yok. Bu işlem geri alınamaz.",
       "calendarInUseTitle": "Bu takvim kullanılıyor",
@@ -3034,9 +3035,9 @@
     "portal": {
       "title": "Herkese açık talep bağlantıları",
       "create": "Yeni bağlantı",
-      "service": "Servis",
+      "service": "Hizmet",
       "unit": "Hangi birim bakacak",
-      "unitHelp": "Bu servise iki veya daha fazla birim bakıyor. Formu dolduran kişiye soramayız, o yüzden burada seçin.",
+      "unitHelp": "Bu hizmete iki veya daha fazla birim bakıyor. Formu dolduran kişiye soramayız, o yüzden burada seçin.",
       "ttl": "Geçerlilik",
       "createdTitle": "Bağlantı oluşturuldu",
       "createdOnce": "Bu adres yalnızca şimdi gösteriliyor. Hemen kopyalayın — bizde bir kopyası kalmıyor ve tekrar gösterilemez.",
@@ -3044,7 +3045,7 @@
       "copied": "Kopyalandı",
       "quotaTitle": "Planınız",
       "scanOffTitle": "Bu bağlantılardan gelen dosyalar virüs taramasından geçmiyor",
-      "scanOffBody": "Birinin herkese açık bir bağlantıdan gönderdiği fotoğraf ya da PDF masaya virüs taramasından geçmeden ulaşır. Tarama bir sunucu ayarıdır; sunucuyu yöneten kişiye iletin.",
+      "scanOffBody": "Birinin herkese açık bir bağlantıdan gönderdiği fotoğraf ya da PDF birime virüs taramasından geçmeden ulaşır. Tarama bir sunucu ayarıdır; sunucuyu yöneten kişiye iletin.",
       "quotaLinks": "Yaşayan bağlantı",
       "quotaTickets": "Bu ayki talep",
       "ofMax": "{max} üzerinden {used}",
@@ -3052,7 +3053,7 @@
       "expiresAt": "{date} tarihine kadar",
       "customFields": "özel alanlar",
       "ref": "kimlik {ref}",
-      "unknownService": "Bilinmeyen servis",
+      "unknownService": "Bilinmeyen hizmet",
       "pause": "Duraklat",
       "resume": "Yeniden aç",
       "extend": "Süreyi uzat…",
@@ -3070,9 +3071,9 @@
         "revoked": "İptal edildi"
       },
       "catalogue": "Katalog linki",
-      "catalogueHelp": "Tek servis yerine seçtiğiniz servisleri gösterir; ziyaretçi seçer.",
-      "catalogueAmbiguous": "İki birim cevapladığı için kataloğa konamaz — tek servislik link açın.",
-      "catalogueCount": "{count} servis",
+      "catalogueHelp": "Tek hizmet yerine seçtiğiniz hizmetleri gösterir; ziyaretçi seçer.",
+      "catalogueAmbiguous": "İki birim cevapladığı için kataloğa konamaz — tek hizmetlik link açın.",
+      "catalogueCount": "{count} hizmet",
       "ttlDays": "{days} gün",
       "ttlDayOne": "1 gün",
       "extendTitle": "Bağlantının süresini uzat",
@@ -3212,7 +3213,7 @@
     },
     "webhooks": {
       "settingsRow": "Giden webhook'lar",
-      "settingsRowHint": "Takımın olaylarını zaten kullandığınız bir sisteme gönder",
+      "settingsRowHint": "Takımın olaylarını zaten kullandığınız bir sisteme gönderin",
       "title": "Giden webhook'lar",
       "add": "Uç ekle",
       "url": "Uç adresi",
@@ -3276,7 +3277,7 @@
     "mail": {
       "inboxAdd": "Posta kutusu ekle",
       "inboxName": "Adı",
-      "inboxService": "Hangi servise düşer",
+      "inboxService": "Hangi hizmete düşer",
       "inboxKindImap": "Bu sunucu okur",
       "inboxKindWebhook": "Sağlayıcı iletir",
       "inboxKindImapHint": "Bu sunucu posta kutunuza giriş yapıp geleni okur. İnternete hiçbir şey açılmaz ve hiçbir posta okundu işaretlenmez.",
@@ -3285,7 +3286,7 @@
       "inboxWebhookWarning": "Bu kutunun postası üçüncü bir taraftan geçer.",
       "inboxSecretTitle": "Bu sırrı şimdi kopyalayın",
       "inboxSecretBody": "Sağlayıcınıza yapıştırın ki buraya gönderdiğini imzalayabilsin. Yalnız bir kez gösterilir; kaybederseniz yenisini üretin.",
-      "inboxTitle": "Bu masanın okuduğu posta kutuları",
+      "inboxTitle": "Bu birimin okuduğu posta kutuları",
       "inboxHint": "Sunucu kendi posta sunucunuza dışarı arar ve gelenleri talebe çevirir. İnternete hiçbir şey açılmaz, ve postalar kutuda kendi insanlarınız için okunmamış kalır.",
       "inboxEmpty": "Henüz bağlı posta kutusu yok.",
       "inboxOk": "{host} · {user}",
@@ -3411,16 +3412,16 @@
         "retired": "Hurda"
       },
       "title": "Ekipman",
-      "one": "Varlık",
+      "one": "Ekipman",
       "empty": "Henüz ekipman yok",
-      "emptyBody": "Makineler, araçlar, bilgisayarlar ve aletler burada durur. Elindeki listeyi içe aktar ya da bir tane ekle.",
-      "openRequest": "Bu varlık için talep aç",
+      "emptyBody": "Makineler, araçlar, bilgisayarlar ve aletler burada durur. Elinizdeki listeyi içe aktarın ya da bir tane ekleyin.",
+      "openRequest": "Bu ekipman için talep aç",
       "filter": {
         "expiring": "Yakında doluyor",
-        "location": "Lokasyon",
+        "location": "Konum",
         "unit": "Birim",
         "unitSet": "Birim: {unit}",
-        "unitPickTitle": "Hangi birimin varlıkları?",
+        "unitPickTitle": "Hangi birimin ekipmanları?",
         "unitStock": "Takımın stoku"
       },
       "type": {
@@ -3441,7 +3442,7 @@
         "name": "Ad",
         "type": "Tip",
         "status": "Durum",
-        "location": "Lokasyon",
+        "location": "Konum",
         "serial": "Seri no",
         "manufacturer": "Üretici",
         "model": "Model",
@@ -3452,9 +3453,9 @@
         "purchaseCost": "Satın alma fiyatı"
       },
       "history": {
-        "title": "Bu varlıkla ilgili talepler",
+        "title": "Bu ekipmanla ilgili talepler",
         "counts": "Son {months} ay: {count} talep, {open} hâlâ açık; talepler toplam {duration} açık kaldı",
-        "empty": "Bu varlığı adlandıran talep yok",
+        "empty": "Bu ekipmanı adlandıran talep yok",
         "archived": "Arşivlenmiş",
         "labour": "Kayıtlı {duration} çalışma",
         "labourCost": "İşçilik: {money}",
@@ -3471,14 +3472,14 @@
       "emptyOnDevice": "Bu cihazda kayıt yok",
       "editOffline": "Düzenlemek bağlantı ister",
       "offDevice": {
-        "title": "Sunucudan — bu cihazda tutulmuyor",
+        "title": "Çevrim dışıyken görünmez",
         "offline": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar bu cihazda tutulmaz; bağlantı gelince burada görünür."
       },
       "card": {
         "onDevice": "Bu cihazdaki kayıt",
         "onDeviceSynced": "Bu cihazdaki kayıt · {ago} eşitlendi",
         "fromServer": "Sunucudan okundu — bu cihazda tutulmuyor",
-        "notOnDevice": "Bu varlık bu cihazda yok",
+        "notOnDevice": "Bu ekipman bu cihazda yok",
         "notOnDeviceBody": "Bu birimin dışındaki ekipman ve 90 gündür değişmeyen hurda kayıtlar cihazda tutulmaz. Bağlantı gelince açılır."
       },
       "changes": {
@@ -3534,7 +3535,7 @@
       "notOnDevice": "Bu değişiklik bu cihazda yok",
       "notOnDeviceBody": "Açmak için bağlantı gerekiyor.",
       "gone": "Değişiklik bulunamadı",
-      "goneBody": "Silinmiş olabilir ya da çalışmadığınız bir masaya ait.",
+      "goneBody": "Silinmiş olabilir ya da çalışmadığınız bir birime ait.",
       "live": {
         "offline": "İmzalar, takvim ve etkilediği şeyler bağlantı ister."
       },
@@ -3550,19 +3551,19 @@
       },
       "calendar": {
         "title": "Takvim",
-        "clear": "Bu pencerede aynı servise dokunan başka bir değişiklik yok, dondurma da yok.",
+        "clear": "Bu pencerede aynı hizmete dokunan başka bir değişiklik yok, dondurma da yok.",
         "noWindow": "Pencere yok — bu değişiklik henüz takvimde değil.",
         "freeze": "Bu pencere “{reason}” dondurmasıyla çakışıyor ({window}).",
-        "clash": "Aynı serviste aynı pencerede: “{title}” ({window}).",
-        "draft": "Aynı serviste aynı pencerede henüz planlanmamış bir taslak var: “{title}” ({window})."
+        "clash": "Aynı hizmette aynı pencerede: “{title}” ({window}).",
+        "draft": "Aynı hizmette aynı pencerede henüz planlanmamış bir taslak var: “{title}” ({window})."
       },
       "source": {
         "title": "Açıldığı talep",
         "open": "Talebi aç"
       },
-      "services": "Etkilediği servisler",
-      "serviceUnknown": "Katalogda olmayan bir servis",
-      "assets": "Etkilediği varlıklar",
+      "services": "Etkilediği hizmetler",
+      "serviceUnknown": "Katalogda olmayan bir hizmet",
+      "assets": "Etkilediği ekipmanlar",
       "raisedFrom": "Bu talepten açılan değişiklikler",
       "fromTicketAction": "Değişiklik aç",
       "create": {
@@ -3585,8 +3586,8 @@
         "windowNone": "Belirlenmedi",
         "windowClear": "Temizle",
         "windowBackwards": "Pencere başlamadan bitiyor.",
-        "services": "Etkilediği servisler",
-        "servicesHint": "Takvim, aynı pencerede aynı servise dokunan başka değişiklikleri söyler.",
+        "services": "Etkilediği hizmetler",
+        "servicesHint": "Takvim, aynı pencerede aynı hizmete dokunan başka değişiklikleri söyler.",
         "description": "Açıklama (isteğe bağlı)",
         "save": "Değişikliği aç",
         "offline": "Değişiklik açmak bağlantı ister.",
@@ -3597,27 +3598,27 @@
       "statusUnknown": "Bilinmeyen durum"
     },
     "problems": {
-      "title": "Problemler",
-      "searchHint": "Problemlerde ara",
-      "new": "Yeni problem kaydı",
-      "empty": "Bu birimde problem kaydı yok",
-      "emptyBody": "Problem kaydı, masanın tekrar eden bir arızayı ortak anlayışıdır: insanlar ne görüyor, neden oluyor ve düzelene kadar ne yapılır. Başka bir birimde açılan kayıt o birimin listesindedir.",
-      "searchEmpty": "Eşleşen problem yok",
-      "searchEmptyBody": "Arama problemin başlığına ve insanların gördüğüne bakar.",
+      "title": "Tekrarlayan arızalar",
+      "searchHint": "Tekrarlayan arızalarda ara",
+      "new": "Yeni tekrarlayan arıza kaydı",
+      "empty": "Bu birimde tekrarlayan arıza kaydı yok",
+      "emptyBody": "Tekrarlayan arıza kaydı, birimin tekrar eden bir arızayı ortak anlayışıdır: insanlar ne görüyor, neden oluyor ve düzelene kadar ne yapılır. Başka bir birimde açılan kayıt o birimin listesindedir.",
+      "searchEmpty": "Eşleşen tekrarlayan arıza yok",
+      "searchEmptyBody": "Arama, kaydın başlığına ve insanların gördüğüne bakar.",
       "section": {
-        "known_error": "Bilinen hatalar",
+        "known_error": "Nedeni bilinenler",
         "investigating": "İnceleniyor",
         "resolved": "Çözüldü",
         "closed": "Kapandı"
       },
       "status": {
-        "known_error": "Bilinen hata",
+        "known_error": "Nedeni bilinen",
         "investigating": "İnceleniyor",
         "resolved": "Çözüldü",
         "closed": "Kapandı"
       },
       "hasWorkaround": "Geçici çözüm yazılı",
-      "detailTitle": "Problem",
+      "detailTitle": "Tekrarlayan arıza",
       "workaround": "Düzelene kadar ne yapılır",
       "noWorkaround": "Henüz geçici çözüm yazılmadı.",
       "symptom": "İnsanlar ne görüyor",
@@ -3625,9 +3626,9 @@
       "permanentAction": "Kalıcı çözüm",
       "resolvedOn": "{date} tarihinde çözüldü",
       "fromServer": "Sunucudan okundu — bu cihaz tutmuyor",
-      "notOnDevice": "Bu problem bu cihazda yok",
+      "notOnDevice": "Bu kayıt bu cihazda yok",
       "notOnDeviceBody": "Açmak için bağlantı gerekiyor.",
-      "gone": "Problem bulunamadı",
+      "gone": "Kayıt bulunamadı",
       "goneBody": "Silinmiş olabilir ya da başka bir takımın.",
       "live": {
         "offline": "Açıkladığı talepler bağlantı ister."
@@ -3636,18 +3637,18 @@
       "requestsNone": "Henüz bağlı bir talep yok.",
       "requestsMore": "…ve {count} tane daha",
       "requestsElsewhere": "Çalışmadığınız birimlerde {count} tane daha",
-      "fromTicketAction": "Bilinen hata kaydı aç",
+      "fromTicketAction": "Tekrarlayan arıza olarak kaydet",
       "create": {
-        "title": "Yeni problem kaydı",
-        "knownErrorTitle": "Bilinen hata kaydı",
+        "title": "Yeni tekrarlayan arıza kaydı",
+        "knownErrorTitle": "Nedeni bilinen arıza kaydı",
         "fromTicket": "{ticket} talebinden açılıyor — ona bağlanacak",
         "name": "Başlık",
         "symptomHelp": "Zorunlu. İnsanların gördüğü, onların sözleriyle — bir dahaki sefere tanınmasının yolu.",
         "workaround": "Düzelene kadar ne yapılır (isteğe bağlı)",
-        "workaroundHelp": "Biliyorsanız yazın: masanın telefonda okuduğu cümle bu.",
+        "workaroundHelp": "Biliyorsanız yazın: birimin telefonda okuduğu cümle bu.",
         "save": "Kaydı aç",
         "offline": "Kayıt açmak bağlantı ister.",
-        "done": "Problem kaydı açıldı"
+        "done": "Tekrarlayan arıza kaydı açıldı"
       }
     },
     "kb": {
@@ -3693,12 +3694,12 @@
       },
       "retireTitle": "Makale emekliye ayrılsın mı?",
       "retireBody": "Emekliye ayrılan makale artık önerilmez ve bu geri alınamaz.",
-      "noServiceNote": "Bu makale bir servise bağlı değil; talep açan kimseye önerilmez.",
+      "noServiceNote": "Bu makale bir hizmete bağlı değil; talep açan kimseye önerilmez.",
       "counts": "{suggested} kez önerildi · {converted} kez okunup yine talep açıldı · {deflected} talep önlendi",
-      "fieldService": "Servis",
-      "fieldServiceNone": "Servis seçilmezse makale talep açan kimseye önerilmez.",
-      "fieldServiceHelp": "Bu servis için talep açan kişiye yayımlandığında önerilir.",
-      "noService": "Servis yok",
+      "fieldService": "Hizmet",
+      "fieldServiceNone": "Hizmet seçilmezse makale talep açan kimseye önerilmez.",
+      "fieldServiceHelp": "Bu hizmet için talep açan kişiye yayımlandığında önerilir.",
+      "noService": "Hizmet yok",
       "emptyBodyReader": "Burada henüz yazılmış bir şey yok. Biriminizin yayımladığı makaleler burada görünür."
     },
     "worklogs": {
@@ -3745,7 +3746,7 @@
     },
     "myUnits": {
       "title": "Birimlerim",
-      "live": "Canlı — bağlantı ister",
+      "live": "Anlık veri · internet bağlantısı gerekir",
       "scope": "Birimleriniz: {units}",
       "counts": "{breached} SLA aşıldı · {warned} yaklaşıyor",
       "alertsOnly": "Yalnız SLA uyarıları",
@@ -3758,8 +3759,8 @@
       "noUnitsBody": "Bu liste, çalıştığınız birimlerin açık taleplerini gösterir.",
       "offlineTitle": "Bağlantı gerekiyor",
       "offlineBody": "Bu liste sunucudan canlı okunur; eski bir kopyadan asla gösterilmez. Bulunduğunuz birimin kuyruğu çevrimdışı da çalışır.",
-      "stripBoth": "Diğer birimleriniz: {breached} SLA aşıldı, {warned} yaklaşıyor",
-      "stripBreached": "Diğer birimleriniz: {breached} SLA aşıldı",
+      "stripBoth": "Diğer birimlerinizde {breached} talebin süresi aşıldı, {warned} talebinki dolmak üzere",
+      "stripBreached": "Diğer birimlerinizde {breached} talebin süresi aşıldı",
       "stripWarned": "Diğer birimleriniz: {warned} SLA yaklaşıyor",
       "stripAll": "Tümünü gör"
     },
@@ -3770,15 +3771,15 @@
       "empty": "Bu birimde henüz toplantı notu yok",
       "emptyBody": "Bir toplantının kaydı yüklendiğinde özeti ve kararları burada görünür.",
       "counts": "{decisions} karar · {ideas} fikir",
-      "upload": "Kayıt yükle",
+      "upload": "Toplantı ses kaydı yükle",
       "uploaded": "Kayıt yüklendi — birazdan deşifre edilecek."
     },
     "ticketWork": {
       "chip": "Talep {ref}",
-      "explain": "Bu görev talebin işidir: tamamlamak talebi çözer, geri açmak talebi yeniden işe alır. Başlık, öncelik ve tarih talepten gelir; birini değiştirirsen senin değerin kalır.",
+      "explain": "Bu görev talebin işidir: tamamlamak talebi çözer, geri açmak talebi yeniden işe alır. Başlık, öncelik ve tarih talepten gelir; birini değiştirirseniz sizin değeriniz kalır.",
       "open": "Talebi aç",
       "release": "Talebi bırak",
-      "releaseOffline": "Talebi bırakmak bağlantı ister — kararı masanın kuralları verir.",
+      "releaseOffline": "Talebi bırakmak bağlantı ister — kararı birimin kuralları verir.",
       "released": "{ref} talebini bıraktın — listenden çıktı."
     },
     "teamAddress": {
@@ -3789,9 +3790,10 @@
       "bannerBody": "Takımınız {team} kendi adresinde çalışıyor: {host}. Talepler ve onaylar orada.",
       "bannerDismiss": "Şimdi değil",
       "settingsRowBody": "Takım ekranları takımınızın kendi adresinde açılır",
-      "settingsRowHint": "{team} şu adreste: {host} — geçmek için dokunun",
-      "notInTeamTitle": "Bu takımın üyesi değilsiniz",
-      "notInTeamBody": "Bu adres hesabınızın üyesi olmadığı bir takıma ait."
+      "settingsRowHint": "{team} şu adreste: {host}",
+      "notInTeamTitle": "Bu firmanın talep sistemine üye değilsiniz",
+      "notInTeamBody": "Giriş yaptığınız hesap ({email}) bu firmada kayıtlı değil. Yöneticinizden davet isteyin ya da başka bir hesapla girin.",
+      "switchAccount": "Hesap değiştir"
     },
     "forbidden": {
       "title": "Bu ekran takım yöneticilerine ait",
@@ -3806,12 +3808,13 @@
       "daysHours": "{d} g {h} sa"
     },
     "unitScope": {
-      "chooseTitle": "Bir birim seçin",
-      "chooseBody": "Bu liste bir birime ait; ekrandaki alan bir birim değil. Listesini görmek istediğiniz birimi seçin.",
-      "noUnitsBody": "Bu liste bir birime ait ve henüz hiçbir birimde değilsiniz. Bir takım yöneticisi sizi bir birime ekleyebilir."
+      "chooseTitle": "Hangi birimin taleplerini görmek istersiniz?",
+      "chooseBody": "Talepler birim birim tutulur. Bir birim seçin ya da tümünü görün.",
+      "noUnitsBody": "Bu liste bir birime ait ve henüz hiçbir birimde değilsiniz. Bir takım yöneticisi sizi bir birime ekleyebilir.",
+      "switcherTitle": "Birim seçin"
     },
     "csv": {
-      "download": "CSV indir",
+      "download": "Excel'e aktar (.csv)",
       "preparing": "Dosya hazırlanıyor…",
       "saved": "Kaydedildi: {name}",
       "savedTruncated": "Kaydedildi: {name}. Satır sınırında durdu; dosyanın içinde de yazıyor. Geri kalanı için filtreleri daraltın."
@@ -3821,10 +3824,10 @@
         "manage": "Birimlerin nöbet listelerini ve kimlerin nöbette olduğunu belirle"
       },
       "tickets": {
-        "link": "Talepleri birbirine ve problemlere bağla",
+        "link": "Talepleri birbirine ve tekrarlayan arızalara bağla",
         "manage_worklog": "Başkasının kaydettiği süreyi düzelt ya da sil",
         "assign": "Talebi başkasına ver ya da üstünden al",
-        "create": "Bir servise talep aç",
+        "create": "Bir hizmete talep aç",
         "comment": "Talebe yaz",
         "close": "Talebi kapat ya da iptal et",
         "export": "Talepleri dosya olarak dışarı aktar",
@@ -3840,7 +3843,7 @@
         "decide": "Sahip olduğunuz bir role gelen onayları yanıtla — sizi adıyla anan onay bu izin olmadan da sizindir"
       },
       "problems": {
-        "manage": "Problem kaydı aç ve yürüt"
+        "manage": "Tekrarlayan arıza kaydı aç ve yürüt"
       },
       "portal": {
         "manage_links": "Herkese açık talep bağlantıları oluştur, iptal et ve süresini uzat"
@@ -3864,11 +3867,11 @@
         },
         "manage_settings": "Takımın adını, logosunu, dilini, saat dilimini ve rengini düzenle",
         "manage_members": "Takım üyelerinin rolünü yükselt, düşür ve üyeleri çıkar",
-        "import_tickets": "Başka bir servis masasından talepleri toplu olarak taşı"
+        "import_tickets": "Başka bir talep sisteminden talepleri toplu olarak taşı"
       },
       "assets": {
-        "view": "Varlık defterini gör",
-        "manage": "Varlık kaydı aç, düzenle ve taşı"
+        "view": "Ekipman defterini gör",
+        "manage": "Ekipman kaydı aç, düzenle ve taşı"
       },
       "tasks": {
         "view": "Görevleri gör",
@@ -3936,7 +3939,7 @@
         "manage": "Hizmet verilen firmaları, kişilerini ve hedeflerini tut; bir talebin hangi firma için olduğunu belirle"
       },
       "services": {
-        "manage": "Servis oluştur, formlarını düzenle ve hangi birimlerin baktığını belirle"
+        "manage": "Hizmet oluştur, formlarını düzenle ve hangi birimlerin baktığını belirle"
       }
     },
     "customers": {
@@ -3950,7 +3953,7 @@
       "actions": "İşlemler",
       "keep": "Vazgeç",
       "archiveTitle": "“{name}” arşivlensin mi?",
-      "archiveBody": "Kişileri firma portalına artık giremez ve talep açamaz; yeni kişi de eklenemez. Açık talepleri masada kalır. Daha sonra arşivden çıkarabilirsiniz.",
+      "archiveBody": "Kişileri firma portalına artık giremez ve talep açamaz; yeni kişi de eklenemez. Açık talepleri birimde kalır. Daha sonra arşivden çıkarabilirsiniz.",
       "archivedNote": "Bu firma arşivli: kişileri giriş yapamaz ve talep açamaz. Kişi eklemek ya da davet etmek için firma listesinden arşivden çıkarın.",
       "emptyTitle": "Henüz firma yok",
       "emptyBody": "Hizmet verdiğiniz firmaları ekleyin. Kişileri takımınızın adresindeki firma portalına girer ve kendi taleplerini izler.",
@@ -3996,7 +3999,7 @@
       "emptyAutomation": "Henüz otomasyon kuralı yok",
       "emptyAutomationBody": "Kural bir sinyali işe çevirir: bir talep açıldığında, bekletildiğinde ya da geciktiğinde onu atayabilir, önceliğini yükseltebilir, etiketleyebilir ya da birine haber verebilir.",
       "emptyRouting": "Henüz yönlendirme kuralı yok",
-      "emptyRoutingBody": "Yönlendirme kuralı yeni talepleri kelimelerine, gönderenine ya da kaynağına göre doğru servise veya birime gönderir.",
+      "emptyRoutingBody": "Yönlendirme kuralı yeni talepleri kelimelerine, gönderenine ya da kaynağına göre doğru hizmete veya birime gönderir.",
       "unavailable": "Erişilemiyor",
       "unavailableBody": "Kuralları ekibin yöneticileri düzenler.",
       "off": "Kapalı",
@@ -4088,7 +4091,7 @@
       "from": "Gönderen",
       "fromHelp": "Tek bir adres ya da o alan adındaki herkes için @alanadi",
       "unit": "Birim",
-      "service": "Servis",
+      "service": "Hizmet",
       "needsAction": "Kuralın yapacağı en az bir şey seçin",
       "priorityLocked": "Öncelik belirlemek için öncelikleri değiştirme izni gerekir.",
       "tryRecent": "Son taleplerde dene",
@@ -4125,7 +4128,7 @@
         "on_call": "Nöbetçi"
       },
       "conditionName": {
-        "service": "Servis",
+        "service": "Hizmet",
         "priority": "Öncelik",
         "source": "Kaynak",
         "unit": "Birim"
@@ -4138,7 +4141,7 @@
         "email": "E-posta"
       },
       "checkName": {
-        "service": "Servis",
+        "service": "Hizmet",
         "priority": "Öncelik",
         "source": "Kaynak",
         "unit": "Birim",
@@ -4156,18 +4159,18 @@
       },
       "reason": {
         "no_assignee": "Kişi seçilmemiş.",
-        "not_member": "Bu kişi talebin masasında değil.",
-        "nobody_available": "Masada müsait kimse yok.",
-        "no_on_call": "Nöbet çizelgesi şu an bu masa için kimseyi göstermiyor.",
+        "not_member": "Bu kişi talebin biriminde değil.",
+        "nobody_available": "Birimde müsait kimse yok.",
+        "no_on_call": "Nöbet çizelgesi şu an bu birim için kimseyi göstermiyor.",
         "no_priority": "Öncelik seçilmemiş.",
         "tag_missing": "Etiket artık yok.",
         "webhook_missing": "Webhook artık yok.",
         "webhook_disabled": "Webhook duraklatılmış.",
         "no_address": "Adres girilmemiş.",
         "no_destination": "Açılacak bir yer yok.",
-        "TICKET_SERVICE_NOT_FOUND": "Hedef servis artık yok.",
-        "TICKET_SERVICE_UNROUTED": "Hedef servise hiçbir birim bakmıyor.",
-        "TICKET_UNIT_REQUIRED": "Hedef servise birden çok birim bakıyor; kural birini seçemez."
+        "TICKET_SERVICE_NOT_FOUND": "Hedef hizmet artık yok.",
+        "TICKET_SERVICE_UNROUTED": "Hedef hizmete hiçbir birim bakmıyor.",
+        "TICKET_UNIT_REQUIRED": "Hedef hizmete birden çok birim bakıyor; kural birini seçemez."
       }
     }
   },
@@ -4178,7 +4181,7 @@
   "workspace": {
     "switcher": {
       "title": "Çalışma alanı seç",
-      "tooltip": "{workspace} — değiştirmek için dokunun"
+      "tooltip": "{workspace} · Çalışma alanını değiştir"
     }
   },
   "time": {
@@ -4194,20 +4197,20 @@
     "sub": "Todoist veya TickTick'ten taşının",
     "stepOf": "Adım {n} / {total}",
     "step": {
-      "source": "Nereden taşınıyorsunuz?",
-      "file": "{app} dışa aktarımınızı seçin",
-      "preview": "Neyin geleceğine bakın",
+      "source": "Nereden taşınıyorsun?",
+      "file": "{app} dışa aktarımını seç",
+      "preview": "Neyin geleceğine bak",
       "importing": "İçe aktarılıyor",
       "done": "İçe aktarıldı"
     },
-    "intro": "Görevlerinizi yanınızda getirin. Önizlemeyi görmeden hiçbir şey yazılmaz; aynı dosyayı yeniden içe aktarmak hiçbir zaman kopya oluşturmaz.",
+    "intro": "Görevlerini yanında getir. Önizlemeyi görmeden hiçbir şey yazılmaz; aynı dosyayı yeniden içe aktarmak hiçbir zaman kopya oluşturmaz.",
     "how": {
       "todoist": "Yedek ZIP'ini ya da bir projenin CSV dışa aktarımını kullanın.",
       "ticktick": "TickTick web uygulamasındaki CSV yedeğini kullanın."
     },
     "export": {
-      "todoist": "Todoist'te Ayarlar › Yedekler'i açıp son yedeği (ZIP) indirin ya da bir projenin menüsünden CSV olarak dışa aktar'ı seçin. Birden çok CSV dosyasını birlikte seçebilirsiniz.",
-      "ticktick": "ticktick.com'da Ayarlar › Yedekleme ve İçe Aktarma › Yedek oluştur'u açıp CSV dosyasını kaydedin."
+      "todoist": "Todoist'te Ayarlar › Yedekler'i açıp son yedeği (ZIP) indir ya da bir projenin menüsünden CSV olarak dışa aktar'ı seç. Birden çok CSV dosyasını birlikte seçebilirsin.",
+      "ticktick": "ticktick.com'da Ayarlar › Yedekleme ve İçe Aktarma › Yedek oluştur'u açıp CSV dosyasını kaydet."
     },
     "todoistNoCompleted": "Todoist tamamlanmış görevleri dışa aktarıma koymaz; yalnız açık görevler gelir.",
     "appleNote": "Apple Anımsatıcılar'ın dışa aktarma dosyası yok, bu yüzden içe aktarılamaz.",
@@ -4254,7 +4257,7 @@
       "IMPORT_DATE_KEPT_IN_NOTE": "Bir tarih okunamadı; açıklamada duruyor",
       "IMPORT_RELATIVE_DATE": "“Bugün” gibi bir tarih bugüne göre okundu",
       "IMPORT_DATE_YEAR_GUESSED": "Yılı olmayan bir tarih bir sonraki gelişine kondu",
-      "IMPORT_DEADLINE_KEPT_IN_NOTE": "Bitiş tarihinin yanındaki son tarih açıklamada duruyor",
+      "IMPORT_DEADLINE_KEPT_IN_NOTE": "Son tarihin yanındaki ikinci tarih açıklamada duruyor",
       "IMPORT_FOLDER_FLATTENED": "Aynı adlı listeler klasör adını proje adında taşıyor",
       "IMPORT_MULTIDAY_FLATTENED": "Birkaç güne yayılan bir görev artık son gününde bitiyor",
       "IMPORT_EXTRA_REMINDERS_DROPPED": "Bir görevin yalnız ilk hatırlatıcısı korundu",
@@ -4268,7 +4271,7 @@
     "nothingNew": "Bu dosyadaki her şey zaten içe aktarılmış.",
     "run": "{count} öğeyi içe aktar",
     "progress": "{done} / {total} aktarıldı",
-    "progressNote": "Bu ekranı açık tutabilirsiniz; büyük bir dosya parça parça gönderilir.",
+    "progressNote": "Bu ekranı açık tutabilirsin; büyük bir dosya parça parça gönderilir.",
     "result": {
       "headline": "{count} öğe içe aktarıldı.",
       "tasks": "Görevler",
@@ -4285,10 +4288,10 @@
     "done": "Bitti",
     "error": {
       "tooLarge": "Bu dosyalar 8 MB'tan büyük. Projeleri tek tek içe aktarın.",
-      "noCsv": "CSV dosyası bulunamadı. Dışa aktarımın CSV dosyasını ya da yedek ZIP'ini seçin.",
-      "looksTicktick": "Bu bir TickTick yedeğine benziyor. Geri dönüp TickTick'i seçin.",
-      "looksTodoist": "Bu bir Todoist dışa aktarımına benziyor. Geri dönüp Todoist'i seçin.",
-      "proxyLimit": "Sunucu bu büyüklükte bir dosyayı reddetti. Vekil sunucunun yükleme sınırı yükseltilmeli (client_max_body_size 10m) ya da projeleri tek tek içe aktarın.",
+      "noCsv": "CSV dosyası bulunamadı. Dışa aktarımın CSV dosyasını ya da yedek ZIP'ini seç.",
+      "looksTicktick": "Bu bir TickTick yedeğine benziyor. Geri dönüp TickTick'i seç.",
+      "looksTodoist": "Bu bir Todoist dışa aktarımına benziyor. Geri dönüp Todoist'i seç.",
+      "proxyLimit": "Sunucu bu büyüklükte bir dosyayı reddetti. Vekil sunucunun yükleme sınırı yükseltilmeli (client_max_body_size 10m) ya da projeleri tek tek içe aktar.",
       "offline": "Sunucuya ulaşılamadı. İçe aktarma bağlantı ister.",
       "read": "Bu dosya okunamadı."
     }

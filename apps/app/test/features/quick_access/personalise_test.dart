@@ -213,7 +213,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ahmet'), findsWidgets);
-    expect(find.textContaining('Now: Ahmet Yılmaz'), findsOneWidget);
+    expect(find.textContaining('Renamed: Ahmet Yılmaz'), findsOneWidget);
 
     await tester.tap(find.byKey(Key('quick-menu-${link['id']}')));
     await tester.pumpAndSettle();

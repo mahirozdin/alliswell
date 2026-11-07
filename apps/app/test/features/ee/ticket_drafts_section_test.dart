@@ -174,7 +174,7 @@ void main() {
       status(tester, 'D-PHONE'),
       'Telefonda — bağlantı gelince gönderilecek',
     );
-    expect(status(tester, 'D-HELD'), 'Masada bekliyor — servis seçilmedi');
+    expect(status(tester, 'D-HELD'), 'Birimde bekliyor — hizmet seçilmedi');
     expect(
       status(tester, 'M-REFUSED'),
       'Reddedildi — kişisel alanında en fazla 200 gönderilmemiş taslak '
@@ -200,7 +200,7 @@ void main() {
     ]);
     expect(
       status(tester, 'M-ODD'),
-      'Reddedildi — masa kabul etmedi (SOMETHING_NEW)',
+      'Reddedildi — birim kabul etmedi (SOMETHING_NEW)',
     );
   });
 
@@ -229,7 +229,7 @@ void main() {
     tester,
   ) async {
     await pump(tester, const [_noService], catalog: null);
-    expect(status(tester, 'D-HELD'), 'Masada bekliyor — servis seçilmedi');
+    expect(status(tester, 'D-HELD'), 'Birimde bekliyor — hizmet seçilmedi');
     expect(key('ticket-draft-D-HELD-service'), findsNothing);
   });
 

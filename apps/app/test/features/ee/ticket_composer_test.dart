@@ -422,7 +422,7 @@ void main() {
         );
         Text author(String id) =>
             tester.widget<Text>(find.byKey(Key('ticket-comment-author-$id')));
-        expect(author('C1').data, 'Kerem Bakım · Masa');
+        expect(author('C1').data, 'Kerem Bakım · Birim');
         expect(author('C2').data, 'Deniz Yılmaz · Talep sahibi · e-posta');
         // The desk's words at the end, the other party's at the start.
         expect(
@@ -469,15 +469,15 @@ void main() {
           verbs: {'tickets.comment'},
         );
         await tester.ensureVisible(find.byKey(const Key('ticket-composer')));
-        expect(find.text('Masaya yaz'), findsOneWidget);
-        expect(find.text('Bunu masa okur.'), findsOneWidget);
+        expect(find.text('Birime yaz'), findsOneWidget);
+        expect(find.text('Bunu birim okur.'), findsOneWidget);
         expect(find.text('Bunu talep sahibi okur.'), findsNothing);
         // The hint and the button say the same thing as the segment.
         final field = tester.widget<TextField>(
           find.byKey(const Key('ticket-composer-text')),
         );
-        expect(field.decoration?.hintText, 'Masaya yazın…');
-        expect(find.text('Masaya gönder'), findsOneWidget);
+        expect(field.decoration?.hintText, 'Birime yazın…');
+        expect(find.text('Birime gönder'), findsOneWidget);
         expect(find.text('Talep sahibine gönder'), findsNothing);
         expect(find.textContaining('Talep sahibine yaz'), findsNothing);
       },
@@ -629,7 +629,7 @@ void main() {
         await settleDetail(tester);
         expect(find.text('olcum.pdf'), findsOneWidget);
         // The note's files are the desk's, and the box says so.
-        expect(find.textContaining('yalnız masa görür'), findsOneWidget);
+        expect(find.textContaining('yalnız birim görür'), findsOneWidget);
         await tester.enterText(
           find.byKey(const Key('ticket-composer-text')),
           'Ölçüm ekte.',

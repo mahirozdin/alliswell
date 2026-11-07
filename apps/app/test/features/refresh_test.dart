@@ -147,7 +147,7 @@ void main() {
     await pullDown(tester, find.byKey(const Key('files-refresh')));
     expect(pulls(api), greaterThan(before), reason: 'Klasörlerim must refresh');
 
-    await tester.tap(find.text('Sources').last);
+    await tester.tap(find.text('Task and note attachments').last);
     await tester.pumpAndSettle();
     before = pulls(api);
     await pullDown(tester, find.byKey(const Key('sources-refresh')));

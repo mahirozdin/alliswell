@@ -562,7 +562,7 @@ void main() {
       await openShelves(tester);
       final before = api.lists;
       await menu(tester, 'C3', 'shelf-delete-C3');
-      expect(find.textContaining('hiçbir servis kaybolmaz'), findsOneWidget);
+      expect(find.textContaining('hiçbir hizmet kaybolmaz'), findsOneWidget);
       await tester.tap(key('shelf-delete-confirm'));
       await tester.pumpAndSettle();
       expect(api.deleted, ['C3']);

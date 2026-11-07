@@ -297,7 +297,7 @@ void main() {
       find.text('Etiket yazıcısı bekleme sonrası sıkışıyor'),
       findsOneWidget,
     );
-    expect(find.text('Bilinen hata'), findsOneWidget);
+    expect(find.text('Nedeni bilinen'), findsOneWidget);
     // The workaround, in full, first.
     expect(
       find.descendant(
@@ -472,7 +472,7 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('Bilinen hata kaydı'), findsOneWidget);
+    expect(find.text('Nedeni bilinen arıza kaydı'), findsOneWidget);
     final save = find.byKey(const Key('problem-new-save'));
     // No symptom, no record: it is how anybody recognises the fault.
     expect(tester.widget<FilledButton>(save).onPressed, isNull);

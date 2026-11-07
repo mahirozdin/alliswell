@@ -40,6 +40,7 @@ import 'ticket_tags_section.dart';
 import 'ticket_worklog_section.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/segment_label.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
 ///
@@ -797,15 +798,17 @@ class _LinkPickerState extends ConsumerState<_LinkPicker> {
                 segments: [
                   ButtonSegment(
                     value: 'related',
-                    label: Text('ee.tickets.links.kind.related'.tr()),
+                    label: AwSegmentLabel('ee.tickets.links.kind.related'.tr()),
                   ),
                   ButtonSegment(
                     value: 'duplicate_of',
-                    label: Text('ee.tickets.links.kind.duplicateOf'.tr()),
+                    label: AwSegmentLabel(
+                      'ee.tickets.links.kind.duplicateOf'.tr(),
+                    ),
                   ),
                   ButtonSegment(
                     value: 'child_of',
-                    label: Text('ee.tickets.links.kind.childOf'.tr()),
+                    label: AwSegmentLabel('ee.tickets.links.kind.childOf'.tr()),
                   ),
                 ],
                 selected: {_type},

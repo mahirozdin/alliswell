@@ -75,7 +75,11 @@ class EeSlaDashboardScreen extends ConsumerWidget {
                   const _NoDefaultPolicy(),
                   const SizedBox(height: AwSpace.x4),
                 ],
-                _Compliance(value: data.compliance, judged: data.judged),
+                _Compliance(
+                  value: data.compliance,
+                  judged: data.judged,
+                  met: data.slaCount('met'),
+                ),
                 const SizedBox(height: AwSpace.x4),
                 _Outcomes(data: data),
                 const SizedBox(height: AwSpace.x6),
@@ -104,12 +108,19 @@ class EeSlaDashboardScreen extends ConsumerWidget {
 
 /// The headline: met against broken, as a percentage — or a dash.
 class _Compliance extends StatelessWidget {
-  const _Compliance({required this.value, required this.judged});
+  const _Compliance({
+    required this.value,
+    required this.judged,
+    required this.met,
+  });
 
   final double? value;
 
   /// The denominator `value` was computed over (UI-AUDIT #52).
   final int judged;
+
+  /// How many of [judged] were resolved within the SLA (A-53).
+  final int met;
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +168,9 @@ class _Compliance extends StatelessWidget {
             Text(
               value == null
                   ? 'ee.slaDash.complianceNone'.tr()
-                  : 'ee.slaDash.complianceOf'.tr(args: {'total': '$judged'}),
+                  : 'ee.slaDash.complianceOf'.tr(
+                      args: {'total': '$judged', 'met': '$met'},
+                    ),
               key: const Key('sla-compliance-of'),
               style: theme.textTheme.bodySmall,
             ),

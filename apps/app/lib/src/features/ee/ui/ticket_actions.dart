@@ -19,6 +19,7 @@ import '../ticket_links_providers.dart';
 import '../ticket_write_providers.dart';
 import '../tickets_providers.dart';
 import 'assignee_avatars.dart';
+import '../../../widgets/segment_label.dart';
 
 /// EE-224 — moving a request, and saying how urgent it is, from its own screen.
 ///
@@ -1169,7 +1170,7 @@ class _Segments extends StatelessWidget {
     emptySelectionAllowed: true,
     segments: [
       for (final value in values)
-        ButtonSegment(value: value, label: Text(label(value))),
+        ButtonSegment(value: value, label: AwSegmentLabel(label(value))),
     ],
     selected: {?selected},
     onSelectionChanged: onChanged == null

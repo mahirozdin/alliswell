@@ -15,6 +15,7 @@ import '../data/changes_models.dart';
 import '../services_providers.dart';
 import 'change_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/segment_label.dart';
 
 /// Raising a change from the phone (EE-269 box 4, EE-279).
 ///
@@ -190,7 +191,10 @@ class _EeNewChangeScreenState extends ConsumerState<EeNewChangeScreen> {
             key: const Key('change-new-type'),
             segments: [
               for (final t in const ['standard', 'normal', 'emergency'])
-                ButtonSegment(value: t, label: Text('ee.changes.type.$t'.tr())),
+                ButtonSegment(
+                  value: t,
+                  label: AwSegmentLabel('ee.changes.type.$t'.tr()),
+                ),
             ],
             selected: {_type},
             onSelectionChanged: (v) => setState(() => _type = v.first),
@@ -217,7 +221,7 @@ class _EeNewChangeScreenState extends ConsumerState<EeNewChangeScreen> {
               for (final r in const ['low', 'medium', 'high'])
                 ButtonSegment(
                   value: r,
-                  label: Text('ee.changes.riskShort.$r'.tr()),
+                  label: AwSegmentLabel('ee.changes.riskShort.$r'.tr()),
                 ),
             ],
             selected: {_risk},

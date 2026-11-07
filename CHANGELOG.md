@@ -16,6 +16,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **One voice in Turkish, one word for one thing**: the personal app says "sen" everywhere and
+  team screens say "siz"; due dates read "Son tarih", notes switch between "Düzenle" and "Oku", and
+  labels such as "Standart" or a project's "Özet" tab are no longer cut in the middle of a word.
 - **Signing out works again**, and changing the server now signs you out of the old one first:
   nothing of the previous account, its team or its sync stays on screen.
 - **Pushed screens use the whole screen again** (task detail, settings, a note): no empty band

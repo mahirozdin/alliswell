@@ -241,7 +241,7 @@ void main() {
       expect('ee.badge'.tr(), 'Enterprise');
       expect('ee.locked'.tr(), contains('license'));
       AwI18n.instance.setActiveCached(const Locale('tr'));
-      expect('ee.badge'.tr(), 'Enterprise');
+      expect('ee.badge'.tr(), 'Kurumsal');
       expect('ee.locked'.tr(), contains('lisans'));
     });
   });

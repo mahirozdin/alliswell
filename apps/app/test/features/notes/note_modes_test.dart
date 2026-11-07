@@ -127,7 +127,7 @@ void main() {
 
       expect(find.byKey(const Key('note-mode-control')), findsOneWidget);
       expect(find.byType(ButtonSegment<NoteMode>), findsNothing);
-      expect(find.text('Kaynak'), findsNothing); // English locale in tests
+      expect(find.text('Düzenle'), findsNothing); // English locale in tests
       expect(doc.availableModes.length, 2);
     });
   });

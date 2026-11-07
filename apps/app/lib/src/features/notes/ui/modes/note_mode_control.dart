@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../i18n/i18n.dart';
 import '../../data/note_document.dart';
+import '../../../../widgets/segment_label.dart';
 
 class NoteModeControl extends StatelessWidget {
   const NoteModeControl({
@@ -43,7 +44,7 @@ class NoteModeControl extends StatelessWidget {
           ButtonSegment<NoteMode>(
             value: mode,
             icon: Icon(iconFor(mode), size: 18),
-            label: Text(labelKey(mode).tr()),
+            label: AwSegmentLabel(labelKey(mode).tr()),
           ),
       ],
       selected: {active},

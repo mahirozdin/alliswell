@@ -171,6 +171,10 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
       ref.read(workspacesProvider).value ?? const [],
     );
     final current = ref.read(currentWorkspaceProvider).value;
+    // A-60: in an organisation the workspaces are its units.
+    final inOrganisation = sharedWorkspacesOf(
+      ref.read(workspacesProvider).value ?? const [],
+    ).isNotEmpty;
     // OPH-359 (UI-AUDIT #11): a person in ten units has ten rows, and the
     // sheet used to be a plain Column in a sheet capped at 9/16 of the
     // screen — the last three units were cut off with no way to scroll to
@@ -192,7 +196,10 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.all(AwSpace.x4),
                 child: Text(
-                  'workspace.switcher.title'.tr(),
+                  (inOrganisation
+                          ? 'ee.unitScope.switcherTitle'
+                          : 'workspace.switcher.title')
+                      .tr(),
                   style: Theme.of(ctx).textTheme.titleMedium,
                 ),
               ),

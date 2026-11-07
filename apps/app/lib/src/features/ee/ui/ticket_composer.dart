@@ -14,6 +14,7 @@ import '../../files/providers.dart';
 import '../../files/ui/attach_menu.dart';
 import '../data/ticket_write_api.dart';
 import '../ticket_write_providers.dart';
+import '../../../widgets/segment_label.dart';
 
 /// EE-223 — writing on a request: a reply its requester reads, or a note only
 /// the unit does.
@@ -210,7 +211,7 @@ class _EeTicketComposerState extends ConsumerState<EeTicketComposer> {
                 ButtonSegment(
                   value: false,
                   icon: const Icon(Icons.reply_outlined),
-                  label: Text(
+                  label: AwSegmentLabel(
                     (widget.asksHere
                             ? 'ee.tickets.composer.replyOwn'
                             : 'ee.tickets.composer.reply')
@@ -220,7 +221,7 @@ class _EeTicketComposerState extends ConsumerState<EeTicketComposer> {
                 ButtonSegment(
                   value: true,
                   icon: const Icon(Icons.lock_outline),
-                  label: Text('ee.tickets.composer.internal'.tr()),
+                  label: AwSegmentLabel('ee.tickets.composer.internal'.tr()),
                 ),
               ],
               selected: {_internal},

@@ -153,7 +153,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(container.read(authControllerProvider).value, isNull);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     // Every engine stopped; the person's facts are gone. (An engine the
     // covered shell still held is let go when that shell rebuilds.)
     expect(
@@ -187,7 +187,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(container.read(authControllerProvider).value, isNull);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     expect(container.read(syncEnginesProvider), isEmpty);
     expect(container.read(runningSyncEnginesProvider), isEmpty);
   });
@@ -224,7 +224,7 @@ void main() {
       // Signed out, on the sign-in screen, with no session left to restore.
       expect(container.read(authControllerProvider).value, isNull);
       expect(await tester.runAsync(() => TokenStorage(store).read()), isNull);
-      expect(find.text('Sign in to your space'), findsOneWidget);
+      expect(find.text('Sign in to your account'), findsOneWidget);
       // No running engine, workspace, team capability or replica owner.
       expect(
         container.read(runningSyncEnginesProvider).every((e) => e.isStopped),
@@ -249,7 +249,7 @@ void main() {
   testWidgets('E-02: saving a server on the sign-in screen closes the dialog '
       'and stays on sign-in', (tester) async {
     final container = await pumpApp(tester, signedIn: false);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('server-url-button')));
     await tester.pumpAndSettle();
@@ -262,7 +262,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('server-url-field')), findsNothing);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     expect(container.read(apiBaseUrlProvider), newServer);
     expect(find.textContaining('other.example.com'), findsOneWidget);
     expect(authCalls, isEmpty);

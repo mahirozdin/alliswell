@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/server_url.dart' show prettyServerUrl;
 import '../../../i18n/i18n.dart';
+import '../../auth/providers.dart' show authControllerProvider;
+import '../../auth/ui/sign_out.dart' show signOutWithConfirm;
 import '../../../sections.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
@@ -88,11 +90,20 @@ Widget eeTeamErrorView(
     if (ref.watch(teamOriginProvider) == null) {
       return const EeTeamAddressRequiredView();
     }
+    // A-38: name the account that is not registered, and offer another.
+    final email = ref.watch(authControllerProvider).value?.user.email ?? '';
     return AwEmptyState(
       key: const Key('ee-not-in-team'),
       icon: Icons.group_off_outlined,
       title: 'ee.teamAddress.notInTeamTitle'.tr(),
-      message: 'ee.teamAddress.notInTeamBody'.tr(),
+      message: 'ee.teamAddress.notInTeamBody'.tr(args: {'email': email}),
+      action: Builder(
+        builder: (context) => OutlinedButton(
+          key: const Key('ee-not-in-team-switch-account'),
+          onPressed: () => signOutWithConfirm(context, ref),
+          child: Text('ee.teamAddress.switchAccount'.tr()),
+        ),
+      ),
     );
   }
   return AwErrorState(message: message, onRetry: onRetry);

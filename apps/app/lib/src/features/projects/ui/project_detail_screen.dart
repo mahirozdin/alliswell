@@ -150,7 +150,11 @@ class _ProjectDetail extends ConsumerWidget {
               ],
             ),
           ],
+          // OPH-407 (DESIGN §45): a tab label is never cut — on a narrow
+          // phone or at a large text size the tabs scroll instead.
           bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: 'project.tabOverview'.tr()),
               Tab(text: 'project.tabTasks'.tr()),
