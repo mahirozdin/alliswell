@@ -32,7 +32,8 @@ For contributors — the standing rules (BLUEPRINT §15.3, enforced through revi
 - Notification payloads contain IDs only, never task content.
 - Rate limiting globally and stricter on auth endpoints.
 - Password reset (ADR-0064): a single-use, 60-minute link whose token is stored only as a keyed
-  digest; the forgot form answers the same for every address, mails at most three links per
+  digest; the forgot form answers the same for every address, before it looks the address up
+  (lookup, issue and mail run after the response), mails at most three links per
   account per hour, and a reset ends every session. Without SMTP the operator issues the link
   on the server (`password-reset-link`).
 - Secrets live in `.env` (gitignored); `.env.example` carries placeholders only.

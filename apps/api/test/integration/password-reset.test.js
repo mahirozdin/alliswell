@@ -24,7 +24,6 @@ function fakeMailer() {
   };
 }
 
-const tick = () => new Promise((resolve) => setImmediate(resolve));
 const tokenIn = (text) => /reset-password\?token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? null;
 
 async function cleanup(app) {
@@ -52,12 +51,15 @@ describe.runIf(enabled)('integration: password reset', () => {
   const reset = (payload, target = app) =>
     target.inject({ method: 'POST', url: '/api/v1/auth/password/reset', payload });
 
+  /** The work a forgot ask left behind — lookup, issue, mail — is done. */
+  const settled = () => app.mailQueue.idle();
+
   /** Asks for a link and returns the token from the mail it produced. */
   async function mailedToken(email) {
     const before = mailer.sent.length;
     const res = await forgot({ email });
     expect(res.statusCode).toBe(202);
-    await tick();
+    await settled();
     expect(mailer.sent).toHaveLength(before + 1);
     return tokenIn(mailer.sent.at(-1).text);
   }
@@ -87,7 +89,7 @@ describe.runIf(enabled)('integration: password reset', () => {
 
     const known = await forgot({ email: email.toUpperCase(), locale: 'tr' });
     const unknown = await forgot({ email: `${emailPrefix}-nobody@example.com` });
-    await tick();
+    await settled();
 
     expect(known.statusCode).toBe(202);
     expect(unknown.statusCode).toBe(202);
@@ -196,7 +198,7 @@ describe.runIf(enabled)('integration: password reset', () => {
 
     const before = mailer.sent.length;
     const fourth = await forgot({ email });
-    await tick();
+    await settled();
     expect(fourth.statusCode).toBe(202);
     expect(fourth.json()).toEqual({ delivery: 'email' });
     expect(mailer.sent).toHaveLength(before);
@@ -222,6 +224,34 @@ describe.runIf(enabled)('integration: password reset', () => {
 
     expect(results.filter((r) => r === null)).toHaveLength(1);
     expect(await recentEmailResets(app.db, user.id)).toBe(EMAIL_RESETS_PER_HOUR);
+  });
+
+  it('answers before any work on the account, so its timing says nothing', async () => {
+    // E35 G-C review r1: the lookup, the count and the issue run after the
+    // answer. Proof: with the account's row locked elsewhere, the issue cannot
+    // finish — and the answer still comes at once, the mail only after.
+    const email = `${emailPrefix}-timing@example.com`;
+    await register(email);
+    const user = await app.db('users').where({ email }).first('id');
+    const before = mailer.sent.length;
+
+    const holder = await app.db.transaction();
+    try {
+      await holder('users').where({ id: user.id }).forUpdate().first('id');
+      const answer = await Promise.race([
+        forgot({ email }),
+        new Promise((resolve) => setTimeout(() => resolve('blocked'), 3000)),
+      ]);
+      expect(answer).not.toBe('blocked');
+      expect(answer.statusCode).toBe(202);
+      expect(answer.json()).toEqual({ delivery: 'email' });
+      expect(mailer.sent).toHaveLength(before);
+    } finally {
+      await holder.rollback();
+    }
+    await settled();
+    expect(mailer.sent).toHaveLength(before + 1);
+    expect(mailer.sent.at(-1).to).toBe(email);
   });
 
   it('puts both doors behind the credential rate limit', async () => {

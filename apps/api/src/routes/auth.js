@@ -1027,34 +1027,37 @@ export default async function authRoutes(app) {
       if (!app.mailer || !base) return reply.code(202).send({ delivery: 'admin' });
 
       const email = request.body.email.trim().toLowerCase();
-      const user = await app
-        .db('users')
-        .where({ email })
-        .whereNull('deleted_at')
-        .first('id', 'email');
-      // Over the hourly count the ask is answered and dropped: the rate limit
-      // stops one address hammering, this stops many addresses filling one
-      // person's inbox. The count and the issue are one locked step.
-      const minutes = auth.passwordResetTtlMin;
-      const issued =
-        user &&
-        (await issuePasswordReset(app.db, {
-          userId: user.id,
-          secret: auth.refreshSecret,
-          ttlMs: minutes * 60 * 1000,
-          source: 'email',
-          perHourLimit: EMAIL_RESETS_PER_HOUR,
-        }));
-      if (issued) {
-        const { token } = issued;
-        const mail = resetMail(request.body.locale, resetLink(base, token), minutes);
-        // Not awaited: an SMTP round trip only for real accounts would be a
-        // timing answer to "does this address exist?". A failure is logged
-        // without the address; the person can ask again.
-        Promise.resolve()
-          .then(() => app.mailer.send({ to: user.email, ...mail }))
-          .catch((err) => request.log.warn({ err: err.message }, 'password reset mail failed'));
-      }
+      const { locale } = request.body;
+      // Everything about the address — the lookup, the hourly count, the
+      // issue, the SMTP round trip — runs after the answer. Database work done
+      // only for real accounts would otherwise be a timing answer to "does
+      // this address exist?". A failure is logged without the address; the
+      // person can ask again.
+      app.mailQueue.defer(
+        async () => {
+          const user = await app
+            .db('users')
+            .where({ email })
+            .whereNull('deleted_at')
+            .first('id', 'email');
+          if (!user) return;
+          // Over the hourly count the ask is dropped: the rate limit stops one
+          // address hammering, this stops many addresses filling one person's
+          // inbox. The count and the issue are one locked step.
+          const minutes = auth.passwordResetTtlMin;
+          const issued = await issuePasswordReset(app.db, {
+            userId: user.id,
+            secret: auth.refreshSecret,
+            ttlMs: minutes * 60 * 1000,
+            source: 'email',
+            perHourLimit: EMAIL_RESETS_PER_HOUR,
+          });
+          if (!issued) return;
+          const mail = resetMail(locale, resetLink(base, issued.token), minutes);
+          await app.mailer.send({ to: user.email, ...mail });
+        },
+        (err) => request.log.warn({ err: err.message }, 'password reset mail failed'),
+      );
       return reply.code(202).send({ delivery: 'email' });
     },
   );
