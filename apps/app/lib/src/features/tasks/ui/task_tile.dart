@@ -306,24 +306,41 @@ class TaskTile extends ConsumerWidget {
           ],
         )
       else if (muted)
-        Row(
-          key: Key('task-alarm-${task.id}'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            glyphIcon(Icons.notifications_off, label: 'task.alarmsMuted'.tr()),
-            TextButton(
-              key: Key('unmute-${task.id}'),
-              style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                textStyle: roles.metaStrong,
+        // E35 G-B review r1: on a narrow row the way back shortens ("Turn
+        // ala…") instead of dropping off the line — a muted row that drew
+        // nothing looked armed. It needs only the glyph, the button's padding
+        // and a letter's room; the button keeps its full label for readers.
+        AwMetaShrink(
+          minWidth: glyph + AwSpace.x2 * 2 + glyph,
+          child: Row(
+            key: Key('task-alarm-${task.id}'),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              glyphIcon(
+                Icons.notifications_off,
+                label: 'task.alarmsMuted'.tr(),
               ),
-              onPressed: () => unmuteTaskAlarms(context, ref, task),
-              child: Text('task.unmuteAlarms'.tr(), maxLines: 1),
-            ),
-          ],
+              Flexible(
+                child: TextButton(
+                  key: Key('unmute-${task.id}'),
+                  style: TextButton.styleFrom(
+                    visualDensity: VisualDensity.compact,
+                    padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: roles.metaStrong,
+                  ),
+                  onPressed: () => unmuteTaskAlarms(context, ref, task),
+                  child: Text(
+                    'task.unmuteAlarms'.tr(),
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ),
+            ],
+          ),
         )
       else if (!completed && !task.isUrgent && task.remindAt != null)
         Tooltip(

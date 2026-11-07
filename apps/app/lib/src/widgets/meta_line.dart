@@ -9,8 +9,10 @@ import 'package:flutter/widgets.dart';
 /// One line means one line. An item that does not fit whole is DROPPED, and so
 /// is everything after it — the order is the priority, so what is cut is
 /// always the least important end. Only the first item may be squeezed (it is
-/// the date, and a date that ellipsizes beats a row with no date). A dropped
-/// item is neither painted, hit nor read out.
+/// the date, and a date that ellipsizes beats a row with no date) — and an
+/// item wrapped in [AwMetaShrink], which takes the width that is left when at
+/// least its `minWidth` is (a state that must never silently vanish, like a
+/// silenced alarm). A dropped item is neither painted, hit nor read out.
 ///
 /// With [wrap] (the large-text row) the items flow onto as many lines as they
 /// need instead, [runSpacing] apart.
@@ -47,6 +49,31 @@ class AwMetaLine extends MultiChildRenderObjectWidget {
 
 class _MetaParentData extends ContainerBoxParentData<RenderBox> {
   bool shown = false;
+
+  /// Set by [AwMetaShrink]: the narrowest width the item may be squeezed to
+  /// instead of being dropped. Null — the item is shown whole or not at all.
+  double? shrinkTo;
+}
+
+/// Marks an [AwMetaLine] item that shortens (its child ellipsizes) rather
+/// than drops when the line runs out — as long as [minWidth] is left. Use it
+/// for a fact whose absence would say the opposite (E35 G-B review r1: a
+/// muted alarm that vanished read as an armed one).
+class AwMetaShrink extends ParentDataWidget<_MetaParentData> {
+  const AwMetaShrink({super.key, required this.minWidth, required super.child});
+
+  final double minWidth;
+
+  @override
+  void applyParentData(RenderObject renderObject) {
+    final data = renderObject.parentData! as _MetaParentData;
+    if (data.shrinkTo == minWidth) return;
+    data.shrinkTo = minWidth;
+    renderObject.parent?.markNeedsLayout();
+  }
+
+  @override
+  Type get debugTypicalAncestorWidgetClass => AwMetaLine;
 }
 
 /// The render object behind [AwMetaLine].
@@ -140,6 +167,8 @@ class RenderAwMetaLine extends RenderBox
       var size = measure(child, loose);
       final gap = lines.last.isEmpty ? 0.0 : _spacing;
       if (x + gap + size.width > maxWidth) {
+        final shrinkTo = (child.parentData! as _MetaParentData).shrinkTo;
+        final left = maxWidth - x - gap;
         if (_wrap) {
           if (lines.last.isNotEmpty) {
             lines.add([]);
@@ -150,6 +179,10 @@ class RenderAwMetaLine extends RenderBox
           }
         } else if (index == 0) {
           size = measure(child, BoxConstraints(maxWidth: maxWidth));
+        } else if (shrinkTo != null && left >= shrinkTo) {
+          // It takes the rest of the line, so nothing after it fits.
+          size = measure(child, BoxConstraints(maxWidth: left));
+          stopped = true;
         } else {
           stopped = true;
           hidden.add(child);

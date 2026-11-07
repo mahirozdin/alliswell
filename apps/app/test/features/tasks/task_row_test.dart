@@ -63,6 +63,7 @@ Task _task(
   String? projectId,
   List<String> tagIds = const [],
   String? seriesId,
+  DateTime? mutedAt,
 }) => Task(
   id: id,
   workspaceId: 'W1',
@@ -80,6 +81,7 @@ Task _task(
   tagIds: tagIds,
   seriesId: seriesId,
   occurrenceDate: seriesId == null ? null : '2030-01-01',
+  alarmsMutedAt: mutedAt?.toUtc(),
 );
 
 const _project = Project(
@@ -563,6 +565,44 @@ void main() {
           expect(
             _rect(tester, _in('long', find.byType(Card))).height,
             lessThanOrEqualTo(240),
+            reason: label,
+          );
+        }
+      }
+    });
+
+    testWidgets('E35 G-B review r1: a silenced alarm stays on a narrow row — '
+        'its glyph and its way back are never dropped', (tester) async {
+      // 360 pt, 1.0×, real glyphs, a date and a project on the right: the
+      // full "Turn alarms back on" no longer fits after the date. A muted row must still not look
+      // like an armed one (§11 A5), so the item shortens instead of vanishing.
+      for (final language in ['en', 'tr']) {
+        AwI18n.instance.setActiveCached(Locale(language));
+        for (final due in [_future, _past]) {
+          final muted = _task(
+            'muted',
+            language == 'tr' ? 'Faturayı öde' : 'Pay the bill',
+            due: due,
+            projectId: 'P1',
+            mutedAt: _now,
+          );
+          await _pump(tester, tasks: [muted], width: 360, family: _family);
+          final label = '$language $due';
+          expect(tester.takeException(), isNull, reason: label);
+          final meta = _rect(tester, find.byKey(const Key('task-meta-muted')));
+          expect(meta.height, lessThanOrEqualTo(18.5), reason: label);
+          final glyph = _in('muted', find.byIcon(Icons.notifications_off));
+          expect(glyph.hitTestable(), findsOneWidget, reason: label);
+          expect(
+            _rect(tester, glyph).right,
+            lessThanOrEqualTo(meta.right + 0.5),
+            reason: label,
+          );
+          final unmute = find.byKey(const Key('unmute-muted'));
+          expect(unmute.hitTestable(), findsOneWidget, reason: label);
+          expect(
+            _rect(tester, unmute).right,
+            lessThanOrEqualTo(meta.right + 0.5),
             reason: label,
           );
         }
