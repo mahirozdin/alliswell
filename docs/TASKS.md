@@ -19,6 +19,291 @@
 
 ---
 
+## Epic 35 — Design and UX round (persona + Mobbin review)
+
+Sahip isteği (2026-11-07): tasarım baştan değişmeden core'da UI, UX ve tipografi iyileşsin; landing ve
+GitHub ilk ekranı güçlensin. Bulgular, ölçümler ve bulgu kimlikleri (R-xx kabuk, A-xx Android probe,
+T-xx tipografi, K-xx landing, N-xx/D-xx GitHub, CT-xx rakip; E-xx/U-xx persona) →
+[research/2026-11-design-ux/README.md](research/2026-11-design-ux/README.md). Ayrıntıyı oradan oku,
+burada tekrar yok. **Sahip kararları (2026-11-07, STATE'te):** telefon alt barı B+ (eşit 5 yuva, hepsi
+etiketli, 64 pt kapsül, sağda mikrofon + "+" kümesi, Hızlı Erişim balonu telefonda varsayılan kapalı —
+[ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md)); acil alarm varsayılanı açık kalır
+(DESIGN §26 C1); landing H1 alarm, alt başlık self-host + Claude/ChatGPT MCP; font ailesi değişmez
+([ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md)); lisans değişmez, "open source"
+ifadeleri kalkar (source-available); ton: core "sen", uzantı/portal/landing/kurumsal "siz"; mikrofon AI
+sağlayıcısı yokken dikte; Fikirler/Inbox adları kalır, ikon ampul; herkese açık demo ve landing ölçümü
+sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düzeltmesinde regresyon testi.
+Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
+1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
+
+### OPH-390 — Çıkış ve sunucu değiştirme veriyi temizler
+
+Kritik yol: auth. E-01, E-02. `features/auth/providers.dart:136` CircularDependencyError
+(`ref.exists(syncEnginesProvider)`), `sign_out.dart:63`, `server_url_sheet.dart:66-69` GoRouter assert.
+
+- [ ] Çıkış iki yoldan da çalışır (Ayarlar ve oturum süresi dolunca); widget testi.
+- [ ] Sunucu değişince oturum, sync motorları, yerel önbellek ve takım kökeni temizlenir; eski hesabın
+      verisi ve takım kromu görünmez (test).
+- [ ] Testler release modunda da geçer (debug assert'e bağlı değil). Önce release derlemesinde tekrar
+      üret; canlı kullanıcıyı etkiliyorsa sahibe hemen haber ver (hotfix sahibin kararı).
+- **Cihazda bakılacak:** iPhone ve Android'de çıkış → başka sunucuya giriş → eski veri yok.
+
+### OPH-391 — İtilen ekranlarda ölü şerit, durum çubuğu, iOS izin metinleri TR
+
+E-09, E-13, U-43. İtilen ekranların altındaki ~100 pt ölü şerit (görev detayı, ayarlar, notlar ve
+uzantı ekranları); iOS açık temada okunmayan durum çubuğu (tema parlaklığına göre
+`SystemUiOverlayStyle`); iOS izin metinleri TR (`ios/Runner/tr.lproj/InfoPlist.strings`, persona Ek
+A-65; gerekirse Xcode projesine yerelleştirme).
+
+- [ ] Golden'da güvenli alanlı itilen ekranın içeriği alta kadar iner.
+- [ ] Durum çubuğu stili her iki temada testle sabit.
+- [ ] TR izin metinleri iOS projesinde.
+- **Cihazda bakılacak:** iPhone TR dilde mikrofon/bildirim izin metni; açık temada saat okunur.
+
+### OPH-392 — Web: soğuk derin bağlantı, Google düğmesi, çevrimdışı göstergesi
+
+E-17, E-22, E-23.
+
+- [ ] `/#/tasks/<id>` ile soğuk açılış sonsuz yüklenmez (test).
+- [ ] "Google ile devam et" yalnız sunucu destekliyorsa görünür (yetenek bayrağı testi).
+- [ ] Telefon genişliğinde çevrimdışı göstergesi görünür.
+
+### OPH-393 — İzin ve alarm şeritleri suç yüklemez
+
+Kritik yol: push-notifications. U-05, E-14, E-20; metinler persona Ek A.
+
+- [ ] Sunucuda web-push anahtarı yoksa (`/push/public-key` 404) yöneticiye yönelik, kapatılabilir amber
+      uyarı; izin verildiyse şerit kalmaz.
+- [ ] Alarm kaplamasındaki "bilerek sessiz" iddiası yalnız gerçekten seçildiyse; kaplama açıkken
+      alttaki içerik `BlockSemantics`.
+- [ ] Her durum için widget testi; push yükü yalnız kimlik taşır (I-13).
+
+### OPH-394 — Veri doğruluğu: sayaçlar, alt görevler, pano tekrarları, arama
+
+E-06, E-07, E-12, E-25.
+
+- [ ] Ana Sayfa sayaçları görünen öğeye eşit, tamamlananlar sayılmaz.
+- [ ] Alt görevler üst görevin detayında listelenir, Ana Sayfa'da ayrı satır olmaz.
+- [ ] Pano tekrarlı görevin yalnız sıradaki örneğini + "+N" gösterir.
+- [ ] Arama sonuç etiketi yerinde, Notlar grubu genişler. Her biri için birim/widget testi.
+
+### OPH-395 — Küçük kırıklar ve "source-available"
+
+E-24, E-26, E-27, E-28, E-29, T-04; metinler persona Ek A-36, A-77.
+
+- [ ] Oluşturma sayfasının arka plan örtüsü dokununca kapatır.
+- [ ] Uygulama içi "açık kaynak/open source" → "source-available".
+- [ ] Alarm günlüğü kullanıcı görünümü + katlanır "Ayrıntı".
+- [ ] MCP adresi localhost ise uyarı.
+- [ ] Web'de Roboto Google'dan inmez; uygulamanın fontları aile adıyla kaydedilir — web derlemesinde
+      gstatic isteği yok (test/kapı).
+
+### OPH-396 — Telefon alt barı: AwTabCapsule (B+)
+
+R-01, R-02, R-04, A-01, A-02, U-01; [ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md).
+
+- [ ] `AwTabCapsule` M3 `NavigationBar`'ın yerine: 64 pt kapsül, beş eşit yuva (her biri ≥48 dp/44 pt),
+      ikon 22–24 + 11/13 w600 etiket her sekmede; seçimde hiçbir öğe yer değiştirmez; etiket kapsül
+      dışına çıkmaz (`overflow: visible` kalkar).
+- [ ] Etiket ölçeği 1.3'te kısıtlanır; daha büyükte uzun basınca büyük etiket balonu. Semantik: seçili,
+      "sekme 2 / 5".
+- [ ] 6. bölüm (uzantı) varsa 5. yuva "Diğer" ve bir sayfa açar. Fikirler ikonu ampul; Projeler ve
+      Dosyalar ayırt edilir.
+- [ ] DESIGN §43 + ADR-0062'nin güncellediği §23 Q4 / §24 AI1 satırları.
+- **Kabul:** golden/ölçüm matrisi; sekme ≥48 dp her genişlikte (test); etiket kapsül içinde (test).
+- **Cihazda bakılacak:** iPhone 393/430 ve Android 360/412'de bar; 2.0× metinde uzun basma balonu.
+
+### OPH-397 — Yüzen öğeler, ızgara, alt örtü, Hızlı Erişim girişi
+
+R-03, R-06, R-07, R-12, A-03, U-02, U-03; ADR-0062.
+
+- [ ] Mikrofon (48) + "+" (56) sağda tek küme, merkezleri hizalı, "+" alt kenarı kapsül üstü + 16; sol
+      alt boş; kaydırınca FAB'lar 150 ms'de 16 pt iner (azaltılmış harekette anında).
+- [ ] Tek 16 pt oluk (≥430 pt'de 20); kapsül ve arama küresi (56) aynı merkez çizgisi, 8 pt ara; alt örtü
+      sayfa renginden gradyan (cam değil); liste sonu dolgusu = bar + FAB + 24, bar yoksa güvenli alan + 24.
+- [ ] Hızlı Erişim balonu telefonda varsayılan kapalı (Ayarlar'dan açılır); giriş uygulama çubuğunda ⚡,
+      arama paletinin boş halinde "Kısayollar" ve Ana Sayfa sekmesine uzun basma; açıksa balon güvenli
+      alan içinde, itilen ekranlarda gizli; tanıtım kartı sistem çubuğunun üstünde.
+- [ ] Masaüstünde AI düğmesi rail'e binmez; iPad 720–799 pt tek kırılım.
+- **Kabul:** hiçbir yüzen öğe ilk görevin onay dairesini ya da bölüm başlığını örtmez (test); balon
+  güvenli alan içinde (test).
+- **Cihazda bakılacak:** Android 360 dp'de tanıtım kartı ve son satırın FAB'ın üstünde kalması.
+
+### OPH-398 — Telefon uygulama çubuğu en çok 3 hedef
+
+R-05, A-06, C-03.
+
+- [ ] ⚡, "Görünüm ⌄" (liste/pano, takvim göster/gizle, sıralama tek menüde), Ayarlar.
+- [ ] Ana Sayfa'nın yerel arama büyüteci kalkar; yerel süzme listeyi aşağı çekince açılan alana taşınır
+      (ADR-0055 korunur).
+- **Kabul:** widget testi; 2.0× metinde başlık kesilmez.
+
+### OPH-399 — Platform tracking, Glass Type v1, tabular rakam, kontrast, check:typography
+
+T-01…T-06, U-15, U-16; [ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md).
+
+- [ ] `awTracking`: Apple'da HIG tablosu, diğerlerinde 0; Glass Type v1 ölçeği (araştırmada
+      `mobbin-design.md` §1.2, `typography-system.md` §4.2); tarih, saat ve sayaçta tabular rakam.
+- [ ] Kontrast: kırmızı bölüm başlığı aurora lekesi üstünde ≥4.5:1; `Colors.amber` yıldız → token;
+      `scripts/design/contrast.py` sayfa zemini üstündeki metni de ölçer.
+- [ ] Yeni kapı `check:typography` (ham `fontSize`, ham `TextStyle`, ızgara dışı boşluk; taban dosyası,
+      sayı yalnız azalabilir) `verify:batch`'e girer; `commands.md` satırı.
+- [ ] DESIGN §3.3 güncellenir.
+- **Kabul:** tema testleri. **Cihazda bakılacak:** iOS simülatöründe SF genişlik ölçümü
+  (`typography-sf-verification.md` §1 yöntemi) — DEVICE-CHECKS satırı.
+
+### OPH-400 — Görev satırı (DESIGN §44)
+
+R-09, T-02, U-06, U-12.
+
+- [ ] Başlık en çok 2 satır + "…" (detay tam); onay dairesi ilk satıra hizalı; kelime ortasında kırılma yok.
+- [ ] Tek meta satırı 13/18 tabular: tarih · tekrar · alarm · öncelik (yalnız varsayılandan sapınca) ·
+      ilk etiket +N; "Gecikti" sözcüğü kırmızı, tarih nötr; kum saati yalnız varsayılan olmayan durumda.
+- [ ] Sağda en çok 1 öğe (proje rozeti ya da avatar); çıplak URL "alanadı › yol…" + bağlantı glifi.
+- [ ] Metin ölçeği >1.3'te dikey düzen. Acil alarm varsayılanı DEĞİŞMEZ; satır yalnız sapmayı gösterir.
+- **Kabul:** golden + 2.0× testi.
+
+### OPH-401 — Ana Sayfa: hafta şeridi, bölüm başlıkları, hızlı ekleme
+
+U-04, U-13, C-06, R-11; metin persona Ek A-67.
+
+- [ ] Telefonda (<600 pt) takvim varsayılan hafta şeridi; ay bir dokunuşla; tercih saklanır.
+- [ ] Bölüm başlıkları 15/20 w700 + ayrı sayaç + katlanabilir.
+- [ ] Hızlı ekleme boşken sağda kontrol yok, yazınca ✨ ve ↑; "?" odakta ipucu çip şeridi; süs "+" kalkar.
+- [ ] Gönderince "Eklendi: {başlık} · {zaman}" + "Geri al", satır vurgulanır ve görünür olur.
+- **Kabul:** widget testleri; demo verisinde ilk ekranda Geciken + Bugün'den ≥3 satır.
+
+### OPH-402 — Mikrofon: sağlayıcı yokken dikte
+
+U-07, U-14; metinler persona Ek A-66, A-07.
+
+- [ ] AI sağlayıcısı yokken dokunuş dikteye girer, sonuç hızlı ekleme alanına yazılır (ADR-0057:
+      tarihsiz → Fikirler); sağlayıcı varken bugünkü davranış.
+- [ ] İzin beklenirken "Mikrofon izni bekleniyor"; AI sohbetinin sağlayıcısız çıkmazına iki düğme.
+- **Kabul:** widget testleri. **Cihazda bakılacak:** iPhone'da sağlayıcısız dikte → Fikirler.
+
+### OPH-403 — Yeni görev sayfası: Vazgeç / Ekle
+
+U-11.
+
+- [ ] Başlıkta "Vazgeç / Ekle" (başlık boşken pasif); klavye onayı oluşturur.
+- [ ] Masaüstünde iletişim kutusu + ⌘/Ctrl+Enter; aşağı kaydırınca yazılan kaybolmadan önce uyarı.
+- **Kabul:** widget testleri.
+
+### OPH-404 — Tanıtım turu 4 adım, boş Ana Sayfa'da eylem
+
+`ux-core-screens.md` §4.1.
+
+- [ ] Tur 7 → 4 adım: hızlı ekleme sözdizimi, sesle ekleme, acil alarm, arama.
+- [ ] Boş Ana Sayfa'da "İlk görevini ekle" + içe aktar bağlantısı.
+- **Kabul:** widget testleri.
+
+### OPH-405 — Masaüstü: rail her yerde, detay paneli, kısayollar
+
+U-08; `ux-core-screens.md` §3.3, §6.
+
+- [ ] ≥1200 px: rail görev detayı ve Ayarlar'da da açık.
+- [ ] Görev detayı listenin sağında ~480 px panel; Esc kapatır, ↑/↓ önceki/sonraki. Desen uzantı
+      ekranlarının da kullanacağı bir bileşen olarak kurulur.
+- [ ] Pano 4+ sütunu yatay kaydırır; kısayollar N (yeni görev), / (ara), Esc.
+- **Kabul:** 1440 genişlikte widget testleri.
+
+### OPH-406 — Şifre sıfırlama
+
+Kritik yol: auth. C-13; `ux-core-screens.md` §4.2. Yeni tablo gerekirse Kritik yol: migrations.
+
+- [ ] API `POST /auth/password/forgot` + `POST /auth/password/reset`: tek kullanımlık, süreli, hash'li
+      belirteç; oran sınırı; kullanıcının var olup olmadığını sızdırmaz.
+- [ ] SMTP yoksa yönetici yolu (CLI/komutla sıfırlama bağlantısı) ve uygulamada buna yönelik metin.
+- [ ] Uygulamada "Şifremi unuttum" akışı.
+- [ ] OpenAPI + API.md güncellenir; MCP'ye girmez (I-12 gerekçesi: oturumsuz hesap kurtarma, ajan aracı
+      değil). SELF-HOSTING.md'de SMTP'siz yol.
+- **Kabul:** entegrasyon testleri (tek kullanım, süre, oran sınırı) + widget testi.
+
+### OPH-407 — Metin geçişi: ton, sözlük, kırpılan etiketler
+
+U-10; kurallar ve sözlük araştırma özetinde (README "Genel kurallar"), metinler persona Ek A.
+
+- [ ] `tr.json`/`en.json` (uzantı anahtarları dahil): ton kuralı (core "sen"; uzantı, portal, landing,
+      kurumsal "siz"), terim sözlüğü, Ek A metinleri kelimesi kelimesine.
+- [ ] Kırpılan etiketler ("Dosyala", "Genel bak", "Standar/t") düzelir; cihaz fiili ve dramatik dil yok.
+- [ ] `check:i18n` genişler: yüzeye göre sen/siz karışması ve "açık kaynak/open source" yasağı.
+- [ ] DESIGN §45.
+- **Kabul:** `check:i18n` yeşil + yeni kural testleri.
+
+### OPH-408 — Tek biçimlendirici awFormat*
+
+U-09; ADR-0063.
+
+- [ ] Tarih, saat, süre, para, yüzde, dosya boyutu tek yerden; 12/24 saat ve sıra dil değil bölgeye göre.
+- [ ] Uzantı ekranları dahil bütün çağrı yerleri buna geçer.
+- **Kabul:** birim testleri (TR, EN-US, EN-DE).
+
+### OPH-409 — Uzantı listeleri: varsayılan görünüm, kimde, sayıların kapsamı ⚠️ Çift kapanış ↔
+
+Kritik yol: extension-seam. ⚠️ **Çift kapanış:** ↔ uzantı deposundaki eş iş (kimliği uzantı kaydında
+verilir); core'daki uzantı arayüzü bu depoda, sunucu tarafı uzantıda. Ayrıntı yalnız uzantı deposunda
+(I-14).
+
+- [ ] Core'daki uzantı listeleri uzantı kaydındaki kabul kriterlerini karşılar (varsayılan görünüm,
+      satırda sorumlu, sayıların yanında kapsamı, payda 0'da "—").
+- [ ] Core tarafı yalnız nötr dikiş ve uzantıya ait arayüz; `check:no-ee` yeşil.
+- **Kabul:** widget testleri; iki depo birlikte kapanır.
+
+### OPH-410 — Uzantı geniş ekran düzeni ⚠️ Çift kapanış ↔
+
+Kritik yol: extension-seam. ⚠️ **Çift kapanış:** ↔ uzantı deposundaki eş iş. OPH-405'in detay paneli
+desenini kullanır. Ayrıntı yalnız uzantı deposunda (I-14).
+
+- [ ] ≥1200 px'te uzantı ekranları uzantı kaydındaki geniş ekran kabulünü karşılar.
+- **Kabul:** 1440 golden; iki depo birlikte kapanır.
+
+### OPH-411 — README ilk ekranı
+
+N1–N10, D#1, CT-01; `github-growth.md` §4.
+
+- [ ] Başlık, tek cümle değer (alarm + kendi sunucunda + Claude/ChatGPT), 3 rozet (lisans
+      "source-available"), tek görsel (≤1 MB), "Web'de dene / Kendi sunucunda / İndir" üç yol.
+- [ ] Geliştirici, komut ve ajan bölümleri `docs/development/`'a; `docs/assets/readme` toplam ≤2 MB;
+      karşılaştırma Todoist/TickTick/Vikunja.
+- [ ] GitHub About/homepage/topics için önerilen değerler `docs/store/github-about.md`'de; uygulaması
+      sahibin (STATE "Kullanıcıdan bekleyen").
+- **Kabul:** `check:docs`, link kontrolü.
+
+### OPH-412 — Landing ana sayfa (EN/TR)
+
+K1, K2, K5, K6, K10, U-17; `landing-audit.md` §6 Yön A + sahip kararı (H1 alarm, alt başlık self-host +
+Claude/ChatGPT MCP).
+
+- [ ] H1 alarm, alt başlık self-host + MCP; cihaza göre birincil düğme; dürüst kanıt satırı (derleme
+      anında GitHub API, yoksa sabit metin); nav'da GitHub düğmesi.
+- [ ] SSS'de "Lisans ne?", footer şirket adı yazımı, karşılaştırma rakipleri; `/terms`, `/tr/terms`;
+      bilinmeyen yol gerçek 404.
+- [ ] `.github/social-preview.png` (1280×640) üretilir; yüklemesi sahibin.
+- **Kabul:** `check:home`, `check:copy`, `check:pages`, `check:media` güncel ve yeşil.
+
+### OPH-413 — /app açılış ekranı, kayıt modu, kurumsal sayfa SSR
+
+K3, K8, K9, E-15.
+
+- [ ] `/app` HTML açılış ekranı (Flutter yüklenene kadar marka + ilerleme); `?signup=1` kayıt modu.
+- [ ] Kurumsal sayfa sunucuda render; kaydırınca boş kalan bölüm hatası düzelir; içerik kısalır (sorun →
+      çözüm → kanıt → pilot → demo talebi); İngilizce sayfada Türkçe örnek veri kalmaz.
+- **Kabul:** landing kapıları yeşil; SSR çıktısında bölüm metinleri var (test).
+
+### OPH-414 — Demo tohumu kapsamı ve görsellerin yeniden üretimi
+
+`docs/SCREENSHOTS.md`.
+
+- [ ] `scripts/seed-demo.mjs`: AI sağlayıcı yapılandırılmış hali (çağrı yapmayan), MCP anahtarı, içe
+      aktarma geçmişi, not sürümleri, gerçek dosya önizlemeleri (küçük PNG/PDF), takvim bağlantısının
+      kurgusal durumu (ağ çağrısı yok); yapılamayan ve nedeni SCREENSHOTS.md'de.
+- [ ] README/landing/mağaza görselleri yeni arayüzle mevcut boru hattından yeniden üretilir; mağazaya
+      yükleme yok.
+- **Kabul:** tohum idempotent, `seed:demo` iki kez koşunca hata yok.
+
+---
+
 ## Sahibin adımını bekleyen işler — ajan için kod işi yok
 
 Kod tarafları kapalı; kalan kutular sahibin hesap/panel adımları (STATE → "Kullanıcıdan bekleyen").

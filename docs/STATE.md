@@ -9,15 +9,15 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-18 — blueprint v3 yükseltmesi (ADR-0060): LOOP.md yerine faz workflow'u (`/isler`, `/faz E35`; `npm run next -- --list`), AGENTS.md 236 → 92 satır (ayrıntı `docs/development/` ve `.claude/rules/`), `npm run verify:smoke`; CI GitHub-hosted kalıyor (public depo).
+**Last updated:** 2026-11-07 — Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.18.1 canlıda** (2026-10-28, kurumsal sayfa OPH-388). OPH-389 (2026-10-30, sahip isteği): ana sayfa Hallmark Dusk ile baştan, sunucuda render, HyperFrames döngüleri + EN/TR film, yeni README (ADR-0061); sahibin açık isteğiyle v1.18.2 olarak yayına alınır. Açık iş yok (yalnız sahibin ⏸️ adımları). |
-| Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
-| ➡️ **Next task**         | **BACKLOG BOŞ** |
+| Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
+| Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
+| ➡️ **Next task**         | **OPH-390** — çıkış ve sunucu değiştirme veriyi temizler (⚠ auth) |
 | Last completed           | OPH-389 — ana sayfa (EN/TR) Dusk + SSR + `check:home`/`check:media`, 9 döngü + 2 film (`media/hyperframes`), README WebP animasyonları, OG kartları `og/home-dusk*`; kurumsal sayfa değişmedi. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
@@ -83,6 +83,12 @@ Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECK
 
 Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. Burada her işi bağlayanlar:
 
+- **Tasarım ve UX turu (2026-11-07, Epic 35):** telefon alt barı **B+** (eşit 5 yuva, hepsi etiketli,
+  sağda mikrofon + "+"; Hızlı Erişim balonu telefonda varsayılan kapalı — ADR-0062); **acil alarm
+  varsayılanı açık kalır** (DESIGN §26 C1 teyit); landing H1 **alarm**, alt başlık self-host +
+  Claude/ChatGPT MCP; ton: core **sen**, uzantı/portal/landing/kurumsal **siz**; "open source" yerine
+  **source-available** (lisans değişmez); **font ailesi değişmez** (ADR-0063); mikrofon sağlayıcısızken
+  dikte; Fikirler/Inbox adları kalır. Herkese açık demo ve landing ölçümü sonraki tur.
 - **İçe aktarma gerçek dosyayla denenmeden yayında (2026-10-17, OPH-371):** sahibin test verisi yok;
   gerçek bir Todoist/TickTick dosyasında sorun yaşayan kullanıcı GitHub issue açar, iş oradan doğar.
 - **Çalışma belgeleri yalın (2026-09-26):** STATE işaretçidir, TASKS yalnız açık iştir; kapanan iş
