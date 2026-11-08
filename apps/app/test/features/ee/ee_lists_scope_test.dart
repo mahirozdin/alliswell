@@ -9,6 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/auth/data/models.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
@@ -133,6 +134,38 @@ class _FakeCsv extends EeCsvExportApi {
   }) async {
     asked.add('status=$status priority=$priority unitId=$unitId');
     return EeCsvFile(bytes: Uint8List(0), filename: 'requests.csv');
+  }
+}
+
+class _LimitedCsv extends EeCsvExportApi {
+  _LimitedCsv({required this.limit}) : super(Dio());
+  final int limit;
+  int used = 0;
+  final asked = <String>[];
+
+  @override
+  Future<EeCsvFile> tickets({
+    String? status,
+    String? priority,
+    String? source,
+    String? slaStatus,
+    String? serviceId,
+    String? unitId,
+  }) async {
+    asked.add('$unitId');
+    if (used >= limit) {
+      throw const ApiException(
+        'RATE_LIMITED',
+        'Too many requests',
+        statusCode: 429,
+        retryAfter: 42,
+      );
+    }
+    used += 1;
+    return EeCsvFile(
+      bytes: Uint8List.fromList(utf8.encode('no\r\n$unitId\r\n')),
+      filename: 'requests.csv',
+    );
   }
 }
 
@@ -548,6 +581,50 @@ void main() {
         'status=null priority=null unitId=U-BAKIM',
       ]);
     });
+  });
+
+  // E35 P-G1 review r2: `tickets.csv` takes ten requests a minute. A
+  // manager of eleven units asked for eleven files in a row, the eleventh
+  // was a 429, and nothing was saved. The parts already fetched are kept,
+  // the limiter's wait is honoured and the same unit is asked again.
+  group('exportTicketsPerUnit', () {
+    test(
+      'a 429 past the tenth unit waits and resumes, keeping every part',
+      () async {
+        final api = _LimitedCsv(limit: 10);
+        final waits = <Duration>[];
+        final file = await exportTicketsPerUnit(
+          api,
+          [for (var i = 1; i <= 11; i += 1) 'U$i'],
+          wait: (d) async {
+            waits.add(d);
+            api.used = 0;
+          },
+        );
+        expect(waits, [const Duration(seconds: 42)]);
+        expect(
+          api.asked,
+          [for (var i = 1; i <= 11; i += 1) 'U$i']..insert(10, 'U11'),
+        );
+        expect(
+          utf8.decode(file.bytes),
+          'no\r\n${[for (var i = 1; i <= 11; i += 1) 'U$i\r\n'].join()}',
+        );
+      },
+    );
+
+    test(
+      'a limiter that never lets go still fails after a few waits',
+      () async {
+        final api = _LimitedCsv(limit: 0);
+        var waits = 0;
+        await expectLater(
+          exportTicketsPerUnit(api, const ['U1'], wait: (_) async => waits++),
+          throwsA(isA<ApiException>()),
+        );
+        expect(waits, 3);
+      },
+    );
   });
 
   group('mergeCsvFiles', () {

@@ -216,13 +216,13 @@ class EeTicketQueueScreen extends ConsumerWidget {
                           for (final unit in ref.read(eeUnitHereProvider).units)
                             unit.unitId,
                         ];
-                        eeDownloadCsv(context, ref, (api) async {
-                          final files = <EeCsvFile>[];
-                          for (final unitId in unitIds) {
-                            files.add(await api.tickets(unitId: unitId));
-                          }
-                          return mergeCsvFiles(files);
-                        });
+                        // P-G1 review r2: past ten units the door's
+                        // limiter answers 429; the helper waits it out.
+                        eeDownloadCsv(
+                          context,
+                          ref,
+                          (api) => exportTicketsPerUnit(api, unitIds),
+                        );
                         return;
                       }
                       eeDownloadCsv(context, ref, (api) {
