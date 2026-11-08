@@ -94,6 +94,12 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Changed
 
+- **The alliswell.space homepage leads with the alarm**: "Reminders that ring through Silent
+  mode", with your own server and Claude or ChatGPT in the line below; a phone gets its store
+  button, a computer the browser; a line under it counts the releases on GitHub; the bar links
+  the source; the FAQ says what the licence is; the comparison is now Todoist, TickTick and
+  Vikunja. New Terms of Service (`/terms`, `/terms/tr`), and a mistyped address now gets a real
+  "page not found" instead of the homepage.
 - **A shorter README**: one sentence on what AllisWell is, three ways in (web, your own server,
   download), one picture, and a comparison with Todoist, TickTick and Vikunja; building from
   source moved to `docs/development/README.md`, and its images weigh a quarter of what they did.

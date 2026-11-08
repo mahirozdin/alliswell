@@ -7,7 +7,9 @@ import { media } from '../media.js';
 
 /**
  * A mast: the wordmark large over the real links, then the legal line and the
- * credits. The photograph's licence (CC BY) asks for its author, the licence
+ * credits. The legal line leads with the name we go by and labels the
+ * registered one, which is reproduced exactly as the trade register spells it
+ * (U-81, OPH-412). The photograph's licence (CC BY) asks for its author, the licence
  * and the changes, which is what the credit line says.
  */
 defineProps({ footer: { type: Object, required: true } });
@@ -30,7 +32,10 @@ const credit = computed(() => media('photo-fog').credit);
         </nav>
       </div>
       <div class="mast__legal">
-        <p>{{ company.legalName }}, <a :href="`mailto:${company.email}`">{{ company.email }}</a></p>
+        <p>
+          {{ company.tradingName }} · {{ footer.registeredAs }}: {{ company.legalName }} ·
+          <a :href="`mailto:${company.email}`">{{ company.email }}</a>
+        </p>
         <p>{{ footer.notes }}</p>
         <p data-credits>
           {{ footer.photoLabel }}:

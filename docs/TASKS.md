@@ -36,18 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-412 — Landing ana sayfa (EN/TR)
-
-K1, K2, K5, K6, K10, U-17; `landing-audit.md` §6 Yön A + sahip kararı (H1 alarm, alt başlık self-host +
-Claude/ChatGPT MCP).
-
-- [ ] H1 alarm, alt başlık self-host + MCP; cihaza göre birincil düğme; dürüst kanıt satırı (derleme
-      anında GitHub API, yoksa sabit metin); nav'da GitHub düğmesi.
-- [ ] SSS'de "Lisans ne?", footer şirket adı yazımı, karşılaştırma rakipleri; `/terms`, `/tr/terms`;
-      bilinmeyen yol gerçek 404.
-- [ ] `.github/social-preview.png` (1280×640) üretilir; yüklemesi sahibin.
-- **Kabul:** `check:home`, `check:copy`, `check:pages`, `check:media` güncel ve yeşil.
-
 ### OPH-413 — /app açılış ekranı, kayıt modu, kurumsal sayfa SSR
 
 K3, K8, K9, E-15.

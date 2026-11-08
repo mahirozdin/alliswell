@@ -400,8 +400,9 @@ them is in [media/hyperframes/README.md](../media/hyperframes/README.md).
    what is `media/sources.json`.
 3. `npm run check:media` and `npm run check:docs` hold the files, the hashes and the budgets.
 4. A change to the homepage's look runs Hallmark's `sloplint --render` against `vite preview`
-   (`/` and `/tr`); zero FAIL is the bar. The OG cards (`screenshots/og/home-dusk*.png`) come from
-   `npm run shots:store -- --only og`.
+   (`/` and `/tr`); zero FAIL is the bar. The OG cards (`screenshots/og/home-alarm*.png`) and
+   the repository's social preview (`.github/social-preview.png`, 1280×640, uploaded by the owner)
+   come from `npm run shots:store -- --only og`; they read the hero from the content modules.
 
 Only approved finals are promoted: every promotion adds its new bytes to the history.
 

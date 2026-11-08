@@ -3,9 +3,15 @@
 #   /       → the marketing site (Vue 3, this bundle)
 #   /app    → the Flutter web app, built with --base-href /app/
 #
-# Both are SPAs, so both need "serve index.html for anything that is not a real
-# file". The order matters: /app must be handled BEFORE the site's own fallback,
-# or the marketing page swallows every deep link into the app.
+# The app is an SPA and needs "serve index.html for anything that is not a real
+# file" under /app. The site is not: every page is a real file, so an address
+# that is none of them answers a real 404 (OPH-412).
+
+# OPH-412 (landing-audit K10): this used to be a soft 404. `/terms`, `/pricing`
+# and `/favicon.ico` all answered 200 with the homepage's HTML, so a search
+# engine could index any typo as the homepage and a missing file looked
+# present to every HTTP check. The page says so in both languages, noindex.
+ErrorDocument 404 /404.html
 #
 # Deployed by .github/workflows/deploy.yml — edit it here, not on the server.
 
@@ -46,6 +52,10 @@ Options -Indexes
   # that is redirected on purpose, and it must come before the in-place rule.
   RewriteRule ^app$ /app/ [R=301,L]
 
+  # OPH-412: the terms' Turkish twin lives at /terms/tr, like /privacy/tr; the
+  # address people guess from /tr is sent there.
+  RewriteRule ^tr/terms/?$ /terms/tr [R=301,L]
+
   # A generated directory page is served IN PLACE rather than redirected to its
   # trailing slash (EE-151, made effective in EE-164 by DirectorySlash Off).
   #
@@ -67,8 +77,8 @@ Options -Indexes
   # /app deep links → the Flutter bundle's index.
   RewriteRule ^app(/.*)?$ /app/index.html [L]
 
-  # Everything else → the marketing site.
-  RewriteRule ^ /index.html [L]
+  # Everything else is not a page: a real 404, with /404.html as its body.
+  RewriteRule ^ - [R=404,L]
 </IfModule>
 
 # OPH-388: the enterprise sales deck is served as a file from /downloads/.

@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-411 README ilk ekranı; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-412 landing ilk ekranı, /terms, gerçek 404, social preview; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-412** — Landing ana sayfa (EN/TR) |
-| Last completed           | OPH-411 — README ilk ekranı (N1–N10, D#1): tek cümle değer (alarm + kendi sunucun + Claude/ChatGPT), 3 rozet (lisans source-available), tek hero (960 px, 8 fps, ≤1 MB), "web / sunucun / indir" üç yol, karşılaştırma Todoist/TickTick/Vikunja; geliştirici/komut/belge/ajan bölümleri `docs/development/README.md`'ye; Star history ve test sayıları kalktı; `docs/assets/readme` 7,7 MB → 1,9 MB (tasks/notes animasyonu çıktı), `check:docs` hero ≤1 MB ve toplam ≤2 MB'yi kapılar. About değerleri `docs/store/github-about.md` (M-01). |
+| ➡️ **Next task**         | **OPH-413** — /app açılış ekranı, kayıt modu, kurumsal sayfa SSR |
+| Last completed           | OPH-412 — Landing ilk ekranı (K2, K5, K6, K10, K15, U-17, U-80, U-81): H1 alarm, alt başlık kendi sunucun + Claude/ChatGPT; cihaza göre birincil düğme (iOS App Store, Android Play, masaüstü tarayıcı); kanıt satırı derlemede GitHub API'den (yoksa sayısız sabit metin); nav'da GitHub; SSS "Lisans ne?" (A-72); karşılaştırma Todoist/TickTick/Vikunja; footer marka + "Ticaret unvanı"; `/terms`, `/terms/tr` (+ `/tr/terms` 301); bilinmeyen yol gerçek 404 (`404.html`); OG kartları `home-alarm*`, `.github/social-preview.png` 1280×640 (M-02). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -84,6 +84,15 @@
 
 18. **M-01 GitHub About** — açıklama, homepage ve topics: `docs/store/github-about.md`'deki değerler
     (hazır `gh repo edit` komutu orada). Bugünkü açıklama hâlâ "Open-source" diyor.
+
+19. **M-02 GitHub social preview** — Settings › General › Social preview › Edit ›
+    `.github/social-preview.png` (1280×640, OPH-412).
+
+20. **OPH-412 hukuk metinleri** — `docs/TERMS.md`/`TERMS.tr.md` (canlıda `/terms`) taslağını sen ya
+    da hukukçu oku (ücret/kapanış bildirimi sözü, 13 yaş, Türk hukuku). Ticaret unvanının sicildeki
+    yazımını doğrula: her yerde "BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI" (`company.js`,
+    LICENSE, PRIVACY, mağaza satıcı adı); farklıysa hepsi birlikte değişir. PRIVACY.md "Self-hosting"
+    bölümü işletmeciyi "APILLON BİLGİ TEKNOLOJİLERİ" diye anıyor; hangisi doğru?
 
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 

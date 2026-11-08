@@ -5,6 +5,7 @@ import { defineConfig } from 'vite';
 import vue from '@vitejs/plugin-vue';
 
 import { homeSsrPlugin } from './scripts/home-ssr.js';
+import { loadProof } from './scripts/proof.js';
 import { entryForUrl, VUE_PAGES } from './scripts/routes.js';
 import { sitemapPlugin } from './scripts/sitemap.js';
 import { staticPagesPlugin } from './scripts/static-pages.js';
@@ -76,8 +77,11 @@ function copyDotfilesFromPublic() {
  * the two as different bases is what lets one Apache docroot host both without
  * either one's router swallowing the other's URLs.
  */
-export default defineConfig(({ isSsrBuild }) => ({
+export default defineConfig(async ({ isSsrBuild }) => ({
   base: '/',
+  // OPH-412: the homepage's proof line (release count, first month, stars),
+  // read from the GitHub API at build time; null without it (scripts/proof.js).
+  define: { __AW_PROOF__: JSON.stringify(await loadProof()) },
   // MPA, not SPA. Without this a mistyped URL in `vite dev` or `vite preview`
   // silently renders the homepage instead of 404ing, which is how a broken
   // route survives review. Production's catch-all is the DEPLOYMENT's decision

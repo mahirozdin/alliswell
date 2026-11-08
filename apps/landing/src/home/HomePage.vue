@@ -27,7 +27,7 @@ defineProps({
   <a class="skip" href="#features">{{ content.skip }}</a>
   <HomeHeader :nav="content.nav" :alternates="alternates" :lang="content.lang" />
   <main>
-    <HeroDusk :hero="content.hero" :ui="content.ui" />
+    <HeroDusk :hero="content.hero" :proof="content.proof" :lang="content.lang" :ui="content.ui" />
     <TourTabs :tour="content.tour" :ui="content.ui" />
     <FilmSection v-if="playable(content.film.media)" :film="content.film" :lang="content.lang" />
     <AssistantSection :assistant="content.assistant" :ui="content.ui" />

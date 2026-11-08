@@ -65,10 +65,38 @@ for (const { route, kind } of SITE_ROUTES) {
   if (flat.includes('noindex')) fail(route, 'is marked noindex');
 }
 
+// OPH-412 (landing-audit K10): an address that is no page answers a real 404.
+// The docroot used to rewrite every unknown path to the homepage with a 200,
+// which a crawler indexes as duplicate homepages and every HTTP check reads as
+// "present". The rules live in .htaccess, which only Apache runs, so the gate
+// reads the file the deploy ships.
+{
+  const notFound = path.join(DIST, '404.html');
+  if (!existsSync(notFound)) problems.push('/404.html was not built (public/404.html)');
+  else {
+    const flat = flatten(readFileSync(notFound, 'utf8'));
+    if (!flat.includes('<meta name="robots" content="noindex">')) problems.push('/404.html is not marked noindex');
+    if (!/<h1[\s>]/.test(flat)) problems.push('/404.html has no h1');
+  }
+  const htaccess = path.join(DIST, '.htaccess');
+  if (!existsSync(htaccess)) problems.push('dist/.htaccess is missing');
+  else {
+    const rules = readFileSync(htaccess, 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
+    if (!rules.includes('ErrorDocument 404 /404.html')) problems.push('.htaccess has no ErrorDocument 404 /404.html');
+    const rewrites = rules.filter((l) => l.startsWith('RewriteRule'));
+    if (rewrites.at(-1) !== 'RewriteRule ^ - [R=404,L]') {
+      problems.push(`.htaccess must end with the 404 rule, not "${rewrites.at(-1)}" (a soft 404 serves the homepage)`);
+    }
+  }
+}
+
 if (problems.length) {
   for (const p of problems) console.error(`::error::${p}`);
   console.error(`\n${problems.length} problem(s) across ${SITE_ROUTES.length} pages.`);
   process.exit(1);
 }
 
-console.log(`✓ pages: ${SITE_ROUTES.length} routes built, titled, canonical and indexable`);
+console.log(`✓ pages: ${SITE_ROUTES.length} routes built, titled, canonical and indexable; unknown paths a real 404`);

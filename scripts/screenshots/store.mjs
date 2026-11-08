@@ -497,7 +497,12 @@ function ogPage({ mark, title, sub, hero, composite = false }) {
  * same faces (public/fonts), the head on the palest part of the fog and the
  * app's Home in smoked glass on the darker side.
  */
-async function ogDuskPage({ title, sub, hero }) {
+async function ogDuskPage({ title, sub, hero, width = 1200, height = 630 }) {
+  // OPH-412: the same card at GitHub's social-preview size (1280×640); the
+  // glass pane keeps its share of the width and its place under the brand.
+  const glassLeft = Math.round(width * 0.533);
+  const glassWidth = Math.round(width * 0.517);
+  const glassTop = Math.round(height * 0.19);
   const pub = path.join(repo, 'apps/landing/public');
   const manifest = JSON.parse(await readFile(path.join(repo, 'apps/landing/src/home/media.json'), 'utf8'));
   const photo = manifest['photo-fog'].sources.jpg.find((j) => j.w <= 1600) ?? manifest['photo-fog'].sources.jpg[0];
@@ -514,7 +519,7 @@ async function ogDuskPage({ title, sub, hero }) {
     @font-face{font-family:T;src:url(${text}) format('woff2');font-weight:400 800;unicode-range:U+0000-00FF,U+0131,U+2000-206F}
     @font-face{font-family:T;src:url(${textExt}) format('woff2');font-weight:400 800;unicode-range:U+0100-02BA}
     *{box-sizing:border-box;margin:0;padding:0}
-    html,body{width:1200px;height:630px;overflow:hidden}
+    html,body{width:${width}px;height:${height}px;overflow:hidden}
     body{position:relative;background:#0e1017;font-family:T,sans-serif}
     .photo{position:absolute;inset:0;background:url(${fog}) 38% 30%/cover}
     .scrim{position:absolute;inset:0;background:radial-gradient(ellipse 52% 70% at 24% 58%,rgba(241,234,227,.82),rgba(241,234,227,0) 80%)}
@@ -523,7 +528,7 @@ async function ogDuskPage({ title, sub, hero }) {
     .brand img{width:40px;height:40px;border-radius:10px}
     h1{margin-top:30px;font-family:D;font-weight:500;font-size:58px;line-height:1.04;letter-spacing:-.022em}
     p{margin-top:20px;font-size:22px;line-height:1.45;color:#3a4152}
-    .glass{position:absolute;left:640px;top:120px;width:620px;padding:10px;border-radius:18px;
+    .glass{position:absolute;left:${glassLeft}px;top:${glassTop}px;width:${glassWidth}px;padding:10px;border-radius:18px;
       background:rgba(28,32,44,.6);backdrop-filter:blur(22px) saturate(1.35);
       box-shadow:inset 0 1px 0 rgba(255,255,255,.1),inset 0 0 0 1px rgba(255,255,255,.06),0 40px 80px -32px rgba(3,5,12,.7)}
     .glass img{display:block;width:100%;border-radius:10px}
@@ -734,21 +739,40 @@ async function main() {
     // anything missing to index.html. A social card nobody can see fails
     // silently in the one place failures are most public.
     if (want('og')) {
+      // OPH-412: the homepage cards say the page's own hero, read from the
+      // content modules, so a new headline cannot leave an old card behind.
+      const home = {
+        en: (await import(path.join(repo, 'apps/landing/src/content.js'))).default,
+        tr: (await import(path.join(repo, 'apps/landing/src/content.tr.js'))).default,
+      };
       const cards = [
         // ADR-0061: the homepage cards wear the page's Dusk look: the hero
         // photograph, the head dark on the fog, the app in smoked glass. New
-        // file names, because .htaccess caches /shots/*.jpg for a year.
+        // file names whenever the words change, because .htaccess caches
+        // /shots/*.jpg for a year (home-dusk → home-alarm in OPH-412).
         {
-          file: 'home-dusk.png',
-          title: 'Tasks, notes and alarms you own.',
-          sub: 'Reminders ring through Silent mode. Run it on your server or ours.',
+          file: 'home-alarm.png',
+          title: home.en.hero.title,
+          sub: home.en.hero.sentence,
           hero: 'web/home-dark.png',
           dusk: true,
         },
         {
-          file: 'home-dusk-tr.png',
-          title: 'Görevler, notlar, alarmlar. Hepsi sizin.',
-          sub: 'Hatırlatıcılar sessiz modda bile çalar. İster kendi sunucunuzda, ister bizde.',
+          file: 'home-alarm-tr.png',
+          title: home.tr.hero.title,
+          sub: home.tr.hero.sentence,
+          hero: 'web/home-dark.png',
+          dusk: true,
+        },
+        // OPH-412: the repository's social preview (GitHub › Settings ›
+        // Social preview, the owner's upload: M-02). 1280×640 is GitHub's
+        // size; check:media holds it and its 1 MB limit.
+        {
+          out: path.join(repo, '.github', 'social-preview.png'),
+          width: 1280,
+          height: 640,
+          title: home.en.hero.title,
+          sub: home.en.hero.sentence,
           hero: 'web/home-dark.png',
           dusk: true,
         },
@@ -772,14 +796,14 @@ async function main() {
       for (const card of cards) {
         const hero = await dataUri(card.hero);
         if (!hero) {
-          console.log(`· og: skipped ${card.file} — no ${card.hero}`);
+          console.log(`· og: skipped ${card.file ?? card.out} — no ${card.hero}`);
           continue;
         }
         const page = card.dusk ? await ogDuskPage({ ...card, hero }) : ogPage({ ...card, mark: MARK, hero });
         await shoot(page, {
-          width: 1200,
-          height: 630,
-          file: path.join(SHOTS, 'og', card.file),
+          width: card.width ?? 1200,
+          height: card.height ?? 630,
+          file: card.out ?? path.join(SHOTS, 'og', card.file),
         });
       }
     }

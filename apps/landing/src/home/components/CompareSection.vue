@@ -2,12 +2,14 @@
 import HomeIcon from './HomeIcon.vue';
 
 /**
- * Six rows from docs/COMPARISON.md, with the places the others are ahead
- * said first (LESSONS web-landing: the table and that document change
- * together). A ruled table, never a grid of tiles.
+ * Six rows from the README's comparison, which docs/COMPARISON.md §7 backs,
+ * with the places the others are ahead said first (LESSONS web-landing: the
+ * tables change together). A dash is "not checked against their own
+ * documentation", never a guessed "no" (OPH-412). A ruled table, never a grid
+ * of tiles.
  */
 defineProps({ compare: { type: Object, required: true } });
-const ICON = { yes: 'check', no: 'x', partial: 'minus', native: 'check' };
+const ICON = { yes: 'check', no: 'x', partial: 'contrast', unknown: 'minus' };
 </script>
 
 <template>

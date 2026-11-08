@@ -16,7 +16,10 @@
  *   4. sizes stay inside the budgets in media-budgets.js, fonts included;
  *   5. every MP4 is H.264 with its index before its data (faststart), loops
  *      carry no sound track and the film does;
- *   6. the photograph carries a complete credit.
+ *   6. the photograph carries a complete credit;
+ *   7. the social cards are whole (OPH-412): each content module's og:image
+ *      has its 1200×630 source in screenshots/og/, and the repository's
+ *      social preview is a 1280×640 PNG under GitHub's 1 MB limit.
  *
  * Runs inside `npm run build` as well as CI: deploy.yml builds without the CI
  * checks, so a broken manifest has to fail the build itself.
@@ -178,6 +181,35 @@ for (const { key, url } of files) {
 const credit = manifest['photo-fog']?.credit ?? {};
 for (const field of ['author', 'licence', 'licenceUrl', 'source']) {
   if (!credit[field]) fail(`media.json photo-fog.credit.${field} is missing; the licence requires the credit`);
+}
+
+// ── 7. The social cards (OPH-412) ──────────────────────────────────────
+// `public/shots/` is gitignored and copied from `screenshots/` by
+// sync-screenshots, so the committed source is what is read here; a card
+// named by the head but never rendered is a blank share preview.
+const repo = path.resolve(root, '../..');
+const pngSize = (file) => {
+  const buf = readFileSync(file);
+  if (buf.toString('latin1', 1, 4) !== 'PNG') return null;
+  return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20), bytes: buf.length };
+};
+const cards = [];
+for (const file of ['src/content.js', 'src/content.tr.js']) {
+  const og = (await import(path.join(root, file))).default.seo.ogImage;
+  cards.push({ what: `${file} seo.ogImage`, file: path.join(repo, 'screenshots', og.replace(/^\/shots\//, '').replace(/\.jpg$/, '.png')), width: 1200, height: 630 });
+}
+cards.push({ what: 'the social preview', file: path.join(repo, '.github/social-preview.png'), width: 1280, height: 640, max: 1024 * 1024 });
+for (const card of cards) {
+  const rel = path.relative(repo, card.file);
+  if (!existsSync(card.file)) {
+    fail(`${card.what}: ${rel} does not exist (npm run shots:store -- --only og)`);
+    continue;
+  }
+  const size = pngSize(card.file);
+  if (!size) fail(`${card.what}: ${rel} is not a PNG`);
+  else if (size.width !== card.width || size.height !== card.height) {
+    fail(`${card.what}: ${rel} is ${size.width}×${size.height}, not ${card.width}×${card.height}`);
+  } else if (card.max && size.bytes > card.max) fail(`${card.what}: ${rel} is ${kb(size.bytes)}, over ${kb(card.max)}`);
 }
 
 if (problems.length) {

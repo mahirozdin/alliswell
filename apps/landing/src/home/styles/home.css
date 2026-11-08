@@ -180,6 +180,20 @@
   text-decoration: underline;
   text-underline-offset: 0.3em;
 }
+.bar__gh .icon {
+  flex: none;
+}
+.bar__gh-stars {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2xs);
+}
+/* Over the photograph the ghost button takes the hero's fog fill, like the hero's own. */
+.bar:not(.is-scrolled) .bar__gh {
+  background: color-mix(in oklab, var(--color-fog) 55%, transparent);
+  color: var(--color-day-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--color-day-ink) 22%, transparent);
+}
 .bar__menu {
   display: none;
   position: relative;
@@ -315,6 +329,34 @@
   font-size: var(--text-sm);
 }
 .hero__also a {
+  color: var(--color-day-ink);
+  font-weight: 500;
+}
+/* OPH-412: the proof line, counted at build time (src/home/proof.js). */
+.hero__proof {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0 var(--space-xs);
+  margin: var(--space-sm) 0 0;
+  padding: 0;
+  list-style: none;
+  color: var(--color-day-muted);
+  font-size: var(--text-sm);
+}
+.hero__proof li {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+}
+.hero__proof li:not(:last-child)::after {
+  content: '·';
+  margin-left: var(--space-xs);
+}
+.hero__proof a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
   color: var(--color-day-ink);
   font-weight: 500;
 }
@@ -916,6 +958,20 @@
 
 /* ── Narrow screens ─────────────────────────────────────────────────────── */
 
+@media (max-width: 80rem) {
+  .bar__gh {
+    width: 44px;
+    padding: 0;
+  }
+  .bar__gh-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+}
 @media (max-width: 72rem) {
   .bar__nav {
     gap: var(--space-md);

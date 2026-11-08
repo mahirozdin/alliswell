@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Landing ilk ekranı (2026-11-08)
+
+- OPH-412 — **deploy sonrası alliswell.space, iPhone Safari + Android Chrome + masaüstü; EN ve TR**: başlık "Reminders that ring through Silent mode." / "Sessiz modda bile çalan hatırlatıcılar."; birincil düğme iPhone'da (iPad dahil) "App Store'dan indirin", Android'de "Google Play'den indirin", masaüstünde "Tarayıcıda ücretsiz başlayın" ve sayfa açılırken zıplamıyor; altında "Kaynak kodu GitHub'da · N sürüm, ilki Temmuz 2026 · Kişisel kullanım ücretsiz" (N GitHub Releases ile aynı); çubukta GitHub düğmesi (1280 px altında yalnız simge, telefonda menüde). `alliswell.space/olmayan-bir-sayfa` gerçek 404 ve iki dilli sayfa, `/terms`, `/terms/tr` ve `/tr/terms` açılıyor. Bir sohbete `alliswell.space` bağlantısı yapıştırınca kart yeni başlığı gösteriyor.
+
 ## Uzantı geniş ekran (2026-11-08)
 
 - OPH-410 — **1440 px web ve macOS (geniş pencere) + 1000 px pencere, uzantılı takım, bir birimde ajan; açık ve koyu tema**: Talepler kuyruğu "Talep · Durum · Öncelik · Açan · Alan · SLA" başlıklı, satır başına tek satır (~56 px), sütunlar hizalı; satıra tıklayınca talep sağda 480 px panelde açılıyor, liste kaymıyor, açık satır mavi çerçeveli; ↑/↓ önceki/sonraki talep, Esc ve sol üstteki ✕ kapatıyor; panel açıkken "Yeni talep" düğmesi listenin üstünde kalıyor; "Tüm birimler" listesinden de panel açılıyor. İş yükü sekmesi birim/kişi/tür için tek tablo, rakamlar sağa yaslı ve hizalı, başlığa tıklayınca ok ve sıra değişiyor, ikinci tıklama ters çeviriyor. Yeni talep, Yeni değişiklik, Bilinen arıza, Takım ayarları, Takım kimliği, Bildirim tercihleri ve adresle açılan talep içerik olarak en çok 720 px, ortada. 1000 px'te kart görünümü ve itilen detay sayfası aynen eski hâli; telefonda hiçbir şey değişmemiş.
