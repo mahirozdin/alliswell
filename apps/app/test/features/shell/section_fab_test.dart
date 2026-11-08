@@ -120,6 +120,34 @@ void main() {
     expect(find.byKey(const Key('shell-fab-cluster')), findsOneWidget);
   });
 
+  // H-2 (polish 3): on the SLA board and the workload report the
+  // microphone stood alone on the gutter and covered the right-hand
+  // figures of the unit rows. In the requests section the microphone
+  // floats only as part of the cluster, beside the create button a screen
+  // lent; a board with no create button floats nothing over its figures.
+  for (final size in const [Size(390, 844), Size(1440, 900)]) {
+    testWidgets('${size.width.toInt()} px: the SLA and workload tabs float '
+        'no lone microphone', (tester) async {
+      await openRequests(tester, size);
+      expect(find.byKey(const Key('ai-fab')), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('ticket-tab-sla')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('ai-fab')), findsNothing);
+      expect(find.byKey(const Key('shell-fab-cluster')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('ticket-tab-workload')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('ai-fab')), findsNothing);
+      expect(find.byKey(const Key('shell-fab-cluster')), findsNothing);
+
+      // Back on the queue the cluster returns whole.
+      await tester.tap(find.byKey(const Key('ticket-tab-queue')));
+      await tester.pumpAndSettle();
+      expectOneCluster(tester, const Key('ticket-new'), kAwFloatGutter);
+    });
+  }
+
   testWidgets('outside a shell the button floats in its own Scaffold', (
     tester,
   ) async {

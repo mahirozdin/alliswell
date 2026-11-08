@@ -139,6 +139,12 @@ class HomeShell extends ConsumerWidget {
     final section =
         _sectionFab(context, ref) ?? ref.watch(awSectionFabProvider)?.fab;
     if (!aiFabVisible(ref)) return section;
+    // H-2 (polish 3, DESIGN §44 F3): in a section whose screens lend their
+    // own create button, the microphone floats only beside it. Alone it
+    // stood on the gutter over the SLA board's and the workload report's
+    // right-hand figures (and over a selection's rows); a screen with no
+    // create button there is a board to read, and nothing floats over it.
+    if (section == null && _lendsItsCreate()) return null;
     return Row(
       key: const Key('shell-fab-cluster'),
       mainAxisSize: MainAxisSize.min,
@@ -151,6 +157,11 @@ class HomeShell extends ConsumerWidget {
       ],
     );
   }
+
+  /// The sections whose screens lend their create button ([AwSectionFab])
+  /// rather than the shell drawing one: the requests section.
+  bool _lendsItsCreate() =>
+      AppSection.values[navigationShell.currentIndex] == AppSection.tickets;
 
   /// EE-052: a create button belongs to a verb, and a role that lacks the
   /// verb should not be shown the button at all.
