@@ -36,18 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-411 — README ilk ekranı
-
-N1–N10, D#1, CT-01; `github-growth.md` §4.
-
-- [ ] Başlık, tek cümle değer (alarm + kendi sunucunda + Claude/ChatGPT), 3 rozet (lisans
-      "source-available"), tek görsel (≤1 MB), "Web'de dene / Kendi sunucunda / İndir" üç yol.
-- [ ] Geliştirici, komut ve ajan bölümleri `docs/development/`'a; `docs/assets/readme` toplam ≤2 MB;
-      karşılaştırma Todoist/TickTick/Vikunja.
-- [ ] GitHub About/homepage/topics için önerilen değerler `docs/store/github-about.md`'de; uygulaması
-      sahibin (STATE "Kullanıcıdan bekleyen").
-- **Kabul:** `check:docs`, link kontrolü.
-
 ### OPH-412 — Landing ana sayfa (EN/TR)
 
 K1, K2, K5, K6, K10, U-17; `landing-audit.md` §6 Yön A + sahip kararı (H1 alarm, alt başlık self-host +

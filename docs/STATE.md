@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-410 uzantı geniş ekran; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-411 README ilk ekranı; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-411** — README ilk ekranı |
-| Last completed           | OPH-410 — uzantı geniş ekran (U-23, U-08'in uzantı yarısı; DESIGN §51 D6): ≥1200 px'te talep kuyruğu sütun başlıklı tek satırlık yoğun liste, talep listenin sağındaki 480 px panelde açılır (OPH-405 deseni; Esc, ↑/↓, kapat düğmesi — panelde `awRouteLeading` geri değil kapat verir); İş yükü raporu sıralanabilir tek tablo (sağa yaslı tabular rakam); uzantı formları ve sayfa olarak açılan talep en çok 720 px (`AwFormWidth`, `kAwFormMaxWidth`). Panel açılınca liste artık yeniden kurulmuyor (kaydırma ve ↑/↓ sırası korunur). |
+| ➡️ **Next task**         | **OPH-412** — Landing ana sayfa (EN/TR) |
+| Last completed           | OPH-411 — README ilk ekranı (N1–N10, D#1): tek cümle değer (alarm + kendi sunucun + Claude/ChatGPT), 3 rozet (lisans source-available), tek hero (960 px, 8 fps, ≤1 MB), "web / sunucun / indir" üç yol, karşılaştırma Todoist/TickTick/Vikunja; geliştirici/komut/belge/ajan bölümleri `docs/development/README.md`'ye; Star history ve test sayıları kalktı; `docs/assets/readme` 7,7 MB → 1,9 MB (tasks/notes animasyonu çıktı), `check:docs` hero ≤1 MB ve toplam ≤2 MB'yi kapılar. About değerleri `docs/store/github-about.md` (M-01). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -81,6 +81,9 @@
     metni olarak gözden geçir. alliswell.space'te açmak SAHİBİN kararı; açılana dek kamu metni
     "sunucu yöneticisi açtığında" der. VTODO yönü (CALDAV.md §9: A bağlayıcı / B AllisWell CalDAV
     sunucusu) sahibin kararı.
+
+18. **M-01 GitHub About** — açıklama, homepage ve topics: `docs/store/github-about.md`'deki değerler
+    (hazır `gh repo edit` komutu orada). Bugünkü açıklama hâlâ "Open-source" diyor.
 
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 

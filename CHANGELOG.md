@@ -92,6 +92,12 @@ This file holds the unreleased changes and the latest release; at each release t
   voice, the urgent alarm and search — each pointing at its own button. A new account's empty
   Home now offers "Add your first task" and a way to move in from Todoist or TickTick.
 
+### Changed
+
+- **A shorter README**: one sentence on what AllisWell is, three ways in (web, your own server,
+  download), one picture, and a comparison with Todoist, TickTick and Vikunja; building from
+  source moved to `docs/development/README.md`, and its images weigh a quarter of what they did.
+
 ## [1.18.2] — 2026-10-30
 
 ### Changed
