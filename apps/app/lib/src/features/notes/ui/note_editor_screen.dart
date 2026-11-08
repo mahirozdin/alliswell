@@ -9,6 +9,9 @@ import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
 import '../../../core/deep_link.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sections.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/status_views.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart' show UploadRowTile;
@@ -58,13 +61,45 @@ class NoteEditorScreen extends ConsumerWidget {
     if (noteId == null) return const _NoteEditor(note: null);
     final note = ref.watch(noteDetailProvider(noteId!));
     return note.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => _NoteEditorWaiting(noteId: noteId!),
       error: (error, _) => Scaffold(
         appBar: AppBar(),
         body: Center(child: Text('$error')),
       ),
       data: (value) => _NoteEditor(note: value),
+    );
+  }
+}
+
+/// The note's row is not in the replica (yet). A spinner while the server
+/// says the note exists — the pull brings it — and an answer otherwise (R-05):
+/// a link to a deleted, mistyped or foreign note used to spin forever with no
+/// app bar and no way out. The task detail's pattern (OPH-392, E-17).
+class _NoteEditorWaiting extends ConsumerWidget {
+  const _NoteEditorWaiting({required this.noteId});
+
+  final String noteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final absence = ref.watch(noteAbsenceProvider(noteId)).value;
+    return Scaffold(
+      appBar: absence == null ? null : AppBar(leading: awRouteLeading(context)),
+      body: switch (absence) {
+        null => const Center(child: CircularProgressIndicator()),
+        NoteAbsence.gone => AwErrorState(
+          key: const Key('note-detail-gone'),
+          message: 'error.notFound'.tr(),
+          retryLabel: 'error.goHome'.tr(),
+          retryIcon: Icons.home_outlined,
+          onRetry: () => GoRouter.of(context).go(AppSection.home.path),
+        ),
+        NoteAbsence.unreachable => AwErrorState(
+          key: const Key('note-detail-unreachable'),
+          message: 'error.NETWORK_ERROR'.tr(),
+          onRetry: () => ref.invalidate(noteAbsenceProvider(noteId)),
+        ),
+      },
     );
   }
 }

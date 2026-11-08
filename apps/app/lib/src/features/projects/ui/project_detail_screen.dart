@@ -9,6 +9,7 @@ import '../../../core/list_sort.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sections.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/list_detail.dart';
 import '../../../widgets/sort_menu.dart';
@@ -59,9 +60,16 @@ class ProjectDetailScreen extends ConsumerWidget {
           if (p.id == projectId) project = p;
         }
         if (project == null) {
+          // R-05: a dead end needs a way out — a cold link has no back.
           return Scaffold(
             appBar: AppBar(),
-            body: Center(child: Text('project.notFound'.tr())),
+            body: AwErrorState(
+              key: const Key('project-detail-gone'),
+              message: 'project.notFound'.tr(),
+              retryLabel: 'error.goHome'.tr(),
+              retryIcon: Icons.home_outlined,
+              onRetry: () => GoRouter.of(context).go(AppSection.home.path),
+            ),
           );
         }
         return _ProjectDetail(project: project);

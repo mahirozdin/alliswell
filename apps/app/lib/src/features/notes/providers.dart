@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 
+import '../../core/api_exception.dart';
 import '../../core/list_sort.dart';
 import '../../core/persisted_prefs.dart';
 import '../../sync/providers.dart';
@@ -9,6 +10,7 @@ import '../auth/providers.dart';
 import 'data/note.dart';
 import 'data/note_store.dart';
 import 'data/note_versions_api.dart';
+import 'data/notes_api.dart';
 
 export 'data/note_store.dart'
     show NotesFilter, NotesQuery, kNoteSortChoices, noteSortComparator;
@@ -114,6 +116,39 @@ final noteDetailProvider = StreamProvider.family<NoteDetail, String>((
   ref.watch(syncEngineProvider);
   return ref.watch(noteStoreProvider).watchDetail(noteId);
 });
+
+/// Why a note's editor has nothing to show (R-05, the OPH-392 task pattern).
+enum NoteAbsence {
+  /// The server has no such note for this person: deleted, never theirs, or
+  /// not a note id at all.
+  gone,
+
+  /// The note is not on this device and the server gave no usable answer.
+  unreachable,
+}
+
+/// The editor's answer while its note is absent from the replica.
+///
+/// [noteDetailProvider] drops a missing row, so a link to a note that is not
+/// on the device — deleted since, mistyped, someone else's — waited on it
+/// forever: a bare spinner with no app bar. Asked once: when the server still
+/// has the note, null (the pull brings it and the spinner is the truth);
+/// 400/403/404 is gone; anything else (no network, 5xx, 429) is unreachable,
+/// which the screen offers to retry, so no answer ever means a spinner.
+final noteAbsenceProvider = FutureProvider.autoDispose
+    .family<NoteAbsence?, String>((ref, noteId) async {
+      final store = ref.watch(noteStoreProvider);
+      if (await store.detailOnce(noteId) != null) return null;
+      try {
+        await NotesApi(ref.watch(apiClientProvider)).get(noteId);
+        return null;
+      } on ApiException catch (error) {
+        return switch (error.statusCode) {
+          400 || 403 || 404 => NoteAbsence.gone,
+          _ => NoteAbsence.unreachable,
+        };
+      }
+    });
 
 /// The parsed source-editor styling (round 19 #4). A junk or retired name
 /// resolves to the default rather than to a broken editor — the `parseTaskTime`
