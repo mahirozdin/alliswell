@@ -7,6 +7,7 @@ import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
+import '../../../widgets/section_fab.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
@@ -134,11 +135,16 @@ class EeTicketQueueScreen extends ConsumerWidget {
       // leads to a form the door refuses is a dead one with extra steps.
       floatingActionButton:
           !selecting && ref.watch(canProvider('tickets.create'))
-          ? AwExtendedFab(
-              key: const Key('ticket-new'),
-              onPressed: () => context.push('/tickets/new'),
-              icon: const Icon(Icons.add),
-              label: Text('ee.tickets.new.fab'.tr()),
+          // R-02 (polish 2): lent to the shell's cluster, so the
+          // microphone stands beside it, not on it.
+          ? AwSectionFab(
+              paneKind: kEeTicketPane,
+              child: AwExtendedFab(
+                key: const Key('ticket-new'),
+                onPressed: () => context.push('/tickets/new'),
+                icon: const Icon(Icons.add),
+                label: Text('ee.tickets.new.fab'.tr()),
+              ),
             )
           : null,
       appBar: selecting

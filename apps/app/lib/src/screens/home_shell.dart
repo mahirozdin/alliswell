@@ -49,6 +49,7 @@ import '../widgets/offline_strip.dart';
 import '../widgets/document_surface.dart';
 import '../widgets/fab_cluster.dart';
 import '../widgets/fab_clearance.dart';
+import '../widgets/section_fab.dart';
 import '../widgets/list_detail.dart';
 import 'shell_rail.dart';
 import '../widgets/refreshable.dart';
@@ -131,7 +132,11 @@ class HomeShell extends ConsumerWidget {
     // neither "new note" nor the AI button. Someone writing is not shopping
     // for a second thing to start.
     if (awIsDocumentRoute(GoRouterState.of(context).uri.path)) return null;
-    final section = _sectionFab(context, ref);
+    // R-02 (polish 2): a screen inside the section may lend its own create
+    // button ([AwSectionFab]) — it stands where "+" stands, the microphone
+    // to its left, instead of under the microphone in its own Scaffold.
+    final section =
+        _sectionFab(context, ref) ?? ref.watch(awSectionFabProvider)?.fab;
     if (!aiFabVisible(ref)) return section;
     return Row(
       key: const Key('shell-fab-cluster'),
@@ -157,11 +162,9 @@ class HomeShell extends ConsumerWidget {
   /// unavailability is the information.
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
-      // EE-084: no "new request" button on the agent's queue. Opening a ticket
-      // means naming a SERVICE, and the catalogue is admin-gated — an agent
-      // cannot read it. The requester's own filing surface is EE-087's, and
-      // giving this screen a button that could not resolve a destination would
-      // be exactly the "greyed-out affordance" this method exists to avoid.
+      // The requests screens decide their own "new request" (it depends on
+      // the screen's state: a selection, the tab, the permission) and lend
+      // it to this cluster through [AwSectionFab] (R-02, polish 2).
       AppSection.tickets => null,
       AppSection.home when !ref.watch(canProvider('tasks.create')) => null,
       AppSection.projects when !ref.watch(canProvider('projects.create')) =>
@@ -319,7 +322,11 @@ class HomeShell extends ConsumerWidget {
             // rail (the microphone used to sit on its glass corner).
             floatingActionButton: fab,
             floatingActionButtonLocation: AwFabLocation(
-              kAwFloatGutter + (paneOpen ? kAwDetailPaneWidth : 0),
+              kAwFloatGutter +
+                  math.max(
+                    paneOpen ? kAwDetailPaneWidth : 0.0,
+                    ref.watch(awSectionFabProvider)?.endInset ?? 0,
+                  ),
             ),
             body: Row(
               children: [
@@ -353,7 +360,7 @@ class HomeShell extends ConsumerWidget {
                       container: true,
                       child: AwFabClearance(
                         extent: fabClearance,
-                        child: navigationShell,
+                        child: AwSectionFabHost(child: navigationShell),
                       ),
                     ),
                   ),
@@ -375,7 +382,7 @@ class HomeShell extends ConsumerWidget {
             body: AwOfflineStrip(
               child: _ShellBody(
                 fabClearance: fabClearance,
-                child: navigationShell,
+                child: AwSectionFabHost(child: navigationShell),
               ),
             ),
             bottomNavigationBar: Padding(

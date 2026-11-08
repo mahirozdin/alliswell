@@ -8,6 +8,7 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
+import '../../../widgets/section_fab.dart';
 import '../../../widgets/status_views.dart';
 import '../data/my_tickets_api.dart';
 import '../data/team_address_api.dart' show EeNoTeamHereException;
@@ -67,11 +68,14 @@ class EeMyTicketsScreen extends ConsumerWidget {
       floatingActionButton:
           ref.watch(canProvider('tickets.create')) &&
               tickets.error is! EeNoTeamHereException
-          ? AwExtendedFab(
-              key: const Key('my-tickets-new'),
-              onPressed: () => context.push('/tickets/new'),
-              icon: const Icon(Icons.add),
-              label: Text('ee.tickets.new.fab'.tr()),
+          // R-02 (polish 2): one cluster with the shell's microphone.
+          ? AwSectionFab(
+              child: AwExtendedFab(
+                key: const Key('my-tickets-new'),
+                onPressed: () => context.push('/tickets/new'),
+                icon: const Icon(Icons.add),
+                label: Text('ee.tickets.new.fab'.tr()),
+              ),
             )
           : null,
       body: RefreshIndicator(
