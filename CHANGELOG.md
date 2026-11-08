@@ -31,7 +31,7 @@ This file holds the unreleased changes and the latest release; at each release t
   13:47" instead of "07.11.2026 17:00"; an English app on a German phone shows "7 Nov, 13:47";
   amounts, percentages, file sizes ("6,3 MB") and durations ("2 gün 12 saat") follow the same rules
   on every screen, and an amount in a currency that shares your own's symbol is named by its code
-  ("CAD 100" next to "$100"). A date format picked in Settings still wins.
+  ("CAD 100" next to "$100"); a number typed into a form keeps every decimal ("0,001"). A date format picked in Settings still wins.
 - **One voice in Turkish, one word for one thing**: the personal app says "sen" everywhere and
   team screens say "siz"; due dates read "Son tarih", notes switch between "Düzenle" and "Oku", and
   labels such as "Standart" or a project's "Özet" tab are no longer cut in the middle of a word.

@@ -38,16 +38,30 @@ String awFormatNumber(
 }
 
 /// A figure typed into a form ("48500") shown in the region's separators
-/// ("48.500"); text that is not a number comes back as it was.
+/// ("48.500"); text that is not a number comes back as it was. Every decimal
+/// that was typed is kept ("0.001" stays "0,001"); trailing zeros drop.
 String awFormatNumberText(String raw, {String? locale, String? region}) {
-  final parsed = num.tryParse(raw.trim());
+  final text = raw.trim();
+  final parsed = num.tryParse(text);
   if (parsed == null) return raw;
   return awFormatNumber(
     parsed,
-    decimals: parsed is int ? 0 : 2,
+    decimals: _typedDecimals(text),
     locale: locale,
     region: region,
   );
+}
+
+/// How many decimals [text] (already a valid number) carries: "0.001" → 3,
+/// "1e-3" → 3, "1.5e2" → 0. Capped at 15, what a double holds.
+int _typedDecimals(String text) {
+  final lower = text.toLowerCase();
+  final e = lower.indexOf('e');
+  final mantissa = e < 0 ? lower : lower.substring(0, e);
+  final exponent = e < 0 ? 0 : int.tryParse(lower.substring(e + 1)) ?? 0;
+  final dot = mantissa.indexOf('.');
+  final fraction = dot < 0 ? 0 : mantissa.length - dot - 1;
+  return (fraction - exponent).clamp(0, 15);
 }
 
 /// A percentage given as 0–100 (the server's shape): "%51,4", "51.4%",

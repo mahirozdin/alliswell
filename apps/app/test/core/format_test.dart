@@ -316,6 +316,18 @@ void main() {
       );
     });
 
+    test('a typed number keeps every decimal it was typed with (G-C-R7)', () {
+      expect(awFormatNumberText('0.001', locale: 'en', region: 'US'), '0.001');
+      expect(awFormatNumberText('0.001', locale: 'tr', region: 'TR'), '0,001');
+      expect(
+        awFormatNumberText('48500.125', locale: 'tr', region: 'TR'),
+        '48.500,125',
+      );
+      expect(awFormatNumberText('2.50', locale: 'en', region: 'US'), '2.5');
+      expect(awFormatNumberText('1e-3', locale: 'en', region: 'US'), '0.001');
+      expect(awFormatNumberText('1.5e2', locale: 'en', region: 'US'), '150');
+    });
+
     test('text that is not a number stays as typed', () {
       expect(awFormatNumberText('yaklaşık 5'), 'yaklaşık 5');
     });

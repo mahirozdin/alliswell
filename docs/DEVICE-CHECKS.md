@@ -24,7 +24,7 @@
 
 ## Tek biçimlendirici (2026-11-08)
 
-- OPH-408 — **iPhone + Android + web; cihaz dili/bölgesi Türkçe-Türkiye, İngilizce-ABD ve İngilizce-Almanya (uygulama İngilizce)**: Ana Sayfa satırlarında bugün yalnız saat, yarın "Yarın 11:00"/"Tomorrow 11:00 AM", sonrası "7 Kas, 13:47"/"Nov 7, 1:47 PM"/"7 Nov, 13:47"; görev detayında "Bugün 13:47"; Almanya bölgesinde 24 saat, ABD'de 12 saat; hiçbir ekranda "07.11.2026" ya da "11/7/2026" yok (Ayarlar'da sayısal biçim seçilmediyse). Ek boyutları "6,3 MB" (TR/DE) ve "6.3 MB" (ABD), 1 KB altı "1 KB'den küçük"; süre "1 saat 30 dk". Ana ekran widget'ının saati bölgeye göre 12/24. Uzantılı takımda tutar "48.500 TL" (ABD bölgesinde USD "$100", CAD/AUD "CAD 100"/"AUD 100"), yüzde "%51,4", form sayısı "48.500". Satır sonu tarih ile saati ayırmıyor; 2.0× metinde meta satırı taşmıyor.
+- OPH-408 — **iPhone + Android + web; cihaz dili/bölgesi Türkçe-Türkiye, İngilizce-ABD ve İngilizce-Almanya (uygulama İngilizce)**: Ana Sayfa satırlarında bugün yalnız saat, yarın "Yarın 11:00"/"Tomorrow 11:00 AM", sonrası "7 Kas, 13:47"/"Nov 7, 1:47 PM"/"7 Nov, 13:47"; görev detayında "Bugün 13:47"; Almanya bölgesinde 24 saat, ABD'de 12 saat; hiçbir ekranda "07.11.2026" ya da "11/7/2026" yok (Ayarlar'da sayısal biçim seçilmediyse). Ek boyutları "6,3 MB" (TR/DE) ve "6.3 MB" (ABD), 1 KB altı "1 KB'den küçük"; süre "1 saat 30 dk". Ana ekran widget'ının saati bölgeye göre 12/24. Uzantılı takımda tutar "48.500 TL" (ABD bölgesinde USD "$100", CAD/AUD "CAD 100"/"AUD 100"), yüzde "%51,4", form sayısı "48.500" ve "0.001" cevabı "0,001" (0 değil). Satır sonu tarih ile saati ayırmıyor; 2.0× metinde meta satırı taşmıyor.
 
 ## Metin geçişi (2026-11-08)
 
