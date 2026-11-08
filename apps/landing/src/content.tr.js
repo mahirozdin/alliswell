@@ -170,9 +170,10 @@ export default {
   },
 
   own: {
-    title: 'Kendi sunucunuzda, tek komutla.',
-    lead: 'İki Docker imajı ve kendi veritabanınız. Güncellemek için yeni imajı çekmeniz yeter.',
-    commandLabel: 'Sunucunuzda',
+    // OPH-412 (M-2): README'deki kurulum tek komut değil, dört adım.
+    title: 'Kendi sunucunuzda, dört adımda.',
+    lead: 'İki dosya, iki gizli anahtar, alan adlarınız ve şifreleriniz, tek komut. Güncellemek için yeni imajı çekmeniz yeter.',
+    commandLabel: 'Son adım',
     command: 'docker compose -f docker-compose.selfhost.yml up -d', // i18n-same
     points: [
       'Kişisel kullanım ve kendi kurulumunuz ücretsiz.',

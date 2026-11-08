@@ -179,9 +179,11 @@ export default {
   },
 
   own: {
-    title: 'Your server, one command.',
-    lead: 'Two Docker images and your own database. Upgrading is a pull.',
-    commandLabel: 'On your server',
+    // OPH-412 (M-2): the README's install is four steps, not one command —
+    // two downloads, two secrets, the .env edit, then the command shown.
+    title: 'Your server, four steps.',
+    lead: 'Two files, two secrets, your domains and passwords, one command. Upgrading is a pull.',
+    commandLabel: 'Last step',
     command: 'docker compose -f docker-compose.selfhost.yml up -d', // i18n-same
     points: [
       'Free for personal use and for running your own copy.',

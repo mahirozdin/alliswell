@@ -27,8 +27,9 @@
 
 - **Alarms, not chimes.** Urgent tasks ring with a real alarm sound **through Silent mode and
   Focus** and alert again over the next half hour until you acknowledge them.
-- **Your server, your database.** One `docker compose up` on your own machine, or the hosted
-  copy at [alliswell.space](https://alliswell.space). Free for personal use either way.
+- **Your server, your database.** Two files, two secrets and your domains, then
+  `docker compose up` on your own machine, or the hosted copy at
+  [alliswell.space](https://alliswell.space). Free for personal use either way.
 - **Ask Claude or ChatGPT.** A built-in remote MCP server: every write asks for your approval,
   and there is no delete tool.
 - **Two-way Google Calendar.** Tasks become events, and edits made in Google come back. On
@@ -153,7 +154,7 @@ upgrades and backups, R2 attachments, Google Calendar, troubleshooting:
 | **Android** | **[Google Play](https://play.google.com/store/apps/details?id=com.alliswell.alliswell)**, free. |
 | **Windows and Linux** | **[Windows (.zip)](https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-windows-x64.zip)** and **[Linux (.tar.gz)](https://github.com/mahirozdin/alliswell/releases/latest/download/alliswell-linux-x64.tar.gz)**, attached to every [release](https://github.com/mahirozdin/alliswell/releases/latest). |
 | **macOS** | Builds from the source for now. |
-| **Your own server** | One `docker compose up`, [above](#run-it-yourself). |
+| **Your own server** | Four steps ending in `docker compose up`, [above](#run-it-yourself). |
 | **Claude and ChatGPT** | The connector at **`https://api.alliswell.space/mcp`**, [above](#use-it-from-claude-or-chatgpt). |
 
 <details>
@@ -329,7 +330,7 @@ the traps we measured on the way: [docs/WIDGETS.md](docs/WIDGETS.md).
 - **Home-screen widgets** — iPhone, iPad, Android and (one signing step away) Mac widgets that mirror your Home buckets, carry the **system clock and how many tasks today actually holds** in the header, complete a task with one tap, follow one project if you want them to, and sit on the iPhone lock screen — see [Widgets](#widgets).
 - **Sign in the way you already do** — e-mail and password, **Continue with Google**, or **Continue with Apple**. The provider proves who you are; **AllisWell's own database still owns the account**, so a self-hosted instance works the same way — or drops social sign-in entirely and keeps passwords. [How it works →](docs/adr/0026-social-sign-in.md)
 - **Localisation** — ships in English and Turkish, auto-detected from your system; adding a language is dropping in one JSON file.
-- **Self-hosted &amp; private** — your MySQL, your server, one `docker compose up`. Free for personal use ([licence](#-licence--commercial-use)).
+- **Self-hosted &amp; private** — your MySQL, your server, a four-step install. Free for personal use ([licence](#-licence--commercial-use)).
 
 </details>
 
