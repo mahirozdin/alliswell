@@ -1,8 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -174,6 +175,13 @@ void main() {
           (ref) => Stream.value(const <String, List<Assignee>>{}),
         ),
         canProvider.overrideWith((ref, permission) => false),
+        // The desktop pane's detail (R-15): it never finishes loading here —
+        // which unit is open while it shows, and after, is what is tested.
+        ticketProvider.overrideWith((ref, id) {
+          final detail = StreamController<TicketRecord?>();
+          ref.onDispose(detail.close);
+          return detail.stream;
+        }),
       ],
     );
     addTearDown(container.dispose);
@@ -498,6 +506,83 @@ void main() {
     await pump(tester, const EeMyUnitsScreen(), offline: true);
     expect(find.byKey(const Key('my-units-offline')), findsOneWidget);
     expect(server.lists, isEmpty);
+  });
+
+  // R-15: reading a request of another unit opens that unit for a while —
+  // the detail reads its copy — but the person's choice (Home's unit) is
+  // not changed by it: closing the request brings the earlier one back.
+  Map<String, dynamic> bakimRequest(Map<String, dynamic> query) => {
+    'units': _units,
+    'alerts': {'breached': 1, 'warned': 0},
+    'tickets': [
+      _row(
+        _compressor,
+        1042,
+        'Kompresör arızası',
+        _bakim,
+        'Bakım',
+        sla: 'breached',
+      ),
+    ],
+    'nextCursor': null,
+  };
+
+  testWidgets('R-15: on a phone, back from another unit’s request returns '
+      'to the unit that was open', (tester) async {
+    server.answer = bakimRequest;
+    await pump(tester, const EeMyUnitsScreen());
+    expect(openUnit(), _bt);
+
+    await tester.tap(find.byKey(const Key('unit-ticket-$_compressor')));
+    await tester.pumpAndSettle();
+    expect(find.text('opened $_compressor'), findsOneWidget);
+    expect(openUnit(), _bakim);
+
+    GoRouter.of(tester.element(find.byKey(const Key('opened')))).pop();
+    await tester.pumpAndSettle();
+    expect(find.byType(EeMyUnitsScreen), findsOneWidget);
+    expect(openUnit(), _bt);
+  });
+
+  testWidgets('R-15: at a desktop width, closing the pane returns to the unit '
+      'that was open, and ↓ to a third request does not lose it', (
+    tester,
+  ) async {
+    server.answer = (query) => {
+      ...bakimRequest(query),
+      'tickets': [
+        ...bakimRequest(query)['tickets'] as List,
+        _row(_lamp, 12, 'Atölye lambası', _bakim, 'Bakım'),
+      ],
+    };
+    await pump(tester, const EeTicketQueueScreen());
+    container.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
+    tester.view.physicalSize = const Size(1440 * 3, 1000 * 3);
+    await tester.pumpAndSettle();
+    expect(openUnit(), _bt);
+
+    Future<void> step() async {
+      for (var i = 0; i < 6; i += 1) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
+    final pane = find.byKey(const Key('list-detail-pane'));
+    await tester.tap(find.byKey(const Key('unit-ticket-$_compressor')));
+    await step();
+    expect(pane, findsOneWidget);
+    expect(openUnit(), _bakim);
+    // Still the list across units behind the pane.
+    expect(container.read(eeQueueShowsAllUnitsProvider), isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await step();
+    expect(openUnit(), _bakim);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await step();
+    expect(pane, findsNothing);
+    expect(openUnit(), _bt);
   });
 
   testWidgets('a row of the unit already open opens without a switch', (

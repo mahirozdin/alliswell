@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -57,9 +59,17 @@ class AwListDetailScope extends StatefulWidget {
     required this.child,
     this.resetToken,
     this.onShow,
+    this.onClose,
   });
 
   final String kind;
+
+  /// Called once when the pane stops showing an item: closed (Escape, its
+  /// close button, a reset) or the list left with the pane open. When the
+  /// scope is going away the call comes after the frame's teardown, so the
+  /// host may change app state in it (R-15: the request queue gives back a
+  /// unit it opened only to show the request).
+  final VoidCallback? onClose;
 
   /// Called with each item the pane comes to show — opened from a row or
   /// reached with ↑/↓. The address never changes for a pane visit, so a
@@ -129,15 +139,26 @@ class _AwListDetailScopeState extends State<AwListDetailScope>
   void didUpdateWidget(covariant AwListDetailScope oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.resetToken != oldWidget.resetToken) {
+      final wasOpen = _selected != null;
       _selected = null;
       _order = null;
+      // Mid-build: told after it.
+      if (wasOpen) _closedLater(widget.onClose);
     }
   }
 
   @override
   void dispose() {
+    if (_selected != null) _closedLater(widget.onClose);
     _keys.dispose();
     super.dispose();
+  }
+
+  /// [onClose] outside the build/teardown that closed the pane: a host that
+  /// changes app state there would otherwise mark widgets dirty while the
+  /// tree is locked.
+  static void _closedLater(VoidCallback? onClose) {
+    if (onClose != null) scheduleMicrotask(onClose);
   }
 
   @override
@@ -160,6 +181,7 @@ class _AwListDetailScopeState extends State<AwListDetailScope>
       _selected = null;
       _order = null;
     });
+    widget.onClose?.call();
   }
 
   @override

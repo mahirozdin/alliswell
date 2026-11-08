@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -100,8 +102,14 @@ class EeTicketQueueScreen extends ConsumerWidget {
     // OPH-410 (DESIGN §51 D2): from the desktop width a request opens in a
     // pane beside the list — the queue and the across-units list alike —
     // and the list keeps its place. Below it the detail is pushed as before.
+    // R-15: a request of another unit opened in the pane lent that unit
+    // (its copy is what the detail reads); closing the pane, or leaving the
+    // queue with it open, gives the unit back. Held as the notifier: the
+    // queue may be gone when the pane closes with it.
+    final loan = ref.read(eeLentUnitProvider.notifier);
     return AwListDetailScope(
       kind: kEeTicketPane,
+      onClose: () => unawaited(loan.giveBack()),
       child: AwListDetailPane(
         kind: kEeTicketPane,
         detailBuilder: (context, id, close) =>
@@ -1249,6 +1257,8 @@ class _UnitScopeBar extends ConsumerWidget {
                 selected: !all && here.unit?.workspaceId == unit.workspaceId,
                 onSelected: (_) {
                   chosen.set(false);
+                  // R-15: chosen on purpose — nothing is lent any more.
+                  ref.read(eeLentUnitProvider.notifier).forget();
                   ref
                       .read(selectedWorkspaceIdProvider.notifier)
                       .select(unit.workspaceId);

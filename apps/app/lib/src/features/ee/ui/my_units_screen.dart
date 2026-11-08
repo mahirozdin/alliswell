@@ -18,7 +18,7 @@ import 'figure_scope.dart';
 import 'sla_chip.dart';
 import '../../../widgets/list_detail.dart';
 import '../../../widgets/route_leading.dart';
-import 'ticket_detail_screen.dart' show awOpenTicket;
+import 'ticket_detail_screen.dart' show awOpenTicket, kEeTicketPane;
 
 /// EE-267 (AW-E19) — one tap from a request of another unit to the request.
 ///
@@ -32,27 +32,32 @@ Future<void> openTicketAcrossUnits(
   WidgetRef ref,
   EeUnitTicket ticket,
 ) async {
+  // R-15: the unit is LENT for the reading, and the notifier is held rather
+  // than `ref` — the row that opened the request may be gone by the time it
+  // closes.
+  final loan = ref.read(eeLentUnitProvider.notifier);
   // E35 polish P-08: on a space that is not a unit, "all units" is the
   // queue's default without being chosen — selecting the request's unit
   // below would then turn the list it was opened from into that unit's
   // queue. Opened from the cross-unit list, the cross-unit list stays.
-  if (ref.read(eeQueueShowsAllUnitsProvider)) {
-    ref.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
-  }
-  await _selectTicketUnit(ref, ticket);
+  await loan.lend(
+    ticket.workspaceId,
+    keepAllUnits: ref.read(eeQueueShowsAllUnitsProvider),
+  );
   if (!context.mounted) return;
-  awOpenTicket(context, ticket.id);
+  // In the desktop pane the request closes with the pane (the queue gives
+  // the unit back then); a pushed detail closes when this returns.
+  final inPane =
+      AwListDetailScope.maybeOf(context, kEeTicketPane, listen: false) != null;
+  await awOpenTicket(context, ticket.id);
+  if (!inPane) await loan.giveBack();
 }
 
 /// Opens [ticket]'s unit when another one is open: its detail reads the
 /// unit's replica, which the sync engine fills for the selected workspace.
-Future<void> _selectTicketUnit(WidgetRef ref, EeUnitTicket ticket) async {
-  final here = ref.read(currentWorkspaceProvider).value?.id;
-  if (ticket.workspaceId == here) return;
-  await ref
-      .read(selectedWorkspaceIdProvider.notifier)
-      .select(ticket.workspaceId);
-}
+/// Lent, like a tap's (R-15): the pane gives it back when it closes.
+Future<void> _selectTicketUnit(WidgetRef ref, EeUnitTicket ticket) =>
+    ref.read(eeLentUnitProvider.notifier).lend(ticket.workspaceId);
 
 /// "Birimlerim" — open requests in every unit this person works in, latest
 /// promise first, live from the server.

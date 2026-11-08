@@ -131,3 +131,66 @@ final eeQueueShowsAllUnitsProvider = Provider<bool>((ref) {
     EeUnitHereState.unit => ref.watch(eeQueueAllUnitsChosenProvider),
   };
 });
+
+/// R-15 — a unit opened only to read one of its requests, and what was open
+/// before it.
+///
+/// The device holds one unit's copy at a time, so a request of another unit
+/// is read by opening that unit (EE-267). That selection is the same one
+/// Home and every other screen follow, and it used to stay: reading an İSG
+/// request from "All units" silently made Home İSG. Now the unit is lent for
+/// the reading — [from] is what was open before the first lend, [to] the
+/// unit lent — and [EeUnitLoan.giveBack] restores it when the request
+/// closes.
+typedef EeLentUnit = ({String from, String to, bool allUnitsChosen});
+
+final eeLentUnitProvider = NotifierProvider<EeUnitLoan, EeLentUnit?>(
+  EeUnitLoan.new,
+);
+
+class EeUnitLoan extends Notifier<EeLentUnit?> {
+  @override
+  EeLentUnit? build() {
+    // A new person starts with nothing lent.
+    ref.watch(currentUserIdProvider);
+    return null;
+  }
+
+  /// Opens [workspaceId] to read a request there. [keepAllUnits]: the
+  /// request was opened from the across-units list, which stays on screen
+  /// (E35 polish P-08) instead of turning into the lent unit's queue.
+  Future<void> lend(String workspaceId, {bool keepAllUnits = false}) async {
+    final here = ref.read(currentWorkspaceProvider).value?.id;
+    final chosen = ref.read(eeQueueAllUnitsChosenProvider.notifier);
+    if (here == null || here == workspaceId) {
+      if (keepAllUnits) chosen.set(true);
+      return;
+    }
+    final held = state;
+    // A second lend (↓ to the next request, in yet another unit) keeps what
+    // was open before the FIRST one: that is what comes back.
+    state = (
+      from: held?.from ?? here,
+      to: workspaceId,
+      allUnitsChosen:
+          held?.allUnitsChosen ?? ref.read(eeQueueAllUnitsChosenProvider),
+    );
+    if (keepAllUnits) chosen.set(true);
+    await ref.read(selectedWorkspaceIdProvider.notifier).select(workspaceId);
+  }
+
+  /// The request is closed: the unit open before comes back — unless the
+  /// person moved somewhere else meanwhile, on purpose, which stands.
+  Future<void> giveBack() async {
+    final held = state;
+    if (held == null) return;
+    state = null;
+    final here = ref.read(currentWorkspaceProvider).value?.id;
+    if (here != held.to) return;
+    ref.read(eeQueueAllUnitsChosenProvider.notifier).set(held.allUnitsChosen);
+    await ref.read(selectedWorkspaceIdProvider.notifier).select(held.from);
+  }
+
+  /// The person chose a unit themselves: nothing is lent any more.
+  void forget() => state = null;
+}

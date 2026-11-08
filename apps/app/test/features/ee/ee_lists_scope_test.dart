@@ -454,6 +454,14 @@ void main() {
       expect(container.read(selectedWorkspaceIdProvider), _bakim.id);
       // The list behind the pane is still every unit's.
       expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+
+      // R-15: the units were lent for the reading — closing the pane brings
+      // back the space that was open before the first request.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await settle();
+      expect(pane, findsNothing);
+      expect(container.read(currentWorkspaceProvider).value?.id, _general.id);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
     });
 
     testWidgets('inside a unit the unit\'s queue stays the default', (
