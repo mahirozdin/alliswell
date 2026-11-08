@@ -94,6 +94,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Changed
 
+- **The web app opens on a branded screen and "Start free" opens sign-up**: /app shows the app's
+  icon and a progress bar while it loads instead of a white page, and the website's "Start free"
+  button lands on the sign-up form. The enterprise page reads complete without scripts, no longer
+  leaves blank space while you scroll, and is less than half as long.
 - **The alliswell.space homepage leads with the alarm**: "Reminders that ring through Silent
   mode", with your own server and Claude or ChatGPT in the line below; a phone gets its store
   button, a computer the browser; a line under it counts the releases on GitHub; the bar links

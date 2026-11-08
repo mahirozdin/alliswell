@@ -1,22 +1,17 @@
 <script setup>
 import { computed } from 'vue';
 
-import AnnotatedShots from './AnnotatedShots.vue';
-import ChannelList from './ChannelList.vue';
 import ContactForm from './ContactForm.vue';
 import DeckDownload from './DeckDownload.vue';
 import DeployOptions from './DeployOptions.vue';
 import EeHero from './EeHero.vue';
-import GroupHeading from './GroupHeading.vue';
 import JourneyFlow from './JourneyFlow.vue';
 import ProblemGrid from './ProblemGrid.vue';
 import ShotTabs from './ShotTabs.vue';
-import StatusFlow from './StatusFlow.vue';
 import { SECTIONS, TWO_COLUMN_COMPONENTS } from './page.js';
 import { company } from '../company.js';
 import ComparisonTable from '../components/ComparisonTable.vue';
 import FaqSection from '../components/FaqSection.vue';
-import FeatureSection from '../components/FeatureSection.vue';
 import PillarGrid from '../components/PillarGrid.vue';
 import TheFooter from '../components/TheFooter.vue';
 import TheHeader from '../components/TheHeader.vue';
@@ -47,12 +42,7 @@ const COMPONENTS = {
   EeHero,
   ProblemGrid,
   JourneyFlow,
-  AnnotatedShots,
-  StatusFlow,
-  ChannelList,
   PillarGrid,
-  GroupHeading,
-  FeatureSection,
   ShotTabs,
   DeployOptions,
   ComparisonTable,
@@ -61,16 +51,9 @@ const COMPONENTS = {
   FaqSection,
 };
 
-/**
- * Does this section really put copy beside a picture? AnnotatedShots does in
- * its `side` layout, and in `phones` when a list sits beside the row; its grid
- * and its lone phone row have no side to swap (page.js, TWO_COLUMN_COMPONENTS).
- */
+/** Does this section put copy beside a picture (page.js, TWO_COLUMN_COMPONENTS)? */
 function isTwoColumn(section) {
-  if (!TWO_COLUMN_COMPONENTS.includes(section.component)) return false;
-  if (section.component !== 'AnnotatedShots') return true;
-  const data = props.content[section.key];
-  return data.layout === 'side' || (data.layout === 'phones' && (data.items?.length ?? 0) > 0);
+  return TWO_COLUMN_COMPONENTS.includes(section.component);
 }
 
 /** Only the sections this language actually has copy for. */
@@ -114,39 +97,6 @@ function propsFor(section) {
         steps: data.steps,
         footnote: data.footnote,
       };
-    case 'AnnotatedShots':
-      return {
-        eyebrow: data.eyebrow,
-        title: data.title,
-        lede: data.lede,
-        layout: data.layout,
-        cols: data.cols,
-        shots: data.shots,
-        items: data.items,
-        points: data.points,
-        note: data.note,
-        flip,
-      };
-    case 'StatusFlow':
-      return {
-        eyebrow: data.eyebrow,
-        title: data.title,
-        lede: data.lede,
-        teamLabel: data.teamLabel,
-        requesterLabel: data.requesterLabel,
-        states: data.states,
-        waiting: data.waiting,
-        after: data.after,
-      };
-    case 'ChannelList':
-      return {
-        eyebrow: data.eyebrow,
-        title: data.title,
-        lede: data.lede,
-        channels: data.channels,
-        shot: data.shot,
-        note: data.note,
-      };
     case 'PillarGrid':
       return {
         items: data.items,
@@ -155,14 +105,6 @@ function propsFor(section) {
         lede: data.lede,
         shot: data.shot,
       };
-    case 'GroupHeading':
-      return { eyebrow: data.eyebrow, title: data.title, lede: data.lede };
-    case 'FeatureSection':
-      // `shell`: the homepage wraps its feature run in one `.aw-shell`; this
-      // page renders each row straight into <main>, and without its own shell
-      // the copy sat on the viewport's left edge and the picture on its right
-      // (EE-164, the "text glued to the left" report).
-      return { feature: data, flip, shell: true };
     case 'ShotTabs':
       return { eyebrow: data.eyebrow, title: data.title, lede: data.lede, tabs: data.tabs, flip };
     case 'DeployOptions':

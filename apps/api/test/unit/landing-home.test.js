@@ -59,7 +59,7 @@ describe('the primary button follows the device (K6)', () => {
     for (const c of [en, tr]) {
       expect(primaryFor(c.hero.primary, 'ios').href).toMatch(/^https:\/\/apps\.apple\.com\//);
       expect(primaryFor(c.hero.primary, 'android').href).toMatch(/^https:\/\/play\.google\.com\//);
-      expect(primaryFor(c.hero.primary, 'desktop').href).toBe('/app');
+      expect(primaryFor(c.hero.primary, 'desktop').href).toBe('/app/?signup=1');
       expect(primaryFor(c.hero.primary, 'something else')).toEqual(c.hero.primary.desktop);
     }
     expect(en.hero.primary.desktop.label).toBe('Start free in your browser');

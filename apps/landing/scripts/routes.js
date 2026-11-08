@@ -28,16 +28,21 @@ import { STATIC_PAGES } from './static-pages.js';
  */
 export const VUE_PAGES = Object.freeze([
   // `ssr`: rendered to HTML at build time by scripts/prerender.mjs and in dev
-  // by scripts/home-ssr.js, then hydrated (ADR-0061). The enterprise pages
-  // still mount into an empty container (ADR-0036).
-  { route: '', entry: 'index.html', lang: 'en', ssr: true },
-  { route: 'tr', entry: 'tr/index.html', lang: 'tr', ssr: true },
-  { route: 'enterprise', entry: 'enterprise/index.html', lang: 'en' },
-  { route: 'enterprise/tr', entry: 'enterprise/tr/index.html', lang: 'tr' },
+  // by scripts/home-ssr.js, then hydrated (ADR-0061). `page` names the render
+  // function in src/entry-server.js. The enterprise pages joined in OPH-413
+  // (landing-audit K8): before, they mounted into an empty container and a
+  // crawler, a link preview or a reader without scripts saw one heading.
+  { route: '', entry: 'index.html', lang: 'en', page: 'home', ssr: true },
+  { route: 'tr', entry: 'tr/index.html', lang: 'tr', page: 'home', ssr: true },
+  { route: 'enterprise', entry: 'enterprise/index.html', lang: 'en', page: 'enterprise', ssr: true },
+  { route: 'enterprise/tr', entry: 'enterprise/tr/index.html', lang: 'tr', page: 'enterprise', ssr: true },
 ]);
 
 /** The pages whose HTML is rendered on the server (ADR-0061). */
 export const SSR_PAGES = Object.freeze(VUE_PAGES.filter((p) => p.ssr));
+
+/** The Dusk homepage in both languages — what `check:home` holds to its rules. */
+export const HOME_PAGES = Object.freeze(VUE_PAGES.filter((p) => p.page === 'home'));
 
 /** Every indexable HTML page in the docroot, however it was produced. */
 export const SITE_ROUTES = Object.freeze([

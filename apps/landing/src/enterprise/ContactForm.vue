@@ -217,7 +217,7 @@ async function submit() {
 </script>
 
 <template>
-  <section v-reveal class="aw-section contact">
+  <section class="aw-section contact">
     <div class="aw-shell contact__inner">
       <header class="contact__head">
         <p v-if="contact.eyebrow" class="aw-eyebrow"><LatinWords :text="contact.eyebrow" /></p>

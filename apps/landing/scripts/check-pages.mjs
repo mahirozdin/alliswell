@@ -24,7 +24,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { SITE_ROUTES, canonicalUrl, distPath } from './routes.js';
+import { SITE_ROUTES, VUE_PAGES, canonicalUrl, distPath } from './routes.js';
+import { SECTIONS } from '../src/enterprise/page.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(here, '../dist');
@@ -63,6 +64,32 @@ for (const { route, kind } of SITE_ROUTES) {
   if (!flat.includes('<meta name="viewport"')) fail(route, 'has no viewport');
   if (!/<h1[\s>]/.test(flat)) fail(route, 'has no h1');
   if (flat.includes('noindex')) fail(route, 'is marked noindex');
+}
+
+// OPH-413 (landing-audit K8, E-15): the enterprise pages are rendered on the
+// server, every section with its words, and nothing on them starts invisible.
+// Before, the HTML held one heading and an address; the rest arrived by script,
+// and sections waited at opacity 0 for an observer that a full-page capture,
+// print or reader mode never triggered.
+{
+  const unescape = (t) => t.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  for (const page of VUE_PAGES.filter((p) => p.page === 'enterprise')) {
+    const file = path.join(DIST, distPath(page.route));
+    if (!existsSync(file)) continue;
+    const html = readFileSync(file, 'utf8');
+    const text = unescape(html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
+    const content = (await import(path.resolve(here, `../src/enterprise/content.${page.lang}.js`))).default;
+    let from = 0;
+    for (const s of SECTIONS.filter((x) => content[x.key])) {
+      const heading = content[s.key].title ?? content[s.key].heading;
+      if (!heading) continue;
+      const at = text.indexOf(heading, from);
+      if (at < 0) fail(page.route, `does not carry the "${s.key}" section ("${heading}") in its HTML, in order`);
+      else from = at + heading.length;
+    }
+    if (html.includes('<!--ssr-outlet-->')) fail(page.route, 'still carries the SSR outlet marker; prerender did not run');
+    if (/aw-reveal/.test(html)) fail(page.route, 'has a section waiting for a scroll reveal');
+  }
 }
 
 // OPH-412 (landing-audit K10): an address that is no page answers a real 404.

@@ -52,6 +52,7 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://api.github.com" />
+    <!--ssr-head-->
 
     <!-- No `softwareVersion` and no `offers`; the English twin says why. -->
     <script type="application/ld+json">
@@ -98,19 +99,8 @@
     </script>
   </head>
   <body>
-    <!-- A real JavaScript-off rendering; the English twin says why. -->
-    <div id="app">
-      <h1>Fabrikanızdaki bütün iş taleplerini tek yerden yönetin</h1>
-      <p>
-        Arıza, bakım, satın alma, kalite ve müşteri talepleri; kimin aldığı, ne kadar sürdüğü
-        ve nasıl bittiği tek bir sistemde.
-      </p>
-      <p>
-        Bize yazın: <a href="mailto:mahirozdin@bubiapps.com">mahirozdin@bubiapps.com</a> ·
-        <a href="/enterprise" hreflang="en">English</a> ·
-        <a href="/">alliswell.space</a>
-      </p>
-    </div>
+    <!-- Rendered at build time and hydrated; the English twin says why (OPH-413). -->
+    <div id="app"><!--ssr-outlet--></div>
     <script type="module" src="/src/enterprise/main.tr.js"></script>
   </body>
 </html>

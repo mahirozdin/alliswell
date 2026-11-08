@@ -28,7 +28,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { SSR_PAGES, distPath } from './routes.js';
+import { HOME_PAGES, distPath } from './routes.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
@@ -49,7 +49,7 @@ const cssOf = (html) =>
     .map((href) => readFileSync(path.join(dist, href), 'utf8'))
     .join('\n');
 
-for (const page of SSR_PAGES) {
+for (const page of HOME_PAGES) {
   const route = `/${page.route}`;
   const html = readFileSync(path.join(dist, distPath(page.route)), 'utf8');
   const content = (await import(path.join(root, page.lang === 'tr' ? 'src/content.tr.js' : 'src/content.js'))).default;
@@ -168,4 +168,4 @@ if (problems.length) {
   console.error(`\n✗ home: ${problems.length} problem(s).`);
   process.exit(1);
 }
-console.log(`✓ home: ${SSR_PAGES.length} pages rendered on the server, media whole, stylesheets apart, the Floor in the CSS`);
+console.log(`✓ home: ${HOME_PAGES.length} pages rendered on the server, media whole, stylesheets apart, the Floor in the CSS`);

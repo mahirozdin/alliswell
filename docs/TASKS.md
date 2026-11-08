@@ -36,15 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-413 — /app açılış ekranı, kayıt modu, kurumsal sayfa SSR
-
-K3, K8, K9, E-15.
-
-- [ ] `/app` HTML açılış ekranı (Flutter yüklenene kadar marka + ilerleme); `?signup=1` kayıt modu.
-- [ ] Kurumsal sayfa sunucuda render; kaydırınca boş kalan bölüm hatası düzelir; içerik kısalır (sorun →
-      çözüm → kanıt → pilot → demo talebi); İngilizce sayfada Türkçe örnek veri kalmaz.
-- **Kabul:** landing kapıları yeşil; SSR çıktısında bölüm metinleri var (test).
-
 ### OPH-414 — Demo tohumu kapsamı ve görsellerin yeniden üretimi
 
 `docs/SCREENSHOTS.md`.

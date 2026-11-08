@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-412 landing ilk ekranı, /terms, gerçek 404, social preview; Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-413 /app açılış ekranı + `?signup=1`, kurumsal sayfa SSR ve kısaltma (ADR-0065); Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-413** — /app açılış ekranı, kayıt modu, kurumsal sayfa SSR |
-| Last completed           | OPH-412 — Landing ilk ekranı (K2, K5, K6, K10, K15, U-17, U-80, U-81): H1 alarm, alt başlık kendi sunucun + Claude/ChatGPT; cihaza göre birincil düğme (iOS App Store, Android Play, masaüstü tarayıcı); kanıt satırı derlemede GitHub API'den (yoksa sayısız sabit metin); nav'da GitHub; SSS "Lisans ne?" (A-72); karşılaştırma Todoist/TickTick/Vikunja; footer marka + "Ticaret unvanı"; `/terms`, `/terms/tr` (+ `/tr/terms` 301); bilinmeyen yol gerçek 404 (`404.html`); OG kartları `home-alarm*`, `.github/social-preview.png` 1280×640 (M-02). |
+| ➡️ **Next task**         | **OPH-414** — Demo tohumu kapsamı ve görsellerin yeniden üretimi |
+| Last completed           | OPH-413 — /app ve kurumsal sayfa (K3, K8, K9, E-15): `/app` motor yüklenene kadar HTML açılış ekranı (simge, "Opening AllisWell…", ilerleme çubuğu, Glass zemin, koyu varyant, ilk karede kalkar); "Tarayıcıda ücretsiz başlayın" `/app/?signup=1` → oturumsuz kişi bir kez kayıt formuna; kurumsal sayfa sunucuda render + hydrate (ADR-0065), kaydırınca beliren bölüm mekanizması kalktı, 27 bölüm → 11 (sorun → çözüm → kanıt → pilot → demo talebi), masaüstü 26.474 → 10.715 px, telefon 39.043 → 15.074 px; İngilizce sayfa İngilizce örnek verili `screenshots/ee` çekimlerini kullanır. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

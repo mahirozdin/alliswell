@@ -13,6 +13,7 @@
 
 import {
   APP_STORE_URL,
+  APP_SIGNUP_URL,
   APP_URL,
   DOCS_URL,
   LINUX_DOWNLOAD_URL,
@@ -25,7 +26,7 @@ import {
 
 /** OPH-412: cihaza göre tek birincil eylem; çubuk da kahramandakini taşır. */
 const primary = {
-  desktop: { label: 'Tarayıcıda ücretsiz başlayın', href: APP_URL },
+  desktop: { label: 'Tarayıcıda ücretsiz başlayın', href: APP_SIGNUP_URL },
   ios: { label: 'App Store’dan indirin', href: APP_STORE_URL },
   android: { label: 'Google Play’den indirin', href: PLAY_URL },
 };

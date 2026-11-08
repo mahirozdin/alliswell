@@ -71,8 +71,123 @@
     lib/src/core/runtime_config_web.dart.
   -->
     <script src="alliswell-config.js"></script>
+
+    <!--
+    OPH-413 (landing-audit K3) — the opening screen. Until the engine has
+    downloaded (main.dart.js and CanvasKit are several megabytes) this page
+    used to be white for seconds; a person who pressed "Start free" saw
+    nothing and left. This is plain HTML and CSS, painted with the first
+    bytes: the app's icon, its name, a progress bar, on the Glass wash
+    (DESIGN tokens auroraTop/auroraBottom) in the light or dark variant the
+    system asks for. The engine dispatches `flutter-first-frame` on window
+    when it has painted, and the screen fades out and is removed then.
+    No web font and no request anywhere else (ADR-0063 #7). Guarded by
+    test/web_shell_test.dart and apps/api/test/unit/landing-enterprise.test.js.
+  -->
+    <style>
+      #aw-splash {
+        position: fixed;
+        inset: 0;
+        z-index: 2147483647;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        background: linear-gradient(180deg, #e9f2ff, #f1ebff);
+        color: #0f1b2e;
+        font: 600 17px/1.3 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        transition: opacity 0.25s ease-out;
+      }
+      #aw-splash.aw-splash--gone {
+        opacity: 0;
+        pointer-events: none;
+      }
+      #aw-splash img {
+        width: 72px;
+        height: 72px;
+        border-radius: 18px;
+        box-shadow: 0 8px 24px rgba(10, 92, 255, 0.18);
+      }
+      #aw-splash .aw-splash__bar {
+        position: relative;
+        width: 160px;
+        height: 4px;
+        border-radius: 2px;
+        overflow: hidden;
+        background: rgba(10, 92, 255, 0.16);
+      }
+      #aw-splash .aw-splash__bar::after {
+        content: "";
+        position: absolute;
+        inset: 0 auto 0 0;
+        width: 40%;
+        border-radius: 2px;
+        background: #0a5cff;
+        animation: aw-splash-slide 1.1s ease-in-out infinite;
+      }
+      @keyframes aw-splash-slide {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+      @media (prefers-color-scheme: dark) {
+        #aw-splash {
+          background: linear-gradient(180deg, #0b1233, #070b1f);
+          color: #eaf0fd;
+        }
+        #aw-splash .aw-splash__bar {
+          background: rgba(62, 155, 255, 0.22);
+        }
+        #aw-splash .aw-splash__bar::after {
+          background: #3e9bff;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #aw-splash,
+        #aw-splash .aw-splash__bar::after {
+          animation: none;
+          transition: none;
+        }
+        #aw-splash .aw-splash__bar::after {
+          width: 100%;
+          opacity: 0.5;
+        }
+      }
+    </style>
   </head>
   <body>
+    <div id="aw-splash" role="status" aria-live="polite">
+      <img src="icons/Icon-192.png" alt="" width="72" height="72" />
+      <span id="aw-splash-text">Opening AllisWell…</span>
+      <div class="aw-splash__bar" role="progressbar" aria-label="Loading"></div>
+    </div>
+    <script>
+      (function () {
+        var splash = document.getElementById('aw-splash');
+        try {
+          if (/^tr\b/i.test(navigator.language || '')) {
+            document.getElementById('aw-splash-text').textContent = 'AllisWell açılıyor…';
+            splash.querySelector('[role="progressbar"]').setAttribute('aria-label', 'Yükleniyor');
+          }
+        } catch (e) {
+          /* no language: the English line stays */
+        }
+        window.addEventListener(
+          'flutter-first-frame',
+          function () {
+            splash.classList.add('aw-splash--gone');
+            setTimeout(function () {
+              if (splash.parentNode) splash.parentNode.removeChild(splash);
+            }, 300);
+          },
+          { once: true },
+        );
+      })();
+    </script>
     <!--
     You can customize the "flutter_bootstrap.js" script.
     This is useful to provide a custom configuration to the Flutter loader

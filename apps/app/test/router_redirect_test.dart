@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/router.dart';
@@ -17,6 +18,70 @@ void main() {
     expect(redirect(restoring: true, at: '/home'), '/splash');
     expect(redirect(restoring: true, at: '/login'), '/splash');
     expect(redirect(restoring: true, at: '/splash'), isNull);
+  });
+
+  test('OPH-413 (K3): "Start free" lands on the sign-up form, not sign-in', () {
+    String? signup(
+      String at, {
+      bool loggedIn = false,
+      bool restoring = false,
+    }) => computeAuthRedirect(
+      isRestoring: restoring,
+      isLoggedIn: loggedIn,
+      location: at,
+      preferSignup: true,
+    );
+    // The cold start: the restore parks on the splash, then signed out.
+    expect(signup('/splash', restoring: true), isNull);
+    expect(signup('/home', restoring: true), '/splash');
+    expect(signup('/splash'), '/register');
+    expect(signup('/'), '/register');
+    expect(signup('/home'), '/register');
+    // A form the person chose stays where it is: "Sign in instead" works.
+    expect(signup('/login'), isNull);
+    expect(signup('/register'), isNull);
+    // Signed in, the hint means nothing.
+    expect(signup('/register', loggedIn: true), '/home');
+    expect(signup('/home', loggedIn: true), isNull);
+  });
+
+  test(
+    'OPH-413: only signup=1 on the page address asks for the sign-up form',
+    () {
+      expect(
+        awWantsSignup(Uri.parse('https://alliswell.space/app/?signup=1')),
+        isTrue,
+      );
+      expect(
+        awWantsSignup(
+          Uri.parse('https://alliswell.space/app/?signup=1#/splash'),
+        ),
+        isTrue,
+      );
+      expect(awWantsSignup(Uri.parse('https://alliswell.space/app/')), isFalse);
+      expect(
+        awWantsSignup(Uri.parse('https://alliswell.space/app/?signup=0')),
+        isFalse,
+      );
+      expect(
+        awWantsSignup(Uri.parse('https://alliswell.space/app/#/login')),
+        isFalse,
+      );
+    },
+  );
+
+  test('OPH-413: the sign-up hint is spent once it has been used', () {
+    final container = ProviderContainer(
+      overrides: [signupIntentProvider.overrideWith(() => SignupIntent(true))],
+    );
+    addTearDown(container.dispose);
+    expect(container.read(signupIntentProvider), isTrue);
+    container.read(signupIntentProvider.notifier).spend();
+    expect(container.read(signupIntentProvider), isFalse);
+    // Off the web (and in this test VM) nothing asks for it.
+    final plain = ProviderContainer();
+    addTearDown(plain.dispose);
+    expect(plain.read(signupIntentProvider), isFalse);
   });
 
   test('signed out: only /login and /register are reachable', () {

@@ -54,9 +54,8 @@ const accentOf = (p) => (ACCENTS.includes(p.accent) ? p.accent : '');
         />
         <div class="pillars__grid">
           <article
-            v-for="(p, i) in items"
+            v-for="p in items"
             :key="p.key"
-            v-reveal="{ delay: i * 70 }"
             class="aw-card pillars__card"
             :class="accentOf(p) && ['pillars__card--accent', `is-${accentOf(p)}`]"
           >

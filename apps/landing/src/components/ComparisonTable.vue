@@ -69,7 +69,7 @@ function cell(value) {
 </script>
 
 <template>
-  <section :id="anchor" v-reveal class="aw-section">
+  <section :id="anchor" class="aw-section">
     <div class="aw-shell">
       <header class="cmp__head">
         <p class="aw-eyebrow"><LatinWords :text="table.eyebrow" /></p>

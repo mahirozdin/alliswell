@@ -45,7 +45,8 @@ function pageFor(url) {
 }
 
 /**
- * Dev server: answer `/` and `/tr` with the rendered page.
+ * Dev server: answer every SSR page (`/`, `/tr`, `/enterprise`,
+ * `/enterprise/tr`) with the rendered page.
  *
  * Registered after `mpaRoutesPlugin`, which has already rewritten `/tr` to
  * `/tr/index.html`. The braces in `configureServer` are load-bearing for the
@@ -67,8 +68,8 @@ export function homeSsrPlugin() {
         try {
           const shell = readFileSync(path.join(root, page.entry), 'utf8');
           const html = await server.transformIndexHtml(req.originalUrl ?? req.url, shell);
-          const { render } = await server.ssrLoadModule('/src/home/entry-server.js');
-          const out = inject(html, await render(page.lang));
+          const { render } = await server.ssrLoadModule('/src/entry-server.js');
+          const out = inject(html, await render(page.page, page.lang));
           res.statusCode = 200;
           res.setHeader('Content-Type', 'text/html; charset=utf-8');
           res.end(out);

@@ -92,7 +92,7 @@ export default defineConfig(async ({ isSsrBuild }) => ({
     mpaRoutesPlugin(),
     // ADR-0061: after mpaRoutesPlugin, so `/tr` is already `/tr/index.html`.
     homeSsrPlugin(),
-    // The SSR pass (`vite build --ssr src/home/entry-server.js`) builds one
+    // The SSR pass (`vite build --ssr src/entry-server.js`) builds one
     // render function and nothing else: these three would otherwise emit the
     // markdown pages, the sitemap and .htaccess into its output a second time.
     ...(isSsrBuild ? [] : [staticPagesPlugin(), sitemapPlugin(), copyDotfilesFromPublic()]),

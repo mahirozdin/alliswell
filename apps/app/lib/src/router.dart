@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -356,6 +357,31 @@ bool isJoinLocation(String location) => location.startsWith('/join/');
 /// who turns out to be signed in goes Home.
 bool isResetLocation(String location) => location == kResetPasswordPath;
 
+/// OPH-413 (landing-audit K3): the website's "Start free" button opens
+/// `/app/?signup=1`. The query sits before the hash, on the PAGE address, so
+/// go_router never sees it; [Uri.base] does.
+bool awWantsSignup(Uri pageAddress) =>
+    pageAddress.queryParameters['signup'] == '1';
+
+/// Whether a signed-out person should land on the sign-up form rather than
+/// sign-in. Read once from the page address on the web and spent the first
+/// time it sends somebody to /register: a later sign-out in the same tab goes
+/// to sign-in as usual, and "Sign in instead" on the form keeps working.
+class SignupIntent extends Notifier<bool> {
+  SignupIntent([this._initial]);
+
+  final bool? _initial;
+
+  @override
+  bool build() => _initial ?? (kIsWeb && awWantsSignup(Uri.base));
+
+  void spend() => state = false;
+}
+
+final signupIntentProvider = NotifierProvider<SignupIntent, bool>(
+  SignupIntent.new,
+);
+
 /// Pure redirect policy (unit-tested in test/router_redirect_test.dart):
 /// admin locations answer to the operator session ALONE; then restoring →
 /// splash; signed out → login/register only; signed in → keep auth/splash
@@ -365,6 +391,7 @@ String? computeAuthRedirect({
   required bool isLoggedIn,
   required String location,
   bool isInstanceAdmin = false,
+  bool preferSignup = false,
 }) {
   // Answered FIRST and entirely on its own terms: the person's session — even
   // mid-restore — decides nothing here, in either direction.
@@ -381,7 +408,8 @@ String? computeAuthRedirect({
   }
   if (isRestoring) return location == '/splash' ? null : '/splash';
   if (!isLoggedIn) {
-    return _authLocations.contains(location) ? null : '/login';
+    if (_authLocations.contains(location)) return null;
+    return preferSignup ? '/register' : '/login';
   }
   if (location == '/splash' || _authLocations.contains(location)) {
     return AppSection.home.path;
@@ -511,12 +539,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         return AppSection.home.path;
       }
+      final preferSignup = ref.read(signupIntentProvider);
       final decision = computeAuthRedirect(
         isRestoring: auth.isLoading,
         isLoggedIn: auth.value != null,
         location: state.matchedLocation,
         isInstanceAdmin: ref.read(isInstanceAdminProvider),
+        preferSignup: preferSignup,
       );
+      // OPH-413: spent once it has sent somebody to the form (or once a
+      // session exists, when it means nothing any more).
+      if (preferSignup &&
+          !auth.isLoading &&
+          (decision == '/register' || auth.value != null)) {
+        _outsideBuild(ref.read(signupIntentProvider.notifier).spend);
+      }
       // The operator console never participates in the deep-link replay or
       // the pending-destination machinery below: those exist to carry a
       // PERSON back to what they tapped, and an operator's session is not

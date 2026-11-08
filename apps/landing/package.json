@@ -8,7 +8,7 @@
   "scripts": {
     "sync:shots": "node scripts/sync-screenshots.mjs",
     "dev": "npm run sync:shots && vite",
-    "build": "npm run sync:shots && node scripts/check-media.mjs && vite build && vite build --ssr src/home/entry-server.js --outDir node_modules/.cache/landing-ssr && node scripts/prerender.mjs",
+    "build": "npm run sync:shots && node scripts/check-media.mjs && vite build && vite build --ssr src/entry-server.js --outDir node_modules/.cache/landing-ssr && node scripts/prerender.mjs",
     "preview": "vite preview --port 4173",
     "lint": "eslint ."
   },

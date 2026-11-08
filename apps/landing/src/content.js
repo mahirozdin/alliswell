@@ -15,6 +15,7 @@
 
 import {
   APP_STORE_URL,
+  APP_SIGNUP_URL,
   APP_URL,
   DOCS_URL,
   LINUX_DOWNLOAD_URL,
@@ -30,7 +31,7 @@ import {
  * (src/home/platform.js). The bar carries the same one as the hero.
  */
 const primary = {
-  desktop: { label: 'Start free in your browser', href: APP_URL },
+  desktop: { label: 'Start free in your browser', href: APP_SIGNUP_URL },
   ios: { label: 'Get it on the App Store', href: APP_STORE_URL },
   android: { label: 'Get it on Google Play', href: PLAY_URL },
 };

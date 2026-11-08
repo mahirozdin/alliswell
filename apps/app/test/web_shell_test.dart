@@ -40,4 +40,27 @@ void main() {
           'entire rule',
     );
   });
+
+  test('OPH-413 (K3): index.html paints an opening screen until the first '
+      'frame, then removes it', () {
+    final html = File('web/index.html').readAsStringSync();
+    final body = html.substring(html.indexOf('<body'));
+    final splash = body.indexOf('id="aw-splash"');
+    expect(
+      splash,
+      isNonNegative,
+      reason: 'a white page until the engine loads',
+    );
+    expect(
+      splash,
+      lessThan(body.indexOf('flutter_bootstrap.js')),
+      reason: 'it must paint while the bootstrap script downloads',
+    );
+    expect(body, contains('Opening AllisWell'));
+    expect(html, contains('flutter-first-frame'));
+    expect(html, contains('prefers-color-scheme: dark'));
+    expect(html, contains('prefers-reduced-motion: reduce'));
+    // ADR-0063 #7: no request to another host, so no web font.
+    expect(html.contains('fonts.googleapis.com'), isFalse);
+  });
 }

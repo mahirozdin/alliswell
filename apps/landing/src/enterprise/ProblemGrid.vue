@@ -30,7 +30,7 @@ const unbroken = (t) => t.replace(/(\S)-(\S)/g, '$1\u2011$2');
 </script>
 
 <template>
-  <section v-reveal class="aw-section problem">
+  <section class="aw-section problem">
     <div class="aw-shell">
       <header class="problem__head">
         <p v-if="eyebrow" class="aw-eyebrow"><LatinWords :text="eyebrow" /></p>

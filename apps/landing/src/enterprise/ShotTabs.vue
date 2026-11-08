@@ -68,7 +68,7 @@ function onKey(event, i) {
 </script>
 
 <template>
-  <section v-reveal class="aw-section tabs" :class="{ 'tabs--flip': flip }">
+  <section class="aw-section tabs" :class="{ 'tabs--flip': flip }">
     <div class="aw-shell tabs__grid">
       <div class="tabs__copy">
         <header class="tabs__head">
@@ -114,7 +114,8 @@ function onKey(event, i) {
             :src="tab.shot"
             :src-dark="tab.shotDark || ''"
             :alt="tab.alt"
-            variant="browser"
+            :variant="tab.frame || 'browser'"
+            :ratio="tab.ratio || ''"
             :label="tab.frameLabel || ''"
           />
         </div>
@@ -188,6 +189,15 @@ function onKey(event, i) {
 
 .tabs__stage {
   min-width: 0;
+}
+
+/* OPH-413: the tour shows one screen at a time, and a tall phone-width crop
+   (the SLA board is 900 × 1820) would make the section as long as the run of
+   sections it replaced. The top of a screen is what the caption is about;
+   the rest is cut, never squeezed. */
+.tabs__stage :deep(.frame__media) {
+  max-height: 42rem;
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {

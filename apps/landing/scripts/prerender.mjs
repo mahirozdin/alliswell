@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 /**
- * Write the server-rendered homepage into `dist/` (ADR-0061).
+ * Write the server-rendered pages into `dist/` (ADR-0061): the homepage, and
+ * since OPH-413 the enterprise pages.
  *
  * Runs after `vite build` (the client bundle, which wrote the HTML shells with
  * their hashed assets) and `vite build --ssr` (the render function). For each
@@ -22,15 +23,24 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const ssrDir = path.join(root, 'node_modules/.cache/landing-ssr');
 const { render } = await import(pathToFileURL(path.join(ssrDir, 'entry-server.js')).href);
 
+/** Vue's text escaping, so a heading with an apostrophe is found as rendered. */
+const escapeHtml = (s) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 const problems = [];
 for (const page of SSR_PAGES) {
   const file = path.join(root, 'dist', distPath(page.route));
-  const rendered = await render(page.lang);
+  const rendered = await render(page.page, page.lang);
   const html = inject(readFileSync(file, 'utf8'), rendered);
   const h1s = html.match(/<h1[\s>]/g)?.length ?? 0;
   if (h1s !== 1) problems.push(`/${page.route}: ${h1s} <h1> elements, expected exactly one`);
   if (html.includes(OUTLET) || html.includes(HEAD)) problems.push(`/${page.route}: an SSR marker survived`);
   if (!html.includes(rendered.title)) problems.push(`/${page.route}: the hero title is not in the HTML`);
+  // OPH-413 (K8): a page that renders sections names their headings; every
+  // one must be in the HTML a crawler reads, not only in the script.
+  for (const heading of rendered.sections ?? []) {
+    if (!html.includes(escapeHtml(heading))) problems.push(`/${page.route}: the section "${heading}" is not in the HTML`);
+  }
   writeFileSync(file, html);
   console.log(`prerendered /${page.route} (${Math.round(html.length / 1024)} kB)`);
 }

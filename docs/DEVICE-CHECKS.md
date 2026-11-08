@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## /app açılış ekranı ve kurumsal sayfa (2026-11-08)
+
+- OPH-413 — **deploy sonrası, iPhone Safari + Android Chrome + masaüstü Chrome/Firefox/Safari; açık ve koyu sistem teması; TR ve EN tarayıcı dili**: `alliswell.space/app` açılırken beyaz sayfa yerine uygulama simgesi, "Opening AllisWell…" / "AllisWell açılıyor…" ve kayan ilerleme çubuğu (koyu temada koyu zemin), uygulamanın ilk karesi gelince yumuşakça kayboluyor ve ardında titreme yok; hareket azaltma açıkken çubuk kaymıyor. Ana sayfada masaüstündeki "Tarayıcıda ücretsiz başlayın" → oturum yokken kayıt formu açılıyor; formdan "Giriş yap"a geçince giriş formu kalıyor; aynı sekmede çıkış yapınca giriş formuna dönüyor. `alliswell.space/enterprise` ve `/enterprise/tr`: hızlı kaydırınca ve tam sayfa ekran görüntüsünde boş bölüm yok, yazdırma önizlemesinde bütün bölümler var; sıra sorun → talebin yolu → ekran turu (sekmeler çalışıyor, koyu temada koyu çekim) → "Karar vermeden önce" → pilot → kurulum/paketler/sunum → SSS → iletişim formu; İngilizce sayfada Türkçe kayıt görünmüyor; form gönderimi eskisi gibi.
+
 ## Landing ilk ekranı (2026-11-08)
 
 - OPH-412 — **deploy sonrası alliswell.space, iPhone Safari + Android Chrome + masaüstü; EN ve TR**: başlık "Reminders that ring through Silent mode." / "Sessiz modda bile çalan hatırlatıcılar."; birincil düğme iPhone'da (iPad dahil) "App Store'dan indirin", Android'de "Google Play'den indirin", masaüstünde "Tarayıcıda ücretsiz başlayın" ve sayfa açılırken zıplamıyor; altında "Kaynak kodu GitHub'da · N sürüm, ilki Temmuz 2026 · Kişisel kullanım ücretsiz" (N GitHub Releases ile aynı); çubukta GitHub düğmesi (1280 px altında yalnız simge, telefonda menüde). `alliswell.space/olmayan-bir-sayfa` gerçek 404 ve iki dilli sayfa, `/terms`, `/terms/tr` ve `/tr/terms` açılıyor. Bir sohbete `alliswell.space` bağlantısı yapıştırınca kart yeni başlığı gösteriyor.
