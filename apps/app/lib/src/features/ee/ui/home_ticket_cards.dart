@@ -131,13 +131,14 @@ class _DeskSummary extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final alerts = ref
-        .watch(eeUnitTicketsPageProvider((alertsOnly: true, cursor: '')))
-        .value;
+    // HK-1 (polish 3): re-read on every pull, so Home and the SLA board
+    // say the same open-now pair at the same moment.
+    final alerts = ref.watch(eeHomeOpenAlertsProvider).value;
     final approvals = ref.watch(eeApprovalsDoorProvider)
         ? ref.watch(eeApprovalsBadgeProvider)
         : 0;
     final breached = alerts?.breached ?? 0;
+    final warned = alerts?.warned ?? 0;
     final unassigned = alerts?.unassigned ?? 0;
     final links = <Widget>[
       if (breached > 0)
@@ -146,6 +147,14 @@ class _DeskSummary extends ConsumerWidget {
           label: 'ee.home.breached'.tr(
             args: {'count': awFormatNumber(breached)},
           ),
+          onTap: () => context.push('$kAwMyUnitsPath?alerts=1'),
+        ),
+      // HK-1: "due soon" is its own figure, in the board's words - never
+      // folded into "past SLA", never left for the reader to subtract.
+      if (warned > 0)
+        _Figure(
+          key: const Key('ee-home-warned'),
+          label: 'ee.home.warned'.tr(args: {'count': awFormatNumber(warned)}),
           onTap: () => context.push('$kAwMyUnitsPath?alerts=1'),
         ),
       if (unassigned > 0)

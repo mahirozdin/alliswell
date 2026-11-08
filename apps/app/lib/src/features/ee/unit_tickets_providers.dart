@@ -100,6 +100,30 @@ final eeCurrentUnitPulledAtProvider = StreamProvider.autoDispose<DateTime?>((
       .distinct();
 });
 
+/// HK-1 (polish 3) — Home's "your units" figures: open requests past their
+/// SLA and due soon, across every unit the person works in (the same
+/// `open_now` count the SLA board's "Open right now" and "My units" read).
+///
+/// Home stays mounted for the whole session, so a page read once at the
+/// first visit kept its number while the sweep moved requests from "due
+/// soon" to "past SLA": Home said 22 late while the board, opened later,
+/// said 15 + 7 (and the other way round). This one asks again on every
+/// pull of the unit on screen — exactly as live as the queue and the
+/// other-units strip — and keeps its last answer while it asks.
+final eeHomeOpenAlertsProvider = FutureProvider.autoDispose<EeUnitTicketsPage?>(
+  (ref) async {
+    if (!ref.watch(eeFeatureProvider('teams'))) return null;
+    if (ref.watch(serverReachabilityProvider.select((up) => up == false))) {
+      return null;
+    }
+    // The heartbeat: a dependency only (its value is not needed), so each
+    // pull asks again, and a heartbeat not yet known does not hold Home back.
+    ref.watch(eeCurrentUnitPulledAtProvider);
+    // One row is enough: the counts cover the whole scope, not the page.
+    return ref.watch(eeUnitTicketsApiProvider).list(alertsOnly: true, limit: 1);
+  },
+);
+
 /// The queue's strip: SLA alerts in this person's OTHER units — the unit on
 /// screen has its own queue — the most urgent three, and the counts.
 ///

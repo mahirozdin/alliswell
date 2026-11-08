@@ -4223,7 +4223,8 @@
       "newTicket": "Yeni talep açın",
       "myOpenTickets": "Açık taleplerim ({count})",
       "unitsTitle": "Birimleriniz",
-      "breached": "{count} talep gecikti",
+      "breached": "{count} talebin süresi aşıldı",
+      "warned": "{count} talebin süresi dolmak üzere",
       "unassigned": "{count} talep atanmamış",
       "approvals": "Onayınızı bekleyen {count}"
     },

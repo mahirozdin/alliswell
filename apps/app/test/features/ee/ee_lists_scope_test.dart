@@ -1114,6 +1114,8 @@ void main() {
         return mine;
       }),
       eeUnitTicketsApiProvider.overrideWithValue(_FakeUnitsApi(_acrossPage)),
+      // HK-1: Home's figures follow the unit's pull heartbeat.
+      eeCurrentUnitPulledAtProvider.overrideWith((ref) => Stream.value(null)),
       eeApprovalsDoorProvider.overrideWith((ref) => approvalsDoor),
       eeApprovalsBadgeProvider.overrideWith((ref) => approvals),
     ];
@@ -1162,7 +1164,8 @@ void main() {
         ),
       );
       expect(find.text('Birimleriniz'), findsOneWidget);
-      expect(find.text('3 talep gecikti'), findsOneWidget);
+      expect(find.text('3 talebin süresi aşıldı'), findsOneWidget);
+      expect(find.text('1 talebin süresi dolmak üzere'), findsOneWidget);
       expect(find.text('2 talep atanmamış'), findsOneWidget);
       expect(find.text('Onayınızı bekleyen 2'), findsOneWidget);
       expect(find.byKey(const Key('ee-home-member-cards')), findsNothing);

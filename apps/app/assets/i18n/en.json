@@ -4224,7 +4224,8 @@
       "newTicket": "Open a new request",
       "myOpenTickets": "My open requests ({count})",
       "unitsTitle": "Your units",
-      "breached": "{count} requests late",
+      "breached": "{count} requests past SLA",
+      "warned": "{count} requests due soon",
       "unassigned": "{count} requests unassigned",
       "approvals": "Waiting for your approval: {count}"
     },

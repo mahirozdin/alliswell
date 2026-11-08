@@ -36,7 +36,7 @@ import '../../../widgets/fab_clearance.dart';
 ///   • A BAR IS A BAR AND A NUMBER IS A NUMBER. Each breakdown row shows the
 ///     count as text beside its bar. A bar alone is a picture of a ratio
 ///     nobody can quote in a meeting, and this screen exists to be quoted.
-class EeSlaDashboardScreen extends ConsumerWidget {
+class EeSlaDashboardScreen extends ConsumerStatefulWidget {
   const EeSlaDashboardScreen({super.key, this.embedded = false});
 
   /// OPH-409: drawn as a tab of the requests header, under its bar.
@@ -47,7 +47,28 @@ class EeSlaDashboardScreen extends ConsumerWidget {
   static const double target = 90;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EeSlaDashboardScreen> createState() =>
+      _EeSlaDashboardScreenState();
+}
+
+class _EeSlaDashboardScreenState extends ConsumerState<EeSlaDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // HK-1 (polish 3): the board's answer is kept for the session, so a
+    // board opened again showed the figures of its first opening while
+    // Home, read since, had moved on (15 + 7 here, 22 there). Each opening
+    // asks again; the last answer stays on screen while it does.
+    if (ref.read(eeSlaDashboardProvider).hasValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.invalidate(eeSlaDashboardProvider);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final embedded = widget.embedded;
     final dashboard = ref.watch(eeSlaDashboardProvider);
 
     final body = dashboard.when(
