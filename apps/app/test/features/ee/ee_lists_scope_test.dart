@@ -8,6 +8,8 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/auth/data/models.dart';
+import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
 import 'package:alliswell/src/features/ee/data/csv_export_api.dart';
@@ -21,6 +23,7 @@ import 'package:alliswell/src/features/ee/my_tickets_providers.dart';
 import 'package:alliswell/src/features/ee/performance_providers.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/sla_dashboard_providers.dart';
+import 'package:alliswell/src/features/ee/team_origin.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/assignments_moved_screen.dart';
 import 'package:alliswell/src/features/ee/ui/csv_download.dart';
@@ -35,9 +38,12 @@ import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 import 'package:alliswell/src/features/ee/unit_tickets_providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/widgets/fabs.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+
+import '../auth/test_support.dart';
 
 /// OPH-409 — the extension's lists answer a manager's first questions: what
 /// is open across my units, whose is it, and what does each number count.
@@ -774,6 +780,33 @@ void main() {
       expect(find.byKey(const Key('my-tickets-new')), findsNothing);
     });
 
+    // E35 polish P-13: the screen the review photographed — signed in on a
+    // team's own address, not on that team. The state says so and offers
+    // another account; nothing on it files a request.
+    testWidgets('on the team\'s address, not on the team: the state, no '
+        '"new request"', (tester) async {
+      await pump(
+        tester,
+        const EeMyTicketsScreen(),
+        overrides: [
+          ...mine(
+            () => const AsyncError(EeNoTeamHereException(), StackTrace.empty),
+          ),
+          teamOriginProvider.overrideWithValue(
+            const AwTeamOrigin(slug: 'demir-celik', displayName: 'Demir Çelik'),
+          ),
+          authControllerProvider.overrideWith(_SignedIn.new),
+        ],
+      );
+      expect(find.byKey(const Key('ee-not-in-team')), findsOneWidget);
+      expect(
+        find.byKey(const Key('ee-not-in-team-switch-account')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('my-tickets-new')), findsNothing);
+      expect(find.byType(AwExtendedFab), findsNothing);
+    });
+
     testWidgets('a member keeps it', (tester) async {
       await pump(
         tester,
@@ -1052,4 +1085,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('home'), findsOneWidget);
   });
+}
+
+/// Signed in as [fakeSession]'s account, without the restore and refresh
+/// machinery the real controller starts.
+class _SignedIn extends AuthController {
+  @override
+  Future<AuthSession?> build() async => fakeSession();
 }
