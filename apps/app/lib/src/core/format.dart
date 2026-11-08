@@ -92,12 +92,42 @@ String awFormatMoney(
     ).format(amount);
     return '$n TL';
   }
-  return NumberFormat.simpleCurrency(
+  final simple = NumberFormat.simpleCurrency(
     locale: numberLocale,
     name: code,
     decimalDigits: decimals,
+  );
+  if (!_kSharedCurrencySymbols.contains(simple.currencySymbol) ||
+      code == NumberFormat.simpleCurrency(locale: numberLocale).currencyName) {
+    return simple.format(amount);
+  }
+  // A symbol several currencies use ("$" for USD, CAD, AUD…) names the
+  // region's own currency only; any other is written by its ISO code, kept
+  // apart from the figure by a no-break space: "CAD 100", "100 CAD".
+  final text = NumberFormat.currency(
+    locale: numberLocale,
+    name: code,
+    symbol: code,
+    decimalDigits: decimals,
   ).format(amount);
+  return text.replaceFirstMapped(RegExp('$code(?=[0-9])'), (m) => '$code ');
 }
+
+/// Symbols `intl`'s simple-currency table gives to more than one currency
+/// (G-C-R6): "$" alone could be USD, CAD, AUD or MXN.
+const Set<String> _kSharedCurrencySymbols = {
+  r'$',
+  '£',
+  '¥',
+  'kr',
+  '₩', // ₩: KRW, KPW
+  'din',
+  'dh',
+  'Bs',
+  'Rial',
+  'Riyal',
+  'Rs',
+};
 
 /// A file size: "Under 1 KB" below a kilobyte (a byte count is not a size
 /// anyone reads), then KB/MB/GB with at most one decimal in the region's

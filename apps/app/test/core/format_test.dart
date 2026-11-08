@@ -278,6 +278,44 @@ void main() {
       );
     });
 
+    test('currencies that share a symbol stay apart (G-C-R6)', () {
+      // In the US, USD keeps "$"; CAD, AUD and MXN — also "$" in intl's
+      // table — are named by their code, so a worklog total in mixed
+      // currencies never shows three identical "$100".
+      String us(String code) =>
+          awFormatMoney(10000, code, locale: 'en', region: 'US');
+      expect(us('USD'), r'$100');
+      expect(us('CAD'), 'CAD${nbsp}100');
+      expect(us('AUD'), 'AUD${nbsp}100');
+      expect({us('USD'), us('CAD'), us('AUD'), us('MXN')}, hasLength(4));
+      // The region's own currency keeps its symbol: "$" is CAD in Canada.
+      expect(awFormatMoney(10000, 'CAD', locale: 'en', region: 'CA'), r'$100');
+      expect(
+        awFormatMoney(10000, 'USD', locale: 'en', region: 'CA'),
+        'USD${nbsp}100',
+      );
+      // Other shared symbols — "¥", "kr", "£" — follow the same rule; a
+      // symbol only one currency uses stays.
+      expect(
+        awFormatMoney(10000, 'CNY', locale: 'en', region: 'US'),
+        'CNY${nbsp}100',
+      );
+      expect(
+        awFormatMoney(10050, 'NOK', locale: 'tr', region: 'TR'),
+        'NOK${nbsp}100,50',
+      );
+      expect(
+        awFormatMoney(10000, 'USD', locale: 'en', region: 'DE'),
+        '100${nbsp}USD',
+      );
+      expect(awFormatMoney(10000, 'EUR', locale: 'en', region: 'US'), '€100');
+      expect(awFormatMoney(10000, 'GBP', locale: 'en', region: 'GB'), '£100');
+      expect(
+        awFormatMoney(-10000, 'CAD', locale: 'en', region: 'US'),
+        '-CAD${nbsp}100',
+      );
+    });
+
     test('text that is not a number stays as typed', () {
       expect(awFormatNumberText('yaklaşık 5'), 'yaklaşık 5');
     });

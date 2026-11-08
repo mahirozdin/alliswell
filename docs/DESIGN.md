@@ -754,7 +754,8 @@ ayarlardan kullanıcı seçebilecek".)_
   explicit numeric choices of D2 stay for whoever picks one.
 - **D8 — One formatter for every figure** (`core/format.dart`): `awFormatNumber`, `awFormatPercent`
   (`%51,4` / `51.4%`; a ratio over 0 is `—`), `awFormatMoney` (`48.500 TL`, never the code `TRY`;
-  `,00` dropped on whole amounts), `awFormatFileSize` (`1 KB'den küçük`, then at most one decimal),
+  `,00` dropped on whole amounts; a symbol several currencies share — `$`, `£`, `¥`, `kr` — is kept for
+  the region's own currency and the others show their code, `CAD 100`), `awFormatFileSize` (`1 KB'den küçük`, then at most one decimal),
   `awFormatDuration` (`2 gün 12 saat` / `2 days 12 hours`; no `g`/`sa`; estimates and logged work
   keep counting hours). `test/core/format_single_source_test.dart` fails on a raw `NumberFormat`,
   `DateFormat`, `toStringAsFixed` or hand-built "MB" outside the formatter (names of months and
