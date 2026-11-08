@@ -196,6 +196,15 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // can take them (one value per field), scoped to the
                     // unit on screen.
                     if (value == 'csv') {
+                      // E35 polish P-10: the file is the list on screen.
+                      // Across units that is every unit the person works in
+                      // (no unitId: the server scopes to the caller's own
+                      // units) and none of the unit's chips, which this view
+                      // hides and does not apply.
+                      if (ref.read(eeQueueShowsAllUnitsProvider)) {
+                        eeDownloadCsv(context, ref, (api) => api.tickets());
+                        return;
+                      }
                       eeDownloadCsv(context, ref, (api) {
                         String? one(Set<String> values) =>
                             values.length == 1 ? values.first : null;

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
 import 'package:alliswell/src/features/ee/assignments_providers.dart';
+import 'package:alliswell/src/features/ee/data/csv_export_api.dart';
 import 'package:alliswell/src/features/ee/data/ee_models.dart';
 import 'package:alliswell/src/features/ee/data/my_tickets_api.dart';
 import 'package:alliswell/src/features/ee/data/performance_models.dart';
@@ -21,6 +23,7 @@ import 'package:alliswell/src/features/ee/providers.dart';
 import 'package:alliswell/src/features/ee/sla_dashboard_providers.dart';
 import 'package:alliswell/src/features/ee/tickets_providers.dart';
 import 'package:alliswell/src/features/ee/ui/assignments_moved_screen.dart';
+import 'package:alliswell/src/features/ee/ui/csv_download.dart';
 import 'package:alliswell/src/features/ee/ui/home_ticket_cards.dart';
 import 'package:alliswell/src/features/ee/ui/my_tickets_screen.dart';
 import 'package:alliswell/src/features/ee/ui/my_units_screen.dart';
@@ -105,6 +108,30 @@ class _FakeUnitsApi extends Fake implements EeUnitTicketsApi {
     String? cursor,
     int? limit,
   }) async => page;
+}
+
+class _FakeCsv extends EeCsvExportApi {
+  _FakeCsv() : super(Dio());
+  final asked = <String>[];
+
+  @override
+  Future<EeCsvFile> tickets({
+    String? status,
+    String? priority,
+    String? source,
+    String? slaStatus,
+    String? serviceId,
+    String? unitId,
+  }) async {
+    asked.add('status=$status priority=$priority unitId=$unitId');
+    return EeCsvFile(bytes: Uint8List(0), filename: 'requests.csv');
+  }
+}
+
+class _Sink extends EeCsvSink {
+  const _Sink();
+  @override
+  Future<String?> save(Uint8List bytes, String filename) async => null;
 }
 
 class _Selected extends SelectedWorkspace {
@@ -218,6 +245,7 @@ void main() {
     Map<String, List<Assignee>> assignees = const {},
     List<TicketRecord>? tickets,
     EeUnitTicketsPage? across,
+    Set<String> grants = const {},
   }) => [
     eeFeatureProvider.overrideWith((ref, name) => true),
     currentUserIdProvider.overrideWithValue('user-1'),
@@ -238,7 +266,7 @@ void main() {
     eeMemberNamesProvider.overrideWith(
       (ref) => Stream.value(const {_requester: 'Onur Depo'}),
     ),
-    canProvider.overrideWith((ref, permission) => false),
+    canProvider.overrideWith((ref, permission) => grants.contains(permission)),
     eeSlaDashboardProvider.overrideWith(
       () => _Sla(const EeSlaDashboard(compliance: 80, judged: 10)),
     ),
@@ -443,6 +471,44 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('unit-ticket-A1')), findsNothing);
       expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+    });
+
+    // E35 polish P-10: with "All units" on screen the export still sent the
+    // unit the chips had hidden, and the unit's filter chips with it.
+    testWidgets('the CSV export carries the scope on screen: every unit '
+        'across units, the unit and its chips inside one', (tester) async {
+      final csv = _FakeCsv();
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        // At phone width a chosen filter's "clear" crowds the toolbar (a
+        // separate layout matter); the export reads the same at any width.
+        desktop: const Size(1440, 900),
+        overrides: [
+          ...queue(selected: _bt.id, grants: const {'tickets.export'}),
+          eeCsvExportApiProvider.overrideWithValue(csv),
+          eeCsvSinkProvider.overrideWithValue(const _Sink()),
+        ],
+      );
+      Future<void> export() async {
+        await tester.tap(find.byKey(const Key('ticket-more')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('ticket-csv')));
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byKey(const Key('ticket-filter-new')));
+      await tester.pumpAndSettle();
+      await export();
+      expect(csv.asked.last, 'status=new priority=null unitId=U-BT');
+
+      await tester.tap(find.byKey(const Key('ticket-unit-all')));
+      await tester.pumpAndSettle();
+      expect(container.read(eeQueueShowsAllUnitsProvider), isTrue);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      await export();
+      expect(csv.asked.last, 'status=null priority=null unitId=null');
     });
   });
 
