@@ -202,6 +202,28 @@ void main() {
     });
   });
 
+  test('OPH-390 (R-07): a remembered page that belongs to somebody is only '
+      'replayed for them', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final pending = container.read(pendingDeepLinkProvider.notifier);
+
+    pending.remember('/settings', owner: 'user-1');
+    expect(pending.take(forUser: 'user-2'), isNull);
+    // Dropped, not kept for later.
+    expect(container.read(pendingDeepLinkProvider), isNull);
+    expect(pending.take(forUser: 'user-1'), isNull);
+
+    pending.remember('/settings', owner: 'user-1');
+    expect(pending.take(forUser: 'user-1'), '/settings');
+
+    // A link that arrived signed out is anybody's.
+    pending.remember('/tasks/t1');
+    expect(pending.take(forUser: 'user-2'), '/tasks/t1');
+    pending.rememberIfNone('/notes/n1');
+    expect(pending.take(forUser: 'user-2'), '/notes/n1');
+  });
+
   group('the router error exit (OPH-189)', () {
     test(
       '/ is a real route now, not the dead end the error page linked to',

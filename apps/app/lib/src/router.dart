@@ -423,19 +423,40 @@ String? computeAuthRedirect({
 /// redirect sends the user to /login, and the destination is replayed after
 /// sign-in. Losing the tap because the session had expired would be its own
 /// small betrayal.
+///
+/// OPH-390 (polish-2 R-07): a destination can belong to somebody. The page a
+/// session stood on when it ended is that person's — replayed for them when
+/// they sign back in (a session that ran out), never for the next account:
+/// demo@ signed out from Settings and saha1@ opened on Settings. A link that
+/// arrives signed out has no owner and waits for whoever signs in.
 class PendingDeepLink extends Notifier<String?> {
+  /// The user id [state] belongs to; null = anybody's.
+  String? _owner;
+
   @override
   String? build() => null;
 
-  void remember(String location) => state = location;
+  void remember(String location, {String? owner}) {
+    _owner = owner;
+    state = location;
+  }
 
   /// [remember], unless a destination is already waiting.
-  void rememberIfNone(String location) => state ??= location;
+  void rememberIfNone(String location) {
+    if (state != null) return;
+    _owner = null;
+    state = location;
+  }
 
   /// Reads and clears in one step — a destination may only be replayed once.
-  String? take() {
+  /// With [forUser], a destination that belongs to somebody else is dropped
+  /// (and still cleared) instead of returned.
+  String? take({String? forUser}) {
     final pending = state;
+    final owner = _owner;
+    _owner = null;
     if (pending != null) state = null;
+    if (owner != null && forUser != null && owner != forUser) return null;
     return pending;
   }
 }
@@ -466,7 +487,21 @@ final awRootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'aw-root');
 final routerProvider = Provider<GoRouter>((ref) {
   // go_router re-evaluates `redirect` whenever this notifier fires.
   final authChanged = ValueNotifier(0);
-  ref.listen(authControllerProvider, (_, _) => authChanged.value++);
+  // OPH-390 (R-07): whose session just ended. The first signed-out redirect
+  // after it is the page that person stood on, remembered as THEIRS — so it
+  // is replayed for them, and the next account opens on Home.
+  String? endedFor;
+  ref.listen(authControllerProvider, (previous, next) {
+    if (!next.isLoading) {
+      final was = previous?.value?.user.id;
+      if (next.value != null) {
+        endedFor = null;
+      } else if (was != null) {
+        endedFor = was;
+      }
+    }
+    authChanged.value++;
+  });
   // The operator session moves the router too — signing in or out of the
   // console must land somewhere without a manual navigation (EE-033).
   ref.listen(adminSessionProvider, (_, _) => authChanged.value++);
@@ -489,6 +524,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authChanged,
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
+      // Spent by the first signed-out redirect, whatever it decides: only
+      // the page the session stood on belongs to the person who left.
+      final leftBy = endedFor;
+      if (!auth.isLoading && auth.value == null) endedFor = null;
       // OPH-333: our own scheme is resolved HERE, before route matching can
       // swallow it. go_router rewrites an EMPTY path to '/', so a bare-host
       // URL (`alliswell://add`, `alliswell://open`) matches the root route and
@@ -567,7 +606,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.value != null &&
           !auth.isLoading &&
           (decision == AppSection.home.path || decision == null)) {
-        final pending = ref.read(pendingDeepLinkProvider.notifier).take();
+        final pending = ref
+            .read(pendingDeepLinkProvider.notifier)
+            .take(forUser: auth.value!.user.id);
         if (pending != null && pending != state.matchedLocation) return pending;
       }
       // OPH-298: the share extension's callback is NOT a destination, so it is
@@ -604,7 +645,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             // → `/home`), and each would overwrite it with less.
             _outsideBuild(() => pending.rememberIfNone(wanted));
           } else {
-            pending.remember(wanted);
+            pending.remember(wanted, owner: leftBy);
           }
         }
       }
