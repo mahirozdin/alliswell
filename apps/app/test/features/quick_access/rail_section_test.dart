@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -196,5 +197,161 @@ void main() {
     // store rather than by remounting the app: a second `pumpWidget` of a new
     // ProviderScope tears the router's Navigator down mid-frame.)
     expect(await localKv.get('alliswell_quick_rail_collapsed'), 'true');
+  });
+
+  group('OPH-405 — the menu and the drag handle are two columns', () {
+    // Desktop only: on Android/iOS the row itself is long-pressed to drag and
+    // there is no handle (Flutter's own split, kept).
+    final desktop = TargetPlatformVariant.desktop();
+
+    Future<List<String>> seedRows(FakeApi api) async {
+      final project = api.seedProject(name: 'Launch v1.0');
+      final rows = [
+        api.seedQuickLink(
+          kind: 'project',
+          targetId: project['id'] as String,
+          title: 'Launch v1.0',
+          emoji: '🚀',
+          colorRgb: '8B5CF6',
+        ),
+        api.seedQuickLink(kind: 'url', url: 'https://x.dev/a', title: 'Repo'),
+        api.seedQuickLink(kind: 'url', url: 'https://x.dev/b', title: 'Docs'),
+      ];
+      return [for (final r in rows) r['id'] as String];
+    }
+
+    Rect menuRect(WidgetTester t, String id) =>
+        t.getRect(find.byKey(Key('quick-menu-$id')));
+    Rect handleRect(WidgetTester t, String id) =>
+        t.getRect(find.byKey(Key('quick-drag-$id')));
+    Rect menuGlyph(WidgetTester t, String id) => t.getRect(
+      find.descendant(
+        of: find.byKey(Key('quick-menu-$id')),
+        matching: find.byIcon(Icons.more_horiz),
+      ),
+    );
+    Rect handleGlyph(WidgetTester t, String id) => t.getRect(
+      find.descendant(
+        of: find.byKey(Key('quick-drag-$id')),
+        matching: find.byIcon(Icons.drag_indicator),
+      ),
+    );
+    bool handleShown(WidgetTester t, String id) =>
+        t.widget<Visibility>(find.byKey(Key('quick-drag-reveal-$id'))).visible;
+
+    void expectSeparateColumns(WidgetTester tester, List<String> ids) {
+      final menuLeft = menuRect(tester, ids.first).left;
+      final handleLeft = handleRect(tester, ids.first).left;
+      for (final id in ids) {
+        final menu = menuRect(tester, id);
+        final handle = handleRect(tester, id);
+        expect(menu.width, greaterThanOrEqualTo(32), reason: 'menu $id');
+        expect(menu.height, greaterThanOrEqualTo(32), reason: 'menu $id');
+        expect(handle.width, greaterThanOrEqualTo(32), reason: 'drag $id');
+        expect(handle.height, greaterThanOrEqualTo(32), reason: 'drag $id');
+        // Separate hit regions, 8 px apart, menu first.
+        expect(menu.overlaps(handle), isFalse, reason: id);
+        expect(handle.left - menu.right, greaterThanOrEqualTo(8), reason: id);
+        // The painted glyphs never touch either.
+        expect(
+          menuGlyph(tester, id).overlaps(handleGlyph(tester, id)),
+          isFalse,
+        );
+        // One aligned column each, whatever hints the row carries.
+        expect(menu.left, moreOrLessEquals(menuLeft), reason: id);
+        expect(handle.left, moreOrLessEquals(handleLeft), reason: id);
+      }
+    }
+
+    testWidgets('separate aligned targets; the handle shows on hover', (
+      tester,
+    ) async {
+      final api = FakeApi();
+      final ids = await seedRows(api);
+      sizeTo(tester, wide);
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+
+      // Flutter's default desktop handle was painted over the menu.
+      expect(find.byIcon(Icons.drag_handle), findsNothing);
+      expectSeparateColumns(tester, ids);
+      for (final id in ids) {
+        expect(handleShown(tester, id), isFalse, reason: 'rest $id');
+      }
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('Repo')));
+      await tester.pump();
+      expect(handleShown(tester, ids[1]), isTrue);
+      expect(handleShown(tester, ids[0]), isFalse);
+      expectSeparateColumns(tester, ids);
+
+      await mouse.moveTo(Offset.zero);
+      await tester.pump();
+      expect(handleShown(tester, ids[1]), isFalse);
+    }, variant: desktop);
+
+    testWidgets('keyboard focus on a row reveals its handle, apart from the '
+        'focused menu', (tester) async {
+      final api = FakeApi();
+      final ids = await seedRows(api);
+      sizeTo(tester, wide);
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+
+      FocusManager.instance.highlightStrategy =
+          FocusHighlightStrategy.alwaysTraditional;
+      addTearDown(
+        () => FocusManager.instance.highlightStrategy =
+            FocusHighlightStrategy.automatic,
+      );
+      Focus.of(
+        tester.element(
+          find.descendant(
+            of: find.byKey(Key('quick-menu-${ids[2]}')),
+            matching: find.byIcon(Icons.more_horiz),
+          ),
+        ),
+      ).requestFocus();
+      await tester.pumpAndSettle();
+
+      expect(handleShown(tester, ids[2]), isTrue);
+      expect(handleShown(tester, ids[1]), isFalse);
+      expectSeparateColumns(tester, ids);
+    }, variant: desktop);
+
+    testWidgets('dragging by the handle reorders', (tester) async {
+      final api = FakeApi();
+      final ids = await seedRows(api);
+      sizeTo(tester, wide);
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(find.text('Docs')));
+      await tester.pump();
+      final from = tester.getCenter(find.byKey(Key('quick-drag-${ids[2]}')));
+      await mouse.moveTo(from);
+      await tester.pump();
+      await mouse.down(from);
+      await tester.pump(const Duration(milliseconds: 50));
+      for (var i = 0; i < 12; i++) {
+        await mouse.moveBy(const Offset(0, -12));
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      await mouse.up();
+      await tester.pumpAndSettle();
+
+      final reorder = api.pushedMutations.where(
+        (m) => m['entityType'] == 'quick_link' && m['operation'] == 'update',
+      );
+      expect(reorder, hasLength(1));
+      final order = (reorder.single['patch'] as Map)['orderedIds'] as List;
+      expect(order.indexOf(ids[2]), lessThan(2));
+    }, variant: desktop);
   });
 }

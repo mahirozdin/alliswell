@@ -1147,6 +1147,11 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   `quick.moveUp` / `quick.moveDown` in the row's own menu. Same rule, same reason
   as §19 D2 and the K3 board lesson; the bubble's *position* needs no such twin,
   because position is a preference and the panel is the function.
+  **Amended by OPH-405:** on a pointer layout the rail's handle is its own
+  32×32 column after the ⋯ menu (also 32×32), 8 px apart, both columns aligned
+  row to row; it shows while the row is hovered or holds keyboard focus and keeps
+  its space otherwise. Flutter's default handle (painted over the trailing edge)
+  is never used; touch platforms drag by long-pressing the row, with no handle.
 - **Q10 — A pinned entry is the app's, not the person's (EE-294).** Some doors
   must exist for the person without them putting them there — today the
   Approvals entry, for anybody with approval authority, which on a phone has

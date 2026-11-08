@@ -58,22 +58,45 @@ class QuickColorDot extends StatelessWidget {
 ///
 /// Muting an archived or broken row is a TOKEN swap, never `Opacity`: a dimmed
 /// label has to stay measurable (DESIGN §20 C3).
-class QuickAccessRowTile extends StatelessWidget {
+/// A row control's side on a pointer layout (OPH-405): the desktop target
+/// floor, 32×32 CSS px.
+const double kQuickRowControl = 32;
+
+class QuickAccessRowTile extends StatefulWidget {
   const QuickAccessRowTile({
     super.key,
     required this.row,
     required this.onTap,
     this.trailing,
+    this.dragHandle,
     this.dense = false,
   });
 
   final QuickAccessRow row;
   final VoidCallback onTap;
   final Widget? trailing;
+
+  /// The rail's drag handle (OPH-405). It gets its own column after
+  /// [trailing], 8 px apart, and shows while the row is hovered or holds
+  /// keyboard focus; its space is kept either way, so both columns stay
+  /// aligned from row to row and nothing shifts on hover.
+  final Widget? dragHandle;
   final bool dense;
 
   @override
+  State<QuickAccessRowTile> createState() => _QuickAccessRowTileState();
+}
+
+class _QuickAccessRowTileState extends State<QuickAccessRowTile> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
+    final row = widget.row;
+    final dense = widget.dense;
+    final trailing = widget.trailing;
+    final handle = widget.dragHandle;
     final theme = Theme.of(context);
     final muted = row.isBroken || row.isArchived;
     final titleColor = muted
@@ -88,7 +111,7 @@ class QuickAccessRowTile extends StatelessWidget {
       _ => null,
     };
 
-    return ListTile(
+    final tile = ListTile(
       key: Key('quick-row-${row.id}'),
       dense: dense,
       visualDensity: dense ? VisualDensity.compact : null,
@@ -133,9 +156,31 @@ class QuickAccessRowTile extends StatelessWidget {
             const SizedBox(width: AwSpace.x1),
           ],
           ?trailing,
+          if (handle != null) ...[
+            const SizedBox(width: AwSpace.x2),
+            Visibility(
+              key: Key('quick-drag-reveal-${row.id}'),
+              visible: _hovered || _focused,
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: handle,
+            ),
+          ],
         ],
       ),
-      onTap: onTap,
+      onTap: widget.onTap,
+    );
+    if (handle == null) return tile;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
+        child: tile,
+      ),
     );
   }
 }
