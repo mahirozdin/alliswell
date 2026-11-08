@@ -24,6 +24,7 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/widgets/shell_section.dart';
 import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 import 'package:alliswell/src/features/ee/ui/desk_paths.dart';
 
@@ -159,6 +160,7 @@ void main() {
     bool entitled = true,
     bool offline = false,
     bool gatedSelect = false,
+    bool inShell = false,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -230,7 +232,28 @@ void main() {
     }
     final router = GoRouter(
       routes: [
-        GoRoute(path: '/', builder: (_, _) => home),
+        if (inShell)
+          // S-G1 review r1: the app's shell, stood in for — every branch
+          // kept mounted, the section on show told as the shell tells it.
+          StatefulShellRoute.indexedStack(
+            builder: (_, _, shell) =>
+                AwShellSection(index: shell.currentIndex, child: shell),
+            branches: [
+              StatefulShellBranch(
+                routes: [GoRoute(path: '/', builder: (_, _) => home)],
+              ),
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: '/home',
+                    builder: (_, _) => const Scaffold(body: Text('home')),
+                  ),
+                ],
+              ),
+            ],
+          )
+        else
+          GoRoute(path: '/', builder: (_, _) => home),
         // D-3: somewhere else, so the list can go while a unit is lent.
         GoRoute(
           path: '/away',
@@ -654,6 +677,67 @@ void main() {
     gate.complete();
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('opened')), findsNothing);
+    expect(container.read(eeLentUnitProvider), isNull);
+    expect(openUnit(), _bt);
+  });
+
+  // S-G1 review r1: the shell keeps the Requests branch mounted, so a
+  // switch to Home neither unmounts the list nor closes its pane — the
+  // D-3 test above (the list gone) missed this ordinary way out.
+  testWidgets('D-3: switching to Home with another unit\'s request open in '
+      'the pane gives the unit back', (tester) async {
+    server.answer = bakimRequest;
+    await pump(tester, const EeTicketQueueScreen(), inShell: true);
+    container.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
+    tester.view.physicalSize = const Size(1440 * 3, 1000 * 3);
+    await tester.pumpAndSettle();
+    expect(openUnit(), _bt);
+
+    final pane = find.byKey(const Key('list-detail-pane'), skipOffstage: false);
+    await tester.tap(find.byKey(const Key('unit-ticket-$_compressor')));
+    for (var i = 0; i < 6; i += 1) {
+      await tester.pump(const Duration(milliseconds: 100));
+    }
+    expect(pane, findsOneWidget);
+    expect(openUnit(), _bakim);
+
+    GoRouter.of(tester.element(find.byType(EeTicketQueueScreen))).go('/home');
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+    expect(find.byType(EeTicketQueueScreen, skipOffstage: false), findsOne);
+    expect(pane, findsNothing);
+    expect(container.read(eeLentUnitProvider), isNull);
+    expect(openUnit(), _bt);
+  });
+
+  testWidgets('D-3: switching to Home while the unit is being lent opens no '
+      'pane in the hidden section and gives the unit back', (tester) async {
+    server.answer = bakimRequest;
+    await pump(
+      tester,
+      const EeTicketQueueScreen(),
+      inShell: true,
+      gatedSelect: true,
+    );
+    container.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
+    tester.view.physicalSize = const Size(1440 * 3, 1000 * 3);
+    await tester.pumpAndSettle();
+    expect(openUnit(), _bt);
+
+    final gate = _GatedSelect.gate = Completer<void>();
+    await tester.tap(find.byKey(const Key('unit-ticket-$_compressor')));
+    await tester.pump();
+    GoRouter.of(tester.element(find.byType(EeTicketQueueScreen))).go('/home');
+    await tester.pumpAndSettle();
+    // Still mounted, only hidden: `context.mounted` alone does not tell.
+    expect(find.byType(EeTicketQueueScreen, skipOffstage: false), findsOne);
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(const Key('list-detail-pane'), skipOffstage: false),
+      findsNothing,
+    );
     expect(container.read(eeLentUnitProvider), isNull);
     expect(openUnit(), _bt);
   });

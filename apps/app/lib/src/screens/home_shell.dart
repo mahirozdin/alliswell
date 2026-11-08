@@ -55,6 +55,7 @@ import 'shell_rail.dart';
 import '../widgets/refreshable.dart';
 import '../widgets/sheets.dart';
 import '../widgets/tab_capsule.dart';
+import '../widgets/shell_section.dart';
 
 /// Adaptive shell: floating Liquid Glass chrome — a glass rail panel on wide
 /// layouts (desktop/web/tablet), a glass capsule bottom bar on narrow ones
@@ -583,7 +584,13 @@ class HomeShell extends ConsumerWidget {
               .read(searchRecentsProvider.notifier)
               .record(SearchRecent(GlobalSearchKind.task, id)),
         ),
-        child: _shellLayout(context, ref, visibleSections, fab, fabClearance),
+        // S-G1 review r1: the section on show, told to the screens of
+        // every (kept-mounted) branch — a pane that lent a unit closes on
+        // a switch.
+        child: AwShellSection(
+          index: navigationShell.currentIndex,
+          child: _shellLayout(context, ref, visibleSections, fab, fabClearance),
+        ),
       ),
     );
 

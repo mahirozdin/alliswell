@@ -38,6 +38,7 @@ import '../../../widgets/segment_label.dart';
 import '../../../widgets/list_detail.dart';
 import '../../../theme/typography.dart';
 import '../../../widgets/popup_menu.dart';
+import '../../../widgets/shell_section.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
 ///
@@ -107,8 +108,12 @@ class EeTicketQueueScreen extends ConsumerWidget {
     // queue with it open, gives the unit back. Held as the notifier: the
     // queue may be gone when the pane closes with it.
     final loan = ref.read(eeLentUnitProvider.notifier);
+    // S-G1 review r1: the shell keeps this branch mounted, so a switch to
+    // another section closes the pane by its section token — otherwise the
+    // lent unit stayed open under Home.
     return AwListDetailScope(
       kind: kEeTicketPane,
+      resetToken: AwShellSection.of(context),
       onClose: () => unawaited(loan.giveBack()),
       child: AwListDetailPane(
         kind: kEeTicketPane,

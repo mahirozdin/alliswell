@@ -18,6 +18,7 @@ import 'figure_scope.dart';
 import 'sla_chip.dart';
 import '../../../widgets/list_detail.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/shell_section.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket, kEeTicketPane;
 
 /// EE-267 (AW-E19) — one tap from a request of another unit to the request.
@@ -44,6 +45,9 @@ Future<void> openTicketAcrossUnits(
   // closes. Before, an unmounted row returned early and Home stayed on the
   // lent unit for good.
   var paneHolds = false;
+  // S-G1 review r1: the shell keeps the list mounted when another section
+  // is chosen, so `context.mounted` alone does not tell that it was left.
+  final section = AwShellSection.of(context, listen: false);
   try {
     // E35 polish P-08: on a space that is not a unit, "all units" is the
     // queue's default without being chosen — selecting the request's unit
@@ -51,6 +55,7 @@ Future<void> openTicketAcrossUnits(
     // queue. Opened from the cross-unit list, the cross-unit list stays.
     await loan.lend(ticket.workspaceId, keepAllUnits: keepAllUnits);
     if (!context.mounted) return;
+    if (AwShellSection.of(context, listen: false) != section) return;
     // In the desktop pane the request closes with the pane (the queue gives
     // the unit back then); a pushed detail closes when this returns.
     final inPane =
