@@ -7,6 +7,7 @@ import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../widgets/status_views.dart';
 import '../data/performance_models.dart';
+import '../data/unit_tickets_api.dart' show EeFigureScope;
 import '../performance_providers.dart';
 import '../../../core/format.dart';
 import '../../../widgets/route_leading.dart';
@@ -87,13 +88,17 @@ class EePerformanceScreen extends ConsumerWidget {
               ),
               const SizedBox(height: AwSpace.x2),
               // U-20: what every figure below counts, and whose.
-              Text(
-                'ee.perfPanel.scope'.tr(),
-                key: const Key('perf-scope'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              // P-14 (EE-310): flow and compliance count different things;
+              // named apart where the server says which, today's line when
+              // it does not, nothing for a basis the app does not know.
+              if (_perfScopeKey(data.scope) case final key?)
+                Text(
+                  key.tr(),
+                  key: const Key('perf-scope'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
               EeFigureScopeLine(scope: data.scope),
               const SizedBox(height: AwSpace.x6),
               // EE-268 (AW-E21): "how long do repairs take, apart from
@@ -689,4 +694,16 @@ class _TableState extends State<_Table> {
       ),
     );
   }
+}
+
+/// The workload panel's basis line (P-14, EE-310), or null when the server
+/// names a basis this build cannot describe.
+String? _perfScopeKey(EeFigureScope? scope) {
+  final flow = scope?.flow;
+  final compliance = scope?.compliance;
+  if (flow == null && compliance == null) return 'ee.perfPanel.scope';
+  if (flow == 'events_in_window' && compliance == 'opened_in_window') {
+    return 'ee.perfPanel.scopeWindow';
+  }
+  return null;
 }

@@ -550,6 +550,23 @@ class EeOtherUnitsAlertStrip extends ConsumerWidget {
     final top = page.tickets.first;
     final theme = Theme.of(context);
     final breached = top.slaStatus == 'breached';
+    // P-14 (EE-310): the server names the unit its counts leave out, so the
+    // strip's 22 and the SLA board's 24 read as two scopes, not one figure
+    // disagreeing. Named when the device knows it; "the unit on screen"
+    // otherwise; nothing from an older server.
+    final excludedId = page.scope?.excludedWorkspaceId;
+    String? excluded;
+    if (excludedId != null) {
+      final name = ref
+          .watch(workspacesProvider)
+          .value
+          ?.where((w) => w.id == excludedId)
+          .firstOrNull
+          ?.name;
+      excluded = name == null
+          ? 'ee.myUnits.stripExcludingHere'.tr()
+          : 'ee.myUnits.stripExcluding'.tr(args: {'unit': name});
+    }
     final title = page.breached > 0 && page.warned > 0
         ? 'ee.myUnits.stripBoth'.tr(
             args: {'breached': '${page.breached}', 'warned': '${page.warned}'},
@@ -586,6 +603,14 @@ class EeOtherUnitsAlertStrip extends ConsumerWidget {
                   slaStatus: top.slaStatus,
                   slaDueAt: top.slaDueAt,
                 ),
+                if (excluded != null)
+                  Text(
+                    excluded,
+                    key: const Key('other-units-excluded'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
               ],
             ),
             onTap: () => openTicketAcrossUnits(context, ref, top),

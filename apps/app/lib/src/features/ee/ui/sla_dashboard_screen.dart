@@ -82,6 +82,18 @@ class EeSlaDashboardScreen extends ConsumerWidget {
               // read against the stock below as one number disagreeing.
               if (data.openBreached != null || data.openWarned != null) ...[
                 _OpenNow(data: data),
+                // P-14 (EE-310): said only where the server says it is the
+                // same `open_now` count "Birimlerim" shows.
+                if (data.scope?.open == 'open_now') ...[
+                  const SizedBox(height: AwSpace.x1),
+                  Text(
+                    'ee.slaDash.openScope'.tr(),
+                    key: const Key('sla-open-scope'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AwSpace.x4),
               ],
               _Compliance(
@@ -92,13 +104,16 @@ class EeSlaDashboardScreen extends ConsumerWidget {
               const SizedBox(height: AwSpace.x4),
               _Outcomes(data: data),
               const SizedBox(height: AwSpace.x2),
-              Text(
-                'ee.slaDash.stockScope'.tr(),
-                key: const Key('sla-stock-scope'),
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              // P-14 (EE-310): `live` is the basis this sentence describes;
+              // an older server (no field) keeps it, an unknown basis drops it.
+              if (data.scope?.stock == null || data.scope?.stock == 'live')
+                Text(
+                  'ee.slaDash.stockScope'.tr(),
+                  key: const Key('sla-stock-scope'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-              ),
               EeFigureScopeLine(scope: data.scope),
               const SizedBox(height: AwSpace.x6),
               _Breakdown(

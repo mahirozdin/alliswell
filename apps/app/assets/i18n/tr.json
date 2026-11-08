@@ -2941,6 +2941,7 @@
       "openNow": "Şu an açık talepler",
       "openBreached": "Süresi aşılmış",
       "openWarned": "Dolmak üzere",
+      "openScope": "Yalnız şu an açık olanlar; Birimlerim'deki sayımla aynı",
       "stockScope": "Yüzde ve aşağıdaki sayılar: arşivlenmemiş bütün talepler, açık ya da kapanmış, tarih sınırı yok",
       "target": "Hedef: {target}"
     },
@@ -2970,6 +2971,7 @@
       },
       "complianceOf": "{judged} talepten",
       "scope": "Rakamlar: seçili dönemde açılan talepler",
+      "scopeWindow": "Akış: seçili dönemdeki hareketler · Uyum: bu dönemde açılan talepler",
       "columnUnit": "Birim",
       "columnPerson": "Kişi",
       "columnKind": "İşin türü",
@@ -3789,6 +3791,8 @@
       "stripBoth": "Diğer birimlerinizde {breached} talebin süresi aşıldı, {warned} talebinki dolmak üzere",
       "stripBreached": "Diğer birimlerinizde {breached} talebin süresi aşıldı",
       "stripWarned": "Diğer birimleriniz: {warned} SLA yaklaşıyor",
+      "stripExcluding": "{unit} hariç; o birimin talepleri aşağıda",
+      "stripExcludingHere": "Ekrandaki birim hariç; onun talepleri aşağıda",
       "stripAll": "Tümünü gör"
     },
     "meetings": {

@@ -737,6 +737,139 @@ void main() {
       expect(find.text('Kapsam: takımın tamamı'), findsOneWidget);
     });
 
+    // P-14 (EE-310): the server now says what each figure is built on.
+    // Where it says so, the words follow it; an older server keeps today's
+    // text; a basis the app does not know is not described at all.
+    testWidgets('the SLA board follows the scope\'s own basis fields', (
+      tester,
+    ) async {
+      Future<void> board(Map<String, dynamic>? scope) => pump(
+        tester,
+        const EeSlaDashboardScreen(),
+        overrides: [
+          eeSlaDashboardProvider.overrideWith(
+            () => _Sla(
+              EeSlaDashboard.fromJson({
+                'compliance': 51.4,
+                'judged': 144,
+                'open': {'breached': 24, 'warned': 7},
+                'scope': ?scope,
+              }),
+            ),
+          ),
+        ],
+      );
+      await board({
+        'reach': 'member',
+        'unitCount': 8,
+        'stock': 'live',
+        'open': 'open_now',
+      });
+      expect(find.byKey(const Key('sla-stock-scope')), findsOneWidget);
+      expect(
+        find.text('Yalnız şu an açık olanlar; Birimlerim\'deki sayımla aynı'),
+        findsOneWidget,
+      );
+      await board({'reach': 'member', 'unitCount': 8, 'stock': 'monthly'});
+      expect(find.byKey(const Key('sla-stock-scope')), findsNothing);
+      expect(find.byKey(const Key('sla-open-scope')), findsNothing);
+      await board(null);
+      expect(find.byKey(const Key('sla-stock-scope')), findsOneWidget);
+      expect(find.byKey(const Key('sla-open-scope')), findsNothing);
+    });
+
+    testWidgets('workload: flow and compliance are named apart when the '
+        'server says so', (tester) async {
+      Future<void> panel(Map<String, dynamic> scope) => pump(
+        tester,
+        const EePerformanceScreen(),
+        overrides: [
+          eePerformanceProvider.overrideWith(
+            () => _Perf(
+              EePerformance.fromJson({
+                'from': '2026-10-09',
+                'to': '2026-11-07',
+                'closedIsNotPerformance': '',
+                'scope': scope,
+                'units': [],
+                'agents': [],
+                'processTypes': [],
+              }),
+            ),
+          ),
+        ],
+      );
+      await panel({
+        'reach': 'team',
+        'unitCount': 8,
+        'flow': 'events_in_window',
+        'compliance': 'opened_in_window',
+      });
+      expect(
+        find.text(
+          'Akış: seçili dönemdeki hareketler · Uyum: bu dönemde açılan '
+          'talepler',
+        ),
+        findsOneWidget,
+      );
+      await panel({'reach': 'team', 'unitCount': 8});
+      expect(
+        find.text('Rakamlar: seçili dönemde açılan talepler'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the other-units strip names the unit it leaves out', (
+      tester,
+    ) async {
+      EeUnitTicketsPage strip(String? excluded) => EeUnitTicketsPage.fromJson({
+        'alerts': {'breached': 22, 'warned': 0},
+        'scope': {
+          'reach': 'member',
+          'unitCount': 3,
+          'tickets': 'open_now',
+          'excludedWorkspaceId': ?excluded,
+        },
+        'tickets': [
+          {
+            'id': 'A1',
+            'number': 41,
+            'subject': 'Kompresör',
+            'status': 'new',
+            'slaStatus': 'breached',
+            'unitId': 'U-BAKIM',
+            'unitName': 'Bakım',
+            'workspaceId': _bakim.id,
+          },
+        ],
+      });
+      Future<void> show(EeUnitTicketsPage page) => pump(
+        tester,
+        const Scaffold(body: EeOtherUnitsAlertStrip()),
+        overrides: [
+          workspacesProvider.overrideWith(
+            (ref) async => const [_general, _bt, _bakim],
+          ),
+          eeOtherUnitsAlertsProvider.overrideWith((ref) async => page),
+        ],
+      );
+      await show(strip(_bt.id));
+      expect(
+        find.text('BT hariç; o birimin talepleri aşağıda'),
+        findsOneWidget,
+      );
+      await show(strip('01HWS0000000000000000GONE0'));
+      expect(
+        find.text('Ekrandaki birim hariç; onun talepleri aşağıda'),
+        findsOneWidget,
+      );
+      await show(strip(null));
+      expect(find.byKey(const Key('other-units-excluded')), findsNothing);
+      // The strip's provider lets go after its last listener; settle that.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
+    });
+
     testWidgets('Birimlerim says its counts are open now, and whose', (
       tester,
     ) async {

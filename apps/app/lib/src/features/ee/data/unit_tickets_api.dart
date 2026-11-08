@@ -173,17 +173,55 @@ DateTime? _date(Object? raw) =>
 /// units that is. Every count on the desk's screens carries it beside the
 /// number, so 24 here and 70 there stop reading as one figure disagreeing.
 class EeFigureScope {
-  const EeFigureScope({this.reach, this.unitCount});
+  const EeFigureScope({
+    this.reach,
+    this.unitCount,
+    this.stock,
+    this.open,
+    this.tickets,
+    this.flow,
+    this.compliance,
+    this.excludedWorkspaceId,
+  });
 
   static EeFigureScope? fromJson(Object? raw) {
     if (raw is! Map) return null;
+    String? word(String key) => raw[key] is String ? raw[key] as String : null;
     return EeFigureScope(
-      reach: raw['reach'] as String?,
+      reach: word('reach'),
       unitCount: (raw['unitCount'] as num?)?.toInt(),
+      stock: word('stock'),
+      open: word('open'),
+      tickets: word('tickets'),
+      flow: word('flow'),
+      compliance: word('compliance'),
+      excludedWorkspaceId: word('excludedWorkspaceId'),
     );
   }
 
   /// `team`, `member` or `key`; anything else is not labelled.
   final String? reach;
   final int? unitCount;
+
+  // OPH-409 (P-14, EE-310): what each figure is BUILT ON, when the server
+  // says. Null from an older server (the screen keeps its own words); a
+  // value the app does not know is not described (no guessed basis).
+
+  /// SLA board: `live` = every request not archived, open or closed.
+  final String? stock;
+
+  /// SLA board's open-now pair: `open_now`.
+  final String? open;
+
+  /// "Birimlerim": `open_now`.
+  final String? tickets;
+
+  /// Workload: `events_in_window` — what happened in the period.
+  final String? flow;
+
+  /// Workload: `opened_in_window` — requests opened in the period.
+  final String? compliance;
+
+  /// "Birimlerim" with `except`: the unit left out of the counts.
+  final String? excludedWorkspaceId;
 }

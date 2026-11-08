@@ -2942,6 +2942,7 @@
       "openNow": "Open right now",
       "openBreached": "Past SLA",
       "openWarned": "Due soon",
+      "openScope": "Only what is open right now; the same count as My units",
       "stockScope": "The percentage and the counts below: every request not archived, open or closed, with no date limit",
       "target": "Target: {target}"
     },
@@ -2971,6 +2972,7 @@
       },
       "complianceOf": "of {judged} requests",
       "scope": "Figures: requests opened in the chosen period",
+      "scopeWindow": "Flow: what happened in the chosen period · Compliance: requests opened in it",
       "columnUnit": "Unit",
       "columnPerson": "Person",
       "columnKind": "Kind of work",
@@ -3790,6 +3792,8 @@
       "stripBoth": "In your other units: {breached} requests past SLA, {warned} due soon",
       "stripBreached": "In your other units: {breached} requests past SLA",
       "stripWarned": "Your other units: {warned} SLA due soon",
+      "stripExcluding": "Not counting {unit}; its requests are below",
+      "stripExcludingHere": "Not counting the unit on screen; its requests are below",
       "stripAll": "See all"
     },
     "meetings": {
