@@ -426,6 +426,7 @@
     "muteAlarms": "Bu görevin alarmlarını sustur",
     "alarmsMutedSub": "Yeniden açana kadar bu görev için uyarı gelmez.",
     "unmuteAlarms": "Alarmı geri aç",
+    "unmuteShort": "Sesi aç",
     "alarmsBackOn": "Alarmlar geri açıldı",
     "alarmTimePassed": "O saat geçti — göreve yeni bir saat ver",
     "deleteTooltip": "Görevi sil",

@@ -427,6 +427,7 @@
     "muteAlarms": "Mute this task's alarms",
     "alarmsMutedSub": "No alerts for this task until you turn them back on",
     "unmuteAlarms": "Turn alarms back on",
+    "unmuteShort": "Unmute",
     "alarmsBackOn": "Alarms are back on",
     "alarmTimePassed": "That time has passed — give the task a new one",
     "deleteTooltip": "Delete task",

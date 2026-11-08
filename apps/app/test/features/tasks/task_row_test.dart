@@ -577,7 +577,9 @@ void main() {
         'its glyph and its way back are never dropped', (tester) async {
       // 360 pt, 1.0×, real glyphs, a date and a project on the right: the
       // full "Turn alarms back on" no longer fits after the date. A muted row must still not look
-      // like an armed one (§11 A5), so the item shortens instead of vanishing.
+      // like an armed one (§11 A5), so the item never vanishes (polish 3
+      // J-04: nor is it cut — it takes a line of its own; see
+      // task_row_unmute_test.dart).
       // E35 G-B review r2: at 1.3× (the largest scale that keeps the
       // horizontal row) the date alone leaves less than the alarm's minimum,
       // so the line must hold that room back for it instead of dropping it.
@@ -605,7 +607,13 @@ void main() {
               tester,
               find.byKey(const Key('task-meta-muted')),
             );
-            expect(meta.height, lessThanOrEqualTo(18.5 * scale), reason: label);
+            // Polish 3 J-04: the way back is a 48 pt target and, when it does
+            // not fit after the date, a line of its own — at most one more.
+            expect(
+              meta.height,
+              lessThanOrEqualTo(18.5 * scale + 4 + 48.5),
+              reason: label,
+            );
             final glyph = _in('muted', find.byIcon(Icons.notifications_off));
             expect(glyph.hitTestable(), findsOneWidget, reason: label);
             expect(

@@ -326,37 +326,36 @@ class TaskTile extends ConsumerWidget {
           ),
         )
       else if (muted)
-        // E35 G-B review r1: on a narrow row the way back shortens ("Turn
-        // ala…") instead of dropping off the line — a muted row that drew
-        // nothing looked armed. It needs only the glyph, the button's padding
-        // and a letter's room; the button keeps its full label for readers.
-        AwMetaShrink(
-          minWidth: glyph + AwSpace.x2 * 2 + glyph,
-          child: Row(
+        // E35 G-B review r1: a muted row that drew nothing looked armed, so
+        // the glyph and its way back are never dropped. Polish 3 J-04: nor
+        // cut — "Alarmı geri…" was an imperative with its verb missing. The
+        // row says the short complete action ("Sesi aç"), a reader hears the
+        // full one, the target is 48 pt, and when it does not fit after the
+        // others it takes a line of its own. At AX3 on a phone the glyph and
+        // the action may not share even that line: the action then moves
+        // under the glyph rather than breaking "Unmute" inside the word.
+        AwMetaWrap(
+          child: Wrap(
             key: Key('task-alarm-${task.id}'),
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
               glyphIcon(
                 Icons.notifications_off,
                 label: 'task.alarmsMuted'.tr(),
               ),
-              Flexible(
-                child: TextButton(
-                  key: Key('unmute-${task.id}'),
-                  style: TextButton.styleFrom(
-                    visualDensity: VisualDensity.compact,
-                    padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    textStyle: roles.metaStrong,
-                  ),
-                  onPressed: () => unmuteTaskAlarms(context, ref, task),
-                  child: Text(
-                    'task.unmuteAlarms'.tr(),
-                    maxLines: 1,
-                    softWrap: false,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+              TextButton(
+                key: Key('unmute-${task.id}'),
+                style: TextButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+                  minimumSize: const Size.square(kMinInteractiveDimension),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  textStyle: roles.metaStrong,
+                ),
+                onPressed: () => unmuteTaskAlarms(context, ref, task),
+                child: Semantics(
+                  label: 'task.unmuteAlarms'.tr(),
+                  excludeSemantics: true,
+                  child: Text('task.unmuteShort'.tr()),
                 ),
               ),
             ],
