@@ -94,6 +94,9 @@ jobs:
         run: |
           flutter pub get
           flutter build web --release
+          # CJK/emoji fallback fonts ship inside the archive (fonts/noto/):
+          # the bootstrap points the engine there, never at Google's host.
+          dart run tool/mirror_noto_fallback.dart
 
       - name: Package the web bundle
         run: |

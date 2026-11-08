@@ -117,6 +117,8 @@ List<NotoFont> getFallbackFontList() => <NotoFont>[
   for (final path in const [
     'Dockerfile',
     '../../.github/workflows/deploy.yml',
+    // P-G1 review r1: the published web archive is built here too.
+    '../../.github/workflows/release.yml',
   ]) {
     test('$path mirrors the fallback fonts after building the web bundle', () {
       final text = File(path).readAsStringSync();
