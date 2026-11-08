@@ -26,10 +26,16 @@ import 'ai_text.dart';
 /// Opens the AI bubble as a root-navigator modal sheet (DESIGN §24: opaque
 /// content surface, glass stays chrome-only). One entry point for the FAB, the
 /// share target and the voice path.
+///
+/// OPH-402 (T-04): the sheet draws its own header instead of Material's drag
+/// handle. That handle is a "Dismiss"/"Kapat" button node to a screen reader,
+/// but a real touch on it did nothing, so a press on the node (iOS E-5) left
+/// the sheet open. The header's handle closes on a tap too, and a visible
+/// Close button sits at its right.
 Future<void> showAiBubble(BuildContext context, {SharedPayload? shared}) {
   return showAwSheet<void>(
     context,
-    showDragHandle: true,
+    showDragHandle: false,
     builder: (_) => AiBubble(shared: shared),
   );
 }
@@ -280,6 +286,7 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
         ),
         child: Column(
           children: [
+            _sheetHeader(),
             Expanded(
               child: ListView(
                 controller: _scroll,
@@ -291,6 +298,8 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
                       state.phase != AiBubblePhase.thinking &&
                       state.phase != AiBubblePhase.streaming)
                     _shareActions(widget.shared!, controller),
+                  if (widget.shared == null && _isEmptyConversation(state))
+                    _emptyState(controller),
                   for (final entry in state.history) _messageRow(entry),
                   if (state.phase == AiBubblePhase.streaming &&
                       state.streamed.isNotEmpty)
@@ -307,6 +316,107 @@ class _AiBubbleState extends ConsumerState<AiBubble> {
       ),
     );
   }
+
+  /// The sheet's top: a drag handle that also closes on a tap, and a visible
+  /// Close button — the one "Close" a screen reader finds (the handle is
+  /// excluded so the node is not announced twice).
+  Widget _sheetHeader() {
+    final theme = Theme.of(context);
+    final handleColor =
+        theme.bottomSheetTheme.dragHandleColor ??
+        theme.colorScheme.outlineVariant;
+    void close() => Navigator.of(context).maybePop();
+    return SizedBox(
+      height: 48,
+      child: Stack(
+        children: [
+          Center(
+            child: ExcludeSemantics(
+              child: GestureDetector(
+                key: const Key('ai-sheet-handle'),
+                behavior: HitTestBehavior.opaque,
+                onTap: close,
+                child: SizedBox(
+                  width: 64,
+                  height: 48,
+                  child: Center(
+                    child: Container(
+                      width: 32,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: handleColor,
+                        borderRadius: const BorderRadius.all(
+                          Radius.circular(2),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: AwSpace.x1,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: IconButton(
+                key: const Key('ai-close'),
+                icon: const Icon(Icons.close),
+                tooltip: 'common.close'.tr(),
+                onPressed: close,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Nothing said yet and nothing in flight: the sheet explains itself
+  /// instead of opening as an empty page over a lone field.
+  bool _isEmptyConversation(AiBubbleState state) =>
+      state.history.isEmpty &&
+      state.pending.isEmpty &&
+      state.phase == AiBubblePhase.composing;
+
+  static const _suggestionKeys = [
+    'ai.bubble.suggestTask',
+    'ai.bubble.suggestDue',
+    'ai.bubble.suggestCalendar',
+  ];
+
+  /// OPH-402 (T-04): what to ask, and three starters. A starter only fills
+  /// the field — nothing is sent until the user presses Send (AI9).
+  Widget _emptyState(AiBubbleController controller) => Padding(
+    padding: const EdgeInsets.only(top: AwSpace.x4),
+    child: AwEmptyState(
+      key: const Key('ai-empty'),
+      icon: Icons.auto_awesome_outlined,
+      title: 'ai.bubble.emptyTitle'.tr(),
+      message: 'ai.bubble.emptyBody'.tr(),
+      physics: const NeverScrollableScrollPhysics(),
+      action: Wrap(
+        alignment: WrapAlignment.center,
+        spacing: AwSpace.x2,
+        runSpacing: AwSpace.x2,
+        children: [
+          for (var i = 0; i < _suggestionKeys.length; i++)
+            ActionChip(
+              key: Key('ai-suggestion-$i'),
+              label: Text(_suggestionKeys[i].tr()),
+              onPressed: () {
+                final text = _suggestionKeys[i].tr();
+                _input.text = text;
+                _input.selection = TextSelection.collapsed(offset: text.length);
+                controller.editInput(text);
+                _inputFocus.requestFocus();
+              },
+            ),
+        ],
+      ),
+    ),
+  );
 
   Widget _sharedBlock(SharedPayload shared) => Padding(
     padding: const EdgeInsets.only(bottom: AwSpace.x3),

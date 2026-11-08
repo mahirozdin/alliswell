@@ -1393,7 +1393,12 @@
       "unconfiguredBody": "Bağlayana kadar yazdığın her şey Fikirler'e kaydedilir.",
       "saveToInbox": "Fikirler'e kaydet",
       "connectProvider": "Sağlayıcı bağla",
-      "hintUnconfigured": "Fikirler'e kaydedilecek bir şey yaz…"
+      "hintUnconfigured": "Fikirler'e kaydedilecek bir şey yaz…",
+      "emptyTitle": "Sor ya da bir iş söyle",
+      "emptyBody": "Saatiyle bir iş yaz ya da söyle, ben ekleyeyim. Görevlerini ve takvimini de sorabilir, @ yazıp bir not ekleyebilirsin.",
+      "suggestTask": "Yarın 15:00 diş hekimi",
+      "suggestDue": "Bu hafta neler bitmeli?",
+      "suggestCalendar": "Bugün takvimimde ne var?"
     },
     "confirm": {
       "title": "Bu işleri gözden geçir",

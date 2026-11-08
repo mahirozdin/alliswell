@@ -1394,7 +1394,12 @@
       "unconfiguredBody": "Until then, anything you type is saved to your Inbox.",
       "saveToInbox": "Save to Inbox",
       "connectProvider": "Connect a provider",
-      "hintUnconfigured": "Type something to save to your Inbox…"
+      "hintUnconfigured": "Type something to save to your Inbox…",
+      "emptyTitle": "Ask, or tell me a task",
+      "emptyBody": "Write or say a task with a time and I'll add it. You can also ask about your tasks and calendar, or type @ to bring in a note.",
+      "suggestTask": "Dentist tomorrow at 3 pm",
+      "suggestDue": "What's due this week?",
+      "suggestCalendar": "What's on my calendar today?"
     },
     "confirm": {
       "title": "Review these tasks",
