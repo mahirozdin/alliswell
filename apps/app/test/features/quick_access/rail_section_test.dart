@@ -299,33 +299,35 @@ void main() {
       expect(handleShown(tester, ids[1]), isFalse);
     }, variant: desktop);
 
-    testWidgets('T-05: a resting row gives its name the handle column back', (
-      tester,
-    ) async {
-      final api = FakeApi();
-      // Six glyphs: in the test font (1 em per glyph) the name fits only
-      // when no 40 px handle column is held at rest (the "Design Sys…" bug).
-      final id =
-          api.seedQuickLink(
-                kind: 'url',
-                url: 'https://x.dev/ds',
-                title: 'Design',
-                emoji: '🎨',
-                colorRgb: '3B82F6',
-              )['id']
-              as String;
-      sizeTo(tester, wide);
-      await tester.pumpWidget(await signedInApp(api));
-      await tester.pumpAndSettle();
+    testWidgets(
+      'T-05: a resting row gives its name the handle column back',
+      (tester) async {
+        final api = FakeApi();
+        // Six glyphs: in the test font (1 em per glyph) the name fits only
+        // when no 40 px handle column is held at rest (the "Design Sys…" bug).
+        final id =
+            api.seedQuickLink(
+                  kind: 'url',
+                  url: 'https://x.dev/ds',
+                  title: 'Design',
+                  emoji: '🎨',
+                  colorRgb: '3B82F6',
+                )['id']
+                as String;
+        sizeTo(tester, wide);
+        await tester.pumpWidget(await signedInApp(api));
+        await tester.pumpAndSettle();
 
-      final title = tester.renderObject<RenderParagraph>(
-        find.descendant(
-          of: find.byKey(Key('quick-row-$id')),
-          matching: find.text('Design'),
-        ),
-      );
-      expect(title.didExceedMaxLines, isFalse);
-    }, variant: desktop);
+        final title = tester.renderObject<RenderParagraph>(
+          find.descendant(
+            of: find.byKey(Key('quick-row-$id')),
+            matching: find.text('Design'),
+          ),
+        );
+        expect(title.didExceedMaxLines, isFalse);
+      },
+      variant: desktop,
+    );
 
     testWidgets('keyboard focus on a row reveals its handle, apart from the '
         'focused menu', (tester) async {
