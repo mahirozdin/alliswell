@@ -18,6 +18,7 @@ import 'service_categories_screen.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// The service catalogue (EE-082, madde 8).
 ///
@@ -443,7 +444,7 @@ class _ServiceCard extends ConsumerWidget {
               ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
+        trailing: AwPopupMenuButton<String>(
           key: Key('service-menu-${service.id}'),
           onSelected: (value) async {
             switch (value) {

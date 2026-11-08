@@ -33,6 +33,7 @@ import '../providers.dart';
 import 'project_archive.dart';
 import 'project_edit_sheet.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// Project detail (OPH-036 + feedback round 1): Overview opens on the
 /// project's README note (GitHub style), Tasks and Notes tabs are live lists
@@ -133,7 +134,7 @@ class _ProjectDetail extends ConsumerWidget {
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _confirmDelete(context, ref),
             ),
-            PopupMenuButton<String>(
+            AwPopupMenuButton<String>(
               key: const Key('project-quick-menu'),
               tooltip: 'quick.actions'.tr(),
               onSelected: (_) => toggleQuickAccess(

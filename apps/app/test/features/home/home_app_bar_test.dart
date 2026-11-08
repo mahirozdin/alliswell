@@ -18,6 +18,7 @@ import 'package:alliswell/src/search/providers.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'package:alliswell/src/widgets/popup_menu.dart';
 
 /// OPH-398 (ADR-0062 §6, R-05, C-03): the phone's Home app bar carries at
 /// most three targets — ⚡, "View ⌄", Settings. The local search magnifier
@@ -51,14 +52,14 @@ void _size(WidgetTester tester, Size size) {
 
 Finder get _appBar => find.byType(AppBar);
 
-/// The tappable things in the app bar's action row. A PopupMenuButton draws
+/// The tappable things in the app bar's action row. An AwPopupMenuButton draws
 /// an IconButton inside itself — count the outermost control only.
 List<Element> _targets(WidgetTester tester) {
   final all = find
       .descendant(
         of: _appBar,
         matching: find.byWidgetPredicate(
-          (w) => w is IconButton || w is PopupMenuButton,
+          (w) => w is IconButton || w is AwPopupMenuButton,
         ),
       )
       .evaluate()

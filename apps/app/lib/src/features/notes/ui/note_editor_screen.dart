@@ -29,6 +29,7 @@ import 'note_versions_screen.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
 import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
+import '../../../widgets/popup_menu.dart';
 
 /// The note editor (OPH-044, rebuilt for three modes in OPH-248).
 ///
@@ -401,7 +402,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
           // access all name a NOTE by id, and this one has none until the user
           // saves it as one.
           if (!widget.external)
-            PopupMenuButton<String>(
+            AwPopupMenuButton<String>(
               key: const Key('note-quick-menu'),
               tooltip: 'note.actions'.tr(),
               onSelected: (value) {

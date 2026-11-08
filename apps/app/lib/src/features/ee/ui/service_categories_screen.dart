@@ -9,6 +9,7 @@ import '../data/services_models.dart';
 import '../services_providers.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// EE-228 — the catalogue's shelves, as the admin arranges them.
 ///
@@ -173,7 +174,7 @@ class _ShelfRow extends ConsumerWidget {
       child: ListTile(
         leading: Icon(serviceIconData(shelf.icon)),
         title: Text(shelf.name),
-        trailing: PopupMenuButton<String>(
+        trailing: AwPopupMenuButton<String>(
           key: Key('shelf-menu-${shelf.id}'),
           onSelected: (value) async {
             switch (value) {

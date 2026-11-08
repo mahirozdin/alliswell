@@ -24,6 +24,7 @@ import 'package:pdf/widgets.dart' as pw;
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'package:alliswell/src/widgets/popup_menu.dart';
 
 /// Records what the export handed to the OS instead of opening a share sheet.
 class _RecordingSink implements NoteFileSink {
@@ -437,7 +438,7 @@ void main() {
 
     final menu = find.byWidgetPredicate(
       (w) =>
-          w is PopupMenuButton &&
+          w is AwPopupMenuButton &&
           (w.key as ValueKey?)?.value.toString().startsWith('note-menu-') ==
               true,
     );

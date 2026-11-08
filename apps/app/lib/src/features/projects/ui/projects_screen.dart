@@ -19,6 +19,7 @@ import '../data/project.dart';
 import '../providers.dart';
 import 'project_archive.dart';
 import 'project_edit_sheet.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// Projects list (OPH-036): color, favorite toggle, status; FAB creates.
 /// Archived projects are hidden by default behind the Active/Archived chips
@@ -187,7 +188,7 @@ class _ProjectTile extends ConsumerWidget {
                       .read(projectsControllerProvider.notifier)
                       .toggleFavorite(project),
                 ),
-                PopupMenuButton<String>(
+                AwPopupMenuButton<String>(
                   key: Key('project-menu-${project.id}'),
                   tooltip: 'project.actions'.tr(),
                   onSelected: (action) {

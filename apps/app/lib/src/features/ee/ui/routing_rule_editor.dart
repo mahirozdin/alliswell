@@ -12,6 +12,7 @@ import '../data/rules_models.dart';
 import '../providers.dart' show canProvider;
 import '../rules_providers.dart';
 import 'rules_widgets.dart';
+import '../../../widgets/popup_menu.dart';
 
 const _kFieldOf = {
   'CLASSIFICATION_RULE_NAME_TAKEN': 'name',
@@ -286,7 +287,7 @@ class _EeRoutingRuleEditorState extends ConsumerState<EeRoutingRuleEditor> {
             child: Text('ee.rules.save'.tr()),
           ),
           if (_before != null)
-            PopupMenuButton<String>(
+            AwPopupMenuButton<String>(
               key: const Key('routing-editor-menu'),
               tooltip: 'ee.rules.more'.tr(),
               onSelected: (v) => v == 'duplicate' ? _duplicate() : _delete(),

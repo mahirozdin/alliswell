@@ -232,6 +232,11 @@ and tracking.
       have semantic labels (`semanticLabel`, `Semantics`).
 - [ ] Keyboard: focus visible (2 px ring on inputs, focus highlight on
       controls); tab order follows visual order.
+- [ ] A menu's or sheet's barrier only closes it, and its screen-reader node
+      ("Dismiss menu" / "Scrim") lies on the free area, never over an item:
+      popup menus use `AwPopupMenuButton` (not Material's `PopupMenuButton`,
+      whose barrier node is the whole screen, centred on the menu); sheets get
+      this from `ModalBottomSheetRoute` (OPH-398).
 - [ ] No color-only signaling; text truncation prefers wrap/ellipsis+tooltip.
 - [ ] `flutter analyze` + `flutter test` green; existing widget-test keys
       (`Key('...')`) preserved.

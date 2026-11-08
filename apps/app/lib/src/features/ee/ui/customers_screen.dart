@@ -13,6 +13,7 @@ import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../customers_providers.dart';
 import '../data/customers_api.dart';
 import '../providers.dart' show canProvider;
+import '../../../widgets/popup_menu.dart';
 
 /// The companies a team serves, and the people at them (OPH-360, UI-AUDIT
 /// #18).
@@ -133,7 +134,7 @@ class _CustomerTile extends ConsumerWidget {
                 )
               : null,
           trailing: may
-              ? PopupMenuButton<String>(
+              ? AwPopupMenuButton<String>(
                   key: Key('customer-menu-${customer.id}'),
                   tooltip: 'ee.customers.actions'.tr(),
                   onSelected: (value) => _act(context, ref, value),
@@ -375,7 +376,7 @@ class _ContactTile extends ConsumerWidget {
             style: theme.textTheme.bodySmall,
           ),
           trailing: may
-              ? PopupMenuButton<String>(
+              ? AwPopupMenuButton<String>(
                   key: Key('contact-menu-${contact.id}'),
                   tooltip: 'ee.customers.actions'.tr(),
                   onSelected: (value) => _act(context, ref, value),

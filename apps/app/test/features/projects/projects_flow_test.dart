@@ -16,6 +16,7 @@ import '../auth/test_support.dart';
 import 'fake_api.dart';
 import '../../support/sync_overrides.dart';
 import '../../support/nav.dart';
+import 'package:alliswell/src/widgets/popup_menu.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -439,7 +440,7 @@ void main() {
       expect(find.text('Arşivlenecek'), findsOneWidget);
 
       // Row menu → Archive… → confirm (no cascade → optimistic status flip).
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Archive…'));
       await tester.pumpAndSettle();
@@ -454,7 +455,7 @@ void main() {
       await tester.tap(find.text('Archived'));
       await tester.pumpAndSettle();
       expect(find.text('Arşivlenecek'), findsOneWidget);
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       expect(find.text('Unarchive…'), findsOneWidget);
     },
@@ -468,7 +469,7 @@ void main() {
       await tester.pumpAndSettle();
       await openProjects(tester);
 
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
@@ -503,7 +504,7 @@ void main() {
       await tester.pumpAndSettle();
       await openProjects(tester);
 
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();

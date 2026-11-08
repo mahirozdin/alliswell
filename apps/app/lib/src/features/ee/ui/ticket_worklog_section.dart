@@ -8,6 +8,7 @@ import '../../../theme/tokens.dart';
 import '../../../i18n/i18n.dart';
 import '../data/worklog_models.dart';
 import '../worklog_providers.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// The hours on a request (EE-208).
 ///
@@ -139,7 +140,7 @@ class _Row extends ConsumerWidget {
             ),
           // UI-AUDIT #71: withdrawing an entry is a menu anybody can see,
           // not a long press nobody is told about.
-          PopupMenuButton<String>(
+          AwPopupMenuButton<String>(
             key: Key('worklog-menu-${row.id}'),
             tooltip: 'ee.worklogs.menu'.tr(),
             onSelected: (_) => _confirmRemove(context, ref),

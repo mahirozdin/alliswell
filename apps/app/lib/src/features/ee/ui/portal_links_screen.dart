@@ -17,6 +17,7 @@ import '../portal_links_providers.dart';
 import '../services_providers.dart';
 import '../units_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// The public doors, and who may open them (EE-106).
 ///
@@ -317,7 +318,7 @@ class _LinkTile extends ConsumerWidget {
         style: theme.textTheme.bodySmall,
       ),
       trailing: link.state.isEditable
-          ? PopupMenuButton<String>(
+          ? AwPopupMenuButton<String>(
               key: Key('portal-menu-${link.id}'),
               onSelected: (action) => _act(context, ref, action),
               itemBuilder: (context) => [

@@ -22,13 +22,14 @@ import '../../projects/ui/project_picker.dart';
 import '../data/external_document.dart';
 import '../data/external_session.dart';
 import 'markdown_import_screen.dart';
+import '../../../widgets/popup_menu.dart';
 
 class ExternalOpenMenu extends ConsumerWidget {
   const ExternalOpenMenu({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<String>(
+    return AwPopupMenuButton<String>(
       key: const Key('notes-open-markdown'),
       // OPH-272: reported blank on the owner's device — the tooltip appeared
       // but no glyph did, so the control did not read as a button. It could

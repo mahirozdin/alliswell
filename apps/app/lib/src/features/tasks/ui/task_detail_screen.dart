@@ -37,6 +37,7 @@ import '../../ee/assignments_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../theme/typography.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
 /// replica instantly and sync in the background (OPH-054/055).
@@ -288,7 +289,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 }
               },
             ),
-          PopupMenuButton<String>(
+          AwPopupMenuButton<String>(
             key: const Key('task-quick-menu'),
             tooltip: 'quick.actions'.tr(),
             onSelected: (_) => toggleQuickAccess(

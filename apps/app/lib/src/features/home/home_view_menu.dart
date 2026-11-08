@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/list_sort.dart';
 import '../../i18n/i18n.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/popup_menu.dart';
 
 /// Home's "View ⌄" on a phone (OPH-398, ADR-0062 §6, DESIGN §16 H5).
 ///
@@ -83,7 +84,7 @@ class HomeViewMenuButton extends StatelessWidget {
       ),
     );
 
-    return PopupMenuButton<String>(
+    return AwPopupMenuButton<String>(
       key: const Key('home-view-menu'),
       tooltip: 'home.viewMenu'.tr(),
       onSelected: (value) {

@@ -14,6 +14,7 @@ import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart'
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'package:alliswell/src/widgets/popup_menu.dart';
 
 /// OPH-201 — how a shortcut is born (and unborn) from the entity surfaces.
 Future<Widget> signedInApp(FakeApi api) async {
@@ -126,7 +127,7 @@ void main() {
 
     await tester.tap(find.text('Notes').last);
     await tester.pumpAndSettle();
-    await tester.tap(find.byType(PopupMenuButton<String>).first);
+    await tester.tap(find.byType(AwPopupMenuButton<String>).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Add to quick access'));
     await tester.pumpAndSettle();

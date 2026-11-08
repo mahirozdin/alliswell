@@ -24,6 +24,7 @@ import 'external_open_menu.dart';
 import 'note_export.dart';
 import '../data/note.dart';
 import '../providers.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// Note metadata dates in the user's chosen format (OPH-174, DESIGN §17).
 String _shortDate(DateTime? value, String dateFormat) =>
@@ -280,7 +281,7 @@ class _NoteMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<String>(
+    return AwPopupMenuButton<String>(
       key: Key('note-menu-${note.id}'),
       tooltip: 'note.actions'.tr(),
       onSelected: (action) {

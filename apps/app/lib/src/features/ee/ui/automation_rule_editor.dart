@@ -11,6 +11,7 @@ import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../data/rules_models.dart';
 import '../rules_providers.dart';
 import 'rules_widgets.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// The order the trigger menu lists them in — the request's life first, then
 /// the promise, then the monitors. Only what the server OFFERS is shown.
@@ -465,7 +466,7 @@ class _EeAutomationRuleEditorState
             child: Text('ee.rules.save'.tr()),
           ),
           if (_before != null)
-            PopupMenuButton<String>(
+            AwPopupMenuButton<String>(
               key: const Key('rule-editor-menu'),
               tooltip: 'ee.rules.more'.tr(),
               onSelected: (v) => v == 'duplicate' ? _duplicate() : _delete(),
@@ -638,7 +639,7 @@ class _EeAutomationRuleEditorState
                   if (free.isEmpty) return const SizedBox.shrink();
                   return Align(
                     alignment: AlignmentDirectional.centerStart,
-                    child: PopupMenuButton<String>(
+                    child: AwPopupMenuButton<String>(
                       key: const Key('rule-add-condition'),
                       tooltip: 'ee.rules.addCondition'.tr(),
                       onSelected: (c) => setState(() => _conds[c] = null),

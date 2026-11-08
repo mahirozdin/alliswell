@@ -35,6 +35,7 @@ import '../../workspaces/workspaces.dart';
 import '../../../widgets/segment_label.dart';
 import '../../../widgets/list_detail.dart';
 import '../../../theme/typography.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
 ///
@@ -189,7 +190,7 @@ class EeTicketQueueScreen extends ConsumerWidget {
                 // bar SMALLER than it was, leaves headroom for the next one, and
                 // trades two icons nobody can name for two menu entries that say
                 // what they are.
-                PopupMenuButton<String>(
+                AwPopupMenuButton<String>(
                   key: const Key('ticket-more'),
                   icon: const Icon(Icons.more_vert),
                   tooltip: 'ee.tickets.more'.tr(),
