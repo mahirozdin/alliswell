@@ -54,6 +54,7 @@ void main() {
       projects: projects(o['projects'] ?? defaults['projects']),
       parseProject: (o['parseProject'] as bool?) ?? true,
       ignored: {...((o['ignored'] as List?) ?? const []).cast<String>()},
+      language: o['language'] as String?,
     );
   }
 

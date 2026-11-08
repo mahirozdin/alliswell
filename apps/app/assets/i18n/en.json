@@ -306,6 +306,7 @@
     "quickAddHint": "Add a task… e.g. tomorrow 3pm #work",
     "quickAddForDay": "Quick add for {date}…",
     "added": "Added: {title} · {when}",
+    "addedRepeat": "Added: {title} · {when} · Repeats: {rule}",
     "askSkipNoDate": "Add without date",
     "askSkipSelectedDay": "Add to selected day",
     "hideCalendar": "Hide calendar",

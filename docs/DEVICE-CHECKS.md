@@ -7,6 +7,7 @@
 
 ## Kontrol listesi öğesini yeniden adlandırma (2026-11-08)
 
+- OPH-420 — **telefon + web, açık ve koyu** (NOT RUN): Türkçe arayüzde hızlı eklemede "Bu ayda bir toplantı" ve "daily toplantısı" tam başlıkla tekrarsız ekleniyor (tarih seçici açılıyor); "her pazar yürüyüş" eklenince alttaki "Eklendi" mesajı "Tekrar: …" diyor.
 - OPH-417 — **telefon + web, açık ve koyu** (NOT RUN): hızlı eklemede "Buy a weekly planner" ve "Read Daily Mail tomorrow" tekrarsız görev oluşturuyor, "daily standup" hâlâ günlük; günlük bir görevin detayında Tekrar anahtarını kapat → onayla: görev kalıyor, anahtar kapalı, sonraki günlerin tekrarları gidiyor.
 - OPH-416 — **web/masaüstü + telefon, açık ve koyu** (NOT RUN): görev detayında bir kontrol listesi öğesinin metnine dokun/tıkla: imleçli bir alan açılıyor, öğe işaretlenmiyor; Enter ya da dışarı tıklamak kaydediyor, Esc (web/masaüstü) eski adı geri getiriyor, boş bırakmak eski adı koruyor; yalnız kutucuk işaretliyor.
 

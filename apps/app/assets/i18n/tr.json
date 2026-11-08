@@ -305,6 +305,7 @@
     "quickAddHint": "Görev ekle… örn. yarın 15:00 #iş",
     "quickAddForDay": "{date} için hızlı ekle…",
     "added": "Eklendi: {title} · {when}",
+    "addedRepeat": "Eklendi: {title} · {when} · Tekrar: {rule}",
     "askSkipNoDate": "Tarihsiz ekle",
     "askSkipSelectedDay": "Seçili güne ekle",
     "hideCalendar": "Takvimi gizle",

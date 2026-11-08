@@ -236,6 +236,17 @@ void main() {
     await _type(tester, 'home-quick-add', "her pazartesi 9'da spor #sağlık");
     expect(find.byKey(const Key('quick-add-token-repeat')), findsOneWidget);
     await _submit(tester);
+    // OPH-420 (#32): the confirmation names the repeat — never silent.
+    final added = tester.widget<Text>(
+      find
+          .descendant(
+            of: find.byKey(const Key('quick-add-added')),
+            matching: find.byType(Text),
+          )
+          .first,
+    );
+    expect(added.data, contains('spor'));
+    expect(added.data, contains('Repeats: Every week on Monday'));
 
     final task = api.tasks.single;
     expect(task['title'], 'spor');

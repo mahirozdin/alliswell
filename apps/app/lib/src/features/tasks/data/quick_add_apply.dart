@@ -5,6 +5,7 @@ import '../../../core/day_boundary.dart';
 import '../../../core/fold.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../core/quick_parse.dart';
+import '../../../i18n/i18n.dart';
 import '../../projects/providers.dart';
 import '../../../sync/providers.dart';
 import '../../tags/tags.dart';
@@ -42,7 +43,9 @@ class QuickAddSubmission {
 /// - `5/11` is month-first only under the US format preference, or when the
 ///   default format follows a month-first region (OPH-408);
 /// - weeks start on Monday — the app has no week-start setting, and the
-///   month grid and the recurrence engine are Monday-first (ADR-0020).
+///   month grid and the recurrence engine are Monday-first (ADR-0020);
+/// - the UI language decides whether a bare English "daily"/"mondays" may
+///   repeat a sentence that reads Turkish (OPH-420, ADR-0067).
 AwQuickParseOptions quickParseOptions(
   AwRead read, {
   bool parseProject = true,
@@ -65,6 +68,7 @@ AwQuickParseOptions quickParseOptions(
         if (p.status != 'archived') AwQuickProject(id: p.id, name: p.name),
     ],
     ignored: ignored,
+    language: AwI18n.instance.locale.languageCode,
   );
 }
 

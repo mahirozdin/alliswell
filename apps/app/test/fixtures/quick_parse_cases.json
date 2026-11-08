@@ -3391,6 +3391,452 @@
     "project": null,
     "priority": null
    }
+  },
+  {
+   "group": "negative",
+   "text": "Bu ayda bir toplantı",
+   "expect": {
+    "title": "Bu ayda bir toplantı",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "bu haftada bir gün spor",
+   "expect": {
+    "title": "bu haftada bir gün spor",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "gelecek ayda bir sunum var",
+   "expect": {
+    "title": "gelecek ayda bir sunum var",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "geçen yılda bir kez gittik",
+   "expect": {
+    "title": "geçen yılda bir kez gittik",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "önümüzdeki haftada bir görüşme",
+   "expect": {
+    "title": "önümüzdeki haftada bir görüşme",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "daily toplantısı",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "daily toplantısı",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "daily toplantısı",
+   "expect": {
+    "title": "daily toplantısı",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "daily toplantisi",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "daily toplantisi",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "weekly rapor yarın",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "weekly rapor",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "due"
+    ]
+   }
+  },
+  {
+   "group": "negative",
+   "text": "mondays toplantısı",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "mondays toplantısı",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "pazarları gez",
+   "expect": {
+    "title": "pazarları gez",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "haftada bir spor yap",
+   "expect": {
+    "title": "spor yap",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ay kira öde",
+   "expect": {
+    "title": "kira öde",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her pazar yürüyüş",
+   "expect": {
+    "title": "yürüyüş",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "SU",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "pazartesileri yoga",
+   "expect": {
+    "title": "yoga",
+    "due": "2026-10-19T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "MO",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "pazar günleri yürüyüş",
+   "expect": {
+    "title": "yürüyüş",
+    "due": "2026-10-18T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "SU",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "cuma günleri halı saha",
+   "expect": {
+    "title": "halı saha",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "weekly",
+     "interval": 1,
+     "byWeekday": [
+      {
+       "day": "FR",
+       "ordinal": null
+      }
+     ],
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "daily standup",
+   "options": {
+    "language": "en"
+   },
+   "expect": {
+    "title": "standup",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "daily standup",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "standup",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "daily toplantısı",
+   "options": {
+    "language": "en"
+   },
+   "expect": {
+    "title": "toplantısı",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "every day toplantı",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "toplantı",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "her ayda bir rapor",
+   "expect": {
+    "title": "rapor",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "monthly",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "repeat"
+    ]
+   }
   }
  ]
 }

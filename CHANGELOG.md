@@ -23,6 +23,10 @@ This file holds the unreleased changes and the latest release; at each release t
   stopping a repeat keeps the task you are on, today's task and any earlier open ones as ordinary
   tasks (only later occurrences go, on every device) and the Repeat switch turns off the moment
   you confirm, even offline, also on occurrences kept from a stopped series.
+- **Quick add reads ordinary words as words, and says when it made a repeat** (#32): "Bu ayda bir
+  toplantı", "daily toplantısı" and "pazarları gez" stay one-off tasks with their full title,
+  while "haftada bir spor", "her pazar", "pazar günleri" and "daily standup" still repeat; when
+  quick add starts a repeating task, the "Added" message names the repeat.
 - **A checklist item can be renamed in place** (#38): tap its text to edit it, Enter or tapping
   away saves, Esc cancels; only the checkbox ticks it now, so tapping the words no longer marks
   the item done.
