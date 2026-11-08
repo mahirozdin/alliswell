@@ -1,5 +1,7 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show RenderView;
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -21,28 +23,48 @@ final tourAutoStartProvider = Provider<bool>((_) => true);
 
 /// What a step points at besides a nav destination (OPH-404). Each one is
 /// marked in the tree by a [TourAnchor]; a target that is not on screen
-/// (a narrow window, a section that hides it) falls back to a centred card.
-enum TourTarget { quickAdd, voice, search }
+/// (a narrow window, a section that hides it) falls back to the step's
+/// [TourStep.fallback], or to a centred card.
+///
+/// [alarm] is the first upcoming task on Home whose urgent alarm will ring
+/// (polish 4 T-03): the alarm step used to be a centred card over the
+/// calendar, pointing at nothing.
+enum TourTarget { quickAdd, voice, search, alarm }
 
-/// One step of the tour. [target] or [section] anchors the spotlight; both
-/// null is a plain centred card (the urgent alarm has nothing on Home to
-/// point at).
+/// One step of the tour. [target] or [section] anchors the spotlight; a
+/// [target] that is not on screen tries [fallback]; nothing found is a
+/// plain centred card.
 class TourStep {
   const TourStep({
     this.section,
     this.target,
+    this.fallback,
     required this.titleKey,
     required this.bodyKey,
+    this.touchBodyKey,
   });
 
   final AppSection? section;
   final TourTarget? target;
+  final TourTarget? fallback;
   final String titleKey;
   final String bodyKey;
 
+  /// The body on a phone or tablet (polish 4 T-03): the search step told a
+  /// phone about "Ctrl+K (⌘K on a Mac)". Null = [bodyKey] everywhere.
+  final String? touchBodyKey;
+
   String get title => titleKey.tr();
-  String get body => bodyKey.tr();
+  String get body =>
+      (touchBodyKey != null && tourIsTouchPlatform() ? touchBodyKey! : bodyKey)
+          .tr();
 }
+
+/// iOS and Android — native or a phone's browser — have no keyboard
+/// shortcut to teach; desktops and desktop browsers do.
+bool tourIsTouchPlatform() =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.android;
 
 /// OPH-404 (U-33, research `ux-core-screens.md` §4.1, DESIGN §50): four
 /// things a person does on day one, not a walk past every tab. The old
@@ -57,7 +79,13 @@ const TourStep kTourVoice = TourStep(
   titleKey: 'tour.voiceTitle',
   bodyKey: 'tour.voiceBody',
 );
+
+/// Polish 4 T-03: the alarm step spotlights the first upcoming task that
+/// will ring ([TourTarget.alarm], marked by Home's rows); a Home with none
+/// on screen — a new account — points at the field where a time is typed.
 const TourStep kTourAlarm = TourStep(
+  target: TourTarget.alarm,
+  fallback: TourTarget.quickAdd,
   titleKey: 'tour.alarmTitle',
   bodyKey: 'tour.alarmBody',
 );
@@ -65,6 +93,7 @@ const TourStep kTourSearch = TourStep(
   target: TourTarget.search,
   titleKey: 'tour.searchTitle',
   bodyKey: 'tour.searchBody',
+  touchBodyKey: 'tour.searchBodyTouch',
 );
 
 /// The personal tour. [kTourVoice] only where the microphone is drawn
@@ -142,6 +171,26 @@ class TourAnchor extends StatefulWidget {
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize || !box.attached) return null;
     return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// [rectOf], but only when the whole rect is inside the window (polish 4
+  /// T-03): a list row can be laid out in the scroll cache below the
+  /// screen, and a spotlight there is a card pointing at nothing.
+  static Rect? visibleRectOf(TourTarget target) {
+    final rect = rectOf(target);
+    final context = _mounted[target];
+    if (rect == null || context == null || !context.mounted) return null;
+    // The root render object is the window, in the same logical pixels as
+    // [rectOf] (a test's surface size included).
+    final view = context.findAncestorRenderObjectOfType<RenderView>();
+    if (view == null) return rect;
+    final window = view.size;
+    final inside =
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.height &&
+        rect.right <= window.width;
+    return inside ? rect : null;
   }
 
   @override

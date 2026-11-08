@@ -790,7 +790,8 @@
     "alarmTitle": "Acil alarm",
     "alarmBody": "Saati olan bir görev, zamanı gelince alarm olarak çalar; telefon sessizdeyken bile. İstemediğin görevde Acil alarm'ı görevin ayrıntısından kapat.",
     "searchTitle": "Her yerde ara",
-    "searchBody": "Görevlerini, notlarını, projelerini ve dosyalarını tek yerden bul. Klavyede Ctrl+K (Mac'te ⌘K) da açar."
+    "searchBody": "Görevlerini, notlarını, projelerini ve dosyalarını tek yerden bul. Klavyede Ctrl+K (Mac'te ⌘K) da açar.",
+    "searchBodyTouch": "Arama düğmesine dokun: görevlerini, notlarını, projelerini ve dosyalarını tek yerden bul."
   },
   "error": {
     "unknown": "Bir şeyler ters gitti. Lütfen tekrar dene.",

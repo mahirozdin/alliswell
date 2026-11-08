@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,6 +18,10 @@ import 'package:alliswell/src/features/ee/team_origin.dart';
 import 'package:alliswell/src/features/ai/ui/ai_fab.dart';
 import 'package:alliswell/src/features/onboarding/tour_overlay.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
+import 'package:alliswell/src/features/home/home_screen.dart'
+    show tourAlarmTaskId;
+import 'package:alliswell/src/features/home/task_grouping.dart';
+import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sections.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart'
@@ -111,7 +116,8 @@ void main() {
       expect(kTourSteps.map((s) => s.target), [
         TourTarget.quickAdd,
         TourTarget.voice,
-        null, // nothing on Home to point at: a centred card
+        // Polish 4 T-03: the first task that will ring, else the field.
+        TourTarget.alarm,
         TourTarget.search,
       ]);
       for (final s in kTourSteps) {
@@ -284,7 +290,9 @@ void main() {
     await tester.tap(find.byKey(const Key('tour-next')));
     await tester.pumpAndSettle();
     expect(find.text('Urgent alarm'), findsOneWidget);
-    expect(find.byKey(const Key('tour-spotlight')), findsNothing);
+    // Polish 4 T-03: no task that will ring yet — the step points at the
+    // field where a time is typed, not a centred card over the calendar.
+    covers(find.byKey(const Key('home-quick-add')));
 
     await tester.tap(find.byKey(const Key('tour-next')));
     await tester.pumpAndSettle();
@@ -585,6 +593,158 @@ void main() {
       expect(c.read(tourControllerProvider).running, isFalse);
       await tester.pump(const Duration(seconds: 3));
       expect(c.read(tourControllerProvider).running, isTrue);
+    });
+  });
+
+  // Polish 4 T-03 (OPH-404, iOS 06-tour-3/4): step 3 was a centred card
+  // over the calendar, pointing at nothing, and step 4 told a phone about
+  // Ctrl+K.
+  group('T-03: the alarm step points at a row, search speaks to touch', () {
+    Future<void> toStep(WidgetTester tester, String title) async {
+      while (find
+          .descendant(of: find.byType(TourOverlay), matching: find.text(title))
+          .evaluate()
+          .isEmpty) {
+        await tester.tap(find.byKey(const Key('tour-next')));
+        await tester.pumpAndSettle();
+      }
+    }
+
+    testWidgets('step 3 spotlights the first upcoming task that will ring', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final now = DateTime.now();
+      final api = FakeApi()
+        // Overdue: it already rang. Not urgent: it will not ring.
+        ..seedTask(
+          title: 'Rang yesterday',
+          isUrgent: true,
+          dueAt: now
+              .subtract(const Duration(days: 1))
+              .toUtc()
+              .toIso8601String(),
+        )
+        ..seedTask(
+          title: 'Quiet one',
+          dueAt: now.add(const Duration(minutes: 30)).toUtc().toIso8601String(),
+        );
+      final ringing = api.seedTask(
+        title: 'Dentist',
+        isUrgent: true,
+        dueAt: now.add(const Duration(hours: 2)).toUtc().toIso8601String(),
+      );
+      await tester.pumpWidget(await tourApp(api, tourEnabled: true));
+      await tester.pumpAndSettle();
+      await toStep(tester, 'Urgent alarm');
+
+      final spot = tester.getRect(find.byKey(const Key('tour-spotlight')));
+      final row = tester.getRect(find.byKey(Key('task-due-${ringing['id']}')));
+      final field = tester.getRect(find.byKey(const Key('home-quick-add')));
+      expect(spot.contains(row.center), isTrue);
+      expect(spot.contains(field.center), isFalse);
+      // The card does not cover the row it explains.
+      final card = tester.getRect(find.byKey(const Key('tour-next')));
+      expect(spot.overlaps(card), isFalse);
+    });
+
+    testWidgets('a ringing task below the screen is not spotlighted', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final now = DateTime.now();
+      final api = FakeApi();
+      // Below the fold: laid out in the scroll cache, not on screen.
+      for (var i = 0; i < 6; i++) {
+        api.seedTask(title: 'Undated $i');
+      }
+      api.seedTask(
+        title: 'Far away',
+        isUrgent: true,
+        dueAt: now.add(const Duration(days: 20)).toUtc().toIso8601String(),
+      );
+      await tester.pumpWidget(await tourApp(api, tourEnabled: true));
+      await tester.pumpAndSettle();
+      await toStep(tester, 'Urgent alarm');
+
+      // The row is laid out (in the scroll cache) but below the screen.
+      final laidOut = TourAnchor.rectOf(TourTarget.alarm);
+      expect(laidOut, isNotNull);
+      expect(laidOut!.top, greaterThan(844));
+      expect(TourAnchor.visibleRectOf(TourTarget.alarm), isNull);
+      final spot = tester.getRect(find.byKey(const Key('tour-spotlight')));
+      final screen = tester.getRect(find.byType(TourOverlay));
+      expect(screen.contains(spot.center), isTrue);
+      final field = tester.getRect(find.byKey(const Key('home-quick-add')));
+      expect(spot.contains(field.center), isTrue);
+    });
+
+    test('tourAlarmTaskId skips done, muted, overdue and quiet tasks', () {
+      expect(kTourAlarm.target, TourTarget.alarm);
+      expect(kTourAlarm.fallback, TourTarget.quickAdd);
+      final now = DateTime.utc(2026, 11, 8, 12);
+      final api = FakeApi();
+      String at(int hours) => now.add(Duration(hours: hours)).toIso8601String();
+      Task task(String title, {bool urgent = true, int hours = 2}) =>
+          Task.fromJson(
+            api.seedTask(title: title, isUrgent: urgent, dueAt: at(hours)),
+          );
+      final done = Task.fromJson({
+        ...api.seedTask(title: 'done', isUrgent: true, dueAt: at(1)),
+        'status': 'completed',
+        'completedAt': now.toIso8601String(),
+      });
+      final muted = Task.fromJson({
+        ...api.seedTask(title: 'muted', isUrgent: true, dueAt: at(1)),
+        'alarmsMutedAt': now.toIso8601String(),
+      });
+      final overdue = task('overdue', hours: -1);
+      final quiet = task('quiet', urgent: false);
+      final ringing = task('ringing', hours: 3);
+      final later = task('later', hours: 5);
+      HomeGroup group(List<Task> tasks) => HomeGroup(
+        bucket: HomeBucket.today,
+        items: [for (final t in tasks) TaskItem(t)],
+        dimmed: false,
+      );
+      expect(
+        tourAlarmTaskId([
+          group([overdue, done]),
+          group([muted, quiet, ringing, later]),
+        ], now),
+        ringing.id,
+      );
+      expect(
+        tourAlarmTaskId([
+          group([overdue, quiet]),
+        ], now),
+        isNull,
+      );
+    });
+
+    testWidgets('on a phone the search step names the button, not Ctrl+K', (
+      tester,
+    ) async {
+      await AwI18n.instance.loadForTest(const Locale('en'));
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(kTourSearch.body, isNot(contains('Ctrl')));
+      expect(kTourSearch.body, contains('search button'));
+      debugDefaultTargetPlatformOverride = TargetPlatform.android;
+      expect(kTourSearch.body, isNot(contains('⌘K')));
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      expect(kTourSearch.body, contains('Ctrl+K'));
+      debugDefaultTargetPlatformOverride = TargetPlatform.windows;
+      expect(kTourSearch.body, contains('Ctrl+K'));
+      debugDefaultTargetPlatformOverride = null;
+
+      await AwI18n.instance.loadForTest(const Locale('tr'));
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      expect(kTourSearch.body, isNot(contains('Ctrl')));
+      expect(kTourSearch.body, contains('Arama düğmesine dokun'));
+      debugDefaultTargetPlatformOverride = null;
+      await AwI18n.instance.loadForTest(const Locale('en'));
     });
   });
 }

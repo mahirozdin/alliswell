@@ -791,7 +791,8 @@
     "alarmTitle": "Urgent alarm",
     "alarmBody": "A task with a time rings as an alarm when it is due, even with the phone on silent. Turn Urgent alarm off in a task's details when you don't want it.",
     "searchTitle": "Search everywhere",
-    "searchBody": "Find your tasks, notes, projects and files in one place. Ctrl+K (⌘K on a Mac) opens it from the keyboard."
+    "searchBody": "Find your tasks, notes, projects and files in one place. Ctrl+K (⌘K on a Mac) opens it from the keyboard.",
+    "searchBodyTouch": "Tap the search button to find your tasks, notes, projects and files in one place."
   },
   "error": {
     "unknown": "Something went wrong. Please try again.",

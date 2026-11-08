@@ -1201,6 +1201,26 @@ String homeSectionKey(HomeGroup group) {
       : '${group.bucket.name}-${day.year}-${day.month}-${day.day}';
 }
 
+/// The task the tour's alarm step spotlights (polish 4 T-03, DESIGN §50 F2):
+/// the first one in Home's order that is still open, due after [now], with
+/// its urgent alarm armed and not silenced — a row that will really ring.
+/// Null when Home has none; the step then points at the quick-add field.
+String? tourAlarmTaskId(List<HomeGroup> groups, DateTime now) {
+  for (final group in groups) {
+    for (final item in group.items) {
+      if (item case TaskItem(:final task)
+          when task.isUrgent &&
+              !task.isCompleted &&
+              task.completedAt == null &&
+              task.alarmsMutedAt == null &&
+              (task.dueAt?.isAfter(now) ?? false)) {
+        return task.id;
+      }
+    }
+  }
+  return null;
+}
+
 /// The header + row widgets for Home's groups, shared by the wide ListView and
 /// the narrow CustomScrollView (OPH-103) so the group/row logic lives in ONE
 /// place. Each group is a labelled header followed by its chronological rows
@@ -1216,6 +1236,20 @@ List<Widget> buildHomeGroupRows(
   String? flashId,
   GlobalKey? flashKey,
 }) {
+  final alarmId = tourAlarmTaskId(groups, DateTime.now());
+  Widget tile(Task task, HomeGroup group) {
+    final row = TaskTile(
+      task: task,
+      dimmed: group.dimmed,
+      highlighted: group.bucket == HomeBucket.selectedDay,
+      onTagTap: onTagTap,
+    );
+    // Polish 4 T-03: the tour's alarm step points at this row.
+    return task.id == alarmId
+        ? TourAnchor(target: TourTarget.alarm, child: row)
+        : row;
+  }
+
   return [
     // OPH-306: the filter names itself directly above the list it is filtering.
     // Both layouts render these rows, so one insertion covers the wide ListView
@@ -1237,19 +1271,9 @@ List<Widget> buildHomeGroupRows(
             TaskItem(:final task) when task.id == flashId => _FlashRow(
               key: flashKey,
               id: task.id,
-              child: TaskTile(
-                task: task,
-                dimmed: group.dimmed,
-                highlighted: group.bucket == HomeBucket.selectedDay,
-                onTagTap: onTagTap,
-              ),
+              child: tile(task, group),
             ),
-            TaskItem(:final task) => TaskTile(
-              task: task,
-              dimmed: group.dimmed,
-              highlighted: group.bucket == HomeBucket.selectedDay,
-              onTagTap: onTagTap,
-            ),
+            TaskItem(:final task) => tile(task, group),
             EventItem(:final event) => ExternalEventTile(
               event: event,
               dimmed: group.dimmed,

@@ -90,7 +90,13 @@ class HomeShell extends ConsumerWidget {
   /// centred cards or an anchor that isn't laid out yet (graceful).
   static Rect? _anchorRect(TourStep step) {
     final target = step.target;
-    if (target != null) return TourAnchor.rectOf(target);
+    if (target != null) {
+      final fallback = step.fallback;
+      if (fallback == null) return TourAnchor.rectOf(target);
+      // Polish 4 T-03: a target with a stand-in (the alarm step's row) must
+      // be on screen, or the stand-in takes its place.
+      return TourAnchor.visibleRectOf(target) ?? TourAnchor.rectOf(fallback);
+    }
     final section = step.section;
     if (section == null) return null;
     final keys = _navKeys[section]!;
