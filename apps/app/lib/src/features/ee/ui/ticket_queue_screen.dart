@@ -10,6 +10,7 @@ import '../../../widgets/fabs.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
+import '../data/csv_export_api.dart';
 import '../providers.dart';
 import '../ticket_bulk_providers.dart';
 import '../ticket_tags_providers.dart';
@@ -203,7 +204,25 @@ class EeTicketQueueScreen extends ConsumerWidget {
                       // units) and none of the unit's chips, which this view
                       // hides and does not apply.
                       if (ref.read(eeQueueShowsAllUnitsProvider)) {
-                        eeDownloadCsv(context, ref, (api) => api.tickets());
+                        // P-G1 review r1: `units.manage` widens an export
+                        // with no unit to the whole team, past the list on
+                        // screen (the person's own units). That holder asks
+                        // for each listed unit and gets one file.
+                        if (!ref.read(canProvider('units.manage'))) {
+                          eeDownloadCsv(context, ref, (api) => api.tickets());
+                          return;
+                        }
+                        final unitIds = [
+                          for (final unit in ref.read(eeUnitHereProvider).units)
+                            unit.unitId,
+                        ];
+                        eeDownloadCsv(context, ref, (api) async {
+                          final files = <EeCsvFile>[];
+                          for (final unitId in unitIds) {
+                            files.add(await api.tickets(unitId: unitId));
+                          }
+                          return mergeCsvFiles(files);
+                        });
                         return;
                       }
                       eeDownloadCsv(context, ref, (api) {

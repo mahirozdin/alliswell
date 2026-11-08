@@ -75,6 +75,32 @@ class EeCsvExportApi {
   }
 }
 
+/// Several exports of the same door as one file: the first file's BOM, header
+/// and name, then every file's rows in order; truncated when any part was.
+///
+/// The header is one line of plain column names, so the first CRLF ends it;
+/// a quoted field's line break further down is never split.
+EeCsvFile mergeCsvFiles(List<EeCsvFile> files) {
+  if (files.length == 1) return files.single;
+  // Bytes, not text: CR LF never occurs inside a UTF-8 sequence, and a
+  // decoder may swallow the BOM Excel needs (EE-303).
+  final out = BytesBuilder(copy: false)..add(files.first.bytes);
+  for (final file in files.skip(1)) {
+    final bytes = file.bytes;
+    for (var i = 0; i + 1 < bytes.length; i += 1) {
+      if (bytes[i] == 13 && bytes[i + 1] == 10) {
+        out.add(Uint8List.sublistView(bytes, i + 2));
+        break;
+      }
+    }
+  }
+  return EeCsvFile(
+    bytes: out.takeBytes(),
+    filename: files.first.filename,
+    truncated: files.any((f) => f.truncated),
+  );
+}
+
 /// `attachment; filename="acme-requests-2026-10-07.csv"` → the name, or null.
 /// Only a plain, path-free name is taken: the header is the server's, but a
 /// file name is still not allowed to carry a directory.

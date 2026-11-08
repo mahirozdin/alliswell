@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -515,6 +517,59 @@ void main() {
       expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
       await export();
       expect(csv.asked.last, 'status=null priority=null unitId=null');
+    });
+
+    // E35 P-G1 review r1: `units.manage` widens an unfiltered export to the
+    // whole team on the server, while "All units" lists only the person's own
+    // units. The file asks for each listed unit, never for no unit.
+    testWidgets('across units, a units.manage holder exports each listed '
+        'unit, never the whole team', (tester) async {
+      final csv = _FakeCsv();
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        desktop: const Size(1440, 900),
+        overrides: [
+          ...queue(
+            selected: _general.id,
+            grants: const {'tickets.export', 'units.manage'},
+          ),
+          eeCsvExportApiProvider.overrideWithValue(csv),
+          eeCsvSinkProvider.overrideWithValue(const _Sink()),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('ticket-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ticket-csv')));
+      await tester.pumpAndSettle();
+      expect(csv.asked, [
+        'status=null priority=null unitId=U-BT',
+        'status=null priority=null unitId=U-BAKIM',
+      ]);
+    });
+  });
+
+  group('mergeCsvFiles', () {
+    Uint8List bytes(String text) => Uint8List.fromList(utf8.encode(text));
+
+    test('one header, every row, the first name, truncated if any was', () {
+      final merged = mergeCsvFiles([
+        EeCsvFile(
+          bytes: bytes('\uFEFFno,subject\r\n1,"a\r\nb"\r\n'),
+          filename: 'acme-requests.csv',
+        ),
+        EeCsvFile(
+          bytes: bytes('\uFEFFno,subject\r\n2,c\r\n'),
+          filename: 'other.csv',
+          truncated: true,
+        ),
+        EeCsvFile(bytes: bytes('\uFEFFno,subject\r\n'), filename: 'x.csv'),
+      ]);
+      // Bytes: a UTF-8 decoder drops the BOM this checks is kept.
+      expect(merged.bytes, bytes('\uFEFFno,subject\r\n1,"a\r\nb"\r\n2,c\r\n'));
+      expect(merged.filename, 'acme-requests.csv');
+      expect(merged.truncated, isTrue);
     });
   });
 
