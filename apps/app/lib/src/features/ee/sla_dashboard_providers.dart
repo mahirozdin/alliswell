@@ -4,6 +4,7 @@ import '../auth/providers.dart';
 import 'data/sla_dashboard_api.dart';
 import 'data/sla_dashboard_models.dart';
 import 'providers.dart';
+import 'unit_tickets_providers.dart';
 
 /// EE-098's dashboard provider.
 ///
@@ -27,6 +28,12 @@ class EeSlaDashboardController extends AsyncNotifier<EeSlaDashboard?> {
     // No entitlement → the endpoint does not exist; asking would be a 404 on
     // every open (the house idiom: no entitlement, no capability).
     if (!ref.watch(eeFeatureProvider('teams'))) return null;
+    // HK-1 (S-G1 review r1): asked again on every pull of the unit on
+    // screen — the beat Home's "your units" figures follow — so the board
+    // and Home move together. The shell keeps the Requests branch mounted,
+    // so an opening alone never comes again after a trip to Home. A
+    // dependency only; the last answer stays on screen while it asks.
+    ref.watch(eeCurrentUnitPulledAtProvider);
     return ref.watch(eeSlaDashboardApiProvider).load();
   }
 

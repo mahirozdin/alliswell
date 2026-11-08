@@ -8,6 +8,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
 import 'package:alliswell/src/features/ee/data/ee_models.dart';
+import 'package:alliswell/src/features/ee/data/sla_dashboard_api.dart';
 import 'package:alliswell/src/features/ee/data/sla_dashboard_models.dart';
 import 'package:alliswell/src/features/ee/data/unit_tickets_api.dart';
 import 'package:alliswell/src/features/ee/providers.dart';
@@ -66,6 +67,20 @@ class _MovingBoard extends EeSlaDashboardController {
 
   @override
   Future<EeSlaDashboard?> build() async {
+    final answer = answers[calls.clamp(0, answers.length - 1)];
+    calls += 1;
+    return answer;
+  }
+}
+
+/// The board's server, answering [answers] in turn, the last one for good.
+class _MovingBoardApi extends Fake implements EeSlaDashboardApi {
+  _MovingBoardApi(this.answers);
+  final List<EeSlaDashboard> answers;
+  int calls = 0;
+
+  @override
+  Future<EeSlaDashboard?> load() async {
     final answer = answers[calls.clamp(0, answers.length - 1)];
     calls += 1;
     return answer;
@@ -164,6 +179,70 @@ void main() {
     open.value = true;
     await tester.pumpAndSettle();
     expect(_MovingBoard.calls, 2);
+    expect(figure('breached'), '22');
+    expect(figure('warned'), '0');
+  });
+
+  testWidgets('the SLA board kept mounted behind another tab follows the '
+      'pull Home follows (S-G1 review r1)', (tester) async {
+    // The shell keeps the Requests branch mounted (indexedStack): leaving
+    // for Home and coming back neither disposes nor re-creates the board,
+    // so an opening-only refresh never runs again. The board must move on
+    // the same pull that moves Home.
+    final beats = StreamController<DateTime?>.broadcast();
+    addTearDown(() => unawaited(beats.close()));
+    final api = _MovingBoardApi(const [
+      EeSlaDashboard(openBreached: 15, openWarned: 7),
+      EeSlaDashboard(openBreached: 22, openWarned: 0),
+    ]);
+    final onBoard = ValueNotifier(true);
+    addTearDown(onBoard.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [
+          eeFeatureProvider.overrideWith((ref, name) => true),
+          eeSlaDashboardApiProvider.overrideWithValue(api),
+          eeCurrentUnitPulledAtProvider.overrideWith((ref) => beats.stream),
+        ],
+        child: MaterialApp(
+          theme: buildAwTheme(Brightness.light),
+          home: Scaffold(
+            body: ValueListenableBuilder<bool>(
+              valueListenable: onBoard,
+              builder: (context, shown, _) => IndexedStack(
+                index: shown ? 0 : 1,
+                children: const [
+                  EeSlaDashboardScreen(embedded: true),
+                  SizedBox.shrink(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    String figure(String key) => tester
+        .widget<Text>(
+          find
+              .descendant(
+                of: find.byKey(Key('sla-open-$key')),
+                matching: find.byType(Text),
+                skipOffstage: false,
+              )
+              .last,
+        )
+        .data!;
+    expect(figure('breached'), '15');
+    expect(figure('warned'), '7');
+
+    // To Home; the unit on screen pulls there; back to Requests.
+    onBoard.value = false;
+    await tester.pumpAndSettle();
+    beats.add(DateTime.utc(2026, 11, 8, 7, 35));
+    await tester.pumpAndSettle();
+    onBoard.value = true;
+    await tester.pumpAndSettle();
     expect(figure('breached'), '22');
     expect(figure('warned'), '0');
   });
