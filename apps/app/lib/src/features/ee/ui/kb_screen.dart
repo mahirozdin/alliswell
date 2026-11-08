@@ -63,7 +63,25 @@ class EeKbScreen extends ConsumerWidget {
             ),
         ],
       ),
+      // R-13: the door speaks about articles. Somebody in no unit files
+      // requests and does not read a unit's shelf: the published answers
+      // reach them in the request form, where they are suggested (the
+      // extension's rule), so the screen says that and leads there. The
+      // shelf's own entry stays on the desk's queue only.
       body: EeUnitScopeGate(
+        chooseTitleKey: 'ee.kb.scope.chooseTitle',
+        chooseBodyKey: 'ee.kb.scope.chooseBody',
+        noUnitsTitleKey: 'ee.kb.scope.requesterTitle',
+        noUnitsBodyKey: 'ee.kb.scope.requesterBody',
+        noUnitsAction: (context, ref) =>
+            ref.watch(canProvider('tickets.create'))
+            ? FilledButton.tonalIcon(
+                key: const Key('kb-scope-new-ticket'),
+                onPressed: () => context.push('/tickets/new'),
+                icon: const Icon(Icons.add),
+                label: Text('ee.kb.scope.requesterAction'.tr()),
+              )
+            : null,
         child: Column(
           children: [
             _StatusFilter(status: status),

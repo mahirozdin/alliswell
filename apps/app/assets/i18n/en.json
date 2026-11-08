@@ -3691,6 +3691,13 @@
     },
     "kb": {
       "title": "Knowledge base",
+      "scope": {
+        "chooseTitle": "Which unit's knowledge base do you want to see?",
+        "chooseBody": "Articles are kept per unit. Pick a unit.",
+        "requesterTitle": "Answers come with the request form",
+        "requesterBody": "Knowledge base answers are suggested while you file a request. Start describing the problem; a matching answer shows up in the form.",
+        "requesterAction": "Open a new request"
+      },
       "articleTitle": "Article",
       "searchHint": "Search by symptom",
       "new": "New article",

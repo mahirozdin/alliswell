@@ -3690,6 +3690,13 @@
     },
     "kb": {
       "title": "Bilgi bankası",
+      "scope": {
+        "chooseTitle": "Hangi birimin bilgi bankasını görmek istersiniz?",
+        "chooseBody": "Makaleler birim birim tutulur. Bir birim seçin.",
+        "requesterTitle": "Yanıtlar talep formunda",
+        "requesterBody": "Bilgi bankası yanıtları talep açarken önerilir. Sorununuzu yazmaya başlayın; uygun bir yanıt varsa formda görünür.",
+        "requesterAction": "Yeni talep açın"
+      },
       "articleTitle": "Makale",
       "searchHint": "Belirtiye göre ara",
       "new": "Yeni makale",
