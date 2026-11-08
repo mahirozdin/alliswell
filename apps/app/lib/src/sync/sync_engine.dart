@@ -481,7 +481,12 @@ class SyncEngine {
       // is dropped, never applied (E35 G-A review r1). The revision is not
       // advanced, so a running engine would simply pull it again.
       if (_stopped) return;
-      if (page.changes.isNotEmpty || page.toRevision != state.lastRevision) {
+      // OPH-394: the first pull is applied even when it brings nothing — an
+      // empty workspace at revision 0 otherwise never stamps `lastPulledAt`,
+      // and Home could not tell "nothing pulled yet" from "pulled: empty".
+      if (page.changes.isNotEmpty ||
+          page.toRevision != state.lastRevision ||
+          state.lastPulledAt == null) {
         await applyPulledChanges(
           db,
           workspaceId: workspaceId,

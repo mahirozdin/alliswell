@@ -325,6 +325,7 @@
     "firstRunBody": "Yukarıdaki kutuya yazarak ilk görevini ekle.",
     "firstRunAdd": "İlk görevini ekle",
     "firstRunImport": "Todoist ya da TickTick'ten taşı",
+    "firstSyncLoading": "Görevlerin getiriliyor…",
     "quickAddHintShort": "Görev ekle"
   },
   "board": {

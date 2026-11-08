@@ -834,4 +834,22 @@ void main() {
       expect(queued.single.baseRevision, 2);
     });
   });
+
+  group('first pull stamp (OPH-394)', () {
+    test('an empty workspace at revision 0 still records its first pull, '
+        'and a later empty pull leaves the stamp alone', () async {
+      Future<SyncState> state() => (db.select(
+        db.syncStates,
+      )..where((s) => s.workspaceId.equals(ws))).getSingle();
+
+      expect(await engine.syncNow(), isTrue);
+      final first = await state();
+      expect(first.lastRevision, 0);
+      expect(first.lastPulledAt, isNotNull);
+
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+      expect(await engine.syncNow(), isTrue);
+      expect((await state()).lastPulledAt, first.lastPulledAt);
+    });
+  });
 }

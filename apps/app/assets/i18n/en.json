@@ -326,6 +326,7 @@
     "firstRunBody": "Type in the box above to add your first task.",
     "firstRunAdd": "Add your first task",
     "firstRunImport": "Move in from Todoist or TickTick",
+    "firstSyncLoading": "Loading your tasks…",
     "quickAddHintShort": "Add a task"
   },
   "board": {

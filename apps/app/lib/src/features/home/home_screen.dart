@@ -986,6 +986,16 @@ class _HomeEmpty extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // OPH-394 (polish 2 R-06): before the first pull has landed the replica is
+    // empty because nothing arrived yet — "No tasks yet" there flashed at a
+    // busy account on every cold sign-in. A skeleton until the replica knows;
+    // after [kFirstPullWait] the empty replica is trusted anyway, so a device
+    // with no server is never left on it.
+    final firstPullPending = ref.watch(firstPullPendingProvider).value ?? true;
+    if (firstPullPending &&
+        !(ref.watch(firstPullWaitOverProvider).value ?? false)) {
+      return _HomeFirstSyncSkeleton(physics: physics);
+    }
     // OPH-306: "you are all caught up" is a lie while a filter is hiding the
     // rest of the day. An empty FILTERED list has to say which filter emptied
     // it and offer the way out, or the user is looking at a beach umbrella
@@ -1049,6 +1059,73 @@ class _HomeEmpty extends ConsumerWidget {
       title: 'home.allCaughtUp'.tr(),
       message: 'home.allCaughtUpBody'.tr(),
       physics: physics,
+    );
+  }
+}
+
+/// Home while the first pull is on its way (OPH-394): a few still rows in the
+/// shape of the task list — no shimmer, so reduced motion has nothing to
+/// switch off — announced once as "Loading your tasks…". Not glass: it is
+/// content, and glass is chrome-only (I-11).
+class _HomeFirstSyncSkeleton extends StatelessWidget {
+  const _HomeFirstSyncSkeleton({this.physics});
+
+  /// See [_HomeEmpty.physics].
+  final ScrollPhysics? physics;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fill = scheme.onSurface.withValues(alpha: 0.08);
+    Widget bar(double widthFactor, double height) => FractionallySizedBox(
+      alignment: AlignmentDirectional.centerStart,
+      widthFactor: widthFactor,
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(AwRadius.s),
+        ),
+      ),
+    );
+    const widths = [0.72, 0.54, 0.8, 0.46];
+    return Semantics(
+      key: const Key('home-first-sync-loading'),
+      container: true,
+      liveRegion: true,
+      label: 'home.firstSyncLoading'.tr(),
+      child: ExcludeSemantics(
+        child: SingleChildScrollView(
+          physics: physics,
+          padding: awListPadding(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AwSpace.x2),
+              bar(0.28, 14),
+              const SizedBox(height: AwSpace.x3),
+              for (final w in widths)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AwSpace.x3),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: fill,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AwSpace.x3),
+                      Expanded(child: bar(w, 16)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

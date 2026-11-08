@@ -141,6 +141,49 @@ final hasAnyTaskProvider = StreamProvider<bool>((ref) async* {
   yield* ref.watch(taskStoreProvider).watchHasAnyIn(scope);
 });
 
+/// How long Home waits for a first pull before it trusts an empty replica
+/// anyway (OPH-394). Long enough for a cold sync of a busy account; short
+/// enough that a device with no server is not left on a skeleton forever —
+/// the offline strip says the rest.
+const kFirstPullWait = Duration(seconds: 10);
+
+/// Whether a workspace of the task scope has not finished its first pull yet
+/// (OPH-394, polish 2 R-06). A replica that has never pulled is empty because
+/// nothing arrived, not because the account is: Home shows a skeleton then,
+/// never "No tasks yet". Read from the sync state rows the engines write
+/// (`lastPulledAt` is stamped by every applied pull), so it holds for every
+/// engine of a member's scope. A scope still loading counts as waiting; no
+/// scope at all (signed out, no workspace) does not.
+final firstPullPendingProvider = StreamProvider.autoDispose<bool>((ref) {
+  final scope = ref.watch(taskScopeProvider);
+  if (!scope.hasValue) return Stream.value(!scope.hasError);
+  final ids = scope.value?.workspaceIds ?? const <String>[];
+  if (ids.isEmpty) return Stream.value(false);
+  final db = ref.watch(databaseProvider);
+  return (db.select(
+    db.syncStates,
+  )..where((s) => s.workspaceId.isIn(ids))).watch().map((rows) {
+    final pulled = {
+      for (final r in rows)
+        if (r.lastPulledAt != null) r.workspaceId,
+    };
+    return !ids.every(pulled.contains);
+  }).distinct();
+});
+
+/// Turns true [kFirstPullWait] after Home first asked (OPH-394). Auto-dispose:
+/// nobody watches it once the first pull has landed, and its timer goes with
+/// it.
+final firstPullWaitOverProvider = StreamProvider.autoDispose<bool>((ref) {
+  final controller = StreamController<bool>()..add(false);
+  final timer = Timer(kFirstPullWait, () => controller.add(true));
+  ref.onDispose(() {
+    timer.cancel();
+    controller.close();
+  });
+  return controller.stream;
+});
+
 /// The calendar day selected on Home/Calendar (shared so the selection is
 /// consistent across both tabs). Null = no selection.
 class SelectedDayController extends Notifier<DateTime?> {
