@@ -10,12 +10,14 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
+import '../../../widgets/choice_sheet.dart';
 import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/status_views.dart';
 import '../../../widgets/word_safe_text.dart';
 import '../../files/providers.dart';
 import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
+import '../../projects/data/project.dart';
 import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
 import '../../tags/ui/tag_input.dart';
@@ -501,6 +503,27 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     }
   }
 
+  /// The chosen project, or null — also while the list is still loading.
+  Project? _projectOf(List<Project> projects) {
+    final id = _projectId;
+    if (id == null) return null;
+    for (final project in projects) {
+      if (project.id == id) return project;
+    }
+    return null;
+  }
+
+  /// A priority's coloured flag (neutral outline for none) — the mark the
+  /// priority row and its choices lead with, as [PriorityLabel] draws it.
+  Widget _priorityFlag(BuildContext context, String priority) {
+    final color = taskPriorityColorOf(context, priority);
+    return Icon(
+      color == null ? Icons.flag_outlined : Icons.flag,
+      size: 18,
+      color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+  }
+
   /// One formatter, the user's chosen format (OPH-174 — DESIGN §17 D1).
   String _format(DateTime? value, String dateFormat) => value == null
       ? 'task.notSet'.tr()
@@ -557,12 +580,70 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
             ),
             const SizedBox(height: 12),
             // OPH-165: tags are born here — type, Enter, chip; unknown
-            // names auto-create (DESIGN §13).
+            // names auto-create (DESIGN §13). OPH-403 (H-6): the form's one
+            // field style — a label, no leading "#" icon.
             TagInputField(
+              labelText: 'task.tags'.tr(),
               value: _tagIds,
               onChanged: (tagIds) => setState(() => _tagIds = tagIds),
             ),
             const SizedBox(height: 12),
+            // OPH-403 (H-6, DESIGN §49 N6): from here on every choice is a
+            // row of one pattern — icon column, name, value, chevron — that
+            // opens a solid choice sheet; no Material dropdowns, no bare
+            // link. Project, then priority, then files, then the days.
+            _SheetTile(
+              tileKey: const Key('task-sheet-project'),
+              icon: Icons.folder_outlined,
+              title: 'task.project'.tr(),
+              subtitle: _projectOf(projects) == null
+                  ? 'project.none'.tr()
+                  : projectPickerLabel(_projectOf(projects)!),
+              valueLeading: _projectOf(projects) == null
+                  ? null
+                  : projectDot(_projectOf(projects)!),
+              isSet: _projectOf(projects) != null,
+              onTap: () async {
+                final picked = await pickProjectFromSheet(
+                  context,
+                  projects: projects,
+                  current: _projectId,
+                );
+                if (picked != null && mounted) {
+                  setState(() => _projectId = picked.id);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
+            _SheetTile(
+              tileKey: const Key('task-sheet-priority'),
+              icon: Icons.low_priority,
+              title: 'task.priorityLabel'.tr(),
+              subtitle: taskPriorityLabel(_priority),
+              valueLeading: _priorityFlag(context, _priority),
+              isSet: _priority != 'none',
+              onTap: () async {
+                final pick = await showAwChoiceSheet<String>(
+                  context,
+                  title: 'task.priorityLabel'.tr(),
+                  selected: _priority,
+                  choices: [
+                    for (final priority in kTaskPriorities)
+                      AwChoice<String>(
+                        id: priority,
+                        value: priority,
+                        label: taskPriorityLabel(priority),
+                        leading: _priorityFlag(context, priority),
+                      ),
+                  ],
+                );
+                final value = pick?.value;
+                if (value != null && mounted) {
+                  setState(() => _priority = value);
+                }
+              },
+            ),
+            const SizedBox(height: 8),
             // OPH-166: attachments, picked now, uploaded on save. Edit/triage
             // mode has the full section on detail — no duplicate here.
             if (widget.task == null) ...[
@@ -597,11 +678,21 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      _SheetTile(
+                        tileKey: const Key('task-sheet-attach'),
+                        icon: Icons.attach_file,
+                        title: 'task.attachments'.tr(),
+                        subtitle: 'file.add'.tr(),
+                        isSet: false,
+                        onTap: () async {
+                          final picks = await runAttachPicker(context, ref);
+                          _addPending(picks);
+                        },
+                      ),
                       for (final (index, file) in _pendingFiles.indexed)
                         ListTile(
                           key: Key('pending-file-$index'),
                           dense: true,
-                          contentPadding: EdgeInsets.zero,
                           leading: Icon(
                             fileKindIcon(file.mime ?? ''),
                             size: 20,
@@ -619,60 +710,12 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                                 setState(() => _pendingFiles.removeAt(index)),
                           ),
                         ),
-                      Align(
-                        alignment: AlignmentDirectional.centerStart,
-                        child: AttachButton(
-                          buttonKey: const Key('task-sheet-attach'),
-                          style: AttachButtonStyle.text,
-                          onPicked: (picks) async => _addPending(picks),
-                        ),
-                      ),
                     ],
                   );
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
             ],
-            // Round 9 #3: `start` alignment, so a helper/error line under one
-            // field can never shove the other one out of line. The "no
-            // projects yet" hint that used to do exactly that is GONE — the
-            // picker already carries "+ Add project" (OPH-163), and an empty
-            // list explains itself the moment you open it.
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: ProjectPickerField(
-                    key: const Key('task-sheet-project'),
-                    projects: projects,
-                    value: _projectId,
-                    decoration: InputDecoration(labelText: 'task.project'.tr()),
-                    onChanged: (v) => setState(() => _projectId = v),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    isExpanded: true,
-                    key: const Key('task-sheet-priority'),
-                    initialValue: _priority,
-                    decoration: InputDecoration(
-                      labelText: 'task.priorityLabel'.tr(),
-                    ),
-                    items: [
-                      for (final priority in kTaskPriorities)
-                        DropdownMenuItem(
-                          value: priority,
-                          child: PriorityLabel(priority: priority),
-                        ),
-                    ],
-                    onChanged: (v) =>
-                        setState(() => _priority = v ?? _priority),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
             // OPH-372 (DESIGN §38 W1): "When" sits ABOVE the deadline — the
             // day you will do it, then the day it is due. A day only.
             _SheetTile(

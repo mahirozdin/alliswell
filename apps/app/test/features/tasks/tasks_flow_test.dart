@@ -352,6 +352,9 @@ void main() {
       find.byKey(const Key('task-sheet-description')),
       'bağlam: https://x.dev/spec',
     );
+    // The caret's own scroll-into-view lands on the next frame; let it
+    // settle before scrolling the sheet (the form outgrew the dialog, H-6).
+    await tester.pumpAndSettle();
     // Pick a due date via the date + time dialogs (defaults accepted).
     await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
@@ -695,15 +698,19 @@ void main() {
         findsNothing,
       );
 
-      // Round 9 #3: the two fields read as one row — same height, same top.
+      // Round 9 #3, as OPH-403 (H-6) left it: project and priority are two
+      // rows of the sheet's one row pattern — same left edge, same width,
+      // same height — so nothing knocks one out of line with the other.
       final project = tester.getRect(
         find.byKey(const Key('task-sheet-project')),
       );
       final priority = tester.getRect(
         find.byKey(const Key('task-sheet-priority')),
       );
-      expect(project.top, priority.top);
+      expect(project.left, priority.left);
+      expect(project.width, priority.width);
       expect(project.height, priority.height);
+      expect(priority.top, greaterThan(project.bottom));
     },
   );
 
@@ -721,6 +728,9 @@ void main() {
       find.byKey(const Key('task-sheet-title')),
       'Yarına iş',
     );
+    // The caret's own scroll-into-view lands on the next frame; let it
+    // settle before scrolling the sheet (the form outgrew the dialog, H-6).
+    await tester.pumpAndSettle();
     // Accept both pickers untouched: whatever they OPENED on is what lands.
     await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
@@ -784,6 +794,9 @@ void main() {
       opensOn.month,
       opensOn.day == 15 ? 16 : 15,
     );
+    // The caret's own scroll-into-view lands on the next frame; let it
+    // settle before scrolling the sheet (the form outgrew the dialog, H-6).
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));

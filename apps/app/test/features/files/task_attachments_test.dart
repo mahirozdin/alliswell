@@ -216,13 +216,15 @@ void main() {
     expect(find.text('silinecek.txt'), findsOneWidget);
     expect(api.files, isEmpty);
 
-    // Changed my mind about one.
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key('pending-file-1')),
-        matching: find.byIcon(Icons.close),
-      ),
+    // Changed my mind about one (scrolled to: the picked files list under
+    // the Attachments row, below the first screen of the dialog — H-6).
+    final removeSecond = find.descendant(
+      of: find.byKey(const Key('pending-file-1')),
+      matching: find.byIcon(Icons.close),
     );
+    await tester.ensureVisible(removeSecond);
+    await tester.pumpAndSettle();
+    await tester.tap(removeSecond);
     await tester.pumpAndSettle();
     expect(find.text('silinecek.txt'), findsNothing);
 

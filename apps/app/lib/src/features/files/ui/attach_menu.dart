@@ -73,14 +73,27 @@ class AttachButton extends ConsumerWidget {
     WidgetRef ref,
     List<AttachSource> sources,
   ) async {
-    final source = sources.length == 1
-        ? sources.single
-        : await showAttachSourceSheet(context, sources: sources);
-    if (source == null || !context.mounted) return;
-    final picks = await pickFrom(context, ref, source);
+    final picks = await runAttachPicker(context, ref, sources: sources);
     if (picks.isEmpty) return;
     await onPicked(picks);
   }
+}
+
+/// What [AttachButton] does on a tap, for a surface whose affordance is not a
+/// button — the create sheet's "Files" row (OPH-403, H-6): the source menu
+/// when there is more than one way in, then that picker. Empty when the user
+/// backed out.
+Future<List<PickedUpload>> runAttachPicker(
+  BuildContext context,
+  WidgetRef ref, {
+  List<AttachSource>? sources,
+}) async {
+  final List<AttachSource> ways = sources ?? ref.read(attachSourcesProvider);
+  final source = ways.length == 1
+      ? ways.single
+      : await showAttachSourceSheet(context, sources: ways);
+  if (source == null || !context.mounted) return const [];
+  return pickFrom(context, ref, source);
 }
 
 /// The menu itself. Returns null when the user backs out.
