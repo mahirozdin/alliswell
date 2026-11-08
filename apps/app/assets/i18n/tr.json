@@ -394,7 +394,7 @@
     "durationSemantic": "Süre: {duration}",
     "clearField": "{field} temizle",
     "urgentAlarm": "Acil alarm",
-    "urgentAlarmSub": "Onaylanması gereken acil alarm",
+    "urgentAlarmSub": "Sen kapatana kadar çalmaya devam eder.",
     "sheetCancel": "Vazgeç",
     "discardTitle": "Yazdıkların silinsin mi?",
     "discardKeep": "Yazmaya devam et",

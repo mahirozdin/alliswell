@@ -395,7 +395,7 @@
     "durationSemantic": "Takes {duration}",
     "clearField": "Clear {field}",
     "urgentAlarm": "Urgent alarm",
-    "urgentAlarmSub": "Insistent reminder that must be acknowledged",
+    "urgentAlarmSub": "Keeps ringing until you dismiss it.",
     "sheetCancel": "Cancel",
     "discardTitle": "Discard what you typed?",
     "discardKeep": "Keep editing",

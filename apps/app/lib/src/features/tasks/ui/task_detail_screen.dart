@@ -462,9 +462,16 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       ),
                       const SizedBox(height: 4),
                     ],
+                    // H-5 (OPH-400): the urgent row carries its icon like
+                    // every other switch row here, so its title starts on the
+                    // same line as "Sustur" and "Tekrarla" instead of the
+                    // card's edge (DESIGN §46 R8).
                     SwitchListTile(
                       key: const Key('urgent-switch'),
                       contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(
+                        Icons.notification_important_outlined,
+                      ),
                       title: Text('task.urgentAlarm'.tr()),
                       subtitle: Text('task.urgentAlarmSub'.tr()),
                       value: task.isUrgent,
