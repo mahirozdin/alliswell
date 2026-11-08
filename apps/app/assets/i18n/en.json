@@ -417,6 +417,7 @@
     "addChecklistItem": "Add checklist item…",
     "addItem": "Add item",
     "removeItem": "Remove item",
+    "editItem": "Edit item",
     "overdueWord": "Overdue",
     "alarmNotUrgent": "Reminder (not urgent)",
     "projectSemantic": "Project: {project}",

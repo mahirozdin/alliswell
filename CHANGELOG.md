@@ -18,6 +18,9 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **A checklist item can be renamed in place** (#38): tap its text to edit it, Enter or tapping
+  away saves, Esc cancels; only the checkbox ticks it now, so tapping the words no longer marks
+  the item done.
 - **The demo workspace (`npm run seed:demo`) shows every surface and can be run again**: files are
   real (previews work), a note has a version history finished from Claude over MCP, and an AI
   provider, an API key and a Todoist import are set up; a second run no longer uploads the files

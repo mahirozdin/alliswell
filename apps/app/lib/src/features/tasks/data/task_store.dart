@@ -749,6 +749,53 @@ class TaskStore {
     _poke();
   }
 
+  /// The server's `checklist_item.title` limit (`str(500)`, 1–500 chars).
+  static const checklistTitleMax = 500;
+
+  /// Renames a checklist item in place (OPH-416, issue #38). The title is
+  /// trimmed and clamped to the server's 500 chars; an empty or unchanged
+  /// title writes nothing, so a cancelled edit never reaches the outbox.
+  Future<void> renameChecklistItem(
+    String taskId,
+    String itemId,
+    String rawTitle,
+  ) async {
+    var title = rawTitle.trim();
+    if (title.isEmpty) return;
+    if (title.length > checklistTitleMax) {
+      // UTF-16 units, as the server's JS `length` counts; never split a pair.
+      var end = checklistTitleMax;
+      final last = title.codeUnitAt(end - 1);
+      if (last >= 0xD800 && last <= 0xDBFF) end--;
+      title = title.substring(0, end).trimRight();
+    }
+    final record = await _record(taskId);
+    if (record == null) return;
+    final current = await (_db.select(
+      _db.checklistItems,
+    )..where((c) => c.id.equals(itemId))).getSingleOrNull();
+    if (current == null || current.title == title) return;
+    await _db.transaction(() async {
+      await (_db.update(
+        _db.checklistItems,
+      )..where((c) => c.id.equals(itemId))).write(
+        ChecklistItemsCompanion(
+          title: Value(title),
+          updatedAt: Value(DateTime.now().toUtc()),
+        ),
+      );
+      await enqueueMutation(
+        _db,
+        workspaceId: record.workspaceId,
+        entityType: 'checklist_item',
+        entityId: itemId,
+        operation: 'update',
+        patch: {'title': title},
+      );
+    });
+    _poke();
+  }
+
   Future<void> deleteChecklistItem(String taskId, String itemId) async {
     final record = await _record(taskId);
     if (record == null) return;

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -956,28 +957,21 @@ class _ChecklistState extends State<_Checklist> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final item in widget.task.checklist)
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: Text(
-              item.title,
-              style: item.isDone
-                  ? const TextStyle(decoration: TextDecoration.lineThrough)
-                  : null,
-            ),
-            value: item.isDone,
-            onChanged: (v) => widget.onApply(
+          _ChecklistItemRow(
+            key: ValueKey('checklist-item-${item.id}'),
+            item: item,
+            onToggle: (done) => widget.onApply(
               (store, id) =>
-                  store.setChecklistItemDone(id, item.id, isDone: v ?? false),
+                  store.setChecklistItemDone(id, item.id, isDone: done),
             ),
-            secondary: IconButton(
-              tooltip: 'task.removeItem'.tr(),
-              icon: const Icon(Icons.close, size: 18),
-              onPressed: () => widget.onApply((store, id) async {
-                await store.deleteChecklistItem(id, item.id);
-                return null;
-              }),
-            ),
+            onRename: (title) => widget.onApply((store, id) async {
+              await store.renameChecklistItem(id, item.id, title);
+              return null;
+            }),
+            onRemove: () => widget.onApply((store, id) async {
+              await store.deleteChecklistItem(id, item.id);
+              return null;
+            }),
           ),
         TextField(
           key: const Key('checklist-add'),
@@ -992,6 +986,151 @@ class _ChecklistState extends State<_Checklist> {
               onPressed: _add,
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One checklist row (OPH-416, issue #38): the checkbox ticks, the words
+/// edit. Tapping the title swaps it for an in-place field; Enter or focus
+/// loss saves the trimmed text, Escape cancels, and an empty field restores
+/// the old title without writing anything.
+class _ChecklistItemRow extends StatefulWidget {
+  const _ChecklistItemRow({
+    super.key,
+    required this.item,
+    required this.onToggle,
+    required this.onRename,
+    required this.onRemove,
+  });
+
+  final ChecklistItem item;
+  final ValueChanged<bool> onToggle;
+  final ValueChanged<String> onRename;
+  final VoidCallback onRemove;
+
+  @override
+  State<_ChecklistItemRow> createState() => _ChecklistItemRowState();
+}
+
+class _ChecklistItemRowState extends State<_ChecklistItemRow> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.item.title,
+  );
+  late final FocusNode _focus = FocusNode(onKeyEvent: _onKey);
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _editing) _commit();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      _cancel();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _startEditing() {
+    _controller.value = TextEditingValue(
+      text: widget.item.title,
+      selection: TextSelection.collapsed(offset: widget.item.title.length),
+    );
+    setState(() => _editing = true);
+    _focus.requestFocus();
+  }
+
+  void _commit() {
+    if (!_editing) return;
+    final title = _controller.text.trim();
+    setState(() => _editing = false);
+    if (title.isEmpty || title == widget.item.title) {
+      _controller.text = widget.item.title;
+      return;
+    }
+    widget.onRename(title);
+  }
+
+  void _cancel() {
+    if (!_editing) return;
+    _controller.text = widget.item.title;
+    setState(() => _editing = false);
+    _focus.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final item = widget.item;
+    final style = theme.textTheme.bodyLarge?.copyWith(
+      decoration: item.isDone ? TextDecoration.lineThrough : null,
+    );
+    return Row(
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Checkbox(
+              key: Key('checklist-item-check-${item.id}'),
+              value: item.isDone,
+              semanticLabel: item.title,
+              onChanged: (v) => widget.onToggle(v ?? false),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _editing
+              ? TextField(
+                  key: Key('checklist-item-edit-${item.id}'),
+                  controller: _controller,
+                  focusNode: _focus,
+                  style: style,
+                  maxLength: TaskStore.checklistTitleMax,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _commit(),
+                  onTapOutside: (_) => _focus.unfocus(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    counterText: '',
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                )
+              : Semantics(
+                  button: true,
+                  hint: 'task.editItem'.tr(),
+                  child: InkWell(
+                    key: Key('checklist-item-title-${item.id}'),
+                    borderRadius: BorderRadius.circular(AwRadius.s),
+                    onTap: _startEditing,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(item.title, style: style),
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+        IconButton(
+          tooltip: 'task.removeItem'.tr(),
+          icon: const Icon(Icons.close, size: 18),
+          onPressed: widget.onRemove,
         ),
       ],
     );

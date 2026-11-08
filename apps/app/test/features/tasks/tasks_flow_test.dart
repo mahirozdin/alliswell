@@ -630,12 +630,16 @@ void main() {
       expect(api.tasks.single['tagIds'], [tag['id']]);
       expect(api.tags, hasLength(1)); // matched, not duplicated
 
+      // OPH-416 (#38): only the checkbox ticks; tapping the words edits them.
+      final seedCheck = find.byKey(
+        Key('checklist-item-check-${'CHKSEED'.padRight(26, '0')}'),
+      );
       await tester.dragUntilVisible(
-        find.text('Hazırlık'),
+        seedCheck,
         detailList,
         const Offset(0, -120),
       );
-      await tester.tap(find.text('Hazırlık'));
+      await tester.tap(seedCheck);
       await tester.pumpAndSettle();
       final checklist = (api.tasks.single['checklist'] as List)
           .cast<Map<String, dynamic>>();

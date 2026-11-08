@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Kontrol listesi öğesini yeniden adlandırma (2026-11-08)
+
+- OPH-416 — **web/masaüstü + telefon, açık ve koyu** (NOT RUN): görev detayında bir kontrol listesi öğesinin metnine dokun/tıkla: imleçli bir alan açılıyor, öğe işaretlenmiyor; Enter ya da dışarı tıklamak kaydediyor, Esc (web/masaüstü) eski adı geri getiriyor, boş bırakmak eski adı koruyor; yalnız kutucuk işaretliyor.
+
 ## Cila turu 4 (2026-11-08)
 
 - OPH-397 — **telefon**: Ana Sayfa ve Talepler'i aşağı ve yukarı kaydır, hızlı eklemeye odaklan: mikrofon ve "+" 150 ms'de küçülüp çekiliyor (azaltılmış harekette anında), yukarı kaydırınca ya da kısa bir duraklamadan sonra dönüyor, klavye açıkken gizli kalıyor.

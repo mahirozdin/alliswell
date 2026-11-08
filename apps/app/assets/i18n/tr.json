@@ -416,6 +416,7 @@
     "addChecklistItem": "Kontrol listesi öğesi ekle…",
     "addItem": "Öğe ekle",
     "removeItem": "Öğeyi kaldır",
+    "editItem": "Öğeyi düzenle",
     "overdueWord": "Gecikti",
     "alarmNotUrgent": "Hatırlatma (acil değil)",
     "projectSemantic": "Proje: {project}",
