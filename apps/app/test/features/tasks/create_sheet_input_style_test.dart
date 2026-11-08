@@ -13,6 +13,7 @@ import 'package:alliswell/src/features/tasks/ui/task_create_sheet.dart';
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+import 'package:alliswell/src/widgets/dropdown_field.dart';
 
 /// OPH-403 (H-6, DESIGN §49 N5–N7) — the new-task sheet has ONE input style.
 ///
@@ -115,7 +116,9 @@ Future<void> _checkOneStyle(WidgetTester tester) async {
         (w) =>
             w is DropdownButtonFormField ||
             w is DropdownButton ||
-            w is DropdownMenu,
+            w is DropdownMenu ||
+            w is AwDropdownField ||
+            w is AwDropdownButton,
       ),
     ),
     findsNothing,

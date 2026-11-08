@@ -10,6 +10,7 @@ import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The role list and its grant matrix (EE-053).
 ///
@@ -258,7 +259,7 @@ class _RoleEditorScreenState extends ConsumerState<_RoleEditorScreen> {
           const SizedBox(height: AwSpace.x3),
           // The anchor is not cosmetic and the helper says why: it decides
           // rank in the team and the role the workspace sees.
-          DropdownButtonFormField<String>(
+          AwDropdownField<String>(
             key: const Key('role-anchor'),
             initialValue: _anchor,
             decoration: InputDecoration(

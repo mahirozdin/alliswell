@@ -19,6 +19,7 @@ import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'support/permissions.dart';
+import 'package:alliswell/src/widgets/dropdown_field.dart';
 
 /// EE-228 — the catalogue as the admin arranges it.
 ///
@@ -383,7 +384,7 @@ void main() {
       expect(await saveEnabled(tester), isFalse);
       expect(key('service-approval-incomplete'), findsOneWidget);
 
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.tap(find.byType(AwDropdownField<String>));
       await tester.pumpAndSettle();
       await tester.tap(key('service-approval-role-admin').last);
       await tester.pumpAndSettle();
@@ -614,11 +615,8 @@ void main() {
       (tester) async {
         await openShelves(tester);
         await menu(tester, 'C1', 'shelf-edit-C1');
-        final parent = tester.widget<DropdownButton<String?>>(
-          find.descendant(
-            of: key('shelf-parent'),
-            matching: find.byType(DropdownButton<String?>),
-          ),
+        final parent = tester.widget<AwDropdownField<String?>>(
+          key('shelf-parent'),
         );
         expect(parent.onChanged, isNull);
         expect(find.textContaining('Alt rafları olan bir raf'), findsOneWidget);

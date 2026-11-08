@@ -10,6 +10,7 @@ import '../services_providers.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/popup_menu.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// EE-228 — the catalogue's shelves, as the admin arranges them.
 ///
@@ -304,7 +305,7 @@ class _ShelfDialogState extends State<_ShelfDialog> {
                 labelText: 'ee.team.services.shelves.name'.tr(),
               ),
             ),
-            DropdownButtonFormField<String?>(
+            AwDropdownField<String?>(
               key: const Key('shelf-parent'),
               initialValue: _parent,
               isExpanded: true,

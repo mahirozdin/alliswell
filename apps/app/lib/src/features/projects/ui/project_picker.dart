@@ -4,6 +4,7 @@ import '../../../i18n/i18n.dart';
 import '../../../widgets/choice_sheet.dart';
 import '../data/project.dart';
 import 'project_edit_sheet.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// Sentinel dropdown value for the inline "+ Add project" entry (OPH-163).
 /// Never a real id (ULIDs are 26 chars of Crockford base32).
@@ -181,7 +182,7 @@ class _ProjectPickerFieldState extends State<ProjectPickerField> {
     // (a red frame in debug on every project task's detail). Show "none" for
     // that frame; the key re-seeds the field once the project arrives.
     final known = items.any((item) => item.value == widget.value);
-    return DropdownButtonFormField<String?>(
+    return AwDropdownField<String?>(
       key: ValueKey('aw-project-field-$_epoch-${widget.value}-$known'),
       isExpanded: true,
       initialValue: known ? widget.value : null,

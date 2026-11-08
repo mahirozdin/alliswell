@@ -5,6 +5,7 @@ import '../../../core/date_format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../data/new_ticket_api.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// One question of a service's form, drawn the ONE way it is drawn.
 ///
@@ -90,7 +91,7 @@ class _EeFormFieldViewState extends ConsumerState<EeFormFieldView> {
               : null,
         );
       case 'select':
-        return DropdownButtonFormField<String>(
+        return AwDropdownField<String>(
           key: key,
           initialValue: field.options.contains(widget.value)
               ? widget.value as String

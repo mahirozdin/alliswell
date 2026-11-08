@@ -17,6 +17,7 @@ import 'fake_api.dart';
 import '../../support/sync_overrides.dart';
 import '../../support/nav.dart';
 import 'package:alliswell/src/widgets/popup_menu.dart';
+import 'package:alliswell/src/widgets/dropdown_field.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -135,7 +136,7 @@ void main() {
 
     // OPH-193: the picker existed ONLY in edit mode — the same object had two
     // different forms — and it printed the raw server enum at the user.
-    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    expect(find.byType(AwDropdownField<String>), findsNothing);
     expect(find.text('paused'), findsNothing);
 
     await tester.enterText(find.byType(TextFormField).first, 'Yeni ad');
@@ -480,7 +481,7 @@ void main() {
       expect(find.text('active'), findsNothing);
       expect(find.text('paused'), findsNothing);
       expect(find.text('archived'), findsNothing);
-      expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+      expect(find.byType(AwDropdownField<String>), findsNothing);
     },
   );
 

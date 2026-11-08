@@ -10,6 +10,7 @@ import '../../../../theme/tokens.dart';
 import '../../../../widgets/status_views.dart';
 import '../admin_providers.dart';
 import '../data/admin_models.dart';
+import '../../../../widgets/dropdown_field.dart';
 
 /// The sales inbox (EE-160).
 ///
@@ -423,7 +424,7 @@ class _AdminLeadDetailScreenState extends ConsumerState<AdminLeadDetailScreen> {
         const SizedBox(height: AwSpace.x4),
         Text('ee.admin.leads.status.label'.tr(), style: text.labelLarge),
         const SizedBox(height: AwSpace.x1),
-        DropdownButtonFormField<String>(
+        AwDropdownField<String>(
           key: const Key('admin-lead-status'),
           initialValue: _status,
           items: [

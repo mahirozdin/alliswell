@@ -19,6 +19,7 @@ import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
 import '../../../widgets/popup_menu.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The service catalogue (EE-082, madde 8).
 ///
@@ -807,7 +808,7 @@ class _EeServiceRoutingScreenState
     final tree = shelfTree(shelves);
     final known = {for (final shelf in shelves) shelf.id};
     return [
-      DropdownButtonFormField<String?>(
+      AwDropdownField<String?>(
         key: const Key('service-shelf'),
         // A shelf that no longer exists reads as "none" rather than asserting
         // on a value the list does not hold.
@@ -883,7 +884,7 @@ class _EeServiceRoutingScreenState
         ),
       ),
       if (needsRole)
-        DropdownButtonFormField<String>(
+        AwDropdownField<String>(
           key: const Key('service-approval-role'),
           initialValue: roles.any((r) => r.key == _roleKey) ? _roleKey : null,
           isExpanded: true,

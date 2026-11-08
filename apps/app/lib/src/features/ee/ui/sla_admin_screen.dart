@@ -12,6 +12,7 @@ import '../sla_admin_providers.dart';
 import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../../../core/format.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// What an admin may edit about a promise (EE-099).
 ///
@@ -409,7 +410,7 @@ class _PolicySheetState extends State<_PolicySheet> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AwSpace.x3),
-            DropdownButtonFormField<String?>(
+            AwDropdownField<String?>(
               key: const Key('sla-policy-calendar'),
               initialValue: _calendarId,
               decoration: InputDecoration(

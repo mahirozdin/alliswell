@@ -7,6 +7,7 @@ import '../../../sync/db/database.dart';
 import '../../../widgets/sheets.dart';
 import '../kb_providers.dart';
 import '../services_providers.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// Writing an article (EE-196).
 ///
@@ -134,7 +135,7 @@ class _KbEditorSheetState extends ConsumerState<_KbEditorSheet> {
         if (!service.archived || service.id == _serviceId) service,
     ]..sort((a, b) => a.name.compareTo(b.name));
     final known = _serviceId == null || glances.containsKey(_serviceId);
-    return DropdownButtonFormField<String?>(
+    return AwDropdownField<String?>(
       key: const Key('kb-field-service'),
       initialValue: known ? _serviceId : null,
       isExpanded: true,

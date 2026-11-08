@@ -38,6 +38,7 @@ import '../../ee/ui/assignee_avatars.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../theme/typography.dart';
 import '../../../widgets/popup_menu.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
 /// replica instantly and sync in the background (OPH-054/055).
@@ -374,7 +375,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                     Row(
                       children: [
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: AwDropdownField<String>(
                             isExpanded: true,
                             key: const Key('status-dropdown'),
                             initialValue: task.status,
@@ -406,7 +407,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                         ),
                         const SizedBox(width: 12),
                         Expanded(
-                          child: DropdownButtonFormField<String>(
+                          child: AwDropdownField<String>(
                             isExpanded: true,
                             key: const Key('priority-dropdown'),
                             initialValue: task.priority,

@@ -236,8 +236,11 @@ and tracking.
 - [ ] A menu's or sheet's barrier only closes it, and its screen-reader node
       ("Dismiss menu" / "Scrim") lies on the free area, never over an item:
       popup menus use `AwPopupMenuButton` (not Material's `PopupMenuButton`,
-      whose barrier node is the whole screen, centred on the menu); sheets get
-      this from `ModalBottomSheetRoute` (OPH-398).
+      whose barrier node is the whole screen, centred on the menu); dropdowns
+      use `AwDropdownField` / `AwDropdownButton` (`widgets/dropdown_field.dart`,
+      the same route; never `DropdownButtonFormField` / `DropdownButton` /
+      `showMenu`, guarded by `test/widgets/dropdown_barrier_test.dart`);
+      sheets get this from `ModalBottomSheetRoute` (OPH-398).
 - [ ] No color-only signaling; text truncation prefers wrap/ellipsis+tooltip.
 - [ ] `flutter analyze` + `flutter test` green; existing widget-test keys
       (`Key('...')`) preserved.

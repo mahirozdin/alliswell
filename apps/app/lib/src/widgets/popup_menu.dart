@@ -114,10 +114,14 @@ class AwPopupMenuButtonState<T> extends State<AwPopupMenuButton<T>> {
 
 /// Shows [items] in a menu at [position] (the button's rect in the
 /// navigator's overlay); `null` when it was closed without a choice.
+///
+/// [width] makes the menu exactly that wide (kept inside the screen) instead
+/// of Material's 56 px steps — a dropdown's list matches its field (D-4).
 Future<T?> showAwMenu<T>({
   required BuildContext context,
   required RelativeRect position,
   required List<PopupMenuEntry<T>> items,
+  double? width,
 }) {
   assert(items.isNotEmpty);
   final navigator = Navigator.of(context);
@@ -130,6 +134,7 @@ Future<T?> showAwMenu<T>({
     _AwMenuRoute<T>(
       position: position,
       items: items,
+      width: width,
       semanticLabel: semanticLabel,
       barrierLabel: localizations.menuDismissLabel,
       capturedThemes: InheritedTheme.capture(
@@ -167,6 +172,7 @@ class _AwMenuRoute<T> extends PopupRoute<T> {
   _AwMenuRoute({
     required this.position,
     required this.items,
+    required this.width,
     required this.semanticLabel,
     required this.barrierLabel,
     required this.capturedThemes,
@@ -174,6 +180,7 @@ class _AwMenuRoute<T> extends PopupRoute<T> {
 
   final RelativeRect position;
   final List<PopupMenuEntry<T>> items;
+  final double? width;
   final String? semanticLabel;
   final CapturedThemes capturedThemes;
 
@@ -351,33 +358,33 @@ class _AwMenuState<T> extends State<_AwMenu<T>> {
     final width = CurveTween(curve: Interval(0.0, unit));
     final height = CurveTween(curve: Interval(0.0, unit * route.items.length));
 
-    final Widget menu = ConstrainedBox(
-      constraints: const BoxConstraints(
-        minWidth: _kMenuMinWidth,
-        maxWidth: _kMenuMaxWidth,
-      ),
-      child: IntrinsicWidth(
-        stepWidth: _kMenuWidthStep,
-        child: Semantics(
-          role: SemanticsRole.menu,
-          scopesRoute: true,
-          namesRoute: true,
-          explicitChildNodes: true,
-          label: route.semanticLabel,
-          child: SingleChildScrollView(
-            padding:
-                popupTheme.menuPadding ??
-                const EdgeInsets.symmetric(vertical: 8),
-            child: ListBody(
-              children: [
-                for (var i = 0; i < route.items.length; i++)
-                  FadeTransition(opacity: _opacities[i], child: route.items[i]),
-              ],
-            ),
-          ),
+    final body = Semantics(
+      role: SemanticsRole.menu,
+      scopesRoute: true,
+      namesRoute: true,
+      explicitChildNodes: true,
+      label: route.semanticLabel,
+      child: SingleChildScrollView(
+        padding:
+            popupTheme.menuPadding ?? const EdgeInsets.symmetric(vertical: 8),
+        child: ListBody(
+          children: [
+            for (var i = 0; i < route.items.length; i++)
+              FadeTransition(opacity: _opacities[i], child: route.items[i]),
+          ],
         ),
       ),
     );
+    final fixedWidth = route.width;
+    final Widget menu = fixedWidth != null
+        ? SizedBox(width: fixedWidth, child: body)
+        : ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: _kMenuMinWidth,
+              maxWidth: _kMenuMaxWidth,
+            ),
+            child: IntrinsicWidth(stepWidth: _kMenuWidthStep, child: body),
+          );
 
     return AnimatedBuilder(
       animation: animation,

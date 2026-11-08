@@ -14,6 +14,7 @@ import '../data/identity_models.dart';
 import '../identity_providers.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/form_width.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// Where a team connects its own identity source (OPH-287).
 ///
@@ -375,7 +376,7 @@ class _EditorState extends ConsumerState<_Editor> {
             ),
             const SizedBox(height: 12),
             if (!editing)
-              DropdownButtonFormField<String>(
+              AwDropdownField<String>(
                 key: const Key('identity-type'),
                 initialValue: _type,
                 decoration: InputDecoration(

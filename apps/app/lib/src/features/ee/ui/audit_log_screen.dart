@@ -13,6 +13,7 @@ import 'csv_download.dart';
 import 'history_tab.dart' show eeAuditVerb;
 import '../../../widgets/status_views.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The team's whole history, filtered (EE-130).
 ///
@@ -223,7 +224,7 @@ class _FilterBar extends StatelessWidget {
         runSpacing: AwSpace.x2,
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          DropdownButton<String?>(
+          AwDropdownButton<String?>(
             key: const Key('audit-filter-verb'),
             value: verb,
             hint: Text('ee.audit.anyAction'.tr()),
@@ -237,7 +238,7 @@ class _FilterBar extends StatelessWidget {
                 DropdownMenuItem(value: v, child: Text('ee.verb.$v'.tr())),
             ],
           ),
-          DropdownButton<String?>(
+          AwDropdownButton<String?>(
             key: const Key('audit-filter-entity'),
             value: entityType,
             hint: Text('ee.audit.anything'.tr()),

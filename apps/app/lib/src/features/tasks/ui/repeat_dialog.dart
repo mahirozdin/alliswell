@@ -8,6 +8,7 @@ import '../../../core/recurrence_text.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/segment_label.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The recurrence dialog (OPH-207, DESIGN §25 R1-R9).
 ///
@@ -613,7 +614,7 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
+                child: AwDropdownField<int>(
                   key: const Key('repeat-month-day'),
                   initialValue: _lastDay ? -1 : _monthDay,
                   decoration: InputDecoration(
@@ -649,7 +650,7 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
+                child: AwDropdownField<int>(
                   key: const Key('repeat-ordinal'),
                   initialValue: _ordinal,
                   decoration: InputDecoration(
@@ -685,7 +686,7 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
           Row(
             children: [
               Expanded(
-                child: DropdownButtonFormField<int>(
+                child: AwDropdownField<int>(
                   key: const Key('repeat-after-day'),
                   initialValue: _afterDay,
                   decoration: InputDecoration(
@@ -723,7 +724,7 @@ class _RepeatDialogState extends ConsumerState<_RepeatDialog> {
     String key,
     String value,
     void Function(String) onPicked,
-  ) => DropdownButtonFormField<String>(
+  ) => AwDropdownField<String>(
     key: Key(key),
     initialValue: value,
     decoration: InputDecoration(labelText: 'repeat.weekdayLabel'.tr()),

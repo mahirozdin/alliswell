@@ -13,6 +13,7 @@ import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// Invitations (EE-042).
 ///
@@ -93,7 +94,7 @@ class EeTeamInvitesScreen extends ConsumerWidget {
                   labelText: 'ee.team.invites.role'.tr(),
                 ),
                 child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
+                  child: AwDropdownButton<String>(
                     value: role,
                     isExpanded: true,
                     items: [
