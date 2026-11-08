@@ -159,6 +159,7 @@ class EeTicketQueueScreen extends ConsumerWidget {
                 AwSearchAction(
                   fieldKey: const Key('ticket-search'),
                   hintText: 'ee.tickets.searchHint'.tr(),
+                  query: query,
                   onQuery: (q) =>
                       ref.read(ticketSearchQueryProvider.notifier).set(q),
                 ),

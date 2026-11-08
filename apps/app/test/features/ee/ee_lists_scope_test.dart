@@ -929,6 +929,87 @@ void main() {
       expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
     });
 
+    // P-11: the requests screen stays mounted behind Home (an indexed
+    // shell branch), so the figure clearing the query must close the
+    // search field too, or it shows a term the list no longer applies.
+    testWidgets('the unassigned figure closes a search left open on the '
+        'requests screen', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/tickets',
+        routes: [
+          StatefulShellRoute.indexedStack(
+            builder: (_, _, shell) => shell,
+            branches: [
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: '/tickets',
+                    builder: (_, _) => const EeTicketQueueScreen(),
+                  ),
+                ],
+              ),
+              StatefulShellBranch(
+                routes: [GoRoute(path: '/home', builder: (_, _) => host())],
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final container = ProviderContainer(
+        overrides: [
+          ...queue(selected: _bt.id),
+          eePermissionsProvider.overrideWith(() => _Perms(perms(desk: true))),
+          eeApprovalsDoorProvider.overrideWith((ref) => false),
+          eeApprovalsBadgeProvider.overrideWith((ref) => 0),
+        ],
+        retry: (_, _) => null,
+      );
+      addTearDown(container.dispose);
+      container.listen(currentWorkspaceProvider, (_, _) {});
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('search-open')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('ticket-search')), 'yazıcı');
+      await tester.pump(const Duration(milliseconds: 300)); // the debounce
+      await tester.pumpAndSettle();
+      expect(container.read(ticketSearchQueryProvider), 'yazıcı');
+
+      router.go('/home');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ee-home-unassigned')));
+      await tester.pumpAndSettle();
+
+      expect(container.read(ticketSearchQueryProvider), isEmpty);
+      expect(find.byKey(const Key('ticket-search')), findsNothing);
+      expect(find.text('yazıcı'), findsNothing);
+      expect(find.byKey(const Key('search-open')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+
+      // Opening the field again starts empty.
+      await tester.tap(find.byKey(const Key('search-open')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('ticket-search')))
+            .controller!
+            .text,
+        isEmpty,
+      );
+    });
+
     testWidgets('a plain build, a personal space and a stranger see nothing', (
       tester,
     ) async {
