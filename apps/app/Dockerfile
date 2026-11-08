@@ -17,7 +17,11 @@ COPY apps/app ./apps/app
 # No --dart-define here on purpose: the API address is injected at CONTAINER
 # START (see the entrypoint), which is what lets one published image serve
 # every self-hoster's own domain.
-RUN cd apps/app && flutter build web --release
+# The fallback glyph fonts (CJK, emoji) the bootstrap serves from fonts/noto/
+# instead of Google's host: fetched once here, by the build, never by a
+# user's browser (P-01, ADR-0063 #7).
+RUN cd apps/app && flutter build web --release \
+ && dart run tool/mirror_noto_fallback.dart
 
 FROM nginx:1.27-alpine
 

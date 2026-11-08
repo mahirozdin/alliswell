@@ -169,6 +169,9 @@ jobs:
           flutter build web --release \
             --base-href /app/ \
             --dart-define=ALLISWELL_API_URL="$API_URL"
+          # CJK/emoji fallback fonts served from /app/fonts/noto/, not Google's
+          # host (P-01): the runner fetches them once, the browser never does.
+          dart run tool/mirror_noto_fallback.dart
 
       # The marketing site is the docroot. It is assembled AFTER the app so the
       # combined tree below is written once, in one order, with one owner.

@@ -70,7 +70,7 @@
 
 ## Küçük kırıklar ve source-available (2026-11-07)
 
-- OPH-395 — **Web (yerel `flutter build web` + Chrome DevTools ▸ Network)**: ilk açılışta ve bir görev listesi açıkken `gstatic.com`/`fonts.googleapis.com` isteği yok, Roboto ve CanvasKit kendi sunucudan; Türkçe ı/ğ/ş ve w500 satır başlıkları doğru çiziliyor. **Android**: satır başlıkları ve etiketler (w500/w600) önceki gibi görünüyor (artık paketteki Roboto). **iPhone**: yeni görev → klavye açıkken sayfanın üstündeki karartılmış şeride dokun → sayfa kapanıyor; VoiceOver "Kapat" ile de. Ayarlar ▸ Alarm günlüğü: satırlar sözcüklerle, "Ayrıntı" ham satırı açıp kapatıyor. **Web 1440, yerel compose (localhost)**: Ayarlar ▸ Entegrasyonlar ▸ "Claude / ChatGPT'ye ekle" kartında A-77 uyarısı, açık ve koyu temada okunur.
+- OPH-395 — **Web (yerel `flutter build web` + Chrome DevTools ▸ Network)**: ilk açılışta ve bir görev listesi açıkken `gstatic.com`/`fonts.googleapis.com` isteği yok, Roboto ve CanvasKit kendi sunucudan; Türkçe ı/ğ/ş ve w500 satır başlıkları doğru çiziliyor. P-01: `dart run tool/mirror_noto_fallback.dart` ile doldurulmuş derlemede bir görev başlığına “会议 😀” yaz → karakterler kutu değil gerçek glif, istekler yalnız `…/fonts/noto/…` adresine. **Android**: satır başlıkları ve etiketler (w500/w600) önceki gibi görünüyor (artık paketteki Roboto). **iPhone**: yeni görev → klavye açıkken sayfanın üstündeki karartılmış şeride dokun → sayfa kapanıyor; VoiceOver "Kapat" ile de. Ayarlar ▸ Alarm günlüğü: satırlar sözcüklerle, "Ayrıntı" ham satırı açıp kapatıyor. **Web 1440, yerel compose (localhost)**: Ayarlar ▸ Entegrasyonlar ▸ "Claude / ChatGPT'ye ekle" kartında A-77 uyarısı, açık ve koyu temada okunur.
 
 ## Ana Sayfa sayıları, alt görevler, Pano tekrarları, arama (2026-11-07)
 
