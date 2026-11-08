@@ -134,15 +134,21 @@ class _MonthCalendarState extends State<MonthCalendar> {
         Row(
           children: [
             const SizedBox(width: 8),
-            // Expanded + ellipsis so long month names (or mid-animation
-            // widths) never overflow the header (DESIGN §9 L2).
+            // Expanded so long month names (or mid-animation widths) never
+            // overflow the header (DESIGN §9 L2). OPH-400 (R-09): drawn
+            // smaller rather than cut — "Kasım 2…" hid the year at AX3.
             Expanded(
-              child: Text(
-                monthTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
+              child: FittedBox(
+                key: const Key('calendar-month-title'),
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  monthTitle,
+                  maxLines: 1,
+                  softWrap: false,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),

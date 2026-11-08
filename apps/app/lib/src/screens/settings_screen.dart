@@ -39,6 +39,7 @@ import '../theme/tokens.dart';
 import '../widgets/status_views.dart';
 import '../features/ee/assignments_providers.dart';
 import '../widgets/route_leading.dart';
+import '../widgets/word_safe_text.dart';
 
 /// Settings, as an index (OPH-260, DESIGN §32).
 ///
@@ -100,12 +101,12 @@ class SettingsScreen extends ConsumerWidget {
                     color: scheme.onPrimaryContainer,
                   ),
                 ),
-                title: Text(
+                // OPH-400 (R-09): at AX3 the address wraps at "@" and ".",
+                // and no word is cut in two.
+                title: AwWordSafeText(
                   session?.user.displayName ?? 'settings.account'.tr(),
                 ),
-                subtitle: Text(
-                  session?.user.email ?? 'settings.notSignedIn'.tr(),
-                ),
+                subtitle: _AccountAddress(session?.user.email),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () => context.push('/settings/account'),
               ),
@@ -431,6 +432,21 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
+/// The signed-in address under the name, breakable at "@" and "." so a large
+/// text size never cuts it mid-word (OPH-400 / R-09).
+class _AccountAddress extends StatelessWidget {
+  const _AccountAddress(this.email);
+
+  final String? email;
+
+  @override
+  Widget build(BuildContext context) {
+    final address = email;
+    if (address == null) return AwWordSafeText('settings.notSignedIn'.tr());
+    return AwWordSafeText(awBreakableAddress(address), semanticsLabel: address);
+  }
+}
+
 /// One row of the index: icon, name, and what it holds.
 class _GroupRow extends StatelessWidget {
   const _GroupRow({
@@ -457,8 +473,9 @@ class _GroupRow extends StatelessWidget {
   Widget build(BuildContext context) => ListTile(
     key: Key(keyName),
     leading: Icon(icon),
-    title: Text(titleKey.tr()),
-    subtitle: Text(subtitleKey.tr()),
+    // OPH-400 (R-09): wraps between words, never inside one, at AX3.
+    title: AwWordSafeText(titleKey.tr()),
+    subtitle: AwWordSafeText(subtitleKey.tr()),
     trailing: trailing == null
         ? const Icon(Icons.chevron_right)
         : Row(
@@ -515,12 +532,12 @@ class SettingsAccountScreen extends ConsumerWidget {
                     color: scheme.onPrimaryContainer,
                   ),
                 ),
-                title: Text(
+                // OPH-400 (R-09): at AX3 the address wraps at "@" and ".",
+                // and no word is cut in two.
+                title: AwWordSafeText(
                   session?.user.displayName ?? 'settings.account'.tr(),
                 ),
-                subtitle: Text(
-                  session?.user.email ?? 'settings.notSignedIn'.tr(),
-                ),
+                subtitle: _AccountAddress(session?.user.email),
               ),
               const Divider(indent: AwSpace.x4, endIndent: AwSpace.x4),
               // Self-hosting: the address is a setting, not a fact — changing

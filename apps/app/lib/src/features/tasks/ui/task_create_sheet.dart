@@ -12,6 +12,7 @@ import '../../../theme/tokens.dart';
 import '../../../theme/typography.dart';
 import '../../../widgets/sheet_rows.dart';
 import '../../../widgets/status_views.dart';
+import '../../../widgets/word_safe_text.dart';
 import '../../files/providers.dart';
 import '../../files/ui/attach_menu.dart';
 import '../../files/ui/file_widgets.dart';
@@ -512,7 +513,15 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
     final dateFormat = ref.watch(dateFormatProvider);
 
     final form = SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 4, 24, 24),
+      key: const Key('task-sheet-form'),
+      // OPH-400 (R-09): the title field's floating label sits half above its
+      // border; at AX3 a fixed 4 pt let the scroll view clip it ("Başlık").
+      padding: EdgeInsets.fromLTRB(
+        24,
+        awFloatingLabelClearance(context),
+        24,
+        24,
+      ),
       child: Form(
         key: _formKey,
         child: Column(
@@ -917,12 +926,21 @@ class _SheetHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final barAction = context.awText.barAction;
+    // A button's text style does not inherit the theme's family (the button
+    // sets it outright), so name it: the same face as the sheet's title.
+    final barAction = context.awText.barAction.copyWith(
+      fontFamily: theme.textTheme.titleMedium?.fontFamily,
+    );
     final buttonStyle = TextButton.styleFrom(
       minimumSize: const Size(64, 48),
       padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
       textStyle: barAction,
     );
+    // OPH-400 (R-09): like a system navigation bar, the two bar actions stop
+    // growing at 2× so the sheet's name keeps room for a whole word; past
+    // that, Cancel and Add at AX3 alone were wider than a 393 pt phone.
+    Widget barLabel(Widget child) =>
+        MediaQuery.withClampedTextScaling(maxScaleFactor: 2.0, child: child);
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
       child: Row(
@@ -935,15 +953,19 @@ class _SheetHeader extends StatelessWidget {
               ),
             ),
             onPressed: onCancel,
-            child: Text('task.sheetCancel'.tr()),
+            child: barLabel(Text('task.sheetCancel'.tr())),
           ),
           Expanded(
             child: Semantics(
               header: true,
-              child: Text(
+              // OPH-400 (R-09): at AX3 the name wraps to a second line
+              // between words ("Yeni / görev") instead of "Yeni …", and a
+              // word too wide for the slot is drawn smaller, never cut.
+              child: AwWordSafeText(
                 title,
+                key: const Key('task-sheet-heading'),
                 textAlign: TextAlign.center,
-                maxLines: 1,
+                maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleMedium,
               ),
@@ -959,7 +981,7 @@ class _SheetHeader extends StatelessWidget {
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : Text(actionLabel),
+                : barLabel(Text(actionLabel)),
           ),
         ],
       ),
