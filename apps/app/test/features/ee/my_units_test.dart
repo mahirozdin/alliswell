@@ -76,6 +76,22 @@ class _Unchosen extends SelectedWorkspace {
   String? build() => null;
 }
 
+/// D-3: a unit switch that waits at [gate] before it happens, so a test
+/// can take the screen away while a request's unit is being lent.
+class _GatedSelect extends _Unchosen {
+  static Completer<void>? gate;
+
+  @override
+  Future<void> select(String workspaceId) async {
+    final wait = gate;
+    if (wait != null) {
+      gate = null;
+      await wait.future;
+    }
+    await super.select(workspaceId);
+  }
+}
+
 class _Server implements HttpClientAdapter {
   /// What `/my-units` answers, given what it was asked.
   Map<String, dynamic> Function(Map<String, dynamic> query) answer = (_) => {
@@ -142,6 +158,7 @@ void main() {
     Widget home, {
     bool entitled = true,
     bool offline = false,
+    bool gatedSelect = false,
   }) async {
     tester.view.physicalSize = const Size(1170, 2532);
     tester.view.devicePixelRatio = 3;
@@ -161,7 +178,9 @@ void main() {
         eeUnitTicketsApiProvider.overrideWithValue(EeUnitTicketsApi(dio)),
         eeFeatureProvider.overrideWith((ref, name) => entitled),
         currentUserIdProvider.overrideWithValue(_me),
-        selectedWorkspaceIdProvider.overrideWith(_Unchosen.new),
+        selectedWorkspaceIdProvider.overrideWith(
+          gatedSelect ? _GatedSelect.new : _Unchosen.new,
+        ),
         // BT first: the unit open on this device, nobody having chosen.
         workspacesProvider.overrideWith(
           (ref) async => const [
@@ -212,6 +231,11 @@ void main() {
     final router = GoRouter(
       routes: [
         GoRoute(path: '/', builder: (_, _) => home),
+        // D-3: somewhere else, so the list can go while a unit is lent.
+        GoRoute(
+          path: '/away',
+          builder: (_, _) => const Scaffold(body: Text('away')),
+        ),
         // OPH-359 (UI-AUDIT #59): "Birimlerim" has an address now; the
         // shelf and the strip open it there.
         GoRoute(
@@ -606,6 +630,31 @@ void main() {
     GoRouter.of(tester.element(find.byKey(const Key('opened')))).pop();
     await tester.pumpAndSettle();
     expect(find.byType(EeMyUnitsScreen), findsOneWidget);
+    expect(openUnit(), _bt);
+  });
+
+  // D-3 (polish 3): the row that opened the request was gone by the time
+  // its unit had been lent (the list rebuilt or was left while the switch
+  // ran), and `if (!context.mounted) return;` left the unit lent for good:
+  // Home stayed on the other unit.
+  testWidgets('D-3: the lent unit comes back when the list is gone before '
+      'the request could open', (tester) async {
+    server.answer = bakimRequest;
+    await pump(tester, const EeMyUnitsScreen(), gatedSelect: true);
+    expect(openUnit(), _bt);
+
+    final gate = _GatedSelect.gate = Completer<void>();
+    await tester.tap(find.byKey(const Key('unit-ticket-$_compressor')));
+    await tester.pump();
+    // The list goes while the unit switch is under way.
+    GoRouter.of(tester.element(find.byType(EeMyUnitsScreen))).go('/away');
+    await tester.pumpAndSettle();
+    expect(find.byType(EeMyUnitsScreen), findsNothing);
+
+    gate.complete();
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('opened')), findsNothing);
+    expect(container.read(eeLentUnitProvider), isNull);
     expect(openUnit(), _bt);
   });
 

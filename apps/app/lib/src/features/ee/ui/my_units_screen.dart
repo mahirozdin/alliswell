@@ -36,21 +36,31 @@ Future<void> openTicketAcrossUnits(
   // than `ref` — the row that opened the request may be gone by the time it
   // closes.
   final loan = ref.read(eeLentUnitProvider.notifier);
-  // E35 polish P-08: on a space that is not a unit, "all units" is the
-  // queue's default without being chosen — selecting the request's unit
-  // below would then turn the list it was opened from into that unit's
-  // queue. Opened from the cross-unit list, the cross-unit list stays.
-  await loan.lend(
-    ticket.workspaceId,
-    keepAllUnits: ref.read(eeQueueShowsAllUnitsProvider),
-  );
-  if (!context.mounted) return;
-  // In the desktop pane the request closes with the pane (the queue gives
-  // the unit back then); a pushed detail closes when this returns.
-  final inPane =
-      AwListDetailScope.maybeOf(context, kEeTicketPane, listen: false) != null;
-  await awOpenTicket(context, ticket.id);
-  if (!inPane) await loan.giveBack();
+  final keepAllUnits = ref.read(eeQueueShowsAllUnitsProvider);
+  // D-3 (polish 3): the unit goes back on EVERY way out — the request
+  // closed, the row gone before it could open (`context` unmounted while
+  // the unit was switched: the list rebuilt or was left), or a failure.
+  // Only an opened desktop pane keeps it: the pane gives it back when it
+  // closes. Before, an unmounted row returned early and Home stayed on the
+  // lent unit for good.
+  var paneHolds = false;
+  try {
+    // E35 polish P-08: on a space that is not a unit, "all units" is the
+    // queue's default without being chosen — selecting the request's unit
+    // below would then turn the list it was opened from into that unit's
+    // queue. Opened from the cross-unit list, the cross-unit list stays.
+    await loan.lend(ticket.workspaceId, keepAllUnits: keepAllUnits);
+    if (!context.mounted) return;
+    // In the desktop pane the request closes with the pane (the queue gives
+    // the unit back then); a pushed detail closes when this returns.
+    final inPane =
+        AwListDetailScope.maybeOf(context, kEeTicketPane, listen: false) !=
+        null;
+    await awOpenTicket(context, ticket.id);
+    paneHolds = inPane;
+  } finally {
+    if (!paneHolds) await loan.giveBack();
+  }
 }
 
 /// Opens [ticket]'s unit when another one is open: its detail reads the
