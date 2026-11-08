@@ -404,44 +404,48 @@ class _TabMenuSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // OPH-407 (T-07): one node per row. The outer Semantics
+                  // and the ListTile's own button used to be two nodes — a
+                  // button with no name ("Tab 2 of 5") around the named one.
                   for (var i = 0; i < items.length; i++)
-                    Semantics(
+                    MergeSemantics(
                       key: Key('tab-menu-row-$i'),
-                      container: true,
-                      button: true,
-                      selected: i == selectedIndex,
-                      hint: localizations.tabLabel(
-                        tabIndex: i + 1,
-                        tabCount: items.length,
-                      ),
-                      child: ListTile(
-                        minTileHeight: 56,
+                      child: Semantics(
+                        button: true,
                         selected: i == selectedIndex,
-                        leading: Icon(
-                          i == selectedIndex
-                              ? items[i].selectedIcon
-                              : items[i].icon,
-                          size: 24,
+                        hint: localizations.tabLabel(
+                          tabIndex: i + 1,
+                          tabCount: items.length,
                         ),
-                        title: Text(
-                          items[i].label,
-                          key: const Key('tab-menu-row-title'),
-                          style: textTheme.titleMedium!.copyWith(
-                            fontWeight: i == selectedIndex
-                                ? FontWeight.w600
-                                : null,
-                            color: scheme.onSurface,
+                        child: ListTile(
+                          minTileHeight: 56,
+                          selected: i == selectedIndex,
+                          leading: Icon(
+                            i == selectedIndex
+                                ? items[i].selectedIcon
+                                : items[i].icon,
+                            size: 24,
                           ),
+                          title: Text(
+                            items[i].label,
+                            key: const Key('tab-menu-row-title'),
+                            style: textTheme.titleMedium!.copyWith(
+                              fontWeight: i == selectedIndex
+                                  ? FontWeight.w600
+                                  : null,
+                              color: scheme.onSurface,
+                            ),
+                          ),
+                          trailing: i == selectedIndex
+                              ? Icon(
+                                  Icons.check,
+                                  key: const Key('tab-menu-current'),
+                                  size: 24,
+                                  color: scheme.primary,
+                                )
+                              : null,
+                          onTap: () => Navigator.of(context).pop(i),
                         ),
-                        trailing: i == selectedIndex
-                            ? Icon(
-                                Icons.check,
-                                key: const Key('tab-menu-current'),
-                                size: 24,
-                                color: scheme.primary,
-                              )
-                            : null,
-                        onTap: () => Navigator.of(context).pop(i),
                       ),
                     ),
                 ],

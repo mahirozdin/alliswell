@@ -4,8 +4,8 @@
 // The row used to squeeze "Alarmı geri aç" / "Turn alarms back on" into the
 // width left after the date, so the imperative ended in "…" on a phone
 // (`.ceo/shots2/ios` 21, 82) and in "Ala…" at XXL. Now the row shows the short
-// complete action ("Sesi aç" / "Unmute"), its accessible name stays the full
-// "Alarmı geri aç", its target is ≥ 48 pt, and when it does not fit beside the
+// complete action ("Sesi aç" / "Unmute"), its accessible name is the same
+// words (OPH-407, WCAG 2.5.3; the long "Alarmı geri aç" is a tooltip), its target is ≥ 48 pt, and when it does not fit beside the
 // others it takes a line of its own instead of being cut.
 //
 // Measured with the repo's real Roboto/DejaVu and with the test font, on 360
@@ -151,7 +151,6 @@ Finder _in(String id, Finder f) =>
 
 void _expectWholeAction(WidgetTester tester, String label) {
   final short = 'task.unmuteShort'.tr();
-  final full = 'task.unmuteAlarms'.tr();
   expect(short, isNot('task.unmuteShort'), reason: '$label: key exists');
   for (final task in _rows()) {
     final id = task.id;
@@ -207,11 +206,11 @@ void _expectWholeAction(WidgetTester tester, String label) {
       reason: why,
     );
 
-    // A reader hears the full action.
+    // A reader hears what the button says (OPH-407).
     expect(
       tester.getSemantics(button),
       matchesSemantics(
-        label: full,
+        label: short,
         isButton: true,
         hasTapAction: true,
         isEnabled: true,

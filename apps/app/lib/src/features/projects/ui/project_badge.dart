@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 
 /// The widest a project badge may be (polish 3 J-03, DESIGN §46 R6): about a
@@ -80,11 +81,16 @@ class ProjectBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (:fill, :ink) = legibleColors(color);
+    // OPH-407 (T-07): one localized label, the name heard once. It was
+    // "Project: X" in every language, then X again from the text and again
+    // from the tooltip.
     return Tooltip(
       message: name,
       waitDuration: const Duration(milliseconds: 400),
+      excludeFromSemantics: true,
       child: Semantics(
-        label: 'Project: $name',
+        label: 'task.projectSemantic'.tr(args: {'project': name}),
+        excludeSemantics: true,
         // DecoratedBox + Padding sizes to the label, so the pill hugs its text.
         // (A Container with `alignment` set expanded to the row height under the
         // row's loose constraints — feedback round 5.)

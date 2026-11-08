@@ -328,7 +328,7 @@ class TaskTile extends ConsumerWidget {
         // the glyph and its way back are never dropped. Polish 3 J-04: nor
         // cut — "Alarmı geri…" was an imperative with its verb missing. The
         // row says the short complete action ("Sesi aç"), a reader hears the
-        // full one, the target is 48 pt, and when it does not fit after the
+        // same words (OPH-407), the target is 48 pt, and when it does not fit after the
         // others it takes a line of its own. At AX3 on a phone the glyph and
         // the action may not share even that line: the action then moves
         // under the glyph rather than breaking "Unmute" inside the word.
@@ -341,18 +341,21 @@ class TaskTile extends ConsumerWidget {
                 Icons.notifications_off,
                 label: 'task.alarmsMuted'.tr(),
               ),
-              TextButton(
-                key: Key('unmute-${task.id}'),
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
-                  minimumSize: const Size.square(kMinInteractiveDimension),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  textStyle: roles.metaStrong,
-                ),
-                onPressed: () => unmuteTaskAlarms(context, ref, task),
-                child: Semantics(
-                  label: 'task.unmuteAlarms'.tr(),
-                  excludeSemantics: true,
+              // OPH-407 (T-07): heard as what it says (WCAG 2.5.3, label
+              // in name) — "Sesi aç", not "Alarmı geri aç". The long wording
+              // stays a tooltip for the eye.
+              Tooltip(
+                message: 'task.unmuteAlarms'.tr(),
+                excludeFromSemantics: true,
+                child: TextButton(
+                  key: Key('unmute-${task.id}'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
+                    minimumSize: const Size.square(kMinInteractiveDimension),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: roles.metaStrong,
+                  ),
+                  onPressed: () => unmuteTaskAlarms(context, ref, task),
                   child: Text('task.unmuteShort'.tr()),
                 ),
               ),

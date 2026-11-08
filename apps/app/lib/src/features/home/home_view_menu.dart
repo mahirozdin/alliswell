@@ -68,19 +68,25 @@ class HomeViewMenuButton extends StatelessWidget {
       required String label,
       IconData? leading,
       bool checked = false,
+      bool selectable = false,
     }) => PopupMenuItem<String>(
       key: key,
       value: value,
-      child: ListTile(
-        contentPadding: EdgeInsets.zero,
-        dense: true,
-        // G5: the check is the state, the label is the meaning.
-        leading: Icon(
-          checked ? Icons.check : leading,
-          size: 20,
-          color: checked ? scheme.primary : null,
+      // OPH-407 (T-07): a choice says it is the selected one; an action
+      // (calendar, columns, reverse) is never announced as selected.
+      child: Semantics(
+        selected: selectable ? checked : null,
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          dense: true,
+          // G5: the check is the state, the label is the meaning.
+          leading: Icon(
+            checked ? Icons.check : leading,
+            size: 20,
+            color: checked ? scheme.primary : null,
+          ),
+          title: Text(label),
         ),
-        title: Text(label),
       ),
     );
 
@@ -113,12 +119,14 @@ class HomeViewMenuButton extends StatelessWidget {
           value: _list,
           label: 'board.viewList'.tr(),
           checked: !isBoard,
+          selectable: true,
         ),
         item(
           key: const Key('home-view-board'),
           value: _board,
           label: 'board.viewBoard'.tr(),
           checked: isBoard,
+          selectable: true,
         ),
         const PopupMenuDivider(),
         if (isBoard)
@@ -149,6 +157,7 @@ class HomeViewMenuButton extends StatelessWidget {
               value: 'sort:${choice.id}',
               label: choice.labelKey.tr(),
               checked: choice.id == sort.id,
+              selectable: true,
             ),
           item(
             key: const Key('sort-reverse'),
