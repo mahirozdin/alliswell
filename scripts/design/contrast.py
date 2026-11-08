@@ -364,6 +364,20 @@ PAIRS = [
     # (`surfaceContainerLow`). It was `Colors.amber` — 1.55:1 on light.
     ('L favourite star on chip', '#C77700', '#F6F9FF', 3.0),
     ('D favourite star on chip', '#FFC400', '#121B36', 3.0),
+    # OPH-397 (polish 3 J-07/HK-2, DESIGN §47 F3): the microphone FAB. Its
+    # quiet `secondaryContainer` fill is 1.27:1 on a white card (1.56 dark),
+    # so the fill is NOT its edge; a 1 px `outline` ring is. The ring against
+    # the solid grounds a list scrolls under it (worst: surfaceContainerHighest
+    # and surfaceBright), the glyph on the fill; the page grounds are in
+    # PAGE_INKS below.
+    ('L mic glyph on secondaryContainer', '#3A32A8', '#E4E1FF', 4.5),
+    ('D mic glyph on secondaryContainer', '#E6E1FF', '#3B3583', 4.5),
+    ('L mic ring on surface', '#63789E', '#FFFFFF', 3.0),
+    ('L mic ring on surfaceContainerHighest', '#63789E', '#DEE8F8', 3.0),
+    ('L mic ring on surfaceDim', '#63789E', '#DEE7F7', 3.0),
+    ('D mic ring on surface', '#7186B5', '#151F3C', 3.0),
+    ('D mic ring on surfaceContainerHighest', '#7186B5', '#26345E', 3.0),
+    ('D mic ring on surfaceBright', '#7186B5', '#2A3963', 3.0),
 ]
 
 # ── Text on the PAGE (ADR-0063 #4, OPH-399) ──
@@ -424,6 +438,9 @@ PAGE_INKS = [
     ('D selected-day header (link)', ('dark', 'link'), 'dark', 4.5),
     ('D section header (onSurfaceVariant)', '#AAB6D6', 'dark', 4.5),
     ('D body ink on the page', '#EAF0FD', 'dark', 4.5),
+    # OPH-397: the microphone's `outline` ring is its boundary on the page too.
+    ('L mic ring (outline) on the page', '#63789E', 'light', 3.0),
+    ('D mic ring (outline) on the page', '#7186B5', 'dark', 3.0),
 ]
 
 

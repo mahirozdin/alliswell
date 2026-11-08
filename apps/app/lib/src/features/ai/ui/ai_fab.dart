@@ -169,8 +169,19 @@ class _AiFabState extends ConsumerState<AiFab> {
           child: FloatingActionButton(
             key: const Key('ai-fab'),
             heroTag: 'ai-fab',
+            // The QUIET half of the cluster (DESIGN §47 F3, polish 3 J-07):
+            // the secondary container, lower than the "+". That fill is
+            // 1.27:1 on a white card, so it has no edge of its own; the 1 px
+            // `outline` ring is the boundary and clears 3:1 on every ground
+            // the button floats over, in both themes (HK-2, I-11 —
+            // `ai_fab_surface_test.dart`, `contrast.py`).
             backgroundColor: scheme.secondaryContainer,
             foregroundColor: scheme.onSecondaryContainer,
+            shape: CircleBorder(side: BorderSide(color: scheme.outline)),
+            elevation: 1,
+            focusElevation: 2,
+            hoverElevation: 2,
+            highlightElevation: 1,
             onPressed: _onActivated,
             child: const Icon(Icons.mic_none_outlined),
           ),
