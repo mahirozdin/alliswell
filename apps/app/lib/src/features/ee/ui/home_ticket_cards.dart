@@ -156,8 +156,11 @@ class _DeskSummary extends ConsumerWidget {
           ),
           // The figure counts across the person's units, so its door is
           // every unit's list filtered to nobody's — not the unit on screen
-          // (E35 G-D review r1).
+          // (E35 G-D review r1). A search left on the requests screen is
+          // cleared too, or the list would answer the count with nothing
+          // (E35 G-D review r2).
           onTap: () {
+            ref.read(ticketSearchQueryProvider.notifier).clear();
             ref
                 .read(ticketFilterProvider.notifier)
                 .setAssignee(TicketAssigneeScope.unassigned);

@@ -755,8 +755,12 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+      // A search left behind on the requests screen (E35 G-D review r2):
+      // the figure's list must not open filtered by it.
+      container.read(ticketSearchQueryProvider.notifier).set('yokböyle');
       await tester.tap(find.byKey(const Key('ee-home-unassigned')));
       await tester.pumpAndSettle();
+      expect(container.read(ticketSearchQueryProvider), isEmpty);
       // Inside unit BT, yet the list is every unit's: the count was.
       expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
       expect(find.byKey(const Key('ticket-T1')), findsNothing);
