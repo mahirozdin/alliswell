@@ -389,9 +389,7 @@ void main() {
     expect(menuButton(), findsNothing);
   });
 
-  testWidgets('at 1.0× a long press on a slot opens no menu', (
-    tester,
-  ) async {
+  testWidgets('at 1.0× a long press on a slot opens no menu', (tester) async {
     sizeTo(tester, const Size(393, 852));
     await tester.pumpWidget(await teamApp(FakeApi()));
     await tester.pumpAndSettle();

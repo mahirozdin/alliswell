@@ -140,8 +140,7 @@ class _AwTabCapsuleState extends State<AwTabCapsule> {
               ? _TabMenuButton(
                   key: widget.menuKey,
                   item:
-                      widget.selectedIndex >= 0 &&
-                          widget.selectedIndex < count
+                      widget.selectedIndex >= 0 && widget.selectedIndex < count
                       ? widget.items[widget.selectedIndex]
                       : null,
                   onTap: _openMenu,
