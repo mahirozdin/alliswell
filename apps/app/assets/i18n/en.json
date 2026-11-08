@@ -2344,7 +2344,7 @@
       "prefsEmail": "E-mail",
       "prefsPush": "Push",
       "prefsLocked": "This one cannot be switched off",
-      "prefsLockedWhy": "An SLA breach and an invitation are commitments; they cannot be silenced.",
+      "prefsLockedWhy": "A missed SLA and an invitation are commitments; they cannot be silenced.",
       "quietTitle": "Quiet hours",
       "quietBody": "E-mail that arrives in this window is not dropped — it is sent when the window ends.",
       "quietOff": "Off",
@@ -2365,7 +2365,7 @@
           "body": "The deadline is {dueAt}."
         },
         "breached": {
-          "title": "SLA breached: {ticketRef}",
+          "title": "SLA missed: {ticketRef}",
           "body": "{serviceName} has passed its deadline."
         }
       },
@@ -2423,7 +2423,7 @@
         },
         "sla": {
           "warned": "An SLA deadline is approaching",
-          "breached": "An SLA is breached"
+          "breached": "An SLA is missed"
         },
         "share": {
           "received": "Something is shared with you"
@@ -3005,7 +3005,7 @@
       "calendar": "Business calendar",
       "warnPercent": "Warn at",
       "warnOn": "The unit is warned at {percent}% of the target.",
-      "warnOff": "No warning — only the breach itself is announced.",
+      "warnOff": "No warning — only the missed SLA itself is announced.",
       "makeDefault": "Use as the team default",
       "makeDefaultBody": "Applies to requests whose service names no policy. Only one policy can be the default.",
       "newCalendar": "New calendar",
@@ -3292,8 +3292,8 @@
           "transferred": "Request moved to another service or unit"
         },
         "sla": {
-          "warned": "SLA deadline approaching",
-          "breached": "SLA breached"
+          "warned": "SLA due soon",
+          "breached": "SLA missed"
         },
         "asset": {
           "expiring": "Equipment date approaching"

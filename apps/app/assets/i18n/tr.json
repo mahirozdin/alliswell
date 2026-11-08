@@ -2343,7 +2343,7 @@
       "prefsEmail": "E-posta",
       "prefsPush": "Mobil bildirim",
       "prefsLocked": "Bu bildirim kapatılamaz",
-      "prefsLockedWhy": "SLA ihlali ve davet bir taahhüttür; sessize alınamaz.",
+      "prefsLockedWhy": "Aşılan SLA ve davet birer taahhüttür; sessize alınamaz.",
       "quietTitle": "Sessiz saatler",
       "quietBody": "Bu aralıkta gelen e-postalar silinmez, aralık bitince gönderilir.",
       "quietOff": "Kapalı",
@@ -2360,11 +2360,11 @@
       },
       "sla": {
         "warned": {
-          "title": "SLA süresi yaklaşıyor: {ticketRef}",
+          "title": "SLA dolmak üzere: {ticketRef}",
           "body": "Son tarih {dueAt}."
         },
         "breached": {
-          "title": "SLA ihlali: {ticketRef}",
+          "title": "SLA aşıldı: {ticketRef}",
           "body": "{serviceName} kaydı süresini aştı."
         }
       },
@@ -2422,7 +2422,7 @@
         },
         "sla": {
           "warned": "Bir SLA süresi yaklaştığında",
-          "breached": "Bir SLA ihlal edildiğinde"
+          "breached": "Bir SLA aşıldığında"
         },
         "share": {
           "received": "Sizinle bir şey paylaşıldığında"
@@ -3291,8 +3291,8 @@
           "transferred": "Talep başka bir hizmete ya da birime aktarıldı"
         },
         "sla": {
-          "warned": "SLA süresi yaklaşıyor",
-          "breached": "SLA ihlal edildi"
+          "warned": "SLA dolmak üzere",
+          "breached": "SLA aşıldı"
         },
         "asset": {
           "expiring": "Ekipman tarihi yaklaşıyor"

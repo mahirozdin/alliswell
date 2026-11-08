@@ -161,6 +161,20 @@ void main() {
     ),
     'ee.slaDash.byService': ('Hizmete göre', 'By service'),
     'ee.slaDash.byUnit': ('Birime göre', 'By unit'),
+    'ee.perfPanel.byUnit': ('Birime göre', 'By unit'),
+    // OPH-407 (polish P-15): an in-app notification says what the e-mail
+    // about the same request says — "SLA aşıldı", never "SLA ihlali".
+    'ee.notif.sla.breached.title': (
+      'SLA aşıldı: {ticketRef}',
+      'SLA missed: {ticketRef}',
+    ),
+    'ee.notif.sla.warned.title': (
+      'SLA dolmak üzere: {ticketRef}',
+      'SLA due soon: {ticketRef}',
+    ),
+    'ee.notif.class.sla.breached': ('Bir SLA aşıldığında', 'An SLA is missed'),
+    'ee.webhooks.event.sla.breached': ('SLA aşıldı', 'SLA missed'),
+    'ee.webhooks.event.sla.warned': ('SLA dolmak üzere', 'SLA due soon'),
     'ee.team.seats.unlimited': ('{used} kişi · kişi sınırı yok', null),
     'ee.team.settings.slugFixed': (
       'Adı değiştirmek web adresinizi ({slug}) değiştirmez; paylaşılan '
@@ -212,6 +226,8 @@ void main() {
       RegExp('[Kk]oltu[kğ]'): {},
       RegExp('[Vv]arlı[kğ]'): {},
       RegExp('Kimsede değil|SLA kaçtı|Tutulan sözler|Performans panosu'): {},
+      // OPH-407 (polish P-15): a missed SLA is "aşıldı" everywhere.
+      RegExp('[Iİı]hlal'): {},
       RegExp('Bilinen hata|Hizmet isteği|CSV indir|Genel bakış'): {},
       RegExp('README|Enterprise'): {},
       RegExp(r'^(Ne zaman|Bitiş)\b'): {
@@ -233,14 +249,18 @@ void main() {
       });
     });
 
-    test('en: desk, deadline, promises, on nobody, source/reading modes', () {
+    test('en: desk, deadline, promises, on nobody, source/reading modes, '
+        'breach', () {
       final word = RegExp(
-        r'\bdesks?\b|deadline or|promises kept|on nobody|READMEs?\b',
+        r'\bdesks?\b|deadline or|promises kept|on nobody|READMEs?\b|'
+        r'\bbreach(?:ed|es)?\b',
         caseSensitive: false,
       );
+      // A {placeholder} is the server's field name, not a word a person reads.
+      final placeholder = RegExp(r'\{[^}]*\}');
       final hits = [
         for (final MapEntry(:key, :value) in en.entries)
-          if (word.hasMatch(value)) '$key: $value',
+          if (word.hasMatch(value.replaceAll(placeholder, ''))) '$key: $value',
       ];
       expect(hits, isEmpty);
     });

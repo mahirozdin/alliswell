@@ -220,7 +220,7 @@ void main() {
     await tester.pumpAndSettle();
     final row = find.byKey(const Key('webhook-event-sla.breached'));
     expect(
-      find.descendant(of: row, matching: find.text('SLA ihlal edildi')),
+      find.descendant(of: row, matching: find.text('SLA aşıldı')),
       findsOneWidget,
     );
     expect(
