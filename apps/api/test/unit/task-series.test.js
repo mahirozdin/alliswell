@@ -236,6 +236,51 @@ describe('task series (OPH-205, ADR-0020)', () => {
     expect(gone.statusCode).toBe(404);
   });
 
+  it('stopping a calendar series keeps its open head as an ordinary task (#32)', async () => {
+    // A quick-added "daily" task: today's occurrence is the task the user opens
+    // and turns Repeat off on — it must survive the stop, not be deleted.
+    const yesterday = dayAfter(-1);
+    const { series } = (
+      await create({
+        rule: { freq: 'daily', interval: 1 },
+        anchorAt: `${yesterday}T09:00:00.000Z`,
+      })
+    ).json();
+    const rows = occurrencesOf(series.id);
+    const head = rows[0];
+    expect(String(head.occurrence_date).slice(0, 10)).toBe(today());
+    // A finished occurrence from yesterday — history (DESIGN §25 R7).
+    const done = {
+      ...head,
+      id: '01JDONEHISTORY0000000000000',
+      occurrence_date: yesterday,
+      status: 'completed',
+    };
+    tables.tasks.push(done);
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/task-series/${series.id}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().removed).toBe(rows.length - 1);
+
+    const kept = tables.tasks.find((t) => t.id === head.id);
+    expect(kept.deleted_at ?? null).toBeNull();
+    expect(kept.series_id).toBeNull();
+    expect(kept.occurrence_date).toBeNull();
+    expect(kept.status).toBe('open');
+    // Every later occurrence is gone; the finished one keeps its series link.
+    expect(occurrencesOf(series.id).map((t) => t.id)).toEqual([done.id]);
+    // The detach is a sync write, so other devices pull the plain task.
+    expect(
+      tables.sync_revisions.some(
+        (r) => r.entity_type === 'task' && r.entity_id === head.id && r.operation === 'update',
+      ),
+    ).toBe(true);
+  });
+
   it('completing one occurrence leaves its siblings and the series untouched', async () => {
     const { series } = (await create()).json();
     const rows = occurrencesOf(series.id);

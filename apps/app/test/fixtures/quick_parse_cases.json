@@ -3328,6 +3328,69 @@
     "priority": null,
     "kinds": []
    }
+  },
+  {
+   "group": "negative",
+   "text": "Read Daily Mail tomorrow",
+   "expect": {
+    "title": "Read Daily Mail",
+    "due": "2026-10-17T23:59",
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": [
+     "due"
+    ]
+   }
+  },
+  {
+   "group": "negative",
+   "text": "Buy a weekly planner",
+   "expect": {
+    "title": "Buy a weekly planner",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "print the monthly report",
+   "expect": {
+    "title": "print the monthly report",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "repeat",
+   "text": "Call Mom Daily",
+   "expect": {
+    "title": "Call Mom",
+    "due": "2026-10-16T23:59",
+    "when": null,
+    "repeat": {
+     "freq": "daily",
+     "interval": 1,
+     "end": {
+      "type": "never"
+     }
+    },
+    "tags": [],
+    "project": null,
+    "priority": null
+   }
   }
  ]
 }

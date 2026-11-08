@@ -1294,7 +1294,9 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   its tooltip/semantics label. It disappears in the completed treatment along with the
   alarm chips (§20 C2): a finished occurrence does not repeat.
 - **R7 — Stopping is honest about the past.** "Tekrarı durdur" removes the **future**
-  occurrences and keeps every past and completed one, and says so in the confirm copy.
+  occurrences and keeps every past and completed one, and says so in the confirm copy. The
+  series' open head — the task the switch sits on — stays as an ordinary task (#32), and the
+  switch reads off wherever the series row is gone.
   A finished task is a historical fact (§20 C4); deleting history to tidy a rule would
   rewrite what the user actually did.
 - **R8 — Scope is a question with a default, and the default follows the field.**

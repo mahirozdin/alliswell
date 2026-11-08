@@ -154,18 +154,33 @@ class SeriesStore {
 
   /// "Tekrarı durdur" — the future goes, the past stays (DESIGN §25 R7).
   ///
-  /// Locally we only drop the rule row: which occurrences survive is the
+  /// Locally we drop the rule row: which other occurrences survive is the
   /// server's decision (it keeps everything finished), and guessing here would
-  /// make the list flicker into a state that is about to be corrected.
+  /// make the list flicker into a state that is about to be corrected. The one
+  /// exception is [keepTaskId], the open task the user stopped it on: the
+  /// server keeps the series' open head as an ordinary task (#32), so the row
+  /// loses its series link now — optimistic, like [create]'s adoption.
   Future<void> stop({
     required String workspaceId,
     required String seriesId,
     String? fromDay,
+    String? keepTaskId,
   }) async {
     await _db.transaction(() async {
       await (_db.delete(
         _db.taskSeries,
       )..where((s) => s.id.equals(seriesId))).go();
+      if (keepTaskId != null && fromDay == null) {
+        await (_db.update(_db.tasks)..where(
+              (t) => t.id.equals(keepTaskId) & t.seriesId.equals(seriesId),
+            ))
+            .write(
+              const TasksCompanion(
+                seriesId: Value(null),
+                occurrenceDate: Value(null),
+              ),
+            );
+      }
       await enqueueMutation(
         _db,
         workspaceId: workspaceId,

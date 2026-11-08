@@ -7,6 +7,7 @@
 
 ## Kontrol listesi öğesini yeniden adlandırma (2026-11-08)
 
+- OPH-417 — **telefon + web, açık ve koyu** (NOT RUN): hızlı eklemede "Buy a weekly planner" ve "Read Daily Mail tomorrow" tekrarsız görev oluşturuyor, "daily standup" hâlâ günlük; günlük bir görevin detayında Tekrar anahtarını kapat → onayla: görev kalıyor, anahtar kapalı, sonraki günlerin tekrarları gidiyor.
 - OPH-416 — **web/masaüstü + telefon, açık ve koyu** (NOT RUN): görev detayında bir kontrol listesi öğesinin metnine dokun/tıkla: imleçli bir alan açılıyor, öğe işaretlenmiyor; Enter ya da dışarı tıklamak kaydediyor, Esc (web/masaüstü) eski adı geri getiriyor, boş bırakmak eski adı koruyor; yalnız kutucuk işaretliyor.
 
 ## Cila turu 4 (2026-11-08)

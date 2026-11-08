@@ -1,6 +1,6 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
+import 'package:drift/drift.dart' hide isNull;
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -110,6 +110,57 @@ void main() {
       expect(rules.last['interval'], 60);
       // …and the local replica reads it back as the same kind of rule.
       expect((await store.byId(id))!.rule.isAfterCompletion, isTrue);
+    },
+  );
+
+  test(
+    'stopping on an open task detaches it locally, and only it (#32)',
+    () async {
+      final workspaceId = 'W4'.padRight(26, '0');
+      final head = 'T4'.padRight(26, '0');
+      final later = 'T5'.padRight(26, '0');
+      final store = SeriesStore(db, () {});
+      final id = await store.create(
+        workspaceId: workspaceId,
+        rule: const AwRepeatRule(freq: AwRepeatFreq.daily),
+        template: const {'title': 'Read mail'},
+        anchorAt: DateTime.utc(2030, 6, 5, 9),
+      );
+      for (final (taskId, day) in [
+        (head, '2030-06-05'),
+        (later, '2030-06-06'),
+      ]) {
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: taskId,
+                workspaceId: workspaceId,
+                title: 'Read mail',
+                seriesId: Value(id),
+                occurrenceDate: Value(day),
+              ),
+            );
+      }
+
+      await store.stop(
+        workspaceId: workspaceId,
+        seriesId: id,
+        keepTaskId: head,
+      );
+
+      Future<TaskRecord> task(String taskId) =>
+          (db.select(db.tasks)..where((t) => t.id.equals(taskId))).getSingle();
+      expect((await task(head)).seriesId, isNull);
+      expect((await task(head)).occurrenceDate, isNull);
+      // The rest is the server's call: the pull removes what it retires.
+      expect((await task(later)).seriesId, id);
+      expect(await store.byId(id), isNull);
+      final rows = await db.select(db.pendingMutations).get();
+      final stop = rows.last;
+      expect(stop.operation, 'delete');
+      // The wire body is unchanged — the server keeps the head by itself.
+      expect(jsonDecode(stop.patchJson!), isEmpty);
     },
   );
 }

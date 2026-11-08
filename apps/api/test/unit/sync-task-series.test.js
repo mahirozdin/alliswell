@@ -223,6 +223,41 @@ describe('sync push — task_series (OPH-205, ADR-0020)', () => {
     expect(live).toHaveLength(1);
   });
 
+  it('a pushed stop keeps the open head as a plain task, like REST (#32)', async () => {
+    const { id } = await createSeries(newId(), {
+      rule: { freq: 'daily', interval: 1 },
+    });
+    const occurrences = tables.tasks
+      .filter((t) => t.series_id === id)
+      .sort((a, b) => String(a.occurrence_date).localeCompare(String(b.occurrence_date)));
+    const head = occurrences[0];
+
+    const mutation = {
+      clientMutationId: newId(),
+      operation: 'delete',
+      entityType: 'task_series',
+      entityId: id,
+    };
+    const res = await push([mutation]);
+    expect(res.json().results[0].status).toBe('applied');
+
+    const kept = tables.tasks.find((t) => t.id === head.id);
+    expect(kept.deleted_at ?? null).toBeNull();
+    expect(kept.series_id).toBeNull();
+    expect(tables.tasks.filter((t) => t.series_id === id && t.deleted_at == null)).toHaveLength(0);
+
+    // A replay changes nothing: the head is still there.
+    const again = await push([mutation]);
+    expect(again.json().results[0].status).toBe('applied');
+    expect(tables.tasks.find((t) => t.id === head.id).deleted_at ?? null).toBeNull();
+
+    // Another device pulls the head as a live task without a series.
+    const changes = (await pull(0)).json().changes;
+    const row = changes.find((c) => c.entityType === 'task' && c.entityId === head.id);
+    expect(row.operation).not.toBe('delete');
+    expect(row.data.seriesId).toBeNull();
+  });
+
   it('replays idempotently — a re-pushed mutation creates nothing twice', async () => {
     const id = newId();
     const clientMutationId = newId();

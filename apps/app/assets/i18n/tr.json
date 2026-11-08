@@ -1268,7 +1268,7 @@
     "endCountLabel": "Kez",
     "endUntilLabel": "Bitiş tarihi",
     "stop": "Tekrarı durdur",
-    "stopConfirm": "Gelecekteki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
+    "stopConfirm": "Bu görev kalır, sonraki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
     "stopConfirmAfter": "Bu görev kalır. Tamamladığında artık yenisi oluşturulmaz.",
     "badgeTooltip": "Tekrarlanıyor",
     "every": {

@@ -1269,7 +1269,7 @@
     "endCountLabel": "Times",
     "endUntilLabel": "End date",
     "stop": "Stop repeating",
-    "stopConfirm": "Future occurrences are removed. Everything already done stays in your history.",
+    "stopConfirm": "This task stays; later occurrences are removed. Everything already done stays in your history.",
     "stopConfirmAfter": "This task stays. Completing it no longer creates the next one.",
     "badgeTooltip": "Repeats",
     "every": {

@@ -877,6 +877,29 @@ class _Parser {
   AwRepeatRule? _valid(AwRepeatRule rule) =>
       awValidateRepeatRule(rule) == null ? rule : null;
 
+  /// Words that turn a following "daily/weekly/…" into part of a noun phrase.
+  static const _determiners = {
+    'a', 'an', 'the', 'my', 'our', 'your', 'his', 'her', 'their', 'its', //
+    'this', 'that', 'these', 'those', 'new',
+  };
+
+  static final RegExp _upperInitial = RegExp(r'^\p{Lu}', unicode: true);
+
+  /// True when a bare "daily/weekly/monthly/yearly" at [i] describes a thing
+  /// rather than the task's schedule (#32): after a determiner ("buy a weekly
+  /// planner") or inside a capitalised name mid-sentence ("read Daily Mail").
+  /// A name needs the next word capitalised too and free of any token, so
+  /// "Call mom Daily" and "Daily at 9" still repeat.
+  bool _bareFrequencyIsAdjective(int i) {
+    if (i > 0 && _determiners.contains(n(i - 1))) return true;
+    if (i == 0 || i + 1 >= words.length) return false;
+    if (!_upperInitial.hasMatch(words[i].raw)) return false;
+    if (!_upperInitial.hasMatch(words[i + 1].raw)) return false;
+    return _schedule(i + 1).isEmpty &&
+        _times(i + 1).isEmpty &&
+        _marks(i + 1).isEmpty;
+  }
+
   List<_Cand> _repeats(int i) {
     final out = <_Cand>[];
     void add(AwRepeatRule rule, int len) {
@@ -987,10 +1010,13 @@ class _Parser {
     if (plural != null) add(days([plural]), 1);
 
     // ── English ──
-    if (w == 'daily') add(daily, 1);
-    if (w == 'weekly') add(weekly, 1);
-    if (w == 'yearly' || w == 'annually') add(yearly, 1);
-    if (w == 'monthly') {
+    // "daily standup" repeats; "a weekly planner" and "the Daily Mail" do not
+    // (#32): there the word names a thing instead of scheduling the task.
+    final adjective = _bareFrequencyIsAdjective(i);
+    if (w == 'daily' && !adjective) add(daily, 1);
+    if (w == 'weekly' && !adjective) add(weekly, 1);
+    if ((w == 'yearly' || w == 'annually') && !adjective) add(yearly, 1);
+    if (w == 'monthly' && !adjective) {
       add(monthly, 1);
       if (w1 == 'on' && w2 == 'the') {
         final d = _dayNum(i + 3);

@@ -1314,20 +1314,18 @@ export async function rebuildFuture(
 }
 
 /**
- * Soft-deletes a series and its future occurrences in the caller's transaction.
- * Past occurrences keep their `series_id` — they remain part of the history.
+ * Stopping a series keeps the task the user is looking at (OPH-375, #32): an
+ * open occurrence becomes an ordinary task — no series, no slot, no "born
+ * from" link, so the Repeat switch reads off and reopening its predecessor
+ * cannot withdraw it. `onlyId` narrows it to the calendar series' head.
  */
-/**
- * Stopping an after-completion series (OPH-375): its open occurrence becomes
- * an ordinary task — no series, no slot, no "born from" link, so the Repeat
- * switch reads off and reopening its predecessor cannot withdraw it.
- */
-async function detachOpenOccurrences(trx, { workspaceId, seriesId }) {
-  const rows = await trx('tasks')
+async function detachOpenOccurrences(trx, { workspaceId, seriesId, onlyId = null }) {
+  const query = trx('tasks')
     .where({ workspace_id: workspaceId, series_id: seriesId })
     .whereNull('deleted_at')
-    .whereNotIn('status', FINISHED_STATUSES)
-    .select('id');
+    .whereNotIn('status', FINISHED_STATUSES);
+  if (onlyId != null) query.where({ id: onlyId });
+  const rows = await query.select('id');
   for (const row of rows) {
     const revision = await recordSyncWrite(trx, {
       workspaceId,
@@ -1347,6 +1345,16 @@ async function detachOpenOccurrences(trx, { workspaceId, seriesId }) {
   return rows.length;
 }
 
+/**
+ * Soft-deletes a series and its future occurrences in the caller's transaction.
+ * Finished occurrences keep their `series_id` — they remain part of the history
+ * (DESIGN §25 R7).
+ *
+ * Without an explicit `fromDay` this is "Tekrarı durdur": the series' head —
+ * its earliest open occurrence, the task the Repeat switch sits on — stays as
+ * an ordinary task and only the occurrences after it go (#32). A stop must
+ * never delete the very task the user turned repeating off on.
+ */
 export async function softDeleteSeries(
   trx,
   { workspaceId, series, now = new Date(), fromDay: overrideDay = null },
@@ -1359,15 +1367,31 @@ export async function softDeleteSeries(
   // one open occurrence IS the task the user is looking at. Stopping the
   // repeat keeps it as an ordinary task; only an explicit `fromDay` (the app
   // deleting that occurrence and stopping in one commit) reaches it.
-  const keepHead = isCompletionSeries(series) && overrideDay == null;
-  const removed = keepHead
-    ? 0
-    : await deleteFutureOccurrences(trx, {
-        workspaceId,
-        seriesId: series.id,
-        fromDay,
-      });
-  if (keepHead) await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id });
+  const keepHead = overrideDay == null;
+  let removed = 0;
+  if (keepHead && isCompletionSeries(series)) {
+    await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id });
+  } else if (keepHead) {
+    const head = await trx('tasks')
+      .where({ workspace_id: workspaceId, series_id: series.id })
+      .whereNull('deleted_at')
+      .whereNotIn('status', FINISHED_STATUSES)
+      .orderBy('occurrence_date', 'asc')
+      .first('id');
+    const rows = await futureOccurrences(trx, { workspaceId, seriesId: series.id, fromDay });
+    removed = await retireOccurrences(trx, {
+      workspaceId,
+      rows: rows.filter((row) => row.id !== head?.id),
+    });
+    if (head)
+      await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id, onlyId: head.id });
+  } else {
+    removed = await deleteFutureOccurrences(trx, {
+      workspaceId,
+      seriesId: series.id,
+      fromDay,
+    });
+  }
   const revision = await recordSyncWrite(trx, {
     workspaceId,
     entityType: 'task_series',

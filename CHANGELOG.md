@@ -18,6 +18,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Quick add no longer turns a task into a repeating one by accident, and "Stop repeating" keeps
+  the task** (#32): "Buy a weekly planner" or "Read Daily Mail tomorrow" stay one-off tasks;
+  stopping a repeat keeps the task you are on as an ordinary task (only later occurrences go) and
+  the Repeat switch turns off, also on occurrences kept from a stopped series.
 - **A checklist item can be renamed in place** (#38): tap its text to edit it, Enter or tapping
   away saves, Esc cancels; only the checkbox ticks it now, so tapping the words no longer marks
   the item done.
