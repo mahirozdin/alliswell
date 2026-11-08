@@ -267,6 +267,59 @@ void main() {
       expect(rect.bottom, lessThanOrEqualTo(tester.getRect(capsule).top));
       await tester.pump(const Duration(seconds: 6));
     });
+
+    // P-04: the reveal only ever moved down, so a row that landed above a
+    // list scrolled to its end was never built and never brought back.
+    testWidgets('a task that lands above a list scrolled to its end — the '
+        'list goes back up to it', (tester) async {
+      final api = demoApi();
+      for (var i = 0; i < 40; i++) {
+        api.seedTask(
+          title: 'Later ${i.toString().padLeft(2, '0')}',
+          dueAt: iso(at(10 + i, 12, 0)),
+        );
+      }
+      // Wide: the quick add is pinned above its own list, so it stays in
+      // reach while the list sits at its end.
+      await pump(tester, api, size: const Size(1200, 800));
+      final list = find
+          .byType(Scrollable)
+          .evaluate()
+          .map((e) {
+            return (e as StatefulElement).state as ScrollableState;
+          })
+          .reduce(
+            (a, b) => a.position.maxScrollExtent >= b.position.maxScrollExtent
+                ? a
+                : b,
+          );
+      expect(list.position.maxScrollExtent, greaterThan(1000));
+      list.position.jumpTo(list.position.maxScrollExtent);
+      await tester.pumpAndSettle();
+      expect(find.text('Review contrast report'), findsNothing);
+
+      await tester.enterText(
+        find.byKey(const Key('home-quick-add')),
+        'Buy milk tomorrow 9am',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.pumpAndSettle(const Duration(milliseconds: 100));
+
+      expect(find.textContaining('Added: Buy milk · '), findsOneWidget);
+      final row = find.ancestor(
+        of: find.text('Buy milk'),
+        matching: find.byType(TaskTile),
+      );
+      expect(row, findsOneWidget);
+      final viewport = tester.getRect(
+        find.byWidget(list.widget).hitTestable().first,
+      );
+      final rect = tester.getRect(row);
+      expect(rect.top, greaterThanOrEqualTo(viewport.top));
+      expect(rect.bottom, lessThanOrEqualTo(viewport.bottom));
+      await tester.pump(const Duration(seconds: 6));
+    });
   });
 
   group('Kabul', () {

@@ -355,14 +355,46 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           : _wideScroll;
       if (!controller.hasClients) return;
       final position = controller.position;
-      if (position.pixels >= position.maxScrollExtent) return;
-      position.jumpTo(
-        math.min(
-          position.pixels + position.viewportDimension * 0.8,
-          position.maxScrollExtent,
-        ),
-      );
+      // P-04: the row may be above the built window as well as below it —
+      // a list scrolled to its end, a task due tomorrow.
+      final step = position.viewportDimension * 0.8;
+      if (_rowIsAboveBuilt(id, position)) {
+        if (position.pixels <= position.minScrollExtent) return;
+        position.jumpTo(
+          math.max(position.pixels - step, position.minScrollExtent),
+        );
+      } else {
+        if (position.pixels >= position.maxScrollExtent) return;
+        position.jumpTo(
+          math.min(position.pixels + step, position.maxScrollExtent),
+        );
+      }
     }
+  }
+
+  /// Whether task [id]'s unbuilt row comes before the rows the list has
+  /// built: the first built row is compared with it in Home's order (the
+  /// order [_sectionOfTask] was filled in). No built row means nothing to
+  /// compare — the old downward search.
+  bool _rowIsAboveBuilt(String id, ScrollPosition position) {
+    final order = _sectionOfTask.keys.toList();
+    final target = order.indexOf(id);
+    String? firstBuilt;
+    void visit(Element element) {
+      if (firstBuilt != null) return;
+      final widget = element.widget;
+      if (widget is TaskTile) {
+        firstBuilt = widget.task.id;
+        return;
+      }
+      element.visitChildElements(visit);
+    }
+
+    final scrollContext = position.context.storageContext;
+    if (scrollContext is Element) scrollContext.visitChildElements(visit);
+    if (target < 0 || firstBuilt == null) return false;
+    final first = order.indexOf(firstBuilt!);
+    return first >= 0 && target < first;
   }
 
   void _ensureRowVisible(BuildContext row) {

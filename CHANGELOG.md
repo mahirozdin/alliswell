@@ -82,7 +82,7 @@ This file holds the unreleased changes and the latest release; at each release t
 - **Home shows more of your day on a phone**: the calendar opens as one week, with the month one
   tap away (your choice is kept). Section headings are bolder, show their count apart, and fold
   with a tap. The quick-add box stays plain until you type, shows examples when you tap it, and
-  after adding says "Added: … · Undo", highlights the new task and scrolls to it.
+  after adding says "Added: … · Undo", highlights the new task and scrolls to it, up or down.
 - **The microphone adds tasks by voice even without an AI provider**: say it, check the words in
   the quick-add box and add it; with no date it goes to your Inbox. While the phone asks for the
   microphone, the screen says so, and the assistant's "no provider" screen now has "Connect a

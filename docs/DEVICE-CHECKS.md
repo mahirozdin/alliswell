@@ -52,7 +52,7 @@
 
 ## Ana Sayfa ilk ekranı (2026-11-07)
 
-- OPH-401 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa hafta şeridiyle açılıyor (bugün dolu mavi daire, görev noktası), "Ayı göster" ayı açıyor ve uygulama yeniden açılınca seçim kalıyor; ilk ekranda Geciken satırı ve altındaki bölümler görünüyor. Bölüm başlığına dokununca bölüm katlanıp açılıyor, ok dönüyor; VoiceOver/TalkBack "Geciken bölümünü daralt, N görev" okuyor. Hızlı eklemeye dokununca altta örnek şeridi + "Daha fazla", yazınca ✨ (AI varsa) ve mavi ↑ geliyor; gönderince "Eklendi: … · Geri al" 3 sn görünüyor, satır kısa süre vurgulanıyor, tarihsiz görevde liste ona kayıyor ve klavye açıkken hızlı ekleme alanı yazmaya devam edilince geri geliyor. **Metin boyutu en büyük**: şeritte rakamlar dairenin içinde.
+- OPH-401 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa hafta şeridiyle açılıyor (bugün dolu mavi daire, görev noktası), "Ayı göster" ayı açıyor ve uygulama yeniden açılınca seçim kalıyor; ilk ekranda Geciken satırı ve altındaki bölümler görünüyor. Bölüm başlığına dokununca bölüm katlanıp açılıyor, ok dönüyor; VoiceOver/TalkBack "Geciken bölümünü daralt, N görev" okuyor. Hızlı eklemeye dokununca altta örnek şeridi + "Daha fazla", yazınca ✨ (AI varsa) ve mavi ↑ geliyor; gönderince "Eklendi: … · Geri al" 3 sn görünüyor, satır kısa süre vurgulanıyor, tarihsiz görevde liste ona kayıyor, liste sonuna kaydırılmışken yarına eklenen görevde (geniş pencerede de) liste yukarı dönüp onu gösteriyor ve klavye açıkken hızlı ekleme alanı yazmaya devam edilince geri geliyor. **Metin boyutu en büyük**: şeritte rakamlar dairenin içinde.
 
 ## Görev satırı (2026-11-07)
 
