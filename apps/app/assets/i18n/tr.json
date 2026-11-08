@@ -1864,6 +1864,10 @@
           "incidentHint": "Bir şey bozuldu ya da durdu: arıza, kesinti, kaza.",
           "request": "İstek",
           "requestHint": "Birinin bir şeye ihtiyacı var: erişim, cihaz, değişiklik, soru."
+        },
+        "customerPortal": {
+          "title": "Firmalara açık",
+          "hint": "Açarsanız müşteri firmalar bu hizmetten talep açabilir."
         }
       }
     },

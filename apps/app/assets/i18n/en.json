@@ -1865,6 +1865,10 @@
           "incidentHint": "Something broke or stopped: a fault, an outage, an accident.",
           "request": "Service request",
           "requestHint": "Somebody needs something: access, a device, a change, a question."
+        },
+        "customerPortal": {
+          "title": "Open to customer companies",
+          "hint": "When on, your customer companies can open requests for this service."
         }
       }
     },
