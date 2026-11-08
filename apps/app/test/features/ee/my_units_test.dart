@@ -109,6 +109,24 @@ class _Server implements HttpClientAdapter {
       asked.where((o) => o.path == '/api/v1/ee/team/tickets/my-units');
 }
 
+/// D-2: a client whose pages are made by [page], counting the asks.
+class _PagingApi implements EeUnitTicketsApi {
+  _PagingApi(this.page);
+  final EeUnitTicketsPage Function(String? cursor) page;
+  int calls = 0;
+
+  @override
+  Future<EeUnitTicketsPage> list({
+    bool alertsOnly = false,
+    String? except,
+    String? cursor,
+    int? limit,
+  }) async {
+    calls += 1;
+    return page(cursor);
+  }
+}
+
 void main() {
   late _Server server;
   late ProviderContainer container;
@@ -393,8 +411,14 @@ void main() {
     expect(top(_vpn), lessThan(top(_compressor)));
   });
 
-  testWidgets('R-11: a later page joins the newest-first order instead of '
-      'being stacked under the first', (tester) async {
+  // D-2 (polish 3): the server pages by lateness, so past one page the
+  // newest requests (not late, deadlines far off) sat on page 2. R-11
+  // ordered only the first page: the first screen was not the newest, and
+  // "more" dropped the newest in above what had been read.
+  testWidgets('D-2: the newest-first list follows every page before it '
+      'orders them — the newest request on page 2 is the first row', (
+    tester,
+  ) async {
     server.answer = (query) => query['cursor'] == 'c1'
         ? {
             'units': _units,
@@ -419,13 +443,50 @@ void main() {
             'nextCursor': 'c1',
           };
     await pump(tester, const EeMyUnitsScreen());
-    await tester.tap(find.byKey(const Key('my-units-more')));
-    await tester.pumpAndSettle();
+    // No tap: the second page was asked for by itself, with the same
+    // page size, and the whole set is in one order.
+    expect(server.lists.map((o) => o.queryParameters['cursor']), [null, 'c1']);
+    expect(server.lists.last.queryParameters['limit'], 100);
     double top(String id) =>
         tester.getTopLeft(find.byKey(Key('unit-ticket-$id'))).dy;
     expect(top(_vpn), lessThan(top(_compressor)));
     expect(top(_compressor), lessThan(top(_lamp)));
     expect(find.byKey(const Key('my-units-more')), findsNothing);
+  });
+
+  test('D-2: the pages are followed to a cap, and a repeated cursor ends '
+      'the walk', () async {
+    final asked = <String?>[];
+    final api = _PagingApi((cursor) {
+      asked.add(cursor);
+      final n = cursor == null ? 0 : int.parse(cursor);
+      return EeUnitTicketsPage(
+        tickets: [
+          EeUnitTicket.fromJson(
+            _row('T$n', n + 1, 'Talep $n', _bakim, 'Bakım'),
+          ),
+        ],
+        nextCursor: '${n + 1}',
+      );
+    });
+    final all = await eeAllOpenAcrossUnits(api);
+    expect(asked.length, kEeAcrossUnitsMaxPages);
+    expect(all.tickets.length, kEeAcrossUnitsMaxPages);
+    // Capped: the rest stays a "show more" away.
+    expect(all.nextCursor, '$kEeAcrossUnitsMaxPages');
+
+    final loop = _PagingApi(
+      (cursor) => EeUnitTicketsPage(
+        tickets: [
+          EeUnitTicket.fromJson(_row('T1', 1, 'Talep', _bakim, 'Bakım')),
+        ],
+        nextCursor: 'same',
+      ),
+    );
+    final once = await eeAllOpenAcrossUnits(loop);
+    expect(loop.calls, 2);
+    expect(once.tickets.length, 1);
+    expect(once.nextCursor, isNull);
   });
 
   testWidgets('the alerts chip asks the server for alerts only', (
@@ -464,6 +525,10 @@ void main() {
             'nextCursor': 'c1',
           };
     await pump(tester, const EeMyUnitsScreen());
+    // The alerts list keeps the server's pages (D-2 follows them only for
+    // the newest-first list).
+    await tester.tap(find.byKey(const Key('my-units-alerts')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('unit-ticket-$_lamp')), findsNothing);
 
     await tester.tap(find.byKey(const Key('my-units-more')));

@@ -36,8 +36,9 @@ typedef EeUnitTicketsKey = ({bool alertsOnly, String cursor});
 
 /// R-11: the whole list (no alerts chip) is drawn newest first, the order a
 /// unit's own queue reads in, while the server pages by lateness. So it asks
-/// for the server's largest page: one page then holds every open request a
-/// team usually has, and the order the screen gives covers all of them.
+/// for the server's largest page, and follows the pages to the end before
+/// it orders them ([eeAllOpenAcrossUnits], D-2), so the order the screen
+/// gives covers all of them.
 const int kEeAcrossUnitsFullPage = 100;
 
 /// R-11: newest first — by the request number, the team's own filing order
@@ -76,14 +77,62 @@ final eeUnitTicketsPageProvider = FutureProvider.autoDispose
       if (ref.watch(serverReachabilityProvider.select((up) => up == false))) {
         throw _unreachable;
       }
-      return ref
-          .watch(eeUnitTicketsApiProvider)
-          .list(
-            alertsOnly: key.alertsOnly,
-            cursor: key.cursor.isEmpty ? null : key.cursor,
-            limit: key.alertsOnly ? null : kEeAcrossUnitsFullPage,
-          );
+      final api = ref.watch(eeUnitTicketsApiProvider);
+      if (key.alertsOnly || key.cursor.isNotEmpty) {
+        return api.list(
+          alertsOnly: key.alertsOnly,
+          cursor: key.cursor.isEmpty ? null : key.cursor,
+          limit: key.alertsOnly ? null : kEeAcrossUnitsFullPage,
+        );
+      }
+      return eeAllOpenAcrossUnits(api);
     });
+
+/// D-2 (polish 3): how many of the server's pages the newest-first list
+/// follows before it orders them — 20 × 100 open requests. Past it the
+/// rest is a "show more" away, as before.
+const int kEeAcrossUnitsMaxPages = 20;
+
+/// D-2 (polish 3) — every open request across the person's units, for the
+/// newest-first list.
+///
+/// The server pages by lateness (breached, warned, the rest by deadline)
+/// and has no other order. R-11 ordered the first page newest first, so
+/// past 100 open requests the newest ones — not late, deadlines far away —
+/// sat on page 2 and the first screen was not the newest at all; "show
+/// more" then dropped them in above what was read. The list now follows
+/// the pages to the end (up to [kEeAcrossUnitsMaxPages]) and orders the
+/// whole set once: the order a screen shows is the order of every row.
+/// The head (units, counts, scope) is the first page's; [nextCursor] is
+/// null unless the cap was reached.
+Future<EeUnitTicketsPage> eeAllOpenAcrossUnits(EeUnitTicketsApi api) async {
+  final first = await api.list(limit: kEeAcrossUnitsFullPage);
+  final tickets = [...first.tickets];
+  final seen = {for (final t in first.tickets) t.id};
+  var next = first.nextCursor;
+  final asked = <String>{};
+  for (var page = 1; next != null && page < kEeAcrossUnitsMaxPages; page++) {
+    // A cursor asked twice would be a loop, not a page.
+    if (!asked.add(next)) {
+      next = null;
+      break;
+    }
+    final more = await api.list(cursor: next, limit: kEeAcrossUnitsFullPage);
+    for (final t in more.tickets) {
+      if (seen.add(t.id)) tickets.add(t);
+    }
+    next = more.nextCursor;
+  }
+  return EeUnitTicketsPage(
+    units: first.units,
+    tickets: tickets,
+    breached: first.breached,
+    warned: first.warned,
+    unassigned: first.unassigned,
+    scope: first.scope,
+    nextCursor: next,
+  );
+}
 
 /// The current unit's last pull — the queue's own heartbeat. The strip asks
 /// again on each beat, so it is exactly as live as the queue under it (a
