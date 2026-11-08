@@ -64,6 +64,7 @@ Task _task(
   List<String> tagIds = const [],
   String? seriesId,
   DateTime? mutedAt,
+  DateTime? snoozedUntil,
 }) => Task(
   id: id,
   workspaceId: 'W1',
@@ -82,6 +83,7 @@ Task _task(
   seriesId: seriesId,
   occurrenceDate: seriesId == null ? null : '2030-01-01',
   alarmsMutedAt: mutedAt?.toUtc(),
+  snoozedUntil: snoozedUntil?.toUtc(),
 );
 
 const _project = Project(
@@ -629,6 +631,52 @@ void main() {
             );
           }
         }
+      }
+    });
+
+    testWidgets('E35 G-B review r3 (OPH-400): a snoozed alarm wraps at 2.0× '
+        'on 360 pt instead of running off the card', (tester) async {
+      // "Snoozed — 11:50 PM" with its glyph is ~271 pt at 2.0×; the vertical
+      // row's meta line has ~260. The wrap layout gives it a line of its own,
+      // but the text itself must then fit that line — two lines, not a
+      // RenderFlex overflow clipped at the card's edge.
+      final tomorrow = DateTime(_now.year, _now.month, _now.day + 1, 23, 50);
+      for (final language in ['en', 'tr']) {
+        AwI18n.instance.setActiveCached(Locale(language));
+        final task = _task(
+          'snz',
+          language == 'tr' ? 'Faturayı öde' : 'Pay the bill',
+          due: _future,
+          projectId: 'P1',
+          snoozedUntil: tomorrow,
+        );
+        await _pump(
+          tester,
+          tasks: [task],
+          width: 360,
+          scale: 2.0,
+          family: _family,
+        );
+        expect(tester.takeException(), isNull, reason: language);
+        final meta = _rect(tester, find.byKey(const Key('task-meta-snz')));
+        final alarm = find.byKey(const Key('task-alarm-snz'));
+        expect(alarm.hitTestable(), findsOneWidget, reason: language);
+        expect(
+          _rect(tester, alarm).right,
+          lessThanOrEqualTo(meta.right + 0.5),
+          reason: language,
+        );
+        final text = _in('snz', find.textContaining(':50'));
+        expect(text, findsOneWidget, reason: language);
+        final paragraph = tester.renderObject<RenderParagraph>(
+          find.descendant(of: text, matching: find.byType(RichText)),
+        );
+        expect(paragraph.didExceedMaxLines, isFalse, reason: language);
+        expect(
+          _rect(tester, text).right,
+          lessThanOrEqualTo(meta.right + 0.5),
+          reason: language,
+        );
       }
     });
 

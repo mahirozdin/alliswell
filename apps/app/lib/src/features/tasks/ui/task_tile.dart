@@ -292,22 +292,36 @@ class TaskTile extends ConsumerWidget {
       // §11 A5: a snoozed or silenced alarm keeps saying so, with its one-tap
       // way back. Otherwise the urgent alarm is the default and draws nothing;
       // an alarm that will NOT ring through silent is the deviation.
+      // E35 G-B review r3: in the vertical row a long "Snoozed — 11:50 PM"
+      // (2.0×, 12-hour, 360 pt) is wider than its own line, so the text wraps
+      // under the glyph's line instead of overflowing the card. IntrinsicWidth
+      // lets the meta line measure it unbounded (one line, its natural width)
+      // and still hand the Flexible text a bounded width when it must wrap.
       if (snoozed)
-        Row(
+        IntrinsicWidth(
           key: Key('task-alarm-${task.id}'),
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            glyphIcon(Icons.snooze),
-            const SizedBox(width: AwSpace.x1),
-            Text(
-              'task.snoozedUntil'.tr(
-                args: {'time': awFormatTime(snoozedUntil, format: dateFormat)},
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              glyphIcon(Icons.snooze),
+              const SizedBox(width: AwSpace.x1),
+              Flexible(
+                child: Text(
+                  'task.snoozedUntil'.tr(
+                    args: {
+                      'time': awFormatTime(snoozedUntil, format: dateFormat),
+                    },
+                  ),
+                  maxLines: vertical ? 2 : 1,
+                  softWrap: vertical,
+                  overflow: TextOverflow.ellipsis,
+                  style: roles.metaStrong.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
               ),
-              maxLines: 1,
-              softWrap: false,
-              style: roles.metaStrong.copyWith(color: scheme.onSurfaceVariant),
-            ),
-          ],
+            ],
+          ),
         )
       else if (muted)
         // E35 G-B review r1: on a narrow row the way back shortens ("Turn

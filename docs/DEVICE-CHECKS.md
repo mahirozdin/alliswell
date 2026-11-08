@@ -56,7 +56,7 @@
 
 ## Görev satırı (2026-11-07)
 
-- OPH-400 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa'da uzun başlık en çok 2 satır + "…", onay dairesi ilk satırın ortasında; açık/orta öncelikli/acil alarmlı görevde sağda ve meta satırında simge yok, "Gecikti" yalnız sözcük kırmızı; proje rozeti ilk satır hizasında; yapıştırılmış URL tek satır "alanadı › yol". Pano kartında "Taşı" düğmesi başlığın ilk satırında, başlığın üstüne binmiyor. **Metin boyutu en büyük (iOS AX5 / Android 2.0)**: satır dikey, kelime ortasından kırılma yok, meta öğeleri başlığın altına sarıyor.
+- OPH-400 — **iPhone 393 ve Android 360, demo tohumu, açık ve koyu, TR**: Ana Sayfa'da uzun başlık en çok 2 satır + "…", onay dairesi ilk satırın ortasında; açık/orta öncelikli/acil alarmlı görevde sağda ve meta satırında simge yok, "Gecikti" yalnız sözcük kırmızı; proje rozeti ilk satır hizasında; yapıştırılmış URL tek satır "alanadı › yol". Pano kartında "Taşı" düğmesi başlığın ilk satırında, başlığın üstüne binmiyor. **Metin boyutu en büyük (iOS AX5 / Android 2.0)**: satır dikey, kelime ortasından kırılma yok, meta öğeleri başlığın altına sarıyor; EN + 12 saatte ertelenmiş alarmlı görevde "Snoozed — 11:50 PM" kart içinde kalıyor (gerekirse iki satır).
 
 ## Tipografi: Glass Type v1 (2026-11-07)
 

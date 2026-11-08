@@ -77,7 +77,8 @@ This file holds the unreleased changes and the latest release; at each release t
   of it), the check circle lines up with the first line, and everything else sits on one small line
   under the title. Icons appear only when something is out of the ordinary, such as a high
   priority, a status other than open, or a reminder that will not ring through Silent. A pasted
-  link reads as "site › path", and with large text the row stacks instead of squeezing the title.
+  link reads as "site › path", and with large text the row stacks instead of squeezing the title;
+  a long "Snoozed" time wraps rather than running off the card.
 - **Home shows more of your day on a phone**: the calendar opens as one week, with the month one
   tap away (your choice is kept). Section headings are bolder, show their count apart, and fold
   with a tap. The quick-add box stays plain until you type, shows examples when you tap it, and
