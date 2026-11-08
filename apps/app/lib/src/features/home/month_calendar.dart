@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../i18n/i18n.dart';
 import '../../theme/tokens.dart';
 import '../../theme/typography.dart';
+import '../../widgets/word_safe_text.dart';
 
 /// How Home draws its calendar (OPH-401, DESIGN §47 W1).
 enum AwCalendarMode { week, month }
@@ -128,60 +129,98 @@ class _MonthCalendarState extends State<MonthCalendar> {
         DateFormat.E(locale).format(DateTime(2024, 1, d)),
     ];
 
+    final titleStyle = theme.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+    final controls = <Widget>[
+      IconButton(
+        tooltip: week
+            ? 'calendar.previousWeek'.tr()
+            : 'calendar.previousMonth'.tr(),
+        icon: const Icon(Icons.chevron_left),
+        color: theme.colorScheme.onSurfaceVariant,
+        onPressed: () => _shift(-1),
+      ),
+      IconButton(
+        tooltip: week ? 'calendar.nextWeek'.tr() : 'calendar.nextMonth'.tr(),
+        icon: const Icon(Icons.chevron_right),
+        color: theme.colorScheme.onSurfaceVariant,
+        onPressed: () => _shift(1),
+      ),
+      if (widget.onModeChanged != null)
+        IconButton(
+          key: const Key('calendar-mode-toggle'),
+          tooltip: week ? 'calendar.showMonth'.tr() : 'calendar.showWeek'.tr(),
+          icon: Icon(week ? Icons.expand_more : Icons.expand_less),
+          color: theme.colorScheme.onSurfaceVariant,
+          onPressed: () => widget.onModeChanged!(
+            week ? AwCalendarMode.month : AwCalendarMode.week,
+          ),
+        ),
+    ];
+    // Drawn whole inside its slot: the FittedBox only shrinks a heading
+    // wider than the whole card (DESIGN §9 L2, OPH-400 R-09).
+    final title = FittedBox(
+      key: const Key('calendar-month-title'),
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Text(monthTitle, maxLines: 1, softWrap: false, style: titleStyle),
+    );
+
+    // J-01 (OPH-398, AX3 judge: "Kasım 2…"): the heading keeps its reading
+    // size. When it does not fit beside the controls at that size, the
+    // controls take a second row, trailing-aligned, and the heading gets the
+    // card's whole width, instead of being cut or drawn small.
+    final header = LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: monthTitle, style: titleStyle),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        final natural = painter.width;
+        painter.dispose();
+        // Only enlarged text reflows: at the default size every month name
+        // fits a phone card, and the header keeps its one-row geometry (the
+        // FittedBox stays the guard for an odd narrow window).
+        final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1;
+        // Every control is a 48 pt target (G4); 8 pt leads the heading.
+        final besides =
+            8 + natural + kMinInteractiveDimension * controls.length;
+        if (!enlarged || besides <= constraints.maxWidth) {
+          return Row(
+            children: [
+              const SizedBox(width: 8),
+              Expanded(child: title),
+              ...controls,
+            ],
+          );
+        }
+        return Column(
+          key: const Key('calendar-header-stacked'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The card's whole width, wrapping between words ("Kasım /
+            // 2026") at the reader's size, never inside one (DESIGN §45 W8).
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 8, end: 8),
+              child: AwWordSafeText(
+                monthTitle,
+                key: const Key('calendar-month-title'),
+                style: titleStyle,
+              ),
+            ),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: controls),
+          ],
+        );
+      },
+    );
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            const SizedBox(width: 8),
-            // Expanded so long month names (or mid-animation widths) never
-            // overflow the header (DESIGN §9 L2). OPH-400 (R-09): drawn
-            // smaller rather than cut — "Kasım 2…" hid the year at AX3.
-            Expanded(
-              child: FittedBox(
-                key: const Key('calendar-month-title'),
-                fit: BoxFit.scaleDown,
-                alignment: AlignmentDirectional.centerStart,
-                child: Text(
-                  monthTitle,
-                  maxLines: 1,
-                  softWrap: false,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: week
-                  ? 'calendar.previousWeek'.tr()
-                  : 'calendar.previousMonth'.tr(),
-              icon: const Icon(Icons.chevron_left),
-              color: theme.colorScheme.onSurfaceVariant,
-              onPressed: () => _shift(-1),
-            ),
-            IconButton(
-              tooltip: week
-                  ? 'calendar.nextWeek'.tr()
-                  : 'calendar.nextMonth'.tr(),
-              icon: const Icon(Icons.chevron_right),
-              color: theme.colorScheme.onSurfaceVariant,
-              onPressed: () => _shift(1),
-            ),
-            if (widget.onModeChanged != null)
-              IconButton(
-                key: const Key('calendar-mode-toggle'),
-                tooltip: week
-                    ? 'calendar.showMonth'.tr()
-                    : 'calendar.showWeek'.tr(),
-                icon: Icon(week ? Icons.expand_more : Icons.expand_less),
-                color: theme.colorScheme.onSurfaceVariant,
-                onPressed: () => widget.onModeChanged!(
-                  week ? AwCalendarMode.month : AwCalendarMode.week,
-                ),
-              ),
-          ],
-        ),
+        header,
         if (week)
           Row(
             key: const Key('calendar-week-strip'),

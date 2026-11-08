@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/home/month_calendar.dart';
@@ -198,6 +199,87 @@ void main() {
     expect(find.byKey(const Key('calendar-day-2026-11-16')), findsOneWidget);
     expect(find.byKey(const Key('calendar-day-2026-11-22')), findsOneWidget);
     expect(find.text('November 2026'), findsOneWidget);
+  });
+
+  // J-01 (OPH-398, AX3 judge): "Kasım 2…" at AX3. The heading keeps its
+  // reading size and the whole month and year; when it does not fit beside
+  // the three controls they move to a second row instead of the heading
+  // shrinking or being cut.
+  Future<void> pumpScaled(WidgetTester tester, double scale) async {
+    tester.view.physicalSize = const Size(393, 852);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: buildAwTheme(Brightness.light),
+        home: MediaQuery(
+          data: MediaQueryData(
+            size: const Size(393, 852),
+            textScaler: TextScaler.linear(scale),
+          ),
+          child: Scaffold(
+            body: SingleChildScrollView(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: MonthCalendar(
+                  markedDays: const {},
+                  selectedDay: DateTime(2026, 11, 8),
+                  onDaySelected: (_) {},
+                  initialMonth: DateTime(2026, 11),
+                  mode: AwCalendarMode.week,
+                  onModeChanged: (_) {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  for (final scale in [2.35, 3.1]) {
+    testWidgets('J-01 AX $scale×: whole "Kasım 2026" at full size, the '
+        'controls on a second row', (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      await pumpScaled(tester, scale);
+      expect(tester.takeException(), isNull);
+      final text = find.text('Kasım 2026');
+      expect(text, findsOneWidget);
+      final paragraph = tester.renderObject<RenderParagraph>(text);
+      expect(paragraph.didExceedMaxLines, isFalse);
+      // Not shrunk: drawn at the reader's size, wrapping between the words
+      // if it must, and never squeezed by a FittedBox.
+      expect(paragraph.textScaler, TextScaler.linear(scale));
+      expect(tester.getRect(text).width, closeTo(paragraph.size.width, 0.5));
+      expect(find.byKey(const Key('calendar-header-stacked')), findsOneWidget);
+      final titleBottom = tester.getRect(text).bottom;
+      for (final tip in ['Önceki hafta', 'Sonraki hafta', 'Ayı göster']) {
+        final control = find.ancestor(
+          of: find.byTooltip(tip),
+          matching: find.byType(IconButton),
+        );
+        expect(control, findsOneWidget, reason: tip);
+        expect(
+          tester.getRect(control).top,
+          greaterThanOrEqualTo(titleBottom - 0.5),
+          reason: '$tip sits on its own row under the heading',
+        );
+        expect(tester.getSize(control).height, greaterThanOrEqualTo(48));
+      }
+    });
+  }
+
+  testWidgets('J-01 at 1.0× the heading and its controls share one row', (
+    tester,
+  ) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    await pumpScaled(tester, 1.0);
+    final title = tester.getRect(find.text('Kasım 2026'));
+    final next = tester.getRect(find.byTooltip('Sonraki hafta'));
+    expect(next.top, lessThan(title.bottom));
+    expect(next.left, greaterThan(title.right));
+    expect(find.byKey(const Key('calendar-header-stacked')), findsNothing);
   });
 
   testWidgets('without onModeChanged (the wide panel) there is no toggle', (

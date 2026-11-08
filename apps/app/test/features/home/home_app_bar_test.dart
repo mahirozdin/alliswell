@@ -164,6 +164,47 @@ void main() {
     });
   }
 
+  // J-01 (OPH-398, AX3 judge): at iOS AX3 (≈2.35×) and AX5 (≈3.1×) all three
+  // header functions stay visible — ⚡, "View ⌄", Settings — each a whole
+  // 48 pt target inside the screen, none pushed past the edge by the title.
+  for (final scale in [2.35, 3.1]) {
+    testWidgets('AX $scale×: ⚡, View and Settings are all on screen', (
+      tester,
+    ) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      _size(tester, const Size(393, 852));
+      await tester.pumpWidget(await _app(FakeApi()..seedTask(title: 'Bir')));
+      await tester.pumpAndSettle();
+      for (final width in [360.0, 375.0, 393.0]) {
+        tester.view.physicalSize = Size(width, 852);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+        for (final target in [
+          find.byKey(const Key('quick-appbar-button')),
+          find.byKey(const Key('home-view-menu')),
+          find.descendant(
+            of: _appBar,
+            matching: find.byIcon(Icons.settings_outlined),
+          ),
+        ]) {
+          final cell = '${width.toInt()} × $scale: $target';
+          expect(target, findsOneWidget, reason: cell);
+          final r = tester.getRect(target);
+          expect(r.left, greaterThanOrEqualTo(0), reason: cell);
+          expect(r.right, lessThanOrEqualTo(width), reason: cell);
+          expect(r.top, greaterThanOrEqualTo(0), reason: cell);
+        }
+        for (final t in _targets(tester)) {
+          final size = (t.renderObject! as RenderBox).size;
+          expect(size.width, greaterThanOrEqualTo(48));
+          expect(size.height, greaterThanOrEqualTo(48));
+        }
+      }
+    });
+  }
+
   testWidgets('the View menu carries list/board, the calendar and the order', (
     tester,
   ) async {
