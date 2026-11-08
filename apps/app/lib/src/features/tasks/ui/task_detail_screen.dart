@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -48,7 +49,7 @@ typedef TaskAction = Future<Object?> Function(TaskStore store, String taskId);
 /// status/priority dropdowns with icons/colors, urgent toggle, dates, tags
 /// and checklist — every control writes the local replica (instant) and syncs
 /// in the background; failed writes surface as snackbars instead of vanishing.
-class TaskDetailScreen extends ConsumerWidget {
+class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.taskId, this.onClose});
 
   final String taskId;
@@ -59,7 +60,19 @@ class TaskDetailScreen extends ConsumerWidget {
   final VoidCallback? onClose;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  /// The task this screen has shown at least once. Its row missing after
+  /// that is a deletion (a pull applied its tombstone, OPH-419); missing
+  /// before that is only a row not pulled yet — the waiting screen's case.
+  String? _shownTaskId;
+
+  @override
+  Widget build(BuildContext context) {
+    final taskId = widget.taskId;
+    final onClose = widget.onClose;
     final task = ref.watch(taskDetailProvider(taskId));
     return task.when(
       loading: () => _TaskDetailWaiting(taskId: taskId, onClose: onClose),
@@ -67,7 +80,54 @@ class TaskDetailScreen extends ConsumerWidget {
         appBar: AppBar(leading: _leading(context, onClose)),
         body: Center(child: Text('$error')),
       ),
-      data: (value) => _TaskDetail(task: value, onClose: onClose),
+      data: (value) {
+        if (value != null) {
+          _shownTaskId = taskId;
+          return _TaskDetail(task: value, onClose: onClose);
+        }
+        return _shownTaskId == taskId
+            ? _TaskDetailDeleted(onClose: onClose)
+            : _TaskDetailWaiting(taskId: taskId, onClose: onClose);
+      },
+    );
+  }
+}
+
+/// The task this detail was showing left the replica while it was open —
+/// deleted on another device, or no longer this person's (OPH-419). Says so
+/// instead of keeping the last task on screen: stale, editable, and every
+/// control a write for an entity that is gone. No automatic pop or close:
+/// a sheet may be open over it, and a row that comes back (a task moved
+/// between workspaces, OPH-378) shows the task again.
+class _TaskDetailDeleted extends StatelessWidget {
+  const _TaskDetailDeleted({this.onClose});
+
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final close = onClose;
+    final router = GoRouter.of(context);
+    final canPop = close == null && router.canPop();
+    return Scaffold(
+      appBar: AppBar(leading: _leading(context, close)),
+      body: AwErrorState(
+        key: const Key('task-detail-deleted'),
+        message: 'task.goneWhileOpen'.tr(),
+        retryLabel: close != null
+            ? 'common.close'.tr()
+            : canPop
+            ? 'task.goneBack'.tr()
+            : 'error.goHome'.tr(),
+        retryIcon: close != null
+            ? Icons.close
+            : canPop
+            ? Icons.arrow_back
+            : Icons.home_outlined,
+        onRetry:
+            close ??
+            () => canPop ? router.pop() : router.go(AppSection.home.path),
+      ),
     );
   }
 }
@@ -956,28 +1016,21 @@ class _ChecklistState extends State<_Checklist> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         for (final item in widget.task.checklist)
-          CheckboxListTile(
-            contentPadding: EdgeInsets.zero,
-            controlAffinity: ListTileControlAffinity.leading,
-            title: Text(
-              item.title,
-              style: item.isDone
-                  ? const TextStyle(decoration: TextDecoration.lineThrough)
-                  : null,
-            ),
-            value: item.isDone,
-            onChanged: (v) => widget.onApply(
+          _ChecklistItemRow(
+            key: ValueKey('checklist-item-${item.id}'),
+            item: item,
+            onToggle: (done) => widget.onApply(
               (store, id) =>
-                  store.setChecklistItemDone(id, item.id, isDone: v ?? false),
+                  store.setChecklistItemDone(id, item.id, isDone: done),
             ),
-            secondary: IconButton(
-              tooltip: 'task.removeItem'.tr(),
-              icon: const Icon(Icons.close, size: 18),
-              onPressed: () => widget.onApply((store, id) async {
-                await store.deleteChecklistItem(id, item.id);
-                return null;
-              }),
-            ),
+            onRename: (title) => widget.onApply((store, id) async {
+              await store.renameChecklistItem(id, item.id, title);
+              return null;
+            }),
+            onRemove: () => widget.onApply((store, id) async {
+              await store.deleteChecklistItem(id, item.id);
+              return null;
+            }),
           ),
         TextField(
           key: const Key('checklist-add'),
@@ -992,6 +1045,151 @@ class _ChecklistState extends State<_Checklist> {
               onPressed: _add,
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+/// One checklist row (OPH-416, issue #38): the checkbox ticks, the words
+/// edit. Tapping the title swaps it for an in-place field; Enter or focus
+/// loss saves the trimmed text, Escape cancels, and an empty field restores
+/// the old title without writing anything.
+class _ChecklistItemRow extends StatefulWidget {
+  const _ChecklistItemRow({
+    super.key,
+    required this.item,
+    required this.onToggle,
+    required this.onRename,
+    required this.onRemove,
+  });
+
+  final ChecklistItem item;
+  final ValueChanged<bool> onToggle;
+  final ValueChanged<String> onRename;
+  final VoidCallback onRemove;
+
+  @override
+  State<_ChecklistItemRow> createState() => _ChecklistItemRowState();
+}
+
+class _ChecklistItemRowState extends State<_ChecklistItemRow> {
+  late final TextEditingController _controller = TextEditingController(
+    text: widget.item.title,
+  );
+  late final FocusNode _focus = FocusNode(onKeyEvent: _onKey);
+  bool _editing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() {
+      if (!_focus.hasFocus && _editing) _commit();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  KeyEventResult _onKey(FocusNode node, KeyEvent event) {
+    if (event is KeyDownEvent &&
+        event.logicalKey == LogicalKeyboardKey.escape) {
+      _cancel();
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  void _startEditing() {
+    _controller.value = TextEditingValue(
+      text: widget.item.title,
+      selection: TextSelection.collapsed(offset: widget.item.title.length),
+    );
+    setState(() => _editing = true);
+    _focus.requestFocus();
+  }
+
+  void _commit() {
+    if (!_editing) return;
+    final title = _controller.text.trim();
+    setState(() => _editing = false);
+    if (title.isEmpty || title == widget.item.title) {
+      _controller.text = widget.item.title;
+      return;
+    }
+    widget.onRename(title);
+  }
+
+  void _cancel() {
+    if (!_editing) return;
+    _controller.text = widget.item.title;
+    setState(() => _editing = false);
+    _focus.unfocus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final item = widget.item;
+    final style = theme.textTheme.bodyLarge?.copyWith(
+      decoration: item.isDone ? TextDecoration.lineThrough : null,
+    );
+    return Row(
+      children: [
+        SizedBox(
+          width: 48,
+          height: 48,
+          child: Center(
+            child: Checkbox(
+              key: Key('checklist-item-check-${item.id}'),
+              value: item.isDone,
+              semanticLabel: item.title,
+              onChanged: (v) => widget.onToggle(v ?? false),
+            ),
+          ),
+        ),
+        Expanded(
+          child: _editing
+              ? TextField(
+                  key: Key('checklist-item-edit-${item.id}'),
+                  controller: _controller,
+                  focusNode: _focus,
+                  style: style,
+                  maxLength: TaskStore.checklistTitleMax,
+                  textInputAction: TextInputAction.done,
+                  onSubmitted: (_) => _commit(),
+                  onTapOutside: (_) => _focus.unfocus(),
+                  decoration: const InputDecoration(
+                    isDense: true,
+                    counterText: '',
+                    contentPadding: EdgeInsets.symmetric(vertical: 12),
+                  ),
+                )
+              : Semantics(
+                  button: true,
+                  hint: 'task.editItem'.tr(),
+                  child: InkWell(
+                    key: Key('checklist-item-title-${item.id}'),
+                    borderRadius: BorderRadius.circular(AwRadius.s),
+                    onTap: _startEditing,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 48),
+                      child: Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        child: Text(item.title, style: style),
+                      ),
+                    ),
+                  ),
+                ),
+        ),
+        IconButton(
+          tooltip: 'task.removeItem'.tr(),
+          icon: const Icon(Icons.close, size: 18),
+          onPressed: widget.onRemove,
         ),
       ],
     );

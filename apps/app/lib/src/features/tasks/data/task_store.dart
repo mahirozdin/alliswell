@@ -259,8 +259,11 @@ class TaskStore {
     });
   }
 
-  /// Detail = task row + tag joins + checklist, live on every part.
-  Stream<Task> watchDetail(String taskId) => combineLatest3(
+  /// Detail = task row + tag joins + checklist, live on every part. Null
+  /// while the row is not in the replica: not pulled yet, or gone — a
+  /// tombstone deletes the row (OPH-419). The caller tells the two apart; it
+  /// used to drop nulls, and an open detail kept its deleted task on screen.
+  Stream<Task?> watchDetail(String taskId) => combineLatest3(
     (_db.select(
       _db.tasks,
     )..where((t) => t.id.equals(taskId))).watchSingleOrNull(),
@@ -289,10 +292,10 @@ class TaskStore {
                 ),
             ],
           ),
-  ).where((task) => task != null).map((task) => task!);
+  );
 
   /// One read of a task's detail (row + tags + checklist), null when it is
-  /// gone — [watchDetail] drops nulls, so its `.first` would hang (OPH-377).
+  /// gone (OPH-377).
   Future<Task?> detailOnce(String taskId) async {
     final record = await (_db.select(
       _db.tasks,
@@ -744,6 +747,53 @@ class TaskStore {
         entityId: itemId,
         operation: 'update',
         patch: {'isDone': isDone},
+      );
+    });
+    _poke();
+  }
+
+  /// The server's `checklist_item.title` limit (`str(500)`, 1–500 chars).
+  static const checklistTitleMax = 500;
+
+  /// Renames a checklist item in place (OPH-416, issue #38). The title is
+  /// trimmed and clamped to the server's 500 chars; an empty or unchanged
+  /// title writes nothing, so a cancelled edit never reaches the outbox.
+  Future<void> renameChecklistItem(
+    String taskId,
+    String itemId,
+    String rawTitle,
+  ) async {
+    var title = rawTitle.trim();
+    if (title.isEmpty) return;
+    if (title.length > checklistTitleMax) {
+      // UTF-16 units, as the server's JS `length` counts; never split a pair.
+      var end = checklistTitleMax;
+      final last = title.codeUnitAt(end - 1);
+      if (last >= 0xD800 && last <= 0xDBFF) end--;
+      title = title.substring(0, end).trimRight();
+    }
+    final record = await _record(taskId);
+    if (record == null) return;
+    final current = await (_db.select(
+      _db.checklistItems,
+    )..where((c) => c.id.equals(itemId))).getSingleOrNull();
+    if (current == null || current.title == title) return;
+    await _db.transaction(() async {
+      await (_db.update(
+        _db.checklistItems,
+      )..where((c) => c.id.equals(itemId))).write(
+        ChecklistItemsCompanion(
+          title: Value(title),
+          updatedAt: Value(DateTime.now().toUtc()),
+        ),
+      );
+      await enqueueMutation(
+        _db,
+        workspaceId: record.workspaceId,
+        entityType: 'checklist_item',
+        entityId: itemId,
+        operation: 'update',
+        patch: {'title': title},
       );
     });
     _poke();

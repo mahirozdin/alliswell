@@ -1170,19 +1170,6 @@ function futureOccurrences(trx, { workspaceId, seriesId, fromDay }) {
     .select();
 }
 
-/**
- * Tombstones a series' FUTURE occurrences — everything from `fromDay` onward
- * that is not already finished. The past and anything completed stay: a
- * finished task is a historical fact (DESIGN §20 C4), and a rule change may not
- * rewrite what the user actually did.
- *
- * @returns {Promise<number>} rows tombstoned
- */
-export async function deleteFutureOccurrences(trx, { workspaceId, seriesId, fromDay }) {
-  const rows = await futureOccurrences(trx, { workspaceId, seriesId, fromDay });
-  return retireOccurrences(trx, { workspaceId, rows });
-}
-
 /** Template-derived columns a series edit carries onto the rows it keeps. */
 const RESTAMPED_COLUMNS = [
   'project_id',
@@ -1314,29 +1301,21 @@ export async function rebuildFuture(
 }
 
 /**
- * Soft-deletes a series and its future occurrences in the caller's transaction.
- * Past occurrences keep their `series_id` — they remain part of the history.
+ * Stopping a series keeps the tasks the user is looking at (OPH-375, #32,
+ * OPH-417): each kept open occurrence becomes an ordinary task — no series,
+ * no slot, no "born from" link, so the Repeat switch reads off and reopening
+ * its predecessor cannot withdraw it. Every detach is a sync write.
  */
-/**
- * Stopping an after-completion series (OPH-375): its open occurrence becomes
- * an ordinary task — no series, no slot, no "born from" link, so the Repeat
- * switch reads off and reopening its predecessor cannot withdraw it.
- */
-async function detachOpenOccurrences(trx, { workspaceId, seriesId }) {
-  const rows = await trx('tasks')
-    .where({ workspace_id: workspaceId, series_id: seriesId })
-    .whereNull('deleted_at')
-    .whereNotIn('status', FINISHED_STATUSES)
-    .select('id');
-  for (const row of rows) {
+async function detachOccurrences(trx, { workspaceId, ids }) {
+  for (const id of ids) {
     const revision = await recordSyncWrite(trx, {
       workspaceId,
       entityType: 'task',
-      entityId: row.id,
+      entityId: id,
       operation: 'update',
       changedFields: ['series_id', 'occurrence_date'],
     });
-    await trx('tasks').where({ id: row.id }).update({
+    await trx('tasks').where({ id }).update({
       series_id: null,
       occurrence_date: null,
       spawned_from_task_id: null,
@@ -1344,30 +1323,94 @@ async function detachOpenOccurrences(trx, { workspaceId, seriesId }) {
       updated_at: new Date(),
     });
   }
-  return rows.length;
+  return ids.length;
 }
 
+/** What `fromDay` must look like on every door that stops a series. */
+export const STOP_DAY_PATTERN = '^\\d{4}-\\d{2}-\\d{2}$';
+const STOP_DAY_RE = new RegExp(STOP_DAY_PATTERN);
+
+/**
+ * Validates a stop's options as the sync push receives them (the patch of a
+ * `task_series` delete). The REST route checks the same two query parameters
+ * with Ajv (`fromDay` against STOP_DAY_PATTERN, `keepTaskId` a ULID), so both
+ * doors refuse the same input — a malformed value is a rejected mutation with
+ * a code, never silently "no option" (which would delete from today).
+ *
+ * @returns {string|null} sync error code
+ */
+export function stopOptionsError(patch, isUlid) {
+  if (patch == null) return null;
+  if (typeof patch !== 'object' || Array.isArray(patch)) return 'SYNC_INVALID_PATCH';
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === 'fromDay') {
+      if (value != null && !(typeof value === 'string' && STOP_DAY_RE.test(value)))
+        return 'SYNC_INVALID_VALUE';
+    } else if (key === 'keepTaskId') {
+      if (value != null && !isUlid(value)) return 'SYNC_INVALID_VALUE';
+    } else {
+      return 'SYNC_UNKNOWN_FIELD';
+    }
+  }
+  return null;
+}
+
+/**
+ * Soft-deletes a series in the caller's transaction — the one function behind
+ * REST `DELETE /task-series/:id` and the sync push's `task_series` delete, so
+ * both doors stop a series identically.
+ *
+ * What happens to each occurrence:
+ *   - finished (completed/cancelled/archived): untouched, keeps its
+ *     `series_id` — history (DESIGN §25 R7);
+ *   - open and after the reference day: retired (tombstoned, sync write);
+ *   - open on or before the reference day: kept, detached as a plain task.
+ *
+ * The reference day:
+ *   - explicit `fromDay` ("delete this and future", the swiped occurrence):
+ *     occurrences from `fromDay` ON are retired — that occurrence is what the
+ *     user deleted — and the open ones before it stay;
+ *   - otherwise ("Tekrarı durdur"): the first open occurrence on or after
+ *     today (or the anchor, for a series that starts later), pushed to
+ *     `keepTaskId`'s day when the app names a later task. So the task for
+ *     today, the task the switch sits on and every earlier open one are never
+ *     deleted (#32: stopping used to delete the very task it was turned off on);
+ *   - an after-completion series without `fromDay` keeps its open occurrence
+ *     (it has no future rows — ADR-0056).
+ */
 export async function softDeleteSeries(
   trx,
-  { workspaceId, series, now = new Date(), fromDay: overrideDay = null },
+  { workspaceId, series, now = new Date(), fromDay = null, keepTaskId = null },
 ) {
-  // `fromDay` lets "this and future" start at the occurrence the user swiped
-  // rather than at today — stopping a series from next March must not take
-  // February's rows with it (OPH-208).
-  const fromDay = overrideDay ?? materializationWindow(series, now).from;
-  // OPH-375 (ADR-0056): an after-completion series has no future rows — its
-  // one open occurrence IS the task the user is looking at. Stopping the
-  // repeat keeps it as an ordinary task; only an explicit `fromDay` (the app
-  // deleting that occurrence and stopping in one commit) reaches it.
-  const keepHead = isCompletionSeries(series) && overrideDay == null;
-  const removed = keepHead
-    ? 0
-    : await deleteFutureOccurrences(trx, {
-        workspaceId,
-        seriesId: series.id,
-        fromDay,
-      });
-  if (keepHead) await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id });
+  const open = await trx('tasks')
+    .where({ workspace_id: workspaceId, series_id: series.id })
+    .whereNull('deleted_at')
+    .whereNotIn('status', FINISHED_STATUSES)
+    .select('id', 'occurrence_date');
+  const dayOf = (row) => occurrenceDayOf(row.occurrence_date);
+
+  let retires;
+  if (fromDay != null) {
+    retires = (row) => dayOf(row) != null && dayOf(row) >= fromDay;
+  } else if (isCompletionSeries(series)) {
+    retires = () => false;
+  } else {
+    const today = materializationWindow(series, now).from;
+    let keepDay =
+      open
+        .map(dayOf)
+        .filter((day) => day != null && day >= today)
+        .sort()[0] ?? today;
+    const named = keepTaskId != null ? open.find((row) => row.id === keepTaskId) : null;
+    if (named && dayOf(named) != null) keepDay = laterDay(keepDay, dayOf(named));
+    retires = (row) => dayOf(row) != null && dayOf(row) > keepDay;
+  }
+
+  const removed = await retireOccurrences(trx, { workspaceId, rows: open.filter(retires) });
+  await detachOccurrences(trx, {
+    workspaceId,
+    ids: open.filter((row) => !retires(row)).map((row) => row.id),
+  });
   const revision = await recordSyncWrite(trx, {
     workspaceId,
     entityType: 'task_series',

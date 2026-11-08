@@ -236,6 +236,17 @@ void main() {
     await _type(tester, 'home-quick-add', "her pazartesi 9'da spor #sağlık");
     expect(find.byKey(const Key('quick-add-token-repeat')), findsOneWidget);
     await _submit(tester);
+    // OPH-420 (#32): the confirmation names the repeat — never silent.
+    final added = tester.widget<Text>(
+      find
+          .descendant(
+            of: find.byKey(const Key('quick-add-added')),
+            matching: find.byType(Text),
+          )
+          .first,
+    );
+    expect(added.data, contains('spor'));
+    expect(added.data, contains('Repeats: Every week on Monday'));
 
     final task = api.tasks.single;
     expect(task['title'], 'spor');
@@ -261,6 +272,35 @@ void main() {
       (m) => m['entityType'] == 'task_series',
     );
     expect((pushed['patch'] as Map)['fromTaskId'], task['id']);
+  });
+
+  testWidgets('Undo before the series reaches the replica still stops all of '
+      'it (#32)', (tester) async {
+    // The fake server never materialises occurrences, so the adopted task
+    // has no `occurrenceDate` yet — the offline case. A stop without a day
+    // would keep the server's next occurrence as a live plain task.
+    await _wide(tester);
+    final api = FakeApi();
+    await tester.pumpWidget(await _app(api));
+    await tester.pumpAndSettle();
+
+    await _type(tester, 'home-quick-add', "her pazartesi 9'da spor");
+    await _submit(tester);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('quick-add-added')),
+        matching: find.text('Undo'),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final stop = api.pushedMutations.lastWhere(
+      (m) => m['entityType'] == 'task_series' && m['operation'] == 'delete',
+    );
+    // The day before the anchor's (Monday 19 October): every occurrence the
+    // server made from this quick add is on or after it, in any zone.
+    expect((stop['patch'] as Map)['fromDay'], '2026-10-18');
+    expect((stop['patch'] as Map).containsKey('keepTaskId'), isFalse);
   });
 
   testWidgets('a typed tag reuses the existing one, fold-insensitively', (

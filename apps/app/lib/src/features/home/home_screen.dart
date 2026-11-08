@@ -7,6 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/date_format.dart';
+import '../../core/recurrence.dart';
+import '../../core/recurrence_text.dart';
 import '../../core/error_messages.dart';
 import '../../core/fold.dart';
 import '../../core/list_sort.dart';
@@ -38,6 +40,7 @@ import '../onboarding/tour.dart' show TourAnchor, TourTarget;
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/quick_add_apply.dart';
+import '../tasks/data/series_store.dart' show dayBeforeAnchor;
 import '../tasks/data/task_sort.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
@@ -251,6 +254,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         parse.title,
         due,
         withTime: parse.dueAt != null && parse.dueHasTime,
+        repeat: parse.repeat,
       );
       return;
     }
@@ -292,19 +296,33 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   /// offer it back for 5 s (R-04: 3 s was gone before a tap reached it), light the new row and bring it into sight. The
   /// field had just emptied with no other sign — and the row could be under
   /// the calendar or at the end of a long list — so people typed it twice.
+  ///
+  /// OPH-420 (#32): a typed repeat is named too — a series is never started
+  /// silently.
   void _afterQuickAdd(
     String? id,
     String title,
     DateTime? due, {
     required bool withTime,
+    AwRepeatRule? repeat,
   }) {
     if (id == null || !mounted) return;
+    final format = ref.read(dateFormatProvider);
     final when = due == null
         ? HomeBucket.noDate.label
-        : awFormatShort(
-            due,
-            format: ref.read(dateFormatProvider),
-            withTime: withTime,
+        : awFormatShort(due, format: format, withTime: withTime);
+    final args = {'title': title, 'when': when};
+    final added = repeat == null
+        ? 'home.added'.tr(args: args)
+        : 'home.addedRepeat'.tr(
+            args: {
+              ...args,
+              // The rule without its end clause, as the repeat chip says it.
+              'rule': awRepeatSentence(
+                repeat,
+                dateFormat: format,
+              ).split(' · ').first,
+            },
           );
     final messenger = ScaffoldMessenger.of(context);
     // Resolved now: Undo may land after this screen has rebuilt.
@@ -314,7 +332,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showAwActionSnackBar(
       messenger,
       key: const Key('quick-add-added'),
-      content: Text('home.added'.tr(args: {'title': title, 'when': when})),
+      content: Text(added),
       actionLabel: 'common.undo'.tr(),
       duration: kQuickAddUndoWindow,
       onAction: () async {
@@ -327,14 +345,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             .value
             ?.where((t) => t.id == id)
             .firstOrNull;
+        // The task goes first: the stop drops the replica's occurrences from
+        // its day on, and a task already gone locally would never enqueue
+        // its own delete (OPH-418).
+        final series = task?.seriesId == null
+            ? null
+            : await seriesStore.byId(task!.seriesId!);
+        await store.delete(id);
         if (task != null && task.seriesId != null) {
+          // Before the first pull the adopted task has no day yet; a stop
+          // without one would keep the server's next occurrence (#32). This
+          // series is brand new, so the day before its anchor takes all of it.
           await seriesStore.stop(
             workspaceId: task.workspaceId,
             seriesId: task.seriesId!,
-            fromDay: task.occurrenceDate,
+            fromDay:
+                task.occurrenceDate ??
+                (series == null ? null : dayBeforeAnchor(series.anchorAt)),
           );
         }
-        await store.delete(id);
       },
     );
     setState(() => _flashId = id);

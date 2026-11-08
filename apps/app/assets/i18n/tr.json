@@ -305,6 +305,7 @@
     "quickAddHint": "Görev ekle… örn. yarın 15:00 #iş",
     "quickAddForDay": "{date} için hızlı ekle…",
     "added": "Eklendi: {title} · {when}",
+    "addedRepeat": "Eklendi: {title} · {when} · Tekrar: {rule}",
     "askSkipNoDate": "Tarihsiz ekle",
     "askSkipSelectedDay": "Seçili güne ekle",
     "hideCalendar": "Takvimi gizle",
@@ -416,6 +417,7 @@
     "addChecklistItem": "Kontrol listesi öğesi ekle…",
     "addItem": "Öğe ekle",
     "removeItem": "Öğeyi kaldır",
+    "editItem": "Öğeyi düzenle",
     "overdueWord": "Gecikti",
     "alarmNotUrgent": "Hatırlatma (acil değil)",
     "projectSemantic": "Proje: {project}",
@@ -461,7 +463,9 @@
         "undoTitle": "Yanlış mı anladı?",
         "undo": "Tanınan sözcükler vurgulanır ve çubuğun altında çip olarak görünür.\nÇipteki ✕ tanımayı geri alır; sözcükler başlıkta kalır."
       }
-    }
+    },
+    "goneWhileOpen": "Bu görev silindi; bu cihazda ya da başka bir cihazda.",
+    "goneBack": "Geri dön"
   },
   "tag": {
     "inputHint": "Etiket ekle…",
@@ -1267,7 +1271,7 @@
     "endCountLabel": "Kez",
     "endUntilLabel": "Bitiş tarihi",
     "stop": "Tekrarı durdur",
-    "stopConfirm": "Gelecekteki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
+    "stopConfirm": "Bu görev kalır, sonraki tekrarlar silinir. Yapılmış olanlar geçmişinde kalır.",
     "stopConfirmAfter": "Bu görev kalır. Tamamladığında artık yenisi oluşturulmaz.",
     "badgeTooltip": "Tekrarlanıyor",
     "every": {

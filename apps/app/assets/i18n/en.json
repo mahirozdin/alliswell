@@ -306,6 +306,7 @@
     "quickAddHint": "Add a task… e.g. tomorrow 3pm #work",
     "quickAddForDay": "Quick add for {date}…",
     "added": "Added: {title} · {when}",
+    "addedRepeat": "Added: {title} · {when} · Repeats: {rule}",
     "askSkipNoDate": "Add without date",
     "askSkipSelectedDay": "Add to selected day",
     "hideCalendar": "Hide calendar",
@@ -417,6 +418,7 @@
     "addChecklistItem": "Add checklist item…",
     "addItem": "Add item",
     "removeItem": "Remove item",
+    "editItem": "Edit item",
     "overdueWord": "Overdue",
     "alarmNotUrgent": "Reminder (not urgent)",
     "projectSemantic": "Project: {project}",
@@ -462,7 +464,9 @@
         "undoTitle": "Not what you meant?",
         "undo": "Recognized words are highlighted and shown as chips under the bar.\nThe ✕ on a chip undoes it; its words stay in the title."
       }
-    }
+    },
+    "goneWhileOpen": "This task was deleted, on this device or another one.",
+    "goneBack": "Go back"
   },
   "tag": {
     "inputHint": "Add tag…",
@@ -1268,7 +1272,7 @@
     "endCountLabel": "Times",
     "endUntilLabel": "End date",
     "stop": "Stop repeating",
-    "stopConfirm": "Future occurrences are removed. Everything already done stays in your history.",
+    "stopConfirm": "This task stays; later occurrences are removed. Everything already done stays in your history.",
     "stopConfirmAfter": "This task stays. Completing it no longer creates the next one.",
     "badgeTooltip": "Repeats",
     "every": {

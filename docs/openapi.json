@@ -9146,6 +9146,16 @@
               "minLength": 26,
               "maxLength": 26
             },
+            "in": "query",
+            "name": "keepTaskId",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
             "in": "path",
             "name": "seriesId",
             "required": true

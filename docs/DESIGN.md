@@ -1294,7 +1294,13 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   its tooltip/semantics label. It disappears in the completed treatment along with the
   alarm chips (§20 C2): a finished occurrence does not repeat.
 - **R7 — Stopping is honest about the past.** "Tekrarı durdur" removes the **future**
-  occurrences and keeps every past and completed one, and says so in the confirm copy.
+  occurrences and keeps every past and completed one, and says so in the confirm copy. The
+  occurrence you stop from (the task the switch sits on, or today's/the first upcoming one)
+  and every earlier open one stay as plain tasks, unlinked from the series; only open
+  occurrences after it go (#32, OPH-417). "Delete this and future" removes the swiped
+  occurrence too. The switch reads off wherever the series row is gone, and goes off the
+  moment Stop is confirmed, offline too: the app applies the same cut to its own copy and
+  sends it as the day after the kept occurrence, so both sides cut in the same place (OPH-418).
   A finished task is a historical fact (§20 C4); deleting history to tidy a rule would
   rewrite what the user actually did.
 - **R8 — Scope is a question with a default, and the default follows the field.**
@@ -1760,7 +1766,7 @@ contract.
 
 | # | Rule | Why |
 | --- | --- | --- |
-| Q1 | **One grammar, both languages, every bar.** Relative days, weekdays (with Turkish suffixes), dates, times, `#tag`, `+Project` (existing projects only), `p1`..`p4` / `!acil`, and repeats ("her pazartesi", "every weekday"). A plain date is the deadline; `başla`/`start` makes it the When day; `son`/`due`/`…'e kadar` say deadline explicitly. The project tab does not read `+Project`. | A sentence means the same thing wherever it is typed. |
+| Q1 | **One grammar, both languages, every bar.** Relative days, weekdays (with Turkish suffixes), dates, times, `#tag`, `+Project` (existing projects only), `p1`..`p4` / `!acil`, and repeats ("her pazartesi", "every weekday"). A plain date is the deadline; `başla`/`start` makes it the When day; `son`/`due`/`…'e kadar` say deadline explicitly. The project tab does not read `+Project`. A repeat needs a real frequency phrase: "bu ayda bir" is a period, a bare "daily"/"mondays" repeats only in an English sentence, "pazarları" alone stays text ([ADR-0067](adr/0067-quick-add-recurrence-needs-a-real-frequency.md)); Home's confirmation names a started repeat. | A sentence means the same thing wherever it is typed; a series never starts from an ordinary word or silently (#32). |
 | Q2 | **You see it before you save it.** Recognized words are painted in `tokens.link`, semibold (the measured "link on raised container" pair, ≥ 4.5 in both themes), and listed as `InputChip`s under the field — one per deadline (with its time), When, repeat, tag, project and priority, each with a kind icon (priority tinted by `taskPriorityColor`). ✕ ("Keep as text") gives the words back to the title. The chips row grows with `AnimatedSize` (`AwMotion.base`); chips keep the padded 48 px tap target. While the IME is composing, the field draws plain text. | No hidden magic: a misread "pazar" is visible and one tap undoes it. |
 | Q3 | **A help sheet, one tap away.** `?` opens `QuickAddHelpSheet` (solid sheet surface, root navigator, above the glass bar): Dates, Times, Deadline or When, Repeat, Tags · project · priority, Undo — examples in the UI language, plus the line that both languages work. The `?` sits at the end of the chips row while typing; an empty bar reaches the sheet through "More" in its examples strip (§47 Q3, OPH-401). | Discoverable without stealing the text's width. |
 | Q4 | **Home skips its deadline ask when the text says when** (amends §26 C3). A parsed deadline, When day or repeat is used as typed and the selected calendar day does not override it; otherwise the C3 picker opens exactly as before. Inbox and project captures with a parsed deadline get the C1/C2 defaults (C4). The ✨ rider still receives the raw text. | Asking for a date the user just typed is friction; relative words are relative to the real now. |

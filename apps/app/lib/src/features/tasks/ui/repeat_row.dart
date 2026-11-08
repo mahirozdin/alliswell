@@ -24,10 +24,16 @@ class RepeatRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final seriesId = task.seriesId;
-    final series = seriesId == null
+    final seriesState = seriesId == null
         ? null
-        : ref.watch(taskSeriesProvider(seriesId)).value;
-    final on = seriesId != null;
+        : ref.watch(taskSeriesProvider(seriesId));
+    final series = seriesState?.value;
+    // #32: the series row is what turns the switch on, not the task's link.
+    // A stopped series leaves its finished occurrences pointing at it (R7,
+    // history), and stopping offline drops the row before any pull — both
+    // read off once the replica knows the row is gone. While the row is still
+    // loading the link alone decides, so the switch never flickers.
+    final on = seriesState != null && !(seriesState.hasValue && series == null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -157,7 +163,16 @@ class RepeatRow extends ConsumerWidget {
     if (confirmed != true) return;
     await ref
         .read(seriesStoreProvider)
-        .stop(workspaceId: task.workspaceId, seriesId: seriesId);
+        .stop(
+          workspaceId: task.workspaceId,
+          seriesId: seriesId,
+          // #32: the open task the switch sits on stays as an ordinary task;
+          // the store unlinks it now and sends the day after it as the cut,
+          // so the switch is off before any round trip (OPH-418).
+          keepTaskId: task.isCompleted || task.status == 'cancelled'
+              ? null
+              : task.id,
+        );
   }
 }
 

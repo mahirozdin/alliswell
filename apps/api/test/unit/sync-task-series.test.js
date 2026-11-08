@@ -223,6 +223,168 @@ describe('sync push — task_series (OPH-205, ADR-0020)', () => {
     expect(live).toHaveLength(1);
   });
 
+  it('a pushed stop keeps the open head as a plain task, like REST (#32)', async () => {
+    const { id } = await createSeries(newId(), {
+      rule: { freq: 'daily', interval: 1 },
+    });
+    const occurrences = tables.tasks
+      .filter((t) => t.series_id === id)
+      .sort((a, b) => String(a.occurrence_date).localeCompare(String(b.occurrence_date)));
+    const head = occurrences[0];
+
+    const mutation = {
+      clientMutationId: newId(),
+      operation: 'delete',
+      entityType: 'task_series',
+      entityId: id,
+    };
+    const res = await push([mutation]);
+    expect(res.json().results[0].status).toBe('applied');
+
+    const kept = tables.tasks.find((t) => t.id === head.id);
+    expect(kept.deleted_at ?? null).toBeNull();
+    expect(kept.series_id).toBeNull();
+    expect(tables.tasks.filter((t) => t.series_id === id && t.deleted_at == null)).toHaveLength(0);
+
+    // A replay changes nothing: the head is still there.
+    const again = await push([mutation]);
+    expect(again.json().results[0].status).toBe('applied');
+    expect(tables.tasks.find((t) => t.id === head.id).deleted_at ?? null).toBeNull();
+
+    // Another device pulls the head as a live task without a series.
+    const changes = (await pull(0)).json().changes;
+    const row = changes.find((c) => c.entityType === 'task' && c.entityId === head.id);
+    expect(row.operation).not.toBe('delete');
+    expect(row.data.seriesId).toBeNull();
+  });
+
+  it('a pushed stop keeps the task it names, not the earliest open one (#32, review r2)', async () => {
+    const { id } = await createSeries(newId(), {
+      rule: { freq: 'daily', interval: 1 },
+    });
+    const occurrences = tables.tasks
+      .filter((t) => t.series_id === id)
+      .sort((a, b) => String(a.occurrence_date).localeCompare(String(b.occurrence_date)));
+    const [head, second] = occurrences;
+
+    // The app's real body: SeriesStore.stop(keepTaskId: second.id).
+    const mutation = {
+      clientMutationId: newId(),
+      operation: 'delete',
+      entityType: 'task_series',
+      entityId: id,
+      patch: { keepTaskId: second.id },
+    };
+    const res = await push([mutation]);
+    expect(res.json().results[0].status).toBe('applied');
+
+    const kept = tables.tasks.find((t) => t.id === second.id);
+    expect(kept.deleted_at ?? null).toBeNull();
+    expect(kept.series_id).toBeNull();
+    // Today's occurrence sits before the named one: it is never deleted by a
+    // stop either, it stays as a plain task too (OPH-417).
+    const todays = tables.tasks.find((t) => t.id === head.id);
+    expect(todays.deleted_at ?? null).toBeNull();
+    expect(todays.series_id).toBeNull();
+    const third = occurrences[2];
+    expect(tables.tasks.find((t) => t.id === third.id).deleted_at).toBeTruthy();
+
+    const again = await push([mutation]);
+    expect(again.json().results[0].status).toBe('applied');
+    expect(tables.tasks.find((t) => t.id === second.id).deleted_at ?? null).toBeNull();
+
+    const changes = (await pull(0)).json().changes;
+    const row = changes.find((c) => c.entityType === 'task' && c.entityId === second.id);
+    expect(row.operation).not.toBe('delete');
+    expect(row.data.seriesId).toBeNull();
+  });
+
+  it('a pushed "this and future" honours fromDay like REST', async () => {
+    const { id } = await createSeries(newId(), {
+      rule: { freq: 'daily', interval: 1 },
+    });
+    const occurrences = tables.tasks
+      .filter((t) => t.series_id === id)
+      .sort((a, b) => String(a.occurrence_date).localeCompare(String(b.occurrence_date)));
+    const [head, second] = occurrences;
+    const fromDay = String(second.occurrence_date).slice(0, 10);
+
+    const res = await push([
+      {
+        clientMutationId: newId(),
+        operation: 'delete',
+        entityType: 'task_series',
+        entityId: id,
+        patch: { fromDay },
+      },
+    ]);
+    expect(res.json().results[0].status).toBe('applied');
+    // Before the swiped day stays as a plain task (no link to a series that is
+    // gone, so its Repeat switch reads off); from it on goes.
+    const headRow = tables.tasks.find((t) => t.id === head.id);
+    expect(headRow.deleted_at ?? null).toBeNull();
+    expect(headRow.series_id).toBeNull();
+    expect(tables.tasks.find((t) => t.id === second.id).deleted_at).toBeTruthy();
+    expect(tables.tasks.find((t) => t.id === occurrences[2].id).deleted_at).toBeTruthy();
+    // The detach is a revision another device pulls.
+    const changes = (await pull(0)).json().changes;
+    const row = changes.find((c) => c.entityType === 'task' && c.entityId === head.id);
+    expect(row.operation).not.toBe('delete');
+    expect(row.data.seriesId).toBeNull();
+  });
+
+  it('a replayed stop answers with the same revision and writes nothing new (OPH-417)', async () => {
+    const { id } = await createSeries(newId(), { rule: { freq: 'daily', interval: 1 } });
+    const occurrences = tables.tasks
+      .filter((t) => t.series_id === id)
+      .sort((a, b) => String(a.occurrence_date).localeCompare(String(b.occurrence_date)));
+    const mutation = {
+      clientMutationId: newId(),
+      operation: 'delete',
+      entityType: 'task_series',
+      entityId: id,
+      patch: { fromDay: String(occurrences[1].occurrence_date).slice(0, 10) },
+    };
+    const first = (await push([mutation])).json().results[0];
+    expect(first.status).toBe('applied');
+    const writes = tables.sync_revisions.length;
+
+    const again = (await push([mutation])).json().results[0];
+    expect(again.status).toBe('applied');
+    expect(again.revision).toBe(first.revision);
+    expect(tables.sync_revisions.length).toBe(writes);
+  });
+
+  it.each([
+    ['a malformed fromDay', { fromDay: 'tomorrow' }, 'SYNC_INVALID_VALUE'],
+    ['a fromDay that is not a string', { fromDay: 20261108 }, 'SYNC_INVALID_VALUE'],
+    ['a malformed keepTaskId', { keepTaskId: 'not-a-ulid' }, 'SYNC_INVALID_VALUE'],
+    ['an unknown option', { fromDate: '2026-11-08' }, 'SYNC_UNKNOWN_FIELD'],
+  ])(
+    'a pushed stop with %s is rejected with a code, not a 500 (OPH-417)',
+    async (_, patch, code) => {
+      const { id } = await createSeries(newId(), { rule: { freq: 'daily', interval: 1 } });
+      const live = tables.tasks.filter((t) => t.series_id === id && t.deleted_at == null).length;
+
+      const res = await push([
+        {
+          clientMutationId: newId(),
+          operation: 'delete',
+          entityType: 'task_series',
+          entityId: id,
+          patch,
+        },
+      ]);
+      expect(res.statusCode).toBe(200);
+      expect(res.json().results[0]).toMatchObject({ status: 'rejected', errorCode: code });
+      // Nothing was stopped: the series and every occurrence are still there.
+      expect(tables.task_series.find((s) => s.id === id).deleted_at ?? null).toBeNull();
+      expect(tables.tasks.filter((t) => t.series_id === id && t.deleted_at == null)).toHaveLength(
+        live,
+      );
+    },
+  );
+
   it('replays idempotently — a re-pushed mutation creates nothing twice', async () => {
     const id = newId();
     const clientMutationId = newId();

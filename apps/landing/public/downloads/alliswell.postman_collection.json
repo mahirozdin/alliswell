@@ -3538,6 +3538,12 @@
                   "value": "",
                   "description": "",
                   "disabled": true
+                },
+                {
+                  "key": "keepTaskId",
+                  "value": "",
+                  "description": "",
+                  "disabled": true
                 }
               ],
               "variable": [

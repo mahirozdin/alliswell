@@ -18,6 +18,21 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **Quick add no longer turns a task into a repeating one by accident, and "Stop repeating" keeps
+  the task** (#32): "Buy a weekly planner" or "Read Daily Mail tomorrow" stay one-off tasks;
+  stopping a repeat keeps the task you are on, today's task and any earlier open ones as ordinary
+  tasks (only later occurrences go, on every device) and the Repeat switch turns off the moment
+  you confirm, even offline, also on occurrences kept from a stopped series.
+- **Quick add reads ordinary words as words, and says when it made a repeat** (#32): "Bu ayda bir
+  toplantı", "daily toplantısı" and "pazarları gez" stay one-off tasks with their full title,
+  while "haftada bir spor", "her pazar", "pazar günleri" and "daily standup" still repeat; when
+  quick add starts a repeating task, the "Added" message names the repeat.
+- **A checklist item can be renamed in place** (#38): tap its text to edit it, Enter or tapping
+  away saves, Esc cancels; only the checkbox ticks it now, so tapping the words no longer marks
+  the item done.
+- **An open task deleted on another device no longer stays on screen**: its detail (or the
+  desktop pane) now says the task was deleted and offers a way back, instead of showing the old
+  task as if it could still be edited.
 - **The demo workspace (`npm run seed:demo`) shows every surface and can be run again**: files are
   real (previews work), a note has a version history finished from Claude over MCP, and an AI
   provider, an API key and a Todoist import are set up; a second run no longer uploads the files

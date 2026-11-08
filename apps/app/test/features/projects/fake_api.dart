@@ -1542,6 +1542,25 @@ class FakeApi {
     } else if (operation == 'delete' && index >= 0) {
       taskSeries.removeAt(index);
       deleted.add({'entityType': 'task_series', 'entityId': entityId});
+      // OPH-418: a stop with a day cuts like the server's softDeleteSeries —
+      // open occurrences from that day on go, the other open ones are kept
+      // and unlinked; finished ones keep their link (R7). Without a day the
+      // server's rule needs "today" in the series' zone; the fake leaves the
+      // occurrences alone, as before.
+      final fromDay = patch['fromDay'] as String?;
+      if (fromDay == null) return;
+      for (final t in [...tasks]) {
+        if (t['seriesId'] != entityId) continue;
+        if (t['status'] == 'completed' || t['status'] == 'cancelled') continue;
+        final day = t['occurrenceDate'] as String?;
+        final at = tasks.indexWhere((e) => e['id'] == t['id']);
+        if (day != null && day.compareTo(fromDay) >= 0) {
+          tasks.removeAt(at);
+          deleted.add({'entityType': 'task', 'entityId': t['id'] as String});
+        } else {
+          tasks[at] = {...t, 'seriesId': null, 'occurrenceDate': null};
+        }
+      }
     }
   }
 

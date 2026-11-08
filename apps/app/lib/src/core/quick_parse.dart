@@ -56,6 +56,7 @@ class AwQuickParseOptions {
     this.projects = const [],
     this.parseProject = true,
     this.ignored = const {},
+    this.language,
   });
 
   /// Device-local "now".
@@ -80,6 +81,12 @@ class AwQuickParseOptions {
   /// Dismissed recognitions ([AwQuickToken.key]): their words stay text.
   final Set<String> ignored;
 
+  /// The UI language code ("tr", "en"), or null when unknown. It only
+  /// decides whether a bare English frequency word ("daily standup",
+  /// "mondays") may count in a sentence that otherwise reads Turkish
+  /// (OPH-420, ADR-0067); every other rule reads both languages.
+  final String? language;
+
   AwQuickParseOptions copyWith({Set<String>? ignored}) => AwQuickParseOptions(
     now: now,
     weekStart: weekStart,
@@ -89,6 +96,7 @@ class AwQuickParseOptions {
     projects: projects,
     parseProject: parseProject,
     ignored: ignored ?? this.ignored,
+    language: language,
   );
 }
 
@@ -241,7 +249,9 @@ const List<(String, int)> _trWeekdays = [
   ('pazar', DateTime.sunday),
 ];
 
-// Plural "every <weekday>" forms: "cumaları", "pazartesileri".
+// Plural "every <weekday>" forms: "cumaları", "pazartesileri". Not
+// "pazarları": it is also "the markets" (OPH-420) — Sundays need "her pazar"
+// or "pazar günleri".
 const Map<String, int> _trWeekdayPlurals = {
   'pazartesileri': DateTime.monday,
   'salilari': DateTime.tuesday,
@@ -249,7 +259,6 @@ const Map<String, int> _trWeekdayPlurals = {
   'persembeleri': DateTime.thursday,
   'cumalari': DateTime.friday,
   'cumartesileri': DateTime.saturday,
-  'pazarlari': DateTime.sunday,
 };
 
 const Map<String, int> _enWeekdays = {
@@ -284,6 +293,31 @@ const Set<String> _pazarNouns = {
   'tezgahi',
   'arabasi',
 };
+
+/// Words before "ayda bir" / "haftada bir" / "yılda bir" that make the
+/// phrase a period ("bu ayda bir toplantı" — a meeting this month) instead
+/// of a frequency (OPH-420, ADR-0067).
+const Set<String> _trPeriodDeterminers = {
+  'bu', 'su', 'o', 'gelecek', 'onumuzdeki', 'gecen', 'sonraki', //
+  'ilk', 'son', 'ayni', 'oteki', 'diger', 'gectigimiz',
+};
+
+/// Turkish-only letters: one anywhere in the text makes it read Turkish.
+final RegExp _trLetters = RegExp('[çğıöşüÇĞİÖŞÜ]');
+
+/// Folded words that only Turkish uses — enough to tell an ASCII-typed
+/// Turkish sentence from an English one (OPH-420). Words English shares
+/// ("her", "son", "on", "gun", "o") are deliberately absent.
+const Set<String> _trOnlyWords = {
+  'bugun', 'yarin', 'obur', 'haftaya', 'gelecek', 'onumuzdeki', 'gecen', //
+  'hafta', 'haftada', 'ayda', 'yilda', 'gunde', 'ayin', 'hergun', 've', //
+  'ile', 'icin', 'bir', 'bu', 'su', 'kadar', 'basla', 'baslangic', //
+  'bitis', 'sabah', 'aksam', 'ogle', 'oglen', 'gece', 'gunu', 'gunleri',
+};
+
+/// Folded endings of a Turkish compound head ("toplantısı", "dersleri"): an English frequency word right before one is the first
+/// half of a Turkish noun phrase ("daily toplantısı").
+final RegExp _trCompoundHead = RegExp(r'(si|su|leri|lari)$');
 
 const Set<String> _trDative = {'a', 'e', 'ya', 'ye'};
 const Set<String> _trLocative = {'da', 'de', 'ta', 'te'};
@@ -391,6 +425,34 @@ class _Parser {
   final AwQuickParseOptions o;
   final List<_Word> words;
   final DateTime today;
+
+  /// The sentence shows Turkish: a Turkish-only letter, a Turkish-only word,
+  /// or a Turkish weekday or month (OPH-420, ADR-0067).
+  late final bool _readsTurkish =
+      _trLetters.hasMatch(text) ||
+      [
+        for (var k = 0; k < words.length; k++)
+          _trOnlyWords.contains(b(k)) ||
+              _trWeekdayPlurals.containsKey(b(k)) ||
+              _trWeekdays.any(
+                (d) =>
+                    b(k) == d.$1 ||
+                    (b(k).startsWith(d.$1) &&
+                        _trDative.contains(b(k).substring(d.$1.length))),
+              ) ||
+              _trMonths.any((m) => b(k) == m.$1),
+      ].any((hit) => hit);
+
+  /// May a bare English frequency word at [i] ("daily", "weekly", "mondays")
+  /// schedule the task? Always under an English UI; otherwise only in a
+  /// sentence that shows no Turkish and when the next word is not a Turkish
+  /// compound head ("daily toplantisi"). "every …" is its own English
+  /// construction and is not gated.
+  bool _englishBareAllowed(int i) {
+    if (o.language == 'en') return true;
+    if (_readsTurkish) return false;
+    return !_trCompoundHead.hasMatch(b(i + 1));
+  }
 
   String n(int i) => i < words.length ? words[i].norm : '';
   String b(int i) => i < words.length ? words[i].bare : '';
@@ -877,6 +939,29 @@ class _Parser {
   AwRepeatRule? _valid(AwRepeatRule rule) =>
       awValidateRepeatRule(rule) == null ? rule : null;
 
+  /// Words that turn a following "daily/weekly/…" into part of a noun phrase.
+  static const _determiners = {
+    'a', 'an', 'the', 'my', 'our', 'your', 'his', 'her', 'their', 'its', //
+    'this', 'that', 'these', 'those', 'new',
+  };
+
+  static final RegExp _upperInitial = RegExp(r'^\p{Lu}', unicode: true);
+
+  /// True when a bare "daily/weekly/monthly/yearly" at [i] describes a thing
+  /// rather than the task's schedule (#32): after a determiner ("buy a weekly
+  /// planner") or inside a capitalised name mid-sentence ("read Daily Mail").
+  /// A name needs the next word capitalised too and free of any token, so
+  /// "Call mom Daily" and "Daily at 9" still repeat.
+  bool _bareFrequencyIsAdjective(int i) {
+    if (i > 0 && _determiners.contains(n(i - 1))) return true;
+    if (i == 0 || i + 1 >= words.length) return false;
+    if (!_upperInitial.hasMatch(words[i].raw)) return false;
+    if (!_upperInitial.hasMatch(words[i + 1].raw)) return false;
+    return _schedule(i + 1).isEmpty &&
+        _times(i + 1).isEmpty &&
+        _marks(i + 1).isEmpty;
+  }
+
   List<_Cand> _repeats(int i) {
     final out = <_Cand>[];
     void add(AwRepeatRule rule, int len) {
@@ -973,9 +1058,27 @@ class _Parser {
       final c = _count(n(at));
       if (c != null && n(at) != 'bir') at += 1;
       final f = unit(n(at), tr: true);
-      if (f != null && n(at + 1) == 'bir' && (at > i)) {
+      // "bu ayda bir toplantı", "gelecek haftada bir görüşme": a period, not
+      // a frequency (OPH-420). After "her" it is always a frequency.
+      // A unit right after a count ("iki haftada bir") is that count's
+      // match, read from the count's own position — where the determiner
+      // check above it applies. Read again from the unit, it would slip past
+      // that check: "önümüzdeki iki haftada bir" (ADR-0067, `[N]`).
+      final afterCount = at == i && i > 0 && _count(n(i - 1)) != null;
+      final counted = afterCount && n(i - 1) != 'bir';
+      // "bir" never advances as a count, so its own position cannot see the
+      // determiner: look past it here ("önümüzdeki bir haftada bir",
+      // "bu bir ayda bir" — a period; plain "bir haftada bir" still repeats).
+      final determinerAt = afterCount ? i - 2 : i - 1;
+      final period =
+          counted ||
+          (n(i) != 'her' &&
+              determinerAt >= 0 &&
+              _trPeriodDeterminers.contains(n(determinerAt)));
+      if (!period && f != null && n(at + 1) == 'bir' && (at > i)) {
         add(AwRepeatRule(freq: f, interval: c ?? 1), at - i + 2);
-      } else if (f != null &&
+      } else if (!period &&
+          f != null &&
           n(at + 1) == 'bir' &&
           at == i &&
           f != AwRepeatFreq.daily) {
@@ -985,12 +1088,22 @@ class _Parser {
     }
     final plural = _trWeekdayPlurals[b(i)];
     if (plural != null) add(days([plural]), 1);
+    // "pazar günleri", "cuma günleri"
+    final trDay = _trWeekdays
+        .where((d) => d.$1 == b(i))
+        .map((d) => d.$2)
+        .firstOrNull;
+    if (trDay != null && b(i + 1) == 'gunleri') add(days([trDay]), 2);
 
     // ── English ──
-    if (w == 'daily') add(daily, 1);
-    if (w == 'weekly') add(weekly, 1);
-    if (w == 'yearly' || w == 'annually') add(yearly, 1);
-    if (w == 'monthly') {
+    // "daily standup" repeats; "a weekly planner" and "the Daily Mail" do not
+    // (#32): there the word names a thing instead of scheduling the task.
+    // OPH-420: and not inside a Turkish sentence ("daily toplantısı").
+    final adjective = _bareFrequencyIsAdjective(i) || !_englishBareAllowed(i);
+    if (w == 'daily' && !adjective) add(daily, 1);
+    if (w == 'weekly' && !adjective) add(weekly, 1);
+    if ((w == 'yearly' || w == 'annually') && !adjective) add(yearly, 1);
+    if (w == 'monthly' && !adjective) {
       add(monthly, 1);
       if (w1 == 'on' && w2 == 'the') {
         final d = _dayNum(i + 3);
@@ -1047,7 +1160,7 @@ class _Parser {
       if (w == 'on') at += 1;
       final word = n(at);
       // Full names only: "thurs" is one Thursday, "thursdays" is every.
-      if (word.endsWith('days')) {
+      if (word.endsWith('days') && _englishBareAllowed(at)) {
         final day = _enWeekdays[word.substring(0, word.length - 1)];
         if (day != null) add(days([day]), at - i + 1);
       }

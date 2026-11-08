@@ -616,6 +616,14 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final now = DateTime.now();
+      // Both upcoming rows stay inside TODAY whatever the wall clock says:
+      // a fixed "+2 h" crossed midnight after 22:00 and sent the ringing row
+      // into Tomorrow, below the fold, so the test only failed at night.
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59);
+      final left = endOfDay.difference(now);
+      final room = left < const Duration(hours: 3)
+          ? left
+          : const Duration(hours: 3);
       final api = FakeApi()
         // Overdue: it already rang. Not urgent: it will not ring.
         ..seedTask(
@@ -628,12 +636,12 @@ void main() {
         )
         ..seedTask(
           title: 'Quiet one',
-          dueAt: now.add(const Duration(minutes: 30)).toUtc().toIso8601String(),
+          dueAt: now.add(room ~/ 4).toUtc().toIso8601String(),
         );
       final ringing = api.seedTask(
         title: 'Dentist',
         isUrgent: true,
-        dueAt: now.add(const Duration(hours: 2)).toUtc().toIso8601String(),
+        dueAt: now.add(room * 2 ~/ 3).toUtc().toIso8601String(),
       );
       await tester.pumpWidget(await tourApp(api, tourEnabled: true));
       await tester.pumpAndSettle();

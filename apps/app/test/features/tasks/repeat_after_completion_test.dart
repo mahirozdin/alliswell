@@ -106,6 +106,34 @@ Map<String, dynamic> _seedAfterCompletion(FakeApi api, {String? title}) {
   );
 }
 
+/// A task that is today's open occurrence of a calendar "daily" series —
+/// what a quick-added "… daily" creates (#32).
+Map<String, dynamic> _seedDaily(FakeApi api, {String status = 'open'}) {
+  final now = DateTime.now();
+  final due = DateTime(now.year, now.month, now.day, 18);
+  final series = api.seedSeries(
+    rule: {
+      'freq': 'daily',
+      'interval': 1,
+      'end': {'type': 'never'},
+    },
+    template: {'title': 'Read mail'},
+    anchorAt: due.toUtc().toIso8601String(),
+  );
+  return api.seedTask(
+    title: 'Read mail',
+    status: status,
+    dueAt: due.toUtc().toIso8601String(),
+    seriesId: series['id'] as String,
+    occurrenceDate:
+        '${due.year}-${due.month.toString().padLeft(2, '0')}-'
+        '${due.day.toString().padLeft(2, '0')}',
+  );
+}
+
+bool _switchOn(WidgetTester tester) =>
+    tester.widget<SwitchListTile>(find.byKey(const Key('repeat-switch'))).value;
+
 List<Map<String, dynamic>> _pushed(FakeApi api, String entityType, String op) =>
     [
       for (final m in api.pushedMutations)
@@ -393,6 +421,127 @@ void main() {
       final stop = _pushed(api, 'task_series', 'delete');
       expect(stop, hasLength(1));
       expect(stop.single['fromDay'], task['occurrenceDate']);
+    });
+  });
+
+  group('stopping a calendar series (#32)', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await localKv.remove('alliswell_home_view');
+      await AwI18n.instance.setLocale(const Locale('en'));
+    });
+
+    testWidgets('the switch turns off and the task is not deleted', (
+      tester,
+    ) async {
+      _phone(tester);
+      final api = FakeApi();
+      final task = _seedDaily(api);
+      await tester.pumpWidget(await _app(api));
+      await tester.pumpAndSettle();
+      await AwI18n.instance.setLocale(const Locale('en'));
+      await tester.tap(find.text('Read mail'));
+      await tester.pumpAndSettle();
+
+      final toggle = find.byKey(const Key('repeat-switch'));
+      await tester.ensureVisible(toggle);
+      expect(_switchOn(tester), isTrue);
+      await tester.tap(toggle);
+      await tester.pumpAndSettle();
+      expect(
+        find.text(
+          'This task stays; later occurrences are removed. '
+          'Everything already done stays in your history.',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.byKey(const Key('repeat-stop-confirm')));
+      await tester.pumpAndSettle();
+
+      // Without a day the fake server keeps the task's series link (as the
+      // real one does for finished occurrences); the switch reads off either
+      // way, because the series row is gone.
+      expect(_pushed(api, 'task_series', 'delete'), hasLength(1));
+      expect(_pushed(api, 'task', 'delete'), isEmpty);
+      expect(api.tasks.any((t) => t['id'] == task['id']), isTrue);
+      // Still on its detail screen: the task was not deleted under the user.
+      expect(find.byKey(const Key('repeat-switch')), findsOneWidget);
+      expect(_switchOn(tester), isFalse);
+      expect(find.byKey(const Key('repeat-summary')), findsNothing);
+    });
+
+    testWidgets(
+      'confirming Stop turns the switch off at once and cuts after this task '
+      '(OPH-418)',
+      (tester) async {
+        _phone(tester);
+        final api = FakeApi();
+        final task = _seedDaily(api);
+        final now = DateTime.now();
+        final next = DateTime(now.year, now.month, now.day + 1, 18);
+        String day(DateTime d) =>
+            '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}';
+        final tomorrow = api.seedTask(
+          title: 'Read mail tomorrow',
+          dueAt: next.toUtc().toIso8601String(),
+          seriesId: task['seriesId'] as String,
+          occurrenceDate: day(next),
+        );
+        await tester.pumpWidget(await _app(api));
+        await tester.pumpAndSettle();
+        await AwI18n.instance.setLocale(const Locale('en'));
+        await tester.tap(find.text('Read mail'));
+        await tester.pumpAndSettle();
+
+        // No round trip can help: the stop is the replica's own write.
+        api.offline = true;
+        final toggle = find.byKey(const Key('repeat-switch'));
+        await tester.ensureVisible(toggle);
+        expect(_switchOn(tester), isTrue);
+        await tester.tap(toggle);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('repeat-stop-confirm')));
+        await tester.pumpAndSettle();
+        expect(_switchOn(tester), isFalse);
+        expect(find.byKey(const Key('repeat-summary')), findsNothing);
+        expect(_pushed(api, 'task_series', 'delete'), isEmpty);
+
+        // Back online: the outbox carries the cut — the day after this
+        // task — and the server's answer leaves the switch off.
+        api.offline = false;
+        await tester.pump(const Duration(minutes: 2));
+        await tester.pumpAndSettle();
+        final stop = _pushed(api, 'task_series', 'delete');
+        expect(stop, hasLength(1));
+        expect(stop.single, {'fromDay': day(next), 'keepTaskId': task['id']});
+        expect(_pushed(api, 'task', 'delete'), isEmpty);
+        expect(api.tasks.any((t) => t['id'] == task['id']), isTrue);
+        expect(api.tasks.any((t) => t['id'] == tomorrow['id']), isFalse);
+        expect(find.byKey(const Key('repeat-switch')), findsOneWidget);
+        expect(_switchOn(tester), isFalse);
+      },
+    );
+
+    testWidgets('an occurrence kept by a stop made elsewhere reads off', (
+      tester,
+    ) async {
+      _phone(tester);
+      final api = FakeApi();
+      // Stopped on another device: the series is gone, its kept occurrence
+      // still points at it (finished ones do — DESIGN §25 R7, history).
+      final task = _seedDaily(api);
+      api.taskSeries.removeWhere((s) => s['id'] == task['seriesId']);
+      await tester.pumpWidget(await _app(api));
+      await tester.pumpAndSettle();
+      await AwI18n.instance.setLocale(const Locale('en'));
+      await tester.tap(find.text('Read mail'));
+      await tester.pumpAndSettle();
+
+      final toggle = find.byKey(const Key('repeat-switch'));
+      await tester.ensureVisible(toggle);
+      expect(_switchOn(tester), isFalse);
+      expect(find.byKey(const Key('repeat-summary')), findsNothing);
     });
   });
 }
