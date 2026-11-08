@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — OPH-413 /app açılış ekranı + `?signup=1`, kurumsal sayfa SSR ve kısaltma (ADR-0065); Epic 35 kaydedildi (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — OPH-414 demo tohumu kapsamı (gerçek dosyalar, not geçmişi + MCP, AI, API anahtarı, Todoist içe aktarma; idempotent) ve web/iPad/macOS görselleri yeniden; Epic 35 işleri bitti (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -17,8 +17,8 @@
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **OPH-414** — Demo tohumu kapsamı ve görsellerin yeniden üretimi |
-| Last completed           | OPH-413 — /app ve kurumsal sayfa (K3, K8, K9, E-15): `/app` motor yüklenene kadar HTML açılış ekranı (simge, "Opening AllisWell…", ilerleme çubuğu, Glass zemin, koyu varyant, ilk karede kalkar); "Tarayıcıda ücretsiz başlayın" `/app/?signup=1` → oturumsuz kişi bir kez kayıt formuna; kurumsal sayfa sunucuda render + hydrate (ADR-0065), kaydırınca beliren bölüm mekanizması kalktı, 27 bölüm → 11 (sorun → çözüm → kanıt → pilot → demo talebi), masaüstü 26.474 → 10.715 px, telefon 39.043 → 15.074 px; İngilizce sayfa İngilizce örnek verili `screenshots/ee` çekimlerini kullanır. |
+| ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
+| Last completed           | OPH-414 — demo tohumu: gerçek baytlı 7 dosya, MCP ile biten not geçmişi, çağrısız AI sağlayıcı, API anahtarı, Todoist içe aktarma; takvim yalnız `--caldav` (SCREENSHOTS §0); iki idempotentlik hatası düzeldi. `screenshots/web`, `screenshots/ipad`, `store/ios/ipad-13`, `store/macos` yeni; iPhone/Android çekimleri DEVICE-CHECKS'te. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

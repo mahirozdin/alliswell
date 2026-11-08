@@ -16,6 +16,10 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Fixed
 
+- **The demo workspace (`npm run seed:demo`) shows every surface and can be run again**: files are
+  real (previews work), a note has a version history finished from Claude over MCP, and an AI
+  provider, an API key and a Todoist import are set up; a second run no longer uploads the files
+  and the project overview notes again.
 - **Team screens use a desktop's width**: from 1200 px the requests list is one aligned line per
   request, a request opens beside the list (Esc closes, ↑/↓ moves), the workload report is one
   table you can sort by any column, and team forms stay 720 px wide.

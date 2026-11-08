@@ -36,17 +36,6 @@ sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düz
 Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
 1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
 
-### OPH-414 — Demo tohumu kapsamı ve görsellerin yeniden üretimi
-
-`docs/SCREENSHOTS.md`.
-
-- [ ] `scripts/seed-demo.mjs`: AI sağlayıcı yapılandırılmış hali (çağrı yapmayan), MCP anahtarı, içe
-      aktarma geçmişi, not sürümleri, gerçek dosya önizlemeleri (küçük PNG/PDF), takvim bağlantısının
-      kurgusal durumu (ağ çağrısı yok); yapılamayan ve nedeni SCREENSHOTS.md'de.
-- [ ] README/landing/mağaza görselleri yeni arayüzle mevcut boru hattından yeniden üretilir; mağazaya
-      yükleme yok.
-- **Kabul:** tohum idempotent, `seed:demo` iki kez koşunca hata yok.
-
 ---
 
 ## Sahibin adımını bekleyen işler — ajan için kod işi yok
