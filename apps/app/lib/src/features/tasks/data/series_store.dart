@@ -47,10 +47,12 @@ class TaskSeriesModel {
 /// whole reason a repeating task works offline on one device and is correct on
 /// every other one.
 class SeriesStore {
-  SeriesStore(this._db, this._poke);
+  SeriesStore(this._db, this._poke, {DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
 
   final AwDatabase _db;
   final void Function() _poke;
+  final DateTime Function() _clock;
 
   Stream<TaskSeriesModel?> watch(String seriesId) =>
       (_db.select(_db.taskSeries)..where((s) => s.id.equals(seriesId)))
@@ -154,13 +156,24 @@ class SeriesStore {
 
   /// "Tekrarı durdur" — the future goes, the past stays (DESIGN §25 R7).
   ///
-  /// Locally we drop the rule row: which other occurrences survive is the
-  /// server's decision (it keeps everything finished), and guessing here would
-  /// make the list flicker into a state that is about to be corrected. The one
-  /// exception is [keepTaskId], the open task the user stopped it on: it
-  /// loses its series link now — optimistic, like [create]'s adoption — and
-  /// rides the outbox so the server keeps that very task, not merely the
-  /// series' earliest open one (#32).
+  /// The replica takes the stop NOW, in the same transaction that enqueues it,
+  /// and by the server's own rule (`softDeleteSeries`, OPH-417) so the pull
+  /// that follows changes nothing (#32, OPH-418):
+  ///
+  /// - [fromDay] ("this and future", undoing a quick add): open occurrences
+  ///   on or after that day go; every other open one is kept and unlinked.
+  /// - [keepTaskId] (the Repeat switch): the open occurrence the user stopped
+  ///   on is kept and unlinked, and so is every earlier open one; open ones
+  ///   AFTER its day go. Like the server (OPH-417), the cut is never before
+  ///   the first open occurrence on or after today, so today's task stays.
+  ///   The wire carries that boundary as `fromDay` = the next day, so device
+  ///   and server cut at exactly the same place (the server's own "today"
+  ///   lives in the series' zone, which could differ from this device's).
+  ///   An after-completion series has nothing after its open occurrence and
+  ///   sends no day (OPH-375); a kept task the replica has no day for yet
+  ///   (adopted, not pulled) sends only its id and the server decides.
+  ///
+  /// Finished occurrences are history and are never touched (§20 C4).
   Future<void> stop({
     required String workspaceId,
     required String seriesId,
@@ -168,32 +181,96 @@ class SeriesStore {
     String? keepTaskId,
   }) async {
     await _db.transaction(() async {
+      final seriesRow = await (_db.select(
+        _db.taskSeries,
+      )..where((s) => s.id.equals(seriesId))).getSingleOrNull();
+      final afterCompletion =
+          seriesRow != null &&
+          (TaskSeriesModel.fromRow(seriesRow)?.rule.isAfterCompletion ?? false);
       await (_db.delete(
         _db.taskSeries,
       )..where((s) => s.id.equals(seriesId))).go();
+
+      final open =
+          await (_db.select(_db.tasks)..where(
+                (t) =>
+                    t.seriesId.equals(seriesId) &
+                    t.status.isNotIn(_finishedStatuses),
+              ))
+              .get();
       final keep = fromDay == null ? keepTaskId : null;
-      if (keep != null) {
-        await (_db.update(
-          _db.tasks,
-        )..where((t) => t.id.equals(keep) & t.seriesId.equals(seriesId))).write(
-          const TasksCompanion(
-            seriesId: Value(null),
-            occurrenceDate: Value(null),
-          ),
-        );
+      var cut = fromDay;
+      final keptDay = keep == null || afterCompletion
+          ? null
+          : open.where((t) => t.id == keep).firstOrNull?.occurrenceDate;
+      if (keptDay != null) {
+        // OPH-417's reference day: the kept task's day, but never before the
+        // first open occurrence on or after today — stopping from an overdue
+        // one keeps today's task too.
+        final today = awDayKey(_clock());
+        final upcoming = [
+          for (final t in open)
+            if (t.occurrenceDate != null &&
+                t.occurrenceDate!.compareTo(today) >= 0)
+              t.occurrenceDate!,
+        ]..sort();
+        final head = upcoming.firstOrNull ?? today;
+        cut = nextStopDay(keptDay.compareTo(head) >= 0 ? keptDay : head);
       }
+
+      for (final row in open) {
+        final day = row.occurrenceDate;
+        if (cut != null && day != null && day.compareTo(cut) >= 0) {
+          await _dropOccurrence(row.id);
+        } else if (cut != null || afterCompletion || row.id == keep) {
+          await (_db.update(
+            _db.tasks,
+          )..where((t) => t.id.equals(row.id))).write(
+            const TasksCompanion(
+              seriesId: Value(null),
+              occurrenceDate: Value(null),
+            ),
+          );
+        }
+      }
+
       await enqueueMutation(
         _db,
         workspaceId: workspaceId,
         entityType: 'task_series',
         entityId: seriesId,
         operation: 'delete',
-        // `fromDay` makes "this and future" start at the occurrence the user
-        // swiped instead of at today (OPH-208); `keepTaskId` is the task the
-        // stop keeps (REST: the same two query parameters).
-        patch: {'fromDay': ?fromDay, 'keepTaskId': ?keep},
+        // The same two options as `DELETE /task-series/:id?fromDay=&keepTaskId=`.
+        patch: {'fromDay': ?cut, 'keepTaskId': ?keep},
       );
     });
     _poke();
   }
+
+  static const _finishedStatuses = ['completed', 'cancelled'];
+
+  /// The server retires these with a task tombstone; the replica drops them
+  /// the way that tombstone would, so nothing is left to flicker back.
+  Future<void> _dropOccurrence(String taskId) async {
+    await (_db.delete(_db.tasks)..where((t) => t.id.equals(taskId))).go();
+    await (_db.delete(
+      _db.taskTagRows,
+    )..where((r) => r.taskId.equals(taskId))).go();
+    await (_db.delete(
+      _db.checklistItems,
+    )..where((c) => c.taskId.equals(taskId))).go();
+  }
+}
+
+/// The day after [day] (`YYYY-MM-DD`), or null for anything else — then the
+/// stop falls back to naming the kept task only.
+String? nextStopDay(String day) {
+  final m = RegExp(r'^(\d{4})-(\d{2})-(\d{2})$').firstMatch(day);
+  if (m == null) return null;
+  final next = DateTime.utc(
+    int.parse(m[1]!),
+    int.parse(m[2]!),
+    int.parse(m[3]!),
+  ).add(const Duration(days: 1));
+  return awDayKey(next);
 }

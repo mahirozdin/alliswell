@@ -166,8 +166,9 @@ class RepeatRow extends ConsumerWidget {
         .stop(
           workspaceId: task.workspaceId,
           seriesId: seriesId,
-          // #32: the open task the switch sits on stays as an ordinary task —
-          // the server keeps the series' open head the same way.
+          // #32: the open task the switch sits on stays as an ordinary task;
+          // the store unlinks it now and sends the day after it as the cut,
+          // so the switch is off before any round trip (OPH-418).
           keepTaskId: task.isCompleted || task.status == 'cancelled'
               ? null
               : task.id,

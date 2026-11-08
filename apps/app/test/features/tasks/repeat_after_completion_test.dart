@@ -458,9 +458,9 @@ void main() {
       await tester.tap(find.byKey(const Key('repeat-stop-confirm')));
       await tester.pumpAndSettle();
 
-      // The fake server keeps the task's series link (as the real one does
-      // for finished occurrences): the switch still reads off, because the
-      // series row is gone.
+      // Without a day the fake server keeps the task's series link (as the
+      // real one does for finished occurrences); the switch reads off either
+      // way, because the series row is gone.
       expect(_pushed(api, 'task_series', 'delete'), hasLength(1));
       expect(_pushed(api, 'task', 'delete'), isEmpty);
       expect(api.tasks.any((t) => t['id'] == task['id']), isTrue);
@@ -469,6 +469,59 @@ void main() {
       expect(_switchOn(tester), isFalse);
       expect(find.byKey(const Key('repeat-summary')), findsNothing);
     });
+
+    testWidgets(
+      'confirming Stop turns the switch off at once and cuts after this task '
+      '(OPH-418)',
+      (tester) async {
+        _phone(tester);
+        final api = FakeApi();
+        final task = _seedDaily(api);
+        final now = DateTime.now();
+        final next = DateTime(now.year, now.month, now.day + 1, 18);
+        String day(DateTime d) =>
+            '${d.year}-${d.month.toString().padLeft(2, '0')}-'
+            '${d.day.toString().padLeft(2, '0')}';
+        final tomorrow = api.seedTask(
+          title: 'Read mail tomorrow',
+          dueAt: next.toUtc().toIso8601String(),
+          seriesId: task['seriesId'] as String,
+          occurrenceDate: day(next),
+        );
+        await tester.pumpWidget(await _app(api));
+        await tester.pumpAndSettle();
+        await AwI18n.instance.setLocale(const Locale('en'));
+        await tester.tap(find.text('Read mail'));
+        await tester.pumpAndSettle();
+
+        // No round trip can help: the stop is the replica's own write.
+        api.offline = true;
+        final toggle = find.byKey(const Key('repeat-switch'));
+        await tester.ensureVisible(toggle);
+        expect(_switchOn(tester), isTrue);
+        await tester.tap(toggle);
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('repeat-stop-confirm')));
+        await tester.pumpAndSettle();
+        expect(_switchOn(tester), isFalse);
+        expect(find.byKey(const Key('repeat-summary')), findsNothing);
+        expect(_pushed(api, 'task_series', 'delete'), isEmpty);
+
+        // Back online: the outbox carries the cut — the day after this
+        // task — and the server's answer leaves the switch off.
+        api.offline = false;
+        await tester.pump(const Duration(minutes: 2));
+        await tester.pumpAndSettle();
+        final stop = _pushed(api, 'task_series', 'delete');
+        expect(stop, hasLength(1));
+        expect(stop.single, {'fromDay': day(next), 'keepTaskId': task['id']});
+        expect(_pushed(api, 'task', 'delete'), isEmpty);
+        expect(api.tasks.any((t) => t['id'] == task['id']), isTrue);
+        expect(api.tasks.any((t) => t['id'] == tomorrow['id']), isFalse);
+        expect(find.byKey(const Key('repeat-switch')), findsOneWidget);
+        expect(_switchOn(tester), isFalse);
+      },
+    );
 
     testWidgets('an occurrence kept by a stop made elsewhere reads off', (
       tester,

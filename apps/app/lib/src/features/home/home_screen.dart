@@ -327,6 +327,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             .value
             ?.where((t) => t.id == id)
             .firstOrNull;
+        // The task goes first: the stop drops the replica's occurrences from
+        // its day on, and a task already gone locally would never enqueue
+        // its own delete (OPH-418).
+        await store.delete(id);
         if (task != null && task.seriesId != null) {
           await seriesStore.stop(
             workspaceId: task.workspaceId,
@@ -334,7 +338,6 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             fromDay: task.occurrenceDate,
           );
         }
-        await store.delete(id);
       },
     );
     setState(() => _flashId = id);

@@ -1298,7 +1298,9 @@ maksimum esneklik… belkemiği özelliklerimizden biri." Rule model and materia
   occurrence you stop from (the task the switch sits on, or today's/the first upcoming one)
   and every earlier open one stay as plain tasks, unlinked from the series; only open
   occurrences after it go (#32, OPH-417). "Delete this and future" removes the swiped
-  occurrence too. The switch reads off wherever the series row is gone.
+  occurrence too. The switch reads off wherever the series row is gone, and goes off the
+  moment Stop is confirmed, offline too: the app applies the same cut to its own copy and
+  sends it as the day after the kept occurrence, so both sides cut in the same place (OPH-418).
   A finished task is a historical fact (§20 C4); deleting history to tidy a rule would
   rewrite what the user actually did.
 - **R8 — Scope is a question with a default, and the default follows the field.**
