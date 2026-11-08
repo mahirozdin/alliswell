@@ -289,7 +289,7 @@ void main() {
     // pumpAndSettle with the deadline prompt open would never settle.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Add without date'));
     await tester.pumpAndSettle();
 
     final create = api.pushed.singleWhere(

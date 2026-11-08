@@ -22,11 +22,16 @@ import 'persisted_prefs.dart';
 /// [anchor] is the date this field lives next to (a reminder opens on its
 /// deadline's day); an empty field with no anchor opens on **tomorrow**
 /// (OPH-173). See [awInitialPickerDate].
+///
+/// [cancelText] renames the date step's back-out button where backing out is
+/// not a cancel — Home's deadline ask, whose skip still adds the task
+/// (DESIGN §26 C3, OPH-401 R-04). Null keeps the platform's "Cancel".
 Future<DateTime?> awPickDateTime(
   BuildContext context,
   WidgetRef ref, {
   DateTime? current,
   DateTime? anchor,
+  String? cancelText,
 }) async {
   final now = DateTime.now();
   final (defHour, defMinute) = parseTaskTime(ref.read(defaultTaskTimeProvider));
@@ -39,6 +44,7 @@ Future<DateTime?> awPickDateTime(
     ),
     firstDate: now.subtract(const Duration(days: 365)),
     lastDate: now.add(const Duration(days: 365 * 5)),
+    cancelText: cancelText,
   );
   if (date == null || !context.mounted) return null;
   final time = await showTimePicker(

@@ -68,6 +68,10 @@ import '../../theme/typography.dart';
 /// layouts keep their pinned chrome and side calendar (there is room), and the
 /// phone BOARD keeps its toggle pinned — a horizontal pager cannot scroll it
 /// away, and losing it would strand the user in the board (H3).
+/// How long Home's "Added: … · Undo" bar stays (DESIGN §47 Q6, OPH-401 R-04):
+/// at least 5 s, so a reader at large text or with a switch can reach Undo.
+const kQuickAddUndoWindow = Duration(seconds: 5);
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -256,7 +260,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // sheet's own date+time picker, opening on the selected calendar day.
     // Backing out is the "skip" path and keeps the old semantics: the
     // selected day at the default task time, or no date at all.
-    DateTime? dueAt = await awPickDateTime(context, ref, anchor: selectedDay);
+    // OPH-401 (R-04): so its button says that — "Cancel" read as "don't add"
+    // and the task was added anyway.
+    DateTime? dueAt = await awPickDateTime(
+      context,
+      ref,
+      anchor: selectedDay,
+      cancelText:
+          (selectedDay == null
+                  ? 'home.askSkipNoDate'
+                  : 'home.askSkipSelectedDay')
+              .tr(),
+    );
     dueAt ??= selectedDay == null
         ? null
         : applyDefaultTaskTime(selectedDay, ref.read(defaultTaskTimeProvider));
@@ -274,7 +289,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 
   /// OPH-401 (U-13, A-67, DESIGN §47 Q6–Q7): say what was added and when,
-  /// offer it back for 3 s, light the new row and bring it into sight. The
+  /// offer it back for 5 s (R-04: 3 s was gone before a tap reached it), light the new row and bring it into sight. The
   /// field had just emptied with no other sign — and the row could be under
   /// the calendar or at the end of a long list — so people typed it twice.
   void _afterQuickAdd(
@@ -301,7 +316,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       key: const Key('quick-add-added'),
       content: Text('home.added'.tr(args: {'title': title, 'when': when})),
       actionLabel: 'common.undo'.tr(),
-      duration: const Duration(seconds: 3),
+      duration: kQuickAddUndoWindow,
       onAction: () async {
         _flashTimer?.cancel();
         if (mounted) setState(() => _flashId = null);
@@ -672,6 +687,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     ),
               onAdd: _quickAdd,
               onParse: aiConfigured ? _parseWithAi : null,
+              // R-04: on a phone the list moves to the new row and takes the
+              // field with it, so the keyboard closes; a wide window pins the
+              // field above its list and keeps it for the next entry.
+              keepFocusAfterSubmit:
+                  MediaQuery.sizeOf(context).width >= kAwWideBreakpoint,
             ),
           );
 

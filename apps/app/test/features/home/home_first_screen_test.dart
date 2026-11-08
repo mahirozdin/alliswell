@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -33,6 +34,17 @@ void main() {
       .length;
 
   String iso(DateTime d) => d.toUtc().toIso8601String();
+
+  /// Whether Home's quick-add field holds the keyboard focus.
+  bool quickAddFocused(WidgetTester tester) => tester
+      .widget<TextField>(
+        find.descendant(
+          of: find.byKey(const Key('home-quick-add')),
+          matching: find.byType(TextField),
+        ),
+      )
+      .focusNode!
+      .hasFocus;
   DateTime at(int addDays, int h, int m) {
     final now = DateTime.now();
     return DateTime(now.year, now.month, now.day + addDays, h, m);
@@ -214,14 +226,9 @@ void main() {
       // The new row is lit for a moment.
       final id = api.tasks.single['id'] as String;
       expect(find.byKey(Key('home-flash-$id')), findsOneWidget);
-      // The field kept focus for the next one; its examples hint +Project.
-      expect(
-        find.descendant(
-          of: find.byKey(const Key('quick-add-hints')),
-          matching: find.text('+Work'),
-        ),
-        findsOneWidget,
-      );
+      // OPH-401 (R-04): on a phone the list moves to the new row, so the
+      // keyboard goes down with the field instead of covering the list.
+      expect(quickAddFocused(tester), isFalse);
 
       await tester.tap(find.text('Undo'));
       await tester.pumpAndSettle();
@@ -252,8 +259,8 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.done);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      // Round 14's deadline ask; backing out keeps it dateless.
-      await tester.tap(find.text('Cancel'));
+      // Round 14's deadline ask; its skip button keeps it dateless.
+      await tester.tap(find.text('Add without date'));
       await tester.pumpAndSettle();
 
       expect(find.textContaining('Added: Kirayı öde · No date'), findsOne);
@@ -319,6 +326,113 @@ void main() {
       expect(rect.top, greaterThanOrEqualTo(viewport.top));
       expect(rect.bottom, lessThanOrEqualTo(viewport.bottom));
       await tester.pump(const Duration(seconds: 6));
+    });
+  });
+
+  // OPH-401 (R-04, polish 2): the picker's "Cancel" still created the task,
+  // the keyboard stayed up while the list scrolled the field away, and the
+  // undo bar was gone before a tap could reach it.
+  group('R-04: quick add cancel, keyboard, undo time', () {
+    Future<void> submit(WidgetTester tester, String text) async {
+      await tester.enterText(find.byKey(const Key('home-quick-add')), text);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+    }
+
+    testWidgets('the deadline ask has no "Cancel": its skip button says what '
+        'it does, and the task lands dateless', (tester) async {
+      final api = FakeApi();
+      await pump(tester, api);
+      await submit(tester, 'Pay rent');
+      expect(find.byType(DatePickerDialog), findsOneWidget);
+      expect(find.text('Cancel'), findsNothing);
+      await tester.tap(find.text('Add without date'));
+      await tester.pumpAndSettle();
+      expect(api.tasks.single['title'], 'Pay rent');
+      expect(api.tasks.single['dueAt'], isNull);
+      expect(find.textContaining('Added: Pay rent · No date'), findsOne);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('with a day selected, the skip button adds to that day', (
+      tester,
+    ) async {
+      final api = FakeApi();
+      await pump(tester, api);
+      // Any day the strip shows other than today.
+      final now = DateTime.now();
+      final day =
+          [
+            for (var i = -6; i <= 6; i++)
+              DateTime(now.year, now.month, now.day + i),
+          ].firstWhere(
+            (d) =>
+                d.day != now.day &&
+                find
+                    .byKey(Key('calendar-day-${d.year}-${d.month}-${d.day}'))
+                    .evaluate()
+                    .isNotEmpty,
+          );
+      await tester.tap(
+        find.byKey(Key('calendar-day-${day.year}-${day.month}-${day.day}')),
+      );
+      await tester.pumpAndSettle();
+      await submit(tester, 'Pay rent');
+      expect(find.text('Cancel'), findsNothing);
+      await tester.tap(find.text('Add to selected day'));
+      await tester.pumpAndSettle();
+      final due = DateTime.parse(api.tasks.single['dueAt'] as String).toLocal();
+      expect((due.year, due.month, due.day), (day.year, day.month, day.day));
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('the undo bar stays at least 5 s', (tester) async {
+      await pump(tester, FakeApi());
+      await submit(tester, 'Buy milk tomorrow 9am');
+      final toast = find.byKey(const Key('quick-add-added'));
+      expect(toast, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 4900));
+      expect(toast, findsOneWidget);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pumpAndSettle();
+      expect(toast, findsNothing);
+    });
+
+    testWidgets('a phone puts the keyboard down after an add', (tester) async {
+      await pump(tester, FakeApi());
+      await submit(tester, 'Buy milk tomorrow 9am');
+      await tester.pumpAndSettle();
+      expect(quickAddFocused(tester), isFalse);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a wide window keeps the field focused for the next one', (
+      tester,
+    ) async {
+      await pump(tester, FakeApi(), size: const Size(1200, 800));
+      await submit(tester, 'Buy bread tomorrow 9am');
+      await tester.pumpAndSettle();
+      expect(quickAddFocused(tester), isTrue);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets('a touch outside the field closes the keyboard and keeps the '
+        'text', (tester) async {
+      final api = FakeApi();
+      await pump(tester, api);
+      final field = find.byKey(const Key('home-quick-add'));
+      await tester.enterText(field, 'Half typed');
+      await tester.pump();
+      expect(quickAddFocused(tester), isTrue);
+      await tester.tapAt(
+        tester.getCenter(find.byKey(const Key('home-calendar'))),
+        kind: PointerDeviceKind.touch,
+      );
+      await tester.pumpAndSettle();
+      expect(quickAddFocused(tester), isFalse);
+      expect(find.text('Half typed'), findsOneWidget);
+      expect(api.tasks, isEmpty);
     });
   });
 

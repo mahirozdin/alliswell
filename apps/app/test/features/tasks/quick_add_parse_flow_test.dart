@@ -200,7 +200,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     // No date in the text any more → the round-14 deadline ask (C3).
     expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Add without date'));
     await tester.pumpAndSettle();
 
     final task = api.tasks.single;

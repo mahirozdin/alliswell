@@ -1340,7 +1340,12 @@ at capture time, not at 02:00 when nothing rang.)_
   dateless capture box (§10) — the ask exists only where the user is planning,
   not where they are unloading. _(Amended by §39 Q4, OPH-373: when the typed
   text already gives a deadline, a When day or a repeat, the ask is skipped and
-  the text wins.)_
+  the text wins.)_ _(Amended by OPH-401, polish 2 R-04: backing out is a skip,
+  not a cancel, so the date step's button says so — "Tarihsiz ekle" with no day
+  selected, "Seçili güne ekle" with one — never "İptal". Taking the task back is
+  the "Geri al" of §47 Q6. On a phone the keyboard closes after the add, since
+  the list moves to the new row; a wide window keeps the field focused for the
+  next entry. A touch outside the bar closes the keyboard and keeps the text.)_
 - **C4 — Defaults apply at every birth point identically.** Sheet, quick add and
   ✨ rider share `task_defaults.dart`; a surface that creates tasks and skips it
   is a bug (§22 reachability logic applied to behavior parity).
@@ -1867,7 +1872,7 @@ U-04, U-13, C-06, R-11 ([research](research/2026-11-design-ux/mobbin-design.md) 
 | Q1 | **An empty bar has nothing on the right and no "+" in front.** | The "+" glyph was the FAB's sign on something that is not a button; "?" and ↑ did nothing while empty (C-06). |
 | Q2 | **Text brings ✨ (with AI) and ↑**, scaled in over `AwMotion.fast`; ↑ is a 32 pt `primary` circle in a 48 pt target (`quick-add-submit`). | One filled control is the one primary action. |
 | Q3 | **Focus on an empty bar shows one line of examples** ("yarın 9'da · #ev · +İş · p1", no `+Project` where it is not read) and "More", which opens the §39 sheet; typing replaces it with the recognized chips. | Syntax help where the typing happens, without a fourth icon. |
-| Q6 | **Home says what quick add did:** a 3 s snackbar "Eklendi: {title} · {when}" (A-67; {when} is the short date, or "Tarihsiz") with "Geri al", which deletes the task (and stops a typed repeat's series). | The field emptied with no sign, and people typed it twice (U-13). |
+| Q6 | **Home says what quick add did:** a 5 s snackbar (`kQuickAddUndoWindow`; at least 5 s so Undo can be reached — polish 2 R-04) "Eklendi: {title} · {when}" (A-67; {when} is the short date, or "Tarihsiz") with "Geri al", which deletes the task (and stops a typed repeat's series). | The field emptied with no sign, and people typed it twice (U-13). |
 | Q7 | **The new row is lit and brought into sight:** a `primary` 16 % wash fading over 1.2 s (held for 2 s with reduced motion); when the row is off screen — or in a folded section, which opens — the list moves to it (alignment 0.3). | The row could be under the calendar or at the end of a long list. |
 | K1 | **Measured:** `test/features/home/home_first_screen_test.dart` (strip default/persisted/600 pt, headers, fold, snackbar + undo, reveal; first screen at 393×852 and 390×844 with the store set and the real Roboto), `month_calendar_test`, `quick_add_bar_test`. With the store set's dateless rows, No date sits between Overdue and Today (OPH-102), so the "Overdue + Today ≥ 3 rows" check runs on the set without them; with them, Overdue and two more rows are on the first screen. | Kabul of OPH-401. |
 

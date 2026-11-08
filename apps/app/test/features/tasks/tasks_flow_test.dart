@@ -217,17 +217,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // type → Enter → type → Enter: no re-tap between entries. Round 14 puts a
-    // deadline picker on every Enter; Cancel is the "skip" path and must keep
+    // deadline picker on every Enter; its skip button (R-04) is the path and must keep
     // the rapid-entry chain (and its focus) intact.
     Future<void> submitThenSkipDate(String title) async {
       await tester.enterText(find.byKey(const Key('home-quick-add')), title);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       // No pumpAndSettle while the deadline dialog is up: the bar's own
       // in-flight spinner animates until onAdd returns, so settle would spin
-      // forever. Bounded pumps open the dialog; Cancel is the skip path.
+      // forever. Bounded pumps open the dialog; skip is the skip path.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.text('Add without date'));
       await tester.pumpAndSettle();
     }
 

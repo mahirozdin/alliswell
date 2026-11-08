@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -16,7 +17,10 @@ import 'task_visuals.dart';
 
 /// Rapid-entry task bar (feedback round 2): submit clears the field
 /// immediately and KEEPS focus, so type → Enter → type → Enter chains work
-/// without touching the mouse. Saving happens in the background; failures
+/// without touching the mouse — unless [keepFocusAfterSubmit] is off (a phone
+/// Home, OPH-401 R-04), where the list moves to the new row and the keyboard
+/// goes down with the field. A touch outside the bar closes the keyboard and
+/// keeps the text (the only way out used to be ✓, which submits). Saving happens in the background; failures
 /// surface as a snackbar carrying the lost title.
 ///
 /// OPH-373 (DESIGN §39): the bar reads what you type, offline, in Turkish and
@@ -40,7 +44,13 @@ class QuickAddBar extends ConsumerStatefulWidget {
     this.focusNode,
     this.onParse,
     this.parseProject = true,
+    this.keepFocusAfterSubmit = true,
   });
+
+  /// Off where a submit takes the user away from the field — Home on a phone,
+  /// whose list scrolls to the new row and carries the field off screen: the
+  /// keyboard then closes instead of covering the list (OPH-401 R-04).
+  final bool keepFocusAfterSubmit;
 
   final String hintText;
 
@@ -166,6 +176,21 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     _reparse();
   }
 
+  /// After a submit: keep the field for the next entry, or let the keyboard go.
+  void _settleFocus() {
+    if (widget.keepFocusAfterSubmit) {
+      _focus.requestFocus();
+    } else {
+      _focus.unfocus();
+    }
+  }
+
+  /// A touch outside the bar closes the keyboard; the text stays. A mouse
+  /// click does not — on a desktop the field keeps its focus as before.
+  void _onTapOutside(PointerDownEvent event) {
+    if (event.kind == PointerDeviceKind.touch) _focus.unfocus();
+  }
+
   Future<void> _submit() async {
     final raw = _controller.text.trim();
     if (raw.isEmpty) return;
@@ -174,7 +199,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     // Optimistic rapid entry: clear + refocus NOW, save in the background.
     _ignored.clear();
     _controller.clear();
-    _focus.requestFocus();
+    _settleFocus();
     setState(() => _inFlight++);
     try {
       await widget.onAdd(QuickAddSubmission(raw: raw, parse: parse));
@@ -188,7 +213,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
       if (mounted) {
         setState(() => _inFlight--);
         // Some platforms drop focus when dialogs/snackbars appear — reclaim it.
-        _focus.requestFocus();
+        _settleFocus();
       }
     }
   }
@@ -202,7 +227,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     // create, and the task row (with its AI badge) is the real feedback.
     _ignored.clear();
     _controller.clear();
-    _focus.requestFocus();
+    _settleFocus();
     setState(() => _inFlight++);
     try {
       await widget.onParse!(text);
@@ -215,7 +240,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     } finally {
       if (mounted) {
         setState(() => _inFlight--);
-        _focus.requestFocus();
+        _settleFocus();
       }
     }
   }
@@ -292,28 +317,33 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _controller,
-            focusNode: _focus,
-            autofocus: widget.autofocus,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submit(),
-            decoration: InputDecoration(
-              hintText: widget.hintText,
-              suffixIcon: suffix,
+      // The chips and examples under the field count as the field: tapping
+      // one must not close the keyboard (R-04's touch-outside rule).
+      child: TextFieldTapRegion(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _controller,
+              focusNode: _focus,
+              autofocus: widget.autofocus,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              onTapOutside: _onTapOutside,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                suffixIcon: suffix,
+              ),
             ),
-          ),
-          AnimatedSize(
-            duration: reduce ? Duration.zero : AwMotion.base,
-            curve: AwMotion.enter,
-            alignment: Alignment.topCenter,
-            child: below,
-          ),
-        ],
+            AnimatedSize(
+              duration: reduce ? Duration.zero : AwMotion.base,
+              curve: AwMotion.enter,
+              alignment: Alignment.topCenter,
+              child: below,
+            ),
+          ],
+        ),
       ),
     );
   }

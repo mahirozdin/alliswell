@@ -122,7 +122,7 @@ void main() {
     // pumpAndSettle with the dialog open would never settle.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Add without date'));
     await tester.pumpAndSettle();
     expect(api.tasks.any((t) => t['title'] == 'Yeni iş'), isTrue);
   });
