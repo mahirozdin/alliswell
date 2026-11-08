@@ -463,7 +463,9 @@
         "undoTitle": "Not what you meant?",
         "undo": "Recognized words are highlighted and shown as chips under the bar.\nThe ✕ on a chip undoes it; its words stay in the title."
       }
-    }
+    },
+    "goneWhileOpen": "This task was deleted, on this device or another one.",
+    "goneBack": "Go back"
   },
   "tag": {
     "inputHint": "Add tag…",

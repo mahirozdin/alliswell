@@ -49,7 +49,7 @@ typedef TaskAction = Future<Object?> Function(TaskStore store, String taskId);
 /// status/priority dropdowns with icons/colors, urgent toggle, dates, tags
 /// and checklist — every control writes the local replica (instant) and syncs
 /// in the background; failed writes surface as snackbars instead of vanishing.
-class TaskDetailScreen extends ConsumerWidget {
+class TaskDetailScreen extends ConsumerStatefulWidget {
   const TaskDetailScreen({super.key, required this.taskId, this.onClose});
 
   final String taskId;
@@ -60,7 +60,19 @@ class TaskDetailScreen extends ConsumerWidget {
   final VoidCallback? onClose;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskDetailScreen> createState() => _TaskDetailScreenState();
+}
+
+class _TaskDetailScreenState extends ConsumerState<TaskDetailScreen> {
+  /// The task this screen has shown at least once. Its row missing after
+  /// that is a deletion (a pull applied its tombstone, OPH-419); missing
+  /// before that is only a row not pulled yet — the waiting screen's case.
+  String? _shownTaskId;
+
+  @override
+  Widget build(BuildContext context) {
+    final taskId = widget.taskId;
+    final onClose = widget.onClose;
     final task = ref.watch(taskDetailProvider(taskId));
     return task.when(
       loading: () => _TaskDetailWaiting(taskId: taskId, onClose: onClose),
@@ -68,7 +80,54 @@ class TaskDetailScreen extends ConsumerWidget {
         appBar: AppBar(leading: _leading(context, onClose)),
         body: Center(child: Text('$error')),
       ),
-      data: (value) => _TaskDetail(task: value, onClose: onClose),
+      data: (value) {
+        if (value != null) {
+          _shownTaskId = taskId;
+          return _TaskDetail(task: value, onClose: onClose);
+        }
+        return _shownTaskId == taskId
+            ? _TaskDetailDeleted(onClose: onClose)
+            : _TaskDetailWaiting(taskId: taskId, onClose: onClose);
+      },
+    );
+  }
+}
+
+/// The task this detail was showing left the replica while it was open —
+/// deleted on another device, or no longer this person's (OPH-419). Says so
+/// instead of keeping the last task on screen: stale, editable, and every
+/// control a write for an entity that is gone. No automatic pop or close:
+/// a sheet may be open over it, and a row that comes back (a task moved
+/// between workspaces, OPH-378) shows the task again.
+class _TaskDetailDeleted extends StatelessWidget {
+  const _TaskDetailDeleted({this.onClose});
+
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final close = onClose;
+    final router = GoRouter.of(context);
+    final canPop = close == null && router.canPop();
+    return Scaffold(
+      appBar: AppBar(leading: _leading(context, close)),
+      body: AwErrorState(
+        key: const Key('task-detail-deleted'),
+        message: 'task.goneWhileOpen'.tr(),
+        retryLabel: close != null
+            ? 'common.close'.tr()
+            : canPop
+            ? 'task.goneBack'.tr()
+            : 'error.goHome'.tr(),
+        retryIcon: close != null
+            ? Icons.close
+            : canPop
+            ? Icons.arrow_back
+            : Icons.home_outlined,
+        onRetry:
+            close ??
+            () => canPop ? router.pop() : router.go(AppSection.home.path),
+      ),
     );
   }
 }

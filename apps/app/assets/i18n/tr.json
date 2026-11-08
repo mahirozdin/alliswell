@@ -462,7 +462,9 @@
         "undoTitle": "Yanlış mı anladı?",
         "undo": "Tanınan sözcükler vurgulanır ve çubuğun altında çip olarak görünür.\nÇipteki ✕ tanımayı geri alır; sözcükler başlıkta kalır."
       }
-    }
+    },
+    "goneWhileOpen": "Bu görev silindi; bu cihazda ya da başka bir cihazda.",
+    "goneBack": "Geri dön"
   },
   "tag": {
     "inputHint": "Etiket ekle…",

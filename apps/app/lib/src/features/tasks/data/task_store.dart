@@ -259,8 +259,11 @@ class TaskStore {
     });
   }
 
-  /// Detail = task row + tag joins + checklist, live on every part.
-  Stream<Task> watchDetail(String taskId) => combineLatest3(
+  /// Detail = task row + tag joins + checklist, live on every part. Null
+  /// while the row is not in the replica: not pulled yet, or gone — a
+  /// tombstone deletes the row (OPH-419). The caller tells the two apart; it
+  /// used to drop nulls, and an open detail kept its deleted task on screen.
+  Stream<Task?> watchDetail(String taskId) => combineLatest3(
     (_db.select(
       _db.tasks,
     )..where((t) => t.id.equals(taskId))).watchSingleOrNull(),
@@ -289,10 +292,10 @@ class TaskStore {
                 ),
             ],
           ),
-  ).where((task) => task != null).map((task) => task!);
+  );
 
   /// One read of a task's detail (row + tags + checklist), null when it is
-  /// gone — [watchDetail] drops nulls, so its `.first` would hang (OPH-377).
+  /// gone (OPH-377).
   Future<Task?> detailOnce(String taskId) async {
     final record = await (_db.select(
       _db.tasks,

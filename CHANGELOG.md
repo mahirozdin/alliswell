@@ -26,6 +26,9 @@ This file holds the unreleased changes and the latest release; at each release t
 - **A checklist item can be renamed in place** (#38): tap its text to edit it, Enter or tapping
   away saves, Esc cancels; only the checkbox ticks it now, so tapping the words no longer marks
   the item done.
+- **An open task deleted on another device no longer stays on screen**: its detail (or the
+  desktop pane) now says the task was deleted and offers a way back, instead of showing the old
+  task as if it could still be edited.
 - **The demo workspace (`npm run seed:demo`) shows every surface and can be run again**: files are
   real (previews work), a note has a version history finished from Claude over MCP, and an AI
   provider, an API key and a Todoist import are set up; a second run no longer uploads the files

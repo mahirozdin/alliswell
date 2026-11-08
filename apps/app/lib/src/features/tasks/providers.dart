@@ -277,7 +277,9 @@ final projectTasksProvider = StreamProvider.family<List<Task>, String>((
 });
 
 /// Single-task detail (tags + checklist included) — live on every part.
-final taskDetailProvider = StreamProvider.family<Task, String>((ref, taskId) {
+/// Null while the row is absent from the replica (OPH-419): the screen tells
+/// "not pulled yet" from "deleted while open".
+final taskDetailProvider = StreamProvider.family<Task?, String>((ref, taskId) {
   ref.watch(syncEnginesProvider);
   return ref.watch(taskStoreProvider).watchDetail(taskId);
 });
@@ -302,8 +304,7 @@ enum TaskAbsence {
 
 /// The detail screen's answer while its row is absent from the replica.
 ///
-/// [taskDetailProvider] drops a missing row, so a link to a task that is not
-/// on the device waited on it forever: a cold web start on `/#/tasks/<id>`
+/// A link to a task that is not on the device used to wait on its row forever: a cold web start on `/#/tasks/<id>`
 /// for a task deleted since, or not yet pulled, was an endless spinner. Asked
 /// once: when the server still has the task, null — the pull brings it, and
 /// the spinner is the truth; otherwise the reason, which the screen says.
