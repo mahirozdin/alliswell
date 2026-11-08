@@ -339,6 +339,82 @@ void main() {
     expect(server.lists.single.queryParameters.containsKey('alerts'), isFalse);
   });
 
+  testWidgets('R-11: the whole list is the queue\'s order, newest first — '
+      'not a lateness list that only the alerts chip should give', (
+    tester,
+  ) async {
+    // The server pages by lateness: breached, warned, then the rest.
+    server.answer = (query) => {
+      'units': _units,
+      'alerts': {'breached': 1, 'warned': 1},
+      'tickets': [
+        _row(_lamp, 12, 'Atölye lambası', _bakim, 'Bakım', sla: 'breached'),
+        _row(
+          _vpn,
+          7,
+          'VPN',
+          _bt,
+          'BT',
+          sla: 'warned',
+          due: '2099-01-01T00:00:00.000Z',
+        ),
+        _row(_compressor, 1042, 'Kompresör arızası', _bakim, 'Bakım'),
+      ],
+      'nextCursor': null,
+    };
+    await pump(tester, const EeMyUnitsScreen());
+    double top(String id) =>
+        tester.getTopLeft(find.byKey(Key('unit-ticket-$id'))).dy;
+    // Without the chip: newest first, as a unit's own queue reads.
+    expect(top(_compressor), lessThan(top(_lamp)));
+    expect(top(_lamp), lessThan(top(_vpn)));
+    // The full list asks for the server's largest page, so the order covers
+    // every open request a team usually has, not the first fifty by lateness.
+    expect(server.lists.last.queryParameters['limit'], 100);
+
+    // With the chip: the server's lateness order stands.
+    await tester.tap(find.byKey(const Key('my-units-alerts')));
+    await tester.pumpAndSettle();
+    expect(server.lists.last.queryParameters['alerts'], true);
+    expect(top(_lamp), lessThan(top(_vpn)));
+    expect(top(_vpn), lessThan(top(_compressor)));
+  });
+
+  testWidgets('R-11: a later page joins the newest-first order instead of '
+      'being stacked under the first', (tester) async {
+    server.answer = (query) => query['cursor'] == 'c1'
+        ? {
+            'units': _units,
+            'alerts': {'breached': 1, 'warned': 0},
+            'tickets': [_row(_vpn, 2000, 'VPN', _bt, 'BT')],
+            'nextCursor': null,
+          }
+        : {
+            'units': _units,
+            'alerts': {'breached': 1, 'warned': 0},
+            'tickets': [
+              _row(
+                _compressor,
+                1042,
+                'Kompresör arızası',
+                _bakim,
+                'Bakım',
+                sla: 'breached',
+              ),
+              _row(_lamp, 12, 'Atölye lambası', _bakim, 'Bakım'),
+            ],
+            'nextCursor': 'c1',
+          };
+    await pump(tester, const EeMyUnitsScreen());
+    await tester.tap(find.byKey(const Key('my-units-more')));
+    await tester.pumpAndSettle();
+    double top(String id) =>
+        tester.getTopLeft(find.byKey(Key('unit-ticket-$id'))).dy;
+    expect(top(_vpn), lessThan(top(_compressor)));
+    expect(top(_compressor), lessThan(top(_lamp)));
+    expect(find.byKey(const Key('my-units-more')), findsNothing);
+  });
+
   testWidgets('the alerts chip asks the server for alerts only', (
     tester,
   ) async {

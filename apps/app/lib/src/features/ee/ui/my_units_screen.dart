@@ -194,15 +194,22 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
 
   /// Every row drawn, in order: the first page's and each later page's
   /// loaded so far — what ↑/↓ walk in the desktop pane (E35 polish P-09).
-  List<EeUnitTicket> _drawn(List<EeUnitTicket> first) => [
-    ...first,
-    for (var i = 1; i < _cursors.length; i += 1)
-      ...?ref
-          .watch(eeUnitTicketsPageProvider(_key(_cursors[i])))
-          .value
-          ?.tickets
-          .where(_keep),
-  ];
+  ///
+  /// R-11: the whole list reads newest first, like a unit's own queue; the
+  /// server's lateness order is what the alerts chip asks for. A later page
+  /// joins that order rather than being stacked under the first.
+  List<EeUnitTicket> _drawn(List<EeUnitTicket> first) {
+    final rows = [
+      ...first,
+      for (var i = 1; i < _cursors.length; i += 1)
+        ...?ref
+            .watch(eeUnitTicketsPageProvider(_key(_cursors[i])))
+            .value
+            ?.tickets
+            .where(_keep),
+    ];
+    return _alertsOnly ? rows : eeNewestFirst(rows);
+  }
 
   Widget _list(BuildContext context, EeUnitTicketsPage page) {
     final visible = page.tickets.where(_keep).toList();
@@ -221,7 +228,7 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
           }
         }
       },
-      child: _scrolled(context, page, visible, searching, footer),
+      child: _scrolled(context, page, visible, drawn, searching, footer),
     );
   }
 
@@ -229,6 +236,7 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
     BuildContext context,
     EeUnitTicketsPage page,
     List<EeUnitTicket> visible,
+    List<EeUnitTicket> drawn,
     bool searching,
     Widget? footer,
   ) {
@@ -296,13 +304,12 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
                     message: 'ee.myUnits.emptyBody'.tr(),
                   )
           else ...[
-            for (final ticket in visible) _Row(ticket: ticket),
+            for (final ticket in drawn) _Row(ticket: ticket),
             for (var i = 1; i < _cursors.length; i += 1)
-              _Page(
+              _PageTail(
                 key: ValueKey(_key(_cursors[i])),
                 pageKey: _key(_cursors[i]),
                 last: i == _cursors.length - 1,
-                keep: _keep,
                 onMore: (cursor) => setState(() => _cursors.add(cursor)),
               ),
             if (_cursors.length == 1 && page.hasMore)
@@ -481,19 +488,19 @@ class _Row extends ConsumerWidget {
   }
 }
 
-/// A page after the first, and the "more" button under the last one.
-class _Page extends ConsumerWidget {
-  const _Page({
+/// A page after the first, while it loads or when it failed, and the "more"
+/// button under the last one. Its rows are drawn with the rest (R-11: one
+/// order over every loaded page).
+class _PageTail extends ConsumerWidget {
+  const _PageTail({
     required this.pageKey,
     required this.last,
-    required this.keep,
     required this.onMore,
     super.key,
   });
 
   final EeUnitTicketsKey pageKey;
   final bool last;
-  final bool Function(EeUnitTicket) keep;
   final ValueChanged<String> onMore;
 
   @override
@@ -505,13 +512,9 @@ class _Page extends ConsumerWidget {
         child: Center(child: CircularProgressIndicator()),
       ),
       error: (error, _) => AwInlineError(message: localizedError(error)),
-      data: (page) => Column(
-        children: [
-          for (final ticket in page.tickets.where(keep)) _Row(ticket: ticket),
-          if (last && page.hasMore)
-            _MoreButton(onPressed: () => onMore(page.nextCursor!)),
-        ],
-      ),
+      data: (page) => last && page.hasMore
+          ? _MoreButton(onPressed: () => onMore(page.nextCursor!))
+          : const SizedBox.shrink(),
     );
   }
 }

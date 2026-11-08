@@ -34,6 +34,39 @@ bool unitTicketsNeedConnection(Object? error) =>
 /// pages without a notifier to hold them, as the archive does.
 typedef EeUnitTicketsKey = ({bool alertsOnly, String cursor});
 
+/// R-11: the whole list (no alerts chip) is drawn newest first, the order a
+/// unit's own queue reads in, while the server pages by lateness. So it asks
+/// for the server's largest page: one page then holds every open request a
+/// team usually has, and the order the screen gives covers all of them.
+const int kEeAcrossUnitsFullPage = 100;
+
+/// R-11: newest first — by the request number, the team's own filing order
+/// (one sequence per team, so it orders across units too), and by the last
+/// change where a row has no number yet. Stable: equal rows keep the
+/// server's order.
+List<EeUnitTicket> eeNewestFirst(Iterable<EeUnitTicket> rows) {
+  final indexed = rows.toList().asMap().entries.toList();
+  int byNewest(EeUnitTicket a, EeUnitTicket b) {
+    final an = a.number;
+    final bn = b.number;
+    if (an != null && bn != null) return bn.compareTo(an);
+    if (an != null) return -1;
+    if (bn != null) return 1;
+    final at = a.updatedAt;
+    final bt = b.updatedAt;
+    if (at != null && bt != null) return bt.compareTo(at);
+    if (at != null) return -1;
+    if (bt != null) return 1;
+    return 0;
+  }
+
+  indexed.sort((x, y) {
+    final order = byNewest(x.value, y.value);
+    return order != 0 ? order : x.key.compareTo(y.key);
+  });
+  return [for (final entry in indexed) entry.value];
+}
+
 final eeUnitTicketsPageProvider = FutureProvider.autoDispose
     .family<EeUnitTicketsPage, EeUnitTicketsKey>((ref, key) async {
       // No entitlement → the endpoint does not exist (the house idiom).
@@ -48,6 +81,7 @@ final eeUnitTicketsPageProvider = FutureProvider.autoDispose
           .list(
             alertsOnly: key.alertsOnly,
             cursor: key.cursor.isEmpty ? null : key.cursor,
+            limit: key.alertsOnly ? null : kEeAcrossUnitsFullPage,
           );
     });
 
