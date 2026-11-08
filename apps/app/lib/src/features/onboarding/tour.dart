@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -67,7 +69,9 @@ const TourStep kTourSearch = TourStep(
 
 /// The personal tour. [kTourVoice] only where the microphone is drawn
 /// (`aiFabVisible`): a server without AI has no voice entry, and a step
-/// about a button that is not there is worse than one step fewer.
+/// about a button that is not there is worse than one step fewer. A cold
+/// start answers "no AI" until the workspace loads, so a running tour
+/// takes the late answer while it is still on its first step (R-01).
 const List<TourStep> kTourSteps = [
   kTourQuickAdd,
   kTourVoice,
@@ -106,10 +110,13 @@ final tourStepsProvider = Provider<List<TourStep>>((ref) {
 });
 
 /// Marks the widget a [TourTarget] step spotlights (OPH-404). A registry of
-/// mounted contexts, not a GlobalKey: the search entry and the microphone
+/// ACTIVE contexts, not a GlobalKey: the search entry and the microphone
 /// are rebuilt by layout switches and FAB transitions, where a GlobalKey
 /// mounted twice for a frame is a crash and a stale context is only a
-/// missing spotlight.
+/// missing spotlight. An anchor leaves the registry when it is deactivated,
+/// not when it is disposed (R-01): between the two it is still `mounted`,
+/// and measuring it was the red "renderObject of inactive element" screen
+/// of the first run.
 class TourAnchor extends StatefulWidget {
   const TourAnchor({super.key, required this.target, required this.child});
 
@@ -131,6 +138,7 @@ class TourAnchor extends StatefulWidget {
   static Rect? rectOf(TourTarget target) {
     final context = _mounted[target];
     if (context == null || !context.mounted) return null;
+    // Only active elements are registered (see [_TourAnchorState.deactivate]).
     final box = context.findRenderObject() as RenderBox?;
     if (box == null || !box.hasSize || !box.attached) return null;
     return box.localToGlobal(Offset.zero) & box.size;
@@ -155,6 +163,21 @@ class _TourAnchorState extends State<TourAnchor> {
       _release(old.target);
       TourAnchor._mounted[widget.target] = context;
     }
+  }
+
+  // A GlobalKey move above the anchor deactivates and reactivates it in
+  // one frame: it is back in the registry once it is in the tree again.
+  @override
+  void activate() {
+    super.activate();
+    TourAnchor._mounted[widget.target] = context;
+    TourAnchor._announce();
+  }
+
+  @override
+  void deactivate() {
+    _release(widget.target);
+    super.deactivate();
   }
 
   void _release(TourTarget target) {
@@ -202,7 +225,19 @@ class TourController extends Notifier<TourState> {
   bool _autoAttempted = false;
 
   @override
-  TourState build() => const TourState();
+  TourState build() {
+    // R-01: the answers that pick the script (AI status, the service desk)
+    // can arrive after the tour started — a cold start reads "no AI" until
+    // the workspace loads, and an organisation's status after a slow first
+    // sync. Until the first "Next" both scripts show the same step, so the
+    // tour takes the late answer; after it the numbering stays put.
+    ref.listen(tourStepsProvider, (_, steps) {
+      if (state.running && state.step == 0 && !identical(state.steps, steps)) {
+        state = TourState(running: true, steps: steps);
+      }
+    });
+    return const TourState();
+  }
 
   /// Called once from Home's first frame. Starts the tour only in production
   /// (see [tourAutoStartProvider]) and only if this device hasn't seen it.
@@ -232,7 +267,34 @@ class TourController extends Notifier<TourState> {
             .timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
+    if (!ref.mounted) return;
+    // R-01: the first step points at Home's field — wait for its first
+    // laid-out frame, or the card opens over a blank window with no
+    // spotlight. Bounded: a window that never draws it (a deep link to
+    // another section) gets a centred card.
+    final first = ref.read(tourStepsProvider).first.target;
+    if (first != null) await _untilLaidOut(first);
+    if (!ref.mounted) return;
     start();
+  }
+
+  static Future<void> _untilLaidOut(TourTarget target) async {
+    if (TourAnchor.rectOf(target) != null) return;
+    final laidOut = Completer<void>();
+    void check() {
+      if (!laidOut.isCompleted && TourAnchor.rectOf(target) != null) {
+        laidOut.complete();
+      }
+    }
+
+    TourAnchor.changes.addListener(check);
+    try {
+      await laidOut.future.timeout(const Duration(seconds: 3));
+    } on TimeoutException catch (_) {
+      // Start anyway; the overlay picks the field up if it arrives later.
+    } finally {
+      TourAnchor.changes.removeListener(check);
+    }
   }
 
   /// Replay from Settings (does NOT clear the seen flag — it just runs).

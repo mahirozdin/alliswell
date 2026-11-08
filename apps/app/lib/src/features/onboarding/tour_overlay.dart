@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 
 import '../../i18n/i18n.dart';
 import '../../theme/tokens.dart';
@@ -11,7 +12,9 @@ import 'tour.dart';
 /// [resolveAnchor], the current step's on-screen rect (null = a centred
 /// card). It is asked again after each frame that changed something and
 /// whenever a [TourAnchor] arrives (OPH-404): the step's target can be laid
-/// out after the tour started.
+/// out after the tour started — and after every frame (R-01): a banner that
+/// arrives above Home's field moves it without rebuilding the overlay, and
+/// the spotlight stayed on the banner.
 class TourOverlay extends StatefulWidget {
   const TourOverlay({
     super.key,
@@ -42,6 +45,16 @@ class _TourOverlayState extends State<TourOverlay> {
     super.initState();
     anchorRect = widget.resolveAnchor();
     TourAnchor.changes.addListener(_refresh);
+    SchedulerBinding.instance.addPostFrameCallback(_track);
+  }
+
+  /// Re-measures after every frame the app draws anyway. A post-frame
+  /// callback schedules no frame of its own, so an idle screen stays idle
+  /// and the overlay only rebuilds when the rect really moved.
+  void _track(Duration _) {
+    if (!mounted) return;
+    _refresh();
+    SchedulerBinding.instance.addPostFrameCallback(_track);
   }
 
   @override
@@ -64,8 +77,6 @@ class _TourOverlayState extends State<TourOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    // Settles in a frame or two: a refresh only rebuilds when the rect moved.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _refresh());
     final scheme = Theme.of(context).colorScheme;
 
     return PopScope(

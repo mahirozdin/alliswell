@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,10 +19,56 @@ import 'package:alliswell/src/features/onboarding/tour_overlay.dart';
 import 'package:alliswell/src/features/onboarding/tour.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/sections.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart'
+    show currentUserIdProvider;
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
+
+/// A script the test can change under a running tour (R-01): the answers
+/// that pick it (AI status, the service desk) can arrive after it started.
+class _Script extends Notifier<List<TourStep>> {
+  @override
+  List<TourStep> build() => const [kTourQuickAdd, kTourAlarm, kTourSearch];
+
+  void set(List<TourStep> steps) => state = steps;
+}
+
+final _scriptProvider = NotifierProvider<_Script, List<TourStep>>(_Script.new);
+
+/// Grows when told to, from outside the overlay's subtree: what the alarm
+/// banner does to Home's field after the tour has measured it (R-01).
+class _Grower extends StatefulWidget {
+  const _Grower({super.key});
+
+  @override
+  State<_Grower> createState() => _GrowerState();
+}
+
+class _GrowerState extends State<_Grower> {
+  double height = 20;
+
+  void grow() => setState(() => height = 160);
+
+  @override
+  Widget build(BuildContext context) => SizedBox(height: height);
+}
+
+/// Measures [target] while it builds — the overlay's resolveAnchor runs in
+/// build too (initState, didUpdateWidget).
+class _Probe extends StatelessWidget {
+  // ignore: prefer_const_constructors_in_immutables
+  _Probe(this.onRect);
+
+  final void Function(Rect?) onRect;
+
+  @override
+  Widget build(BuildContext context) {
+    onRect(TourAnchor.rectOf(TourTarget.quickAdd));
+    return const SizedBox(height: 10);
+  }
+}
 
 Future<Widget> tourApp(
   FakeApi api, {
@@ -336,6 +384,207 @@ void main() {
       ctl.start();
       ctl.next();
       expect(c.read(tourControllerProvider).steps, same(kTeamTourSteps));
+    });
+  });
+
+  // R-01 (polish 2): the first run showed a red error screen on two devices
+  // out of two, step 1 framed the alarm banner instead of the field, a
+  // server without a provider lost the voice step although the microphone
+  // was drawn, and a member's Requests step came in one run of four.
+  group('R-01: the tour on a real first run', () {
+    testWidgets('an anchor that has just left the tree is not measured — '
+        'no "renderObject of inactive element"', (tester) async {
+      var show = true;
+      late StateSetter setOuter;
+      final rects = <Rect?>[];
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              setOuter = setState;
+              return Column(
+                children: [
+                  if (show)
+                    const TourAnchor(
+                      target: TourTarget.quickAdd,
+                      child: SizedBox(height: 40, width: 40),
+                    )
+                  else
+                    const SizedBox(height: 40),
+                  // Built after the anchor was deactivated, in the same
+                  // frame — before it is unmounted.
+                  _Probe(rects.add),
+                ],
+              );
+            },
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(TourAnchor.rectOf(TourTarget.quickAdd), isNotNull);
+
+      setOuter(() => show = false);
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+      expect(rects.last, isNull);
+      expect(TourAnchor.rectOf(TourTarget.quickAdd), isNull);
+    });
+
+    testWidgets('the spotlight follows its control when something above it '
+        'grows after the tour measured it', (tester) async {
+      final grower = GlobalKey<_GrowerState>();
+      final state = const TourState(
+        running: true,
+        steps: [kTourQuickAdd, kTourAlarm, kTourSearch],
+      );
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Stack(
+            children: [
+              Column(
+                children: [
+                  _Grower(key: grower),
+                  const TourAnchor(
+                    target: TourTarget.quickAdd,
+                    child: SizedBox(key: Key('field'), height: 48, width: 300),
+                  ),
+                ],
+              ),
+              Positioned.fill(
+                child: TourOverlay(
+                  state: state,
+                  resolveAnchor: () => TourAnchor.rectOf(TourTarget.quickAdd),
+                  onNext: () {},
+                  onSkip: () {},
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Rect spot() => tester.getRect(find.byKey(const Key('tour-spotlight')));
+      expect(
+        spot().contains(tester.getCenter(find.byKey(const Key('field')))),
+        isTrue,
+      );
+
+      grower.currentState!.grow();
+      await tester.pumpAndSettle();
+      final field = tester.getRect(find.byKey(const Key('field')));
+      expect(
+        spot().contains(field.center),
+        isTrue,
+        reason: 'spotlight ${spot()} stayed where the field was, not at $field',
+      );
+      // The card goes below the field, not over it.
+      expect(
+        tester.getRect(find.byKey(const Key('tour-next'))).top,
+        greaterThan(field.bottom),
+      );
+    });
+
+    test('an answer that arrives on the first step changes the script: the '
+        'voice step and the desk step are not lost to a slow start', () {
+      final c = ProviderContainer(
+        overrides: [
+          tourStepsProvider.overrideWith((ref) => ref.watch(_scriptProvider)),
+        ],
+      );
+      addTearDown(c.dispose);
+      final ctl = c.read(tourControllerProvider.notifier);
+      ctl.start();
+      expect(c.read(tourControllerProvider).steps, hasLength(3));
+
+      // AI turns out to be on (a cold start answered "disabled" while the
+      // workspace was loading).
+      c.read(_scriptProvider.notifier).set(kTourSteps);
+      expect(c.read(tourControllerProvider).steps, same(kTourSteps));
+      expect(c.read(tourControllerProvider).step, 0);
+      expect(c.read(tourControllerProvider).running, isTrue);
+
+      // The organisation's answer arrives later still: the desk's script.
+      c.read(_scriptProvider.notifier).set(kTeamTourSteps);
+      expect(c.read(tourControllerProvider).steps, same(kTeamTourSteps));
+
+      // Past the first step the numbering is fixed.
+      ctl.next();
+      c.read(_scriptProvider.notifier).set(kTourSteps);
+      expect(c.read(tourControllerProvider).steps, same(kTeamTourSteps));
+      expect(c.read(tourControllerProvider).step, 1);
+
+      // A tour that is not running is not started by an answer.
+      ctl.skip();
+      c.read(_scriptProvider.notifier).set(kTeamTourSteps);
+      expect(c.read(tourControllerProvider).running, isFalse);
+    });
+
+    testWidgets('auto-start waits for Home\'s field to be laid out', (
+      tester,
+    ) async {
+      final c = ProviderContainer(
+        overrides: [
+          // Signed out: the status answers come at once, no session timer.
+          currentUserIdProvider.overrideWithValue(null),
+          tourStepsProvider.overrideWith((ref) => ref.watch(_scriptProvider)),
+        ],
+      );
+      addTearDown(c.dispose);
+      var home = false;
+      late StateSetter setOuter;
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: StatefulBuilder(
+            builder: (context, setState) {
+              setOuter = setState;
+              return home
+                  ? const TourAnchor(
+                      target: TourTarget.quickAdd,
+                      child: SizedBox(height: 48),
+                    )
+                  : const SizedBox();
+            },
+          ),
+        ),
+      );
+      var started = false;
+      unawaited(
+        c
+            .read(tourControllerProvider.notifier)
+            .maybeAutoStart()
+            .then((_) => started = true),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(
+        c.read(tourControllerProvider).running,
+        isFalse,
+        reason: 'Home is not drawn yet',
+      );
+
+      setOuter(() => home = true);
+      await tester.pump();
+      await tester.pump();
+      expect(c.read(tourControllerProvider).running, isTrue);
+      expect(started, isTrue);
+    });
+
+    testWidgets('a window without Home\'s field still gets its tour, after a '
+        'bounded wait', (tester) async {
+      final c = ProviderContainer(
+        overrides: [
+          currentUserIdProvider.overrideWithValue(null),
+          tourStepsProvider.overrideWith((ref) => ref.watch(_scriptProvider)),
+        ],
+      );
+      addTearDown(c.dispose);
+      await tester.pumpWidget(const SizedBox());
+      unawaited(c.read(tourControllerProvider.notifier).maybeAutoStart());
+      await tester.pump(const Duration(seconds: 1));
+      expect(c.read(tourControllerProvider).running, isFalse);
+      await tester.pump(const Duration(seconds: 3));
+      expect(c.read(tourControllerProvider).running, isTrue);
     });
   });
 }
