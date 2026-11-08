@@ -117,6 +117,17 @@ final noteDetailProvider = StreamProvider.family<NoteDetail, String>((
   return ref.watch(noteStoreProvider).watchDetail(noteId);
 });
 
+/// Whether an open note still exists on this device (T-02): false once a
+/// pull applies its tombstone. [noteDetailProvider] keeps its last value, so
+/// the editor still has the text to show read-only.
+final noteExistsProvider = StreamProvider.autoDispose.family<bool, String>((
+  ref,
+  noteId,
+) {
+  ref.watch(syncEngineProvider);
+  return ref.watch(noteStoreProvider).watchExists(noteId);
+});
+
 /// Why a note's editor has nothing to show (R-05, the OPH-392 task pattern).
 enum NoteAbsence {
   /// The server has no such note for this person: deleted, never theirs, or

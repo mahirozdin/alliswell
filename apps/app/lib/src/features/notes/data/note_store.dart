@@ -224,6 +224,17 @@ class NoteStore {
     (record, links) => record == null ? null : _detail(record, links),
   ).where((n) => n != null).map((n) => n!);
 
+  /// Whether the note's row is in the replica — [watchDetail] drops a
+  /// missing row, so an open editor never heard that a pull deleted its note
+  /// (T-02). False after a tombstone lands; the editor turns read-only.
+  Stream<bool> watchExists(String noteId) =>
+      (_db.selectOnly(_db.notes)
+            ..addColumns([_db.notes.id])
+            ..where(_db.notes.id.equals(noteId)))
+          .watch()
+          .map((rows) => rows.isNotEmpty)
+          .distinct();
+
   /// One read of a note's detail, null when it is gone — [watchDetail] drops
   /// nulls, so its `.first` would hang on a deleted row (OPH-377).
   Future<NoteDetail?> detailOnce(String noteId) async {

@@ -561,6 +561,9 @@
     "deleteMenu": "Delete"
   },
   "note": {
+    "notFoundTitle": "Note not found",
+    "notFoundBody": "It may have been deleted or moved.",
+    "deletedNotice": "This note was deleted. You can still read or export it; changes are no longer saved.",
     "untitled": "Untitled",
     "deleteTitle": "Delete note?",
     "deleteBody": "This note will be deleted from all your devices.",

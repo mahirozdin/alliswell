@@ -560,6 +560,9 @@
     "deleteMenu": "Sil"
   },
   "note": {
+    "notFoundTitle": "Not bulunamadı",
+    "notFoundBody": "Silinmiş ya da taşınmış olabilir.",
+    "deletedNotice": "Bu not silindi. Okuyabilir ya da dışa aktarabilirsin; değişiklikler artık kaydedilmez.",
     "untitled": "Başlıksız",
     "deleteTitle": "Not silinsin mi?",
     "deleteBody": "Bu not bütün cihazlarından silinecek.",
