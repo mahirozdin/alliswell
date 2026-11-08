@@ -76,10 +76,11 @@ class QuickAccessRowTile extends StatefulWidget {
   final VoidCallback onTap;
   final Widget? trailing;
 
-  /// The rail's drag handle (OPH-405). It gets its own column after
-  /// [trailing], 8 px apart, and shows while the row is hovered or holds
-  /// keyboard focus; its space is kept either way, so both columns stay
-  /// aligned from row to row and nothing shifts on hover.
+  /// The rail's drag handle (OPH-405). It shows while the row is hovered or
+  /// holds keyboard focus, 8 px before [trailing], and takes room only then:
+  /// a resting row gives its name the full width, and [trailing] (the ⋯
+  /// menu) stays in one column at the trailing edge, so the target the
+  /// pointer aims at never moves — only the hovered name shortens.
   final Widget? dragHandle;
   final bool dense;
 
@@ -155,18 +156,21 @@ class _QuickAccessRowTileState extends State<QuickAccessRowTile> {
             ),
             const SizedBox(width: AwSpace.x1),
           ],
-          ?trailing,
-          if (handle != null) ...[
-            const SizedBox(width: AwSpace.x2),
+          if (handle != null)
+            // OPH-405 T-05: no `maintainSize` — a held empty column cut every
+            // resting name short ("Design Sys…"). Offstage keeps the drag
+            // listener alive between hover and press.
             Visibility(
               key: Key('quick-drag-reveal-${row.id}'),
               visible: _hovered || _focused,
-              maintainSize: true,
               maintainAnimation: true,
               maintainState: true,
-              child: handle,
+              child: Padding(
+                padding: const EdgeInsets.only(right: AwSpace.x2),
+                child: handle,
+              ),
             ),
-          ],
+          ?trailing,
         ],
       ),
       onTap: widget.onTap,

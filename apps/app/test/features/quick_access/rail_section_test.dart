@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -239,33 +240,35 @@ void main() {
     bool handleShown(WidgetTester t, String id) =>
         t.widget<Visibility>(find.byKey(Key('quick-drag-reveal-$id'))).visible;
 
-    void expectSeparateColumns(WidgetTester tester, List<String> ids) {
+    /// T-05: the ⋯ column never moves (at rest, on hover, on focus) and sits
+    /// at the row's trailing padding, so no empty column is held for a handle
+    /// that is not there.
+    void expectMenuColumn(WidgetTester tester, List<String> ids) {
       final menuLeft = menuRect(tester, ids.first).left;
-      final handleLeft = handleRect(tester, ids.first).left;
       for (final id in ids) {
         final menu = menuRect(tester, id);
-        final handle = handleRect(tester, id);
+        final tile = tester.getRect(find.byKey(Key('quick-row-$id')));
         expect(menu.width, greaterThanOrEqualTo(32), reason: 'menu $id');
         expect(menu.height, greaterThanOrEqualTo(32), reason: 'menu $id');
-        expect(handle.width, greaterThanOrEqualTo(32), reason: 'drag $id');
-        expect(handle.height, greaterThanOrEqualTo(32), reason: 'drag $id');
-        // Separate hit regions, 8 px apart, menu first.
-        expect(menu.overlaps(handle), isFalse, reason: id);
-        expect(handle.left - menu.right, greaterThanOrEqualTo(8), reason: id);
-        // The painted glyphs never touch either.
-        expect(
-          menuGlyph(tester, id).overlaps(handleGlyph(tester, id)),
-          isFalse,
-        );
-        // One aligned column each, whatever hints the row carries.
         expect(menu.left, moreOrLessEquals(menuLeft), reason: id);
-        expect(handle.left, moreOrLessEquals(handleLeft), reason: id);
+        expect(tile.right - menu.right, lessThanOrEqualTo(16), reason: id);
       }
     }
 
-    testWidgets('separate aligned targets; the handle shows on hover', (
-      tester,
-    ) async {
+    /// A shown handle is its own 32×32 target, 8 px before the menu, and the
+    /// painted glyphs never touch.
+    void expectHandleApart(WidgetTester tester, String id) {
+      final menu = menuRect(tester, id);
+      final handle = handleRect(tester, id);
+      expect(handle.width, greaterThanOrEqualTo(32), reason: 'drag $id');
+      expect(handle.height, greaterThanOrEqualTo(32), reason: 'drag $id');
+      expect(menu.overlaps(handle), isFalse, reason: id);
+      expect(menu.left - handle.right, greaterThanOrEqualTo(8), reason: id);
+      expect(menuGlyph(tester, id).overlaps(handleGlyph(tester, id)), isFalse);
+    }
+
+    testWidgets('separate targets; the handle shows on hover and the menu '
+        'column stays put', (tester) async {
       final api = FakeApi();
       final ids = await seedRows(api);
       sizeTo(tester, wide);
@@ -274,9 +277,11 @@ void main() {
 
       // Flutter's default desktop handle was painted over the menu.
       expect(find.byIcon(Icons.drag_handle), findsNothing);
-      expectSeparateColumns(tester, ids);
+      expectMenuColumn(tester, ids);
       for (final id in ids) {
         expect(handleShown(tester, id), isFalse, reason: 'rest $id');
+        // T-05: a hidden handle takes no room at all.
+        expect(find.byKey(Key('quick-drag-$id')), findsNothing);
       }
 
       final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -286,11 +291,40 @@ void main() {
       await tester.pump();
       expect(handleShown(tester, ids[1]), isTrue);
       expect(handleShown(tester, ids[0]), isFalse);
-      expectSeparateColumns(tester, ids);
+      expectMenuColumn(tester, ids);
+      expectHandleApart(tester, ids[1]);
 
       await mouse.moveTo(Offset.zero);
       await tester.pump();
       expect(handleShown(tester, ids[1]), isFalse);
+    }, variant: desktop);
+
+    testWidgets('T-05: a resting row gives its name the handle column back', (
+      tester,
+    ) async {
+      final api = FakeApi();
+      // Six glyphs: in the test font (1 em per glyph) the name fits only
+      // when no 40 px handle column is held at rest (the "Design Sys…" bug).
+      final id =
+          api.seedQuickLink(
+                kind: 'url',
+                url: 'https://x.dev/ds',
+                title: 'Design',
+                emoji: '🎨',
+                colorRgb: '3B82F6',
+              )['id']
+              as String;
+      sizeTo(tester, wide);
+      await tester.pumpWidget(await signedInApp(api));
+      await tester.pumpAndSettle();
+
+      final title = tester.renderObject<RenderParagraph>(
+        find.descendant(
+          of: find.byKey(Key('quick-row-$id')),
+          matching: find.text('Design'),
+        ),
+      );
+      expect(title.didExceedMaxLines, isFalse);
     }, variant: desktop);
 
     testWidgets('keyboard focus on a row reveals its handle, apart from the '
@@ -319,7 +353,8 @@ void main() {
 
       expect(handleShown(tester, ids[2]), isTrue);
       expect(handleShown(tester, ids[1]), isFalse);
-      expectSeparateColumns(tester, ids);
+      expectMenuColumn(tester, ids);
+      expectHandleApart(tester, ids[2]);
     }, variant: desktop);
 
     testWidgets('dragging by the handle reorders', (tester) async {

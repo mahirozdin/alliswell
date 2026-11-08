@@ -1155,6 +1155,11 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   row to row; it shows while the row is hovered or holds keyboard focus and keeps
   its space otherwise. Flutter's default handle (painted over the trailing edge)
   is never used; touch platforms drag by long-pressing the row, with no handle.
+  **Amended again (OPH-405, cila 4 T-05):** the held empty column cut every
+  resting name short ("Design Sys…"). The handle now takes room only while it
+  shows, 8 px *before* the ⋯ menu; the menu stays one aligned column at the
+  row's trailing edge in every state, so the target a pointer aims at never
+  moves and only the hovered row's name shortens.
 - **Q10 — A pinned entry is the app's, not the person's (EE-294).** Some doors
   must exist for the person without them putting them there — today the
   Approvals entry, for anybody with approval authority, which on a phone has
