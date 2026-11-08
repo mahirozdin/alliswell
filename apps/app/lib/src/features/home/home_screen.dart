@@ -1264,7 +1264,8 @@ List<Widget> buildHomeGroupRows(
 /// section role (15/20 w700) and, 8 pt after it, the count in its own text —
 /// `onSurfaceVariant`, tabular — so the number reads as a number and not as a
 /// word of the name. The whole 48 pt row folds and opens the section; the
-/// chevron on the right turns 180°.
+/// chevron's 48 pt target ends on the cards' trailing edge (polish 3 J-05),
+/// one control axis for every section, and turns 180°.
 class _HomeSectionHeader extends ConsumerWidget {
   const _HomeSectionHeader({required this.group, required this.label});
 
@@ -1300,36 +1301,49 @@ class _HomeSectionHeader extends ConsumerWidget {
               ref.read(homeCollapsedSectionsProvider.notifier).toggle(key),
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 48),
+            // J-05: the name and count take an Expanded, never a Flexible
+            // beside a Spacer — that pair splits the free space in two and
+            // left the chevron stranded on an interior column.
             child: Row(
               children: [
                 const SizedBox(width: AwSpace.x1),
-                Flexible(
-                  child: Text(
-                    label,
-                    // OPH-301/OPH-399: no header dim; the SELECTED day's
-                    // header is the one that differs (the accent). The
-                    // header sits on the page, not a card, so Overdue takes
-                    // the page-safe red; Today and the rest the page ink.
-                    style: role.copyWith(
-                      color: switch (group.bucket) {
-                        HomeBucket.overdue => context.awTokens.errorOnPage,
-                        HomeBucket.selectedDay => context.awTokens.link,
-                        _ => theme.colorScheme.onSurface,
-                      },
-                    ),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          label,
+                          // OPH-301/OPH-399: no header dim; the SELECTED day's
+                          // header is the one that differs (the accent). The
+                          // header sits on the page, not a card, so Overdue takes
+                          // the page-safe red; Today and the rest the page ink.
+                          style: role.copyWith(
+                            color: switch (group.bucket) {
+                              HomeBucket.overdue =>
+                                context.awTokens.errorOnPage,
+                              HomeBucket.selectedDay => context.awTokens.link,
+                              _ => theme.colorScheme.onSurface,
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AwSpace.x2),
+                      Text(
+                        count,
+                        style: role.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(width: AwSpace.x2),
-                Text(
-                  count,
-                  style: role.copyWith(
-                    fontWeight: FontWeight.w500,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const Spacer(),
+                // The 48 pt target ends on the cards' trailing edge, so the
+                // glyph sits 12 pt inside it, on the row badges' axis.
                 SizedBox(
+                  key: const Key('home-section-chevron'),
                   width: 48,
+                  height: 48,
                   child: AnimatedRotation(
                     turns: collapsed ? -0.5 : 0,
                     duration: reduce ? Duration.zero : AwMotion.base,
