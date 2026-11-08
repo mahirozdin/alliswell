@@ -1064,11 +1064,17 @@ class _Parser {
       // match, read from the count's own position — where the determiner
       // check above it applies. Read again from the unit, it would slip past
       // that check: "önümüzdeki iki haftada bir" (ADR-0067, `[N]`).
-      final counted =
-          at == i && i > 0 && n(i - 1) != 'bir' && _count(n(i - 1)) != null;
+      final afterCount = at == i && i > 0 && _count(n(i - 1)) != null;
+      final counted = afterCount && n(i - 1) != 'bir';
+      // "bir" never advances as a count, so its own position cannot see the
+      // determiner: look past it here ("önümüzdeki bir haftada bir",
+      // "bu bir ayda bir" — a period; plain "bir haftada bir" still repeats).
+      final determinerAt = afterCount ? i - 2 : i - 1;
       final period =
           counted ||
-          (n(i) != 'her' && i > 0 && _trPeriodDeterminers.contains(n(i - 1)));
+          (n(i) != 'her' &&
+              determinerAt >= 0 &&
+              _trPeriodDeterminers.contains(n(determinerAt)));
       if (!period && f != null && n(at + 1) == 'bir' && (at > i)) {
         add(AwRepeatRule(freq: f, interval: c ?? 1), at - i + 2);
       } else if (!period &&
