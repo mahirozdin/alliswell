@@ -16,6 +16,7 @@ import '../unit_scope_providers.dart';
 import '../unit_tickets_providers.dart';
 import 'figure_scope.dart';
 import 'sla_chip.dart';
+import '../../../widgets/list_detail.dart';
 import '../../../widgets/route_leading.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket;
 
@@ -31,7 +32,6 @@ Future<void> openTicketAcrossUnits(
   WidgetRef ref,
   EeUnitTicket ticket,
 ) async {
-  final here = ref.read(currentWorkspaceProvider).value?.id;
   // E35 polish P-08: on a space that is not a unit, "all units" is the
   // queue's default without being chosen — selecting the request's unit
   // below would then turn the list it was opened from into that unit's
@@ -39,13 +39,19 @@ Future<void> openTicketAcrossUnits(
   if (ref.read(eeQueueShowsAllUnitsProvider)) {
     ref.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
   }
-  if (ticket.workspaceId != here) {
-    await ref
-        .read(selectedWorkspaceIdProvider.notifier)
-        .select(ticket.workspaceId);
-  }
+  await _selectTicketUnit(ref, ticket);
   if (!context.mounted) return;
   awOpenTicket(context, ticket.id);
+}
+
+/// Opens [ticket]'s unit when another one is open: its detail reads the
+/// unit's replica, which the sync engine fills for the selected workspace.
+Future<void> _selectTicketUnit(WidgetRef ref, EeUnitTicket ticket) async {
+  final here = ref.read(currentWorkspaceProvider).value?.id;
+  if (ticket.workspaceId == here) return;
+  await ref
+      .read(selectedWorkspaceIdProvider.notifier)
+      .select(ticket.workspaceId);
 }
 
 /// "Birimlerim" — open requests in every unit this person works in, latest
@@ -186,10 +192,46 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
     );
   }
 
+  /// Every row drawn, in order: the first page's and each later page's
+  /// loaded so far — what ↑/↓ walk in the desktop pane (E35 polish P-09).
+  List<EeUnitTicket> _drawn(List<EeUnitTicket> first) => [
+    ...first,
+    for (var i = 1; i < _cursors.length; i += 1)
+      ...?ref
+          .watch(eeUnitTicketsPageProvider(_key(_cursors[i])))
+          .value
+          ?.tickets
+          .where(_keep),
+  ];
+
   Widget _list(BuildContext context, EeUnitTicketsPage page) {
     final visible = page.tickets.where(_keep).toList();
     final searching = _query.isNotEmpty;
     final footer = _archiveFooter();
+    final drawn = _drawn(visible);
+    // A step lands on a request of another unit as a tap on it would: in
+    // that unit, so the pane shows the request rather than a "switch" door.
+    return AwListOrder(
+      ids: [for (final ticket in drawn) ticket.id],
+      onReached: (id) {
+        for (final ticket in drawn) {
+          if (ticket.id == id) {
+            unawaited(_selectTicketUnit(ref, ticket));
+            return;
+          }
+        }
+      },
+      child: _scrolled(context, page, visible, searching, footer),
+    );
+  }
+
+  Widget _scrolled(
+    BuildContext context,
+    EeUnitTicketsPage page,
+    List<EeUnitTicket> visible,
+    bool searching,
+    Widget? footer,
+  ) {
     return RefreshIndicator(
       key: const Key('my-units-refresh'),
       onRefresh: _refresh,
@@ -387,6 +429,8 @@ class _Row extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
+    // ↑/↓ scroll the row they reach into view (E35 polish P-09).
+    AwListOrder.registerRow(context, ticket.id);
     return Padding(
       padding: kAwListRowPadding,
       child: Card(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -25,6 +26,7 @@ import 'package:alliswell/src/features/ee/ui/my_tickets_screen.dart';
 import 'package:alliswell/src/features/ee/ui/my_units_screen.dart';
 import 'package:alliswell/src/features/ee/ui/performance_screen.dart';
 import 'package:alliswell/src/features/ee/ui/sla_dashboard_screen.dart';
+import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
 import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
 import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
 import 'package:alliswell/src/features/ee/unit_tickets_providers.dart';
@@ -184,9 +186,10 @@ void main() {
     Widget screen, {
     List<Override> overrides = const [],
     bool listenWorkspace = false,
+    Size? desktop,
   }) async {
-    tester.view.physicalSize = const Size(1170, 2532);
-    tester.view.devicePixelRatio = 3;
+    tester.view.physicalSize = desktop ?? const Size(1170, 2532);
+    tester.view.devicePixelRatio = desktop == null ? 3 : 1;
     addTearDown(tester.view.reset);
     // No retry: a typed refusal (not in this team) is the answer under test.
     final container = ProviderContainer(
@@ -327,6 +330,61 @@ void main() {
       expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
       expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
       expect(find.byKey(const Key('ticket-T1')), findsNothing);
+    });
+
+    // E35 polish P-09: at a desktop width a request opened from the
+    // all-units list sits in the pane, but ↑/↓ did nothing — the list never
+    // said its order. They walk it now, and each step opens the request's
+    // own unit, as a tap on its row does.
+    testWidgets('↑/↓ in the pane walk the all-units list, unit by unit', (
+      tester,
+    ) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        desktop: const Size(1440, 900),
+        overrides: [
+          ...queue(selected: _general.id),
+          ticketProvider.overrideWith((ref, id) => Stream.value(null)),
+        ],
+      );
+      final pane = find.byKey(const Key('list-detail-pane'));
+      String? paneTicket() {
+        final found = find.descendant(
+          of: pane,
+          matching: find.byType(EeTicketDetailScreen),
+        );
+        if (found.evaluate().isEmpty) return null;
+        return tester.widget<EeTicketDetailScreen>(found).ticketId;
+      }
+
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i += 1) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      }
+
+      await tester.tap(find.byKey(const Key('unit-ticket-A1')));
+      await settle();
+      expect(paneTicket(), 'A1');
+      expect(container.read(currentWorkspaceProvider).value?.id, _bakim.id);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settle();
+      expect(paneTicket(), 'A2');
+      expect(container.read(selectedWorkspaceIdProvider), _bt.id);
+      // The last row: another ↓ stays on it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settle();
+      expect(paneTicket(), 'A2');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await settle();
+      expect(paneTicket(), 'A1');
+      expect(container.read(selectedWorkspaceIdProvider), _bakim.id);
+      // The list behind the pane is still every unit's.
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
     });
 
     testWidgets('inside a unit the unit\'s queue stays the default', (

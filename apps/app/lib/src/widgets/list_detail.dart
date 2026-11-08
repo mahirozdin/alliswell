@@ -181,6 +181,7 @@ class _AwListDetailScopeState extends State<AwListDetailScope>
     }
     _heldIndex = next;
     setState(() => _selected = ids[next]);
+    _order?.reached(ids[next]);
     widget.onShow?.call(ids[next]);
     _order?.reveal(ids[next], forward: delta > 0);
   }
@@ -344,15 +345,29 @@ abstract interface class AwListOrderHandle {
   /// Scrolls [id]'s row into view, when the row is built — to the bottom
   /// edge moving [forward], to the top one moving back.
   void reveal(String id, {required bool forward});
+
+  /// ↑/↓ have brought [id] into the pane — the list's chance to do what a
+  /// tap on its row would also do first (E35 polish P-09: the all-units
+  /// list opens the request's own unit).
+  void reached(String id);
 }
 
 /// Wraps a list whose rows open items in a pane: [ids] is the order the
 /// rows are drawn in. A row passes [maybeOf] to the controller's `open`.
 class AwListOrder extends StatefulWidget {
-  const AwListOrder({super.key, required this.ids, required this.child});
+  const AwListOrder({
+    super.key,
+    required this.ids,
+    required this.child,
+    this.onReached,
+  });
 
   final List<String> ids;
   final Widget child;
+
+  /// Called with each item ↑/↓ open from this list; see
+  /// [AwListOrderHandle.reached].
+  final ValueChanged<String>? onReached;
 
   static AwListOrderHandle? maybeOf(BuildContext context) =>
       context.getInheritedWidgetOfExactType<_AwListOrderInherited>()?.handle;
@@ -387,6 +402,11 @@ class _AwListOrderState extends State<AwListOrder>
           : ScrollPositionAlignmentPolicy.keepVisibleAtStart,
       duration: AwMotion.fast,
     );
+  }
+
+  @override
+  void reached(String id) {
+    if (mounted) widget.onReached?.call(id);
   }
 
   @override
