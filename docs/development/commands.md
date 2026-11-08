@@ -21,6 +21,7 @@ in `package.json`.
 | --- | --- |
 | `docker compose up -d mysql redis minio radicale` | local services; one shared `alliswell` stack, so start it from the main checkout, not a throwaway worktree |
 | `npm run db:migrate` / `npm run db:rollback` | migrations |
+| `npm run password:reset-link -- <email>` | a one-use, 24-hour password-reset link, printed (ADR-0064) |
 | `npm run dev` / `npm run start` | API (watch / plain) |
 | `npm run lint` · `npm run format` · `npm run format:check` | ESLint / Prettier (API) |
 | `npm run test` · `npm run test:integration` | API suites |
@@ -32,6 +33,7 @@ in `package.json`.
 
 `npm run check:no-ts` · `npm run check:no-ee` · `npm run check:i18n` · `npm run check:pages` ·
 `npm run check:copy` · `npm run check:fab` · `npm run check:opacity` ·
+`npm run check:typography` (raw type/spacing may only go down; `-- --update` after a cleanup) ·
 `npm run check:push-payload` · `npm run check:notify-matrix` · `npm run check:openapi` ·
 `npm run check:apidocs` · `npm run check:postman` · `npm run check:sync-fields` ·
 `npm run check:search-reachable`

@@ -21,6 +21,7 @@ import '../data/folder_store.dart';
 import '../providers.dart';
 import 'attach_menu.dart';
 import 'file_widgets.dart';
+import '../../../widgets/segment_label.dart';
 
 /// The global Dosyalar section (round 8, OPH-170 — BLUEPRINT §12.12,
 /// DESIGN §10 F7…F9, ADR-0014). Two layers, one anatomy (F7):
@@ -354,12 +355,12 @@ class _FilesScreenState extends ConsumerState<FilesScreen> {
                 ButtonSegment(
                   value: false,
                   icon: const Icon(Icons.folder_outlined),
-                  label: Text('files.myFolders'.tr()),
+                  label: AwSegmentLabel('files.myFolders'.tr()),
                 ),
                 ButtonSegment(
                   value: true,
                   icon: const Icon(Icons.attachment_outlined),
-                  label: Text('files.sources'.tr()),
+                  label: AwSegmentLabel('files.sources'.tr()),
                 ),
               ],
               selected: {_showSources},

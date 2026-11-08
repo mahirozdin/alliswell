@@ -100,6 +100,34 @@ export const STATIC_PAGES = [
     ],
   },
   {
+    // OPH-412 (landing-audit K10): the hosted service opens accounts, so it
+    // has terms, on this domain and in both languages. The Turkish twin
+    // follows the site's `/x/tr` pairs (sitemap.js reads them that way);
+    // `.htaccess` sends `/tr/terms` here too.
+    route: 'terms',
+    file: 'docs/TERMS.md',
+    title: 'Terms of Service — AllisWell',
+    description:
+      'The terms of the hosted AllisWell service: your account, your content, fair use, alarms, and the law that applies.',
+    lang: 'en',
+    alternates: [
+      { hreflang: 'en', label: 'English', href: '/terms' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/terms/tr' },
+    ],
+  },
+  {
+    route: 'terms/tr',
+    file: 'docs/TERMS.tr.md',
+    title: 'Kullanım Şartları — AllisWell',
+    description:
+      'Barındırılan AllisWell hizmetinin şartları: hesabınız, içeriğiniz, adil kullanım, alarmlar ve uygulanacak hukuk.',
+    lang: 'tr',
+    alternates: [
+      { hreflang: 'en', label: 'English', href: '/terms' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/terms/tr' },
+    ],
+  },
+  {
     // OPH-295: the public REST reference. English only — the file is
     // generated from the server's own route schemas (ADR-0035), and a second
     // language would be a second generator plus a translation that goes stale
@@ -252,6 +280,7 @@ ${body}
     <a href="/">alliswell.space</a> ·
     <a href="/app">Open the app</a> ·
     <a href="/privacy">Privacy</a> ·
+    <a href="/terms">Terms</a> ·
     <a href="/support">Support</a> ·
     <a href="https://github.com/mahirozdin/alliswell">GitHub</a>
   </p>

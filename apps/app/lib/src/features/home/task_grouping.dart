@@ -77,6 +77,13 @@ class HomeGroup {
   /// The calendar day this group covers, for buckets that are split per day
   /// (OPH-307). Null for the buckets that are one heap by design.
   final DateTime? day;
+
+  /// The number the header shows (OPH-394, E-06): what is still owed. Today's
+  /// finished work stays visible at the bottom of its group (DESIGN §20 C1),
+  /// but a struck-through row is not work, so the header does not count it.
+  int get count => items
+      .where((item) => !(item is TaskItem && item.task.isCompleted))
+      .length;
 }
 
 DateTime dayOf(DateTime value) {
@@ -232,28 +239,55 @@ List<HomeGroup> groupTasksForHome(
     return null; // beyond the horizon
   }
 
-  for (final task in tasks) {
+  /// The bucket a task's own dates file it under, or null when Home drops it
+  /// (a plan day beyond the horizon).
+  HomeBucket? bucketOf(Task task) {
     final due = task.dueAt;
-    final overdue = taskIsOverdueOn(task, today);
+    // OPH-394 (E-06): the row says "Overdue" in red the moment its deadline
+    // passes, so the Overdue group takes it the same moment — a red row under
+    // Today made the Overdue count disagree with what the eye counts. Finished
+    // work keeps the day rule: it is not owed any more.
+    final overdue =
+        taskIsOverdueOn(task, today) ||
+        (!task.isCompleted && due != null && due.isBefore(now));
     final planDay = overdue ? null : taskPlanDay(task, today);
     if (selectedDay != null &&
         ((due != null && dayOf(due) == selectedDay) ||
             (planDay != null && planDay == selectedDay))) {
-      byBucket[HomeBucket.selectedDay]!.add(TaskItem(task));
-      continue;
+      return HomeBucket.selectedDay;
     }
-    if (overdue) {
-      // A task's deadline CAN be in the past — that is the whole point of
-      // Overdue (a beyond-horizon FUTURE task, by contrast, is simply dropped).
-      // A "when" never overrides it (ADR-0053).
-      byBucket[HomeBucket.overdue]!.add(TaskItem(task));
-      continue;
-    }
-    if (planDay == null) {
-      byBucket[HomeBucket.noDate]!.add(TaskItem(task));
-      continue;
-    }
-    final bucket = futureBucketForDay(planDay);
+    // A task's deadline CAN be in the past — that is the whole point of
+    // Overdue (a beyond-horizon FUTURE task, by contrast, is simply dropped).
+    // A "when" never overrides it (ADR-0053).
+    if (overdue) return HomeBucket.overdue;
+    if (planDay == null) return HomeBucket.noDate;
+    return futureBucketForDay(planDay);
+  }
+
+  // OPH-394 (E-07): a subtask lives in its parent's detail, not as a row of
+  // its own — unless its parent is not reachable from Home: not on this list
+  // (finished on another day, a capture, someone else's) or on it but dropped
+  // (beyond the horizon), where hiding it would lose the work (E35 G-A r1).
+  final byId = {for (final task in tasks) task.id: task};
+  final buckets = {for (final task in tasks) task.id: bucketOf(task)};
+  final reachable = <String, bool>{};
+
+  /// Whether [task] can be found from Home: as a row of its own, or inside
+  /// an ancestor that is. The chain is followed with a guard against a cycle.
+  bool onHome(Task task, [Set<String> seen = const {}]) {
+    final known = reachable[task.id];
+    if (known != null) return known;
+    final parent = byId[task.parentTaskId];
+    final result = (parent != null && !seen.contains(parent.id))
+        ? onHome(parent, {...seen, task.id}) || buckets[task.id] != null
+        : buckets[task.id] != null;
+    return reachable[task.id] = result;
+  }
+
+  for (final task in tasks) {
+    final parent = byId[task.parentTaskId];
+    if (parent != null && onHome(parent, {task.id})) continue;
+    final bucket = buckets[task.id];
     if (bucket != null) byBucket[bucket]!.add(TaskItem(task));
   }
 

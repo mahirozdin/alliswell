@@ -10,7 +10,9 @@ import '../../features/ee/providers.dart' show canProvider;
 import '../../features/files/providers.dart';
 import '../../features/files/ui/file_widgets.dart';
 import '../../features/quick_access/data/quick_link.dart';
+import '../../features/quick_access/providers.dart';
 import '../../features/quick_access/ui/quick_access_navigation.dart';
+import '../../features/quick_access/ui/quick_access_row.dart';
 import '../../features/tags/tags.dart';
 import '../../features/tasks/ui/task_create_sheet.dart';
 import '../../i18n/i18n.dart';
@@ -38,6 +40,16 @@ final class GlobalSearchCreate extends GlobalSearchChoice {
   const GlobalSearchCreate(this.title);
   final String title;
 }
+
+/// A Quick Access shortcut picked from the empty palette's "Shortcuts"
+/// (OPH-397, ADR-0062 §5) — opened exactly as the panel opens it.
+final class GlobalSearchShortcut extends GlobalSearchChoice {
+  const GlobalSearchShortcut(this.row);
+  final QuickAccessRow row;
+}
+
+/// How many shortcuts the empty palette lists before "Recent".
+const int kGlobalSearchShortcutRows = 6;
 
 /// The palette that is up, if one is. A second ⌘K/Ctrl+K closes it rather
 /// than stacking another on top (DESIGN §40 P1).
@@ -94,6 +106,8 @@ Future<void> openGlobalSearchChoice(
       await showTaskCreateSheet(context, initialTitle: title);
     case GlobalSearchOpen(:final item):
       await _openItem(context, ref, item);
+    case GlobalSearchShortcut(:final row):
+      await openQuickDestination(context, ref, row);
   }
 }
 
@@ -157,13 +171,19 @@ class GlobalSearchPalette extends ConsumerStatefulWidget {
       _GlobalSearchPaletteState();
 }
 
-/// One selectable row: a result, a recent, or the create row.
+/// One selectable row: a result, a recent, a shortcut, or the create row.
 class _Entry {
-  const _Entry.item(GlobalSearchItem this.item) : create = null;
-  const _Entry.create(String this.create) : item = null;
+  const _Entry.item(GlobalSearchItem this.item)
+    : create = null,
+      shortcut = null;
+  const _Entry.create(String this.create) : item = null, shortcut = null;
+  const _Entry.shortcut(QuickAccessRow this.shortcut)
+    : item = null,
+      create = null;
 
   final GlobalSearchItem? item;
   final String? create;
+  final QuickAccessRow? shortcut;
 }
 
 class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
@@ -186,6 +206,10 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
 
   int _active = 0;
   final _rowKeys = <int, GlobalKey>{};
+
+  /// The groups opened with "Show N more" (OPH-394, E-12) — for this query
+  /// only; a new query starts every group closed again.
+  final _expanded = <GlobalSearchKind>{};
   bool _chosen = false;
 
   static const _debounceDelay = Duration(milliseconds: 150);
@@ -209,7 +233,9 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
         if (mounted) setState(() => _progressDue = true);
       });
       setState(() {
-        _query = _controller.text.trim();
+        final query = _controller.text.trim();
+        if (query != _query) _expanded.clear();
+        _query = query;
         _progressDue = false;
         _active = 0;
       });
@@ -233,8 +259,13 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
 
   void _openEntry(_Entry entry) {
     final item = entry.item;
+    final shortcut = entry.shortcut;
     _choose(
-      item != null ? GlobalSearchOpen(item) : GlobalSearchCreate(entry.create!),
+      item != null
+          ? GlobalSearchOpen(item)
+          : shortcut != null
+          ? GlobalSearchShortcut(shortcut)
+          : GlobalSearchCreate(entry.create!),
     );
   }
 
@@ -267,6 +298,7 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
     final searching = _query.isNotEmpty;
     var loading = false;
     List<GlobalSearchItem> recents = const [];
+    List<QuickAccessRow> shortcuts = const [];
     if (searching) {
       final async = ref.watch(globalSearchProvider(_query));
       if (async.hasValue && !async.isLoading) {
@@ -276,13 +308,34 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
       loading = async.isLoading || _shownFor != _query;
     } else {
       recents = ref.watch(recentSearchItemsProvider).value ?? const [];
+      // ADR-0062 §5: the empty palette is one of Quick Access's ways in.
+      shortcuts = (ref.watch(quickAccessRowsProvider).value ?? const [])
+          .take(kGlobalSearchShortcutRows)
+          .toList();
     }
     final groups = searching ? _shown : const <GlobalSearchGroup>[];
 
+    // OPH-394 (E-12): each group opens with its first few rows and a "Show N
+    // more" row; five rows of every kind pushed the later groups — notes,
+    // files — below the dialog's edge, where a header with a count and
+    // nothing to tap read as a dead end.
+    List<GlobalSearchItem> shownOf(GlobalSearchGroup group) {
+      if (!_expanded.contains(group.kind)) {
+        return group.items.take(kGlobalSearchGroupPreview).toList();
+      }
+      final all = ref.watch(globalSearchKindProvider((_shownFor, group.kind)));
+      return all.value ?? group.items;
+    }
+
+    final shownItems = {for (final group in groups) group.kind: shownOf(group)};
+
     final entries = <_Entry>[
-      if (!searching) ...[for (final item in recents) _Entry.item(item)],
+      if (!searching) ...[
+        for (final row in shortcuts) _Entry.shortcut(row),
+        for (final item in recents) _Entry.item(item),
+      ],
       for (final group in groups) ...[
-        for (final item in group.items) _Entry.item(item),
+        for (final item in shownItems[group.kind]!) _Entry.item(item),
       ],
       if (text.isNotEmpty && canCreate) _Entry.create(text),
     ];
@@ -337,6 +390,7 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
         key: key,
         active: i == _active,
         item: item,
+        shortcut: entry.shortcut,
         createTitle: entry.create,
         onHover: () {
           if (_active != i) setState(() => _active = i);
@@ -346,6 +400,17 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
     }
 
     final children = <Widget>[];
+    if (!searching && shortcuts.isNotEmpty) {
+      children.add(
+        _GroupHeader(
+          key: const Key('global-search-shortcuts'),
+          label: 'search.global.shortcuts'.tr(),
+        ),
+      );
+      for (final shortcut in shortcuts) {
+        children.add(row(_Entry.shortcut(shortcut)));
+      }
+    }
     if (!searching && recents.isNotEmpty) {
       children.add(_GroupHeader(label: 'search.global.recent'.tr()));
       for (final item in recents) {
@@ -353,16 +418,24 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
       }
     }
     for (final group in groups) {
-      final label = _groupLabel(group.kind);
+      // A-18: the header says how many matched; the row below says how many
+      // more there are to see.
       children.add(
-        _GroupHeader(
-          label: group.total > group.items.length
-              ? '$label · ${'search.global.groupCount'.tr(args: {'shown': '${group.items.length}', 'total': '${group.total}'})}'
-              : label,
-        ),
+        _GroupHeader(label: '${_groupLabel(group.kind)} · ${group.total}'),
       );
-      for (final item in group.items) {
+      final items = shownItems[group.kind]!;
+      for (final item in items) {
         children.add(row(_Entry.item(item)));
+      }
+      final remaining = group.total - items.length;
+      if (remaining > 0 && !_expanded.contains(group.kind)) {
+        children.add(
+          _ShowMoreRow(
+            key: Key('global-search-more-${group.kind.name}'),
+            remaining: remaining,
+            onTap: () => setState(() => _expanded.add(group.kind)),
+          ),
+        );
       }
     }
     final createEntry = entries.isNotEmpty && entries.last.create != null
@@ -437,12 +510,13 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
 
     final count = Semantics(
       liveRegion: true,
-      child: Padding(
+      child: Container(
+        alignment: AlignmentDirectional.centerStart,
         padding: const EdgeInsets.fromLTRB(
           AwSpace.x5,
           AwSpace.x1,
           AwSpace.x5,
-          AwSpace.x3,
+          AwSpace.x1,
         ),
         child: Text(
           searching && !loading
@@ -490,10 +564,12 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
                 ),
               ),
               progress,
+              // OPH-394 (E-12): the total sits under the field it answers,
+              // not at the foot of the screen where it floated mid-list.
+              count,
               Expanded(
                 child: Align(alignment: Alignment.topCenter, child: body),
               ),
-              count,
             ],
           ),
         ),
@@ -520,8 +596,8 @@ class _GlobalSearchPaletteState extends ConsumerState<GlobalSearchPalette> {
           children: [
             Padding(padding: const EdgeInsets.all(AwSpace.x4), child: field),
             progress,
-            Flexible(child: body),
             count,
+            Flexible(child: body),
           ],
         ),
       ),
@@ -554,8 +630,31 @@ IconData _kindIcon(GlobalSearchItem item) => switch (item.kind) {
   GlobalSearchKind.file => fileKindIcon(item.mime ?? ''),
 };
 
+/// "Show 4 more" under a group that has more than it shows (OPH-394, A-18).
+class _ShowMoreRow extends StatelessWidget {
+  const _ShowMoreRow({required this.remaining, required this.onTap, super.key});
+
+  final int remaining;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: AlignmentDirectional.centerStart,
+      child: TextButton(
+        style: TextButton.styleFrom(
+          minimumSize: const Size(48, 48),
+          padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
+        ),
+        onPressed: onTap,
+        child: Text('search.global.showMore'.tr(args: {'count': '$remaining'})),
+      ),
+    );
+  }
+}
+
 class _GroupHeader extends StatelessWidget {
-  const _GroupHeader({required this.label});
+  const _GroupHeader({required this.label, super.key});
 
   final String label;
 
@@ -593,10 +692,12 @@ class _PaletteRow extends StatelessWidget {
     required this.createTitle,
     required this.onHover,
     required this.onTap,
+    this.shortcut,
   });
 
   final bool active;
   final GlobalSearchItem? item;
+  final QuickAccessRow? shortcut;
   final String? createTitle;
   final VoidCallback onHover;
   final VoidCallback onTap;
@@ -612,7 +713,14 @@ class _PaletteRow extends StatelessWidget {
     final IconData icon;
     final String semanticLabel;
     String? badge;
-    if (item == null) {
+    final shortcut = this.shortcut;
+    if (shortcut != null) {
+      // The shortcut's own name and kind glyph (DESIGN §23 Q3).
+      title = shortcut.displayTitle;
+      subtitle = null;
+      icon = quickKindIcon(shortcut.link.kind);
+      semanticLabel = '${'quick.title'.tr()}: $title';
+    } else if (item == null) {
       title = 'search.global.createTask'.tr(args: {'title': createTitle!});
       subtitle = null;
       icon = Icons.add_task;
@@ -642,7 +750,9 @@ class _PaletteRow extends StatelessWidget {
         child: Material(
           type: MaterialType.transparency,
           child: InkWell(
-            key: item == null
+            key: shortcut != null
+                ? Key('global-search-shortcut-${shortcut.id}')
+                : item == null
                 ? const Key('global-search-create')
                 : Key('global-search-${item.kind.name}-${item.id}'),
             borderRadius: const BorderRadius.all(Radius.circular(AwRadius.s)),

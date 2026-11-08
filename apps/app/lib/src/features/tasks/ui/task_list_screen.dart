@@ -57,7 +57,7 @@ class InboxScreen extends ConsumerWidget {
                 ),
                 data: (items) => items.isEmpty
                     ? AwEmptyState(
-                        icon: Icons.inbox_outlined,
+                        icon: AppSection.inbox.icon,
                         title: 'inbox.captureTitle'.tr(),
                         message: 'inbox.captureBody'.tr(),
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -169,7 +169,7 @@ class _CaptureTile extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.inbox_outlined, color: scheme.onSurfaceVariant),
+                  Icon(AppSection.inbox.icon, color: scheme.onSurfaceVariant),
                   const SizedBox(width: AwSpace.x3),
                   Expanded(
                     child: Text(

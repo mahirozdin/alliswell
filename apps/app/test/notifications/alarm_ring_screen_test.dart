@@ -5,12 +5,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/date_format.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/providers.dart';
+import 'package:alliswell/src/notifications/web_alert_mode.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
@@ -285,12 +287,14 @@ void main() {
     WidgetTester tester,
     _SpyFeedback spy, {
     required bool silent,
+    bool chosen = true,
   }) async {
     container.dispose();
     container = ProviderContainer(
       overrides: [
         ...syncTestOverrides(alarmFeedback: spy),
-        alarmSilentByChoiceProvider.overrideWithValue(silent),
+        alarmOpensSilentProvider.overrideWithValue(silent),
+        alarmSilenceChosenProvider.overrideWithValue(chosen),
       ],
     );
     addTearDown(container.dispose);
@@ -324,7 +328,86 @@ void main() {
     await pumpSilentByChoice(tester, spy, silent: false);
 
     expect(find.byKey(const Key('alarm-silent-declared')), findsNothing);
+    expect(find.byKey(const Key('alarm-silent-default')), findsNothing);
     expect(spy.starts, 1);
+  });
+
+  // ── OPH-393 (E-20): nobody chose Silent in a fresh browser ──────────────
+  testWidgets('a silent DEFAULT is not claimed as the person\'s choice', (
+    tester,
+  ) async {
+    final spy = _SpyFeedback();
+    await pumpSilentByChoice(tester, spy, silent: true, chosen: false);
+
+    expect(find.byKey(const Key('alarm-silent-declared')), findsNothing);
+    expect(find.textContaining('you set this browser'), findsNothing);
+    // Still not a silent alarm that looks like a failure: it says why, and
+    // the sound is one press away.
+    expect(find.byKey(const Key('alarm-silent-default')), findsOneWidget);
+    expect(find.textContaining('silent by default'), findsOneWidget);
+    expect(find.byKey(const Key('alarm-start-sound')), findsOneWidget);
+    expect(spy.starts, 0, reason: 'ADR-0039: the web default stays silent');
+  });
+
+  test('an untouched browser has not chosen anything', () async {
+    final fresh = ProviderContainer();
+    addTearDown(fresh.dispose);
+    await localKv.remove('alliswell_web_alert_mode');
+    expect(fresh.read(alarmSilenceChosenProvider), isFalse);
+    // ...and still behaves silently, as before (ADR-0039).
+    expect(fresh.read(webAlertModeProvider), WebAlertMode.silent);
+
+    await fresh.read(webAlertModeRawProvider.notifier).set('silent');
+    addTearDown(() => localKv.remove('alliswell_web_alert_mode'));
+    expect(fresh.read(alarmSilenceChosenProvider), isTrue);
+
+    await fresh.read(webAlertModeRawProvider.notifier).set('loud');
+    expect(fresh.read(alarmSilenceChosenProvider), isFalse);
+  });
+
+  testWidgets('E-20: the screen underneath leaves the semantics tree', (
+    tester,
+  ) async {
+    await seed();
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: _theme,
+          // The shell's own layering (`home_shell.dart`): the ring screen is
+          // the last child of a Stack over Home.
+          home: Scaffold(
+            body: Stack(
+              children: [
+                Center(
+                  child: TextButton(
+                    onPressed: () {},
+                    child: const Text('Home control behind'),
+                  ),
+                ),
+                Positioned.fill(
+                  child: AlarmRingScreen(
+                    alarm: theAlarm(),
+                    onHandled: handled.add,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Take pills'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel('Home control behind'),
+      findsNothing,
+      reason: 'a screen reader must not land behind a ringing alarm',
+    );
+    expect(find.bySemanticsLabel(RegExp('Take pills')), findsWidgets);
+    semantics.dispose();
   });
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../data/task_when.dart';
@@ -88,7 +89,7 @@ class _DurationDialogState extends State<_DurationDialog> {
                 for (final minutes in kAwDurationPresets)
                   ChoiceChip(
                     key: Key('duration-preset-$minutes'),
-                    label: Text(awFormatDuration(minutes)),
+                    label: Text(awFormatDuration(minutes, days: false)),
                     selected: _selected == minutes,
                     onSelected: (_) => _pick(minutes),
                   ),

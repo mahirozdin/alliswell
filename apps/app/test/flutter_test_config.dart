@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/format_region.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
 /// Flutter's official per-suite hook (auto-discovered at `test/`): it wraps every
@@ -23,5 +24,10 @@ Future<void> testExecutable(FutureOr<void> Function() testMain) async {
     also: const [Locale('tr')],
   );
   await initializeDateFormatting();
+  // OPH-408: dates and numbers follow the device REGION. A suite must not
+  // depend on the machine running it, so by default "the device says
+  // nothing" and the app language's own conventions apply (tr → 24h, "6,3";
+  // en → US). Region tests pass `region:` or set this hook themselves.
+  awDeviceRegionOverride = () => null;
   await testMain();
 }

@@ -27,7 +27,8 @@ class _RecordingApi implements DeviceApi {
   }
 
   @override
-  Future<String?> pushPublicKey() async => 'server-vapid-key';
+  Future<PushKeyLookup> lookupPushKey() async =>
+      const PushKeyLookup.key('server-vapid-key');
 
   @override
   Future<void> unregister(String deviceId) async {

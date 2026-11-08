@@ -76,21 +76,29 @@ void main() {
       );
     });
 
-    test('"system" follows the language (tr → 24h, en → 12h)', () {
+    test('"system" follows the region and never writes a numeric date '
+        '(OPH-408)', () {
+      final now = DateTime(2026, 11, 8);
       expect(
-        awFormatDateTime(sample, format: kAwSystemDateFormat, locale: 'tr'),
-        '31.12.2026 23:59',
+        awFormatDateTime(
+          sample,
+          format: kAwSystemDateFormat,
+          locale: 'tr',
+          region: 'TR',
+          now: now,
+        ),
+        '31 Ara,\u00A023:59',
       );
-      // CLDR puts a narrow no-break space before PM, so assert the parts —
-      // pinning the exact whitespace would break on the next intl bump.
+      // Region tests live in format_test.dart; here, the language default.
       final en = awFormatDateTime(
         sample,
         format: kAwSystemDateFormat,
         locale: 'en',
+        now: now,
       );
-      expect(en, startsWith('12/31/2026 '));
+      expect(en, startsWith('Dec 31,'));
       expect(en, contains('11:59'));
-      expect(en, contains('PM'), reason: 'en follows its own 12h clock');
+      expect(en, contains('PM'), reason: 'en (US) keeps a 12h clock');
     });
 
     test('a junk or retired preference falls back to "system"', () {

@@ -13,6 +13,8 @@ import '../data/team_settings.dart';
 import '../team_settings_providers.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/form_width.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The team settings form (EE-037) — the first screen a team admin owns.
 ///
@@ -104,16 +106,18 @@ class _EeTeamSettingsScreenState extends ConsumerState<EeTeamSettingsScreen> {
         leading: awRouteLeading(context),
         title: Text('ee.team.settings.title'.tr()),
       ),
-      body: async.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeTeamSettingsProvider),
+      body: AwFormWidth(
+        child: async.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(eeTeamSettingsProvider),
+          ),
+          data: (settings) {
+            _adopt(settings);
+            return _form(context, settings);
+          },
         ),
-        data: (settings) {
-          _adopt(settings);
-          return _form(context, settings);
-        },
       ),
     );
   }
@@ -278,7 +282,7 @@ class _EeTeamSettingsScreenState extends ConsumerState<EeTeamSettingsScreen> {
   }) => InputDecorator(
     decoration: InputDecoration(labelText: label, helperText: helper),
     child: DropdownButtonHideUnderline(
-      child: DropdownButton<String?>(
+      child: AwDropdownButton<String?>(
         value: value,
         isExpanded: true,
         items: items,

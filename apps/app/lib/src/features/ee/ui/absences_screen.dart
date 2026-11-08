@@ -14,6 +14,7 @@ import '../absences_providers.dart';
 import '../assignments_providers.dart';
 import '../data/absences_api.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// EE-236 (AW-E18) — who is away, and who is on call because of it.
 ///
@@ -342,7 +343,7 @@ class _AbsenceSheetState extends ConsumerState<_AbsenceSheet> {
           Text('ee.absences.add'.tr(), style: theme.textTheme.titleLarge),
           const SizedBox(height: AwSpace.x4),
           if (widget.page.canManage) ...[
-            DropdownButtonFormField<String?>(
+            AwDropdownField<String?>(
               key: const Key('absence-person'),
               initialValue: _userId,
               decoration: InputDecoration(labelText: 'ee.absences.person'.tr()),

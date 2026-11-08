@@ -16,6 +16,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../projects/providers.dart';
@@ -57,9 +58,7 @@ Future<bool> openMarkdownFile(BuildContext context, WidgetRef ref) async {
     messenger.showSnackBar(
       SnackBar(
         content: Text(
-          'note.mdTooLarge'.tr(
-            args: {'size': (e.bytes / (1024 * 1024)).toStringAsFixed(1)},
-          ),
+          'note.mdTooLarge'.tr(args: {'size': awFormatFileSize(e.bytes)}),
         ),
       ),
     );

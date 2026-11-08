@@ -3,11 +3,14 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../../core/error_messages.dart';
+import '../../../../core/format.dart';
+import '../../../../core/persisted_prefs.dart';
 import '../../../../i18n/i18n.dart';
 import '../../../../theme/tokens.dart';
 import '../../../../widgets/status_views.dart';
 import '../admin_providers.dart';
 import '../data/admin_models.dart';
+import '../../../../widgets/dropdown_field.dart';
 
 /// The sales inbox (EE-160).
 ///
@@ -195,13 +198,16 @@ class _StatusFilter extends StatelessWidget {
 /// one line on that screen that is NOT a field — the sentence explaining the
 /// blanks — printed a raw `2026-09-09T08:00:00.000Z` next to four formatted
 /// dates. No test saw it; opening the golden did.
-String? _date(String? iso) {
+String? _date(BuildContext context, String? iso) {
   if (iso == null) return null;
   final parsed = DateTime.tryParse(iso);
   if (parsed == null) return iso;
-  final local = parsed.toLocal();
-  String two(int n) => n.toString().padLeft(2, '0');
-  return '${local.year}-${two(local.month)}-${two(local.day)}';
+  // OPH-408: the reader's own date format, never a numeric ISO day.
+  final format = ProviderScope.containerOf(
+    context,
+    listen: false,
+  ).read(dateFormatProvider);
+  return awFormatDate(parsed, format: format);
 }
 
 class _LeadRow extends StatelessWidget {
@@ -326,7 +332,7 @@ class _AdminLeadDetailScreenState extends ConsumerState<AdminLeadDetailScreen> {
           rows: [
             (
               'ee.admin.leads.received'.tr(),
-              _date(lead.createdAt) ?? 'ee.admin.leads.notStated'.tr(),
+              _date(context, lead.createdAt) ?? 'ee.admin.leads.notStated'.tr(),
             ),
             (
               'ee.admin.leads.seats'.tr(),
@@ -385,7 +391,7 @@ class _AdminLeadDetailScreenState extends ConsumerState<AdminLeadDetailScreen> {
             ),
             (
               'ee.admin.leads.consentAt'.tr(),
-              _date(lead.consentAt) ?? 'ee.admin.leads.notStated'.tr(),
+              _date(context, lead.consentAt) ?? 'ee.admin.leads.notStated'.tr(),
             ),
           ],
         ),
@@ -418,7 +424,7 @@ class _AdminLeadDetailScreenState extends ConsumerState<AdminLeadDetailScreen> {
         const SizedBox(height: AwSpace.x4),
         Text('ee.admin.leads.status.label'.tr(), style: text.labelLarge),
         const SizedBox(height: AwSpace.x1),
-        DropdownButtonFormField<String>(
+        AwDropdownField<String>(
           key: const Key('admin-lead-status'),
           initialValue: _status,
           items: [
@@ -592,7 +598,7 @@ class _ErasedNotice extends StatelessWidget {
                     const SizedBox(height: AwSpace.x1),
                     Text(
                       'ee.admin.leads.erasedAt'.tr(
-                        args: {'date': _date(at) ?? at!},
+                        args: {'date': _date(context, at) ?? at!},
                       ),
                       style: Theme.of(context).textTheme.labelSmall,
                     ),

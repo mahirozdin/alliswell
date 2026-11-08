@@ -9,6 +9,9 @@ import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
 import '../../../core/deep_link.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sections.dart';
+import '../../../widgets/route_leading.dart';
+import '../../../widgets/status_views.dart';
 import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../files/providers.dart';
 import '../../files/ui/file_widgets.dart' show UploadRowTile;
@@ -29,6 +32,7 @@ import 'note_versions_screen.dart';
 import 'note_export.dart';
 import '../../workspaces/workspaces.dart';
 import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
+import '../../../widgets/popup_menu.dart';
 
 /// The note editor (OPH-044, rebuilt for three modes in OPH-248).
 ///
@@ -57,22 +61,75 @@ class NoteEditorScreen extends ConsumerWidget {
     if (noteId == null) return const _NoteEditor(note: null);
     final note = ref.watch(noteDetailProvider(noteId!));
     return note.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => _NoteEditorWaiting(noteId: noteId!),
       error: (error, _) => Scaffold(
         appBar: AppBar(),
         body: Center(child: Text('$error')),
       ),
-      data: (value) => _NoteEditor(note: value),
+      // T-02: the detail stream keeps its last value when a pull deletes the
+      // row, so the editor still has the text; this says the note is gone.
+      data: (value) => _NoteEditor(
+        note: value,
+        deletedElsewhere: ref.watch(noteExistsProvider(noteId!)).value == false,
+      ),
+    );
+  }
+}
+
+/// The note's row is not in the replica (yet). A spinner while the server
+/// says the note exists — the pull brings it — and an answer otherwise (R-05):
+/// a link to a deleted, mistyped or foreign note used to spin forever with no
+/// app bar and no way out. The task detail's pattern (OPH-392, E-17).
+class _NoteEditorWaiting extends ConsumerWidget {
+  const _NoteEditorWaiting({required this.noteId});
+
+  final String noteId;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final absence = ref.watch(noteAbsenceProvider(noteId)).value;
+    return Scaffold(
+      appBar: absence == null ? null : AppBar(leading: awRouteLeading(context)),
+      body: switch (absence) {
+        null => const Center(child: CircularProgressIndicator()),
+        // T-02: a missing note is not a fault. The error state's "Something
+        // went wrong" and cloud-off badge read as a dropped connection; this
+        // names what is missing.
+        NoteAbsence.gone => AwEmptyState(
+          key: const Key('note-detail-gone'),
+          icon: Icons.search_off_outlined,
+          title: 'note.notFoundTitle'.tr(),
+          message: 'note.notFoundBody'.tr(),
+          action: OutlinedButton.icon(
+            onPressed: () => GoRouter.of(context).go(AppSection.home.path),
+            icon: const Icon(Icons.home_outlined),
+            label: Text('error.goHome'.tr()),
+          ),
+        ),
+        NoteAbsence.unreachable => AwErrorState(
+          key: const Key('note-detail-unreachable'),
+          message: 'error.NETWORK_ERROR'.tr(),
+          onRetry: () => ref.invalidate(noteAbsenceProvider(noteId)),
+        ),
+      },
     );
   }
 }
 
 class _NoteEditor extends ConsumerStatefulWidget {
-  const _NoteEditor({required this.note, this.external = false});
+  const _NoteEditor({
+    required this.note,
+    this.external = false,
+    this.deletedElsewhere = false,
+  });
 
   final NoteDetail? note;
   final bool external;
+
+  /// The note was deleted on the server and a pull removed its row while it
+  /// was open (T-02). The editor turns read-only: the text stays readable and
+  /// exportable, nothing is saved after it, and a notice says why.
+  final bool deletedElsewhere;
 
   @override
   ConsumerState<_NoteEditor> createState() => _NoteEditorState();
@@ -102,6 +159,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// down and the framework asserted "defunct". `mounted` is the wrong guard
   /// here; this is the right one.
   bool _disposed = false;
+
+  /// Set by this editor's own delete, so the row it removes does not flash
+  /// the "deleted elsewhere" notice before the route pops.
+  bool _deletingHere = false;
+
+  /// T-02: read-only because the note no longer exists.
+  bool get _gone => widget.deletedElsewhere && !_deletingHere;
+
+  /// The mode on screen: a gone note only reads.
+  NoteMode get _mode => _gone ? NoteMode.reading : _doc.mode;
 
   @override
   void initState() {
@@ -139,6 +206,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   @override
   void didUpdateWidget(covariant _NoteEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.deletedElsewhere && !oldWidget.deletedElsewhere) {
+      // Nothing is sent after a note that is gone: an update would name a
+      // row the server has tombstoned.
+      _debounce?.cancel();
+      _dirty = false;
+    }
     final incoming = widget.note;
     if (incoming == null || widget.external) return;
     if (incoming.revision == oldWidget.note?.revision) return;
@@ -152,7 +225,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _debounce?.cancel();
     // Flush a pending save without awaiting (screen is going away) — but never
     // for an external document: leaving is not consent to write (W2).
-    if (_dirty && !widget.external) unawaited(_save());
+    if (_dirty && !widget.external && !_gone) unawaited(_save());
     _doc
       ..removeListener(_onDocChanged)
       ..title.removeListener(_markDirty)
@@ -229,6 +302,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   }
 
   void _markDirty() {
+    if (_gone) return;
     _dirty = true;
     // W2: autosave belongs to AllisWell's own notes. An external file — and
     // the note it would otherwise be silently imported as — changes only on a
@@ -260,7 +334,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       : _doc.title.text.trim();
 
   Future<void> _save() async {
-    if (_saving || !_dirty) return;
+    if (_saving || !_dirty || _gone) return;
     _saving = true;
     _dirty = false;
     _setSaveState(_SaveState.saving);
@@ -321,6 +395,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     if (!confirmed || !mounted) return;
     _debounce?.cancel();
     _dirty = false;
+    _deletingHere = true;
     if (id != null) {
       await ref.read(noteStoreProvider).delete(id);
     }
@@ -328,6 +403,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     // Pop back to wherever we came from — the project Overview when opened via
     // /edit-note (OPH-109), or the notes list when opened from there. Fall back
     // to the Notes tab if this is somehow the only page.
+    if (context.canPop()) {
+      context.pop();
+    } else {
+      context.go('/notes');
+    }
+  }
+
+  /// The deleted notice's way out: back where the note was opened from, or
+  /// the notes list when it was the only page (a cold-started link).
+  void _closeGone() {
     if (context.canPop()) {
       context.pop();
     } else {
@@ -369,7 +454,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
               icon: const Icon(Icons.note_add_outlined),
               onPressed: _saveExternalAsNote,
             ),
-          ] else ...[
+          ] else if (!_gone) ...[
             IconButton(
               tooltip: _isPinned ? 'note.unpin'.tr() : 'note.pin'.tr(),
               icon: Icon(
@@ -401,7 +486,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
           // access all name a NOTE by id, and this one has none until the user
           // saves it as one.
           if (!widget.external)
-            PopupMenuButton<String>(
+            AwPopupMenuButton<String>(
               key: const Key('note-quick-menu'),
               tooltip: 'note.actions'.tr(),
               onSelected: (value) {
@@ -448,7 +533,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                   mdKey: const Key('note-export-md'),
                   docxKey: const Key('note-export-docx'),
                 ),
-                if (_noteId != null)
+                // A gone note keeps only export: the way to take the text
+                // somewhere else. Versions, quick access and delete name a
+                // note that no longer exists.
+                if (_noteId != null && !_gone)
                   PopupMenuItem(
                     key: const Key('note-versions'),
                     value: 'versions',
@@ -458,14 +546,14 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                       title: Text('versions.title'.tr()),
                     ),
                   ),
-                if (_noteId case final id?)
+                if (_noteId case final id? when !_gone)
                   quickAccessMenuItem(
                     value: 'quick',
                     isSaved: isInQuickAccess(ref, QuickKind.note, id),
                   ),
                 // Last, behind a divider: the one destructive entry stays
                 // away from the everyday ones and always asks first.
-                if (_noteId != null) ...[
+                if (_noteId != null && !_gone) ...[
                   const PopupMenuDivider(),
                   PopupMenuItem(
                     key: const Key('note-delete'),
@@ -504,24 +592,26 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                 noteId: _noteId!,
                 conflictVersionId: widget.note!.conflictVersionId!,
               ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: NoteModeControl(
-                      modes: _doc.availableModes,
-                      active: _doc.mode,
-                      onChanged: _doc.setMode,
+            if (_gone) _DeletedNotice(onClose: _closeGone),
+            if (!_gone)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: NoteModeControl(
+                        modes: _doc.availableModes,
+                        active: _doc.mode,
+                        onChanged: _doc.setMode,
+                      ),
                     ),
-                  ),
-                  _SaveIndicator(state: _saveState),
-                ],
+                    _SaveIndicator(state: _saveState),
+                  ],
+                ),
               ),
-            ),
             // The bar that used to be Quill's, in the same place (OPH-274).
             // Reading has no toolbar (D4), so it is mounted with the editor.
-            if (_doc.mode == NoteMode.source)
+            if (_mode == NoteMode.source)
               MdEditorToolbar(
                 controller: _doc.source,
                 onApplied: _markDirty,
@@ -549,7 +639,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
               child: Center(
                 child: ConstrainedBox(
                   constraints: BoxConstraints(
-                    maxWidth: _doc.mode == NoteMode.source ? 1400 : 760,
+                    maxWidth: _mode == NoteMode.source ? 1400 : 760,
                   ),
                   child: Column(
                     children: [
@@ -559,7 +649,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                           key: const Key('note-title'),
                           controller: _doc.title,
                           maxLines: null,
-                          readOnly: _doc.mode == NoteMode.reading,
+                          readOnly: _mode == NoteMode.reading,
                           decoration: InputDecoration(
                             hintText: 'note.titleHint'.tr(),
                             border: InputBorder.none,
@@ -593,7 +683,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// upload has a target, upload, insert — because a drop is a different door
   /// to the same room, not a different feature.
   Future<void> _uploadDropped(List<PickedUpload> picks) async {
-    if (picks.isEmpty) return;
+    if (picks.isEmpty || _gone) return;
     final target = await _ensureNote();
     if (target == null) return;
 
@@ -664,7 +754,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     unawaited(ref.read(urlLauncherProvider)(uri));
   }
 
-  Widget _body() => switch (_doc.mode) {
+  Widget _body() => switch (_mode) {
     // D4: Reading is never editable-looking — no caret, no placeholder, no
     // toolbar. (Tappable task-list checkboxes that write back are OPH-249's,
     // and they need the source map this renderer already carries.)
@@ -681,6 +771,53 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       onPasteImage: _pasteImage,
     ),
   };
+}
+
+/// T-02: the note was deleted on another device while it was open here.
+///
+/// The conflict banner's role pair (tertiaryContainer / onTertiaryContainer,
+/// both measured in `contrast.py`): it is news about the note, not an error.
+class _DeletedNotice extends StatelessWidget {
+  const _DeletedNotice({required this.onClose});
+
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final ink = theme.colorScheme.onTertiaryContainer;
+    return Material(
+      key: const Key('note-deleted-banner'),
+      color: theme.colorScheme.tertiaryContainer,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(
+          AwSpace.x4,
+          AwSpace.x2,
+          AwSpace.x2,
+          AwSpace.x2,
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.delete_outline, size: 20, color: ink),
+            const SizedBox(width: AwSpace.x2),
+            Expanded(
+              child: Text(
+                'note.deletedNotice'.tr(),
+                style: theme.textTheme.bodyMedium?.copyWith(color: ink),
+              ),
+            ),
+            const SizedBox(width: AwSpace.x2),
+            TextButton(
+              key: const Key('note-deleted-close'),
+              style: TextButton.styleFrom(foregroundColor: ink),
+              onPressed: onClose,
+              child: Text('common.close'.tr()),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 enum _SaveState { idle, saving, saved, failed }

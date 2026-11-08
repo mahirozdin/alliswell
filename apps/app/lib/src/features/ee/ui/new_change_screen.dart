@@ -15,6 +15,8 @@ import '../data/changes_models.dart';
 import '../services_providers.dart';
 import 'change_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/segment_label.dart';
+import '../../../widgets/form_width.dart';
 
 /// Raising a change from the phone (EE-269 box 4, EE-279).
 ///
@@ -145,217 +147,222 @@ class _EeNewChangeScreenState extends ConsumerState<EeNewChangeScreen> {
         leading: awRouteLeading(context),
         title: Text('ee.changes.create.title'.tr()),
       ),
-      body: ListView(
-        padding: awListPadding(context, top: AwSpace.x4),
-        children: [
-          if (source != null) ...[
-            Row(
-              key: const Key('change-new-source'),
-              children: [
-                const Icon(Icons.support_agent, size: 20),
-                const SizedBox(width: AwSpace.x2),
-                Expanded(
-                  child: Text(
-                    'ee.changes.create.fromTicket'.tr(
-                      args: {
-                        'ticket': [
-                          if (source.number != null) '#${source.number}',
-                          source.subject,
-                        ].join(' · '),
-                      },
+      body: AwFormWidth(
+        child: ListView(
+          padding: awListPadding(context, top: AwSpace.x4),
+          children: [
+            if (source != null) ...[
+              Row(
+                key: const Key('change-new-source'),
+                children: [
+                  const Icon(Icons.support_agent, size: 20),
+                  const SizedBox(width: AwSpace.x2),
+                  Expanded(
+                    child: Text(
+                      'ee.changes.create.fromTicket'.tr(
+                        args: {
+                          'ticket': [
+                            if (source.number != null) '#${source.number}',
+                            source.subject,
+                          ].join(' · '),
+                        },
+                      ),
+                      style: theme.textTheme.bodyMedium,
                     ),
-                    style: theme.textTheme.bodyMedium,
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: AwSpace.x4),
-          ],
-          TextField(
-            key: const Key('change-new-title'),
-            controller: _title,
-            maxLength: 200,
-            decoration: InputDecoration(
-              labelText: 'ee.changes.create.name'.tr(),
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: AwSpace.x2),
-          Text(
-            'ee.changes.create.type'.tr(),
-            style: theme.textTheme.titleSmall,
-          ),
-          const SizedBox(height: AwSpace.x2),
-          SegmentedButton<String>(
-            key: const Key('change-new-type'),
-            segments: [
-              for (final t in const ['standard', 'normal', 'emergency'])
-                ButtonSegment(value: t, label: Text('ee.changes.type.$t'.tr())),
-            ],
-            selected: {_type},
-            onSelectionChanged: (v) => setState(() => _type = v.first),
-          ),
-          const SizedBox(height: AwSpace.x1),
-          // What the choice MEANS, under it: the difference between normal
-          // and standard is a signature, and the person choosing should not
-          // have to know ITIL to know that.
-          Text(
-            'ee.changes.create.typeHint.$_type'.tr(),
-            style: theme.textTheme.bodySmall?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-          const SizedBox(height: AwSpace.x4),
-          Text(
-            'ee.changes.create.risk'.tr(),
-            style: theme.textTheme.titleSmall,
-          ),
-          const SizedBox(height: AwSpace.x2),
-          SegmentedButton<String>(
-            key: const Key('change-new-risk'),
-            segments: [
-              for (final r in const ['low', 'medium', 'high'])
-                ButtonSegment(
-                  value: r,
-                  label: Text('ee.changes.riskShort.$r'.tr()),
-                ),
-            ],
-            selected: {_risk},
-            onSelectionChanged: (v) => setState(() => _risk = v.first),
-          ),
-          const SizedBox(height: AwSpace.x4),
-          TextField(
-            key: const Key('change-new-impact'),
-            controller: _impact,
-            minLines: 2,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: 'ee.changes.create.impact'.tr(),
-              helperText: 'ee.changes.create.impactHelp'.tr(),
-              helperMaxLines: 2,
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: AwSpace.x3),
-          TextField(
-            key: const Key('change-new-rollback'),
-            controller: _rollback,
-            minLines: 2,
-            maxLines: 6,
-            decoration: InputDecoration(
-              labelText: 'ee.changes.create.rollback'.tr(),
-              helperText: 'ee.changes.create.rollbackHelp'.tr(),
-              helperMaxLines: 2,
-            ),
-            onChanged: (_) => setState(() {}),
-          ),
-          const SizedBox(height: AwSpace.x4),
-          _WindowField(
-            fieldKey: const Key('change-new-start'),
-            label: 'ee.changes.create.windowStart'.tr(),
-            value: _start,
-            format: format,
-            onPick: () async {
-              final picked = await awPickDateTime(
-                context,
-                ref,
-                current: _start,
-              );
-              if (picked != null) setState(() => _start = picked);
-            },
-            onClear: () => setState(() => _start = null),
-          ),
-          _WindowField(
-            fieldKey: const Key('change-new-end'),
-            label: 'ee.changes.create.windowEnd'.tr(),
-            value: _end,
-            format: format,
-            onPick: () async {
-              final picked = await awPickDateTime(
-                context,
-                ref,
-                current: _end,
-                anchor: _start,
-              );
-              if (picked != null) setState(() => _end = picked);
-            },
-            onClear: () => setState(() => _end = null),
-          ),
-          if (_windowBackwards)
-            Padding(
-              padding: const EdgeInsets.only(top: AwSpace.x2),
-              child: AwInlineError(
-                textKey: const Key('change-new-backwards'),
-                message: 'ee.changes.create.windowBackwards'.tr(),
+                ],
               ),
+              const SizedBox(height: AwSpace.x4),
+            ],
+            TextField(
+              key: const Key('change-new-title'),
+              controller: _title,
+              maxLength: 200,
+              decoration: InputDecoration(
+                labelText: 'ee.changes.create.name'.tr(),
+              ),
+              onChanged: (_) => setState(() {}),
             ),
-          if (services.isNotEmpty) ...[
-            const SizedBox(height: AwSpace.x4),
+            const SizedBox(height: AwSpace.x2),
             Text(
-              'ee.changes.create.services'.tr(),
+              'ee.changes.create.type'.tr(),
               style: theme.textTheme.titleSmall,
             ),
+            const SizedBox(height: AwSpace.x2),
+            SegmentedButton<String>(
+              key: const Key('change-new-type'),
+              segments: [
+                for (final t in const ['standard', 'normal', 'emergency'])
+                  ButtonSegment(
+                    value: t,
+                    label: AwSegmentLabel('ee.changes.type.$t'.tr()),
+                  ),
+              ],
+              selected: {_type},
+              onSelectionChanged: (v) => setState(() => _type = v.first),
+            ),
             const SizedBox(height: AwSpace.x1),
+            // What the choice MEANS, under it: the difference between normal
+            // and standard is a signature, and the person choosing should not
+            // have to know ITIL to know that.
             Text(
-              'ee.changes.create.servicesHint'.tr(),
+              'ee.changes.create.typeHint.$_type'.tr(),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            const SizedBox(height: AwSpace.x4),
+            Text(
+              'ee.changes.create.risk'.tr(),
+              style: theme.textTheme.titleSmall,
+            ),
             const SizedBox(height: AwSpace.x2),
-            Wrap(
-              spacing: AwSpace.x2,
-              runSpacing: AwSpace.x1,
-              children: [
-                for (final service in services)
-                  FilterChip(
-                    key: Key('change-new-service-${service.id}'),
-                    label: Text(service.name),
-                    selected: _services.contains(service.id),
-                    onSelected: (on) => setState(
-                      () => on
-                          ? _services.add(service.id)
-                          : _services.remove(service.id),
-                    ),
+            SegmentedButton<String>(
+              key: const Key('change-new-risk'),
+              segments: [
+                for (final r in const ['low', 'medium', 'high'])
+                  ButtonSegment(
+                    value: r,
+                    label: AwSegmentLabel('ee.changes.riskShort.$r'.tr()),
                   ),
               ],
+              selected: {_risk},
+              onSelectionChanged: (v) => setState(() => _risk = v.first),
             ),
-          ],
-          const SizedBox(height: AwSpace.x4),
-          TextField(
-            key: const Key('change-new-description'),
-            controller: _description,
-            minLines: 2,
-            maxLines: 8,
-            decoration: InputDecoration(
-              labelText: 'ee.changes.create.description'.tr(),
-            ),
-          ),
-          const SizedBox(height: AwSpace.x4),
-          if (_error != null) ...[
-            AwInlineError(
-              textKey: const Key('change-new-error'),
-              message: localizedError(_error!),
+            const SizedBox(height: AwSpace.x4),
+            TextField(
+              key: const Key('change-new-impact'),
+              controller: _impact,
+              minLines: 2,
+              maxLines: 6,
+              decoration: InputDecoration(
+                labelText: 'ee.changes.create.impact'.tr(),
+                helperText: 'ee.changes.create.impactHelp'.tr(),
+                helperMaxLines: 2,
+              ),
+              onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AwSpace.x3),
-          ],
-          FilledButton(
-            key: const Key('change-new-save'),
-            onPressed: _complete && !_saving && !offline ? _save : null,
-            child: Text('ee.changes.create.save'.tr()),
-          ),
-          if (offline)
-            Padding(
-              key: const Key('change-new-offline'),
-              padding: const EdgeInsets.only(top: AwSpace.x2),
-              child: Text(
-                'ee.changes.create.offline'.tr(),
+            TextField(
+              key: const Key('change-new-rollback'),
+              controller: _rollback,
+              minLines: 2,
+              maxLines: 6,
+              decoration: InputDecoration(
+                labelText: 'ee.changes.create.rollback'.tr(),
+                helperText: 'ee.changes.create.rollbackHelp'.tr(),
+                helperMaxLines: 2,
+              ),
+              onChanged: (_) => setState(() {}),
+            ),
+            const SizedBox(height: AwSpace.x4),
+            _WindowField(
+              fieldKey: const Key('change-new-start'),
+              label: 'ee.changes.create.windowStart'.tr(),
+              value: _start,
+              format: format,
+              onPick: () async {
+                final picked = await awPickDateTime(
+                  context,
+                  ref,
+                  current: _start,
+                );
+                if (picked != null) setState(() => _start = picked);
+              },
+              onClear: () => setState(() => _start = null),
+            ),
+            _WindowField(
+              fieldKey: const Key('change-new-end'),
+              label: 'ee.changes.create.windowEnd'.tr(),
+              value: _end,
+              format: format,
+              onPick: () async {
+                final picked = await awPickDateTime(
+                  context,
+                  ref,
+                  current: _end,
+                  anchor: _start,
+                );
+                if (picked != null) setState(() => _end = picked);
+              },
+              onClear: () => setState(() => _end = null),
+            ),
+            if (_windowBackwards)
+              Padding(
+                padding: const EdgeInsets.only(top: AwSpace.x2),
+                child: AwInlineError(
+                  textKey: const Key('change-new-backwards'),
+                  message: 'ee.changes.create.windowBackwards'.tr(),
+                ),
+              ),
+            if (services.isNotEmpty) ...[
+              const SizedBox(height: AwSpace.x4),
+              Text(
+                'ee.changes.create.services'.tr(),
+                style: theme.textTheme.titleSmall,
+              ),
+              const SizedBox(height: AwSpace.x1),
+              Text(
+                'ee.changes.create.servicesHint'.tr(),
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
+              const SizedBox(height: AwSpace.x2),
+              Wrap(
+                spacing: AwSpace.x2,
+                runSpacing: AwSpace.x1,
+                children: [
+                  for (final service in services)
+                    FilterChip(
+                      key: Key('change-new-service-${service.id}'),
+                      label: Text(service.name),
+                      selected: _services.contains(service.id),
+                      onSelected: (on) => setState(
+                        () => on
+                            ? _services.add(service.id)
+                            : _services.remove(service.id),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            const SizedBox(height: AwSpace.x4),
+            TextField(
+              key: const Key('change-new-description'),
+              controller: _description,
+              minLines: 2,
+              maxLines: 8,
+              decoration: InputDecoration(
+                labelText: 'ee.changes.create.description'.tr(),
+              ),
             ),
-        ],
+            const SizedBox(height: AwSpace.x4),
+            if (_error != null) ...[
+              AwInlineError(
+                textKey: const Key('change-new-error'),
+                message: localizedError(_error!),
+              ),
+              const SizedBox(height: AwSpace.x3),
+            ],
+            FilledButton(
+              key: const Key('change-new-save'),
+              onPressed: _complete && !_saving && !offline ? _save : null,
+              child: Text('ee.changes.create.save'.tr()),
+            ),
+            if (offline)
+              Padding(
+                key: const Key('change-new-offline'),
+                padding: const EdgeInsets.only(top: AwSpace.x2),
+                child: Text(
+                  'ee.changes.create.offline'.tr(),
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

@@ -70,7 +70,12 @@ void main() {
     // `**Kalın kısım**`); a rendered document shows neither, because the marks
     // have become a heading and bold text — which is the entire point.
     expect(find.byKey(const Key('note-mode-control')), findsOneWidget);
-    await tester.tap(find.text('Reading'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('note-mode-control')),
+        matching: find.text('Read'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(MarkdownView), findsOneWidget);

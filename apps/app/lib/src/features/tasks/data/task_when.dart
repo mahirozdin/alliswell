@@ -1,4 +1,3 @@
-import '../../../i18n/i18n.dart';
 import 'task.dart';
 
 /// "When" and "Duration" (OPH-372, ADR-0053) — the pure rules every surface
@@ -68,14 +67,3 @@ const int kAwMaxEstimatedMinutes = 1440;
 
 /// The duration picker's one-tap choices.
 const List<int> kAwDurationPresets = [15, 30, 45, 60, 90, 120, 180];
-
-/// "45 min", "1 h", "1 h 30 min" ("45 dk", "1 sa", "1 sa 30 dk").
-String awFormatDuration(int minutes) {
-  final h = minutes ~/ 60;
-  final m = minutes % 60;
-  if (h == 0) {
-    return 'task.durationValue.minutes'.tr(args: {'m': '$m'});
-  }
-  if (m == 0) return 'task.durationValue.hours'.tr(args: {'h': '$h'});
-  return 'task.durationValue.hoursMinutes'.tr(args: {'h': '$h', 'm': '$m'});
-}

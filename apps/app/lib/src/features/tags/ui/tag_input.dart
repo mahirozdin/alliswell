@@ -26,7 +26,14 @@ class TagInputField extends ConsumerStatefulWidget {
     required this.onChanged,
     this.onManage,
     this.workspaceId,
+    this.labelText,
   });
+
+  /// OPH-403 (H-6, DESIGN §49 N5): set on a form, the field is the form's
+  /// one G3 field — this label, the hint only once it floats, no leading
+  /// "#" icon — so its text starts where the title's and description's do.
+  /// Null keeps the compact icon-led field of the detail's Tags card.
+  final String? labelText;
 
   /// Selected tag ids, order preserved.
   final List<String> value;
@@ -186,11 +193,16 @@ class _TagInputFieldState extends ConsumerState<TagInputField> {
                   key: const Key('tag-input'),
                   controller: _controller,
                   focusNode: _focus,
-                  decoration: InputDecoration(
-                    hintText: 'tag.inputHint'.tr(),
-                    prefixIcon: const Icon(Icons.tag, size: 18),
-                    isDense: true,
-                  ),
+                  decoration: widget.labelText != null
+                      ? InputDecoration(
+                          labelText: widget.labelText,
+                          hintText: 'tag.inputHint'.tr(),
+                        )
+                      : InputDecoration(
+                          hintText: 'tag.inputHint'.tr(),
+                          prefixIcon: const Icon(Icons.tag, size: 18),
+                          isDense: true,
+                        ),
                   onChanged: (value) {
                     // Comma commits mid-typing (mobile keyboards have no Tab).
                     if (value.endsWith(',')) {

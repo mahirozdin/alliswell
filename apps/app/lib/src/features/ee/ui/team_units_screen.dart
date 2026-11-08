@@ -11,6 +11,7 @@ import '../providers.dart';
 import '../units_providers.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// Units, and the people in them (EE-057).
 ///
@@ -174,7 +175,7 @@ class _UnitCard extends ConsumerWidget {
             style: theme.textTheme.bodySmall,
           ),
           trailing: mayShape
-              ? PopupMenuButton<String>(
+              ? AwPopupMenuButton<String>(
                   key: Key('unit-menu-${unit.id}'),
                   onSelected: (value) async {
                     switch (value) {
@@ -283,7 +284,7 @@ class EeUnitMembersScreen extends ConsumerWidget {
                           subtitle: member.isManager
                               ? Text('ee.team.units.manager'.tr())
                               : null,
-                          trailing: PopupMenuButton<String>(
+                          trailing: AwPopupMenuButton<String>(
                             key: Key('unit-member-menu-${member.userId}'),
                             onSelected: (value) async {
                               switch (value) {

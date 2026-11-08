@@ -7,6 +7,7 @@ import '../../../widgets/status_views.dart';
 import '../providers.dart';
 import 'auth_messages.dart';
 import 'auth_scaffold.dart';
+import 'forgot_password_screen.dart';
 import 'second_factor_prompt.dart';
 import 'social_sign_in_buttons.dart';
 
@@ -110,6 +111,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 validator: (v) =>
                     (v == null || v.isEmpty) ? 'auth.enterPassword'.tr() : null,
+              ),
+              // OPH-406: under the field it is about, the email carried along.
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: TextButton(
+                  key: const Key('login-forgot'),
+                  onPressed: _submitting
+                      ? null
+                      : () => context.go(
+                          Uri(
+                            path: kForgotPasswordPath,
+                            queryParameters: {
+                              if (_email.text.trim().isNotEmpty)
+                                'email': _email.text.trim(),
+                            },
+                          ).toString(),
+                        ),
+                  child: Text('auth.forgotLink'.tr()),
+                ),
               ),
             ],
           ),

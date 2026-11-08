@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,8 +9,10 @@ import 'core/deep_link.dart';
 import 'core/modal_observer.dart';
 import 'core/persisted_prefs.dart' show homeCalendarVisibleProvider;
 import 'features/auth/providers.dart';
+import 'features/auth/ui/forgot_password_screen.dart';
 import 'features/auth/ui/login_screen.dart';
 import 'features/auth/ui/register_screen.dart';
+import 'features/auth/ui/reset_password_screen.dart';
 import 'features/ee/admin/admin_providers.dart';
 import 'features/ee/admin/ui/admin_login_screen.dart';
 import 'features/ee/admin/ui/admin_leads_screen.dart';
@@ -17,6 +20,7 @@ import 'features/ee/admin/ui/admin_packages_screen.dart';
 import 'features/ee/admin/ui/admin_shell.dart';
 import 'features/ee/admin/ui/admin_teams_screen.dart';
 import 'features/ee/admin/ui/admin_usage_screen.dart';
+import 'features/ee/ui/assignments_moved_screen.dart';
 import 'features/ee/ui/join_screen.dart';
 import 'features/ee/ui/team_address_views.dart';
 import 'features/files/ui/files_screen.dart';
@@ -93,8 +97,9 @@ import 'widgets/glass.dart';
 import 'widgets/status_views.dart';
 import 'i18n/i18n.dart';
 import 'widgets/route_leading.dart';
+import 'screens/shell_rail.dart';
 
-const _authLocations = {'/login', '/register'};
+const _authLocations = {'/login', '/register', kForgotPasswordPath};
 
 /// Where an unroutable location lands. A real route, so the screen it shows is
 /// ours — themed, localized and with an exit that works.
@@ -115,7 +120,12 @@ Widget _page(Widget child) => AwPageBackground(child: child);
 /// forever for a copy that never came. Every such page keeps the replica
 /// current itself. The auth screens, the splash and the operator console do
 /// not use this: there is no person's replica there to keep.
-Widget _contentPage(Widget child) => _page(AwKeepReplicaCurrent(child: child));
+///
+/// OPH-405 (U-08): from the desktop width (`kAwPaneBreakpoint`) such a page
+/// keeps the rail beside it ([AwRailFrame]) — Settings and a task opened by
+/// its address no longer drop the navigation.
+Widget _contentPage(Widget child) =>
+    _page(AwKeepReplicaCurrent(child: AwRailFrame(child: child)));
 
 /// A team route behind its door (OPH-356, UI-AUDIT #7 and #61): the team's
 /// address first, then — for the administration — who may open it. See
@@ -341,6 +351,37 @@ bool isAdminLocation(String location) =>
 /// free registration — the join screen is where that account is made.
 bool isJoinLocation(String location) => location.startsWith('/join/');
 
+/// Where a password-reset link lands (OPH-406). Reachable while a session is
+/// still restoring — a cold start on the web opens straight at the link, and
+/// parking it on the splash would lose the token — and signed out; a person
+/// who turns out to be signed in goes Home.
+bool isResetLocation(String location) => location == kResetPasswordPath;
+
+/// OPH-413 (landing-audit K3): the website's "Start free" button opens
+/// `/app/?signup=1`. The query sits before the hash, on the PAGE address, so
+/// go_router never sees it; [Uri.base] does.
+bool awWantsSignup(Uri pageAddress) =>
+    pageAddress.queryParameters['signup'] == '1';
+
+/// Whether a signed-out person should land on the sign-up form rather than
+/// sign-in. Read once from the page address on the web and spent the first
+/// time it sends somebody to /register: a later sign-out in the same tab goes
+/// to sign-in as usual, and "Sign in instead" on the form keeps working.
+class SignupIntent extends Notifier<bool> {
+  SignupIntent([this._initial]);
+
+  final bool? _initial;
+
+  @override
+  bool build() => _initial ?? (kIsWeb && awWantsSignup(Uri.base));
+
+  void spend() => state = false;
+}
+
+final signupIntentProvider = NotifierProvider<SignupIntent, bool>(
+  SignupIntent.new,
+);
+
 /// Pure redirect policy (unit-tested in test/router_redirect_test.dart):
 /// admin locations answer to the operator session ALONE; then restoring →
 /// splash; signed out → login/register only; signed in → keep auth/splash
@@ -350,6 +391,7 @@ String? computeAuthRedirect({
   required bool isLoggedIn,
   required String location,
   bool isInstanceAdmin = false,
+  bool preferSignup = false,
 }) {
   // Answered FIRST and entirely on its own terms: the person's session — even
   // mid-restore — decides nothing here, in either direction.
@@ -361,9 +403,13 @@ String? computeAuthRedirect({
   // where parking it on the splash lost it on a cold start. The join screen
   // waits for the session itself.
   if (isJoinLocation(location)) return null;
+  if (isResetLocation(location)) {
+    return isLoggedIn && !isRestoring ? AppSection.home.path : null;
+  }
   if (isRestoring) return location == '/splash' ? null : '/splash';
   if (!isLoggedIn) {
-    return _authLocations.contains(location) ? null : '/login';
+    if (_authLocations.contains(location)) return null;
+    return preferSignup ? '/register' : '/login';
   }
   if (location == '/splash' || _authLocations.contains(location)) {
     return AppSection.home.path;
@@ -377,16 +423,40 @@ String? computeAuthRedirect({
 /// redirect sends the user to /login, and the destination is replayed after
 /// sign-in. Losing the tap because the session had expired would be its own
 /// small betrayal.
+///
+/// OPH-390 (polish-2 R-07): a destination can belong to somebody. The page a
+/// session stood on when it ended is that person's — replayed for them when
+/// they sign back in (a session that ran out), never for the next account:
+/// demo@ signed out from Settings and saha1@ opened on Settings. A link that
+/// arrives signed out has no owner and waits for whoever signs in.
 class PendingDeepLink extends Notifier<String?> {
+  /// The user id [state] belongs to; null = anybody's.
+  String? _owner;
+
   @override
   String? build() => null;
 
-  void remember(String location) => state = location;
+  void remember(String location, {String? owner}) {
+    _owner = owner;
+    state = location;
+  }
+
+  /// [remember], unless a destination is already waiting.
+  void rememberIfNone(String location) {
+    if (state != null) return;
+    _owner = null;
+    state = location;
+  }
 
   /// Reads and clears in one step — a destination may only be replayed once.
-  String? take() {
+  /// With [forUser], a destination that belongs to somebody else is dropped
+  /// (and still cleared) instead of returned.
+  String? take({String? forUser}) {
     final pending = state;
+    final owner = _owner;
+    _owner = null;
     if (pending != null) state = null;
+    if (owner != null && forUser != null && owner != forUser) return null;
     return pending;
   }
 }
@@ -417,7 +487,21 @@ final awRootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'aw-root');
 final routerProvider = Provider<GoRouter>((ref) {
   // go_router re-evaluates `redirect` whenever this notifier fires.
   final authChanged = ValueNotifier(0);
-  ref.listen(authControllerProvider, (_, _) => authChanged.value++);
+  // OPH-390 (R-07): whose session just ended. The first signed-out redirect
+  // after it is the page that person stood on, remembered as THEIRS — so it
+  // is replayed for them, and the next account opens on Home.
+  String? endedFor;
+  ref.listen(authControllerProvider, (previous, next) {
+    if (!next.isLoading) {
+      final was = previous?.value?.user.id;
+      if (next.value != null) {
+        endedFor = null;
+      } else if (was != null) {
+        endedFor = was;
+      }
+    }
+    authChanged.value++;
+  });
   // The operator session moves the router too — signing in or out of the
   // console must land somewhere without a manual navigation (EE-033).
   ref.listen(adminSessionProvider, (_, _) => authChanged.value++);
@@ -440,6 +524,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: authChanged,
     redirect: (context, state) {
       final auth = ref.read(authControllerProvider);
+      // Spent by the first signed-out redirect, whatever it decides: only
+      // the page the session stood on belongs to the person who left.
+      final leftBy = endedFor;
+      if (!auth.isLoading && auth.value == null) endedFor = null;
       // OPH-333: our own scheme is resolved HERE, before route matching can
       // swallow it. go_router rewrites an EMPTY path to '/', so a bare-host
       // URL (`alliswell://add`, `alliswell://open`) matches the root route and
@@ -490,12 +578,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         }
         return AppSection.home.path;
       }
+      final preferSignup = ref.read(signupIntentProvider);
       final decision = computeAuthRedirect(
         isRestoring: auth.isLoading,
         isLoggedIn: auth.value != null,
         location: state.matchedLocation,
         isInstanceAdmin: ref.read(isInstanceAdminProvider),
+        preferSignup: preferSignup,
       );
+      // OPH-413: spent once it has sent somebody to the form (or once a
+      // session exists, when it means nothing any more).
+      if (preferSignup &&
+          !auth.isLoading &&
+          (decision == '/register' || auth.value != null)) {
+        _outsideBuild(ref.read(signupIntentProvider.notifier).spend);
+      }
       // The operator console never participates in the deep-link replay or
       // the pending-destination machinery below: those exist to carry a
       // PERSON back to what they tapped, and an operator's session is not
@@ -509,23 +606,47 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (auth.value != null &&
           !auth.isLoading &&
           (decision == AppSection.home.path || decision == null)) {
-        final pending = ref.read(pendingDeepLinkProvider.notifier).take();
+        final pending = ref
+            .read(pendingDeepLinkProvider.notifier)
+            .take(forUser: auth.value!.user.id);
         if (pending != null && pending != state.matchedLocation) return pending;
       }
       // OPH-298: the share extension's callback is NOT a destination, so it is
       // never remembered. Replaying it after sign-in would replay an
       // unroutable location; the payload it announces waits in the App Group
       // and the shell drains it the moment it mounts.
-      if (auth.value == null &&
-          !auth.isLoading &&
+      //
+      // OPH-392 (E-17): a RESTORING session too. A cold start on the web opens
+      // straight at the URL (`/#/tasks/<id>` from a notification or a shared
+      // link); the restore parks it on /splash, and the splash then went to
+      // Home — the destination was never written down. Remembered here, the
+      // replay above takes it once the session exists. While restoring the
+      // previous value may still be there, which is why this does not ask
+      // `auth.value == null` then. The first redirect of a cold start runs
+      // while the app builds, where Riverpod refuses a write — the routing
+      // error that followed landed on /not-found and looped — so the restore
+      // case writes a microtask later; the restore itself takes far longer.
+      // An `alliswell://` link parked itself above, already resolved.
+      if ((auth.isLoading || auth.value == null) &&
+          appLink == null &&
           !awIsShareCallback(state.uri)) {
         final wanted = awRouteForUri(state.uri) ?? state.matchedLocation;
         // A join link is reachable signed out (it remembers itself, query
         // and all, when it sends somebody to sign in).
         if (!_authLocations.contains(wanted) &&
             wanted != '/splash' &&
-            !isJoinLocation(wanted)) {
-          ref.read(pendingDeepLinkProvider.notifier).remember(wanted);
+            wanted != _kNotFound &&
+            !isJoinLocation(wanted) &&
+            !isResetLocation(wanted)) {
+          final pending = ref.read(pendingDeepLinkProvider.notifier);
+          if (auth.isLoading) {
+            // The FIRST destination wins while restoring: the redirects that
+            // follow it are the app's own (`alliswell://add` → `/home?add=1`
+            // → `/home`), and each would overwrite it with less.
+            _outsideBuild(() => pending.rememberIfNone(wanted));
+          } else {
+            pending.remember(wanted, owner: leftBy);
+          }
         }
       }
       return decision;
@@ -592,6 +713,21 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/register',
         builder: (context, state) => _page(const RegisterScreen()),
       ),
+      // OPH-406 (ADR-0064): "Forgot password?" and the link it sends.
+      GoRoute(
+        path: kForgotPasswordPath,
+        builder: (context, state) => _page(
+          ForgotPasswordScreen(
+            initialEmail: state.uri.queryParameters['email'],
+          ),
+        ),
+      ),
+      GoRoute(
+        path: kResetPasswordPath,
+        builder: (context, state) => _page(
+          ResetPasswordScreen(token: state.uri.queryParameters['token']),
+        ),
+      ),
       // EE-018: a team invite's landing place. Not in `_authLocations` on
       // purpose — a signed-in person may open one too.
       //
@@ -655,8 +791,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
       StatefulShellRoute.indexedStack(
-        // OPH-362: a named page, so the Quick Access dock inset leaves the
-        // shell alone — it docks the bubble beside its own bar instead.
+        // OPH-362: a named page, so the Quick Access layer can tell the shell
+        // (where its button floats) from a page pushed over it (OPH-397).
         pageBuilder: (context, state, navigationShell) => MaterialPage<void>(
           key: state.pageKey,
           name: kAwShellPageName,
@@ -1064,11 +1200,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // EE-068's "assigned to me" list, retired by EE-296: in an
       // organisation Home IS the person's work — everything assigned to them,
       // from every unit — so a second list of the same work would be the
-      // thing to explain. The address stays, for links and habits, and lands
-      // where that work now is.
+      // thing to explain. The address stays, for links and habits. OPH-409
+      // (E-19): it used to redirect to Home silently; it now says where the
+      // list went and offers the way there.
       GoRoute(
         path: '/settings/team/assignments',
-        redirect: (context, state) => '/',
+        builder: (context, state) =>
+            _contentPage(const EeAssignmentsMovedScreen()),
       ),
       // EE-087: "my requests". Reachable by anyone in a team — asking for
       // something is the least privileged act in the product.

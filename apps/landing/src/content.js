@@ -15,6 +15,7 @@
 
 import {
   APP_STORE_URL,
+  APP_SIGNUP_URL,
   APP_URL,
   DOCS_URL,
   LINUX_DOWNLOAD_URL,
@@ -25,16 +26,26 @@ import {
   WINDOWS_DOWNLOAD_URL,
 } from './site.js';
 
+/**
+ * OPH-412 (landing-audit K6): one primary action, chosen by the device
+ * (src/home/platform.js). The bar carries the same one as the hero.
+ */
+const primary = {
+  desktop: { label: 'Start free in your browser', href: APP_SIGNUP_URL },
+  ios: { label: 'Get it on the App Store', href: APP_STORE_URL },
+  android: { label: 'Get it on Google Play', href: PLAY_URL },
+};
+
 export default {
   lang: 'en',
 
   seo: {
-    title: 'AllisWell: tasks, notes and alarms you can host yourself',
+    title: 'AllisWell: self-hosted tasks with alarms that ring through Silent mode',
     description:
       'Tasks in projects, markdown notes, files and alarms that ring through Silent mode, with ' +
       'two-way Google Calendar sync and a connector for Claude and ChatGPT. One app for iPhone, ' +
       'Android, the web and desktop. Free for personal use, on your own server or ours.',
-    ogImage: '/shots/og/home-dusk.jpg',
+    ogImage: '/shots/og/home-alarm.jpg',
   },
 
   skip: 'Skip to the tour',
@@ -51,15 +62,18 @@ export default {
       { label: 'Download', href: '/#get' },
       { label: 'Enterprise', href: '/enterprise' },
     ],
-    cta: { label: 'Open the app', href: APP_URL },
+    github: { label: 'GitHub', href: REPO_URL },
+    cta: primary,
     menu: 'Menu',
     langLabel: 'Language',
   },
 
   hero: {
-    title: 'Tasks, notes and alarms you own.',
-    sentence: 'Reminders ring through Silent mode. Run it on your server or ours.',
-    primary: { label: 'Open the web app', href: APP_URL },
+    // Owner decision S-3 (2026-11-07): the alarm in the head, self-hosting
+    // and the Claude/ChatGPT connector in the line under it.
+    title: 'Reminders that ring through Silent mode.',
+    sentence: 'Tasks, notes and files in one app, on your own server or ours. Connect Claude or ChatGPT and ask it about your day.',
+    primary,
     secondary: { label: 'Host it yourself', href: '/#self-host' },
     also: {
       before: 'Also on ',
@@ -75,6 +89,15 @@ export default {
     media: 'hero',
     alt: 'A day in AllisWell: the Home list fills with tasks from three projects, one is ticked off, and the rent reminder rings as an alarm.',
     caption: 'Recorded from the app with sample data.',
+  },
+
+  // OPH-412 (landing-audit K2): counted from the GitHub API at build time;
+  // without it the line drops the count (src/home/proof.js).
+  proof: {
+    label: 'About the project',
+    source: { label: 'Source on GitHub', href: REPO_URL },
+    releases: '{n} releases, the first in {month}',
+    free: 'Free for personal use',
   },
 
   tour: {
@@ -156,9 +179,11 @@ export default {
   },
 
   own: {
-    title: 'Your server, one command.',
-    lead: 'Two Docker images and your own database. Upgrading is a pull.',
-    commandLabel: 'On your server',
+    // OPH-412 (M-2): the README's install is four steps, not one command —
+    // two downloads, two secrets, the .env edit, then the command shown.
+    title: 'Your server, four steps.',
+    lead: 'Two files, two secrets, your domains and passwords, one command. Upgrading is a pull.',
+    commandLabel: 'Last step',
     command: 'docker compose -f docker-compose.selfhost.yml up -d', // i18n-same
     points: [
       'Free for personal use and for running your own copy.',
@@ -172,18 +197,21 @@ export default {
 
   compare: {
     title: 'How it compares, honestly.',
-    lead: 'Where others are ahead: sharing with other people, and reminders by location.',
-    caption: 'AllisWell beside three apps people move from, as of mid-2026.',
-    columns: ['AllisWell', 'Google Calendar', 'Apple Reminders', 'Things 3'],
+    lead: 'Where others are ahead: sharing with other people, and a public demo.',
+    caption: 'AllisWell beside Todoist, TickTick and Vikunja; Vikunja checked October 2026.',
+    // OPH-412 (landing-audit K15): the apps a self-hoster compares, cell for
+    // cell the README's table; "unknown" is its dash, not checked against
+    // their own documentation.
+    columns: ['AllisWell', 'Todoist', 'TickTick', 'Vikunja'],
     rows: [
-      ['Runs on your own server', 'yes', 'no', 'no', 'no'],
-      ['Alarms through Silent and Focus', 'yes', 'no', 'partial', 'no'],
-      ['Re-alerts until you acknowledge', 'yes', 'no', 'no', 'no'],
-      ['Two-way Google Calendar sync', 'yes', 'native', 'no', 'no'],
-      ['The 31st repeats into February', 'yes', 'no', 'yes', 'yes'],
-      ['Connector for Claude and ChatGPT', 'yes', 'no', 'no', 'no'],
+      ['Runs on your own server', 'yes', 'no', 'no', 'yes'],
+      ['Alarm through Silent, repeated until answered', 'yes', 'unknown', 'unknown', 'partial'],
+      ['Two-way Google Calendar sync', 'yes', 'unknown', 'unknown', 'no'],
+      ['Connector for Claude and ChatGPT', 'yes', 'unknown', 'unknown', 'yes'],
+      ['Native iPhone and Android apps', 'yes', 'yes', 'yes', 'partial'],
+      ['Sharing with other people', 'no', 'yes', 'unknown', 'yes'],
     ],
-    labels: { yes: 'Yes', no: 'No', partial: 'Partly', native: 'Built in' },
+    labels: { yes: 'Yes', no: 'No', partial: 'Partly', unknown: 'Unchecked' },
     link: { label: 'Read the full comparison', href: `${DOCS_URL}/COMPARISON.md` },
   },
 
@@ -208,8 +236,8 @@ export default {
     title: 'What people ask before they switch.',
     items: [
       {
-        q: 'Is it open source?',
-        a: 'The source is public, and personal use and self-hosting are free. Running it inside a business, reselling it or offering it as a service needs a commercial licence, because the code is under PolyForm Noncommercial. Write to info@bubiapps.com.',
+        q: 'What is the licence?',
+        a: 'Source-available, not open source: PolyForm Noncommercial. Personal use and self-hosting are free; running it inside a business, reselling it or offering it as a service needs a commercial licence. Write to info@bubiapps.com.',
       },
       {
         q: 'What happens when an alarm rings?',
@@ -261,12 +289,14 @@ export default {
         title: 'Company',
         links: [
           { label: 'Privacy', href: '/privacy' },
+          { label: 'Terms', href: '/terms' },
           { label: 'Support', href: '/support' },
           { label: 'Licence', href: `${REPO_URL}/blob/main/LICENSE` },
           { label: 'Commercial licensing', href: 'mailto:info@bubiapps.com' },
         ],
       },
     ],
+    registeredAs: 'Registered name',
     notes: 'Not affiliated with Apple, Google, Anthropic or OpenAI.',
     photoLabel: 'Photograph',
     photoChanges: 'cropped and resized',

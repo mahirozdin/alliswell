@@ -9,6 +9,7 @@ import '../data/team_admin_models.dart';
 import '../team_admin_providers.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// The management roster (EE-042).
 ///
@@ -134,7 +135,7 @@ class _MemberTile extends ConsumerWidget {
               if (member.email != null) member.email!,
             ].join(' · '),
           ),
-          trailing: PopupMenuButton<String>(
+          trailing: AwPopupMenuButton<String>(
             key: Key('member-menu-${member.userId}'),
             onSelected: (action) => _run(context, ref, controller, action),
             itemBuilder: (context) => [

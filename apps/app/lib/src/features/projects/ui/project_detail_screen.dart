@@ -7,8 +7,11 @@ import '../../quick_access/data/quick_link.dart';
 import '../../quick_access/ui/quick_access_add.dart';
 import '../../../core/list_sort.dart';
 import '../../../core/persisted_prefs.dart';
+import '../../../core/format.dart';
 import '../../../i18n/i18n.dart';
+import '../../../sections.dart';
 import '../../../theme/tokens.dart';
+import '../../../widgets/list_detail.dart';
 import '../../../widgets/sort_menu.dart';
 import '../../files/data/file_attachment.dart';
 import '../../../widgets/status_views.dart';
@@ -31,6 +34,7 @@ import '../providers.dart';
 import 'project_archive.dart';
 import 'project_edit_sheet.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// Project detail (OPH-036 + feedback round 1): Overview opens on the
 /// project's README note (GitHub style), Tasks and Notes tabs are live lists
@@ -56,9 +60,16 @@ class ProjectDetailScreen extends ConsumerWidget {
           if (p.id == projectId) project = p;
         }
         if (project == null) {
+          // R-05: a dead end needs a way out — a cold link has no back.
           return Scaffold(
             appBar: AppBar(),
-            body: Center(child: Text('project.notFound'.tr())),
+            body: AwErrorState(
+              key: const Key('project-detail-gone'),
+              message: 'project.notFound'.tr(),
+              retryLabel: 'error.goHome'.tr(),
+              retryIcon: Icons.home_outlined,
+              onRetry: () => GoRouter.of(context).go(AppSection.home.path),
+            ),
           );
         }
         return _ProjectDetail(project: project);
@@ -131,7 +142,7 @@ class _ProjectDetail extends ConsumerWidget {
               icon: const Icon(Icons.delete_outline),
               onPressed: () => _confirmDelete(context, ref),
             ),
-            PopupMenuButton<String>(
+            AwPopupMenuButton<String>(
               key: const Key('project-quick-menu'),
               tooltip: 'quick.actions'.tr(),
               onSelected: (_) => toggleQuickAccess(
@@ -149,7 +160,11 @@ class _ProjectDetail extends ConsumerWidget {
               ],
             ),
           ],
+          // OPH-407 (DESIGN §45): a tab label is never cut — on a narrow
+          // phone or at a large text size the tabs scroll instead.
           bottom: TabBar(
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             tabs: [
               Tab(text: 'project.tabOverview'.tr()),
               Tab(text: 'project.tabTasks'.tr()),
@@ -235,7 +250,14 @@ class _OverviewTab extends ConsumerWidget {
             ),
             if (project.isFavorite)
               Chip(
-                avatar: const Icon(Icons.star, size: 18, color: Colors.amber),
+                // ADR-0063 #4 / DESIGN §4: the star is the warning token —
+                // `Colors.amber` measured 1.55:1 on the light chip.
+                avatar: Icon(
+                  Icons.star,
+                  key: const Key('project-favorite-star'),
+                  size: 18,
+                  color: context.awTokens.warning,
+                ),
                 label: Text('project.favorite'.tr()),
               ),
             if (project.dueAt != null)
@@ -456,14 +478,18 @@ class _ProjectTasksTab extends ConsumerWidget {
               // Until OPH-338 this list came in creation order (the query's
               // `id DESC`), which no user ever chose.
               final items = orderTasks(raw, sort);
-              return ListView.builder(
-                padding: awListPadding(context),
-                itemCount: items.length,
-                // Every row here is this project — the badge would be noise.
-                itemBuilder: (context, index) => TaskTile(
-                  task: items[index],
-                  showProjectBadge: false,
-                  showUnit: false,
+              // OPH-405: the desktop pane's ↑/↓ follow this order.
+              return AwListOrder(
+                ids: [for (final task in items) task.id],
+                child: ListView.builder(
+                  padding: awListPadding(context),
+                  itemCount: items.length,
+                  // Every row here is this project — the badge would be noise.
+                  itemBuilder: (context, index) => TaskTile(
+                    task: items[index],
+                    showProjectBadge: false,
+                    showUnit: false,
+                  ),
                 ),
               );
             },
@@ -691,7 +717,7 @@ class _ProjectFilesTabState extends ConsumerState<_ProjectFilesTab> {
               'file.usage'.tr(
                 args: {
                   'count': '${usage.fileCount}',
-                  'size': formatBytes(usage.totalBytes),
+                  'size': awFormatFileSize(usage.totalBytes),
                 },
               ),
               style: theme.textTheme.bodySmall?.copyWith(

@@ -55,4 +55,49 @@ void main() {
     expect(out.map((s) => s.text).join(), text);
     expect(out.where((s) => s.uri != null), hasLength(2));
   });
+
+  // OPH-400 (DESIGN §46 R4): what a task ROW shows for its title. The detail
+  // screen keeps the whole string; the row must never spend five lines on it.
+  group('awRowTitle', () {
+    test('a bare URL reads as "host › path" and says it is a link', () {
+      final row = awRowTitle(
+        'https://github.com/alliswell/app/issues/412?tab=comments#top',
+      );
+      expect(row.isLink, isTrue);
+      expect(row.text, 'github.com › alliswell/app/issues/412');
+    });
+
+    test('www and a bare host drop the noise', () {
+      expect(awRowTitle('www.example.com').text, 'example.com');
+      expect(awRowTitle('https://example.com/').text, 'example.com');
+      expect(
+        awRowTitle('  https://www.Example.com/a/  ').text,
+        'example.com › a',
+      );
+    });
+
+    test('a percent-encoded path is shown decoded, a broken one as is', () {
+      expect(
+        awRowTitle('https://tr.wikipedia.org/wiki/%C4%B0stanbul').text,
+        'tr.wikipedia.org › wiki/İstanbul',
+      );
+      expect(awRowTitle('https://x.dev/%E0%A4%A').text, 'x.dev › %E0%A4%A');
+    });
+
+    test('a URL inside a sentence stays, breakable after its separators', () {
+      const title = 'Read https://a.dev/x/y?q=1&r=2 today';
+      final row = awRowTitle(title);
+      expect(row.isLink, isFalse);
+      expect(row.text.replaceAll('​', ''), title);
+      expect(row.text, contains('a.dev/​x/​y?​q=​1&'));
+      // The words around it are untouched.
+      expect(row.text, startsWith('Read https:/'));
+      expect(row.text, endsWith(' today'));
+    });
+
+    test('a plain title is returned as it is', () {
+      const title = 'Pazartesi sunumu için slaytları hazırla';
+      expect(awRowTitle(title), (text: title, isLink: false));
+    });
+  });
 }

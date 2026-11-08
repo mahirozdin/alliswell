@@ -75,11 +75,29 @@ abstract class DeviceApi {
   Future<void> register(String deviceId, DeviceDescriptor device);
   Future<void> unregister(String deviceId);
 
-  /// The instance's VAPID public key, or null when this server does not do
-  /// push — the route is registered only when it has keys, so a 404 is the
+  /// The instance's VAPID public key, and whether the server does browser push
+  /// at all — the route is registered only when it has keys, so a 404 is the
   /// same answer as "no key" and the app never offers a setting that could
-  /// not work (OPH-310).
-  Future<String?> pushPublicKey();
+  /// not work (OPH-310). Anything else is a server we could not ask (OPH-393).
+  Future<PushKeyLookup> lookupPushKey();
+}
+
+/// What `GET /api/v1/push/public-key` answered (OPH-393, E-14).
+///
+/// Two facts, because "no key in hand" has two causes that need two different
+/// sentences: a server that has no keys (its admin's job) and a server that
+/// could not be asked (nobody's fault, try later).
+class PushKeyLookup {
+  const PushKeyLookup.key(String this.key) : configured = true;
+
+  /// The 404: the server says it does not do browser push.
+  const PushKeyLookup.notConfigured() : key = null, configured = false;
+
+  /// Offline, a 5xx, a body without a key: we do not know.
+  const PushKeyLookup.unknown() : key = null, configured = null;
+
+  final String? key;
+  final bool? configured;
 }
 
 class HttpDeviceApi implements DeviceApi {
@@ -96,15 +114,22 @@ class HttpDeviceApi implements DeviceApi {
       _dio.delete('/api/v1/notification-devices/$deviceId');
 
   @override
-  Future<String?> pushPublicKey() async {
+  Future<PushKeyLookup> lookupPushKey() async {
     try {
       final response = await _dio.get('/api/v1/push/public-key');
       final key = (response.data as Map?)?['publicKey'];
-      return key is String && key.isNotEmpty ? key : null;
-    } on Object {
+      return key is String && key.isNotEmpty
+          ? PushKeyLookup.key(key)
+          : const PushKeyLookup.unknown();
+    } on DioException catch (error) {
       // A 404 is the documented "this server does not do push"; anything else
-      // is a server we cannot ask right now. Both mean: do not subscribe.
-      return null;
+      // is a server we cannot ask right now. Both mean: do not subscribe — but
+      // only the first is the admin's to fix (OPH-393).
+      return error.response?.statusCode == 404
+          ? const PushKeyLookup.notConfigured()
+          : const PushKeyLookup.unknown();
+    } on Object {
+      return const PushKeyLookup.unknown();
     }
   }
 }

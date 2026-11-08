@@ -39,6 +39,7 @@ class AwSearchAction extends StatefulWidget {
     this.hintText,
     this.fieldKey,
     this.onOpenChanged,
+    this.query,
     this.debounce = const Duration(milliseconds: 250),
   });
 
@@ -58,6 +59,18 @@ class AwSearchAction extends StatefulWidget {
   /// is open, and a sort control over a list you are not looking at is a
   /// control that does nothing.
   final ValueChanged<bool>? onOpenChanged;
+
+  /// The query as the screen holds it, when something else can clear it
+  /// (E35 P-11).
+  ///
+  /// A screen kept mounted behind another tab — the requests branch of the
+  /// shell — can have its query emptied from elsewhere: Home's "unassigned"
+  /// figure clears it before opening the list. The field would keep showing
+  /// the old term over a list that no longer applies it. Passing the query
+  /// lets the field close when it goes empty while the field still holds
+  /// text — the same state [_close] leaves. A user erasing their own term
+  /// empties the field first, so that never closes it.
+  final String? query;
   final Duration debounce;
 
   @override
@@ -89,6 +102,26 @@ class _AwSearchActionState extends State<AwSearchAction> {
     widget.onQuery('');
     setState(() => _open = false);
     widget.onOpenChanged?.call(false);
+  }
+
+  @override
+  void didUpdateWidget(AwSearchAction oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final query = widget.query;
+    final clearedElsewhere =
+        query != null &&
+        query.trim().isEmpty &&
+        (oldWidget.query?.trim().isNotEmpty ?? false) &&
+        _controller.text.trim().isNotEmpty;
+    if (!_open || !clearedElsewhere) return;
+    _debounce?.cancel();
+    _controller.clear();
+    // Called during build: the state flips without a setState, and the
+    // parent hears about it after the frame.
+    _open = false;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onOpenChanged?.call(false);
+    });
   }
 
   @override

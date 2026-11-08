@@ -71,3 +71,68 @@ List<LinkSegment> linkifySegments(String text) {
   }
   return segments;
 }
+
+/// What a task ROW shows for its title (OPH-400, DESIGN §46 R4).
+typedef RowTitle = ({String text, bool isLink});
+
+const String _zwsp = '​';
+
+/// A title that is nothing but a URL reads as `host › path` — no scheme, no
+/// `www.`, no query or fragment — and says it is a link, so the row can put a
+/// link glyph before it and keep it to one line. The detail screen keeps the
+/// whole string.
+///
+/// Any other title is returned as it is, except that a URL inside it gets a
+/// zero-width break after its `/ ? & =`, so a long link wraps where a reader
+/// would break it instead of in the middle of a word (U-12).
+RowTitle awRowTitle(String title) {
+  final trimmed = title.trim();
+  final whole = _urlPattern.matchAsPrefix(trimmed);
+  if (whole != null &&
+      whole.end == trimmed.length &&
+      _trimUrl(trimmed) == trimmed) {
+    // String surgery rather than `Uri`: a malformed escape makes `Uri.parse`
+    // throw, and the row still has to show something sensible.
+    final rest = trimmed.replaceFirst(
+      RegExp('^https?://', caseSensitive: false),
+      '',
+    );
+    final cut = rest.indexOf(RegExp('[/?#]'));
+    var host = (cut < 0 ? rest : rest.substring(0, cut)).toLowerCase();
+    if (host.startsWith('www.')) host = host.substring(4);
+    var path = cut < 0 ? '' : rest.substring(cut).split(RegExp('[?#]')).first;
+    while (path.startsWith('/')) {
+      path = path.substring(1);
+    }
+    while (path.endsWith('/')) {
+      path = path.substring(0, path.length - 1);
+    }
+    try {
+      path = Uri.decodeFull(path);
+    } on Object {
+      // A malformed escape: show what was typed.
+    }
+    return (text: path.isEmpty ? host : '$host › $path', isLink: true);
+  }
+  final segments = linkifySegments(title);
+  if (!segments.any((s) => s.uri != null)) {
+    return (text: title, isLink: false);
+  }
+  final out = StringBuffer();
+  for (final segment in segments) {
+    if (segment.uri == null) {
+      out.write(segment.text);
+      continue;
+    }
+    final url = segment.text;
+    for (var i = 0; i < url.length; i++) {
+      final char = url[i];
+      out.write(char);
+      final next = i + 1 < url.length ? url[i + 1] : '';
+      if ('/?&='.contains(char) && next.isNotEmpty && next != '/') {
+        out.write(_zwsp);
+      }
+    }
+  }
+  return (text: out.toString(), isLink: false);
+}

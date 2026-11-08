@@ -58,22 +58,46 @@ class QuickColorDot extends StatelessWidget {
 ///
 /// Muting an archived or broken row is a TOKEN swap, never `Opacity`: a dimmed
 /// label has to stay measurable (DESIGN §20 C3).
-class QuickAccessRowTile extends StatelessWidget {
+/// A row control's side on a pointer layout (OPH-405): the desktop target
+/// floor, 32×32 CSS px.
+const double kQuickRowControl = 32;
+
+class QuickAccessRowTile extends StatefulWidget {
   const QuickAccessRowTile({
     super.key,
     required this.row,
     required this.onTap,
     this.trailing,
+    this.dragHandle,
     this.dense = false,
   });
 
   final QuickAccessRow row;
   final VoidCallback onTap;
   final Widget? trailing;
+
+  /// The rail's drag handle (OPH-405). It shows while the row is hovered or
+  /// holds keyboard focus, 8 px before [trailing], and takes room only then:
+  /// a resting row gives its name the full width, and [trailing] (the ⋯
+  /// menu) stays in one column at the trailing edge, so the target the
+  /// pointer aims at never moves — only the hovered name shortens.
+  final Widget? dragHandle;
   final bool dense;
 
   @override
+  State<QuickAccessRowTile> createState() => _QuickAccessRowTileState();
+}
+
+class _QuickAccessRowTileState extends State<QuickAccessRowTile> {
+  bool _hovered = false;
+  bool _focused = false;
+
+  @override
   Widget build(BuildContext context) {
+    final row = widget.row;
+    final dense = widget.dense;
+    final trailing = widget.trailing;
+    final handle = widget.dragHandle;
     final theme = Theme.of(context);
     final muted = row.isBroken || row.isArchived;
     final titleColor = muted
@@ -88,7 +112,7 @@ class QuickAccessRowTile extends StatelessWidget {
       _ => null,
     };
 
-    return ListTile(
+    final tile = ListTile(
       key: Key('quick-row-${row.id}'),
       dense: dense,
       visualDensity: dense ? VisualDensity.compact : null,
@@ -132,10 +156,35 @@ class QuickAccessRowTile extends StatelessWidget {
             ),
             const SizedBox(width: AwSpace.x1),
           ],
+          if (handle != null)
+            // OPH-405 T-05: no `maintainSize` — a held empty column cut every
+            // resting name short ("Design Sys…"). Offstage keeps the drag
+            // listener alive between hover and press.
+            Visibility(
+              key: Key('quick-drag-reveal-${row.id}'),
+              visible: _hovered || _focused,
+              maintainAnimation: true,
+              maintainState: true,
+              child: Padding(
+                padding: const EdgeInsets.only(right: AwSpace.x2),
+                child: handle,
+              ),
+            ),
           ?trailing,
         ],
       ),
-      onTap: onTap,
+      onTap: widget.onTap,
+    );
+    if (handle == null) return tile;
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: Focus(
+        canRequestFocus: false,
+        skipTraversal: true,
+        onFocusChange: (hasFocus) => setState(() => _focused = hasFocus),
+        child: tile,
+      ),
     );
   }
 }

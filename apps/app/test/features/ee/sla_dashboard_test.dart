@@ -112,14 +112,23 @@ void main() {
   testWidgets(
     'a healthy desk reads in the success colour, and says the total',
     (tester) async {
-      await _pump(tester, _dash(compliance: 97.5, total: 40, judged: 40));
+      await _pump(
+        tester,
+        _dash(
+          compliance: 97.5,
+          total: 40,
+          judged: 40,
+          bySla: const [EeSlaBucket(key: 'met', label: 'met', count: 39)],
+        ),
+      );
       final context = tester.element(find.byType(EeSlaDashboardScreen));
       // EE-147: this used to assert '%97.5' — the TURKISH form — under an
       // English locale, which is how the screen shipped a hardcoded percent
       // prefix and the enterprise page's English capture read "%78.4" for a
       // release. A test that asserts the defect is a test that defends it.
       expect(find.text('97.5%'), findsOneWidget);
-      expect(find.text('of 40 judged'), findsOneWidget);
+      // A-53 (OPH-407): the count beside the ratio says what it counts.
+      expect(find.text('39 of 40 requests'), findsOneWidget);
       expect(_complianceColour(tester), context.awTokens.success);
     },
   );
@@ -324,7 +333,7 @@ void main() {
         expect(inOutcome('breached', '114'), findsOneWidget);
         expect(inOutcome('warned', '3'), findsOneWidget);
         expect(inOutcome('met', '77'), findsOneWidget);
-        expect(find.text('of 191 judged'), findsOneWidget);
+        expect(find.text('77 of 191 requests'), findsOneWidget);
         expect(find.textContaining('199'), findsNothing);
       },
     );
@@ -415,6 +424,9 @@ void main() {
         await tester.pumpAndSettle();
         expect(find.text('#223 · Yazıcı arızası'), findsOneWidget);
         expect(find.text('#224 · Yazıcı arızası'), findsOneWidget);
+        // The open-now card and the scope lines push the list down.
+        await tester.ensureVisible(find.byKey(const Key('sla-breach-T2')));
+        await tester.pumpAndSettle();
         await tester.tap(find.byKey(const Key('sla-breach-T2')));
         await tester.pumpAndSettle();
         expect(find.text('ticket T2'), findsOneWidget);

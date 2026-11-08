@@ -77,8 +77,15 @@ class _SocialSignInButtonsState extends ConsumerState<SocialSignInButtons> {
   @override
   Widget build(BuildContext context) {
     final busy = _busy != null;
+    // OPH-392 (E-23): the server decides too. Nothing until it has answered —
+    // a Google button that appears and then vanishes is worse than one that
+    // arrives a moment late — and an answer it could not give keeps the
+    // platform rule alone.
+    final server = ref.watch(serverSignInProvidersProvider);
+    if (!server.hasValue) return const SizedBox.shrink();
+    final offered = server.value;
     final buttons = <Widget>[
-      if (SocialSignIn.appleAvailable)
+      if (SocialSignIn.appleAvailable && (offered?.apple ?? true))
         _SocialButton(
           key: const Key('sign-in-apple'),
           label: 'auth.continueWithApple'.tr(),
@@ -86,7 +93,7 @@ class _SocialSignInButtonsState extends ConsumerState<SocialSignInButtons> {
           busy: _busy == SocialProvider.apple,
           onPressed: busy ? null : () => _start(SocialProvider.apple),
         ),
-      if (SocialSignIn.googleAvailable)
+      if (SocialSignIn.googleAvailable && (offered?.google ?? true))
         _SocialButton(
           key: const Key('sign-in-google'),
           label: 'auth.continueWithGoogle'.tr(),

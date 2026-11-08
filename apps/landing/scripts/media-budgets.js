@@ -25,4 +25,8 @@ export const BUDGETS = Object.freeze({
   /** README animated WebP/GIF, and README stills. */
   readmeAnimated: 3 * 1024 * 1024,
   readmeStill: 400 * 1024,
+  /** The README's first-screen image (OPH-411): a stranger's first download. */
+  readmeHero: 1024 * 1024,
+  /** Everything under docs/assets/readme together (OPH-411). */
+  readmeTotal: 2 * 1024 * 1024,
 });

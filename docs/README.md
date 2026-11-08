@@ -18,5 +18,5 @@
 | AI, MCP, public API | [AI.md](AI.md) · [MCP.md](MCP.md) · [API.md](API.md) (generated from [openapi.json](openapi.json)) |
 | Running it yourself; Firebase | [SELF-HOSTING.md](SELF-HOSTING.md) · [FIREBASE.md](FIREBASE.md) |
 | Store, screenshots, comparison | [STORE-LISTING.md](STORE-LISTING.md) · [SCREENSHOTS.md](SCREENSHOTS.md) · [COMPARISON.md](COMPARISON.md) |
-| Users: privacy, support, enterprise | [PRIVACY.md](PRIVACY.md) · [SUPPORT.md](SUPPORT.md) · [ENTERPRISE.md](ENTERPRISE.md) (+ `.tr.md`) |
+| Users: privacy, terms, support, enterprise | [PRIVACY.md](PRIVACY.md) · [TERMS.md](TERMS.md) · [SUPPORT.md](SUPPORT.md) · [ENTERPRISE.md](ENTERPRISE.md) (+ `.tr.md`) |
 | History | `git log` · [../CHANGELOG.md](../CHANGELOG.md) · [changelog/](changelog/) |

@@ -17,6 +17,8 @@ import '../portal_links_providers.dart';
 import '../services_providers.dart';
 import '../units_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/popup_menu.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The public doors, and who may open them (EE-106).
 ///
@@ -317,7 +319,7 @@ class _LinkTile extends ConsumerWidget {
         style: theme.textTheme.bodySmall,
       ),
       trailing: link.state.isEditable
-          ? PopupMenuButton<String>(
+          ? AwPopupMenuButton<String>(
               key: Key('portal-menu-${link.id}'),
               onSelected: (action) => _act(context, ref, action),
               itemBuilder: (context) => [
@@ -556,7 +558,7 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                   onChanged: (value) => setState(() => catalogue = value),
                 ),
                 if (!catalogue)
-                  DropdownButtonFormField<String>(
+                  AwDropdownField<String>(
                     key: const Key('portal-service'),
                     initialValue: serviceId,
                     decoration: InputDecoration(
@@ -598,7 +600,7 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                     ),
                 if (needsUnit) ...[
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
+                  AwDropdownField<String>(
                     key: const Key('portal-unit'),
                     initialValue: unitId,
                     decoration: InputDecoration(
@@ -617,7 +619,7 @@ Future<void> _createLink(BuildContext context, WidgetRef ref) async {
                   ),
                 ],
                 const SizedBox(height: 12),
-                DropdownButtonFormField<int>(
+                AwDropdownField<int>(
                   key: const Key('portal-ttl'),
                   initialValue: ttlDays,
                   decoration: InputDecoration(labelText: 'ee.portal.ttl'.tr()),

@@ -2,7 +2,10 @@
 import { computed, ref } from 'vue';
 
 import LoopVideo from './LoopVideo.vue';
+import { usePlatform } from '../composables/usePlatform.js';
 import { fallback, media, srcset } from '../media.js';
+import { primaryFor } from '../platform.js';
+import { BUILD_PROOF, proofParts } from '../proof.js';
 
 /**
  * Dusk's hour: a real photograph of fog at sunset fills the hero, the head
@@ -12,8 +15,16 @@ import { fallback, media, srcset } from '../media.js';
  */
 const props = defineProps({
   hero: { type: Object, required: true },
+  proof: { type: Object, required: true },
+  lang: { type: String, required: true },
   ui: { type: Object, required: true },
 });
+
+// OPH-412: the store on a phone, the browser elsewhere (landing-audit K6), and
+// the proof line the build counted (K2).
+const platform = usePlatform();
+const primary = computed(() => primaryFor(props.hero.primary, platform.value));
+const proofLine = computed(() => proofParts(props.proof, BUILD_PROOF, props.lang));
 
 const photo = computed(() => media('photo-fog'));
 const also = computed(() => props.hero.also);
@@ -46,7 +57,7 @@ const still = ref(false);
         <h1>{{ hero.title }}</h1>
         <p class="lead hero__sentence">{{ hero.sentence }}</p>
         <div class="hero__actions">
-          <a class="btn" :href="hero.primary.href">{{ hero.primary.label }}</a>
+          <a class="btn" :href="primary.href" data-cta="hero-primary">{{ primary.label }}</a>
           <a class="btn btn--ghost" :href="hero.secondary.href">{{ hero.secondary.label }}</a>
         </div>
         <p class="hero__also">
@@ -56,6 +67,12 @@ const still = ref(false);
             ><template v-if="i < also.links.length - 1">{{ separator(i) }}</template></template
           >{{ also.after }}
         </p>
+        <ul class="hero__proof" :aria-label="proof.label" data-proof>
+          <li v-for="(part, i) in proofLine" :key="i">
+            <a v-if="i === 0" :href="proof.source.href">{{ part }}</a>
+            <template v-else>{{ part }}</template>
+          </li>
+        </ul>
       </div>
       <figure class="glass hero__pane">
         <LoopVideo

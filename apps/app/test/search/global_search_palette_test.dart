@@ -16,11 +16,13 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/tags/tags.dart';
+import 'package:alliswell/src/features/tasks/ui/task_create_sheet.dart';
 import 'package:alliswell/src/router.dart';
 import 'package:alliswell/src/search/search_recents.dart';
 import 'package:alliswell/src/search/ui/global_search_entry.dart';
 import 'package:alliswell/src/search/ui/global_search_palette.dart';
 import 'package:alliswell/src/sync/providers.dart';
+import 'package:alliswell/src/widgets/tab_capsule.dart';
 
 import '../features/auth/test_support.dart';
 import '../features/projects/fake_api.dart';
@@ -107,12 +109,13 @@ void main() {
     expect(field.focusNode!.hasFocus, isTrue);
 
     await type(tester, 'fatura');
-    expect(find.text('Tasks'), findsWidgets);
-    expect(find.text('Projects'), findsWidgets);
-    expect(find.text('Files'), findsWidgets);
-    final tasksY = tester.getTopLeft(find.text('Tasks').last).dy;
-    final projectsY = tester.getTopLeft(find.text('Projects').last).dy;
-    final filesY = tester.getTopLeft(find.text('Files').last).dy;
+    // A-18 (OPH-394): a header carries its group's total.
+    expect(find.text('Tasks · 2'), findsOneWidget);
+    expect(find.text('Projects · 1'), findsOneWidget);
+    expect(find.text('Files · 1'), findsOneWidget);
+    final tasksY = tester.getTopLeft(find.text('Tasks · 2')).dy;
+    final projectsY = tester.getTopLeft(find.text('Projects · 1')).dy;
+    final filesY = tester.getTopLeft(find.text('Files · 1')).dy;
     expect(tasksY, lessThan(projectsY));
     expect(projectsY, lessThan(filesY));
     expect(find.byKey(const Key('global-search-count')), findsOneWidget);
@@ -231,8 +234,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_field, findsNothing);
+    // At desktop width the create form is a dialog (OPH-403).
     final sheetTitle = find.descendant(
-      of: find.byType(BottomSheet),
+      of: find.byType(TaskCreateSheet),
       matching: find.byType(TextField),
     );
     expect(sheetTitle, findsWidgets);
@@ -283,7 +287,7 @@ void main() {
     expect(find.bySemanticsLabel('Task: Bütçe'), findsOneWidget);
     final node = tester.getSemantics(find.bySemanticsLabel('Task: Bütçe'));
     expect(node.flagsCollection.isSelected, Tristate.isTrue);
-    final header = tester.getSemantics(find.text('Tasks').last);
+    final header = tester.getSemantics(find.text('Tasks · 1').last);
     expect(header.flagsCollection.isHeader, isTrue);
     semantics.dispose();
   });
@@ -297,22 +301,17 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('global-search-orb')), findsOneWidget);
-    final bar = tester.getRect(find.byType(NavigationBar));
+    final bar = tester.getRect(find.byType(AwTabCapsule));
     final orb = tester.getRect(find.byKey(const Key('global-search-orb')));
     expect(orb.left, greaterThanOrEqualTo(bar.right));
     expect((orb.center.dy - bar.center.dy).abs(), lessThan(8));
-    // The selected label stays on one line in a slot narrower than the
-    // word (TR "Ana Sayfa" wrapped under the pill and was clipped).
-    final label = tester.widget<RichText>(
-      find
-          .descendant(
-            of: find.descendant(
-              of: find.byType(NavigationBar),
-              matching: find.text('Home'),
-            ),
-            matching: find.byType(RichText),
-          )
-          .first,
+    // Every tab's label stays on one line (TR "Ana Sayfa" wrapped under the
+    // pill and was clipped); OPH-396 writes all of them.
+    final label = tester.widget<Text>(
+      find.descendant(
+        of: find.byType(AwTabCapsule),
+        matching: find.text('Home'),
+      ),
     );
     expect(label.softWrap, isFalse);
     expect(label.maxLines, 1);
@@ -342,5 +341,102 @@ void main() {
     } finally {
       debugDefaultTargetPlatformOverride = null;
     }
+  });
+
+  // OPH-394 (E-12): the count sits under the field, every group opens with
+  // three rows and a "Show N more" row that expands it — notes included.
+  for (final size in [desktop, phone]) {
+    testWidgets('the count is under the field and a long group expands '
+        '(${size.width.toInt()} px)', (tester) async {
+      await surface(tester, size);
+      final api = FakeApi();
+      for (var i = 1; i <= 6; i++) {
+        api.seedTask(title: 'Invoice task $i');
+      }
+      for (var i = 1; i <= 9; i++) {
+        api.seedNote(title: 'Invoice note $i');
+      }
+      await tester.pumpWidget(await app(api));
+      await tester.pumpAndSettle();
+
+      if (size == desktop) {
+        await ctrlK(tester);
+      } else {
+        await tester.tap(find.byKey(const Key('global-search-orb')));
+        await tester.pumpAndSettle();
+      }
+      await type(tester, 'invoice');
+
+      final count = find.byKey(const Key('global-search-count'));
+      expect(find.text('15 results'), findsOneWidget);
+      final fieldBottom = tester.getBottomLeft(_field).dy;
+      final countTop = tester.getTopLeft(count).dy;
+      final firstHeader = find.text('Tasks · 6');
+      expect(firstHeader, findsOneWidget);
+      expect(countTop, greaterThanOrEqualTo(fieldBottom));
+      expect(countTop, lessThan(tester.getTopLeft(firstHeader).dy));
+
+      // Three of each, and the way to the rest.
+      expect(find.text('Notes · 9'), findsOneWidget);
+      expect(find.textContaining('Invoice note'), findsNWidgets(3));
+      final more = find.byKey(const Key('global-search-more-note'));
+      expect(find.text('Show 6 more'), findsOneWidget);
+      expect(find.text('Show 3 more'), findsOneWidget);
+      await tester.scrollUntilVisible(
+        more,
+        100,
+        scrollable: find.descendant(
+          of: find.byKey(const Key('global-search-results')),
+          matching: find.byType(Scrollable),
+        ),
+      );
+      await tester.tap(
+        find.descendant(of: more, matching: find.byType(TextButton)),
+      );
+      await tester.pumpAndSettle();
+      expect(more, findsNothing);
+      for (var i = 1; i <= 9; i++) {
+        expect(
+          find.text('Invoice note $i', skipOffstage: false),
+          findsOneWidget,
+        );
+      }
+    });
+  }
+
+  // OPH-397 (ADR-0062 §5): with the bubble off by default on phones, the
+  // empty palette is one of Quick Access's ways in — above "Recent".
+  testWidgets('phone: the empty palette lists the shortcuts, and one opens '
+      'where the panel would open it', (tester) async {
+    await surface(tester, phone);
+    final api = FakeApi();
+    final task = api.seedTask(title: 'Faturalar');
+    api.seedQuickLink(
+      kind: 'task',
+      targetId: task['id'] as String,
+      title: 'Fatura işi',
+    );
+    await tester.pumpWidget(await app(api));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('global-search-orb')));
+    await tester.pumpAndSettle();
+    expect(find.text('Shortcuts'), findsOneWidget);
+    final header = find.byKey(const Key('global-search-shortcuts'));
+    expect(header, findsOneWidget);
+    final row = find.byKey(
+      Key('global-search-shortcut-${api.quickLinks.single['id']}'),
+    );
+    expect(row, findsOneWidget);
+    expect(find.text('Fatura işi'), findsOneWidget);
+    expect(
+      tester.getTopLeft(row).dy,
+      greaterThan(tester.getTopLeft(header).dy),
+    );
+
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.byType(Dialog), findsNothing);
+    expect(location(), '/tasks/${task['id']}');
   });
 }

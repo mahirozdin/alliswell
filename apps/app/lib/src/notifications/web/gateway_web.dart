@@ -46,6 +46,12 @@ class WebNotificationsGateway implements NotificationsGateway {
     /// push at all — `/api/v1/push/public-key` 404s there by design (OPH-310).
     required this.readVapidKey,
 
+    /// Whether the server does browser push at all: false only on its
+    /// documented 404, null when it could not be asked (OPH-393). Separate
+    /// from [readVapidKey] because "no key" has two causes, and only one of
+    /// them is the admin's to fix.
+    this.serverHasPush = _unknownServer,
+
     /// Called after a successful subscribe, so the device registry can send it
     /// on without this gateway needing to know the API exists.
     this.onSubscriptionChanged,
@@ -70,6 +76,7 @@ class WebNotificationsGateway implements NotificationsGateway {
 
   final WebPushHost host;
   final Future<String?> Function() readVapidKey;
+  final Future<bool?> Function() serverHasPush;
   final void Function()? onSubscriptionChanged;
   final AlertCache cache;
   final AlertText fallback;
@@ -154,10 +161,11 @@ class WebNotificationsGateway implements NotificationsGateway {
   @override
   Future<AlarmSupport> alarmSupport() async {
     if (!host.isSupported) {
-      return const AlarmSupport(
+      return AlarmSupport(
         notificationsEnabled: false,
         criticalAlertsEnabled: false,
         webPushReady: false,
+        webPushServerConfigured: await _serverConfigured(),
         webPermission: WebPermissionState.unsupported,
       );
     }
@@ -167,6 +175,9 @@ class WebNotificationsGateway implements NotificationsGateway {
     final subscribed = granted && (await subscription()) != null;
 
     return AlarmSupport(
+      // A live subscription was made WITH the server's key, so the question
+      // only needs asking when there is none (OPH-393).
+      webPushServerConfigured: subscribed ? null : await _serverConfigured(),
       notificationsEnabled: granted,
       // No browser has anything like Apple's critical alerts.
       criticalAlertsEnabled: false,
@@ -181,6 +192,16 @@ class WebNotificationsGateway implements NotificationsGateway {
         WebPushPermission.denied => WebPermissionState.denied,
       },
     );
+  }
+
+  /// The server's answer, or null when asking failed: a probe must never
+  /// throw because a lookup did.
+  Future<bool?> _serverConfigured() async {
+    try {
+      return await serverHasPush();
+    } on Object {
+      return null;
+    }
   }
 
   @override
@@ -264,3 +285,7 @@ class WebNotificationsGateway implements NotificationsGateway {
 /// Silent unless the app says otherwise — the value a gateway built without
 /// a setting behind it (tests, the rehearsal path) should have.
 WebAlertMode _defaultAlertMode() => WebAlertMode.silent;
+
+/// "We do not know" — what a gateway built without a server behind it (tests,
+/// the rehearsal path) should say, so it never blames an admin.
+Future<bool?> _unknownServer() async => null;

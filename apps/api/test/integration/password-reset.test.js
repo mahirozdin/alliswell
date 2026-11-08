@@ -1,0 +1,395 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+
+import { buildApp } from '../../src/app.js';
+import { loadConfig } from '../../src/config.js';
+import { run as resetLinkCli } from '../../src/cli/password-reset-link.js';
+import {
+  EMAIL_RESETS_PER_HOUR,
+  issuePasswordReset,
+  recentEmailResets,
+} from '../../src/lib/password-reset.js';
+
+// Needs real MySQL + Redis with migrations applied (see integration/ready.test.js).
+const enabled = process.env.INTEGRATION === '1';
+const emailPrefix = `oph406-${Date.now()}`;
+const APP_URL = 'https://app.alliswell.test';
+
+/** Records what would have been sent; `send` is all the routes need. */
+function fakeMailer() {
+  return {
+    sent: [],
+    async send(mail) {
+      this.sent.push(mail);
+    },
+  };
+}
+
+const tokenIn = (text) => /reset-password\?token=([A-Za-z0-9_-]+)/.exec(text)?.[1] ?? null;
+
+async function cleanup(app) {
+  const users = await app.db('users').where('email', 'like', `${emailPrefix}%`).select('id');
+  const ids = users.map((u) => u.id);
+  if (ids.length > 0) {
+    await app.db('workspaces').whereIn('owner_id', ids).delete();
+    await app.db('users').whereIn('id', ids).delete();
+  }
+}
+
+/// OPH-406 — "I forgot my password" end to end: the link is single use, it
+/// expires, a newer one retires the older, the forgot form never says whether
+/// an account exists, and both doors sit behind the credential rate limit.
+describe.runIf(enabled)('integration: password reset', () => {
+  let app;
+  let mailer;
+
+  const register = (email, password = 'old-password-1') =>
+    app.inject({ method: 'POST', url: '/api/v1/auth/register', payload: { email, password } });
+  const login = (email, password) =>
+    app.inject({ method: 'POST', url: '/api/v1/auth/login', payload: { email, password } });
+  const forgot = (payload, target = app) =>
+    target.inject({ method: 'POST', url: '/api/v1/auth/password/forgot', payload });
+  const reset = (payload, target = app) =>
+    target.inject({ method: 'POST', url: '/api/v1/auth/password/reset', payload });
+
+  /** The work a forgot ask left behind — lookup, issue, mail — is done. */
+  const settled = () => app.mailQueue.idle();
+
+  /** Asks for a link and returns the token from the mail it produced. */
+  async function mailedToken(email) {
+    const before = mailer.sent.length;
+    const res = await forgot({ email });
+    expect(res.statusCode).toBe(202);
+    await settled();
+    expect(mailer.sent).toHaveLength(before + 1);
+    return tokenIn(mailer.sent.at(-1).text);
+  }
+
+  beforeAll(async () => {
+    mailer = fakeMailer();
+    app = await buildApp({
+      config: loadConfig({
+        ...process.env,
+        NODE_ENV: 'test',
+        APP_PUBLIC_URL: APP_URL,
+        RATE_LIMIT_AUTH_MAX: '1000',
+      }),
+      mailer,
+    });
+  });
+
+  afterAll(async () => {
+    if (!app) return;
+    await cleanup(app);
+    await app.close();
+  });
+
+  it('answers the same for a known and an unknown address, and mails only the known one', async () => {
+    const email = `${emailPrefix}-same@example.com`;
+    expect((await register(email)).statusCode).toBe(201);
+
+    const known = await forgot({ email: email.toUpperCase(), locale: 'tr' });
+    const unknown = await forgot({ email: `${emailPrefix}-nobody@example.com` });
+    await settled();
+
+    expect(known.statusCode).toBe(202);
+    expect(unknown.statusCode).toBe(202);
+    expect(known.json()).toEqual({ delivery: 'email' });
+    expect(unknown.json()).toEqual(known.json());
+
+    const mails = mailer.sent.filter((m) => m.to.startsWith(`${emailPrefix}-`));
+    expect(mails.map((m) => m.to)).toEqual([email]);
+    expect(mails[0].subject).toBe('AllisWell parolanı sıfırla');
+    const token = tokenIn(mails[0].text);
+    expect(mails[0].text).toContain(`${APP_URL}/#/reset-password?token=${token}`);
+
+    // Stored as a keyed digest only: the raw token is nowhere in the row.
+    const user = await app.db('users').where({ email }).first('id');
+    const rows = await app.db('password_resets').where({ user_id: user.id });
+    expect(rows).toHaveLength(1);
+    expect(rows[0].token_hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(JSON.stringify(rows[0])).not.toContain(token);
+    expect(rows[0].source).toBe('email');
+  });
+
+  it('sets the password once, ends every session, and refuses the same link again', async () => {
+    const email = `${emailPrefix}-once@example.com`;
+    const registered = (await register(email)).json();
+    const token = await mailedToken(email);
+
+    const first = await reset({ token, password: 'new-password-1' });
+    expect(first.statusCode).toBe(204);
+
+    expect((await login(email, 'new-password-1')).statusCode).toBe(200);
+    const old = await login(email, 'old-password-1');
+    expect(old.statusCode).toBe(401);
+
+    // The session from before the reset is over (ADR-0006).
+    const refresh = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: registered.tokens.refreshToken },
+    });
+    expect(refresh.statusCode).toBe(401);
+
+    const again = await reset({ token, password: 'third-password-1' });
+    expect(again.statusCode).toBe(400);
+    expect(again.json().code).toBe('AUTH_RESET_INVALID');
+    expect((await login(email, 'new-password-1')).statusCode).toBe(200);
+  });
+
+  it('refuses an expired link, an unknown one and a short password', async () => {
+    const email = `${emailPrefix}-expired@example.com`;
+    await register(email);
+    const token = await mailedToken(email);
+
+    const short = await reset({ token, password: 'short' });
+    expect(short.statusCode).toBe(400);
+
+    const user = await app.db('users').where({ email }).first('id');
+    await app
+      .db('password_resets')
+      .where({ user_id: user.id })
+      .update({ expires_at: new Date(Date.now() - 1000) });
+    const expired = await reset({ token, password: 'new-password-1' });
+    expect(expired.statusCode).toBe(400);
+    expect(expired.json().code).toBe('AUTH_RESET_INVALID');
+
+    const unknown = await reset({ token: 'x'.repeat(43), password: 'new-password-1' });
+    expect(unknown.statusCode).toBe(400);
+    expect(unknown.json().code).toBe('AUTH_RESET_INVALID');
+    expect((await login(email, 'old-password-1')).statusCode).toBe(200);
+  });
+
+  it('retires the older link when a newer one is sent', async () => {
+    const email = `${emailPrefix}-newer@example.com`;
+    await register(email);
+    const older = await mailedToken(email);
+    const newer = await mailedToken(email);
+
+    expect((await reset({ token: older, password: 'new-password-1' })).statusCode).toBe(400);
+    expect((await reset({ token: newer, password: 'new-password-1' })).statusCode).toBe(204);
+  });
+
+  it('a password changed while signed in retires every link sent before it', async () => {
+    // E35 G-C review r1: the change door must end outstanding links too, or a
+    // link from before the change replaces the password the owner just chose.
+    const email = `${emailPrefix}-changed@example.com`;
+    const registered = (await register(email)).json();
+    const token = await mailedToken(email);
+
+    const change = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: { authorization: `Bearer ${registered.tokens.accessToken}` },
+      payload: { currentPassword: 'old-password-1', newPassword: 'changed-password-1' },
+    });
+    expect(change.statusCode).toBe(204);
+
+    const spent = await reset({ token, password: 'attacker-password-1' });
+    expect(spent.statusCode).toBe(400);
+    expect(spent.json().code).toBe('AUTH_RESET_INVALID');
+    expect((await login(email, 'changed-password-1')).statusCode).toBe(200);
+  });
+
+  it('a link checked before a password change cannot land after it', async () => {
+    // E35 G-C review r2: the reset door checked the link and the account
+    // outside its write. A change landing between that check and the write
+    // left the link looking valid (retirement sets expires_at to the change
+    // time, later than the reset's own clock), so the stale link replaced the
+    // password the owner had just chosen. Hold the reset right after its
+    // checks, let the change finish, then let the reset go on.
+    const email = `${emailPrefix}-interleaved@example.com`;
+    const registered = (await register(email)).json();
+    const token = await mailedToken(email);
+
+    let reached;
+    const atGate = new Promise((resolve) => {
+      reached = resolve;
+    });
+    let release;
+    const gate = new Promise((resolve) => {
+      release = resolve;
+    });
+    const hold = async ({ password }) => {
+      if (password !== 'attacker-password-1') return null;
+      reached();
+      await gate;
+      return null;
+    };
+    app.ee.passwordRequirements.push(hold);
+    try {
+      const pending = reset({ token, password: 'attacker-password-1' });
+      await atGate;
+
+      const change = await app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/password',
+        headers: { authorization: `Bearer ${registered.tokens.accessToken}` },
+        payload: { currentPassword: 'old-password-1', newPassword: 'changed-password-1' },
+      });
+      expect(change.statusCode).toBe(204);
+
+      release();
+      const spent = await pending;
+      expect(spent.statusCode).toBe(400);
+      expect(spent.json().code).toBe('AUTH_RESET_INVALID');
+    } finally {
+      release();
+      app.ee.passwordRequirements.splice(app.ee.passwordRequirements.indexOf(hold), 1);
+    }
+    expect((await login(email, 'changed-password-1')).statusCode).toBe(200);
+    expect((await login(email, 'attacker-password-1')).statusCode).toBe(401);
+  });
+
+  it('sends at most three links an hour to one account, and still answers the same', async () => {
+    const email = `${emailPrefix}-hourly@example.com`;
+    await register(email);
+    for (let i = 0; i < 3; i += 1) await mailedToken(email);
+
+    const before = mailer.sent.length;
+    const fourth = await forgot({ email });
+    await settled();
+    expect(fourth.statusCode).toBe(202);
+    expect(fourth.json()).toEqual({ delivery: 'email' });
+    expect(mailer.sent).toHaveLength(before);
+  });
+
+  it('holds the hourly limit when two asks for one account arrive together', async () => {
+    // E35 G-C review r1: the count and the insert are one locked step, so two
+    // concurrent asks cannot both see "two sent" and both send a third.
+    const email = `${emailPrefix}-racing@example.com`;
+    await register(email);
+    for (let i = 0; i < 2; i += 1) await mailedToken(email);
+    const user = await app.db('users').where({ email }).first('id');
+
+    const ask = () =>
+      issuePasswordReset(app.db, {
+        userId: user.id,
+        secret: app.config.auth.refreshSecret,
+        ttlMs: 60_000,
+        source: 'email',
+        perHourLimit: EMAIL_RESETS_PER_HOUR,
+      });
+    const results = await Promise.all([ask(), ask()]);
+
+    expect(results.filter((r) => r === null)).toHaveLength(1);
+    expect(await recentEmailResets(app.db, user.id)).toBe(EMAIL_RESETS_PER_HOUR);
+  });
+
+  it('answers before any work on the account, so its timing says nothing', async () => {
+    // E35 G-C review r1: the lookup, the count and the issue run after the
+    // answer. Proof: with the account's row locked elsewhere, the issue cannot
+    // finish — and the answer still comes at once, the mail only after.
+    const email = `${emailPrefix}-timing@example.com`;
+    await register(email);
+    const user = await app.db('users').where({ email }).first('id');
+    const before = mailer.sent.length;
+
+    const holder = await app.db.transaction();
+    try {
+      await holder('users').where({ id: user.id }).forUpdate().first('id');
+      const answer = await Promise.race([
+        forgot({ email }),
+        new Promise((resolve) => setTimeout(() => resolve('blocked'), 3000)),
+      ]);
+      expect(answer).not.toBe('blocked');
+      expect(answer.statusCode).toBe(202);
+      expect(answer.json()).toEqual({ delivery: 'email' });
+      expect(mailer.sent).toHaveLength(before);
+    } finally {
+      await holder.rollback();
+    }
+    await settled();
+    expect(mailer.sent).toHaveLength(before + 1);
+    expect(mailer.sent.at(-1).to).toBe(email);
+  });
+
+  it('puts both doors behind the credential rate limit', async () => {
+    const limited = await buildApp({
+      config: loadConfig({
+        ...process.env,
+        NODE_ENV: 'test',
+        APP_PUBLIC_URL: APP_URL,
+        RATE_LIMIT_AUTH_MAX: '3',
+      }),
+      mailer: fakeMailer(),
+    });
+    try {
+      const email = `${emailPrefix}-nobody-limited@example.com`;
+      const asks = [];
+      for (let i = 0; i < 4; i += 1) asks.push((await forgot({ email }, limited)).statusCode);
+      expect(asks).toEqual([202, 202, 202, 429]);
+
+      const guesses = [];
+      for (let i = 0; i < 4; i += 1) {
+        const res = await reset(
+          { token: `guess-${i}`.padEnd(43, 'x'), password: 'p'.repeat(8) },
+          limited,
+        );
+        guesses.push(res.statusCode);
+      }
+      expect(guesses).toEqual([400, 400, 400, 429]);
+      const last = await reset({ token: 'y'.repeat(43), password: 'p'.repeat(8) }, limited);
+      expect(last.json().code).toBe('RATE_LIMITED');
+    } finally {
+      await limited.close();
+    }
+  });
+
+  it('without outgoing mail answers "admin" and issues nothing', async () => {
+    const noMail = await buildApp({
+      config: loadConfig({ ...process.env, NODE_ENV: 'test', APP_PUBLIC_URL: APP_URL }),
+      mailer: null,
+    });
+    try {
+      const email = `${emailPrefix}-nomail@example.com`;
+      expect((await register(email)).statusCode).toBe(201);
+      const res = await forgot({ email }, noMail);
+      expect(res.statusCode).toBe(202);
+      expect(res.json()).toEqual({ delivery: 'admin' });
+      const user = await app.db('users').where({ email }).first('id');
+      expect(await app.db('password_resets').where({ user_id: user.id })).toHaveLength(0);
+    } finally {
+      await noMail.close();
+    }
+  });
+
+  it("the operator's command prints a working 24-hour link", async () => {
+    const email = `${emailPrefix}-admin@example.com`;
+    await register(email);
+    const out = [];
+    const err = [];
+    const code = await resetLinkCli({
+      argv: [email.toUpperCase()],
+      config: app.config,
+      db: app.db,
+      out: (line) => out.push(line),
+      err: (line) => err.push(line),
+    });
+    expect(code).toBe(0);
+    expect(out).toHaveLength(1);
+    expect(out[0].startsWith(`${APP_URL}/#/reset-password?token=`)).toBe(true);
+
+    const user = await app.db('users').where({ email }).first('id');
+    const row = await app.db('password_resets').where({ user_id: user.id }).first();
+    expect(row.source).toBe('admin');
+    const hours = (new Date(row.expires_at).getTime() - Date.now()) / 3600000;
+    expect(hours).toBeGreaterThan(23.9);
+    expect(hours).toBeLessThanOrEqual(24);
+
+    const res = await reset({ token: tokenIn(out[0]), password: 'admin-given-1' });
+    expect(res.statusCode).toBe(204);
+    expect((await login(email, 'admin-given-1')).statusCode).toBe(200);
+
+    // The operator learns an address has no account; the public form never says.
+    const missing = await resetLinkCli({
+      argv: [`${emailPrefix}-ghost@example.com`],
+      config: app.config,
+      db: app.db,
+      out: () => {},
+      err: () => {},
+    });
+    expect(missing).toBe(1);
+    expect(await resetLinkCli({ argv: [], config: app.config, db: app.db, err: () => {} })).toBe(2);
+  });
+});

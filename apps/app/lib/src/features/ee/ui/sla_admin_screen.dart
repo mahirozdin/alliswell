@@ -10,8 +10,9 @@ import '../providers.dart' show canProvider;
 import '../data/sla_admin_models.dart';
 import '../sla_admin_providers.dart';
 import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
-import 'report_format.dart';
+import '../../../core/format.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// What an admin may edit about a promise (EE-099).
 ///
@@ -409,7 +410,7 @@ class _PolicySheetState extends State<_PolicySheet> {
               onChanged: (_) => setState(() {}),
             ),
             const SizedBox(height: AwSpace.x3),
-            DropdownButtonFormField<String?>(
+            AwDropdownField<String?>(
               key: const Key('sla-policy-calendar'),
               initialValue: _calendarId,
               decoration: InputDecoration(
@@ -431,7 +432,7 @@ class _PolicySheetState extends State<_PolicySheet> {
             Row(
               children: [
                 Expanded(child: Text('ee.slaAdmin.warnPercent'.tr())),
-                Text('%$_warnPercent'),
+                Text(awFormatPercent(_warnPercent.toDouble(), decimals: 0)),
               ],
             ),
             Slider(
@@ -538,7 +539,7 @@ class _TargetRow extends StatelessWidget {
                 ? null
                 : v == null
                 ? 'ee.slaAdmin.noTarget'.tr()
-                : eeSpanText(v.toDouble()),
+                : awFormatDuration(v),
             errorText: invalid ? 'ee.slaAdmin.targetInvalid'.tr() : null,
           ),
           onChanged: (_) => onChanged(),

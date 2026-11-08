@@ -501,19 +501,33 @@ async function readmeMediaProblems() {
   const dir = join(ROOT, 'docs/assets/readme');
   if (!existsSync(dir)) return problems;
   const readme = read(join(ROOT, 'README.md'));
+  let total = 0;
   for (const name of readdirSync(dir)) {
     const bytes = statSync(join(dir, name)).size;
+    total += bytes;
     const animated = /\.(webp|gif)$/i.test(name);
-    const budget = animated ? BUDGETS.readmeAnimated : BUDGETS.readmeStill;
+    // OPH-411: the hero is the one image on the first screen, so it has its own, smaller budget.
+    const budget = /^hero\./.test(name)
+      ? BUDGETS.readmeHero
+      : animated
+        ? BUDGETS.readmeAnimated
+        : BUDGETS.readmeStill;
     if (bytes > budget) {
       problems.push(
         `docs/assets/readme/${name}: ${Math.round(bytes / 1024)} kB, over the ` +
-          `${Math.round(budget / 1024)} kB README ${animated ? 'animation' : 'image'} budget`,
+          `${Math.round(budget / 1024)} kB README ${budget === BUDGETS.readmeHero ? 'hero' : animated ? 'animation' : 'image'} budget`,
       );
     }
     if (!readme.includes(`docs/assets/readme/${name}`)) {
       problems.push(`docs/assets/readme/${name}: README.md does not use it (npm run media:promote leaves renamed files behind)`);
     }
+  }
+  // OPH-411: GitHub fetches every README image for every visitor, folded sections included.
+  if (total > BUDGETS.readmeTotal) {
+    problems.push(
+      `docs/assets/readme/: ${Math.round(total / 1024)} kB together, over the ` +
+        `${Math.round(BUDGETS.readmeTotal / 1024)} kB README total — drop or re-encode an animation`,
+    );
   }
   return problems;
 }

@@ -80,6 +80,7 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <link rel="preconnect" href="https://api.github.com" />
+    <!--ssr-head-->
 
     <!--
       No `softwareVersion` here, deliberately, though the homepage carries one.
@@ -136,24 +137,12 @@
   </head>
   <body>
     <!--
-      A real JavaScript-off rendering, not a placeholder that flashes: Vue's
-      mount() clears this container before its first render, so a reader who
-      never runs the script still gets the heading, the one load-bearing claim
-      and a way to start a conversation. It is also what the CI <h1> assertion
-      reads.
+      OPH-413 (landing-audit K8): the whole page is rendered here at build time
+      (scripts/prerender.mjs, src/enterprise/entry-server.js) and hydrated by the
+      entry script, so a crawler, a link preview and a reader with scripting off
+      read every section. It used to be a heading and an address.
     -->
-    <div id="app">
-      <h1>Manage every work request in your factory in one place</h1>
-      <p>
-        Breakdowns, maintenance, purchasing, quality and customer requests: who took them, how
-        long they took and how they ended, in one system.
-      </p>
-      <p>
-        Write to <a href="mailto:mahirozdin@bubiapps.com">mahirozdin@bubiapps.com</a> ·
-        <a href="/enterprise/tr" hreflang="tr">Türkçe</a> ·
-        <a href="/">alliswell.space</a>
-      </p>
-    </div>
+    <div id="app"><!--ssr-outlet--></div>
     <script type="module" src="/src/enterprise/main.en.js"></script>
   </body>
 </html>

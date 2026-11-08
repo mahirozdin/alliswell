@@ -33,5 +33,7 @@ suite (OPH-299).
     transaction; test with a real pull.
   - The server rejects the whole mutation on its first unknown field → test with the
     client's real body.
+  - The engines hang off the session: `AuthController` reading `syncEnginesProvider` is a
+    dependency loop (debug throws, sign-out died) → `runningSyncEnginesProvider` (OPH-390).
 - **Detail:** [ARCHITECTURE §5](../../docs/ARCHITECTURE.md#5-sync-engine-live-end-to-end),
   ADR-0007, ADR-0018, ADR-0044.

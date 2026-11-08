@@ -49,6 +49,7 @@ final notificationsGatewayProvider = Provider<NotificationsGateway>((ref) {
   gateway = WebNotificationsGateway(
     host: createWebPushHost(),
     readVapidKey: () => ref.read(pushPublicKeyProvider.future),
+    serverHasPush: () => ref.read(pushServerConfiguredProvider.future),
     onSubscriptionChanged: () => unawaited(_publishSubscription(ref, gateway)),
     cache: createAlertCache(),
     // Read per notification rather than captured: the gateway outlives the
@@ -145,21 +146,53 @@ final reminderSoundRawProvider = NotifierProvider<PersistedChoice, String>(
 /// How loud this BROWSER is (OPH-316). Device-local like every other delivery
 /// preference, and the one the office asked for: the window without the sound.
 /// Meaningless off the web — nothing reads it there.
+///
+/// Empty until the person picks a value (OPH-393): it parses to silent, the
+/// default, but only a stored "silent" is a choice anyone made.
 final webAlertModeRawProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice('alliswell_web_alert_mode', fallback: 'silent'),
+  () => PersistedChoice('alliswell_web_alert_mode', fallback: ''),
 );
 
 final webAlertModeProvider = Provider<WebAlertMode>(
   (ref) => WebAlertMode.parse(ref.watch(webAlertModeRawProvider)),
 );
 
-/// Whether the ring screen should open DECLARED silent (OPH-316): the user
-/// asked this browser to be quiet, and the screen has to say so rather than
-/// look like an alarm that failed. A provider rather than a `kIsWeb` read
-/// inside the screen, because `kIsWeb` is a const `false` in a VM test and the
-/// behaviour would then be untestable off the browser.
-final alarmSilentByChoiceProvider = Provider<bool>(
+/// Whether the ring screen opens silent (OPH-316): this browser is set to
+/// Silent — the web default (ADR-0039) — so the screen starts no sound and
+/// says why rather than look like an alarm that failed. A provider rather than
+/// a `kIsWeb` read inside the screen, because `kIsWeb` is a const `false` in a
+/// VM test and the behaviour would then be untestable off the browser.
+final alarmOpensSilentProvider = Provider<bool>(
   (ref) => kIsWeb && ref.watch(webAlertModeProvider) == WebAlertMode.silent,
+);
+
+/// Whether the person actually PICKED Silent (OPH-393, E-20). A fresh
+/// browser is silent by default and nobody chose anything, so "you set this
+/// browser to Silent" would be a false claim there. The stored value is empty
+/// until the setting is touched — it still parses to silent.
+final alarmSilenceChosenProvider = Provider<bool>(
+  (ref) => ref.watch(webAlertModeRawProvider) == WebAlertMode.silent.id,
+);
+
+/// How many permission prompts are open right now (OPH-393, U-05).
+///
+/// The scheduler asks for notification (and AlarmKit) permission on start,
+/// and Home probed at the same moment: the strip said "notifications are off"
+/// behind the OS prompt that was asking to turn them on (ios/05), and stayed
+/// there after the person allowed it, because nothing probed again. A count,
+/// not a flag: a scheduler rebuilt mid-prompt asks once more before the first
+/// ask ends.
+class AlarmPermissionAsk extends Notifier<int> {
+  @override
+  int build() => 0;
+
+  void begin() => state = state + 1;
+
+  void end() => state = state > 0 ? state - 1 : 0;
+}
+
+final alarmPermissionAskProvider = NotifierProvider<AlarmPermissionAsk, int>(
+  AlarmPermissionAsk.new,
 );
 
 /// Whether the browser will make a sound whatever the setting says (Firefox).
@@ -216,6 +249,9 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   ref,
 ) async {
   final gateway = ref.watch(notificationsGatewayProvider);
+  // Probe again the moment a permission prompt closes (OPH-393): what the
+  // person just answered is the thing this reports.
+  ref.watch(alarmPermissionAskProvider.select((open) => open > 0));
   try {
     await gateway.initialize();
     final support = await gateway.alarmSupport();
@@ -269,9 +305,20 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
   final gateway = ref.watch(notificationsGatewayProvider);
   final alarmKit = ref.watch(alarmKitHostProvider);
 
+  final ask = ref.read(alarmPermissionAskProvider.notifier);
   final scheduler = NotificationScheduler(
     gateway: gateway,
     alarmKit: alarmKit,
+    // A microtask, because `start()` below runs inside this provider's build
+    // and Riverpod refuses a write to another provider from there. The order
+    // of begin/end is kept: microtasks run first-in, first-out.
+    onPermissionAsk: (asking) => scheduleMicrotask(() {
+      try {
+        asking ? ask.begin() : ask.end();
+      } on Object {
+        // The container is gone (signed out, test torn down): nothing to hide.
+      }
+    }),
     alarms: ref.watch(reminderStoreProvider).watchAlarmsIn(scope),
     privacyMode: ref.watch(notificationPrivacyProvider),
     log: ref.watch(alarmLogProvider),

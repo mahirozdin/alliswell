@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error_messages.dart';
+import '../../../core/format.dart';
+import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/status_views.dart';
 import '../data/notification_prefs_api.dart';
 import '../notification_prefs_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/form_width.dart';
 
 /// The preference screen (EE-077, on EE-076's matrix).
 ///
@@ -27,16 +30,18 @@ class EeNotificationPrefsScreen extends ConsumerWidget {
         leading: awRouteLeading(context),
         title: Text('ee.notif.prefsTitle'.tr()),
       ),
-      body: prefs.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(message: localizedError(error)),
-        data: (data) => ListView(
-          padding: awListPadding(context),
-          children: [
-            for (final row in data.matrix) _ClassRow(row: row),
-            const Divider(height: 32),
-            _QuietHours(prefs: data),
-          ],
+      body: AwFormWidth(
+        child: prefs.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AwErrorState(message: localizedError(error)),
+          data: (data) => ListView(
+            padding: awListPadding(context),
+            children: [
+              for (final row in data.matrix) _ClassRow(row: row),
+              const Divider(height: 32),
+              _QuietHours(prefs: data),
+            ],
+          ),
         ),
       ),
     );
@@ -133,6 +138,7 @@ class _QuietHours extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final notifier = ref.read(eeNotificationPrefsProvider.notifier);
+    final dateFormat = ref.watch(dateFormatProvider);
 
     Future<void> pick({required bool start}) async {
       final current = start ? prefs.quietFrom : prefs.quietTo;
@@ -172,8 +178,8 @@ class _QuietHours extends ConsumerWidget {
             prefs.hasQuietHours
                 ? 'ee.notif.quietRange'.tr(
                     args: {
-                      'from': _hhmm(prefs.quietFrom!),
-                      'to': _hhmm(prefs.quietTo!),
+                      'from': _hhmm(prefs.quietFrom!, dateFormat),
+                      'to': _hhmm(prefs.quietTo!, dateFormat),
                       'zone': prefs.timezone,
                     },
                   )
@@ -210,7 +216,10 @@ class _QuietHours extends ConsumerWidget {
     );
   }
 
-  static String _hhmm(int minutes) =>
-      '${(minutes ~/ 60).toString().padLeft(2, '0')}:'
-      '${(minutes % 60).toString().padLeft(2, '0')}';
+  /// Minutes past midnight in the reader's clock (OPH-408): "22:00" or
+  /// "10:00 PM", never a hand-built "22:00" on a 12-hour phone.
+  static String _hhmm(int minutes, String format) => awFormatTime(
+    DateTime(2000, 1, 1, minutes ~/ 60, minutes % 60),
+    format: format,
+  );
 }

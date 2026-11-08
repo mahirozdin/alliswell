@@ -80,16 +80,19 @@ class AllisWellApp extends ConsumerWidget {
         // scope degrades SILENTLY to the package's defaults: English labels
         // and an unresolvable `alliswell://file/{id}`, which looks like a
         // broken image rather than a missing provider.
-        builder: (context, child) => SlidableAutoCloseBehavior(
-          child: ColoredBox(
-            color: context.awTokens.auroraTop,
-            child: AwMarkdownScope(
-              // OPH-374: ⌘K/Ctrl+K and the recents tracker, above every
-              // route — and above the bubble, so the palette's shortcut
-              // works wherever the person is (ADR-0055).
-              child: AwGlobalSearchHost(
-                child: QuickAccessBubbleHost(
-                  child: child ?? const SizedBox.shrink(),
+        // OPH-391 (U-43): the status bar follows the theme (`AwSystemOverlay`).
+        builder: (context, child) => AwSystemOverlay(
+          child: SlidableAutoCloseBehavior(
+            child: ColoredBox(
+              color: context.awTokens.auroraTop,
+              child: AwMarkdownScope(
+                // OPH-374: ⌘K/Ctrl+K and the recents tracker, above every
+                // route — and above the bubble, so the palette's shortcut
+                // works wherever the person is (ADR-0055).
+                child: AwGlobalSearchHost(
+                  child: QuickAccessBubbleHost(
+                    child: child ?? const SizedBox.shrink(),
+                  ),
                 ),
               ),
             ),

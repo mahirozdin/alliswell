@@ -1,0 +1,190 @@
+{
+  "note": "OPH-399 / ADR-0063 #5: counts may only go down. Regenerate with `npm run check:typography -- --update`.",
+  "total": {
+    "fontSize": 4,
+    "textStyle": 33,
+    "offGrid": 18
+  },
+  "files": {
+    "apps/app/lib/src/features/ai/ui/ai_settings_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/api_keys/ui/api_keys_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/auth/ui/social_sign_in_buttons.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/calendar/apple/apple_calendar_card.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/ee/admin/ui/admin_teams_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 3,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/ee/ui/asset_edit_sheet.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/ee/ui/kb_editor_sheet.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/ee/ui/meeting_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 2
+    },
+    "apps/app/lib/src/features/ee/ui/notification_center_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/ee/ui/requester_ticket_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/ee/ui/rules_widgets.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/ee/ui/team_identity_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 2
+    },
+    "apps/app/lib/src/features/ee/ui/team_members_screen.dart": {
+      "fontSize": 1,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/files/ui/file_widgets.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/home/home_board.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/home/home_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/home/month_calendar.dart": {
+      "fontSize": 1,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/integrations/ui/caldav_calendar_card.dart": {
+      "fontSize": 0,
+      "textStyle": 2,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/integrations/ui/google_calendar_card.dart": {
+      "fontSize": 0,
+      "textStyle": 2,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/notes/ui/markdown_import_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/notes/ui/note_editor_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 2
+    },
+    "apps/app/lib/src/features/notes/ui/note_export.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/notes/ui/notes_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/onboarding/tour_overlay.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/projects/ui/project_archive.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/projects/ui/project_badge.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/projects/ui/project_detail_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/features/projects/ui/project_picker.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/tasks/ui/quick_add_text_controller.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/features/tasks/ui/task_detail_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 4,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/screens/settings_screen.dart": {
+      "fontSize": 0,
+      "textStyle": 4,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/widgets/count_badge.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/widgets/sheet_rows.dart": {
+      "fontSize": 0,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/widgets/status_views.dart": {
+      "fontSize": 0,
+      "textStyle": 0,
+      "offGrid": 1
+    },
+    "apps/app/lib/src/widgets/swipe_actions.dart": {
+      "fontSize": 1,
+      "textStyle": 1,
+      "offGrid": 0
+    },
+    "apps/app/lib/src/widgets/tab_capsule.dart": {
+      "fontSize": 1,
+      "textStyle": 0,
+      "offGrid": 0
+    }
+  }
+}

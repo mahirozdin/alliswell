@@ -10,6 +10,7 @@ import '../providers.dart' show canProvider;
 import '../data/team_ai_models.dart';
 import '../team_ai_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The team's AI keys, and who else may bring one (EE-111, madde 13).
 ///
@@ -284,7 +285,7 @@ Future<void> _edit(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              DropdownButtonFormField<String>(
+              AwDropdownField<String>(
                 key: const Key('team-ai-provider'),
                 initialValue: provider,
                 decoration: InputDecoration(

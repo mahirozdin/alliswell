@@ -31,7 +31,7 @@ defineProps({
 </script>
 
 <template>
-  <section :id="anchor" v-reveal class="aw-section deploy">
+  <section :id="anchor" class="aw-section deploy">
     <div class="aw-shell">
       <header class="deploy__head">
         <p v-if="eyebrow" class="aw-eyebrow"><LatinWords :text="eyebrow" /></p>

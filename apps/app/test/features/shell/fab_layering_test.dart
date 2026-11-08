@@ -8,6 +8,7 @@ import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/widgets/tab_capsule.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
@@ -32,7 +33,7 @@ Future<Widget> signedInApp(FakeApi api) async {
 }
 
 void main() {
-  // OPH-101: on phones the shell's glass NavigationBar (extendBody: true) was
+  // OPH-101: on phones the shell's glass bar (extendBody: true) was
   // painted over each section's nested-Scaffold FAB, so the FAB could not be
   // tapped. The FAB must sit fully above the bar AND fire its action.
   testWidgets(
@@ -49,10 +50,10 @@ void main() {
       await tester.pumpWidget(await signedInApp(api));
       await tester.pumpAndSettle();
 
-      // Narrow layout confirmed: the bottom NavigationBar is what covers the FAB.
-      expect(find.byType(NavigationBar), findsOneWidget);
+      // Narrow layout confirmed: the bottom capsule is what covers the FAB.
+      expect(find.byType(AwTabCapsule), findsOneWidget);
       Rect fabRect() => tester.getRect(find.byType(FloatingActionButton));
-      Rect navRect() => tester.getRect(find.byType(NavigationBar));
+      Rect navRect() => tester.getRect(find.byType(AwTabCapsule));
 
       // The shell renders exactly one FAB (for the current section).
       expect(find.byType(FloatingActionButton), findsOneWidget);

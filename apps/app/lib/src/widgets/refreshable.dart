@@ -27,6 +27,7 @@ class AwRefresh extends StatelessWidget {
     required this.child,
     this.indicatorKey,
     this.displacement,
+    this.triggerMode = RefreshIndicatorTriggerMode.onEdge,
   });
 
   /// The work. Returning **false** means "tell the user it did not work" (R4) —
@@ -43,6 +44,12 @@ class AwRefresh extends StatelessWidget {
   /// not.
   final double? displacement;
 
+  /// [RefreshIndicatorTriggerMode.anywhere] lets one continuous pull that
+  /// started below the top reach the top and keep going into a refresh —
+  /// Home's phone list rests with its filter field scrolled away (OPH-398),
+  /// and a pull reveals the field first, then refreshes, like iOS Mail.
+  final RefreshIndicatorTriggerMode triggerMode;
+
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
@@ -53,6 +60,7 @@ class AwRefresh extends StatelessWidget {
       color: scheme.primary,
       backgroundColor: scheme.surfaceContainerHigh,
       displacement: displacement ?? 40,
+      triggerMode: triggerMode,
       onRefresh: () => runAwRefresh(context, onRefresh),
       child: child,
     );

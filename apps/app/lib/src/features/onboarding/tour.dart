@@ -1,8 +1,15 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/rendering.dart' show RenderView;
+import 'package:flutter/scheduler.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/kv/local_kv.dart';
 import '../../i18n/i18n.dart';
 import '../../sections.dart';
+import '../ai/providers.dart' show aiStatusProvider;
 import '../ee/providers.dart' show eeFeatureProvider, eeStatusProvider;
 import '../ee/team_origin.dart' show teamOriginProvider;
 
@@ -14,101 +21,230 @@ const kOnboardingSeenKey = 'alliswell_onboarding_seen_v1';
 /// never covers the app under test (OPH-111).
 final tourAutoStartProvider = Provider<bool>((_) => true);
 
-/// One step of the tour. [section] anchors the spotlight to a nav destination;
-/// a null section is a plain centered card (welcome / farewell).
+/// What a step points at besides a nav destination (OPH-404). Each one is
+/// marked in the tree by a [TourAnchor]; a target that is not on screen
+/// (a narrow window, a section that hides it) falls back to the step's
+/// [TourStep.fallback], or to a centred card.
+///
+/// [alarm] is the first upcoming task on Home whose urgent alarm will ring
+/// (polish 4 T-03): the alarm step used to be a centred card over the
+/// calendar, pointing at nothing.
+enum TourTarget { quickAdd, voice, search, alarm }
+
+/// One step of the tour. [target] or [section] anchors the spotlight; a
+/// [target] that is not on screen tries [fallback]; nothing found is a
+/// plain centred card.
 class TourStep {
-  const TourStep({this.section, required this.titleKey, required this.bodyKey});
+  const TourStep({
+    this.section,
+    this.target,
+    this.fallback,
+    required this.titleKey,
+    required this.bodyKey,
+    this.touchBodyKey,
+  });
 
   final AppSection? section;
+  final TourTarget? target;
+  final TourTarget? fallback;
   final String titleKey;
   final String bodyKey;
 
+  /// The body on a phone or tablet (polish 4 T-03): the search step told a
+  /// phone about "Ctrl+K (⌘K on a Mac)". Null = [bodyKey] everywhere.
+  final String? touchBodyKey;
+
   String get title => titleKey.tr();
-  String get body => bodyKey.tr();
+  String get body =>
+      (touchBodyKey != null && tourIsTouchPlatform() ? touchBodyKey! : bodyKey)
+          .tr();
 }
 
-/// The tour script: a welcome card, one spotlight per nav section, and a
-/// farewell pointing at Settings. Section copy stays close to each
-/// `AppSection.description` so the tour and the tooltips don't drift.
+/// iOS and Android — native or a phone's browser — have no keyboard
+/// shortcut to teach; desktops and desktop browsers do.
+bool tourIsTouchPlatform() =>
+    defaultTargetPlatform == TargetPlatform.iOS ||
+    defaultTargetPlatform == TargetPlatform.android;
+
+/// OPH-404 (U-33, research `ux-core-screens.md` §4.1, DESIGN §50): four
+/// things a person does on day one, not a walk past every tab. The old
+/// seven steps toured Notes and Files and never said how to add a task.
+const TourStep kTourQuickAdd = TourStep(
+  target: TourTarget.quickAdd,
+  titleKey: 'tour.quickAddTitle',
+  bodyKey: 'tour.quickAddBody',
+);
+const TourStep kTourVoice = TourStep(
+  target: TourTarget.voice,
+  titleKey: 'tour.voiceTitle',
+  bodyKey: 'tour.voiceBody',
+);
+
+/// Polish 4 T-03: the alarm step spotlights the first upcoming task that
+/// will ring ([TourTarget.alarm], marked by Home's rows); a Home with none
+/// on screen — a new account — points at the field where a time is typed.
+const TourStep kTourAlarm = TourStep(
+  target: TourTarget.alarm,
+  fallback: TourTarget.quickAdd,
+  titleKey: 'tour.alarmTitle',
+  bodyKey: 'tour.alarmBody',
+);
+const TourStep kTourSearch = TourStep(
+  target: TourTarget.search,
+  titleKey: 'tour.searchTitle',
+  bodyKey: 'tour.searchBody',
+  touchBodyKey: 'tour.searchBodyTouch',
+);
+
+/// The personal tour. [kTourVoice] only where the microphone is drawn
+/// (`aiFabVisible`): a server without AI has no voice entry, and a step
+/// about a button that is not there is worse than one step fewer. A cold
+/// start answers "no AI" until the workspace loads, so a running tour
+/// takes the late answer while it is still on its first step (R-01).
 const List<TourStep> kTourSteps = [
-  TourStep(titleKey: 'tour.welcomeTitle', bodyKey: 'tour.welcomeBody'),
-  TourStep(
-    section: AppSection.home,
-    titleKey: 'tour.homeTitle',
-    bodyKey: 'tour.homeBody',
-  ),
-  TourStep(
-    section: AppSection.inbox,
-    titleKey: 'tour.inboxTitle',
-    bodyKey: 'tour.inboxBody',
-  ),
-  TourStep(
-    section: AppSection.projects,
-    titleKey: 'tour.projectsTitle',
-    bodyKey: 'tour.projectsBody',
-  ),
-  TourStep(
-    section: AppSection.notes,
-    titleKey: 'tour.notesTitle',
-    bodyKey: 'tour.notesBody',
-  ),
-  TourStep(
-    section: AppSection.files,
-    titleKey: 'tour.filesTitle',
-    bodyKey: 'tour.filesBody',
-  ),
-  TourStep(titleKey: 'tour.doneTitle', bodyKey: 'tour.doneBody'),
+  kTourQuickAdd,
+  kTourVoice,
+  kTourAlarm,
+  kTourSearch,
 ];
 
 /// The same tour for somebody in an organisation's window (OPH-356,
-/// UI-AUDIT #83): the service desk is in their navigation, so the tour shows
-/// them where to ask for something and follow it — and Files does not promise
-/// "personal folders" in an app where the organisation's handbook says there
-/// is no personal space.
+/// UI-AUDIT #83): the service desk is what they came for, so its step takes
+/// the microphone's place (OPH-404).
 const List<TourStep> kTeamTourSteps = [
-  TourStep(titleKey: 'tour.welcomeTitle', bodyKey: 'tour.welcomeBody'),
-  TourStep(
-    section: AppSection.home,
-    titleKey: 'tour.homeTitle',
-    bodyKey: 'tour.homeBody',
-  ),
+  kTourQuickAdd,
   TourStep(
     section: AppSection.tickets,
     titleKey: 'tour.ticketsTitle',
     bodyKey: 'tour.ticketsBody',
   ),
-  TourStep(
-    section: AppSection.inbox,
-    titleKey: 'tour.inboxTitle',
-    bodyKey: 'tour.inboxBody',
-  ),
-  TourStep(
-    section: AppSection.projects,
-    titleKey: 'tour.projectsTitle',
-    bodyKey: 'tour.projectsBody',
-  ),
-  TourStep(
-    section: AppSection.notes,
-    titleKey: 'tour.notesTitle',
-    bodyKey: 'tour.notesBody',
-  ),
-  TourStep(
-    section: AppSection.files,
-    titleKey: 'tour.filesTitle',
-    bodyKey: 'tour.filesBodyTeam',
-  ),
-  TourStep(titleKey: 'tour.doneTitle', bodyKey: 'tour.doneBody'),
+  kTourAlarm,
+  kTourSearch,
 ];
 
 /// Which script this window gets: the team's where the service desk is drawn
 /// — the same two answers the navigation asks (`home_shell`, EE-290) — and
-/// the personal one everywhere else.
+/// the personal one everywhere else, without the voice step when AI is off.
 final tourStepsProvider = Provider<List<TourStep>>((ref) {
   final desk =
       ref.watch(eeFeatureProvider('itsm')) &&
       ref.watch(teamOriginProvider) != null;
-  return desk ? kTeamTourSteps : kTourSteps;
+  if (desk) return kTeamTourSteps;
+  final mic = ref.watch(aiStatusProvider).value?.enabled ?? false;
+  if (mic) return kTourSteps;
+  return [
+    for (final s in kTourSteps)
+      if (s != kTourVoice) s,
+  ];
 });
+
+/// Marks the widget a [TourTarget] step spotlights (OPH-404). A registry of
+/// ACTIVE contexts, not a GlobalKey: the search entry and the microphone
+/// are rebuilt by layout switches and FAB transitions, where a GlobalKey
+/// mounted twice for a frame is a crash and a stale context is only a
+/// missing spotlight. An anchor leaves the registry when it is deactivated,
+/// not when it is disposed (R-01): between the two it is still `mounted`,
+/// and measuring it was the red "renderObject of inactive element" screen
+/// of the first run.
+class TourAnchor extends StatefulWidget {
+  const TourAnchor({super.key, required this.target, required this.child});
+
+  final TourTarget target;
+  final Widget child;
+
+  static final Map<TourTarget, BuildContext> _mounted = {};
+
+  /// Bumped after an anchor mounts or leaves, once its frame is laid out:
+  /// Home's field arrives after the tour has started, and the overlay must
+  /// move its spotlight onto it rather than keep a centred card.
+  static final ValueNotifier<int> changes = ValueNotifier(0);
+
+  static void _announce() {
+    SchedulerBinding.instance.addPostFrameCallback((_) => changes.value++);
+  }
+
+  /// The target's on-screen rect, or null when it is not laid out.
+  static Rect? rectOf(TourTarget target) {
+    final context = _mounted[target];
+    if (context == null || !context.mounted) return null;
+    // Only active elements are registered (see [_TourAnchorState.deactivate]).
+    final box = context.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize || !box.attached) return null;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  /// [rectOf], but only when the whole rect is inside the window (polish 4
+  /// T-03): a list row can be laid out in the scroll cache below the
+  /// screen, and a spotlight there is a card pointing at nothing.
+  static Rect? visibleRectOf(TourTarget target) {
+    final rect = rectOf(target);
+    final context = _mounted[target];
+    if (rect == null || context == null || !context.mounted) return null;
+    // The root render object is the window, in the same logical pixels as
+    // [rectOf] (a test's surface size included).
+    final view = context.findAncestorRenderObjectOfType<RenderView>();
+    if (view == null) return rect;
+    final window = view.size;
+    final inside =
+        rect.top >= 0 &&
+        rect.left >= 0 &&
+        rect.bottom <= window.height &&
+        rect.right <= window.width;
+    return inside ? rect : null;
+  }
+
+  @override
+  State<TourAnchor> createState() => _TourAnchorState();
+}
+
+class _TourAnchorState extends State<TourAnchor> {
+  @override
+  void initState() {
+    super.initState();
+    TourAnchor._mounted[widget.target] = context;
+    TourAnchor._announce();
+  }
+
+  @override
+  void didUpdateWidget(TourAnchor old) {
+    super.didUpdateWidget(old);
+    if (old.target != widget.target) {
+      _release(old.target);
+      TourAnchor._mounted[widget.target] = context;
+    }
+  }
+
+  // A GlobalKey move above the anchor deactivates and reactivates it in
+  // one frame: it is back in the registry once it is in the tree again.
+  @override
+  void activate() {
+    super.activate();
+    TourAnchor._mounted[widget.target] = context;
+    TourAnchor._announce();
+  }
+
+  @override
+  void deactivate() {
+    _release(widget.target);
+    super.deactivate();
+  }
+
+  void _release(TourTarget target) {
+    if (identical(TourAnchor._mounted[target], context)) {
+      TourAnchor._mounted.remove(target);
+      TourAnchor._announce();
+    }
+  }
+
+  @override
+  void dispose() {
+    _release(widget.target);
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
 
 /// Tour position. [running] gates the overlay; [step] indexes [steps] — the
 /// script fixed when the tour started, so a window that changes under a
@@ -138,7 +274,19 @@ class TourController extends Notifier<TourState> {
   bool _autoAttempted = false;
 
   @override
-  TourState build() => const TourState();
+  TourState build() {
+    // R-01: the answers that pick the script (AI status, the service desk)
+    // can arrive after the tour started — a cold start reads "no AI" until
+    // the workspace loads, and an organisation's status after a slow first
+    // sync. Until the first "Next" both scripts show the same step, so the
+    // tour takes the late answer; after it the numbering stays put.
+    ref.listen(tourStepsProvider, (_, steps) {
+      if (state.running && state.step == 0 && !identical(state.steps, steps)) {
+        state = TourState(running: true, steps: steps);
+      }
+    });
+    return const TourState();
+  }
 
   /// Called once from Home's first frame. Starts the tour only in production
   /// (see [tourAutoStartProvider]) and only if this device hasn't seen it.
@@ -160,7 +308,42 @@ class TourController extends Notifier<TourState> {
             .timeout(const Duration(seconds: 3));
       } catch (_) {}
     }
+    // The voice step depends on whether the microphone is drawn (OPH-404).
+    if (ref.read(aiStatusProvider).isLoading) {
+      try {
+        await ref
+            .read(aiStatusProvider.future)
+            .timeout(const Duration(seconds: 3));
+      } catch (_) {}
+    }
+    if (!ref.mounted) return;
+    // R-01: the first step points at Home's field — wait for its first
+    // laid-out frame, or the card opens over a blank window with no
+    // spotlight. Bounded: a window that never draws it (a deep link to
+    // another section) gets a centred card.
+    final first = ref.read(tourStepsProvider).first.target;
+    if (first != null) await _untilLaidOut(first);
+    if (!ref.mounted) return;
     start();
+  }
+
+  static Future<void> _untilLaidOut(TourTarget target) async {
+    if (TourAnchor.rectOf(target) != null) return;
+    final laidOut = Completer<void>();
+    void check() {
+      if (!laidOut.isCompleted && TourAnchor.rectOf(target) != null) {
+        laidOut.complete();
+      }
+    }
+
+    TourAnchor.changes.addListener(check);
+    try {
+      await laidOut.future.timeout(const Duration(seconds: 3));
+    } on TimeoutException catch (_) {
+      // Start anyway; the overlay picks the field up if it arrives later.
+    } finally {
+      TourAnchor.changes.removeListener(check);
+    }
   }
 
   /// Replay from Settings (does NOT clear the seen flag — it just runs).

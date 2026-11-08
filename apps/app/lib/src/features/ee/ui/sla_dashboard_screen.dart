@@ -7,9 +7,10 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../data/sla_dashboard_models.dart';
 import '../sla_dashboard_providers.dart';
-import 'report_format.dart';
+import '../../../core/format.dart';
 import 'ticket_detail_screen.dart' show awOpenTicket;
 import '../../../widgets/route_leading.dart';
+import 'figure_scope.dart';
 import '../../../widgets/fab_clearance.dart';
 
 /// The SLA dashboard (EE-098) — the screen this epic is sold on.
@@ -35,68 +36,213 @@ import '../../../widgets/fab_clearance.dart';
 ///   • A BAR IS A BAR AND A NUMBER IS A NUMBER. Each breakdown row shows the
 ///     count as text beside its bar. A bar alone is a picture of a ratio
 ///     nobody can quote in a meeting, and this screen exists to be quoted.
-class EeSlaDashboardScreen extends ConsumerWidget {
-  const EeSlaDashboardScreen({super.key});
+class EeSlaDashboardScreen extends ConsumerStatefulWidget {
+  const EeSlaDashboardScreen({super.key, this.embedded = false});
+
+  /// OPH-409: drawn as a tab of the requests header, under its bar.
+  final bool embedded;
+
+  /// The line a manager would call a problem; the headline turns red below
+  /// it, and the board says so (U-20: "Target: 90 %").
+  static const double target = 90;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EeSlaDashboardScreen> createState() =>
+      _EeSlaDashboardScreenState();
+}
+
+class _EeSlaDashboardScreenState extends ConsumerState<EeSlaDashboardScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // HK-1 (polish 3): the board's answer is kept for the session, so a
+    // board opened again showed the figures of its first opening while
+    // Home, read since, had moved on (15 + 7 here, 22 there). Each opening
+    // asks again; the last answer stays on screen while it does.
+    if (ref.read(eeSlaDashboardProvider).hasValue) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.invalidate(eeSlaDashboardProvider);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final embedded = widget.embedded;
     final dashboard = ref.watch(eeSlaDashboardProvider);
 
+    final body = dashboard.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
+      // again — never the exception's own text.
+      error: (error, _) => AwErrorState(
+        message: localizedError(error),
+        onRetry: () => ref.invalidate(eeSlaDashboardProvider),
+      ),
+      data: (data) {
+        if (data == null) {
+          return AwEmptyState(
+            icon: Icons.query_stats_outlined,
+            title: 'ee.slaDash.unavailable'.tr(),
+            message: 'ee.slaDash.unavailableBody'.tr(),
+          );
+        }
+        return RefreshIndicator(
+          onRefresh: () => ref.read(eeSlaDashboardProvider.notifier).refresh(),
+          child: ListView(
+            padding: awPagePadding(context, AwSpace.x4),
+            children: [
+              // UI-AUDIT #22: a team with no default policy measures nothing
+              // it opens from now on — said above the figure it undermines.
+              if (data.hasDefaultPolicy == false) ...[
+                const _NoDefaultPolicy(),
+                const SizedBox(height: AwSpace.x4),
+              ],
+              // U-20: "open right now" first and apart — the figure the
+              // queue's strip and "Birimlerim" count — so it is never
+              // read against the stock below as one number disagreeing.
+              if (data.openBreached != null || data.openWarned != null) ...[
+                _OpenNow(data: data),
+                // P-14 (EE-310): said only where the server says it is the
+                // same `open_now` count "Birimlerim" shows.
+                if (data.scope?.open == 'open_now') ...[
+                  const SizedBox(height: AwSpace.x1),
+                  Text(
+                    'ee.slaDash.openScope'.tr(),
+                    key: const Key('sla-open-scope'),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: AwSpace.x4),
+              ],
+              _Compliance(
+                value: data.compliance,
+                judged: data.judged,
+                met: data.slaCount('met'),
+              ),
+              const SizedBox(height: AwSpace.x4),
+              _Outcomes(data: data),
+              const SizedBox(height: AwSpace.x2),
+              // P-14 (EE-310): `live` is the basis this sentence describes;
+              // an older server (no field) keeps it, an unknown basis drops it.
+              if (data.scope?.stock == null || data.scope?.stock == 'live')
+                Text(
+                  'ee.slaDash.stockScope'.tr(),
+                  key: const Key('sla-stock-scope'),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              EeFigureScopeLine(scope: data.scope),
+              const SizedBox(height: AwSpace.x6),
+              _Breakdown(
+                titleKey: 'ee.slaDash.byUnit',
+                buckets: data.byUnit,
+                emptyKey: 'ee.slaDash.noUnits',
+              ),
+              const SizedBox(height: AwSpace.x6),
+              _Breakdown(
+                titleKey: 'ee.slaDash.byService',
+                buckets: data.byService,
+                emptyKey: 'ee.slaDash.noServices',
+                labelFor: (b) => b.label ?? 'ee.slaDash.noService'.tr(),
+              ),
+              const SizedBox(height: AwSpace.x6),
+              _Breaches(breaches: data.breaches),
+            ],
+          ),
+        );
+      },
+    );
+    if (embedded) return body;
     return Scaffold(
       appBar: AppBar(
         leading: awRouteLeading(context),
         title: Text('ee.slaDash.title'.tr()),
       ),
-      body: dashboard.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        // OPH-357 (UI-AUDIT #24): the translated message and a way to ask
-        // again — never the exception's own text.
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeSlaDashboardProvider),
-        ),
-        data: (data) {
-          if (data == null) {
-            return AwEmptyState(
-              icon: Icons.query_stats_outlined,
-              title: 'ee.slaDash.unavailable'.tr(),
-              message: 'ee.slaDash.unavailableBody'.tr(),
-            );
-          }
-          return RefreshIndicator(
-            onRefresh: () =>
-                ref.read(eeSlaDashboardProvider.notifier).refresh(),
-            child: ListView(
-              padding: awPagePadding(context, AwSpace.x4),
+      body: body,
+    );
+  }
+}
+
+/// U-20 — requests open right now whose promise is past or close, apart.
+class _OpenNow extends StatelessWidget {
+  const _OpenNow({required this.data});
+
+  final EeSlaDashboard data;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    Widget figure(
+      String key,
+      String labelKey,
+      int? value,
+      IconData icon,
+      Color mark,
+    ) => Expanded(
+      child: Semantics(
+        container: true,
+        excludeSemantics: true,
+        label: '${labelKey.tr()}: ${value ?? '—'}',
+        child: Column(
+          key: Key('sla-open-$key'),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
-                // UI-AUDIT #22: a team with no default policy measures nothing
-                // it opens from now on — said above the figure it undermines.
-                if (data.hasDefaultPolicy == false) ...[
-                  const _NoDefaultPolicy(),
-                  const SizedBox(height: AwSpace.x4),
-                ],
-                _Compliance(value: data.compliance, judged: data.judged),
-                const SizedBox(height: AwSpace.x4),
-                _Outcomes(data: data),
-                const SizedBox(height: AwSpace.x6),
-                _Breakdown(
-                  titleKey: 'ee.slaDash.byUnit',
-                  buckets: data.byUnit,
-                  emptyKey: 'ee.slaDash.noUnits',
+                Icon(icon, size: 16, color: mark),
+                const SizedBox(width: AwSpace.x1),
+                Flexible(
+                  child: Text(
+                    labelKey.tr(),
+                    style: theme.textTheme.labelMedium,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                const SizedBox(height: AwSpace.x6),
-                _Breakdown(
-                  titleKey: 'ee.slaDash.byService',
-                  buckets: data.byService,
-                  emptyKey: 'ee.slaDash.noServices',
-                  labelFor: (b) => b.label ?? 'ee.slaDash.noService'.tr(),
-                ),
-                const SizedBox(height: AwSpace.x6),
-                _Breaches(breaches: data.breaches),
               ],
             ),
-          );
-        },
+            const SizedBox(height: AwSpace.x1),
+            Text(
+              value == null ? '—' : awFormatNumber(value),
+              style: theme.textTheme.headlineSmall,
+            ),
+          ],
+        ),
+      ),
+    );
+    return Card(
+      key: const Key('sla-open-now'),
+      child: Padding(
+        padding: const EdgeInsets.all(AwSpace.x4),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('ee.slaDash.openNow'.tr(), style: theme.textTheme.titleSmall),
+            const SizedBox(height: AwSpace.x2),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                figure(
+                  'breached',
+                  'ee.slaDash.openBreached',
+                  data.openBreached,
+                  Icons.error_outline,
+                  theme.colorScheme.error,
+                ),
+                figure(
+                  'warned',
+                  'ee.slaDash.openWarned',
+                  data.openWarned,
+                  Icons.schedule,
+                  context.awTokens.warning,
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -104,12 +250,19 @@ class EeSlaDashboardScreen extends ConsumerWidget {
 
 /// The headline: met against broken, as a percentage — or a dash.
 class _Compliance extends StatelessWidget {
-  const _Compliance({required this.value, required this.judged});
+  const _Compliance({
+    required this.value,
+    required this.judged,
+    required this.met,
+  });
 
   final double? value;
 
   /// The denominator `value` was computed over (UI-AUDIT #52).
   final int judged;
+
+  /// How many of [judged] were resolved within the SLA (A-53).
+  final int met;
 
   @override
   Widget build(BuildContext context) {
@@ -120,7 +273,7 @@ class _Compliance extends StatelessWidget {
     // the line an operations manager would call a problem.
     final colour = value == null
         ? theme.textTheme.bodyLarge?.color
-        : value! < 90
+        : value! < EeSlaDashboardScreen.target
         ? theme.colorScheme.error
         : tokens.success;
 
@@ -149,7 +302,7 @@ class _Compliance extends StatelessWidget {
                   ? '—'
                   // UI-AUDIT #88: the reader's locale writes it — "%40,3" in
                   // Turkish, "40.3%" in English, not a fixed English point.
-                  : eePercentText(value!),
+                  : awFormatPercent(value),
               key: const Key('sla-compliance'),
               style: theme.textTheme.displaySmall?.copyWith(color: colour),
             ),
@@ -157,10 +310,27 @@ class _Compliance extends StatelessWidget {
             Text(
               value == null
                   ? 'ee.slaDash.complianceNone'.tr()
-                  : 'ee.slaDash.complianceOf'.tr(args: {'total': '$judged'}),
+                  : 'ee.slaDash.complianceOf'.tr(
+                      args: {'total': '$judged', 'met': '$met'},
+                    ),
               key: const Key('sla-compliance-of'),
               style: theme.textTheme.bodySmall,
             ),
+            // The line the colour turns at, beside a measured figure only:
+            // with nothing judged there is no percentage on the screen.
+            if (value != null)
+              Text(
+                'ee.slaDash.target'.tr(
+                  args: {
+                    'target': awFormatPercent(
+                      EeSlaDashboardScreen.target,
+                      decimals: 0,
+                    ),
+                  },
+                ),
+                key: const Key('sla-target'),
+                style: theme.textTheme.bodySmall,
+              ),
           ],
         ),
       ),

@@ -14,7 +14,17 @@
  * struck-through rows (OPH-185 keeps today's completions visible) and leaves
  * Settings ▸ Completed with a single day in a timeline built for scrolling back
  * through months. The `--backdate` step (default on, skipped without a reachable
- * database) writes those timestamps directly. Nothing else bypasses the API.
+ * database) writes those timestamps directly — and, since OPH-414, the same for
+ * the one note whose version history the seed writes, whose rows are otherwise
+ * all "just now". Nothing else bypasses the API.
+ *
+ * OPH-414 added the surfaces that used to open on an empty state: an AI provider
+ * (a placeholder key that is stored and never called), an API key that has been
+ * used once, a Todoist import (so the import ledger and a re-import preview are
+ * real), a note with versions — the last one written by an MCP client over the
+ * real OAuth flow — and files with real bytes (scripts/seed-demo-files.mjs) that
+ * the app can preview. A calendar connection is opt-in (`--caldav`), because
+ * connecting one is a network call by design; docs/SCREENSHOTS.md §0 says why.
  *
  * Usage:
  *   node scripts/seed-demo.mjs                          # localhost:3000, demo@alliswell.space
@@ -22,11 +32,15 @@
  *   node scripts/seed-demo.mjs --email me@example.com --password 'hunter2hunter2'
  *   node scripts/seed-demo.mjs --no-files               # skip attachments (no S3/MinIO configured)
  *   node scripts/seed-demo.mjs --no-backdate            # leave every completion stamped today
+ *   node scripts/seed-demo.mjs --caldav http://127.0.0.1:5232/ --caldav-user alice --caldav-password alice-app-pw
+ *                                                       # also connect a CalDAV account (a real call)
  *
  * Dates are computed relative to the moment it runs, so the Home screen always
  * shows a believable "today" — overdue debts, a busy afternoon, a full month
  * ahead — no matter when the screenshots are taken.
  */
+
+import { demoFile, isLegacyPlaceholder } from './seed-demo-files.mjs';
 
 const args = process.argv.slice(2);
 const flag = (name, fallback = null) => {
@@ -45,9 +59,14 @@ const DISPLAY_NAME = flag('name', 'Alex Rivera');
 const WANT_FILES = !has('no-files');
 const WANT_BACKDATE = !has('no-backdate');
 const TZ = flag('tz', 'Europe/Istanbul');
+const CALDAV_URL = flag('caldav');
+const CALDAV_USER = flag('caldav-user');
+const CALDAV_PASSWORD = flag('caldav-password');
 
 /** Title → the instant its completion should claim, filled in as tasks are made. */
 const backdated = new Map();
+/** Note id → its version ids oldest first, when this run wrote that history. */
+const backdatedVersions = new Map();
 
 let token = null;
 let workspaceId = null;
@@ -57,12 +76,13 @@ let workspaceId = null;
 /** Every REST route lives under this prefix (apps/api/src/app.js). */
 const V1 = '/api/v1';
 
-async function call(method, path, body, { raw = false } = {}) {
+async function call(method, path, body, { raw = false, bearer = token } = {}) {
   const res = await fetch(`${API}${V1}${path}`, {
     method,
     headers: {
-      'content-type': 'application/json',
-      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      // Only with a body: Fastify refuses an empty JSON body (a bare DELETE).
+      ...(body === undefined ? {} : { 'content-type': 'application/json' }),
+      ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
   });
@@ -590,14 +610,16 @@ const FOLDERS = [
   { key: 'photos', name: 'Photos' },
 ];
 
+// The bytes (and the mime) come from scripts/seed-demo-files.mjs: small, real
+// files the app can preview — not the space-filled stand-ins of before OPH-414.
 const FILES = [
-  { name: 'brand-guidelines.pdf', folder: 'brand', mime: 'application/pdf', kb: 2400 },
-  { name: 'logo-master.svg', folder: 'brand', mime: 'image/svg+xml', kb: 46 },
-  { name: 'floor-plan.png', folder: 'docs', mime: 'image/png', kb: 840 },
-  { name: 'kitchen-quote.pdf', folder: 'docs', mime: 'application/pdf', kb: 320 },
-  { name: 'acme-invoice-09.pdf', folder: 'invoices', mime: 'application/pdf', kb: 118 },
-  { name: 'acme-invoice-08.pdf', folder: 'invoices', mime: 'application/pdf', kb: 116 },
-  { name: 'counter-samples.jpg', folder: 'photos', mime: 'image/jpeg', kb: 1650 },
+  { name: 'brand-guidelines.pdf', folder: 'brand' },
+  { name: 'logo-master.svg', folder: 'brand' },
+  { name: 'floor-plan.png', folder: 'docs' },
+  { name: 'kitchen-quote.pdf', folder: 'docs' },
+  { name: 'acme-invoice-09.pdf', folder: 'invoices' },
+  { name: 'acme-invoice-08.pdf', folder: 'invoices' },
+  { name: 'counter-samples.png', folder: 'photos' },
 ];
 
 const QUICK_LINKS = [
@@ -609,6 +631,65 @@ const QUICK_LINKS = [
   { kind: 'task', targetTask: 'Write the release notes for 1.0', title: 'Release notes', emoji: '📝' },
   { kind: 'url', url: 'https://github.com/mahirozdin/alliswell', title: 'GitHub repo', emoji: '⭐' },
 ];
+
+/**
+ * The AI provider is CONFIGURED, not used: the key is a placeholder the server
+ * encrypts and stores without calling anybody (routes/ai.js validates shape
+ * only). Settings ▸ AI shows a connected provider and the ✨ entry points
+ * appear; an AI action itself answers with the provider's "key rejected".
+ */
+const AI_CONNECTION = {
+  provider: 'anthropic',
+  apiKey: 'demo-placeholder-not-a-real-key-0000',
+};
+
+/** One personal API key, used once so its row shows a "last used" time. */
+const API_KEY_NAME = 'Backup script';
+
+/** The MCP client the note's last version is written by (real OAuth, real /mcp). */
+const MCP_CLIENT_NAME = 'Claude';
+
+/**
+ * A note with a history: it is born as DRAFTS[0], edited in the app to
+ * DRAFTS[1], and an MCP client writes the final body (the NOTES entry).
+ */
+const NOTE_HISTORY = {
+  title: 'Launch checklist',
+  drafts: [
+    ['Store copy, screenshots, press kit.'],
+    [
+      'Store copy, screenshots (6.9", 6.5", iPad 13", Android phone + tablet), feature graphic, press kit.',
+      '',
+      'Done: privacy policy, support address.',
+    ],
+  ],
+};
+
+/**
+ * Moving in from Todoist (OPH-371): one project export, imported into the
+ * existing "Home renovation" project. The import ledger makes a re-run skip
+ * every row, and the wizard's preview then reports them as already imported.
+ * Dates are written the way Todoist exports them, relative to this run.
+ */
+function todoistExport() {
+  const d = (days, hh) => {
+    const t = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days);
+    const mon = t.toLocaleString('en-US', { month: 'short' });
+    return `${t.getDate()} ${mon} ${t.getFullYear()} ${hh}`;
+  };
+  return {
+    name: 'Home renovation [2203306150].csv',
+    content: [
+      'TYPE,CONTENT,DESCRIPTION,PRIORITY,INDENT,AUTHOR,RESPONSIBLE,DATE,DATE_LANG,TIMEZONE,DURATION,DURATION_UNIT,DEADLINE,DEADLINE_LANG',
+      'meta,view_style=list,,,,,,,,,,,,',
+      'section,Hallway,,,,,,,,,,,,',
+      `task,Paint the hallway @errand,Two coats. Off-white,3,1,Alex (40001),,${d(13, '10:00')},en,${TZ},,,,`,
+      `task,Get three quotes for the floor,,2,1,Alex (40001),,${d(10, '12:00')},en,${TZ},,,,`,
+      `task,Choose the cabinet handles @design,,4,1,Alex (40001),,${d(20, '18:00')},en,${TZ},,,,`,
+      '',
+    ].join('\n'),
+  };
+}
 
 // ── Seeding ─────────────────────────────────────────────────────────────────
 
@@ -775,7 +856,13 @@ async function main() {
 
   // Notes
   const noteId = {};
-  const liveNotes = (await get(`/workspaces/${workspaceId}/notes?limit=200`)).items;
+  // A project's README note is left out of the default list (it lives in the
+  // project); `readme=true` lists only those. Reading one list and not the
+  // other made every re-run create both README notes again (OPH-414).
+  const liveNotes = [
+    ...(await get(`/workspaces/${workspaceId}/notes?limit=200`)).items,
+    ...(await get(`/workspaces/${workspaceId}/notes?limit=200&readme=true`)).items,
+  ];
   for (const n of NOTES) {
     const hit = liveNotes.find((x) => x.title === n.title);
     if (hit) {
@@ -787,9 +874,11 @@ async function main() {
     // client that has not updated, but demo data that exercises the
     // compatibility path instead of the real one is demo data that stops
     // demonstrating the product. (It also built a `delta` array it never sent.)
+    // The note with a history is born as its first draft (see NOTE_HISTORY).
+    const body = n.title === NOTE_HISTORY.title ? NOTE_HISTORY.drafts[0] : n.body;
     const created = await post(`/workspaces/${workspaceId}/notes`, {
       title: n.title,
-      contentMarkdown: n.body.join('\n'),
+      contentMarkdown: body.join('\n'),
       ...(n.project ? { projectId: projectId[n.project] } : {}),
       ...(n.pinned ? { isPinned: true } : {}),
     });
@@ -816,46 +905,13 @@ async function main() {
   }
   log(`✓ ${FOLDERS.length} folders`);
 
-  if (WANT_FILES) {
-    const storage = await get('/storage').catch(() => ({ configured: false }));
-    if (!storage.configured) {
-      log('· files skipped — no object storage configured on this instance');
-    } else {
-      const liveFiles =
-        (await get(`/workspaces/${workspaceId}/files?targetType=workspace&targetId=${workspaceId}`))
-          .items ?? [];
-      let uploaded = 0;
-      for (const f of FILES) {
-        if (liveFiles.some((x) => x.name === f.name)) continue;
-        const bytes = Buffer.alloc(f.kb * 1024, 0x20);
-        // A recognisable header so a downloaded demo file is not a mystery.
-        Buffer.from(`AllisWell demo file — ${f.name}\n`).copy(bytes);
-        try {
-          const init = await post(`/workspaces/${workspaceId}/files`, {
-            targetType: 'workspace',
-            targetId: workspaceId,
-            name: f.name,
-            mime: f.mime,
-            sizeBytes: bytes.length,
-            folderId: folderId[f.folder],
-          });
-          // Bare PUT: the presigned URL is already the authorization — adding
-          // our own Authorization header makes S3 reject the signature.
-          const put = await fetch(init.upload.url, {
-            method: init.upload.method ?? 'PUT',
-            headers: init.upload.headers ?? {},
-            body: bytes,
-          });
-          if (!put.ok) throw new Error(`storage PUT ${put.status}`);
-          await post(`/files/${init.file.id}/complete`, {});
-          uploaded += 1;
-        } catch (err) {
-          log(`  ! ${f.name}: ${err.message.split('\n')[0]}`);
-        }
-      }
-      log(`✓ ${uploaded} files uploaded`);
-    }
-  }
+  if (WANT_FILES) await seedFiles(folderId);
+
+  await seedNoteHistory(noteId[NOTE_HISTORY.title]);
+  await seedAiConnection();
+  await seedApiKey();
+  await seedImport();
+  await seedCalendar();
 
   // Quick access
   const liveLinks = (await get(`/workspaces/${workspaceId}/quick-links`)).items;
@@ -898,6 +954,248 @@ async function main() {
 }
 
 /**
+ * Files with real bytes, idempotently. Workspace files are listed one folder
+ * LEVEL at a time (routes/files.js), under `files` — until OPH-414 this read the
+ * root level under `items`, found nothing, and every re-run uploaded the whole
+ * set again. A live row that is an older seed's space-filled stand-in
+ * (`isLegacyPlaceholder`) is deleted and replaced by the real file.
+ */
+async function seedFiles(folderId) {
+  const storage = await get('/storage').catch(() => ({ configured: false }));
+  if (!storage.configured) {
+    log('· files skipped — no object storage configured on this instance');
+    return;
+  }
+  const live = [];
+  for (const id of new Set(Object.values(folderId))) {
+    const q = new URLSearchParams({ targetType: 'workspace', targetId: workspaceId, folderId: id });
+    live.push(...((await get(`/workspaces/${workspaceId}/files?${q}`)).files ?? []));
+  }
+  let replaced = 0;
+  for (const f of live.filter(isLegacyPlaceholder)) {
+    await call('DELETE', `/files/${f.id}`);
+    replaced += 1;
+  }
+  const kept = new Set(live.filter((f) => !isLegacyPlaceholder(f)).map((f) => f.name));
+
+  let uploaded = 0;
+  for (const f of FILES) {
+    if (kept.has(f.name)) continue;
+    const { mime, bytes } = demoFile(f.name);
+    try {
+      const init = await post(`/workspaces/${workspaceId}/files`, {
+        targetType: 'workspace',
+        targetId: workspaceId,
+        name: f.name,
+        mime,
+        sizeBytes: bytes.length,
+        folderId: folderId[f.folder],
+      });
+      // Bare PUT: the presigned URL is already the authorization — adding
+      // our own Authorization header makes S3 reject the signature.
+      const put = await fetch(init.upload.url, {
+        method: init.upload.method ?? 'PUT',
+        headers: init.upload.headers ?? {},
+        body: bytes,
+      });
+      if (!put.ok) throw new Error(`storage PUT ${put.status}`);
+      await post(`/files/${init.file.id}/complete`, {});
+      uploaded += 1;
+    } catch (err) {
+      log(`  ! ${f.name}: ${err.message.split('\n')[0]}`);
+    }
+  }
+  log(
+    `✓ ${uploaded} files uploaded (${FILES.length - uploaded} already there` +
+      `${replaced ? `, ${replaced} old placeholders replaced` : ''})`,
+  );
+}
+
+/**
+ * Note versions: born as draft 1 (origin `create`), edited in the app to draft
+ * 2 (`edit`), finished by an MCP client (`mcp`) through the real OAuth flow —
+ * register, sign in and approve, PKCE exchange, `tools/call update_note`. Runs
+ * once: a note that already has more than its birth version is left alone, so
+ * a re-run neither stacks versions nor registers another client. Without MCP
+ * on the instance the last step is an ordinary edit.
+ */
+async function seedNoteHistory(id) {
+  if (!id) return;
+  const versions = async () => (await get(`/notes/${id}/versions?limit=100`)).items;
+  const before = await versions();
+  if (before.length > 1) {
+    log(`✓ note history already there (${before.length} versions)`);
+    return;
+  }
+  const final = NOTES.find((n) => n.title === NOTE_HISTORY.title).body.join('\n');
+  // A note an older seed made was born with the final body; it still gets the
+  // edit and the MCP write, so its history has the same three steps.
+  await patch(`/notes/${id}`, { contentMarkdown: NOTE_HISTORY.drafts[1].join('\n') });
+
+  let via = 'mcp';
+  try {
+    const mcpToken = await mcpAccessToken();
+    const res = await fetch(`${API}/mcp`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+        authorization: `Bearer ${mcpToken}`,
+      },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'tools/call',
+        params: { name: 'update_note', arguments: { noteId: id, contentMarkdown: final } },
+      }),
+    });
+    const out = await res.json().catch(() => ({}));
+    if (!res.ok || out.error || out.result?.isError) {
+      throw new Error(`/mcp ${res.status} ${JSON.stringify(out.error ?? out.result ?? {}).slice(0, 200)}`);
+    }
+  } catch (err) {
+    via = 'edit';
+    log(`  · MCP not reachable (${err.message.split('\n')[0]}) — the last version is an edit`);
+    await patch(`/notes/${id}`, { contentMarkdown: final });
+  }
+  // Oldest first; the id breaks a tie inside one millisecond.
+  const after = (await versions())
+    .sort((a, b) => a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id))
+    .map((v) => v.id);
+  backdatedVersions.set(id, after);
+  log(`✓ note history: ${after.length} versions on “${NOTE_HISTORY.title}” (last via ${via})`);
+}
+
+/** register → sign in + approve → PKCE exchange, all over the public OAuth endpoints. */
+async function mcpAccessToken() {
+  const { createHash, randomBytes } = await import('node:crypto');
+  const redirect = 'http://localhost:9876/callback';
+  const reg = await fetch(`${API}/oauth/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ redirect_uris: [redirect], client_name: MCP_CLIENT_NAME }),
+  });
+  if (reg.status !== 201) throw new Error(`oauth/register → ${reg.status}`);
+  const client = await reg.json();
+  const verifier = randomBytes(32).toString('base64url');
+  const challenge = createHash('sha256').update(verifier).digest('base64url');
+  const query = new URLSearchParams({
+    client_id: client.client_id,
+    redirect_uri: redirect,
+    response_type: 'code',
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    state: 'seed',
+  });
+  const page = await fetch(`${API}/oauth/authorize?${query}`);
+  const formToken = /name="formToken" value="([^"]+)"/.exec(await page.text())?.[1];
+  if (!formToken) throw new Error(`oauth/authorize → ${page.status}, no form`);
+  const form = { 'content-type': 'application/x-www-form-urlencoded' };
+  const approve = await fetch(`${API}/oauth/authorize`, {
+    method: 'POST',
+    headers: form,
+    redirect: 'manual',
+    body: new URLSearchParams({
+      formToken,
+      email: EMAIL,
+      password: PASSWORD,
+      decision: 'approve',
+      workspaceId,
+    }),
+  });
+  const location = approve.headers.get('location');
+  const code = location ? new URL(location).searchParams.get('code') : null;
+  if (!code) throw new Error(`oauth/authorize POST → ${approve.status}`);
+  const tok = await fetch(`${API}/oauth/token`, {
+    method: 'POST',
+    headers: form,
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: redirect,
+      client_id: client.client_id,
+      code_verifier: verifier,
+    }),
+  });
+  if (!tok.ok) throw new Error(`oauth/token → ${tok.status}`);
+  return (await tok.json()).access_token;
+}
+
+/** A configured provider with a placeholder key — stored, never called. */
+async function seedAiConnection() {
+  try {
+    const live = (await get(`/workspaces/${workspaceId}/ai/connections`)).items;
+    if (live.length > 0) {
+      log(`✓ AI provider already configured (${live.map((c) => c.provider).join(', ')})`);
+      return;
+    }
+    await post(`/workspaces/${workspaceId}/ai/connections`, {
+      ...AI_CONNECTION,
+      consentAcknowledged: true,
+    });
+    log(`✓ AI provider configured (${AI_CONNECTION.provider}, placeholder key — never called)`);
+  } catch (err) {
+    log(`  ! AI provider skipped: ${err.message.split('\n')[0]}`);
+  }
+}
+
+/** One API key, used once. The secret is never printed. */
+async function seedApiKey() {
+  const live = (await get(`/workspaces/${workspaceId}/api-keys`)).items;
+  if (live.some((k) => k.name === API_KEY_NAME && !k.revokedAt)) {
+    log('✓ API key already there');
+    return;
+  }
+  const created = await post(`/workspaces/${workspaceId}/api-keys`, { name: API_KEY_NAME });
+  // One real read with it, so Settings ▸ API keys shows when it was last used.
+  await call('GET', `/workspaces/${workspaceId}/tasks?limit=1`, undefined, { bearer: created.key });
+  log(`✓ API key “${API_KEY_NAME}” (used once)`);
+}
+
+/** A Todoist export through the real importer; the ledger makes it idempotent. */
+async function seedImport() {
+  try {
+    const out = await post(`/workspaces/${workspaceId}/import/apps`, {
+      source: 'todoist',
+      files: [todoistExport()],
+      options: { timezone: TZ, locale: 'en' },
+    });
+    const made = out.created?.tasks ?? 0;
+    log(`✓ Todoist import: ${made} tasks${made ? '' : ' (already imported — the ledger skipped them)'}`);
+  } catch (err) {
+    log(`  ! Todoist import skipped: ${err.message.split('\n')[0]}`);
+  }
+}
+
+/**
+ * A calendar connection only when asked for: connecting verifies the account
+ * against the server and starts a sync loop, so there is no "connected" state
+ * the API can reach without that network call (docs/SCREENSHOTS.md §0).
+ */
+async function seedCalendar() {
+  if (!CALDAV_URL) {
+    log('· calendar connection skipped (opt-in: --caldav <url> --caldav-user … --caldav-password …)');
+    return;
+  }
+  const live = await get(`/workspaces/${workspaceId}/integrations/caldav`).catch(() => null);
+  if (live?.items?.length) {
+    log('✓ CalDAV account already connected');
+    return;
+  }
+  try {
+    await post(`/workspaces/${workspaceId}/integrations/caldav`, {
+      server: 'generic',
+      url: CALDAV_URL,
+      username: CALDAV_USER ?? '',
+      password: CALDAV_PASSWORD ?? '',
+    });
+    log(`✓ CalDAV account connected (${CALDAV_URL})`);
+  } catch (err) {
+    log(`  ! CalDAV skipped: ${err.message.split('\n')[0]}`);
+  }
+}
+
+/**
  * Rewrites `completed_at` on the history rows, straight in the database.
  *
  * This is the script's ONE bypass of the API and it is here because there is no
@@ -912,7 +1210,7 @@ async function main() {
  * which just means every completion reads as "today".
  */
 async function backdateCompletions() {
-  if (backdated.size === 0) return;
+  if (backdated.size === 0 && backdatedVersions.size === 0) return;
   let db;
   try {
     const { default: knex } = await import('knex');
@@ -932,7 +1230,21 @@ async function backdateCompletions() {
         .where({ id })
         .update({ completed_at: new Date(iso), updated_at: new Date(iso) });
     }
-    log(`✓ ${backdated.size} completions backdated (Settings ▸ Completed now has a history)`);
+    if (backdated.size) {
+      log(`✓ ${backdated.size} completions backdated (Settings ▸ Completed now has a history)`);
+    }
+    // The note history this run wrote: spread from nine days ago to three
+    // hours ago, oldest first, and the note's own birth moved to match.
+    const spread = [{ days: 9 }, { days: 4, hours: 5 }, { days: 1, hours: 2 }, { hours: 3 }];
+    for (const [noteId, ids] of backdatedVersions) {
+      const stamps = spread.slice(-ids.length).map((s) => new Date(ago(s)));
+      // More versions than stamps (never, today): the newest keep their time.
+      for (const [i, id] of ids.slice(0, stamps.length).entries()) {
+        await db('note_versions').where({ id, note_id: noteId }).update({ created_at: stamps[i] });
+      }
+      if (stamps.length) await db('notes').where({ id: noteId }).update({ created_at: stamps[0] });
+    }
+    if (backdatedVersions.size) log('✓ note history backdated');
   } finally {
     await db.destroy().catch(() => {});
   }

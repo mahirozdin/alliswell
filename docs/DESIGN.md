@@ -104,10 +104,43 @@ two verified lightnesses.
 ### 3.3 Typography
 
 Platform system fonts on purpose (SF Pro on Apple, Roboto/Segoe elsewhere,
-Roboto on web) — zero network fetch, native feel. Weights/tracking tuned in
-`theme.dart`: headlines w700 with negative tracking, titles w600, labels
-w600, body 16/1.5. Use `textTheme` roles; never ad-hoc `fontSize`.
-Tabular figures for day numbers and timers.
+Roboto on web) — zero network fetch, native feel; the family does not change
+(ADR-0005 #6, owner 2026-11-07). On the web "Roboto" is the app's own:
+`pubspec.yaml` registers `assets/fonts/Roboto-*` (400/500/700 + italics) under
+that exact family name, and `web/flutter_bootstrap.js` loads CanvasKit from the
+bundle, so the browser calls no Google host (OPH-395, ADR-0063 #7,
+`web_fonts_offline_test.dart`).
+
+**Glass Type v1** ([ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md),
+`theme/typography.dart`, OPH-399): Material's sizes, our line heights, weights
+and tracking.
+
+- **Tracking comes from the font, never a widget** — `awTracking(size)`: on
+  iOS/macOS the HIG SF Pro table (11 +0.06 · 12 0 · 13 −0.08 · 14 −0.15 ·
+  15 −0.23 · 16 −0.31 · 17 −0.43 · 20 −0.45 · 22 −0.26 · 24 +0.07 · 28 +0.38 ·
+  34 +0.40), everywhere else 0. Flutter draws SF without Apple's dynamic
+  tracking, so Material's Roboto values (+0.5 body) made row titles ~10 %
+  wider than native. No `letterSpacing:` at a call site; a fixed-size label
+  takes `context.awText.tracking(size)`.
+- **Roles** (size/line · weight): titleLarge 22/28 · 700 (app bar) ·
+  headlineSmall 24/30 · 700 · titleMedium 16/22 · 600 · titleSmall 14/20 · 600 ·
+  **bodyLarge 16/22 · 400 (row title, input; the list tile title is w400)** ·
+  bodyMedium 14/20 · 400 · bodySmall 12/16 · 400 · labelLarge 14/20 · 600 ·
+  labelMedium 12/16 · 600 · labelSmall 11/14 · 500 · displaySmall 36/44 · 700
+  tabular. Long-form notes keep their own line height.
+- **Semantic roles**, `context.awText`: `sectionLabel` 15/20 w600 tabular
+  (list section headers — Home, Completed, task detail cards), `meta` 13/18
+  w400 tabular, `metaStrong` (w500), `rowTitle` 16/22 w400, `numeric(style)`.
+  Use these instead of copying a `copyWith` chain.
+- **Weights:** 400/500/600/700 only; w800 is the alarm label's alone. State is
+  colour, not weight.
+- **Tabular figures** (`awTabular`) for dates, times, counters, badges, the
+  alarm time, import counts and calendar day numbers.
+- **Gate:** `npm run check:typography` counts raw `fontSize:`, bare
+  `TextStyle(` and off-grid `EdgeInsets`/gap `SizedBox` literals per file in
+  `apps/app/lib` (theme and print exporters excluded) against
+  `scripts/design/typography-baseline.json`; the counts may only go down.
+- Goldens draw Roboto, so SF widths are a device check (DEVICE-CHECKS).
 
 ## 4. Component rules (all themed centrally in `theme.dart`)
 
@@ -121,6 +154,10 @@ Tabular figures for day numbers and timers.
   (or passes it as the card's `margin`), never a number of its own — the
   theme's card margin is zero on purpose, so a bare stacked `Card` touches its
   neighbour. `test/support/list_rhythm.dart` measures the 6 px.
+- **The status bar follows the theme, never the screen** (OPH-391, U-43): dark clock and icons
+  on the light theme, light on the dark one — `awSystemOverlayStyle`, set by `appBarTheme` and,
+  for pages with no app bar, by `AwSystemOverlay` in the app's builder. A transparent app bar
+  left to guess read as dark and drew white on the light aurora (~1.2:1 on iOS).
 - **Checkboxes are circular** (Apple Reminders style); checked fill =
   `AwTokens.success`. **Switches read as iOS**: `AwTokens.success` track
   when on, near-white knob.
@@ -140,7 +177,7 @@ Tabular figures for day numbers and timers.
   errors ALWAYS a Retry action. Inline form errors use `AwInlineError`
   (icon + errorContainer band above the submit button).
 - **Navigation floats** (Liquid Glass functional layer, v2): on phones
-  (<800 px) the `NavigationBar` lives in a **floating glass capsule**
+  (<800 px) the `AwTabCapsule` (§43) is a **floating glass capsule**
   (`GlassSurface(floating: true, radius: AwRadius.pill)`, 12 px side/bottom
   margins, `extendBody: true` so content scrolls and peeks beneath it); on
   wide layouts (≥800 px) the `NavigationRail` lives in a **floating glass
@@ -160,14 +197,21 @@ Tabular figures for day numbers and timers.
   through the incoming one and read as a stuck, ghosting screen. **A route must
   never be see-through to the route beneath it.**
 - **Overdue** dates render in `error` color w600 with the word "Overdue".
+  _Task row (OPH-400, §46 R3): only the word is red (`metaStrong` w500,
+  `error`); the date beside it stays neutral._
 - **Stars (favorite/pin)** use `AwTokens.warning`, never `Colors.amber`.
+- **Error text on the page** (not on a card) — the "Overdue" section header —
+  uses `AwTokens.errorOnPage` (`#C40013` / `#FF655C`): `scheme.error` is tuned
+  for cards and falls to 4.32:1 over the aurora's brightest blob (OPH-399).
 - **Project badge (task rows — added 2026-07-17, feedback round 4, OPH-104):**
   a FILLED pill in the project's color, rightmost element of the row's
   trailing cluster. Radius `AwRadius.s`, padding 8×2, `labelSmall` w600,
-  min height 22, tap-transparent (the row handles taps). Label = the project
-  name, truncated to its first 6 characters + "…" when longer (grapheme-safe
-  via `Characters`); the FULL name is always available through `Tooltip`
-  (hover + long-press) and `semanticLabel` (`Project: <name>`). The foreground
+  min height 22, tap-transparent (the row handles taps). _Since OPH-400 it is
+  the row's one right-hand item (§46 R6), on the title's first line._ Label = the WHOLE
+  project name, never cut (polish 3 J-03): the row shows the badge only when that pill,
+  measured at the reader's text size, is ≤ `kAwProjectBadgeMaxWidth` (96 pt); otherwise
+  the name moves to the meta line (§46 R6). `Tooltip` (hover + long-press) and
+  `semanticLabel` (`Project: <name>`) carry the name too. The foreground
   is computed, never fixed: relative luminance of the fill > 0.45 → ink
   `#101828`, otherwise white `#FFFFFF` — one shared helper (with a unit test
   sweeping `kProjectPalette` and the full color-grid) so the pair stays
@@ -189,6 +233,14 @@ Tabular figures for day numbers and timers.
       have semantic labels (`semanticLabel`, `Semantics`).
 - [ ] Keyboard: focus visible (2 px ring on inputs, focus highlight on
       controls); tab order follows visual order.
+- [ ] A menu's or sheet's barrier only closes it, and its screen-reader node
+      ("Dismiss menu" / "Scrim") lies on the free area, never over an item:
+      popup menus use `AwPopupMenuButton` (not Material's `PopupMenuButton`,
+      whose barrier node is the whole screen, centred on the menu); dropdowns
+      use `AwDropdownField` / `AwDropdownButton` (`widgets/dropdown_field.dart`,
+      the same route; never `DropdownButtonFormField` / `DropdownButton` /
+      `showMenu`, guarded by `test/widgets/dropdown_barrier_test.dart`);
+      sheets get this from `ModalBottomSheetRoute` (OPH-398).
 - [ ] No color-only signaling; text truncation prefers wrap/ellipsis+tooltip.
 - [ ] `flutter analyze` + `flutter test` green; existing widget-test keys
       (`Key('...')`) preserved.
@@ -212,6 +264,11 @@ python3 scripts/design/contrast.py
 ```
 
 It must print `FAILURES: 0` before a palette change ships.
+
+**Text on the page is measured too (OPH-399, ADR-0063 #4).** Section headers sit
+on the aurora + `veil`, not a card. The script derives those grounds from
+`tokens.dart` (the veil over each blob's peak on the gradient's two ends, plus
+the plain wash) and checks each page ink against the worst one.
 
 **Round 17 (OPH-247) added one token group and no other colours:** six
 syntax-highlighting inks (`codeKeyword`, `codeString`, `codeComment`,
@@ -441,7 +498,8 @@ detail Tags card — BLUEPRINT §12.4.)_
 - **T4 — Same component, both surfaces.** The create sheet and the detail card
   mount the identical widget — no divergent tag UIs. In lists, task rows show
   at most 2 tag chips + "+N" overflow (tooltip lists the rest); chips never
-  wrap a list row taller than its card rhythm.
+  wrap a list row taller than its card rhythm. _Amended (OPH-400, §46 R3): the
+  first tag + "+N", on the row's one meta line._
 
 ## 14. Kanban board (round 8 — OPH-168)
 
@@ -453,12 +511,15 @@ entry; product decisions in BLUEPRINT §12.11.)_
   toggle sits at the top; the choice is device-local and persistent. Board
   columns = task statuses, rendered with the §4 card language (columns are
   `surfaceContainer` wells at `AwRadius.l`; cards are the task-row DNA:
-  status icon, priority flag, project badge, due).
+  status icon, priority flag, project badge, due). _Since OPH-400 the card is
+  the §46 row: glyphs only off the defaults, "Move" in its right slot._
 - **K2 — Columns belong to the user.** "Görünümü düzenle" (app-bar action)
   opens a sheet with visibility toggles + drag-reorder of statuses; hidden
   columns stay reachable as move targets (K3). Default visible: open,
   in_progress, waiting, completed. Column headers pin name + count while the
-  column scrolls.
+  column scrolls. _OPH-394 (E-25): in an open column a series shows only its
+  next occurrence, with "+N next" under the card; the count is the cards shown.
+  Finished occurrences all stay._
 - **K3 — Two coequal move paths, always.** (a) Drag: desktop/web full
   multi-column drag; phone long-press (~200 ms, haptic on lift) — feedback is
   the card scaled ~1.04 at ~85% opacity, origin dims to a placeholder; the
@@ -515,8 +576,8 @@ its text.
   degrade to visual + haptic and offer an explicit "start sound" button — never
   pretend it rang.
 - **A4 — Degradation banner is honest, at the top of Home.** When the OS can't
-  ring reliably, `AlarmDegradationBanner` says so on `errorContainer`
-  (`onErrorContainer` ink, `alarm_off` icon, radius `m`) with a one-tap fix —
+  ring reliably, `AlarmDegradationBanner` says so (amber since OPH-393, below;
+  radius `m`) with a fix —
   worst-problem-first, the same cascade as the Settings status row (OPH-139).
   Healthy delivery shows nothing: never nag a user whose alarms already work.
   **Round 19 (OPH-277)** widened it and moved the cascade onto the model
@@ -530,6 +591,18 @@ its text.
   "Fix" button could not fix anything. On the web the sheet never links anywhere
   (#19): it asks the browser, or names the address bar's site-info icon and
   offers "Check again", or — with no web push — shows no button at all.
+  **OPH-393 (U-05, E-14) — a warning, not an alarm.** The strip is amber:
+  `AwTokens.warning` at 10% over `surface`, the warning colour on the 20 pt icon
+  only, `onSurface` words (§7). One calm sentence (persona Ek A, "sen", no
+  "tap", no "nothing can reach you"), a verb button on the right ("Aç",
+  "İzin ver", "Kurulumu tamamla", "Nasıl açılır?") and a 48 pt "×" that hides
+  that problem for 7 days (device-local; a different problem still shows). At
+  text scale > 1.3 the button drops below the sentence at full width. It is not
+  shown while a permission prompt is open, and the probe runs again when the
+  prompt closes. A server without VAPID keys (`/push/public-key` 404) is
+  `webPushUnconfigured`: an admin-facing sentence, no button. Red stays for
+  overdue and destructive actions; the Settings status row uses the warning
+  icon too.
 - **A5 — Silencing is a state, not a disappearance (round 9, OPH-178).** An
   alarm the user muted indefinitely ("Süresiz ertele") must keep saying so: the
   task row carries a `notifications_off` chip with a one-tap "Geri aç", the
@@ -548,6 +621,10 @@ its text.
   leaves the OS queue after its instant is `delivered`, one that vanishes before
   it is `dropped`. Still never a claim about LOUDNESS — nothing on iOS can say
   that — but "scheduled → delivered, sound off" is now a complete sentence.
+  **OPH-395 (E-29):** each row reads as words first — event, surface, "Urgent",
+  "Rings at" in the local short format — and the raw line (ISO UTC, slot,
+  level, ids) sits behind a per-row "Details" toggle (48 pt); "Copy" still
+  copies the raw lines.
 - **A7 — A rehearsal, on the real path (round 19, OPH-277).** Settings ▸
   Bildirimler arms a genuine urgent alarm 15 seconds out, through the same
   `schedule` call every other alarm uses. The row states the delay rather than
@@ -624,6 +701,18 @@ _(Added 2026-07-27. Round 9 #2 — the OPH-103 philosophy taken to its end:
   in the parent (a sliver scrolled past the cache extent is disposed), and
   focusing it scrolls it back into view (`Scrollable.ensureVisible`). Typed text
   surviving a scroll is a correctness requirement, not a nicety.
+- **H5 — A phone's Home bar is three targets (OPH-398, [ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md) §6).**
+  Below the rail (< 800 px): ⚡ (only while the Quick Access bubble is off), **"View ⌄"**
+  (`HomeViewMenuButton`: the current view's glyph + ⌄, tooltip "View", ≥ 48 × 48) and Settings.
+  The menu holds List/Board (checked), the calendar's show/hide and the §34 order with "Reverse";
+  on the board, "Edit view" (columns) instead of calendar and order. No magnifier in the bar: the
+  orb beside the tab bar is the one search glyph (ADR-0055). Home's local filter (§12) is a body
+  field, `filter_list` glyph and clear (×), the first sliver of `home-scroll`; the list rests one
+  field-height down (a short list is padded so it still can), a pull reveals it, and the same pull
+  carried past the top refreshes (`AwRefresh(triggerMode: anywhere)`); a live query keeps it in
+  sight. The section title scales down to fit rather than "Ana S…" (AppBar already clamps it at
+  1.34×). Wide layouts keep their bar. Measured: `home_app_bar_test` (360/375/393/430 × 1.0/1.3/2.0
+  × TR/EN, list and board: ≤ 3 targets ≥ 48, no magnifier, title not cut).
 
 ## 17. Date & time display (round 9 — OPH-174)
 
@@ -664,6 +753,22 @@ ayarlardan kullanıcı seçebilecek".)_
   _Amended 2026-10-16 (OPH-372):_ "When" stores a DAY, not an instant, so it asks for a
   day only (`awPickDate`, same bounds and the same tomorrow opening). D5 is about fields
   that store a time.
+- **D6 — Region, not language** _(OPH-408, ADR-0063 #6, U-09):_ the factory default's words
+  follow the app language; the order of a date's parts, the 12/24-hour clock and the number
+  separators follow the device **region** (`core/format_region.dart`). English UI on a German phone →
+  `7 Nov 2026, 13:47`, `6,3 MB`. D3's "follows the app language" is replaced by this.
+- **D7 — The default never writes a numeric date.** Rows: today `13:47`, `Yarın 11:00`, this year
+  `7 Kas, 13:47`, another year `7 Kas 2025, 13:47`; a detail line says `Bugün 13:47`; a date alone
+  carries the year only when it is not this year. A no-break space keeps a date with its time. The
+  explicit numeric choices of D2 stay for whoever picks one.
+- **D8 — One formatter for every figure** (`core/format.dart`): `awFormatNumber`, `awFormatPercent`
+  (`%51,4` / `51.4%`; a ratio over 0 is `—`), `awFormatMoney` (`48.500 TL`, never the code `TRY`;
+  `,00` dropped on whole amounts; a symbol several currencies share — `$`, `£`, `¥`, `kr` — is kept for
+  the region's own currency and the others show their code, `CAD 100`), `awFormatFileSize` (`1 KB'den küçük`, then at most one decimal),
+  `awFormatDuration` (`2 gün 12 saat` / `2 days 12 hours`; no `g`/`sa`; estimates and logged work
+  keep counting hours). `test/core/format_single_source_test.dart` fails on a raw `NumberFormat`,
+  `DateFormat`, `toStringAsFixed` or hand-built "MB" outside the formatter (names of months and
+  weekdays are allow-listed).
 
 ## 18. Reminder system settings (round 9 — OPH-179 / OPH-181)
 
@@ -787,6 +892,11 @@ bir yerden görmek gibi bişey olabilmeli".)_
   leaves the planning lists immediately — "Geciken" holding a struck-through row
   says nothing ("the task was late, and now it is done" is the archive's
   sentence, not the planner's). Its address is §C4 from the moment of the tap._
+  _Rev. 2026-11-07 (OPH-394, E-06): a group header's number counts what is still
+  owed — a done row stays visible but is not counted. A deadline that passed
+  earlier today files the row under Overdue, the moment the row turns red; a
+  subtask is listed in its parent's detail, not as a Home row (unless its parent
+  is not on the list)._
 - **C2 — Done work is quiet, not dead.** _Scope, made explicit 2026-08-24
   (OPH-281): this section is about the TASK ROW. A checklist inside a note body
   is a §29 object and follows the reading view — green tick, text untouched. The
@@ -952,10 +1062,11 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   that band is the dock: the button rests in the glass bar's own row, centred on it, on its
   edge (right by default), and **the layout keeps that lane free** rather than the button
   covering whatever is there. The shell's capsule ends a gap short of it (`AwBubbleDock.width`,
-  72 px on a phone; past four sections only the selected tab is labelled), and every page
-  OUTSIDE the shell — a root-navigator page route, go_router's or a pushed one — ends a gap
-  above it (`AwBubbleDock.height`, 80 px with no bottom inset), applied once by the page
-  transitions (`AwBubbleDockInset`), painted with the page wash, so no screen knows. A drag
+  72 px on a phone). A page OUTSIDE the
+  shell — a root-navigator page route, go_router's or a pushed one — has no bar and so no dock:
+  while one is on top a docked button steps aside (`AwModalRouteObserver.outsideShell`) and the
+  page keeps the whole screen (OPH-391, E-09; until then it ended a lane above the bottom, a
+  ~100 pt band of wash under task detail, settings and notes). A drag
   that lets go below the free band docks; anywhere above it is the person's choice, and then
   the page is not shortened: `awListPadding` / `awScrollEndPadding` / `awPagePadding` end every
   scrolling page above the button (`AwBubbleClearance`, OPH-361 — the FAB lane's rule applied to
@@ -970,8 +1081,15 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   AssistiveTouch "fades to 40 % opacity a few seconds after you stop using it")**;
   any touch restores it fully. While a modal route (dialog, sheet) is open, and on
   auth/onboarding screens, the bubble is hidden entirely — a floating control over
-  a modal is two competing surfaces.
-- **Q4a — The recede is paint, never the hit box (OPH-196).** Q4's two clauses
+  a modal is two competing surfaces. _(Amended by ADR-0062 §5, built by OPH-397: on phones the
+  bubble is off by default, and its ways in are the ⚡, the palette's "Shortcuts" and a long press
+  on Home (§44 F6). Turned on, there is no dock: it rests inside the safe area on the floating
+  gutter, at the bottom of its band just above the "+" (`kBubbleFactoryPosition`), shows on the
+  shell only (gone on every pushed page, which gives up nothing for it), and its idle state only
+  fades — nothing slides past the screen's edge (U-03); the intro card opens above it, clear of
+  the system bar (A-03).)_
+- **Q4a — The recede is paint, never the hit box (OPH-196; the slide is gone since OPH-397 —
+  only the 40 % fade remains, U-03).** Q4's two clauses
   fight: a 56 px control translated half off-screen leaves a 28 px target and
   breaks §5's 44 px floor. So the gesture/`Semantics` box stays fully on-screen at
   56×56 and never moves; only the painted circle inside it slides toward the edge
@@ -987,15 +1105,15 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   implements it, never re-derived. **While the button carries a count (Q10) it
   neither recedes nor dims at rest** — a count is text somebody is asked to read,
   which is exactly what this exception excludes (EE-294). **While the content
-  under it scrolls it recedes whatever it carries** (OPH-359): the count is painted
-  outside the slide and the fade, so it is never dimmed.
+  under it scrolls it fades whatever it carries** (OPH-359): the count is painted
+  outside the fade, so it is never dimmed.
 - **Q4c — The bubble is not a FAB (OPH-196).** Material's rule is one FAB per
   screen for the screen's single most important action; the quick-add FAB owns
   that slot and does not move. The bubble is a persistent *navigation* control,
   which is why it must live on the opposite side of the screen, must be
   switch-off-able (Q5), and must never render while a FAB-bearing modal is up.
 - **Q5 — The bubble is optional and never the only way.** Settings owns a toggle
-  (factory: on). The bubble only appears when the list is non-empty. When the
+  (factory: off on phones since ADR-0062 §5; it was on). The bubble only appears when the list is non-empty. When the
   toggle is off — or on platforms without the bubble — the entry point is a `bolt`
   icon in the Home app bar. A gesture-only or overlay-only feature would repeat
   the mistake §19 D2 exists to prevent.
@@ -1032,6 +1150,16 @@ research pass** — the revised numbers and the three resolved conflicts are mar
   `quick.moveUp` / `quick.moveDown` in the row's own menu. Same rule, same reason
   as §19 D2 and the K3 board lesson; the bubble's *position* needs no such twin,
   because position is a preference and the panel is the function.
+  **Amended by OPH-405:** on a pointer layout the rail's handle is its own
+  32×32 column after the ⋯ menu (also 32×32), 8 px apart, both columns aligned
+  row to row; it shows while the row is hovered or holds keyboard focus and keeps
+  its space otherwise. Flutter's default handle (painted over the trailing edge)
+  is never used; touch platforms drag by long-pressing the row, with no handle.
+  **Amended again (OPH-405, cila 4 T-05):** the held empty column cut every
+  resting name short ("Design Sys…"). The handle now takes room only while it
+  shows, 8 px *before* the ⋯ menu; the menu stays one aligned column at the
+  row's trailing edge in every state, so the target a pointer aims at never
+  moves and only the hovered row's name shortens.
 - **Q10 — A pinned entry is the app's, not the person's (EE-294).** Some doors
   must exist for the person without them putting them there — today the
   Approvals entry, for anybody with approval authority, which on a phone has
@@ -1060,7 +1188,10 @@ opens I can lift my finger and it stays open.")_
 - **AI1 — Two FABs, two corners, forever.** The quick-create FAB stays bottom-right;
   the AI FAB lives bottom-left. Neither moves, neither replaces the other, and no
   screen shows a third floating action. On rail layouts the AI entry sits at the
-  rail's bottom; desktop gets click-to-talk plus a keyboard shortcut.
+  rail's bottom; desktop gets click-to-talk plus a keyboard shortcut. _(Amended by
+  ADR-0062 §3: on phones the microphone joins "+" in one cluster on the right and the
+  bottom-left corner stays empty; AI2 is unchanged. Built by OPH-397, §44; on rail layouts the
+  same cluster stands at the window's end, never on the rail.)_
 - **AI2 — The gesture machine is fixed:** press-and-hold (≥250 ms) opens the bubble
   and records with a live partial transcript; dragging left ≥80 px cancels (haptic);
   **releasing the finger locks recording and keeps the bubble open** — lift-to-lock,
@@ -1073,7 +1204,9 @@ opens I can lift my finger and it stays open.")_
 - **AI4 — Every state has a face, and no state lies.** Listening (waveform),
   thinking (indicator), streaming (tokens + a live Stop), error (the
   `status_views.dart` idiom + retry), offline/unconfigured (honest copy + "save to
-  Inbox" — voice capture works with zero AI). Latency budgets: partials <300 ms
+  Inbox" — voice capture works with zero AI; since OPH-402 the unconfigured face
+  also has "Connect a provider", and with no provider the microphone dictates
+  instead of opening the bubble, §48). Latency budgets: partials <300 ms
   cadence, finalize ≤500 ms, first token <2 s, full card <4 s; exceeding them shows
   progress, never a frozen surface.
 - **AI5 — Proposals are cards, commits are human.** Extraction output renders as a
@@ -1221,7 +1354,12 @@ at capture time, not at 02:00 when nothing rang.)_
   dateless capture box (§10) — the ask exists only where the user is planning,
   not where they are unloading. _(Amended by §39 Q4, OPH-373: when the typed
   text already gives a deadline, a When day or a repeat, the ask is skipped and
-  the text wins.)_
+  the text wins.)_ _(Amended by OPH-401, polish 2 R-04: backing out is a skip,
+  not a cancel, so the date step's button says so — "Tarihsiz ekle" with no day
+  selected, "Seçili güne ekle" with one — never "İptal". Taking the task back is
+  the "Geri al" of §47 Q6. On a phone the keyboard closes after the add, since
+  the list moves to the new row; a wide window keeps the field focused for the
+  next entry. A touch outside the bar closes the keyboard and keeps the text.)_
 - **C4 — Defaults apply at every birth point identically.** Sheet, quick add and
   ✨ rider share `task_defaults.dart`; a surface that creates tasks and skips it
   is a bug (§22 reachability logic applied to behavior parity).
@@ -1624,7 +1762,7 @@ contract.
 | --- | --- | --- |
 | Q1 | **One grammar, both languages, every bar.** Relative days, weekdays (with Turkish suffixes), dates, times, `#tag`, `+Project` (existing projects only), `p1`..`p4` / `!acil`, and repeats ("her pazartesi", "every weekday"). A plain date is the deadline; `başla`/`start` makes it the When day; `son`/`due`/`…'e kadar` say deadline explicitly. The project tab does not read `+Project`. | A sentence means the same thing wherever it is typed. |
 | Q2 | **You see it before you save it.** Recognized words are painted in `tokens.link`, semibold (the measured "link on raised container" pair, ≥ 4.5 in both themes), and listed as `InputChip`s under the field — one per deadline (with its time), When, repeat, tag, project and priority, each with a kind icon (priority tinted by `taskPriorityColor`). ✕ ("Keep as text") gives the words back to the title. The chips row grows with `AnimatedSize` (`AwMotion.base`); chips keep the padded 48 px tap target. While the IME is composing, the field draws plain text. | No hidden magic: a misread "pazar" is visible and one tap undoes it. |
-| Q3 | **A help sheet, one tap away.** `?` opens `QuickAddHelpSheet` (solid sheet surface, root navigator, above the glass bar): Dates, Times, Deadline or When, Repeat, Tags · project · priority, Undo — examples in the UI language, plus the line that both languages work. The `?` sits in the bar while it is empty and at the end of the chips row while typing, so a phone bar never carries three suffix icons over the text. | Discoverable without stealing the text's width. |
+| Q3 | **A help sheet, one tap away.** `?` opens `QuickAddHelpSheet` (solid sheet surface, root navigator, above the glass bar): Dates, Times, Deadline or When, Repeat, Tags · project · priority, Undo — examples in the UI language, plus the line that both languages work. The `?` sits at the end of the chips row while typing; an empty bar reaches the sheet through "More" in its examples strip (§47 Q3, OPH-401). | Discoverable without stealing the text's width. |
 | Q4 | **Home skips its deadline ask when the text says when** (amends §26 C3). A parsed deadline, When day or repeat is used as typed and the selected calendar day does not override it; otherwise the C3 picker opens exactly as before. Inbox and project captures with a parsed deadline get the C1/C2 defaults (C4). The ✨ rider still receives the raw text. | Asking for a date the user just typed is friction; relative words are relative to the real now. |
 | Q5 | **Both themes are shot:** `phone_quick_add_tokens_*` and `phone_quick_add_help_*` in `test/design_screenshots_test.dart` (`shotLocale=tr` for Turkish). | Rule 11. |
 
@@ -1632,11 +1770,12 @@ contract.
 ## 40. Search everywhere (OPH-374)
 
 One palette finds tasks, projects, notes, tags and file names from the replica, offline
-([ADR-0055](adr/0055-global-search-palette.md)). Per-screen search (§12) stays as it is.
+([ADR-0055](adr/0055-global-search-palette.md)). Per-screen search (§12) stays beside it; on a
+phone Home's moved from the bar to a pull-down field with a filter glyph (§16 H5, OPH-398).
 
 | # | Rule | Why |
 | --- | --- | --- |
-| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 64 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row; no app-bar icon. Below 64 px per tab only the selected label is written, on ONE line (TR "Ana Sayfa" never wraps under the pill). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
+| P1 | **Ways in.** ⌘K on Apple platforms (web on a Mac too), Ctrl+K elsewhere, bound at the app root so a focused field's own ⌘K (the note editor's palette) wins; a second press closes it. Wide: the rail's leading slot — a 44 px field-shaped button on `surfaceContainerHigh` with an `outlineVariant` hairline, `search.global.open` and the shortcut in `onSurfaceVariant` (extended), a search icon whose tooltip names the shortcut (collapsed). Phone: a 56 px round glass button (`GlassSurface(floating)`, solid-ink icon, no text on the glass) at the end of the bottom bar's row, on the capsule's centre line, 8 px from it (§44 F2; 64 px until OPH-397); no app-bar icon. Every tab is labelled, on ONE line (§43, ADR-0062 — until OPH-396 only the selected one was below 64 px per tab). | Reachable from every screen (§22) without taking Home's title room (OPH-359). |
 | P2 | **Surface.** A SOLID dialog (`dialogTheme`, G1) on the root navigator: wide (≥ 600) top-aligned 72 px down, ≤ 640 wide and ≤ min(560, 70 %) tall, radius `xl`; phone full screen with a back button beside the field. The field is the theme's filled input (G3) with a search prefix and a clear suffix. | Glass under body text fails contrast; the root navigator keeps it above the glass bar. |
 | P3 | **Groups and rows.** Fixed order Tasks · Projects · Notes · Tags · Files, ≤ 5 rows each; the header (`labelLarge`, `onSurfaceVariant`, `Semantics(header)`) adds "5 of 23" when there are more. Rows ≥ 48 px: kind icon (`onSurfaceVariant`; files by type), one-line title, a context line (`bodySmall`, `onSurfaceVariant`) saying WHERE it hit (S3: `#tag`, body snippet) or the project; a completed task shows a check icon and "Completed", an archived project "Archived"; a tag row says "Shows Home filtered by this tag". | One glance tells what and where; G5 — never colour alone. |
 | P4 | **Keyboard and active row.** The field keeps focus: ↑/↓ move the active row (wrapping, scrolled into view), Enter opens it, Esc closes. The active row has a `surfaceContainerHighest` fill AND a ⏎ glyph, and reports `selected` to screen readers; hover moves it. A live region reads the result count. | Keyboard-only use, and a selection that is not colour-only (G5). |
@@ -1670,3 +1809,151 @@ Shown when sign-in (e-mail + password, Google or Apple) answers `AUTH_MFA_REQUIR
 | T2 | **One field for both kinds of code.** Text keyboard, capitals, no autocorrect, `oneTimeCode` autofill, 32 characters; the helper line says a recovery code works too. | The server tells them apart; asking which one it is would be a question the person cannot answer quickly. |
 | T3 | **A wrong code keeps the dialog open** with an `AwInlineError` ("That code is not right…"); any other refusal (rate limit, policy) uses the shared error sentence in the same place. Cancel closes it and leaves the sign-in screen exactly as it was, with no error. The screen's own spinner stops when the dialog opens; the Verify button carries the progress. | One retype, not a new sign-in; backing out is not a failure. |
 | T4 | **Both themes are shot:** `second-factor-prompt-*` and `second-factor-wrong-code-*` (`test/features/auth/second_factor_screenshot_test.dart`, `shotLocale=tr` for Turkish); only existing tokens. | Rule 11. |
+
+## 43. The phone tab capsule (OPH-396)
+
+The phone's bottom navigation is `AwTabCapsule` (`widgets/tab_capsule.dart`), not Material 3's
+`NavigationBar` ([ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md)). Rails
+(≥ 800 px) are unchanged.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| N1 | **A 64 px glass capsule, equal slots.** `GlassSurface(floating)`, radius `pill`, 12 px inner side padding (concentric with the 20 px selection), at most five slots of equal width, each ≥ 48 dp from 360 dp up with the search orb beside it — the factory layout, where the Quick Access bubble is off (§23 Q4/Q5). | G4 at every phone width; nothing touches the clipped curve (R-02). |
+| N2 | **Every slot is labelled; selecting moves nothing.** Icon 22 over an 11/13 w600 label, letter spacing 0, one shared glyph centre line. The selection is a 40 px `primaryContainer` pill the width of its slot (`onPrimaryContainer` icon and label; others `onSurfaceVariant` on glass, the measured pairs); it fades in `AwMotion.fast`, instantly with reduced motion. Selected = filled glyph. | One baseline (R-01); unlabelled icons could not be told apart (U-01). |
+| N3 | **A label never leaves its slot.** One line, no wrap; a label wider than its slot is scaled down to fit (TR "Ana Sayfa" at 360 dp), never ellipsized mid-word and never `overflow: visible`. Its box has the same height in every slot. | "Dosyala", "Taleple" (E-11). |
+| N4 | **Label scaling stops at 1.3; above it the capsule is a labelled menu** (`awTabMenuMode`, [ADR-0066](adr/0066-phone-navigation-large-text-menu.md)): one button the capsule wide, the open section's glyph and whole name at the reader's size (shrunk only to fit the 64 px, never cut) and an unfold glyph on the `primaryContainer` pill; it opens a solid sheet with every section (no "More" step), full names at the reader's size that wrap, rows from 56 px growing with the text, the open one selected with a check. | Clamped names were unreadable at AX sizes and a long-press bubble was no way in (J-02). |
+| N5 | **Past five sections the fifth slot is "More"** (`nav.more`), which opens a sheet with the remaining sections (icon, name, line; the open one marked) and is selected while one of them is open (`phoneTabLayout`: the first four keep their slots). | HIG/M3: 3–5 destinations; the grid never compresses. |
+| N6 | **Distinct glyphs.** Inbox (TR "Fikirler") is a light bulb; Files a paperclip, not a second folder beside Projects (`sections_test`). | Two personas read the twin folders as one (U-46). |
+| N7 | **Semantics.** One node per slot: button, selected state, label "Home\nTab 1 of 5" (`MaterialLocalizations.tabLabel`). | The same reading `NavigationBar` gave. |
+| N8 | **Measured, not eyeballed:** `test/features/shell/tab_capsule_test.dart` runs 360/375/393/412/430 × 1.0/1.3 (slots) and 1.5/2.0/3.1 (menu) × TR/EN × light/dark × 5/6 sections and asserts slot width, equal widths, label containment in the capsule's curve, one glyph line and the 1.3 clamp; `phone_home_*` in `test/design_screenshots_test.dart` shoots it. | R-13: the shots never saw the bar's failures. |
+
+## 44. What floats on a phone, and the grid it floats on (OPH-397)
+
+[ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md) §3–§5. Rails keep their layout;
+the action cluster is the same on both.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| F1 | **One gutter.** Capsule, search orb, action cluster and the Quick Access bubble keep `awFloatGutter`: 16, and 20 from 430 pt (`kAwFloatGutter*`). | Four insets (8/12/16, the dock) read as an accident (R-06). |
+| F2 | **The bar's row:** capsule (64) + 8 + orb (56, `kAwSearchOrbSize`), one centre line; nothing else docks in it. | Two circles 8 pt apart (R-06); the dock cost the slots G4 (R-04). |
+| F3 | **One action cluster on the right** (`AwFabLocation`): "+" 56 on the gutter, its bottom 16 above the capsule; the microphone 48 (`kAwMicFabSize`) 8 to its left, same centre — the quiet half: `secondaryContainer` fill, elevation 1 (the "+" 4), and a 1 px `outline` ring as its edge, because the fill alone is 1.27:1 on a white card; the ring clears 3:1 on the page and every surface, both themes (`contrast.py`, polish 3 J-07/HK-2). The "+" stands in the same place with AI on or off; the bottom-left corner is empty. While a list scrolls down, and while the on-screen keyboard is up, the cluster retracts — it steps down 16 and shrinks to nothing in `AwMotion.fast`, at once with reduced motion — and returns on the way up, after 600 ms still, or when the keyboard closes (`AwFabScrollScope`, `AwFabDrop`); a scale, never an `Opacity` layer, and a retracted cluster takes no touch and leaves the semantics tree _(polish 4 T-01: until then it only dropped 16 and stayed whole over the rows a reader scrolled past, the last visible title and, with the quick add focused, the calendar)_. A screen inside a section never floats its own create button: it lends it to the cluster (`AwSectionFab`), which stands it on the gutter in the "+"'s place — its label clamped at 1.3×, left of an open detail pane. In such a section the microphone floats only beside a lent button: a screen with none (a read-only board, a selection) floats nothing. | The left microphone sat on the headers and check circles (R-07, E-10); a screen's own extended button sat under the microphone ("New r…", polish 2 R-02); alone it covered a board's figures (polish 3 H-2). |
+| F4 | **Bottom fade** (`shell-bottom-scrim`): from 24 above the capsule to the screen's edge, the page colour (veil over `auroraBottom`) 0 → 92 %; paint, not glass (G1), no motion, `IgnorePointer`. | Content ran under the bar at full contrast (R-03). |
+| F5 | **Where a list ends:** bar + FAB lane (72) + 24 (`awListPadding`); a page without the bar ends at the safe area + 24. | E-09: the end of every list is reachable. |
+| F6 | **Quick Access on a phone:** bubble off by default; ways in are the ⚡ in Home's app bar, "Shortcuts" (≤ 6) above "Recent" in the empty search palette, and a long press on the Home tab (hint `nav.homeLongPressHint`; slots only — above 1.3× text the capsule is the menu, §43 N4). | ADR-0062 §5. |
+| F7 | **One breakpoint:** a page is two-column only beside the rail (`awWideContent`: content ≥ 720 AND window ≥ 800) — an iPad mini at 744 is the phone layout throughout. | Home went wide at 720 under the phone capsule (R-12). |
+| F8 | **Measured:** `test/features/shell/floating_grid_test.dart` (360/393/430, AI on/off, bubble on/off: no floating object covers a check circle or a header, at rest and scrolled; retracted while scrolling down and with the keyboard up); `bubble_test` (inside the safe area at rest and idle, gone on pushed pages, intro above the system bar). | Kabul of OPH-397. |
+
+## 45. Words: one address per surface, one glossary (OPH-407)
+
+U-10 ([persona review](research/2026-11-design-ux/README.md) §3.3–§3.5, Ek A). The texts live in
+`apps/app/assets/i18n/{tr,en}.json`; `check:i18n` and `test/i18n/copy_pass_test.dart` hold them.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| W1 | **Turkish address by surface.** The personal app says **sen**; the extension's screens (`ee.*`, plus the core-named keys in `scripts/i18n/surfaces.json`), the portal, the landing and the enterprise page say **siz**. No string mixes the two. A button stays a bare imperative ("Kaydet") in either. | The alarm strips and a few settings said "siz" inside a "sen" app; one extension form asked "Ne istiyorsun?" above "Seçin" (U-10). |
+| W2 | **`check:i18n` reads the address** (`scripts/i18n/tone.mjs`): siz = the pronoun, the -(ı)nız family, plural imperatives; sen = the pronoun and second-person verb endings. Quotes, `{placeholders}` and code tokens are skipped. A listed key that no longer exists fails, so a rename cannot drift into "sen". | A rule without a gate rots (OPH-127's lesson). |
+| W3 | **The licence is source-available.** "open source" / "açık kaynak" appears in neither catalogue (`check:i18n`), nor in the web shell (`source_available_test`). | ADR-0024; E-26. |
+| W4 | **No device verb, no drama.** A text never says "tap/dokunun to …" — the button names its result ("Aç", "İzin ver", "Hesap değiştir"). A gesture hint ("basılı tut, yazmak için dokun") names a gesture and may stay. No "hiçbir şey size ulaşamaz"; a server gap is written to the admin ("Yöneticiysen …"). | U-05, §3.3. |
+| W5 | **Glossary (§3.4).** Son tarih (not Bitiş) · Planlanan gün (not Ne zaman) · Proje özeti / Overview (not README) · Düzenle · Oku (not Kaynak · Okuma) · Görev ve not ekleri (not Kaynaklar) · due date (not deadline) · Kurumsal (not Enterprise in Turkish); the extension's words follow the same table. The copy test fails on a word that leaves. | One idea, one word, on every screen. |
+| W6 | **A label is never cut inside a word.** Segment labels are `AwSegmentLabel` (one line, drawn smaller when it does not fit); a tab bar that may not fit scrolls (`isScrollable`, the project tabs); the bottom bar is §43. A short name is chosen where the long one cannot fit ("Özet", "Özel"). _Amended (OPH-400, polish R-09):_ wrapping text whose one word can outgrow its slot at AX3 (Settings rows, the create sheet's name) is `AwWordSafeText` — it wraps at spaces and draws the whole text smaller only when a word cannot fit; an address wraps right after the "@" and nowhere else, the domain one piece (`awBreakableAddress`; polish 4 T-06: "demo@alliswell / .space" read as a new word); a one-line heading that must stay whole (the calendar's month and year) scales down, never "…"; a scrolling form's top padding clears its floating label (`awFloatingLabelClearance`); a sheet's bar actions stop growing at 2× like a system bar. Measured: `test/widgets/word_safe_text_test.dart` (AX3/AX5, real glyphs). | "Standar / t", "Genel bak", "Dosyala" (E-11); "Entegrasyonla / r", "demo@alliswel / l.space", "Kasım 2…", "Yeni …" (polish R-09). |
+| W7 | **Measured:** `apps/api/test/unit/i18n-tone.test.js` (the rules, and both catalogues pass), `test/i18n/copy_pass_test.dart` (Ek A word for word, the glossary, a segment at 2.0×), `projects_flow_test` (the project tabs whole at 360 pt, 2.0×). | Kabul of OPH-407. |
+
+## 46. The task row (OPH-400)
+
+R-09, T-02, U-06, U-12 ([research](research/2026-11-design-ux/ux-shell-mobile.md)). One widget,
+`TaskTile`, on Home, the board, Completed, a project's Tasks tab and the subtask list.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| R1 | **The check circle sits on the title's first line.** Its 48 pt target is centred on that line; the title starts 12 pt down (lower only when a large line needs it). Indent: 4 + 48 + 4. | The circle sat in the middle of a five-line card (U-06). |
+| R2 | **Title:** `rowTitle` 16/22 w400, at most **2 lines + "…"** (3 in the vertical row, R5); the detail screen shows all of it. A done row is struck through in `onSurfaceVariant`. | A short title broke into 3–5 lines beside the right column. |
+| R3 | **One meta line** (`AwMetaLine`, `meta` 13/18 tabular, 8 apart, glyphs 14): date · repeat · alarm · status · priority · duration · first tag "+N" · the rest. Only what differs from a new task's defaults (§26 C1: open, medium, urgent-armed) gets a glyph: no hourglass on an open task, no flag on medium, no bell on an urgent alarm. The alarm item shows a snooze, a silenced alarm with its "turn back on" (§11 A5), or a plain bell for a reminder that is NOT urgent. "Overdue" is the red word (`metaStrong`, `error`), the date stays neutral. An item that does not fit whole is dropped from the end; only the date may shrink. Two items are never dropped or cut and open a line of their own instead (`AwMetaWrap`): the project name (R6) and the silenced alarm, so a muted row never reads as armed. Its way back is the short complete action ("Sesi aç" / "Unmute", never "Alarmı geri…"), a 48 pt target whose accessible name is the same visible words (WCAG 2.5.3; the full "Alarmı geri aç" is its tooltip, OPH-407); at AX3 the action may sit under its glyph (polish 3 J-04). | A flag, a bell and an hourglass on nearly every row said "default" (K6). |
+| R4 | **A bare link is one line:** a title that is only a URL reads "host › path" after a link glyph (`awRowTitle`). A URL inside a title gets zero-width breaks after `/ ? & =`. No row breaks inside a word. | A pasted URL took five lines (U-12). |
+| R5 | **Above 1.3× text the row goes vertical** (`kAwRowVerticalTextScale`): circle + title at full width, then the meta items (and the right item) wrapping under the title. _Polish 4 T-06:_ there the date wraps between its words, never "12:…". The same scale stacks the task detail's Durum and Öncelik at full width (a half-width field drew "Yüksek" smaller than "Açık"), lets a request's subject run to six lines in its list, and lets the unit's name under the phone's title take two lines in a bar that grows to hold them (`awSectionAppBarHeight`). | The title column was one word wide at large text. |
+| R6 | **At most one item on the right**, centred on the first line: the screen's own action (Completed's "Reopen", the board's "Move"), else the assignee avatars, else the project badge — only when the whole name fits a ≤ 96 pt pill (`ProjectBadge.fits`). A project that loses the slot, or whose name is longer, shows in the meta line as an 8 pt dot and its **full** name (`AwMetaWrap`): never "…", never dropped; when it does not fit after the other items it takes a line of its own and wraps between words. Items stay 8 pt apart. Measured: `task_row_project_test.dart` (seeded names, 360/393 × 1.0/3.1×, real glyphs). | The right column took 25–35 % of the width; the six-letter badge ("Launch…", "Home r…") lost the project (polish 3 J-03). |
+| R7 | **Measured:** `test/features/tasks/task_row_test.dart` — 360/375/393/430 × 1.0/1.3 × TR/EN × light/dark (≤ 2 title lines, circle on the first line, one meta line); 2.0× with the real Roboto/DejaVu (no mid-word break, ≤ 3 lines, the long row ≤ 240 pt). Goldens `phone_task_rows_*` with `--dart-define=screenshots=true`. | Kabul of OPH-400. |
+| R8 | **The detail screen's switch rows share one icon column.** "Urgent alarm", "Silence this task's alarms" and "Repeat" each lead with a 24 pt glyph (urgent: `notification_important_outlined`, as in the new-task sheet), so every title starts on the same x. A subtitle says what the switch does and never restates its title ("Sen kapatana kadar çalmaya devam eder."). Measured: `urgent_row_alignment_test.dart` (1.0/2.0×). | The urgent row had no glyph, its title sat 38 pt left of the others and its subtitle repeated it (polish 3 H-5). |
+
+## 47. Home's first screen: week strip, section headers, quick add (OPH-401)
+
+U-04, U-13, C-06, R-11 ([research](research/2026-11-design-ux/mobbin-design.md) §3.2, §3.4, §3.5).
+
+| # | Rule | Why |
+| --- | --- | --- |
+| W1 | **Under 600 pt the calendar opens as a week strip** (`awHomeCalendarMode`); the header's third button ("Show month" / "Show week", 48 pt) swaps strip and grid, and the choice is kept on the device (`homeCalendarModeProvider`). From 600 pt, and in the wide side panel, the grid stays. The arrows move a week in the strip, a month in the grid. | The month grid took ~40 % of a phone's first screen; Today was below the fold (U-04). |
+| W2 | **The strip:** seven 64 pt cells, Monday first — weekday 11 pt w600 over the day (`dayNumber` 17/22 w600, tabular) in a 32 pt circle, the task dot under it. The circle is filled for the selected day, and for today while nothing is selected; text in the cell is clamped at 1.3×. A week across two months is named by its Thursday's month. | One row says the week and where "now" is. |
+| S1 | **A section header is a name and a count:** `sectionLabel` 15/20 **w700**; the count is its own text 8 pt after (Mobbin's 6, on the 4-pt grid), w500 `onSurfaceVariant`, tabular. Overdue keeps `errorOnPage`, the selected day `link`, the rest `onSurface`. | The count read as part of the name (Mobbin §3.2). |
+| S2 | **Every section folds:** the whole 48 pt header, as wide as the cards, is the one button; the chevron's 48 pt target ends on the cards' trailing edge (glyph 12 pt in, the row badges' axis), so every section shares one control axis (polish 3 J-05), and it turns 180°; rows close in `AwMotion.base` (at once with reduced motion). Folding is for this session only. Semantics: header + button + expanded, "Collapse Overdue (3)" / "Geciken bölümünü daralt, 3 görev". | A long Overdue or No-date pile no longer buries Today. |
+| Q1 | **An empty bar has nothing on the right and no "+" in front.** | The "+" glyph was the FAB's sign on something that is not a button; "?" and ↑ did nothing while empty (C-06). |
+| Q2 | **Text brings ✨ (with AI) and ↑**, scaled in over `AwMotion.fast`; ↑ is a 32 pt `primary` circle in a 48 pt target (`quick-add-submit`). | One filled control is the one primary action. |
+| Q3 | **Focus on an empty bar shows one line of examples** ("yarın 9'da · #ev · +İş · p1", no `+Project` where it is not read) and "More", which opens the §39 sheet; typing replaces it with the recognized chips. | Syntax help where the typing happens, without a fourth icon. |
+| Q6 | **Home says what quick add did:** a 5 s snackbar (`kQuickAddUndoWindow`; at least 5 s so Undo can be reached — polish 2 R-04) "Eklendi: {title} · {when}" (A-67; {when} is the short date, or "Tarihsiz") with "Geri al", which deletes the task (and stops a typed repeat's series). | The field emptied with no sign, and people typed it twice (U-13). |
+| Q7 | **The new row is lit and brought into sight:** a `primary` 16 % wash fading over 1.2 s (held for 2 s with reduced motion); when the row is off screen — or in a folded section, which opens — the list moves to it (alignment 0.3). | The row could be under the calendar or at the end of a long list. |
+| K1 | **Measured:** `test/features/home/home_first_screen_test.dart` (strip default/persisted/600 pt, headers, fold, snackbar + undo, reveal; first screen at 393×852 and 390×844 with the store set and the real Roboto), `month_calendar_test`, `quick_add_bar_test`. With the store set's dateless rows, No date sits between Overdue and Today (OPH-102), so the "Overdue + Today ≥ 3 rows" check runs on the set without them; with them, Overdue and two more rows are on the first screen. | Kabul of OPH-401. |
+
+## 48. The microphone without an AI provider (OPH-402)
+
+U-07, U-14; copy A-66, A-07. `ai/ui/dictation_sheet.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| V1 | **AI on, no provider → the microphone dictates** (`aiDictationMode`). Tap, hold and a screen reader's activation open the dictation sheet, not the bubble; the button reads "Sesle görev ekle". An unknown status (loading) keeps the bubble, which re-reads it. With a provider nothing changes. | The chat could not answer and led to a dead end (U-07). |
+| V2 | **Three faces, none lies:** while the engine starts — on first use, behind the OS prompt — "Mikrofon izni bekleniyor"; listening: "Söylediğin görev olarak eklenecek" (`titleMedium`), the live words in `headlineSmall` w400, Cancel and a filled stop labelled "Bitir" under it; then the words in a quick-add field (§39/§47, hint "Fikirler'e kaydedilecek bir şey yaz…"). No mic or no permission → the field at once, with the denied line. The bubble's own listening face uses the same waiting line. | "Dinliyorum…" sat behind an unanswered permission prompt (U-14, A-66). |
+| V3 | **Nothing is saved before ↑.** The field is the Inbox bar's: same parse, `createCapture` (ADR-0057 §3) — dateless → Inbox, dated → an open task — then the sheet closes with "Fikirler'e eklendi: …" / "Eklendi: … · {date}". Cancel or a swipe down discards. | The transcript is always editable (AI9); one capture rule. |
+| V4 | **The bubble's unconfigured face has two buttons:** "Sağlayıcı bağla" (→ `/settings/ai`) and "Fikirler'e kaydet" (disabled until something is typed); Enter there saves to the Inbox, as the copy promises. | A-07: the face named a fix and offered no button. |
+| V5 | **The bubble opened empty explains itself:** with no turn yet, "Sor ya da bir iş söyle" over one line of what it can do and three starter chips. A chip only fills the field; Send is still the user's. The sheet draws its own header: a handle that closes on a tap and a visible Close (×, the one "Kapat" a screen reader finds). Material's handle node said "Kapat" but a real touch on it did nothing. | iOS E-5: an empty full-height page over a lone field, and a close node that did not close. |
+| K1 | `test/features/ai/dictation_test.dart` (10 widget tests), `ai_bubble_empty_close_test.dart` (V5). | Kabul of OPH-402. |
+
+## 49. The new-task sheet: Cancel / Add (OPH-403)
+
+U-11 (research `ux-core-screens.md` Q8); U-08's desktop dialog. `tasks/ui/task_create_sheet.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| N1 | **The header is the action row:** "Vazgeç" left (w400), the sheet's name centred (`titleMedium`, one line), "Ekle" right — "Kaydet" when triaging — in `barAction` 17/22 w600, `link` colour, 48 pt tall; dead while the title is blank. It sits above the scrolling form, so it is on the first screen with the keyboard up. No create button at the end of the form. | The only way to save was at the bottom of a long scroll, under the keyboard (U-11). |
+| N2 | **The keyboard's Done creates** when the title has text (empty: it just closes the keyboard); **Ctrl/⌘+Enter creates from any field**, the multi-line description included. | One gesture from typing to done. |
+| N3 | **Nothing typed is lost without a question:** once the title, description or picked files differ from what the sheet opened with, Cancel, the scrim, Back, Escape and a swipe down ask "Yazdıkların silinsin mi?" — "Yazmaya devam et" / "Sil". A swipe ends in `Navigator.pop`, past `PopScope`, so the sheet's own route refuses it in `didPop` and drives the sheet back up. An untouched sheet closes at once. | A swipe meant to peek threw a half-written task away. |
+| N4 | **From `kAwWideBreakpoint` (800) the form is a centred 640 px dialog**, same header and rules (no sticky footer yet: U-08's shell round). | A phone sheet stretched across a desktop window. |
+| N5 | **One input style (H-6):** title, description and tags are the same G3 field — a label (the hint shows once it floats), no leading icon, the theme's density — so their text starts on one x. The tag field takes `labelText` here; the detail's Tags card keeps its compact `#` field. | Three styles (floating label, placeholder, icon-led) started text at three x on one form. |
+| N6 | **Every choice is a row of one pattern:** project, priority and files are `AwSheetTile` rows like the days below them — icon column, name, value (a project's dot, a priority's flag), chevron. A row opens `showAwChoiceSheet` (`widgets/choice_sheet.dart`): a SOLID root-navigator sheet (G1), the current choice checked and announced as selected, an optional action row ("+ Proje ekle"); backing out keeps the value. No Material dropdown, no bare "Dosya ekle" link. | A floating-label dropdown is a second input style; a text link is a third control kind. |
+| N7 | Scope: the create sheet only. The task detail's Durum / Öncelik / Proje dropdowns are the next step, on the same choice sheet. | One surface per turn. |
+| K1 | `test/features/tasks/create_sheet_header_test.dart` (7 widget tests); `create_sheet_input_style_test.dart` (N5–N6, phone and desktop at 1× and 2×, the choice sheet). | Kabul of OPH-403. |
+
+## 50. First run: the four-step tour and the empty Home (OPH-404)
+
+U-33, U-28; copy A-12. Research `ux-core-screens.md` §4.1. `onboarding/tour.dart`, `home/home_screen.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| F1 | **Four steps, each something to do:** Hızlı yaz (the syntax, with an example the offline parser reads — "yarın 15:00 diş hekimi #sağlık") · Sesle ekle · Acil alarm · Her yerde ara. Sesle ekle only where the microphone is drawn (`aiStatus.enabled`); a team's window puts Talepler in its place. No tab-by-tab steps, no welcome or farewell card. | Seven steps toured Notes and Files and never said how to add a task (U-33). |
+| F2 | **Each step spotlights its own control** through a `TourAnchor` (quick-add field, microphone, search orb or rail entry). The alarm step points at the first open task on Home that will ring (urgent, alarm not silenced, due later — `tourAlarmTaskId`) when that row is wholly on screen, and otherwise at the quick-add field, where a time is typed; a target not on screen with no stand-in is a centred card. The search step's body names the search button on iOS and Android and teaches Ctrl+K / ⌘K only on a desktop (`tour.searchBodyTouch`). The card goes below an anchor in the top half, above one in the bottom half, right of a rail item; it is placed in the overlay's own box. "Atla" sits in the card left of "İleri", so "İleri" never moves; the last step has only "Bitti". | The spotlight used to point at unlabelled tab icons, and Skip sat on the settings gear; the alarm step was a card over the calendar and the search step told a phone about Ctrl+K (polish 4 T-03). |
+| F3 | **Two empty Homes:** no task of any status in scope (`hasAnyTaskProvider`) → "Henüz görev yok" / "Yukarıdaki kutuya yazarak ilk görevini ekle." + a filled "İlk görevini ekle" (focuses the quick-add field; only with `tasks.create`) + a text button "Todoist ya da TickTick'ten taşı" (→ `/settings/import`, §37). Otherwise "Bugünlük bu kadar" / "Açık görevin kalmadı." with a check circle. Unknown reads as done. Neither shows before the first pull of every workspace in scope has landed (`firstPullPendingProvider`): still placeholder rows announced "Görevlerin getiriliyor…" instead, at most `kFirstPullWait` (10 s), then the empty replica is trusted. | "Her şey tamam" and a beach umbrella were said to somebody who had never added a task (U-28); "Henüz görev yok" flashed for 2 s at a 41-task account on a cold sync (polish 2 R-06). |
+| F4 | **The tour waits for what it points at and follows it** (R-01): auto-start waits (≤ 3 s) for Home's field to be laid out; the spotlight is re-measured after every frame, so a banner that arrives above the field moves the spotlight with it; an anchor leaves the registry when it is deactivated. Until the first "İleri" the script follows late answers (AI status, the service desk), so a cold start does not lose the voice or Talepler step. | First run: a red "inactive element" screen on 2/2 devices, step 1 framed the alarm banner, and the step count depended on which answer came first. |
+| K1 | `test/features/onboarding/tour_test.dart`, `test/features/home/home_empty_test.dart`. | Kabul of OPH-404. |
+
+## 51. The desktop: rail everywhere, the detail pane, keys (OPH-405)
+
+U-08, U-36 (board); research `ux-core-screens.md` §3.3, §6. `widgets/list_detail.dart`, `screens/shell_rail.dart`, `home/home_board.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| D1 | **From `kAwPaneBreakpoint` (1200) the rail is on every signed-in page.** A page opened over the shell (Settings, a task by its address, a request, the knowledge base) draws the same rail (`AwRailFrame`, from `_contentPage`) with no destination selected; choosing one goes to that section. The page's own back/Home button stays. Below 1200 nothing changes. | Task detail and Settings dropped the navigation on a desktop (U-08). |
+| D2 | **A list opens its item in a 480 px pane on the right** (`AwListDetailScope` holds what is open, `AwListDetailPane` lays it out, `AwListOrder` gives a list's order). The list keeps its place and the address; the open row gets a 2 px `primary` outline and `selected` semantics — the fill stays the selected day's. The pane is content: a solid `surface` with an `outlineVariant` hairline and the rail's radius, never glass (G1). The floating cluster stands left of it. A `kind` keeps scopes apart, so the extension's request lists reuse the same pieces (OPH-410). | A look at one task cost the whole list. |
+| D3 | **Keys of the pane: Esc closes** — from a text field the first Esc only leaves the field; **↑/↓ open the previous/next item** of the list it was opened from (Home's visible groups, a folded group skipped; the board down each column, then on), scrolling its row into view, and stop at either end. A focused text field keeps its arrows. With the pane open Home keeps its wide list and gives the calendar panel's room to the pane; the board keeps its columns. Switching sections, or narrowing below 1200, closes it. | Linear/Things-style list work without a mouse trip. |
+| D4 | **N opens the new-task form** (§49's dialog) anywhere in the shell, with `tasks.create`; **/ opens search everywhere** (§40, matched by the character, so Shift+7 on a Turkish keyboard works). Neither fires from a text field, during the tour or a ringing alarm. The "+" tooltip names N from 1200. | Two keys every desktop list app has (ux-core §6). |
+| D5 | **The wide board: four columns share the width, none under 260** (`boardColumnWidth`); past four, or in a narrow window, it scrolls sideways under an always-visible scrollbar, and the right edge fades 24 px in the page colour while there is more (paint, not glass). | The fourth column was cut at 1440 with no sign there was more (U-36). |
+| D6 | **A form or a settings page's content is at most `kAwFormMaxWidth` (720) wide** (`widgets/form_width.dart`, `AwFormWidth`): centred insets, so the child keeps its constraints and a phone is unchanged. **A screen shown in a pane leaves by the pane's close:** `AwListDetailPane` hands its detail an `AwPaneCloser`, and `awRouteLeading` then draws ✕ "Kapat (Esc)", never a back that would pop the list. The list stays the same element while the pane opens and closes (scroll and ↑/↓ order kept). (OPH-410) | A label and its field 1,350 px apart (U-08); opening a pane rebuilt the list. |
+| K1 | `test/features/shell/desktop_pane_test.dart` (11 widget tests at 1440); `test/features/ee/ee_wide_layout_test.dart` (OPH-410). | Kabul of OPH-405, OPH-410. |
+
+## 52. Forgot password (OPH-406)
+
+C-13; research `ux-core-screens.md` §4.2; [ADR-0064](adr/0064-password-reset-links.md). `features/auth/ui/{login,forgot_password,reset_password}_screen.dart`.
+
+| # | Rule | Why |
+| --- | --- | --- |
+| R1 | **"Parolamı unuttum" sits under the password field, end-aligned**, a text button on the auth card (opaque, G1); it carries the typed email to the form. Turkish says "parola", as every other auth label does. | The sign-in screen had no way back into an account (C-13). |
+| R2 | **The answer never says whether an account exists.** Mail: "E-postanı kontrol et" with "{email} adresiyle bir hesap varsa…". No mail on the server: "Bu sunucu e-posta göndermiyor" and the operator's command, selectable and with a copy button (monospace, the same as API keys). Both outcomes are an icon (48), a `titleMedium` title and one `bodyMedium` paragraph. | Account enumeration is a security leak; an SMTP-less self-host still needs a way. |
+| R3 | **"Bağlantım var" is always on the form**: the reset screen without a token in its address takes a pasted link or bare code (`awResetTokenFrom`). With the token in the address the field is not shown. | A link that arrives on the laptop must work in the phone app; the operator's command may print a code only. |
+| R4 | **A dead link says so and offers the way out**: `AUTH_RESET_INVALID` → "Bu bağlantı artık çalışmıyor…" + "Yeni bağlantı iste". Success replaces the form with "Parolan değişti" and one "Giriş yap" button; it says every device was signed out. | A spent link is the common failure; the person must not guess what to do next. |
+| K1 | `test/features/auth/password_reset_test.dart`, `test/router_redirect_test.dart`. | Kabul of OPH-406. |
+

@@ -351,7 +351,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_120 operations across 86 paths, generated from
+_123 operations across 89 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -360,7 +360,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **AI** — [`POST /api/v1/ai/actions/{actionId}/decision`](#post-api-v1-ai-actions-actionid-decision) · [`PATCH /api/v1/ai/connections/{connectionId}`](#patch-api-v1-ai-connections-connectionid) · [`DELETE /api/v1/ai/connections/{connectionId}`](#delete-api-v1-ai-connections-connectionid) · [`POST /api/v1/ai/connections/{connectionId}/test`](#post-api-v1-ai-connections-connectionid-test) · [`POST /api/v1/workspaces/{workspaceId}/ai/chat`](#post-api-v1-workspaces-workspaceid-ai-chat) · [`POST /api/v1/workspaces/{workspaceId}/ai/chat/{requestId}/cancel`](#post-api-v1-workspaces-workspaceid-ai-chat-requestid-cancel) · [`GET /api/v1/workspaces/{workspaceId}/ai/connections`](#get-api-v1-workspaces-workspaceid-ai-connections) · [`POST /api/v1/workspaces/{workspaceId}/ai/connections`](#post-api-v1-workspaces-workspaceid-ai-connections) · [`POST /api/v1/workspaces/{workspaceId}/ai/extract`](#post-api-v1-workspaces-workspaceid-ai-extract) · [`GET /api/v1/workspaces/{workspaceId}/ai/models`](#get-api-v1-workspaces-workspaceid-ai-models) · [`GET /api/v1/workspaces/{workspaceId}/ai/status`](#get-api-v1-workspaces-workspaceid-ai-status)
 - **API keys** — [`POST /api/v1/api-keys/{keyId}/revoke`](#post-api-v1-api-keys-keyid-revoke) · [`GET /api/v1/workspaces/{workspaceId}/api-keys`](#get-api-v1-workspaces-workspaceid-api-keys) · [`POST /api/v1/workspaces/{workspaceId}/api-keys`](#post-api-v1-workspaces-workspaceid-api-keys)
 - **Account** — [`GET /api/v1/me`](#get-api-v1-me) · [`PATCH /api/v1/me`](#patch-api-v1-me) · [`DELETE /api/v1/me`](#delete-api-v1-me) · [`POST /api/v1/me/deletion/cancel`](#post-api-v1-me-deletion-cancel)
-- **Authentication** — [`POST /api/v1/auth/login`](#post-api-v1-auth-login) · [`POST /api/v1/auth/logout`](#post-api-v1-auth-logout) · [`GET /api/v1/auth/mfa/totp`](#get-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp`](#post-api-v1-auth-mfa-totp) · [`DELETE /api/v1/auth/mfa/totp`](#delete-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp/confirm`](#post-api-v1-auth-mfa-totp-confirm) · [`POST /api/v1/auth/mfa/totp/recovery-codes`](#post-api-v1-auth-mfa-totp-recovery-codes) · [`POST /api/v1/auth/oauth`](#post-api-v1-auth-oauth) · [`POST /api/v1/auth/password`](#post-api-v1-auth-password) · [`POST /api/v1/auth/refresh`](#post-api-v1-auth-refresh) · [`POST /api/v1/auth/register`](#post-api-v1-auth-register) · [`GET /api/v1/auth/sessions`](#get-api-v1-auth-sessions) · [`DELETE /api/v1/auth/sessions/{id}`](#delete-api-v1-auth-sessions-id) · [`POST /api/v1/auth/sessions/revoke-others`](#post-api-v1-auth-sessions-revoke-others)
+- **Authentication** — [`POST /api/v1/auth/login`](#post-api-v1-auth-login) · [`POST /api/v1/auth/logout`](#post-api-v1-auth-logout) · [`GET /api/v1/auth/mfa/totp`](#get-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp`](#post-api-v1-auth-mfa-totp) · [`DELETE /api/v1/auth/mfa/totp`](#delete-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp/confirm`](#post-api-v1-auth-mfa-totp-confirm) · [`POST /api/v1/auth/mfa/totp/recovery-codes`](#post-api-v1-auth-mfa-totp-recovery-codes) · [`POST /api/v1/auth/oauth`](#post-api-v1-auth-oauth) · [`POST /api/v1/auth/password`](#post-api-v1-auth-password) · [`POST /api/v1/auth/password/forgot`](#post-api-v1-auth-password-forgot) · [`POST /api/v1/auth/password/reset`](#post-api-v1-auth-password-reset) · [`GET /api/v1/auth/providers`](#get-api-v1-auth-providers) · [`POST /api/v1/auth/refresh`](#post-api-v1-auth-refresh) · [`POST /api/v1/auth/register`](#post-api-v1-auth-register) · [`GET /api/v1/auth/sessions`](#get-api-v1-auth-sessions) · [`DELETE /api/v1/auth/sessions/{id}`](#delete-api-v1-auth-sessions-id) · [`POST /api/v1/auth/sessions/revoke-others`](#post-api-v1-auth-sessions-revoke-others)
 - **CalDAV calendar** — [`PATCH /api/v1/integrations/caldav/accounts/{accountId}`](#patch-api-v1-integrations-caldav-accounts-accountid) · [`DELETE /api/v1/integrations/caldav/accounts/{accountId}`](#delete-api-v1-integrations-caldav-accounts-accountid) · [`GET /api/v1/integrations/caldav/accounts/{accountId}/calendars`](#get-api-v1-integrations-caldav-accounts-accountid-calendars) · [`GET /api/v1/workspaces/{workspaceId}/integrations/caldav`](#get-api-v1-workspaces-workspaceid-integrations-caldav) · [`POST /api/v1/workspaces/{workspaceId}/integrations/caldav`](#post-api-v1-workspaces-workspaceid-integrations-caldav)
 - **Capabilities** — [`GET /api/v1/ee/status`](#get-api-v1-ee-status)
 - **Devices** — [`GET /api/v1/notification-devices`](#get-api-v1-notification-devices) · [`PUT /api/v1/notification-devices/{deviceId}`](#put-api-v1-notification-devices-deviceid) · [`DELETE /api/v1/notification-devices/{deviceId}`](#delete-api-v1-notification-devices-deviceid)
@@ -1506,6 +1506,95 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/password' \
 | Status | Meaning |
 | --- | --- |
 | `200` | Success. |
+
+
+#### <a name="post-api-v1-auth-password-forgot"></a>`POST /api/v1/auth/password/forgot`
+
+**Auth:** None — this endpoint is public.
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `email` | string (email) | **yes** | length 0–255 |
+| `locale` | `en` · `tr` | no | — |
+
+**Request**
+
+```bash
+curl -X POST 'https://api.alliswell.space/api/v1/auth/password/forgot' \
+  -H 'Content-Type: application/json' \
+  -d '{"email":"you@example.com"}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `202` | — |
+| `429` | Rate limited. See `retry-after`. |
+
+**Example response** (`202`)
+
+```json
+{
+  "delivery": "email"
+}
+```
+
+
+#### <a name="post-api-v1-auth-password-reset"></a>`POST /api/v1/auth/password/reset`
+
+**Auth:** None — this endpoint is public.
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `token` | string | **yes** | length 20–128 |
+| `password` | string | **yes** | length 8–128 |
+
+**Request**
+
+```bash
+curl -X POST 'https://api.alliswell.space/api/v1/auth/password/reset' \
+  -H 'Content-Type: application/json' \
+  -d '{"token":"string","password":"string"}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `204` | Done. No body. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `429` | Rate limited. See `retry-after`. |
+
+
+#### <a name="get-api-v1-auth-providers"></a>`GET /api/v1/auth/providers`
+
+**Auth:** None — this endpoint is public.
+
+**Request**
+
+```bash
+curl -X GET 'https://api.alliswell.space/api/v1/auth/providers'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+
+**Example response** (`200`)
+
+```json
+{
+  "google": false,
+  "apple": false
+}
+```
 
 
 #### <a name="post-api-v1-auth-refresh"></a>`POST /api/v1/auth/refresh`

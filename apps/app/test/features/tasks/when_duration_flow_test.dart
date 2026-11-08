@@ -206,7 +206,7 @@ void main() {
     await _pickDuration(tester, 90);
     expect(_pushedPatches(api, 'update').last, {'estimatedMinutes': 90});
     expect(_server(api, id)['estimatedMinutes'], 90);
-    expect(find.text('1 h 30 min'), findsOneWidget);
+    expect(find.text('1 hour 30 min'), findsOneWidget);
 
     // A custom value outside 1..1440 is refused in the dialog itself.
     await _tapVisible(tester, find.byKey(const Key('duration-row')));

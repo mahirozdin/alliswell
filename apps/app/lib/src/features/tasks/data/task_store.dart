@@ -76,6 +76,17 @@ class TaskStore {
     (t) => taskScopeFilter(_db, t, scope),
   );
 
+  /// Whether the scope holds any task at all, of any status (OPH-404): the
+  /// line between Home's first-run empty state and its "all done" one. One
+  /// row, no join — Home watches it beside its own list.
+  Stream<bool> watchHasAnyIn(TaskScope scope) {
+    final query = _db.selectOnly(_db.tasks)
+      ..addColumns([_db.tasks.id])
+      ..where(taskScopeFilter(_db, _db.tasks, scope))
+      ..limit(1);
+    return query.watch().map((rows) => rows.isNotEmpty);
+  }
+
   Stream<List<Task>> watchInbox(String workspaceId) =>
       watchInboxIn(TaskScope.workspace(workspaceId));
 
@@ -95,6 +106,17 @@ class TaskStore {
         t.projectId.equals(projectId) &
         (t.status.isIn(kPlanningStatuses) | _completedSince(t, completedSince)),
   );
+
+  /// A task's subtasks (OPH-394, E-07): what its detail lists. Open and
+  /// completed ones — a finished step is progress, shown ticked; cancelled and
+  /// archived ones were decided against. Oldest first: the order they were
+  /// written down in.
+  Stream<List<Task>> watchSubtasks(String parentTaskId) => _watchList(
+    parentTaskId,
+    (t) =>
+        t.parentTaskId.equals(parentTaskId) &
+        t.status.isIn([...kPlanningStatuses, 'inbox', 'completed']),
+  ).map((tasks) => tasks.reversed.toList());
 
   /// The ids [scope] covers among [statuses] — what a search over several
   /// workspaces narrows its hits to, so a member's Home search finds their own

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../core/list_sort.dart';
 import '../i18n/i18n.dart';
+import 'popup_menu.dart';
 
 /// A radio group shown above the sort block — Notes puts its list/grid view
 /// here, so one app-bar button carries everything about *how the list looks*.
@@ -72,7 +73,7 @@ class AwSortMenuButton extends StatelessWidget {
       ),
     );
 
-    return PopupMenuButton<String>(
+    return AwPopupMenuButton<String>(
       key: const Key('list-sort-menu'),
       tooltip: tooltipKey.tr(),
       icon: Icon(icon),

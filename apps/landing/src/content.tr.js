@@ -13,6 +13,7 @@
 
 import {
   APP_STORE_URL,
+  APP_SIGNUP_URL,
   APP_URL,
   DOCS_URL,
   LINUX_DOWNLOAD_URL,
@@ -23,16 +24,23 @@ import {
   WINDOWS_DOWNLOAD_URL,
 } from './site.js';
 
+/** OPH-412: cihaza göre tek birincil eylem; çubuk da kahramandakini taşır. */
+const primary = {
+  desktop: { label: 'Tarayıcıda ücretsiz başlayın', href: APP_SIGNUP_URL },
+  ios: { label: 'App Store’dan indirin', href: APP_STORE_URL },
+  android: { label: 'Google Play’den indirin', href: PLAY_URL },
+};
+
 export default {
   lang: 'tr',
 
   seo: {
-    title: 'AllisWell: kendi sunucunuzda çalışabilen görev, not ve alarm uygulaması',
+    title: 'AllisWell: sessiz modda bile çalan hatırlatıcılar, kendi sunucunuzda görevler',
     description:
       'Projelere bağlı görevler, markdown notlar, dosyalar ve sessiz modda bile çalan alarmlar; ' +
       'Google Takvim ile iki yönlü eşitleme, Claude ve ChatGPT için bağlayıcı. iPhone, Android, ' +
       'web ve masaüstünde tek uygulama. Kişisel kullanım ücretsiz; ister kendi sunucunuzda, ister bizde.',
-    ogImage: '/shots/og/home-dusk-tr.jpg',
+    ogImage: '/shots/og/home-alarm-tr.jpg',
   },
 
   skip: 'Tura geç',
@@ -49,15 +57,16 @@ export default {
       { label: 'İndir', href: '/tr#get' },
       { label: 'Kurumsal', href: '/enterprise/tr' },
     ],
-    cta: { label: 'Uygulamayı aç', href: APP_URL },
+    github: { label: 'GitHub', href: REPO_URL },
+    cta: primary,
     menu: 'Menü',
     langLabel: 'Dil',
   },
 
   hero: {
-    title: 'Görevler, notlar, alarmlar. Hepsi sizin.',
-    sentence: 'Hatırlatıcılar sessiz modda bile çalar. İster kendi sunucunuzda, ister bizde.',
-    primary: { label: 'Web uygulamasını aç', href: APP_URL },
+    title: 'Sessiz modda bile çalan hatırlatıcılar.',
+    sentence: 'Görevler, notlar ve dosyalar tek uygulamada; ister kendi sunucunuzda, ister bizde. Claude ya da ChatGPT’yi bağlayın, gününüzü ona sorun.',
+    primary,
     secondary: { label: 'Kendi sunucunuza kurun', href: '/tr#self-host' },
     also: {
       before: 'Şunlarda da var: ',
@@ -73,6 +82,13 @@ export default {
     media: 'hero',
     alt: 'AllisWell’de bir gün: Ana sayfa listesi üç projeden görevlerle dolar, biri tamamlanır ve kira hatırlatıcısı alarm olarak çalar.',
     caption: 'Uygulamadan örnek verilerle kaydedildi.',
+  },
+
+  proof: {
+    label: 'Proje hakkında',
+    source: { label: 'Kaynak kodu GitHub’da', href: REPO_URL },
+    releases: '{n} sürüm, ilki {month}',
+    free: 'Kişisel kullanım ücretsiz',
   },
 
   tour: {
@@ -154,9 +170,10 @@ export default {
   },
 
   own: {
-    title: 'Kendi sunucunuzda, tek komutla.',
-    lead: 'İki Docker imajı ve kendi veritabanınız. Güncellemek için yeni imajı çekmeniz yeter.',
-    commandLabel: 'Sunucunuzda',
+    // OPH-412 (M-2): README'deki kurulum tek komut değil, dört adım.
+    title: 'Kendi sunucunuzda, dört adımda.',
+    lead: 'İki dosya, iki gizli anahtar, alan adlarınız ve şifreleriniz, tek komut. Güncellemek için yeni imajı çekmeniz yeter.',
+    commandLabel: 'Son adım',
     command: 'docker compose -f docker-compose.selfhost.yml up -d', // i18n-same
     points: [
       'Kişisel kullanım ve kendi kurulumunuz ücretsiz.',
@@ -170,18 +187,18 @@ export default {
 
   compare: {
     title: 'Dürüst bir karşılaştırma.',
-    lead: 'Başkalarının önde olduğu yerler: başka kişilerle paylaşım ve konuma göre hatırlatma.',
-    caption: 'AllisWell ve insanların bıraktığı üç uygulama, 2026 ortası itibarıyla.',
-    columns: ['AllisWell', 'Google Takvim', 'Apple Anımsatıcılar', 'Things 3'],
+    lead: 'Başkalarının önde olduğu yerler: başka kişilerle paylaşım ve hesapsız bir demo.',
+    caption: 'AllisWell; Todoist, TickTick ve Vikunja ile yan yana. Vikunja Ekim 2026’da denetlendi.',
+    columns: ['AllisWell', 'Todoist', 'TickTick', 'Vikunja'],
     rows: [
-      ['Kendi sunucunuzda çalışır', 'yes', 'no', 'no', 'no'],
-      ['Sessiz ve odak modunda alarm', 'yes', 'no', 'partial', 'no'],
-      ['Onaylayana kadar yeniden uyarır', 'yes', 'no', 'no', 'no'],
-      ['Google Takvim ile iki yönlü eşitleme', 'yes', 'native', 'no', 'no'],
-      ['Ayın 31’i Şubat’a doğru taşınır', 'yes', 'no', 'yes', 'yes'],
-      ['Claude ve ChatGPT için bağlayıcı', 'yes', 'no', 'no', 'no'],
+      ['Kendi sunucunuzda çalışır', 'yes', 'no', 'no', 'yes'],
+      ['Sessizde alarm, cevap verene kadar yeniden sorar', 'yes', 'unknown', 'unknown', 'partial'],
+      ['Google Takvim ile iki yönlü eşitleme', 'yes', 'unknown', 'unknown', 'no'],
+      ['Claude ve ChatGPT için bağlayıcı', 'yes', 'unknown', 'unknown', 'yes'],
+      ['iPhone ve Android için yerel uygulama', 'yes', 'yes', 'yes', 'partial'],
+      ['Başka kişilerle paylaşım', 'no', 'yes', 'unknown', 'yes'],
     ],
-    labels: { yes: 'Var', no: 'Yok', partial: 'Kısmen', native: 'Yerleşik' },
+    labels: { yes: 'Var', no: 'Yok', partial: 'Kısmen', unknown: 'Bakılmadı' },
     link: { label: 'Karşılaştırmanın tamamını okuyun', href: `${DOCS_URL}/COMPARISON.md` },
   },
 
@@ -206,8 +223,8 @@ export default {
     title: 'Geçmeden önce sorulanlar.',
     items: [
       {
-        q: 'Açık kaynak mı?',
-        a: 'Kaynak kodu herkese açık; kişisel kullanım ve kendi sunucunuza kurmak ücretsiz. Bir şirket içinde çalıştırmak, yeniden satmak ya da hizmet olarak sunmak ticari lisans gerektirir, çünkü kod PolyForm Noncommercial lisansıyla yayımlanıyor. info@bubiapps.com adresine yazın.',
+        q: 'Lisans ne?',
+        a: 'Kaynak kodu erişilebilir, ama açık kaynak değil: PolyForm Noncommercial. Kişisel kullanım ve kendi sunucunuza kurmak ücretsiz; bir şirket içinde çalıştırmak, yeniden satmak ya da hizmet olarak sunmak ticari lisans gerektirir. info@bubiapps.com adresine yazın.',
       },
       {
         q: 'Alarm çaldığında ne olur?',
@@ -259,12 +276,14 @@ export default {
         title: 'Şirket',
         links: [
           { label: 'Gizlilik', href: '/privacy/tr' },
+          { label: 'Kullanım şartları', href: '/terms/tr' },
           { label: 'Destek', href: '/support/tr' },
           { label: 'Lisans', href: `${REPO_URL}/blob/main/LICENSE` },
           { label: 'Ticari lisans', href: 'mailto:info@bubiapps.com' },
         ],
       },
     ],
+    registeredAs: 'Ticaret unvanı',
     notes: 'Apple, Google, Anthropic ya da OpenAI ile bağlantılı değildir.',
     photoLabel: 'Fotoğraf',
     photoChanges: 'kırpıldı ve yeniden boyutlandırıldı',

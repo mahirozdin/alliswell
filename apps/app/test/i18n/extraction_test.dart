@@ -143,11 +143,11 @@ void main() {
 
   group('feature strings (OPH-124)', () {
     test('onboarding tour steps localize', () {
-      expect(kTourSteps.first.title, 'Welcome to AllisWell');
-      expect(kTourSteps[1].title, 'Home');
+      expect(kTourSteps.first.title, 'Type it fast');
+      expect(kTourSteps[1].title, 'Add by voice');
       AwI18n.instance.setActiveCached(const Locale('tr'));
-      expect(kTourSteps.first.title, "AllisWell'e hoş geldin");
-      expect(kTourSteps.last.title, 'Hazırsın');
+      expect(kTourSteps.first.title, 'Hızlı yaz');
+      expect(kTourSteps.last.title, 'Her yerde ara');
     });
 
     test('project / note / calendar keys resolve in both languages', () {
@@ -223,7 +223,10 @@ void main() {
     test('resolve in both languages', () {
       expect('ai.bubble.thinking'.tr(), 'Thinking…');
       expect('ai.bubble.stop'.tr(), 'Stop');
-      expect('ai.bubble.unconfiguredTitle'.tr(), 'No AI provider yet');
+      expect(
+        'ai.bubble.unconfiguredTitle'.tr(),
+        'Connect an AI provider to use the assistant',
+      );
       expect('ai.bubble.saveToInbox'.tr(), 'Save to Inbox');
       AwI18n.instance.setActiveCached(const Locale('tr'));
       expect('ai.bubble.thinking'.tr(), 'Düşünüyorum…');
@@ -238,7 +241,7 @@ void main() {
       expect('ee.badge'.tr(), 'Enterprise');
       expect('ee.locked'.tr(), contains('license'));
       AwI18n.instance.setActiveCached(const Locale('tr'));
-      expect('ee.badge'.tr(), 'Enterprise');
+      expect('ee.badge'.tr(), 'Kurumsal');
       expect('ee.locked'.tr(), contains('lisans'));
     });
   });

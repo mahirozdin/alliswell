@@ -129,14 +129,17 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // token cannot be sent to, whatever the server still believes (OPH-319).
     await ref.read(pushMessagingProvider).forgetToken();
     // Every engine stops and finishes the round it is in, so no pull lands
-    // on the replica after the wipe below. Only engines that exist: reading
-    // the provider cold would START them. Bounded: a request hanging on a
-    // dead network must not hold the sign-out — a late page is still caught
-    // by the next sign-in's owner check (`LocalDataGuard.claimFor`).
-    if (ref.exists(syncEnginesProvider)) {
+    // on the replica after the wipe below. Bounded: a request hanging on a
+    // dead network must not hold the sign-out — a stopped engine drops the
+    // page that answers late instead of applying it (`SyncEngine._pullAll`).
+    //
+    // Through the registry, never `syncEnginesProvider` (OPH-390, E-01): the
+    // engines hang off this very session, so reading them from here is a
+    // dependency loop — Riverpod threw on it and the sign-out never ran.
+    final engines = ref.read(runningSyncEnginesProvider).toList();
+    if (engines.isNotEmpty) {
       await Future.wait([
-        for (final engine in ref.read(syncEnginesProvider).values)
-          engine.halt(),
+        for (final engine in engines) engine.halt(),
       ]).timeout(const Duration(seconds: 5), onTimeout: () => const []);
     }
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
@@ -147,3 +150,20 @@ class AuthController extends AsyncNotifier<AuthSession?> {
 /// Google / Apple sign-in (ADR-0026). Overridden in widget tests with a fake so
 /// no test ever reaches a real provider.
 final socialSignInProvider = Provider<SocialSignIn>((_) => SocialSignIn());
+
+/// The social sign-ins the server on the address can complete (OPH-392,
+/// E-23), or null when it could not say — an older server without the
+/// question, or no answer at all. Null keeps the platform's own rule
+/// ([SocialSignIn.googleAvailable]); an answer narrows it, so a server with
+/// no Google client no longer offers a Google button that can only fail.
+/// Follows the address: a server change asks the new one.
+final serverSignInProvidersProvider = FutureProvider<ServerSignInProviders?>((
+  ref,
+) async {
+  final api = ref.watch(authApiProvider);
+  try {
+    return await api.signInProviders();
+  } on Object {
+    return null;
+  }
+});

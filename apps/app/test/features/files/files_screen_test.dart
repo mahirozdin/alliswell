@@ -172,7 +172,7 @@ void main() {
     await tester.pumpWidget(await app(api));
     await tester.pumpAndSettle();
     await openFiles(tester);
-    await tester.tap(find.text('Sources'));
+    await tester.tap(find.text('Task and note attachments'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('list-sort-menu')));
@@ -211,7 +211,7 @@ void main() {
     await tester.pumpAndSettle();
     await openFiles(tester);
 
-    await tester.tap(find.text('Sources'));
+    await tester.tap(find.text('Task and note attachments'));
     await tester.pumpAndSettle();
     expect(find.text('görev-eki.png'), findsOneWidget);
     expect(find.textContaining('Ekli görev'), findsOneWidget); // the badge

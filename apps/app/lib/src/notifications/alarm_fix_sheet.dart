@@ -82,7 +82,10 @@ _FixAction _actionFor(AlarmProblem problem) => switch (problem) {
   AlarmProblem.webPermissionPrompt => _FixAction.askBrowser,
   AlarmProblem.webPermissionBlocked ||
   AlarmProblem.webPushOff => _FixAction.checkAgain,
-  AlarmProblem.webUnsupported => _FixAction.none,
+  // Nothing in this browser fixes a server without keys (OPH-393, E-14): the
+  // sheet explains it for whoever runs the server, and offers no button.
+  AlarmProblem.webUnsupported ||
+  AlarmProblem.webPushUnconfigured => _FixAction.none,
 };
 
 class _AlarmFixSheet extends ConsumerWidget {
@@ -158,7 +161,8 @@ class _AlarmFixSheet extends ConsumerWidget {
           children: [
             Row(
               children: [
-                Icon(Icons.alarm_off_outlined, color: scheme.error),
+                // Amber, not alarm red: a setup problem is a warning (U-05).
+                Icon(Icons.alarm_off_outlined, color: context.awTokens.warning),
                 const SizedBox(width: AwSpace.x2),
                 Expanded(
                   child: Text(

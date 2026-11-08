@@ -8,6 +8,7 @@ import '../../../widgets/status_views.dart';
 import '../../auth/providers.dart';
 import '../data/caldav_api.dart';
 import '../providers.dart';
+import '../../../widgets/segment_label.dart';
 
 /// Apple's own page on app-specific passwords (CALDAV.md §8 ref 6).
 final Uri appleAppPasswordHelp = Uri.parse(
@@ -179,11 +180,15 @@ class _CaldavConnectSheetState extends ConsumerState<CaldavConnectSheet> {
                   segments: [
                     ButtonSegment(
                       value: 'icloud',
-                      label: Text('calendar.caldav.icloudSegment'.tr()),
+                      label: AwSegmentLabel(
+                        'calendar.caldav.icloudSegment'.tr(),
+                      ),
                     ),
                     ButtonSegment(
                       value: 'generic',
-                      label: Text('calendar.caldav.genericSegment'.tr()),
+                      label: AwSegmentLabel(
+                        'calendar.caldav.genericSegment'.tr(),
+                      ),
                     ),
                   ],
                   selected: {_server},

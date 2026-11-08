@@ -350,3 +350,41 @@ describe('push credentials decide whether push exists at all (OPH-310)', () => {
     expect(loadConfig({}).push.sweepSec).toBe(60);
   });
 });
+
+// OPH-406 (ADR-0064): core's own outgoing mail, for password-reset links.
+describe('loadConfig — mail for password resets', () => {
+  it('is off when no SMTP block is set, with a one-hour link', () => {
+    const config = loadConfig({});
+    expect(config.mail.smtp.host).toBeNull();
+    expect(config.appPublicUrl).toBeNull();
+    expect(config.auth.passwordResetTtlMin).toBe(60);
+  });
+
+  it('reads a complete block and the web app address', () => {
+    const config = loadConfig({
+      SMTP_HOST: 'smtp.example.com',
+      SMTP_FROM: 'AllisWell <no-reply@example.com>',
+      SMTP_USER: 'u',
+      SMTP_PASSWORD: 'p',
+      APP_PUBLIC_URL: 'https://alliswell.example/app/',
+    });
+    expect(config.mail.smtp).toMatchObject({ host: 'smtp.example.com', port: 587, secure: false });
+    expect(config.appPublicUrl).toBe('https://alliswell.example/app');
+  });
+
+  it('refuses half a block, naming what is missing — the link address included', () => {
+    expect(() => loadConfig({ SMTP_HOST: 'smtp.example.com' })).toThrow(
+      /SMTP_FROM, APP_PUBLIC_URL/,
+    );
+    expect(() =>
+      loadConfig({
+        SMTP_HOST: 'smtp.example.com',
+        SMTP_FROM: 'a@example.com',
+        APP_PUBLIC_URL: 'https://alliswell.example',
+        SMTP_USER: 'u',
+      }),
+    ).toThrow(/SMTP_PASSWORD/);
+    expect(() => loadConfig({ APP_PUBLIC_URL: 'alliswell.example' })).toThrow(/APP_PUBLIC_URL/);
+    expect(() => loadConfig({ PASSWORD_RESET_TTL_MIN: '1' })).toThrow(/PASSWORD_RESET_TTL_MIN/);
+  });
+});

@@ -115,12 +115,12 @@ function posterSet(srcImage, stem, widths, { fit = 'cover', w = LOOP_W, h = LOOP
   return { poster: out, width: streams[0].width, height: streams[0].height };
 }
 
-function readmeWebp(render, { file, width, fps }) {
+function readmeWebp(render, { file, width, fps, budget = 'readmeAnimated' }) {
   mkdirSync(README_DIR, { recursive: true });
   const target = path.join(README_DIR, file);
   for (const q of [70, 60, 50, 40, 30]) {
     run(['-i', render, '-vf', `fps=${fps},scale=${width}:-2:flags=lanczos`, '-an', '-c:v', 'libwebp_anim', '-lossless', '0', '-q:v', String(q), '-compression_level', '6', '-loop', '0', target]);
-    if (size(target) <= BUDGETS.readmeAnimated) {
+    if (size(target) <= BUDGETS[budget]) {
       console.log(`  readme ${file}: q ${q}, ${kb(size(target))}`);
       return;
     }

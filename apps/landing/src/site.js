@@ -14,6 +14,9 @@
  */
 
 export const APP_URL = '/app';
+// OPH-413 (landing-audit K3): "Start free" opens the app on its sign-up form,
+// not on sign-in. The app reads `signup=1` from the page address once.
+export const APP_SIGNUP_URL = '/app/?signup=1';
 export const REPO_URL = 'https://github.com/mahirozdin/alliswell';
 export const DOCS_URL = `${REPO_URL}/blob/main/docs`;
 export const PLAY_URL = 'https://play.google.com/store/apps/details?id=com.alliswell.alliswell';

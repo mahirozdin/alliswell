@@ -291,6 +291,12 @@ async function main() {
       alliswell_onboarding_seen_v1: 'true',
       alliswell_locale: LOCALE,
       alliswell_quick_bubble_hinted: 'true',
+      // Every shot names its view: the board shot's preference used to stay in
+      // localStorage, so every later shot showed the board (OPH-414).
+      alliswell_home_view: 'list',
+      // A local API has no web-push keys; the hosted one does. The strip that
+      // says so is true here and never seen there, so it is closed for a year.
+      alliswell_alarm_banner_dismissed: `webPushUnconfigured@${Date.now() + 365 * 86400000}`,
     };
     let installedPrefs = null;
     const installPrefs = async (prefs) => {
@@ -309,6 +315,12 @@ async function main() {
     let bootstrapId = null;
 
     const shots = ONLY ? SHOTS.filter((s) => ONLY.includes(s.name)) : SHOTS;
+    // One unrecorded boot first: the very first one fills the local replica
+    // from the server, and a shot taken during it is a spinner (OPH-414).
+    await installPrefs({});
+    await page.send('Page.navigate', { url: `${APP_URL}/#/home` });
+    await waitForApp(page);
+    await sleep(6000);
     for (const shot of shots) {
       await installPrefs(shot.prefs ?? {});
       await page.send('Emulation.setDeviceMetricsOverride', {

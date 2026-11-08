@@ -20,21 +20,27 @@ import 'package:alliswell/src/features/quick_access/ui/quick_access_panel.dart';
 import 'package:go_router/go_router.dart';
 import 'package:alliswell/src/screens/settings_screen.dart';
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/widgets/fab_clearance.dart';
 import 'package:alliswell/src/widgets/glass.dart';
+import 'package:alliswell/src/widgets/tab_capsule.dart';
 
 import '../auth/test_support.dart';
 import '../projects/fake_api.dart';
 import '../../support/sync_overrides.dart';
 
 /// OPH-200 — the phone's floating quick-access button (DESIGN §23 Q4/Q5).
-Future<Widget> signedInApp(FakeApi api, {bool bubbleEnabled = true}) async {
+///
+/// [bubbleEnabled] null = nothing stored, i.e. the factory setting, which is
+/// OFF on phones since ADR-0062 decision 5; the button's own tests switch it
+/// on the way Settings does.
+Future<Widget> signedInApp(FakeApi api, {bool? bubbleEnabled = true}) async {
   SharedPreferences.setMockInitialValues({});
   // localKv is a process-wide singleton; mock values alone do not reset it.
   await resetQuickAccessPrefs();
   // The real preference path, not an override: the toggle hydrates from
   // localKv, which is exactly what a returning user's launch does.
-  if (!bubbleEnabled) {
-    await localKv.set('alliswell_quick_bubble_enabled', 'false');
+  if (bubbleEnabled != null) {
+    await localKv.set('alliswell_quick_bubble_enabled', '$bubbleEnabled');
   }
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
@@ -180,7 +186,7 @@ void main() {
 
     final after = tester.getTopLeft(bubble);
     expect(after.dx, lessThan(before.dx));
-    expect(after.dx, kBubbleEdgeMargin, reason: 'snapped to the left edge');
+    expect(after.dx, kAwFloatGutter, reason: 'snapped to the left edge');
     final stored = await tester.runAsync(
       () => localKv.get('alliswell_quick_bubble_pos'),
     );
@@ -240,7 +246,7 @@ void main() {
       await gesture.up();
       await tester.pumpAndSettle();
 
-      expect(tester.getTopLeft(bubble).dx, kBubbleEdgeMargin);
+      expect(tester.getTopLeft(bubble).dx, kAwFloatGutter);
       final stored = await tester.runAsync(
         () => localKv.get('alliswell_quick_bubble_pos'),
       );
@@ -281,6 +287,71 @@ void main() {
     expect(find.byType(QuickAccessPanel), findsOneWidget);
   });
 
+  testWidgets('ADR-0062 #5 / G4: the factory phone layout has no bubble, the '
+      'app bar carries the entry, and every tab slot is at least 48 dp at '
+      '360 dp', (tester) async {
+    final api = FakeApi();
+    api.seedQuickLink(
+      kind: 'url',
+      url: 'https://alliswell.space',
+      title: 'Site',
+    );
+
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(await signedInApp(api, bubbleEnabled: null));
+    await tester.pumpAndSettle();
+
+    expect(bubble, findsNothing);
+    expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
+    for (var i = 0; i < 5; i++) {
+      final slot = find.byKey(Key('tab-slot-$i'));
+      expect(slot, findsOneWidget);
+      expect(
+        tester.getSize(slot).width,
+        greaterThanOrEqualTo(kAwMinTabSlot - 0.01),
+        reason: 'slot $i under 48 dp (G4)',
+      );
+    }
+  });
+
+  testWidgets('switched off, the ⚡ is one of the phone bar\'s three targets '
+      'and stays while the list\'s filter is open (OPH-398)', (tester) async {
+    final api = FakeApi();
+    api.seedQuickLink(
+      kind: 'url',
+      url: 'https://alliswell.space',
+      title: 'Site',
+    );
+
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() {
+      tester.view.resetPhysicalSize();
+      tester.view.resetDevicePixelRatio();
+    });
+    await tester.pumpWidget(await signedInApp(api, bubbleEnabled: false));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
+    expect(find.byKey(const Key('home-view-menu')), findsOneWidget);
+    // The magnifier left the bar (ADR-0062 §6): nothing has to step aside.
+    expect(find.byKey(const Key('search-open')), findsNothing);
+
+    await tester.drag(
+      find.byKey(const Key('home-scroll')),
+      const Offset(0, 80),
+    );
+    await tester.pumpAndSettle();
+    await tester.enterText(find.byKey(const Key('home-search')), 'site');
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull, reason: 'app bar overflowed');
+    expect(find.byKey(const Key('quick-appbar-button')), findsOneWidget);
+  });
+
   testWidgets('never rides along on the sign-in screens', (tester) async {
     final api = FakeApi();
     api.seedQuickLink(
@@ -309,12 +380,15 @@ void main() {
     expect(bubble, findsNothing);
   });
 
-  // OPH-362 — UI-AUDIT #57: the rest that still covered controls.
-  group('UI-AUDIT #57: at rest it covers nothing', () {
+  // OPH-362 — UI-AUDIT #57: the rest that still covered controls; OPH-397
+  // (U-03, ADR-0062 §5) — out of the bar's row, inside the safe area, and on
+  // the shell only.
+  group('UI-AUDIT #57 / U-03: at rest it covers nothing', () {
     Future<void> pumpPhone(
       WidgetTester tester, {
       String? storedPosition,
       Brightness brightness = Brightness.light,
+      bool hinted = true,
     }) async {
       final api = FakeApi();
       api.seedQuickLink(
@@ -329,81 +403,105 @@ void main() {
       if (storedPosition != null) {
         await localKv.set('alliswell_quick_bubble_pos', storedPosition);
       }
+      if (hinted) await localKv.set('alliswell_quick_bubble_hinted', 'true');
       await tester.pumpWidget(app);
       await tester.pumpAndSettle();
     }
 
     Future<void> openSettings(WidgetTester tester) async {
-      GoRouter.of(tester.element(find.byType(NavigationBar))).push('/settings');
+      GoRouter.of(tester.element(find.byType(AwTabCapsule))).push('/settings');
       await tester.pumpAndSettle();
     }
 
-    /// Every control the person could be after, as on-screen rectangles.
-    Iterable<Rect> controlsOf(WidgetTester tester, Finder page) => [
-      for (final type in const [InkWell, Switch, TextField])
-        for (final e
-            in find
-                .descendant(of: page, matching: find.byType(type))
-                .evaluate())
-          tester.getRect(find.byWidget(e.widget)),
-    ];
+    Finder plus() => find.byTooltip('shell.fabNewTask'.tr());
 
     for (final brightness in Brightness.values) {
-      testWidgets('docked in the shell, beside the bar and below the FAB '
-          '(${brightness.name})', (tester) async {
+      testWidgets('it rests above the "+", in its column, and the bar keeps '
+          'its whole row (${brightness.name})', (tester) async {
         await pumpPhone(tester, brightness: brightness);
         final button = tester.getRect(bubble);
-        final bar = tester.getRect(find.byType(NavigationBar));
-        expect(
-          button.overlaps(bar),
-          isFalse,
-          reason: 'the bar ends short of the button',
+        final bar = tester.getRect(find.byType(AwTabCapsule));
+        final create = tester.getRect(plus());
+        expect(button.overlaps(bar), isFalse);
+        expect(button.overlaps(create), isFalse);
+        expect(button.bottom, lessThanOrEqualTo(create.top));
+        expect(button.center.dx, moreOrLessEquals(create.center.dx));
+        // ADR-0062 §4: nothing docks in the bar's row any more.
+        expect(bar.left, kAwFloatGutter);
+        final orb = tester.getRect(
+          find.ancestor(
+            of: find.byKey(const Key('global-search-orb')),
+            matching: find.byType(GlassSurface),
+          ),
         );
-        expect(
-          button.center.dy,
-          moreOrLessEquals(bar.center.dy),
-          reason: 'it rests in the bar\'s own row',
-        );
-        for (final fab in find.byType(FloatingActionButton).evaluate()) {
-          expect(
-            button.overlaps(tester.getRect(find.byWidget(fab.widget))),
-            isFalse,
-          );
-        }
-      });
-
-      testWidgets('a page outside the shell ends above it, so nothing on it '
-          'starts under the button (${brightness.name})', (tester) async {
-        await pumpPhone(tester, brightness: brightness);
-        await openSettings(tester);
-        final button = tester.getRect(bubble);
-        final page = find.byType(SettingsScreen);
-        expect(
-          tester.getRect(page).bottom,
-          lessThanOrEqualTo(button.top - kBubbleEdgeMargin),
-        );
-        // What is VISIBLE of each control: a row the list clips at the
-        // page's bottom edge is only there as far as the page is.
-        final visible = tester.getRect(page);
-        final covered = controlsOf(tester, page)
-            .map((control) => control.intersect(visible))
-            .where((part) => !part.isEmpty && part.overlaps(button))
-            .toList();
-        expect(covered, isEmpty);
+        expect(orb.right, 390 - kAwFloatGutter);
       });
     }
 
-    // R3-2 (OPH-363): a screen reader found the docked button as a node
-    // the size of the whole screen — its focus ring framed everything, and a
-    // touch-explore anywhere announced "Quick Access".
-    for (final atSettings in [false, true]) {
+    // U-03: half a circle past the screen's edge at 40 % read as broken.
+    for (final stored in [null, 'left:0.000', 'left:0.500', 'right:0.000']) {
+      testWidgets('Kabul: inside the safe area at rest and idle '
+          '(${stored ?? 'factory'})', (tester) async {
+        tester.view.padding = const FakeViewPadding(
+          top: 47,
+          bottom: 34,
+          left: 10,
+          right: 10,
+        );
+        addTearDown(tester.view.resetPadding);
+        await pumpPhone(tester, storedPosition: stored);
+        const safe = Rect.fromLTRB(10, 47, 380, 810);
+        void inside(String when) {
+          for (final rect in [
+            tester.getRect(bubble),
+            tester.getRect(find.byKey(const Key('quick-bubble-paint'))),
+          ]) {
+            expect(safe.left, lessThanOrEqualTo(rect.left), reason: when);
+            expect(safe.top, lessThanOrEqualTo(rect.top), reason: when);
+            expect(rect.right, lessThanOrEqualTo(safe.right), reason: when);
+            expect(rect.bottom, lessThanOrEqualTo(safe.bottom), reason: when);
+          }
+        }
+
+        inside('at rest');
+        await tester.pump(const Duration(seconds: 5));
+        await tester.pumpAndSettle();
+        inside('idle');
+      });
+    }
+
+    // OPH-391 (E-09) / OPH-397 (U-03): a pushed page is read, not navigated
+    // from — the button is gone there and the page keeps the screen.
+    for (final stored in [null, 'right:0.300']) {
+      testWidgets('a page outside the shell: no button, and the page reaches '
+          'the bottom edge (${stored ?? 'factory'})', (tester) async {
+        tester.view.padding = const FakeViewPadding(top: 47, bottom: 34);
+        addTearDown(tester.view.resetPadding);
+        await pumpPhone(tester, storedPosition: stored);
+        expect(bubble, findsOneWidget);
+        await openSettings(tester);
+        expect(bubble, findsNothing);
+        final page = find.byType(SettingsScreen);
+        expect(tester.getRect(page).bottom, 844);
+        final listRect = tester.getRect(
+          find.descendant(of: page, matching: find.byType(Scrollable)).first,
+        );
+        expect(listRect.bottom, 844);
+        expect(MediaQuery.paddingOf(tester.element(page)).bottom, 34);
+        expect(AwBubbleClearance.of(tester.element(page)), 0);
+        GoRouter.of(tester.element(page)).pop();
+        await tester.pumpAndSettle();
+        expect(bubble, findsOneWidget);
+      });
+    }
+
+    // R3-2 (OPH-363): a screen reader found the button as a node the size
+    // of the whole screen.
+    for (final stored in [null, 'right:0.300']) {
       testWidgets('its accessibility node is the 56 px button, not the screen '
-          '(${atSettings ? 'a page outside the shell' : 'the shell'})', (
-        tester,
-      ) async {
+          '(${stored ?? 'factory'})', (tester) async {
         final semantics = tester.ensureSemantics();
-        await pumpPhone(tester);
-        if (atSettings) await openSettings(tester);
+        await pumpPhone(tester, storedPosition: stored);
         final node = tester.getSemantics(
           find.bySemanticsLabel(RegExp('^${'quick.title'.tr()}')),
         );
@@ -425,9 +523,6 @@ void main() {
         expect(global.height, moreOrLessEquals(kBubbleDiameter));
         expect(global.center.dx, moreOrLessEquals(button.center.dx));
         expect(global.center.dy, moreOrLessEquals(button.center.dy));
-        // A button, tapped — not a scroll container: the drag's pan
-        // recognisers once advertised scrollUp/Down/Left/Right, which the
-        // web engine renders as a scrollable region.
         final data = node.getSemanticsData();
         expect(data.flagsCollection.isButton, isTrue);
         expect(data.hasAction(SemanticsAction.tap), isTrue);
@@ -443,32 +538,34 @@ void main() {
       });
     }
 
-    testWidgets('a keyboard covers the bar\'s row — the docked button goes '
-        'with it and the page gets its full height back', (tester) async {
+    testWidgets('a keyboard: the button stands above it, never under it', (
+      tester,
+    ) async {
       await pumpPhone(tester);
-      await openSettings(tester);
       tester.view.viewInsets = const FakeViewPadding(bottom: 300);
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();
-      expect(bubble, findsNothing);
-      expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
+      expect(bubble, findsOneWidget);
+      expect(tester.getRect(bubble).bottom, lessThanOrEqualTo(844 - 300));
     });
 
-    testWidgets('a place the person chose is theirs: the page is not '
-        'shortened for a button that is not in the dock', (tester) async {
-      await pumpPhone(tester, storedPosition: 'right:0.300');
-      // The bar's row — capsule, then the search button (OPH-374) — runs
-      // to the screen's own margin.
-      final row = tester.getRect(
-        find.ancestor(
-          of: find.byKey(const Key('global-search-orb')),
-          matching: find.byType(GlassSurface),
-        ),
-      );
-      expect(row.right, 390 - AwSpace.x3, reason: 'the bar is whole');
-      await openSettings(tester);
-      expect(tester.getRect(find.byType(SettingsScreen)).bottom, 844);
-      expect(tester.getRect(bubble).top, lessThan(844 / 2));
+    // A-03: under the docked button the intro card drew into Android's
+    // system navigation band.
+    testWidgets('A-03: the intro card stands above the system bar, beside '
+        'the button', (tester) async {
+      tester.view.padding = const FakeViewPadding(top: 24, bottom: 48);
+      addTearDown(tester.view.resetPadding);
+      await pumpPhone(tester, hinted: false);
+      final intro = find.byKey(const Key('quick-bubble-intro'));
+      expect(intro, findsOneWidget);
+      final card = tester.getRect(intro);
+      final button = tester.getRect(bubble);
+      expect(card.bottom, lessThanOrEqualTo(844 - 48));
+      expect(card.bottom, lessThanOrEqualTo(button.top));
+      expect(card.right, lessThanOrEqualTo(390 - kAwFloatGutter));
+      expect(card.overlaps(tester.getRect(find.byType(AwTabCapsule))), isFalse);
+      await tester.tap(intro);
+      await tester.pumpAndSettle();
     });
   });
 
@@ -500,20 +597,24 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    Offset slide() =>
-        tester.widget<AnimatedSlide>(find.byType(AnimatedSlide)).offset;
-    // At rest with a count: full and in place (DESIGN §23 Q4b).
+    double opacity() => tester
+        .widget<AnimatedOpacity>(find.byKey(const Key('quick-bubble-paint')))
+        .opacity;
+    final rest = tester.getRect(find.byKey(const Key('quick-bubble-paint')));
+    // At rest with a count: full (DESIGN §23 Q4b).
     await tester.pump(const Duration(seconds: 5));
-    expect(slide(), Offset.zero);
+    expect(opacity(), 1);
 
     scrolling.value = true;
     await tester.pumpAndSettle();
-    expect(slide().dx, greaterThan(0), reason: 'it still sits over the rows');
-    // The count is painted outside the slide and the fade.
+    expect(opacity(), kBubbleIdleOpacity, reason: 'it steps back');
+    // U-03 (OPH-397): it fades, it does not slide past the edge.
+    expect(tester.getRect(find.byKey(const Key('quick-bubble-paint'))), rest);
+    // The count is painted outside the fade.
     expect(find.byKey(const Key('quick-bubble-badge')), findsOneWidget);
 
     scrolling.value = false;
     await tester.pumpAndSettle();
-    expect(slide(), Offset.zero);
+    expect(opacity(), 1);
   });
 }

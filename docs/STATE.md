@@ -9,16 +9,16 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-10-18 — blueprint v3 yükseltmesi (ADR-0060): LOOP.md yerine faz workflow'u (`/isler`, `/faz E35`; `npm run next -- --list`), AGENTS.md 236 → 92 satır (ayrıntı `docs/development/` ve `.claude/rules/`), `npm run verify:smoke`; CI GitHub-hosted kalıyor (public depo).
+**Last updated:** 2026-11-08 — Epic 35 cila turu 4 (`.ceo/polish-4.md`) T-G1 kapandı: T-01…T-08; Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.18.1 canlıda** (2026-10-28, kurumsal sayfa OPH-388). OPH-389 (2026-10-30, sahip isteği): ana sayfa Hallmark Dusk ile baştan, sunucuda render, HyperFrames döngüleri + EN/TR film, yeni README (ADR-0061); sahibin açık isteğiyle v1.18.2 olarak yayına alınır. Açık iş yok (yalnız sahibin ⏸️ adımları). |
-| Current epic             | — (Epic 34 kapandı; sıradaki epic sahibin kararıyla açılır) |
-| ➡️ **Next task**         | **BACKLOG BOŞ** |
-| Last completed           | OPH-389 — ana sayfa (EN/TR) Dusk + SSR + `check:home`/`check:media`, 9 döngü + 2 film (`media/hyperframes`), README WebP animasyonları, OG kartları `og/home-dusk*`; kurumsal sayfa değişmedi. |
+| Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
+| Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
+| ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
+| Last completed           | Cila 4 T-G1 (OPH-392, 397, 400, 402, 404, 405, 407, 409) — mikrofon ve "+" aşağı kaydırmada ve klavye açıkken çekiliyor, silinmiş not "Not bulunamadı" ve açıkken silinince salt okunur, tur alarm adımı çalacak göreve, arama adımı telefonda düğmeye işaret ediyor, AI sayfası boşken rehber + üç çip ve gerçek Kapat, büyük metinde tarih/e-posta/birim adı/konu kesilmiyor ve Öncelik Durum'la aynı boyda, ekran okuyucu satırları ekranda yazdığı gibi okuyor, masaüstü Hızlı Erişim adları tam, "Tüm birimler" satırlarında açan ve alan. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -53,23 +53,28 @@
     with ChatGPT" ilgi formu kaydı · ilk dış kullanıcıya (Epic 29) kapanış maili · prod R2 (+ web
     CORS) ve prod Google OAuth redirect'i.
 
-13. **OPH-369 Apple geri okuma** — Swift Mac'te derlendi (2026-10-17); kalan
+13. **OPH-406 parola sıfırlama e-postası** — alliswell.space'in `.env`'ine `SMTP_HOST`, `SMTP_FROM`
+    (+ `SMTP_USER`/`SMTP_PASSWORD`, gerekirse `SMTP_PORT`/`SMTP_SECURE`) ve `APP_PUBLIC_URL` (web
+    uygulamasının adresi, ör. `https://alliswell.space/app`) gir. Girilmezse "Parolamı unuttum"
+    "sunucu e-posta göndermiyor" der; bağlantıyı sunucuda `password-reset-link` komutu verir.
+
+14. **OPH-369 Apple geri okuma** — Swift Mac'te derlendi (2026-10-17); kalan
     DEVICE-CHECKS "Apple Takvim geri okuma" bölümü (iPhone + Mac). Geçerse "iki yönlü Apple"
     metnine dönüş SAHİBİN kararı; dönülürse aynı değişiklikte: README, COMPARISON, SUPPORT(.tr),
     STORE-LISTING, landing `content*.js` + index sayfaları, `llms.txt`, web `index.html`/manifest ve
     `scripts/docs/check.mjs` APPLE_CLAIMS kapısı.
 
-14. **OPH-370 masaüstü indirmeleri** — sonraki etiketten sonra Actions › Release'de "Desktop build
+15. **OPH-370 masaüstü indirmeleri** — sonraki etiketten sonra Actions › Release'de "Desktop build
     (linux)", "Desktop build (windows)" ve "Attach desktop downloads" yeşil; sürümde
     `alliswell-linux-x64.tar.gz`, `alliswell-windows-x64.zip`, `alliswell-desktop-SHA256SUMS.txt`
     var ve README'nin `releases/latest/download/…` bağlantıları iniyor (o zamana kadar 404).
     Sonra DEVICE-CHECKS "Masaüstü indirmeleri". İsteğe bağlı: Authenticode sertifikası (ya da Azure
     Trusted Signing) + Windows işine signtool adımı → SmartScreen uyarısı kalkar.
 
-15. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
+16. **OPH-376 Siri** — Swift Mac'te derlendi (2026-10-17); kalan DEVICE-CHECKS "Siri ve kısayollar"
     (EN ve TR Siri cümleleri, Kestirmeler/Spotlight görünürlüğü, Mac, Android uzun basma).
 
-16. **OPH-380 CalDAV** — sahip prod `.env`'de `CALDAV_ENABLED=true` yaptı (2026-10-17, alliswell.space'te açık); kalan
+17. **OPH-380 CalDAV** — sahip prod `.env`'de `CALDAV_ENABLED=true` yaptı (2026-10-17, alliswell.space'te açık); kalan
     DEVICE-CHECKS "CalDAV (iCloud / Nextcloud)": gerçek iCloud (uygulamaya özel parola, X-prop
     sağ kalıyor mu → CALDAV.md §4.4) ve gerçek Nextcloud; Apple cihazda çift ayna koruması.
     Onay/bağlantı kesme metinlerini (EN+TR `calendar.caldav.*`) ve PRIVACY(.tr) bölümünü ürün/hukuk
@@ -77,12 +82,30 @@
     "sunucu yöneticisi açtığında" der. VTODO yönü (CALDAV.md §9: A bağlayıcı / B AllisWell CalDAV
     sunucusu) sahibin kararı.
 
+18. **M-01 GitHub About** — açıklama, homepage ve topics: `docs/store/github-about.md`'deki değerler
+    (hazır `gh repo edit` komutu orada). Bugünkü açıklama hâlâ "Open-source" diyor.
+
+19. **M-02 GitHub social preview** — Settings › General › Social preview › Edit ›
+    `.github/social-preview.png` (1280×640, OPH-412).
+
+20. **OPH-412 hukuk metinleri** — `docs/TERMS.md`/`TERMS.tr.md` (canlıda `/terms`) taslağını sen ya
+    da hukukçu oku (ücret/kapanış bildirimi sözü, 13 yaş, Türk hukuku). Ticaret unvanının sicildeki
+    yazımını doğrula: her yerde "BUBIAPSS BILGI TEKNOLOJILERI ARGE LIMITED SIRKETI" (`company.js`,
+    LICENSE, PRIVACY, mağaza satıcı adı); farklıysa hepsi birlikte değişir. PRIVACY.md "Self-hosting"
+    bölümü işletmeciyi "APILLON BİLGİ TEKNOLOJİLERİ" diye anıyor; hangisi doğru?
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
 
 Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. Burada her işi bağlayanlar:
 
+- **Tasarım ve UX turu (2026-11-07, Epic 35):** telefon alt barı **B+** (eşit 5 yuva, hepsi etiketli,
+  sağda mikrofon + "+"; Hızlı Erişim balonu telefonda varsayılan kapalı — ADR-0062); **acil alarm
+  varsayılanı açık kalır** (DESIGN §26 C1 teyit); landing H1 **alarm**, alt başlık self-host +
+  Claude/ChatGPT MCP; ton: core **sen**, uzantı/portal/landing/kurumsal **siz**; "open source" yerine
+  **source-available** (lisans değişmez); **font ailesi değişmez** (ADR-0063); mikrofon sağlayıcısızken
+  dikte; Fikirler/Inbox adları kalır. Herkese açık demo ve landing ölçümü sonraki tur.
 - **İçe aktarma gerçek dosyayla denenmeden yayında (2026-10-17, OPH-371):** sahibin test verisi yok;
   gerçek bir Todoist/TickTick dosyasında sorun yaşayan kullanıcı GitHub issue açar, iş oradan doğar.
 - **Çalışma belgeleri yalın (2026-09-26):** STATE işaretçidir, TASKS yalnız açık iştir; kapanan iş

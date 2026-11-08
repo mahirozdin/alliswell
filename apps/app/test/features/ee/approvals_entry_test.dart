@@ -92,9 +92,8 @@ Future<Widget> _app(
   await resetQuickAccessPrefs();
   // The status cache is a process-wide singleton (see desk_tab_test).
   await localKv.remove('alliswell_ee_status::user-1');
-  if (!bubbleEnabled) {
-    await localKv.set('alliswell_quick_bubble_enabled', 'false');
-  }
+  // Stored either way: the factory setting is off on phones (ADR-0062 #5).
+  await localKv.set('alliswell_quick_bubble_enabled', '$bubbleEnabled');
   final store = InMemorySecretStore();
   await TokenStorage(store).save(fakeSession());
   final extra = <Override>[

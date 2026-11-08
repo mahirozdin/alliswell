@@ -13,11 +13,14 @@ import '../../../widgets/count_badge.dart';
 import 'bubble_physics.dart';
 import 'quick_access_row.dart';
 
-/// Is the floating button switched on? Factory: yes (DESIGN §23 Q5) — and the
-/// feature is never gesture-only, so switching it off moves the entry point to
-/// the Home app bar rather than removing it.
+/// Is the floating button switched on? Factory: no (ADR-0062 decision 5,
+/// amending DESIGN §23 Q4) — docked in the bar's row it left the tab capsule
+/// slots under 48 dp at 360 dp (G4). The feature is never gesture-only: off,
+/// its ways in are the Home app bar's ⚡, the search palette's "Shortcuts"
+/// and a long press on the Home tab (OPH-397); Settings turns the bubble
+/// back on. Only phones read it; wide layouts use the rail.
 final quickBubbleEnabledProvider = NotifierProvider<PersistedToggle, bool>(
-  () => PersistedToggle('alliswell_quick_bubble_enabled', fallback: true),
+  () => PersistedToggle('alliswell_quick_bubble_enabled', fallback: false),
 );
 
 /// Where the user parked it — device-local, tolerant of junk.
@@ -127,10 +130,11 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
     final dragging = _dragCentre != null;
     // EE-294 (DESIGN §23 Q4b): a count is text somebody is asked to read,
     // and the 40 % dim is sanctioned only for a control that carries none —
-    // so while a count shows, the button neither recedes nor dims AT REST.
+    // so while a count shows, the button does not dim AT REST.
     // OPH-359 (UI-AUDIT #57): but while the person is scrolling the content
-    // under it, it gets out of the way whatever it carries. The count itself
-    // is painted outside the slide and the fade, so it is never dimmed.
+    // under it, it fades whatever it carries. The count itself is painted
+    // outside the fade, so it is never dimmed. OPH-397 (U-03): it only fades —
+    // it no longer slides half past the screen's edge.
     final scrolling = widget.contentScrolling?.value ?? false;
     final receded = !dragging && (scrolling || (_idle && widget.badge == 0));
 
@@ -194,47 +198,37 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
           excludeSemantics: widget.badge > 0,
           child: SizedBox(
             // The BOX never moves or shrinks: 56 px stays 56 px, so the target
-            // survives the idle recede (DESIGN §23 Q4a).
+            // survives the idle fade (DESIGN §23 Q4a).
             width: kBubbleDiameter,
             height: kBubbleDiameter,
             child: Stack(
               clipBehavior: Clip.none,
               children: [
                 Positioned.fill(
-                  child: AnimatedSlide(
+                  // opacity-ok: the one sanctioned exception to §20 C3's ban on
+                  // `Opacity` for calm, named in DESIGN §22 Q4b — a resting control
+                  // carries no text anyone is asked to read, the first touch
+                  // restores it in full, and its colour pair is contrast-checked at
+                  // FULL opacity. The 40 % is the platform's own default for a
+                  // receded control, not a taste call (OPH-196).
+                  child: AnimatedOpacity(
+                    key: const Key('quick-bubble-paint'),
                     duration: AwMotion.base,
-                    curve: AwMotion.enter,
-                    offset: Offset(
-                      receded
-                          ? recedePaintDx(_position.edge, 1) / kBubbleDiameter
-                          : 0,
-                      0,
-                    ),
-                    // opacity-ok: the one sanctioned exception to §20 C3's ban on
-                    // `Opacity` for calm, named in DESIGN §22 Q4b — a resting control
-                    // carries no text anyone is asked to read, the first touch
-                    // restores it in full, and its colour pair is contrast-checked at
-                    // FULL opacity. The 40 % is the platform's own default for a
-                    // receded control, not a taste call (OPH-196).
-                    child: AnimatedOpacity(
-                      duration: AwMotion.base,
-                      opacity: receded ? kBubbleIdleOpacity : 1,
-                      child: Material(
-                        elevation: dragging ? 8 : 4,
-                        color: theme.colorScheme.primaryContainer,
-                        shape: const CircleBorder(),
-                        child: Center(
-                          child: Icon(
-                            kQuickAccessIcon,
-                            color: theme.colorScheme.onPrimaryContainer,
-                          ),
+                    opacity: receded ? kBubbleIdleOpacity : 1,
+                    child: Material(
+                      elevation: dragging ? 8 : 4,
+                      color: theme.colorScheme.primaryContainer,
+                      shape: const CircleBorder(),
+                      child: Center(
+                        child: Icon(
+                          kQuickAccessIcon,
+                          color: theme.colorScheme.onPrimaryContainer,
                         ),
                       ),
                     ),
                   ),
                 ),
-                // Painted OUTSIDE the slide and the fade, so it is never
-                // dimmed and never slides under the screen's edge.
+                // Painted OUTSIDE the fade, so it is never dimmed.
                 if (widget.badge > 0)
                   Positioned(
                     top: -4,
@@ -260,11 +254,23 @@ class _QuickAccessBubbleState extends ConsumerState<QuickAccessBubble> {
 /// Not a `Tooltip`: the bubble lives above the Navigator, where there is no
 /// `Overlay` ancestor, and `Tooltip` needs one. So the hint is an ordinary
 /// bubble-shaped label in the same `Stack`, dismissed by a tap or by time.
+///
+/// OPH-397 (A-03): beside a button in the lower half it opens ABOVE the
+/// button, and it never reaches into the system's navigation band — under
+/// the docked button it used to draw into Android's gesture bar.
 class QuickBubbleIntro extends ConsumerStatefulWidget {
-  const QuickBubbleIntro({super.key, required this.anchor, required this.edge});
+  const QuickBubbleIntro({
+    super.key,
+    required this.anchor,
+    required this.edge,
+    required this.viewport,
+    required this.safeArea,
+  });
 
   final Offset anchor;
   final BubbleEdge edge;
+  final Size viewport;
+  final EdgeInsets safeArea;
 
   @override
   ConsumerState<QuickBubbleIntro> createState() => _QuickBubbleIntroState();
@@ -293,11 +299,21 @@ class _QuickBubbleIntroState extends ConsumerState<QuickBubbleIntro> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final gutter = awFloatGutter(widget.viewport.width);
+    final above = widget.anchor.dy > widget.viewport.height / 2;
     return Positioned(
-      top: widget.anchor.dy + kBubbleDiameter + AwSpace.x2,
-      left: widget.edge == BubbleEdge.left ? AwSpace.x3 : null,
-      right: widget.edge == BubbleEdge.right ? AwSpace.x3 : null,
+      top: above ? null : widget.anchor.dy + kBubbleDiameter + AwSpace.x2,
+      bottom: above
+          ? widget.viewport.height - widget.anchor.dy + AwSpace.x2
+          : null,
+      left: widget.edge == BubbleEdge.left
+          ? widget.safeArea.left + gutter
+          : null,
+      right: widget.edge == BubbleEdge.right
+          ? widget.safeArea.right + gutter
+          : null,
       child: GestureDetector(
+        key: const Key('quick-bubble-intro'),
         onTap: _dismiss,
         child: Material(
           color: theme.colorScheme.inverseSurface,

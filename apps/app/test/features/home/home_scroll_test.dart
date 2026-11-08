@@ -54,6 +54,15 @@ void _phone(WidgetTester tester) {
   });
 }
 
+/// OPH-398 (ADR-0062 §6): on a phone the view, calendar and order live in
+/// one "View ⌄" menu in the app bar.
+Future<void> _fromViewMenu(WidgetTester tester, Key item) async {
+  await tester.tap(find.byKey(const Key('home-view-menu')));
+  await tester.pumpAndSettle();
+  await tester.tap(find.byKey(item));
+  await tester.pumpAndSettle();
+}
+
 void main() {
   // OPH-103: on phones the month calendar used to be a fixed header eating half
   // the screen. It must now scroll away with the list.
@@ -101,8 +110,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(MonthCalendar), findsOneWidget);
-    await tester.tap(find.byKey(const Key('toggle-calendar')));
-    await tester.pumpAndSettle();
+    await _fromViewMenu(tester, const Key('toggle-calendar'));
     expect(find.byType(MonthCalendar), findsNothing);
 
     // The quick-add bar rides the scroll view now (OPH-172) — it is still the
@@ -114,7 +122,7 @@ void main() {
     // pumpAndSettle with the dialog open would never settle.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Add without date'));
     await tester.pumpAndSettle();
     expect(api.tasks.any((t) => t['title'] == 'Yeni iş'), isTrue);
   });
@@ -131,9 +139,13 @@ void main() {
     final container = ProviderScope.containerOf(
       tester.element(find.byType(AllisWellApp)),
     );
+    // OPH-401: a phone opens on the week strip — pick a day in it.
     final today = DateTime.now();
-    final targetDay = today.day <= 20 ? today.day + 5 : today.day - 5;
-    final target = DateTime(today.year, today.month, targetDay);
+    final target = DateTime(
+      today.year,
+      today.month,
+      today.day + (today.weekday == DateTime.sunday ? -1 : 1),
+    );
     // By full date, not by number: the grid shows adjacent months, so "7" is
     // two cells whenever the window reaches next month's 7th.
     await tester.tap(
@@ -146,8 +158,7 @@ void main() {
 
     // Hiding the calendar drops the selection — a filter you can no longer
     // see must not keep dimming Home (feedback round 6).
-    await tester.tap(find.byKey(const Key('toggle-calendar')));
-    await tester.pumpAndSettle();
+    await _fromViewMenu(tester, const Key('toggle-calendar'));
     expect(container.read(selectedDayProvider), isNull);
   });
 
@@ -168,7 +179,8 @@ void main() {
       // it moved INTO the app bar, which is the one thing H1 always allowed to
       // stay pinned. So it is visible before AND after the scroll; what still
       // has to get out of the way is the quick-add bar.
-      expect(find.byKey(const Key('home-view-toggle')).hitTestable(), findsOne);
+      // OPH-398: the toggle is inside the app bar's "View ⌄" menu now.
+      expect(find.byKey(const Key('home-view-menu')).hitTestable(), findsOne);
       expect(find.byKey(const Key('home-quick-add')).hitTestable(), findsOne);
 
       await tester.drag(
@@ -180,9 +192,9 @@ void main() {
       // Round 9 #2: chrome must not stay up there narrowing the list — and the
       // app bar earns its pin by carrying the controls that used to.
       expect(
-        find.byKey(const Key('home-view-toggle')).hitTestable(),
+        find.byKey(const Key('home-view-menu')).hitTestable(),
         findsOne,
-        reason: 'the view toggle lives in the pinned app bar now (OPH-213)',
+        reason: 'the view menu lives in the pinned app bar (OPH-213/398)',
       );
       expect(
         find.byKey(const Key('home-quick-add')).hitTestable(),
@@ -244,10 +256,8 @@ void main() {
     }
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
-    // OPH-213: the view switch is an app-bar ICON now, not a labelled
-    // segment — one tap, showing the view it will switch to.
-    await tester.tap(find.byKey(const Key('home-view-toggle')));
-    await tester.pumpAndSettle();
+    // OPH-398: on a phone the switch is an entry of the "View ⌄" menu.
+    await _fromViewMenu(tester, const Key('home-view-board'));
     addTearDown(() => localKv.remove('alliswell_home_view'));
 
     // Scroll the column's cards…
@@ -260,7 +270,7 @@ void main() {
     // …the way back to Liste is still there: a horizontal pager cannot carry
     // the toggle away with it.
     expect(
-      find.byKey(const Key('home-view-toggle')).hitTestable(),
+      find.byKey(const Key('home-view-menu')).hitTestable(),
       findsOne,
       reason: 'scrolling the board away from its toggle would strand the user',
     );
@@ -298,7 +308,11 @@ void main() {
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const Key('search-open')));
+    // OPH-398: the phone's filter waits above the list; a pull reveals it.
+    await tester.drag(
+      find.byKey(const Key('home-scroll')),
+      const Offset(0, 80),
+    );
     await tester.pumpAndSettle();
     await tester.enterText(find.byKey(const Key('home-search')), 'cay');
     await tester.pump(const Duration(milliseconds: 400)); // search debounce
@@ -316,7 +330,7 @@ void main() {
     expect(find.text('Çay siparişi'), findsOneWidget);
   });
   testWidgets(
-    'the calendar toggle lives in the app bar too, and remembers (OPH-213)',
+    'the calendar toggle lives in the app bar\'s View menu (OPH-213/398)',
     (tester) async {
       _phone(tester);
       await localKv.remove('alliswell_home_view');
@@ -329,12 +343,10 @@ void main() {
       expect(find.text('Hide calendar'), findsNothing);
       expect(find.text('Show calendar'), findsNothing);
 
-      final toggle = find.byKey(const Key('toggle-calendar'));
-      expect(toggle.hitTestable(), findsOne);
+      expect(find.byKey(const Key('toggle-calendar')), findsNothing);
       expect(find.byType(MonthCalendar), findsOne);
 
-      await tester.tap(toggle);
-      await tester.pumpAndSettle();
+      await _fromViewMenu(tester, const Key('toggle-calendar'));
       expect(find.byType(MonthCalendar), findsNothing);
 
       // (Persistence itself is `PersistedToggle`'s own test — re-pumping a fresh

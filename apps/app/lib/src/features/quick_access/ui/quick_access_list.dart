@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -73,10 +74,20 @@ class QuickAccessList extends ConsumerWidget {
       }
     }
 
+    // OPH-405: Flutter's default desktop handle is a Stack overlay on the
+    // row's trailing edge, so it was painted over the ⋯ menu. The rail draws
+    // its own handle instead, in a column of its own after the menu; touch
+    // platforms keep Flutter's long-press-the-row drag and get no handle.
+    final dragsHere = reorderable && surface == QuickAccessSurface.rail;
+    final handleColumn = dragsHere && _pointerPlatform(defaultTargetPlatform);
+
     Widget tile(QuickAccessRow row, int index) => QuickAccessRowTile(
       key: ValueKey('quick-tile-${row.id}'),
       row: row,
       dense: surface != QuickAccessSurface.panel,
+      dragHandle: handleColumn
+          ? QuickDragHandle(key: Key('quick-drag-${row.id}'), index: index)
+          : null,
       trailing: QuickRowMenu(
         row: row,
         canMoveUp: index > 0,
@@ -105,7 +116,7 @@ class QuickAccessList extends ConsumerWidget {
       shrinkWrap: true,
       primary: false,
       padding: EdgeInsets.zero,
-      buildDefaultDragHandles: surface == QuickAccessSurface.rail,
+      buildDefaultDragHandles: false,
       onReorderItem: (oldIndex, newIndex) {
         final ids = [for (final r in rows) r.id];
         final target = newIndex > oldIndex ? newIndex - 1 : newIndex;
@@ -115,7 +126,55 @@ class QuickAccessList extends ConsumerWidget {
             .read(quickAccessStoreProvider)
             .reorder(rows.first.link.workspaceId, ids);
       },
-      children: [for (final (index, row) in rows.indexed) tile(row, index)],
+      children: [
+        for (final (index, row) in rows.indexed)
+          if (dragsHere && !handleColumn)
+            ReorderableDelayedDragStartListener(
+              key: ValueKey('quick-tile-${row.id}'),
+              index: index,
+              child: tile(row, index),
+            )
+          else
+            tile(row, index),
+      ],
+    );
+  }
+}
+
+/// Where a pointer can hover, so a handle can wait for it — Flutter's own
+/// split between a drag handle and a long-press on the row.
+bool _pointerPlatform(TargetPlatform platform) => switch (platform) {
+  TargetPlatform.linux ||
+  TargetPlatform.macOS ||
+  TargetPlatform.windows => true,
+  _ => false,
+};
+
+/// The rail row's drag handle (OPH-405): a 32×32 target of its own. It is a
+/// pointer accelerator only — screen readers and keyboards reorder through
+/// the row menu's move up/down (DESIGN §23 Q9) — so it carries no semantics.
+class QuickDragHandle extends StatelessWidget {
+  const QuickDragHandle({super.key, required this.index});
+
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeSemantics(
+      child: ReorderableDragStartListener(
+        index: index,
+        child: MouseRegion(
+          cursor: SystemMouseCursors.grab,
+          child: SizedBox.square(
+            dimension: kQuickRowControl,
+            child: Icon(
+              Icons.drag_indicator,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

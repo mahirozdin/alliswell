@@ -106,7 +106,7 @@ void main() {
     expect(find.byType(FileRowTile), findsNWidgets(3));
 
     // The quiet workspace footprint footer (OPH-157): 3 × 2048 B seeded.
-    expect(find.text('3 files · 6.0 KB used'), findsOneWidget);
+    expect(find.text('3 files · 6\u00A0KB used'), findsOneWidget);
   });
 
   testWidgets('sort by name reorders the rows', (tester) async {

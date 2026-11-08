@@ -19,6 +19,25 @@
 
 ---
 
+## Epic 35 — Design and UX round (persona + Mobbin review)
+
+Sahip isteği (2026-11-07): tasarım baştan değişmeden core'da UI, UX ve tipografi iyileşsin; landing ve
+GitHub ilk ekranı güçlensin. Bulgular, ölçümler ve bulgu kimlikleri (R-xx kabuk, A-xx Android probe,
+T-xx tipografi, K-xx landing, N-xx/D-xx GitHub, CT-xx rakip; E-xx/U-xx persona) →
+[research/2026-11-design-ux/README.md](research/2026-11-design-ux/README.md). Ayrıntıyı oradan oku,
+burada tekrar yok. **Sahip kararları (2026-11-07, STATE'te):** telefon alt barı B+ (eşit 5 yuva, hepsi
+etiketli, 64 pt kapsül, sağda mikrofon + "+" kümesi, Hızlı Erişim balonu telefonda varsayılan kapalı —
+[ADR-0062](adr/0062-phone-navigation-equal-slot-labelled-capsule.md)); acil alarm varsayılanı açık kalır
+(DESIGN §26 C1); landing H1 alarm, alt başlık self-host + Claude/ChatGPT MCP; font ailesi değişmez
+([ADR-0063](adr/0063-platform-tracking-glass-type-v1-one-formatter.md)); lisans değişmez, "open source"
+ifadeleri kalkar (source-available); ton: core "sen", uzantı/portal/landing/kurumsal "siz"; mikrofon AI
+sağlayıcısı yokken dikte; Fikirler/Inbox adları kalır, ikon ampul; herkese açık demo ve landing ölçümü
+sonraki tur. Sıra bağımlılıktır. Her iş: test önce, K1, belge, hata düzeltmesinde regresyon testi.
+Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/412/430 × metin ölçeği
+1.0/1.3/2.0 × TR/EN × koyu/açık. Sürüm, etiket, deploy, GitHub ayarı ve mağaza yüklemesi sahibin.
+
+---
+
 ## Sahibin adımını bekleyen işler — ajan için kod işi yok
 
 Kod tarafları kapalı; kalan kutular sahibin hesap/panel adımları (STATE → "Kullanıcıdan bekleyen").

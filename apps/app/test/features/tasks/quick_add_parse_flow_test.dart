@@ -200,7 +200,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     // No date in the text any more → the round-14 deadline ask (C3).
     expect(find.byType(DatePickerDialog), findsOneWidget);
-    await tester.tap(find.text('Cancel'));
+    await tester.tap(find.text('Add without date'));
     await tester.pumpAndSettle();
 
     final task = api.tasks.single;
@@ -347,10 +347,14 @@ void main() {
     await tester.pumpWidget(await _app(api));
     await tester.pumpAndSettle();
 
+    // OPH-401 (§47 Q3): the way in is "More" at the end of the examples a
+    // focused, empty bar shows.
+    await tester.tap(find.byKey(const Key('home-quick-add')));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('quick-add-help')).first);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('quick-add-help-sheet')), findsOneWidget);
     expect(find.text('What quick add understands'), findsWidgets);
-    expect(find.text('Deadline or When'), findsOneWidget);
+    expect(find.text('Due date or When'), findsOneWidget);
   });
 }

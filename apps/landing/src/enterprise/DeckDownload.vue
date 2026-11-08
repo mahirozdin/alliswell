@@ -27,7 +27,7 @@ defineProps({
 </script>
 
 <template>
-  <section v-reveal class="aw-section deck">
+  <section class="aw-section deck">
     <div class="aw-shell">
       <div class="aw-card deck__card">
         <ScreenshotFrame

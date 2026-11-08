@@ -54,6 +54,7 @@ class AiBubbleState {
     this.history = const [],
     this.sharedBlock,
     this.pending = const [],
+    this.awaitingMic = false,
   });
 
   final AiBubblePhase phase;
@@ -68,6 +69,11 @@ class AiBubbleState {
   /// OPH-377: attachments picked for the message being composed — chips
   /// above the field until it is sent or they are removed.
   final List<AiAttachment> pending;
+
+  /// OPH-402 (A-66): listening was asked for, but the engine has not started
+  /// — on a first use, the OS permission prompt is on screen. Transient: any
+  /// other transition clears it.
+  final bool awaitingMic;
 
   bool get attachLoading =>
       pending.any((a) => a.status == AiAttachmentStatus.loading);
@@ -86,6 +92,7 @@ class AiBubbleState {
     List<AiChatEntry>? history,
     SharedPayload? sharedBlock,
     List<AiAttachment>? pending,
+    bool? awaitingMic,
     bool clearRequestId = false,
     bool clearError = false,
     bool clearShared = false,
@@ -100,6 +107,7 @@ class AiBubbleState {
       history: history ?? this.history,
       sharedBlock: clearShared ? null : (sharedBlock ?? this.sharedBlock),
       pending: pending ?? this.pending,
+      awaitingMic: awaitingMic ?? false,
     );
   }
 }
@@ -121,8 +129,15 @@ class AiBubbleMachine {
   AiBubbleState editInput(AiBubbleState s, String text) =>
       s.copyWith(input: text);
 
-  AiBubbleState startListening(AiBubbleState s) =>
-      s.copyWith(phase: AiBubblePhase.listening, partial: '', clearError: true);
+  AiBubbleState startListening(AiBubbleState s) => s.copyWith(
+    phase: AiBubblePhase.listening,
+    partial: '',
+    awaitingMic: true,
+    clearError: true,
+  );
+
+  /// The engine answered (permission granted): the face says "Listening…".
+  AiBubbleState micReady(AiBubbleState s) => s.copyWith(awaitingMic: false);
 
   AiBubbleState partialTranscript(AiBubbleState s, String text) =>
       s.copyWith(partial: text);

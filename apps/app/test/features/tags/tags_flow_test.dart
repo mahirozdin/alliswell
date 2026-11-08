@@ -125,9 +125,16 @@ void main() {
 
     // The detail screen grew When and Duration rows (OPH-372): the tag field
     // is past the lazy list's first build — scroll it in.
+    // At 1280 the task opens in the desktop pane (OPH-405), where the
+    // form is narrower: scroll the detail's own list.
     await tester.dragUntilVisible(
       find.byKey(const Key('tag-input')),
-      find.byKey(const Key('duration-row')),
+      find
+          .descendant(
+            of: find.byKey(const Key('list-detail-pane')),
+            matching: find.byType(Scrollable),
+          )
+          .first,
       const Offset(0, -200),
     );
     await tester.pumpAndSettle();
@@ -154,7 +161,7 @@ void main() {
     expect(api.tags, isEmpty); // pushed delete reached the server
   });
 
-  testWidgets('task rows show at most two inline tags plus +N (T4)', (
+  testWidgets('task rows show the first inline tag plus +N (T4, OPH-400)', (
     tester,
   ) async {
     await wideSurface(tester);
@@ -171,8 +178,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('#birinci'), findsOneWidget);
-    expect(find.text('#ikinci'), findsOneWidget);
-    expect(find.text('#üçüncü'), findsNothing); // overflowed…
-    expect(find.text('+1'), findsOneWidget); // …into the +N marker
+    expect(find.text('#ikinci'), findsNothing); // overflowed…
+    expect(find.text('#üçüncü'), findsNothing);
+    expect(find.text('+2'), findsOneWidget); // …into the +N marker
   });
 }

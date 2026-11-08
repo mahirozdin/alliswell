@@ -22,7 +22,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../widgets/sheets.dart';
@@ -418,7 +418,6 @@ class _ExportReadySheet extends ConsumerWidget {
     // On the web the OS has no share sheet — the browser downloads the file —
     // and there is no "Files" to save into. Saying "Share" there would name a
     // thing that does not happen.
-    final sizeKb = (bytes.lengthInBytes / 1024).round();
 
     return SafeArea(
       child: Padding(
@@ -438,7 +437,10 @@ class _ExportReadySheet extends ConsumerWidget {
               padding: const EdgeInsets.only(bottom: 12),
               child: Text(
                 'note.exportFile'.tr(
-                  args: {'name': filename, 'size': '$sizeKb'},
+                  args: {
+                    'name': filename,
+                    'size': awFormatFileSize(bytes.lengthInBytes),
+                  },
                 ),
                 style: theme.textTheme.bodyMedium?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,

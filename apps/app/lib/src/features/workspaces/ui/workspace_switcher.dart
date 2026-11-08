@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
-import '../../../theme/tokens.dart' show AwRadius, AwSpace;
+import '../../../theme/tokens.dart'
+    show AwRadius, AwSpace, kAwRowVerticalTextScale;
 import '../workspaces.dart';
 
 /// Which workspace this window is showing, and how to change it (EE-061).
@@ -118,7 +119,15 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(heading, maxLines: 1, overflow: TextOverflow.ellipsis),
+        // OPH-398 (Kabul: the title is never cut at 2.0×): a heading wider
+        // than what the actions leave is scaled down to fit, never "Ana S…".
+        // AppBar already clamps its title's text scale at 1.34, so with the
+        // phone bar's three targets this only bites in a narrow corner.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          alignment: AlignmentDirectional.centerStart,
+          child: Text(heading, maxLines: 1),
+        ),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -127,7 +136,15 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
               Flexible(
                 child: Text(
                   current.name,
-                  maxLines: 1,
+                  // Polish 4 T-06: at large text a long unit name wraps onto
+                  // a second line ("Demir Çelik / Fabrikası") instead of
+                  // "Demir Çelik Fabri…"; the section bar grows by that line
+                  // ([awSectionAppBarHeight]).
+                  maxLines:
+                      MediaQuery.textScalerOf(context).scale(1) >
+                          kAwRowVerticalTextScale
+                      ? 2
+                      : 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge,
                 ),
@@ -163,6 +180,10 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
       ref.read(workspacesProvider).value ?? const [],
     );
     final current = ref.read(currentWorkspaceProvider).value;
+    // A-60: in an organisation the workspaces are its units.
+    final inOrganisation = sharedWorkspacesOf(
+      ref.read(workspacesProvider).value ?? const [],
+    ).isNotEmpty;
     // OPH-359 (UI-AUDIT #11): a person in ten units has ten rows, and the
     // sheet used to be a plain Column in a sheet capped at 9/16 of the
     // screen — the last three units were cut off with no way to scroll to
@@ -184,7 +205,10 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
               Padding(
                 padding: const EdgeInsets.all(AwSpace.x4),
                 child: Text(
-                  'workspace.switcher.title'.tr(),
+                  (inOrganisation
+                          ? 'ee.unitScope.switcherTitle'
+                          : 'workspace.switcher.title')
+                      .tr(),
                   style: Theme.of(ctx).textTheme.titleMedium,
                 ),
               ),

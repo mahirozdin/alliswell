@@ -24,7 +24,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { SITE_ROUTES, canonicalUrl, distPath } from './routes.js';
+import { SITE_ROUTES, VUE_PAGES, canonicalUrl, distPath } from './routes.js';
+import { SECTIONS } from '../src/enterprise/page.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const DIST = path.resolve(here, '../dist');
@@ -65,10 +66,64 @@ for (const { route, kind } of SITE_ROUTES) {
   if (flat.includes('noindex')) fail(route, 'is marked noindex');
 }
 
+// OPH-413 (landing-audit K8, E-15): the enterprise pages are rendered on the
+// server, every section with its words, and nothing on them starts invisible.
+// Before, the HTML held one heading and an address; the rest arrived by script,
+// and sections waited at opacity 0 for an observer that a full-page capture,
+// print or reader mode never triggered.
+{
+  const unescape = (t) => t.replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+  for (const page of VUE_PAGES.filter((p) => p.page === 'enterprise')) {
+    const file = path.join(DIST, distPath(page.route));
+    if (!existsSync(file)) continue;
+    const html = readFileSync(file, 'utf8');
+    const text = unescape(html.replace(/<script[\s\S]*?<\/script>/g, ' ').replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ');
+    const content = (await import(path.resolve(here, `../src/enterprise/content.${page.lang}.js`))).default;
+    let from = 0;
+    for (const s of SECTIONS.filter((x) => content[x.key])) {
+      const heading = content[s.key].title ?? content[s.key].heading;
+      if (!heading) continue;
+      const at = text.indexOf(heading, from);
+      if (at < 0) fail(page.route, `does not carry the "${s.key}" section ("${heading}") in its HTML, in order`);
+      else from = at + heading.length;
+    }
+    if (html.includes('<!--ssr-outlet-->')) fail(page.route, 'still carries the SSR outlet marker; prerender did not run');
+    if (/aw-reveal/.test(html)) fail(page.route, 'has a section waiting for a scroll reveal');
+  }
+}
+
+// OPH-412 (landing-audit K10): an address that is no page answers a real 404.
+// The docroot used to rewrite every unknown path to the homepage with a 200,
+// which a crawler indexes as duplicate homepages and every HTTP check reads as
+// "present". The rules live in .htaccess, which only Apache runs, so the gate
+// reads the file the deploy ships.
+{
+  const notFound = path.join(DIST, '404.html');
+  if (!existsSync(notFound)) problems.push('/404.html was not built (public/404.html)');
+  else {
+    const flat = flatten(readFileSync(notFound, 'utf8'));
+    if (!flat.includes('<meta name="robots" content="noindex">')) problems.push('/404.html is not marked noindex');
+    if (!/<h1[\s>]/.test(flat)) problems.push('/404.html has no h1');
+  }
+  const htaccess = path.join(DIST, '.htaccess');
+  if (!existsSync(htaccess)) problems.push('dist/.htaccess is missing');
+  else {
+    const rules = readFileSync(htaccess, 'utf8')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
+    if (!rules.includes('ErrorDocument 404 /404.html')) problems.push('.htaccess has no ErrorDocument 404 /404.html');
+    const rewrites = rules.filter((l) => l.startsWith('RewriteRule'));
+    if (rewrites.at(-1) !== 'RewriteRule ^ - [R=404,L]') {
+      problems.push(`.htaccess must end with the 404 rule, not "${rewrites.at(-1)}" (a soft 404 serves the homepage)`);
+    }
+  }
+}
+
 if (problems.length) {
   for (const p of problems) console.error(`::error::${p}`);
   console.error(`\n${problems.length} problem(s) across ${SITE_ROUTES.length} pages.`);
   process.exit(1);
 }
 
-console.log(`✓ pages: ${SITE_ROUTES.length} routes built, titled, canonical and indexable`);
+console.log(`✓ pages: ${SITE_ROUTES.length} routes built, titled, canonical and indexable; unknown paths a real 404`);

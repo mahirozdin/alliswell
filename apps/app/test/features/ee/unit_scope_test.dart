@@ -49,8 +49,9 @@ const _units = [
 ];
 
 class _FakeUnitsApi extends Fake implements EeUnitTicketsApi {
-  _FakeUnitsApi({this.fail = false});
+  _FakeUnitsApi({this.fail = false, this.units = _units});
   final bool fail;
+  final List<EeUnitScope> units;
   int asked = 0;
 
   @override
@@ -62,7 +63,7 @@ class _FakeUnitsApi extends Fake implements EeUnitTicketsApi {
   }) async {
     asked += 1;
     if (fail) throw Exception('offline');
-    return const EeUnitTicketsPage(units: _units);
+    return EeUnitTicketsPage(units: units);
   }
 }
 
@@ -143,6 +144,67 @@ void main() {
         ),
       ]);
       expect(find.byKey(const Key('ee-unit-scope-choose')), findsOneWidget);
+    });
+
+    // R-13: the knowledge base's door spoke about requests ("Which unit's
+    // requests…") and, to somebody in no unit, about a list that belongs to
+    // a unit. A person who only files requests meets the published answers
+    // in the request form (they are suggested there), so that is what the
+    // screen says, with the way to the form.
+    testWidgets('R-13: the knowledge base asks about articles, not requests, '
+        'on the general space', (tester) async {
+      await pump(tester, const EeKbScreen(), scope(selected: _general.id));
+      expect(find.byKey(const Key('ee-unit-scope-choose')), findsOneWidget);
+      expect(find.text('ee.kb.scope.chooseTitle'.tr()), findsOneWidget);
+      expect(find.text('ee.unitScope.chooseTitle'.tr()), findsNothing);
+      expect(find.text('ee.unitScope.chooseBody'.tr()), findsNothing);
+    });
+
+    testWidgets('R-13: somebody in no unit is told where the answers are — '
+        'in the request form — and gets the way there', (tester) async {
+      await pump(tester, const EeKbScreen(), [
+        ...scope(
+          selected: _general.id,
+          api: _FakeUnitsApi(units: const []),
+          grants: const ['tickets.create'],
+        ),
+      ]);
+      expect(find.byKey(const Key('ee-unit-scope-choose')), findsOneWidget);
+      expect(find.text('ee.kb.scope.requesterTitle'.tr()), findsOneWidget);
+      expect(find.text('ee.kb.scope.requesterBody'.tr()), findsOneWidget);
+      expect(find.text('ee.unitScope.chooseTitle'.tr()), findsNothing);
+      expect(find.text('ee.unitScope.noUnitsBody'.tr()), findsNothing);
+      expect(find.byKey(const Key('kb-scope-new-ticket')), findsOneWidget);
+    });
+
+    testWidgets('R-13: …without the right to file one, no dead button', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const EeKbScreen(),
+        scope(
+          selected: _general.id,
+          api: _FakeUnitsApi(units: const []),
+        ),
+      );
+      expect(find.text('ee.kb.scope.requesterBody'.tr()), findsOneWidget);
+      expect(find.byKey(const Key('kb-scope-new-ticket')), findsNothing);
+    });
+
+    testWidgets('R-13: the other unit lists keep the shared words', (
+      tester,
+    ) async {
+      await pump(tester, const EeChangesScreen(), [
+        ...scope(
+          selected: _general.id,
+          api: _FakeUnitsApi(units: const []),
+        ),
+        eeChangeListProvider.overrideWith(
+          (ref) => Stream.value(const EeChangeList()),
+        ),
+      ]);
+      expect(find.text('ee.unitScope.noUnitsBody'.tr()), findsOneWidget);
     });
 
     testWidgets('a reader is not told to write: the empty knowledge base '

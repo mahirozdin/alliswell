@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../i18n/i18n.dart';
+import '../../../widgets/choice_sheet.dart';
 import '../data/project.dart';
 import 'project_edit_sheet.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// Sentinel dropdown value for the inline "+ Add project" entry (OPH-163).
 /// Never a real id (ULIDs are 26 chars of Crockford base32).
@@ -23,9 +25,7 @@ List<DropdownMenuItem<String?>> projectDropdownItems(
   String? currentValue,
   bool withCreate = false,
 }) {
-  final visible = projects.where(
-    (p) => p.status != 'archived' || p.id == currentValue,
-  );
+  final visible = _pickable(projects, currentValue);
   return [
     DropdownMenuItem<String?>(value: null, child: Text('project.none'.tr())),
     for (final project in visible)
@@ -38,9 +38,7 @@ List<DropdownMenuItem<String?>> projectDropdownItems(
             const SizedBox(width: 8),
             Flexible(
               child: Text(
-                project.status == 'archived'
-                    ? 'project.archivedName'.tr(args: {'name': project.name})
-                    : project.name,
+                projectPickerLabel(project),
                 overflow: TextOverflow.ellipsis,
               ),
             ),
@@ -71,6 +69,56 @@ List<DropdownMenuItem<String?>> projectDropdownItems(
         ),
       ),
   ];
+}
+
+/// Archived projects only while one is the current value (OPH-110).
+Iterable<Project> _pickable(List<Project> projects, String? currentValue) =>
+    projects.where((p) => p.status != 'archived' || p.id == currentValue);
+
+/// A project's name as a picker shows it — "(archived)" when it is.
+String projectPickerLabel(Project project) => project.status == 'archived'
+    ? 'project.archivedName'.tr(args: {'name': project.name})
+    : project.name;
+
+/// A project's colour dot, the mark that leads its name in every picker.
+Widget projectDot(Project project) =>
+    CircleAvatar(backgroundColor: project.color, radius: 6);
+
+/// The same entries as [projectDropdownItems], for the choice sheet
+/// (OPH-403, H-6): "No project" first, then the pickable projects.
+List<AwChoice<String?>> projectChoices(
+  List<Project> projects, {
+  String? currentValue,
+}) => [
+  AwChoice<String?>(id: 'none', value: null, label: 'project.none'.tr()),
+  for (final project in _pickable(projects, currentValue))
+    AwChoice<String?>(
+      id: project.id,
+      value: project.id,
+      label: projectPickerLabel(project),
+      leading: projectDot(project),
+    ),
+];
+
+/// Opens the project choice sheet and resolves its "+ Add project" row
+/// inline (OPH-163). Returns null when the user backed out (of the sheet or
+/// of the create sheet behind its action) — the caller keeps its value.
+Future<({String? id})?> pickProjectFromSheet(
+  BuildContext context, {
+  required List<Project> projects,
+  required String? current,
+}) async {
+  final pick = await showAwChoiceSheet<String?>(
+    context,
+    title: 'task.project'.tr(),
+    choices: projectChoices(projects, currentValue: current),
+    selected: current,
+    actionLabel: 'project.addFromPicker'.tr(),
+  );
+  if (pick == null || !context.mounted) return null;
+  if (!pick.isAction) return (id: pick.value);
+  final createdId = await showProjectEditSheet(context);
+  return createdId == null ? null : (id: createdId);
 }
 
 /// The shared project field (create sheet + task detail, OPH-163): a dropdown
@@ -134,7 +182,7 @@ class _ProjectPickerFieldState extends State<ProjectPickerField> {
     // (a red frame in debug on every project task's detail). Show "none" for
     // that frame; the key re-seeds the field once the project arrives.
     final known = items.any((item) => item.value == widget.value);
-    return DropdownButtonFormField<String?>(
+    return AwDropdownField<String?>(
       key: ValueKey('aw-project-field-$_epoch-${widget.value}-$known'),
       isExpanded: true,
       initialValue: known ? widget.value : null,

@@ -22,6 +22,7 @@ import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'support/permissions.dart';
+import 'package:alliswell/src/widgets/dropdown_field.dart';
 
 /// EE-229 — the form designer, and EE-246, the loss it closes.
 ///
@@ -568,7 +569,7 @@ void main() {
       // Its condition comes back as it was, not blank.
       expect(
         tester
-            .widget<DropdownButtonFormField<String>>(key('field-condition-key'))
+            .widget<AwDropdownField<String>>(key('field-condition-key'))
             .initialValue,
         'kind',
       );

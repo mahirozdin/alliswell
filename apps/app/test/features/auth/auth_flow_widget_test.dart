@@ -53,7 +53,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Sign in'), findsOneWidget);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
   });
 
   testWidgets('logging in navigates into the app shell', (tester) async {
@@ -78,7 +78,7 @@ void main() {
     await tester.pumpAndSettle();
 
     // Router redirect landed on /home inside the shell.
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
   });
 
   testWidgets('wrong credentials show a friendly inline error', (tester) async {
@@ -147,6 +147,6 @@ void main() {
     await tester.tap(find.text('Create account'));
     await tester.pumpAndSettle();
 
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
   });
 }

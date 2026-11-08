@@ -9,7 +9,7 @@ defineProps({
 </script>
 
 <template>
-  <section v-reveal class="aw-section">
+  <section class="aw-section">
     <div class="aw-shell faq">
       <h2>{{ heading }}</h2>
       <div class="faq__list">

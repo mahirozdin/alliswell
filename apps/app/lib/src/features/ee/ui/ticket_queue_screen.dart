@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,9 +9,11 @@ import '../../../i18n/i18n.dart';
 import '../../../sync/db/database.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
+import '../../../widgets/section_fab.dart';
 import '../../../widgets/search_field.dart';
 import '../../../widgets/status_views.dart';
 import '../assignments_providers.dart' show Assignee;
+import '../data/csv_export_api.dart';
 import '../providers.dart';
 import '../ticket_bulk_providers.dart';
 import '../ticket_tags_providers.dart';
@@ -26,8 +30,15 @@ import 'ticket_detail_screen.dart';
 import '../../../widgets/route_leading.dart';
 import 'unit_scope.dart';
 import 'csv_download.dart';
-import '../unit_scope_providers.dart' show eeUnitHereProvider;
+import 'figure_scope.dart';
+import '../unit_scope_providers.dart';
 import '../../workspaces/ui/workspace_switcher.dart';
+import '../../workspaces/workspaces.dart';
+import '../../../widgets/segment_label.dart';
+import '../../../widgets/list_detail.dart';
+import '../../../theme/typography.dart';
+import '../../../widgets/popup_menu.dart';
+import '../../../widgets/shell_section.dart';
 
 /// The unit's inbox (EE-084, madde 4/10).
 ///
@@ -48,9 +59,38 @@ import '../../workspaces/ui/workspace_switcher.dart';
 class EeTicketQueueScreen extends ConsumerWidget {
   const EeTicketQueueScreen({super.key});
 
+  /// OPH-409: the SLA board and the workload report were two entries in the
+  /// ⋮ menu that nobody found; they are tabs of the requests header now, next
+  /// to the queue they are about. Their addresses stay for links.
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context, WidgetRef ref) => DefaultTabController(
+    length: 3,
+    child: Builder(
+      builder: (context) {
+        final tabs = DefaultTabController.of(context);
+        return ListenableBuilder(
+          listenable: tabs,
+          builder: (context, _) => tabs.index == 0
+              ? _queue(context, ref)
+              : Scaffold(
+                  appBar: AppBar(
+                    leading: awRouteLeading(context),
+                    title: Text('ee.tickets.queueTitle'.tr()),
+                    bottom: const _QueueTabs(),
+                  ),
+                  body: tabs.index == 1
+                      ? const EeSlaDashboardScreen(embedded: true)
+                      : const EePerformanceScreen(embedded: true),
+                ),
+        );
+      },
+    ),
+  );
+
+  Widget _queue(BuildContext context, WidgetRef ref) {
     final tickets = ref.watch(filteredTicketsProvider);
+    // U-18: every unit's open requests, live, until a unit is chosen.
+    final allUnits = ref.watch(eeQueueShowsAllUnitsProvider);
     final filter = ref.watch(ticketFilterProvider);
     final query = ref.watch(ticketSearchQueryProvider).trim();
     final searching = query.isNotEmpty;
@@ -60,34 +100,91 @@ class EeTicketQueueScreen extends ConsumerWidget {
       ticketSelectionProvider.select((ids) => ids.isNotEmpty),
     );
 
+    // OPH-410 (DESIGN §51 D2): from the desktop width a request opens in a
+    // pane beside the list — the queue and the across-units list alike —
+    // and the list keeps its place. Below it the detail is pushed as before.
+    // R-15: a request of another unit opened in the pane lent that unit
+    // (its copy is what the detail reads); closing the pane, or leaving the
+    // queue with it open, gives the unit back. Held as the notifier: the
+    // queue may be gone when the pane closes with it.
+    final loan = ref.read(eeLentUnitProvider.notifier);
+    // S-G1 review r1: the shell keeps this branch mounted, so a switch to
+    // another section closes the pane by its section token — otherwise the
+    // lent unit stayed open under Home.
+    return AwListDetailScope(
+      kind: kEeTicketPane,
+      resetToken: AwShellSection.of(context),
+      onClose: () => unawaited(loan.giveBack()),
+      child: AwListDetailPane(
+        kind: kEeTicketPane,
+        detailBuilder: (context, id, close) =>
+            EeTicketDetailScreen(ticketId: id),
+        child: _queueScaffold(
+          context,
+          ref,
+          tickets: tickets,
+          allUnits: allUnits,
+          filter: filter,
+          query: query,
+          searching: searching,
+          selecting: selecting,
+        ),
+      ),
+    );
+  }
+
+  Widget _queueScaffold(
+    BuildContext context,
+    WidgetRef ref, {
+    required AsyncValue<List<TicketRecord>> tickets,
+    required bool allUnits,
+    required TicketFilter filter,
+    required String query,
+    required bool searching,
+    required bool selecting,
+  }) {
     return Scaffold(
       // EE-225: the way in to filing one, where the desk already stands.
       // Hidden without `tickets.create` (EE-052's cache): a button that
       // leads to a form the door refuses is a dead one with extra steps.
       floatingActionButton:
           !selecting && ref.watch(canProvider('tickets.create'))
-          ? AwExtendedFab(
-              key: const Key('ticket-new'),
-              onPressed: () => context.push('/tickets/new'),
-              icon: const Icon(Icons.add),
-              label: Text('ee.tickets.new.fab'.tr()),
+          // R-02 (polish 2): lent to the shell's cluster, so the
+          // microphone stands beside it, not on it.
+          ? AwSectionFab(
+              paneKind: kEeTicketPane,
+              child: AwExtendedFab(
+                key: const Key('ticket-new'),
+                onPressed: () => context.push('/tickets/new'),
+                icon: const Icon(Icons.add),
+                label: Text('ee.tickets.new.fab'.tr()),
+              ),
             )
           : null,
       appBar: selecting
           ? EeBulkAppBar(visible: tickets.value ?? const [])
           : AppBar(
               leading: awRouteLeading(context),
-              title: EeUnitScopedTitle(title: 'ee.tickets.queueTitle'.tr()),
+              title: EeUnitScopedTitle(
+                title: 'ee.tickets.queueTitle'.tr(),
+                allUnits: allUnits,
+              ),
+              bottom: const _QueueTabs(),
               actions: [
                 // EE-169. The house search shape (DESIGN §12 S1, round 13 #5): an
                 // icon until somebody wants it. It reads the REPLICA, so it answers
                 // with no signal — which is the whole reason the queue is a replica
                 // query and not a request.
                 // OPH-359 (UI-AUDIT #29): change unit where the queue is.
-                const AwWorkspaceSwitcher(),
+                // R-12: not across units — the title says "All units" and
+                // the chips under the bar are the choice, while the open
+                // workspace follows the request being read; a chip naming
+                // it there contradicted the title.
+                if (!allUnits) const AwWorkspaceSwitcher(),
                 AwSearchAction(
                   fieldKey: const Key('ticket-search'),
                   hintText: 'ee.tickets.searchHint'.tr(),
+                  query: query,
                   onQuery: (q) =>
                       ref.read(ticketSearchQueryProvider.notifier).set(q),
                 ),
@@ -110,7 +207,7 @@ class EeTicketQueueScreen extends ConsumerWidget {
                 // bar SMALLER than it was, leaves headroom for the next one, and
                 // trades two icons nobody can name for two menu entries that say
                 // what they are.
-                PopupMenuButton<String>(
+                AwPopupMenuButton<String>(
                   key: const Key('ticket-more'),
                   icon: const Icon(Icons.more_vert),
                   tooltip: 'ee.tickets.more'.tr(),
@@ -125,6 +222,33 @@ class EeTicketQueueScreen extends ConsumerWidget {
                     // can take them (one value per field), scoped to the
                     // unit on screen.
                     if (value == 'csv') {
+                      // E35 polish P-10: the file is the list on screen.
+                      // Across units that is every unit the person works in
+                      // (no unitId: the server scopes to the caller's own
+                      // units) and none of the unit's chips, which this view
+                      // hides and does not apply.
+                      if (ref.read(eeQueueShowsAllUnitsProvider)) {
+                        // P-G1 review r1: `units.manage` widens an export
+                        // with no unit to the whole team, past the list on
+                        // screen (the person's own units). That holder asks
+                        // for each listed unit and gets one file.
+                        if (!ref.read(canProvider('units.manage'))) {
+                          eeDownloadCsv(context, ref, (api) => api.tickets());
+                          return;
+                        }
+                        final unitIds = [
+                          for (final unit in ref.read(eeUnitHereProvider).units)
+                            unit.unitId,
+                        ];
+                        // P-G1 review r2: past ten units the door's
+                        // limiter answers 429; the helper waits it out.
+                        eeDownloadCsv(
+                          context,
+                          ref,
+                          (api) => exportTicketsPerUnit(api, unitIds),
+                        );
+                        return;
+                      }
                       eeDownloadCsv(context, ref, (api) {
                         String? one(Set<String> values) =>
                             values.length == 1 ? values.first : null;
@@ -152,27 +276,19 @@ class EeTicketQueueScreen extends ConsumerWidget {
                       context.push(value);
                       return;
                     }
-                    // EE-205 / EE-267: the SLA dashboard, the performance
-                    // board and "Birimlerim" sit on the same shelf. OPH-359
-                    // (UI-AUDIT #59) gave them addresses, so they open the
+                    // EE-267: "Birimlerim" sits on the same shelf. OPH-359
+                    // (UI-AUDIT #59) gave it an address, so it opens the
                     // way the rest of the shelf does and a reload or a link
-                    // lands on them.
+                    // lands on it. (The SLA board and the workload report
+                    // are the header's tabs since OPH-409.)
                     if (GoRouter.maybeOf(context) != null) {
-                      context.push(switch (value) {
-                        'perf' => kAwPerformancePath,
-                        'units' => kAwMyUnitsPath,
-                        _ => kAwSlaDashboardPath,
-                      });
+                      context.push(kAwMyUnitsPath);
                       return;
                     }
                     // Hosted without a router (one screen under test).
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => switch (value) {
-                          'perf' => const EePerformanceScreen(),
-                          'units' => const EeMyUnitsScreen(),
-                          _ => const EeSlaDashboardScreen(),
-                        },
+                        builder: (_) => const EeMyUnitsScreen(),
                       ),
                     );
                   },
@@ -283,22 +399,6 @@ class EeTicketQueueScreen extends ConsumerWidget {
                         ],
                       ),
                     ),
-                    PopupMenuItem(
-                      key: const Key('ticket-sla-dashboard'),
-                      value: 'sla',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.query_stats_outlined),
-                          const SizedBox(width: AwSpace.x2),
-                          Flexible(
-                            child: Text(
-                              'ee.slaDash.title'.tr(),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                     // EE-205: no permission gate here either, for EE-098's reason —
                     // counting is membership (ADR-0007 §1) and the endpoint scopes
                     // itself to the caller's own desks, so everybody sees a TRUE
@@ -323,25 +423,9 @@ class EeTicketQueueScreen extends ConsumerWidget {
                           ],
                         ),
                       ),
-                    PopupMenuItem(
-                      key: const Key('ticket-performance'),
-                      value: 'perf',
-                      child: Row(
-                        children: [
-                          const Icon(Icons.groups_outlined),
-                          const SizedBox(width: AwSpace.x2),
-                          Flexible(
-                            child: Text(
-                              'ee.perfPanel.title'.tr(),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
-                if (!filter.isEmpty)
+                if (!filter.isEmpty && !allUnits)
                   TextButton(
                     key: const Key('ticket-filter-clear'),
                     onPressed: () =>
@@ -356,83 +440,128 @@ class EeTicketQueueScreen extends ConsumerWidget {
           // EE-267 (AW-E19): the other units' SLA alerts, live — the one
           // thing on this screen that is not the replica, and it says so by
           // leading to "Birimlerim". Out of the way while a batch is open.
-          if (!selecting) const EeOtherUnitsAlertStrip(),
-          const _FilterBar(),
-          Expanded(
-            child: EeUnitScopeGate(
-              child: tickets.when(
-                loading: () => const Center(child: CircularProgressIndicator()),
-                error: (error, _) => AwErrorState(
-                  message: localizedError(error),
-                  onRetry: () => ref.invalidate(ticketQueueProvider),
-                ),
-                data: (rows) {
-                  if (rows.isEmpty) {
-                    // Two different emptinesses, and telling them apart is the
-                    // whole value of the state: "nothing came in" is good news,
-                    // "your filters exclude everything" is a mistake somebody is
-                    // one tap from fixing.
-                    // EE-169 adds a THIRD emptiness, and it is the one that
-                    // would otherwise lie: a search finds nothing here when the
-                    // request is on the server but no longer on the device
-                    // (EE-091 sweeps finished work off it). "No results" would
-                    // read as "no such request", so the state says where the
-                    // rest of them are (ADR-0016 D16.3 wrote this bill down;
-                    // this is where it is paid).
-                    //
-                    // EE-266 pays the rest of it: the sentence used to send the
-                    // person to an archive the app could not open. Now the
-                    // same words open it, with the query they typed.
-                    if (searching) {
-                      return AwEmptyState(
-                        key: const Key('ticket-search-empty'),
-                        icon: Icons.search_off_outlined,
-                        title: 'ee.tickets.searchEmptyTitle'.tr(),
-                        message: 'ee.tickets.searchEmptyBody'.tr(),
-                        action: FilledButton.tonalIcon(
-                          key: const Key('ticket-search-archive'),
-                          onPressed: () => _openArchive(context, query),
-                          icon: const Icon(Icons.inventory_2_outlined),
-                          label: Text('ee.tickets.archive.searchAction'.tr()),
-                        ),
-                      );
-                    }
-                    return filter.isEmpty
-                        ? AwEmptyState(
-                            icon: Icons.inbox_outlined,
-                            title: 'ee.tickets.emptyTitle'.tr(),
-                            message: 'ee.tickets.emptyBody'.tr(),
-                          )
-                        : AwEmptyState(
-                            icon: Icons.filter_alt_off_outlined,
-                            title: 'ee.tickets.emptyFilteredTitle'.tr(),
-                            message: 'ee.tickets.emptyFilteredBody'.tr(),
-                          );
-                  }
-                  return ListView.builder(
-                    // Clears the "new request" button (EE-225).
-                    padding: awListPadding(context, top: AwSpace.x4, fab: true),
-                    // EE-266: a search that found live requests may still be
-                    // missing the one somebody wants — it closed last spring.
-                    // The last row asks the archive the same question.
-                    itemCount: rows.length + (searching ? 1 : 0),
-                    itemBuilder: (_, i) => i < rows.length
-                        ? _TicketCard(ticket: rows[i])
-                        : ListTile(
+          // U-18: "All units" first, then each unit — the scope is a filter
+          // on this screen, not a place somewhere else.
+          if (!selecting) const _UnitScopeBar(),
+          if (!selecting && !allUnits) const EeOtherUnitsAlertStrip(),
+          // The chips filter the unit's replica; across units they would
+          // filter nothing, so they wait for a unit (U-18).
+          if (!allUnits) const _FilterBar(),
+          // The toolbar's search reaches this list too (E35 G-D review r1).
+          if (allUnits)
+            Expanded(
+              child: EeMyUnitsScreen(
+                embedded: true,
+                query: query,
+                onSearchArchive: (q) => _openArchive(context, q),
+                // Home's "unassigned" figure opens here (E35 G-D review r1).
+                unassignedOnly:
+                    filter.assigneeScope == TicketAssigneeScope.unassigned,
+                onUnassignedOnly: (on) => ref
+                    .read(ticketFilterProvider.notifier)
+                    .setAssignee(
+                      on
+                          ? TicketAssigneeScope.unassigned
+                          : TicketAssigneeScope.any,
+                    ),
+              ),
+            )
+          else
+            Expanded(
+              child: EeUnitScopeGate(
+                child: tickets.when(
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => AwErrorState(
+                    message: localizedError(error),
+                    onRetry: () => ref.invalidate(ticketQueueProvider),
+                  ),
+                  data: (rows) {
+                    final dense = eeDenseTicketRows(context);
+                    if (rows.isEmpty) {
+                      // Two different emptinesses, and telling them apart is the
+                      // whole value of the state: "nothing came in" is good news,
+                      // "your filters exclude everything" is a mistake somebody is
+                      // one tap from fixing.
+                      // EE-169 adds a THIRD emptiness, and it is the one that
+                      // would otherwise lie: a search finds nothing here when the
+                      // request is on the server but no longer on the device
+                      // (EE-091 sweeps finished work off it). "No results" would
+                      // read as "no such request", so the state says where the
+                      // rest of them are (ADR-0016 D16.3 wrote this bill down;
+                      // this is where it is paid).
+                      //
+                      // EE-266 pays the rest of it: the sentence used to send the
+                      // person to an archive the app could not open. Now the
+                      // same words open it, with the query they typed.
+                      if (searching) {
+                        return AwEmptyState(
+                          key: const Key('ticket-search-empty'),
+                          icon: Icons.search_off_outlined,
+                          title: 'ee.tickets.searchEmptyTitle'.tr(),
+                          message: 'ee.tickets.searchEmptyBody'.tr(),
+                          action: FilledButton.tonalIcon(
                             key: const Key('ticket-search-archive'),
-                            leading: const Icon(Icons.inventory_2_outlined),
-                            title: Text(
-                              'ee.tickets.archive.searchFooter'.tr(
-                                args: {'query': query},
-                              ),
-                            ),
-                            onTap: () => _openArchive(context, query),
+                            onPressed: () => _openArchive(context, query),
+                            icon: const Icon(Icons.inventory_2_outlined),
+                            label: Text('ee.tickets.archive.searchAction'.tr()),
                           ),
-                  );
-                },
+                        );
+                      }
+                      return filter.isEmpty
+                          ? AwEmptyState(
+                              icon: Icons.inbox_outlined,
+                              title: 'ee.tickets.emptyTitle'.tr(),
+                              message: 'ee.tickets.emptyBody'.tr(),
+                            )
+                          : AwEmptyState(
+                              icon: Icons.filter_alt_off_outlined,
+                              title: 'ee.tickets.emptyFilteredTitle'.tr(),
+                              message: 'ee.tickets.emptyFilteredBody'.tr(),
+                            );
+                    }
+                    // OPH-410: ↑/↓ in the pane walk the rows as drawn.
+                    final list = ListView.builder(
+                      // Clears the "new request" button (EE-225).
+                      padding: awListPadding(
+                        context,
+                        top: dense ? AwSpace.x2 : AwSpace.x4,
+                        fab: true,
+                      ),
+                      // EE-266: a search that found live requests may still be
+                      // missing the one somebody wants — it closed last spring.
+                      // The last row asks the archive the same question.
+                      itemCount: rows.length + (searching ? 1 : 0),
+                      itemBuilder: (_, i) => i < rows.length
+                          ? _TicketCard(ticket: rows[i])
+                          : ListTile(
+                              key: const Key('ticket-search-archive'),
+                              leading: const Icon(Icons.inventory_2_outlined),
+                              title: Text(
+                                'ee.tickets.archive.searchFooter'.tr(
+                                  args: {'query': query},
+                                ),
+                              ),
+                              onTap: () => _openArchive(context, query),
+                            ),
+                    );
+                    final ordered = AwListOrder(
+                      ids: [for (final row in rows) row.id],
+                      child: list,
+                    );
+                    if (!dense) return ordered;
+                    // The dense table's column names, over the rows they
+                    // name (OPH-410, a desk at a desktop scans columns).
+                    return Column(
+                      children: [
+                        const _DenseHeader(),
+                        Expanded(child: ordered),
+                      ],
+                    );
+                  },
+                ),
               ),
             ),
-          ),
         ],
       ),
     );
@@ -666,6 +795,78 @@ class _TicketCard extends ConsumerWidget {
         : ref.watch(
             eeMemberNamesProvider.select((names) => names.value?[requesterId]),
           );
+    // OPH-410: the row whose request the desktop pane shows is outlined and
+    // says so to a screen reader (DESIGN §51 D2); its context lets ↑/↓
+    // scroll it into view.
+    final pane = AwListDetailScope.maybeOf(context, kEeTicketPane);
+    final inPane = pane != null && pane.selectedId == ticket.id;
+    AwListOrder.registerRow(context, ticket.id);
+    final assigneeNames = [
+      for (final a in assignees)
+        a.isKnown
+            ? (a.displayName ?? a.initials ?? '?')
+            : 'ee.assign.formerMember'.tr(),
+    ];
+    final leading = selecting
+        ? Checkbox(
+            key: Key('ticket-select-${ticket.id}'),
+            value: selected,
+            onChanged: (_) => toggle(),
+            // OPH-359 (UI-AUDIT #64): a box a screen reader can name.
+            semanticLabel: 'ee.tickets.selectRow'.tr(
+              args: {
+                'ticket': ticket.number == null
+                    ? ticket.subject
+                    : '#${ticket.number} ${ticket.subject}',
+              },
+            ),
+          )
+        : _PriorityMark(priority: ticket.priority, muted: finished);
+    final shape = inPane
+        ? RoundedRectangleBorder(
+            borderRadius: const BorderRadius.all(Radius.circular(AwRadius.l)),
+            side: BorderSide(color: theme.colorScheme.primary, width: 2),
+          )
+        : null;
+    void open() => awOpenTicket(context, ticket.id);
+    if (eeDenseTicketRows(context)) {
+      return Padding(
+        padding: kAwListRowPadding,
+        child: Card(
+          key: Key('ticket-${ticket.id}'),
+          shape: shape,
+          clipBehavior: Clip.antiAlias,
+          // Inside the card: the card is the row's one semantics node.
+          child: Semantics(
+            selected: inPane ? true : null,
+            child: InkWell(
+              onTap: selecting ? toggle : open,
+              onLongPress: toggle,
+              child: _DenseRow(
+                rowKey: ticket.id,
+                leading: leading,
+                number: ticket.number,
+                subject: ticket.subject,
+                status: [
+                  'ee.tickets.status.${ticket.status}'.tr(),
+                  'ee.tickets.priority.${ticket.priority}'.tr(),
+                ].join(' · '),
+                people: EeTicketPeopleLine(
+                  rowKey: ticket.id,
+                  requester: askedBy,
+                  assignees: assigneeNames,
+                  muted: finished,
+                  maxLines: 1,
+                  warning: context.awTokens.warning,
+                ),
+                sla: AwSlaChip(ticket: ticket, muted: finished),
+                muted: finished,
+              ),
+            ),
+          ),
+        ),
+      );
+    }
     // DESIGN §4's rhythm: without it the cards sat border on border (the
     // theme's card margin is zero on purpose). The key stays on the CARD, so
     // what a test measures is the card, not the space around it.
@@ -673,80 +874,245 @@ class _TicketCard extends ConsumerWidget {
       padding: kAwListRowPadding,
       child: Card(
         key: Key('ticket-${ticket.id}'),
-        child: ListTile(
-          // While selecting, the box takes the dot's place: the priority is
-          // still a WORD on the status line below, so nothing is lost.
-          leading: selecting
-              ? Checkbox(
-                  key: Key('ticket-select-${ticket.id}'),
-                  value: selected,
-                  onChanged: (_) => toggle(),
-                  // OPH-359 (UI-AUDIT #64): a box a screen reader can name.
-                  semanticLabel: 'ee.tickets.selectRow'.tr(
-                    args: {
-                      'ticket': ticket.number == null
-                          ? ticket.subject
-                          : '#${ticket.number} ${ticket.subject}',
-                    },
-                  ),
-                )
-              : _PriorityMark(priority: ticket.priority, muted: finished),
-          title: Text(
-            // EE-167: the number leads, because it is what the person on the
-            // phone says. Nullable while a request pulled before the numbering
-            // has not been touched again — a bare subject is the honest shape
-            // then, not a `#null`.
-            ticket.number == null
-                ? ticket.subject
-                : '#${ticket.number} · ${ticket.subject}',
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-            style: finished
-                // Muted, never struck through: the work happened, it is simply
-                // not waiting for anybody (the units screen settled this shape).
-                ? theme.textTheme.titleMedium?.copyWith(
-                    color: theme.disabledColor,
-                  )
-                : null,
+        shape: shape,
+        child: Semantics(
+          selected: inPane ? true : null,
+          child: ListTile(
+            // While selecting, the box takes the dot's place: the priority is
+            // still a WORD on the status line below, so nothing is lost.
+            leading: leading,
+            title: Text(
+              // EE-167: the number leads, because it is what the person on the
+              // phone says. Nullable while a request pulled before the numbering
+              // has not been touched again — a bare subject is the honest shape
+              // then, not a `#null`.
+              ticket.number == null
+                  ? ticket.subject
+                  : '#${ticket.number} · ${ticket.subject}',
+              // Polish 4 T-06: at large text two lines held half a subject
+              // ("ölçü sa…"); there it flows on to six before it shortens.
+              maxLines:
+                  MediaQuery.textScalerOf(context).scale(1) >
+                      kAwRowVerticalTextScale
+                  ? 6
+                  : 2,
+              overflow: TextOverflow.ellipsis,
+              style: finished
+                  // Muted, never struck through: the work happened, it is simply
+                  // not waiting for anybody (the units screen settled this shape).
+                  ? theme.textTheme.titleMedium?.copyWith(
+                      color: theme.disabledColor,
+                    )
+                  : null,
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // EE-097: the due chip sits with the status line rather than on a
+                // row of its own — a queue is scanned vertically, and a fourth
+                // line per card would cost the screen about three tickets.
+                // `Wrap` because Turkish labels are longer and a narrow phone must
+                // fold rather than clip.
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 2,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    Text(
+                      [
+                        'ee.tickets.status.${ticket.status}'.tr(),
+                        'ee.tickets.priority.${ticket.priority}'.tr(),
+                      ].join(' · '),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    AwSlaChip(ticket: ticket, muted: finished),
+                  ],
+                ),
+                // OPH-409 (U-19): "whose is it" in words — who asked and who
+                // has it, and a marked "nobody yet": the question a manager
+                // opens the queue to answer. Before, only the asker was named
+                // and the avatars below were initials nobody could read.
+                EeTicketPeopleLine(
+                  rowKey: ticket.id,
+                  requester: askedBy,
+                  assignees: assigneeNames,
+                  muted: finished,
+                  warning: context.awTokens.warning,
+                ),
+                // Item 9's avatars, on the ticket card. Empty when nobody is on it
+                // — the widget draws nothing rather than a placeholder, because
+                // "unassigned" is a real and common state of a queue.
+                AwAssigneeStrip(assignees: assignees),
+              ],
+            ),
+            onTap: selecting ? toggle : open,
+            onLongPress: toggle,
           ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // EE-097: the due chip sits with the status line rather than on a
-              // row of its own — a queue is scanned vertically, and a fourth
-              // line per card would cost the screen about three tickets.
-              // `Wrap` because Turkish labels are longer and a narrow phone must
-              // fold rather than clip.
-              Wrap(
-                spacing: 8,
-                runSpacing: 2,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  Text(
-                    [
-                      'ee.tickets.status.${ticket.status}'.tr(),
-                      'ee.tickets.priority.${ticket.priority}'.tr(),
-                      // Last, so on a narrow phone it is the name that folds
-                      // to the next line, never the status.
-                      ?askedBy,
-                    ].join(' · '),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                  AwSlaChip(ticket: ticket, muted: finished),
-                ],
-              ),
-              // Item 9's avatars, on the ticket card. Empty when nobody is on it
-              // — the widget draws nothing rather than a placeholder, because
-              // "unassigned" is a real and common state of a queue.
-              AwAssigneeStrip(assignees: assignees),
-            ],
-          ),
-          onTap: selecting ? toggle : () => awOpenTicket(context, ticket.id),
-          onLongPress: toggle,
         ),
       ),
     );
   }
+}
+
+/// OPH-410: from the desktop width a request is one line of aligned columns
+/// rather than a card — a desk scans twenty of them, not five. The phone and
+/// the tablet keep the card.
+bool eeDenseTicketRows(BuildContext context) =>
+    MediaQuery.sizeOf(context).width >= kAwPaneBreakpoint;
+
+/// The dense table's columns, by the width the list has: the subject always,
+/// the status from [_kStatusColumnFrom], who asked and who has it from
+/// [_kPeopleColumnFrom] — with the pane open the list is narrower, and a
+/// column that would squeeze the subject to a word steps aside.
+const double _kNumberColumn = 64;
+const double _kStatusColumn = 168;
+const double _kSlaColumn = 168;
+const double _kStatusColumnFrom = 640;
+const double _kPeopleColumnFrom = 880;
+const double _kDenseRowHeight = 56;
+
+class _DenseHeader extends StatelessWidget {
+  const _DenseHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.labelMedium?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    Text label(String key) => Text(
+      key.tr(),
+      style: style,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+    );
+    return Padding(
+      key: const Key('ticket-dense-header'),
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x3, AwSpace.x4, 0),
+      child: _DenseColumns(
+        leading: const SizedBox.shrink(),
+        number: const SizedBox.shrink(),
+        subject: label('ee.tickets.columns.subject'),
+        status: label('ee.tickets.columns.status'),
+        people: label('ee.tickets.columns.people'),
+        sla: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: label('ee.tickets.columns.sla'),
+        ),
+      ),
+    );
+  }
+}
+
+class _DenseRow extends StatelessWidget {
+  const _DenseRow({
+    required this.rowKey,
+    required this.leading,
+    required this.number,
+    required this.subject,
+    required this.status,
+    required this.people,
+    required this.sla,
+    required this.muted,
+  });
+
+  final String rowKey;
+  final Widget leading;
+  final int? number;
+  final String subject;
+  final String status;
+  final Widget people;
+  final Widget sla;
+  final bool muted;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final quiet = theme.colorScheme.onSurfaceVariant;
+    return ConstrainedBox(
+      constraints: const BoxConstraints(minHeight: _kDenseRowHeight),
+      child: _DenseColumns(
+        leading: leading,
+        number: Text(
+          number == null ? '' : '#$number',
+          key: Key('ticket-dense-number-$rowKey'),
+          maxLines: 1,
+          style: awTabular(theme.textTheme.labelLarge!.copyWith(color: quiet)),
+        ),
+        subject: Text(
+          subject,
+          key: Key('ticket-dense-subject-$rowKey'),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          // Muted, never struck through — the card's rule.
+          style: theme.textTheme.titleSmall?.copyWith(
+            color: muted ? theme.disabledColor : null,
+          ),
+        ),
+        status: Text(
+          status,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.bodySmall,
+        ),
+        people: people,
+        sla: Align(
+          alignment: AlignmentDirectional.centerEnd,
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: AlignmentDirectional.centerEnd,
+            child: sla,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One layout for the header and every row, so the columns line up.
+class _DenseColumns extends StatelessWidget {
+  const _DenseColumns({
+    required this.leading,
+    required this.number,
+    required this.subject,
+    required this.status,
+    required this.people,
+    required this.sla,
+  });
+
+  final Widget leading;
+  final Widget number;
+  final Widget subject;
+  final Widget status;
+  final Widget people;
+  final Widget sla;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final width = constraints.maxWidth;
+      return Padding(
+        padding: const EdgeInsetsDirectional.only(end: AwSpace.x4),
+        child: Row(
+          children: [
+            SizedBox(width: 44, child: Center(child: leading)),
+            SizedBox(width: _kNumberColumn, child: number),
+            Expanded(flex: 3, child: subject),
+            const SizedBox(width: AwSpace.x3),
+            if (width >= _kStatusColumnFrom) ...[
+              SizedBox(width: _kStatusColumn, child: status),
+              const SizedBox(width: AwSpace.x3),
+            ],
+            if (width >= _kPeopleColumnFrom) ...[
+              Expanded(flex: 2, child: people),
+              const SizedBox(width: AwSpace.x3),
+            ],
+            SizedBox(width: _kSlaColumn, child: sla),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 /// A dot AND a word. The dot is scannable, the word is what survives a
@@ -828,6 +1194,90 @@ class _TagPicker extends StatelessWidget {
               onTap: () => Navigator.of(context).pop(name),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// OPH-409 — the requests header's three tabs: the queue, the SLA board and
+/// the workload report.
+class _QueueTabs extends StatelessWidget implements PreferredSizeWidget {
+  const _QueueTabs();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(kTextTabBarHeight);
+
+  @override
+  Widget build(BuildContext context) => TabBar(
+    key: const Key('ticket-tabs'),
+    tabs: [
+      Tab(
+        key: const Key('ticket-tab-queue'),
+        child: AwSegmentLabel('ee.tickets.tabs.queue'.tr()),
+      ),
+      Tab(
+        key: const Key('ticket-tab-sla'),
+        child: AwSegmentLabel('ee.tickets.tabs.sla'.tr()),
+      ),
+      Tab(
+        key: const Key('ticket-tab-workload'),
+        child: AwSegmentLabel('ee.tickets.tabs.workload'.tr()),
+      ),
+    ],
+  );
+}
+
+/// U-18 — "All units" and each of the person's units, as one choice. Drawn
+/// only when the units are known: with no answer the queue is what it was.
+class _UnitScopeBar extends ConsumerWidget {
+  const _UnitScopeBar();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final here = ref.watch(eeUnitHereProvider);
+    if (here.state == EeUnitHereState.unknown || here.units.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    final all = ref.watch(eeQueueShowsAllUnitsProvider);
+    final chosen = ref.read(eeQueueAllUnitsChosenProvider.notifier);
+    return Semantics(
+      container: true,
+      label: 'ee.unitScope.chipsLabel'.tr(),
+      child: SingleChildScrollView(
+        key: const Key('ticket-unit-scope'),
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(
+          AwSpace.x4,
+          AwSpace.x2,
+          AwSpace.x4,
+          0,
+        ),
+        child: Row(
+          children: [
+            ChoiceChip(
+              key: const Key('ticket-unit-all'),
+              label: Text('ee.unitScope.all'.tr()),
+              selected: all,
+              onSelected: (_) => chosen.set(true),
+            ),
+            for (final unit in here.units) ...[
+              const SizedBox(width: AwSpace.x2),
+              ChoiceChip(
+                key: Key('ticket-unit-${unit.workspaceId}'),
+                label: Text(unit.unitName),
+                selected: !all && here.unit?.workspaceId == unit.workspaceId,
+                onSelected: (_) {
+                  chosen.set(false);
+                  // R-15: chosen on purpose — nothing is lent any more.
+                  ref.read(eeLentUnitProvider.notifier).forget();
+                  ref
+                      .read(selectedWorkspaceIdProvider.notifier)
+                      .select(unit.workspaceId);
+                },
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

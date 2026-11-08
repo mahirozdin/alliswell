@@ -114,7 +114,7 @@
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
 - **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin: `ee/support/permissions.dart`, `canProvider` yüklenirken hayır), yoksa 4 sn; `localKv` örneği tutar → yazan test siler.
-- **DERS** Oturumda adres değişince örtülü ekranın provider'ları build içinde kurulur → adres geçişi Ana sayfadan (ADR-0046).
+- **DERS** Adres değişince örtülü ekran provider'ı build'de kurulur → takım geçişi Ana sayfada (ADR-0046); sunucu değişimi eskide çıkar (OPH-390).
 - **DERS** Sheet controller'ını await eden fonksiyon dispose ederse kapanış animasyonu çöker → State'e ver (OPH-360).
 - **DERS** `buildTextSpan` ezen controller IME composing'de `super` döner (OPH-373).
 
@@ -188,7 +188,7 @@
 - **KARAR** Teslim: uyandırma ipucu (yalnız Android), vadede içeriksiz görünür yedek (bayat = `last_seen_at < reminders.updated_at`; web'in tek yolu), periyodik tazeleme; iOS'a veri push'u ve `UIBackgroundModes` yok (ADR-0038).
 - **KARAR** `web/aw_push_sw.js` karar vermez (çeviri/gizlilik/`silent` uygulamanın yazdığı önbellekten), her yol bir bildirimle biter; web modu cihaz-yerel Kapalı/Sessiz (varsayılan)/Sesli, Kapalı aboneliği bırakır (ADR-0039).
 - **DERS** Web Push `userVisibleOnly`: bildirim göstermeyen işleyiciye Chrome jenerik kart basar → "sessiz" web push yok, susturmak = abonelikten çıkmak. Firefox `silent`'ı yok sayar ama true döner → UA kontrolü.
-- **DERS** Web'de izin ≠ ulaşılabilirlik (VAPID yok ya da abonelik iptal) → ayrı `AlarmProblem.webPushOff`; tarayıcı yerel bildirim zamanlayamaz; iOS web push yalnız Ana Ekran uygulamasında; SW `localStorage` göremez.
+- **DERS** Web'de izin ≠ ulaşılabilirlik (VAPID yok ya da abonelik iptal) → ayrı `webPushOff` (404 → `webPushUnconfigured`); tarayıcı yerelde zamanlayamaz; iOS web push yalnız Ana Ekran'da; SW `localStorage` göremez.
 - **DERS** `url_launcher` web'de bilinmeyen şemada (`app-settings:`) hata vermez, ölü sekme açar → "best effort + catch" web'de hiç düşmez; web'in reddi üç sorun (istenmemiş/engellenmiş/desteklenmiyor), düzeltme sayfasının aksiyonu `AlarmProblem` üzerinde exhaustive switch (#19).
 - **DERS** iOS'ta `notification` bloğu olmayan FCM mesajı teslim edilmez → görünür yedek `notification` + `aps.sound` taşır. Firebase'e APNs anahtarı yüklenmezse token üretilir, hiçbir şey gitmez, test görmez.
 - **DERS** FCM token bir aboneliktir: geri yüklemede döner → yenilemeyi dinle; çıkışta önce sunucu kaydını, sonra token'ı sil. VAPID anahtarı 65/32 bayt — yer değiştirmiş çift "dolu mu"dan geçer, uzunluğu ölç.

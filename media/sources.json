@@ -7,31 +7,22 @@
     "still": "screenshots/web/home-dark.png",
     "readme": {
       "file": "hero.webp",
-      "width": 1200,
-      "fps": 12
+      "width": 960,
+      "fps": 8,
+      "budget": "readmeHero"
     }
   },
   "tour-tasks": {
     "kind": "loop",
     "render": "media/hyperframes/renders/loop-tour-tasks.mp4",
     "posterAt": 1.5,
-    "still": "screenshots/web/board.png",
-    "readme": {
-      "file": "tasks.webp",
-      "width": 800,
-      "fps": 12
-    }
+    "still": "screenshots/web/board.png"
   },
   "tour-notes": {
     "kind": "loop",
     "render": "media/hyperframes/renders/loop-tour-notes.mp4",
     "posterAt": 5,
-    "still": "screenshots/web/note-editor.png",
-    "readme": {
-      "file": "notes.webp",
-      "width": 800,
-      "fps": 12
-    }
+    "still": "screenshots/web/note-editor.png"
   },
   "tour-alarms": {
     "kind": "loop",

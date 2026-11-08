@@ -181,6 +181,59 @@ void main() {
     });
   });
 
+  // OPH-391 (E-13, U-14): a Turkish iPhone asked for the microphone and
+  // speech recognition in English, and "Don't Allow" ended voice capture
+  // there. Every permission string the app declares has a Turkish twin.
+  group('iOS permission strings (tr)', () {
+    late final String plist = File('ios/Runner/Info.plist').readAsStringSync();
+    late final File trFile = File('ios/Runner/tr.lproj/InfoPlist.strings');
+    late final String pbx = File(
+      'ios/Runner.xcodeproj/project.pbxproj',
+    ).readAsStringSync();
+
+    Map<String, String> entries(String source) => {
+      for (final m in RegExp(
+        r'^"?(\w+)"?\s*=\s*"((?:[^"\\]|\\.)*)";',
+        multiLine: true,
+      ).allMatches(source))
+        m.group(1)!: m.group(2)!,
+    };
+
+    test('every UsageDescription in Info.plist is translated', () {
+      final keys = RegExp(
+        r'<key>(NS\w+UsageDescription)</key>',
+      ).allMatches(plist).map((m) => m.group(1)!).toSet();
+      expect(keys, contains('NSMicrophoneUsageDescription'));
+      final tr = entries(trFile.readAsStringSync());
+      for (final key in keys) {
+        expect(tr[key], isNotNull, reason: '$key has no Turkish text');
+        expect(tr[key], isNot(contains('AllisWell uses')));
+      }
+    });
+
+    test('microphone and speech texts are Appendix A-65, word for word', () {
+      final tr = entries(trFile.readAsStringSync());
+      expect(
+        tr['NSSpeechRecognitionUsageDescription'],
+        'AllisWell söylediklerini cihazında yazıya çevirir, böylece görevleri '
+        'sesle ekleyebilirsin. Yapay zekâ kullandığında yalnız yazı '
+        'gönderilir, ses kaydı asla gönderilmez.',
+      );
+      expect(
+        tr['NSMicrophoneUsageDescription'],
+        'AllisWell, görev ve notları sesle söyleyebilmen için mikrofonu '
+        'kullanır. Konuşmak için basılı tutana kadar hiçbir şey kaydedilmez.',
+      );
+    });
+
+    test('the strings file is a Runner resource, localized for tr', () {
+      // A .strings file on disk is not a bundled one (LESSONS ios-native).
+      expect(pbx, contains('path = tr.lproj/InfoPlist.strings;'));
+      expect(pbx, contains('/* InfoPlist.strings in Resources */'));
+      expect(pbx, contains('name = InfoPlist.strings;'));
+    });
+  });
+
   group('AndroidManifest', () {
     late final String manifest = File(
       'android/app/src/main/AndroidManifest.xml',

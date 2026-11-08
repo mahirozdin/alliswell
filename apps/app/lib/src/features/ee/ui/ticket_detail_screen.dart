@@ -5,7 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher_string.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/fold.dart';
 import '../../../core/persisted_prefs.dart';
@@ -40,6 +40,9 @@ import 'ticket_tags_section.dart';
 import 'ticket_worklog_section.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/form_width.dart';
+import '../../../widgets/list_detail.dart';
+import '../../../widgets/segment_label.dart';
 
 /// One request: what was asked, what happened, and what was said (EE-084).
 ///
@@ -61,6 +64,10 @@ import '../../../widgets/fab_clearance.dart';
 /// them alone fails somebody: colour fails a colour-blind reader, the icon
 /// fails at a glance on a dirty screen, and the word fails nobody but is the
 /// easiest to skim past.
+/// The kind of the request lists' detail pane (OPH-410) — apart from the
+/// shell's task pane, so a task opened from a request still opens as a task.
+const String kEeTicketPane = 'ee-ticket';
+
 /// Opens one request (EE-251). By its address when a router is there to ask —
 /// the queue, an asset's history and a notification then reach the SAME
 /// place a pasted link does — and by a plain push when the screen is hosted
@@ -68,7 +75,17 @@ import '../../../widgets/fab_clearance.dart';
 ///
 /// Resolves when the opened screen is left (OPH-358, UI-AUDIT #74): a caller
 /// showing something the request can change asks again then.
+///
+/// OPH-410: on a desktop, under a request list that hosts the pane
+/// ([kEeTicketPane]), the request opens beside the list instead — the list
+/// keeps its place, Esc closes it, ↑/↓ walk the list it was opened from
+/// (DESIGN §51 D2–D3). Then this resolves at once.
 Future<void> awOpenTicket(BuildContext context, String ticketId) async {
+  final pane = AwListDetailScope.maybeOf(context, kEeTicketPane, listen: false);
+  if (pane != null) {
+    pane.open(ticketId, order: AwListOrder.maybeOf(context));
+    return;
+  }
   if (GoRouter.maybeOf(context) != null) {
     await context.push<void>('/tickets/$ticketId');
     return;
@@ -196,176 +213,183 @@ class _Thread extends ConsumerWidget {
     final asksHere =
         requesterId != null && ref.watch(currentUserIdProvider) == requesterId;
 
-    return ListView(
-      padding: awPagePadding(context, AwSpace.x4),
-      children: [
-        // EE-167: the number above the subject rather than inside it. On the
-        // detail screen there is room for a line, and the thing somebody reads
-        // out on the phone should not be competing with a sentence for it.
-        if (ticket.number != null)
-          Text(
-            '#${ticket.number}',
-            key: const Key('ticket-number'),
-            style: theme.textTheme.labelLarge?.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-            ),
-          ),
-        Text(ticket.subject, style: theme.textTheme.titleLarge),
-        const SizedBox(height: AwSpace.x2),
-        Wrap(
-          spacing: AwSpace.x2,
-          runSpacing: AwSpace.x2,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            // EE-224: on a live request the two chips are the doors — what
-            // they offer is the server's list for this person. A finished
-            // request takes no further writes at all, so it keeps plain chips
-            // rather than buttons that could only be refused.
-            if (ticket.terminalAt == null) ...[
-              EeTicketStatusAction(ticket: ticket),
-              EeTicketPriorityAction(ticket: ticket),
-              // EE-307: hidden only once the server has said no — the
-              // detail is not read for it (EE-224's cold open).
-              if (checked?.canTransfer != false)
-                EeTicketTransferAction(ticket: ticket),
-            ] else ...[
-              _Chip(label: 'ee.tickets.status.${ticket.status}'.tr()),
-              _Chip(label: 'ee.tickets.priority.${ticket.priority}'.tr()),
-            ],
-            if (ticket.terminalAt != null)
-              _Chip(
-                key: const Key('ticket-terminal-on'),
-                // UI-AUDIT #73: a cancelled request was never "closed" — the
-                // stamp is the same column, the sentence is not.
-                label:
-                    (ticket.status == 'cancelled'
-                            ? 'ee.tickets.cancelledOn'
-                            : 'ee.tickets.closedOn')
-                        .tr(
-                          args: {
-                            'date': awFormatDate(
-                              ticket.terminalAt!,
-                              format: dateFormat,
-                            ),
-                          },
-                        ),
+    // OPH-410: a request opened as a page on a desktop reads in a column,
+    // not across the whole window (in the pane it is narrower anyway).
+    return AwFormWidth(
+      child: ListView(
+        padding: awPagePadding(context, AwSpace.x4),
+        children: [
+          // EE-167: the number above the subject rather than inside it. On the
+          // detail screen there is room for a line, and the thing somebody reads
+          // out on the phone should not be competing with a sentence for it.
+          if (ticket.number != null)
+            Text(
+              '#${ticket.number}',
+              key: const Key('ticket-number'),
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
               ),
-          ],
-        ),
-        if (ticket.terminalAt == null) const EeTicketActionsOffline(),
-        // EE-254 (D17.2): the request came as mail claiming a colleague's
-        // address that could not be proven. Said before anything else is
-        // read, because it changes who "the person who asked" is.
-        if (checked?.senderUnverified == true)
-          _Unverified(
-            key: const Key('ticket-sender-unverified'),
-            text: 'ee.tickets.senderUnverified'.tr(),
-          ),
-        // EE-258 (AW-E07): who asked, and where the answer goes — read before
-        // who is on it, because it is the first thing somebody asks.
-        _Requester(ticket: ticket, fromServer: checked),
-        // EE-224: the third door, beside the other two. Who is on it is read
-        // before anything else below: an agent asks "is somebody already
-        // here" before reading forty replies.
-        EeTicketAssigneeSection(ticket: ticket),
-        // EE-235: the desk's words — beside who is on it, both being what the
-        // desk says ABOUT the request rather than what the request says.
-        EeTicketTagsSection(ticket: ticket),
-        // EE-097: the countdown, under the chips and above the request itself.
-        // An agent deciding what to pick up next reads it before the body.
-        AwSlaCountdown(ticket: ticket),
-        if (ticket.body != null && ticket.body!.isNotEmpty) ...[
-          const SizedBox(height: AwSpace.x4),
-          Text(ticket.body!, style: theme.textTheme.bodyMedium),
-        ],
-        // EE-278: what the form asked, and what they answered — right under
-        // the request's own words, because it is part of what was asked.
-        if (checked != null && checked.answers.isNotEmpty)
-          EeTicketAnswersView(answers: checked.answers, dateFormat: dateFormat),
-        // EE-189/EE-190: what this request has to do with anything else, and
-        // what came out of it. Below the request and ABOVE the conversation,
-        // because an agent picking this up asks "is this the known one, and
-        // has somebody already started" before reading forty replies.
-        _Relations(ticketId: ticket.id),
-        // EE-280: "let's open the known-error record" — from the request it
-        // was recognised in, linked to it in the same step.
-        _RaiseKnownError(ticket: ticket),
-        // EE-279: what planned work came of this request, and the door to
-        // raise some — right under the work it caused (EE-189/190).
-        _Changes(ticket: ticket),
-        _Knowledge(ticket: ticket),
-        _Attachments(ticket: ticket),
-        // EE-208: the hours, below the files and above the conversation.
-        // An agent scrolling to reply passes it, which is when they remember
-        // they have not written down this morning.
-        EeTicketWorklogSection(ticketId: ticket.id),
-        const SizedBox(height: AwSpace.x6),
-        Text('ee.tickets.thread'.tr(), style: theme.textTheme.titleSmall),
-        const SizedBox(height: AwSpace.x2),
-        comments.when(
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, _) => AwErrorState(
-            message: localizedError(error),
-            onRetry: () => ref.invalidate(ticketCommentsProvider(ticket.id)),
-          ),
-          data: (rows) => rows.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
-                  child: Text(
-                    'ee.tickets.threadEmpty'.tr(),
-                    style: theme.textTheme.bodySmall,
-                  ),
-                )
-              : Column(
-                  children: [
-                    for (final comment in rows)
-                      _CommentCard(
-                        comment: comment,
-                        dateFormat: dateFormat,
-                        meta: commentMeta[comment.id],
-                        unverified:
-                            checked?.unverifiedCommentIds.contains(
-                              comment.id,
-                            ) ??
-                            false,
-                      ),
-                  ],
+            ),
+          Text(ticket.subject, style: theme.textTheme.titleLarge),
+          const SizedBox(height: AwSpace.x2),
+          Wrap(
+            spacing: AwSpace.x2,
+            runSpacing: AwSpace.x2,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // EE-224: on a live request the two chips are the doors — what
+              // they offer is the server's list for this person. A finished
+              // request takes no further writes at all, so it keeps plain chips
+              // rather than buttons that could only be refused.
+              if (ticket.terminalAt == null) ...[
+                EeTicketStatusAction(ticket: ticket),
+                EeTicketPriorityAction(ticket: ticket),
+                // EE-307: hidden only once the server has said no — the
+                // detail is not read for it (EE-224's cold open).
+                if (checked?.canTransfer != false)
+                  EeTicketTransferAction(ticket: ticket),
+              ] else ...[
+                _Chip(label: 'ee.tickets.status.${ticket.status}'.tr()),
+                _Chip(label: 'ee.tickets.priority.${ticket.priority}'.tr()),
+              ],
+              if (ticket.terminalAt != null)
+                _Chip(
+                  key: const Key('ticket-terminal-on'),
+                  // UI-AUDIT #73: a cancelled request was never "closed" — the
+                  // stamp is the same column, the sentence is not.
+                  label:
+                      (ticket.status == 'cancelled'
+                              ? 'ee.tickets.cancelledOn'
+                              : 'ee.tickets.closedOn')
+                          .tr(
+                            args: {
+                              'date': awFormatDate(
+                                ticket.terminalAt!,
+                                format: dateFormat,
+                              ),
+                            },
+                          ),
                 ),
-        ),
-        // EE-223: the answer, under the conversation it answers. Hidden — not
-        // disabled — without `tickets.comment` (EE-052's cache): a box that
-        // 403s on send is a dead button with extra steps. Whoever reaches
-        // this screen reads the request from the device's copy, which only a
-        // member of its desk syncs, so offering the internal note is right.
-        if (ref.watch(canProvider('tickets.comment')))
-          // The server closes a finished thread (TICKET_TERMINAL) and says so
-          // with the terminal stamp it sends down; the box follows that stamp
-          // rather than a list of statuses of its own.
-          ticket.terminalAt == null
-              ? EeTicketComposer(
-                  ticketId: ticket.id,
-                  workspaceId: ticket.workspaceId,
-                  asksHere: asksHere,
-                  // UI-AUDIT #21: a request that came by mail is answered by
-                  // mail — the box says so before the send.
-                  byEmail:
-                      ticket.source == 'email' &&
-                      (ticket.requesterEmail ?? checked?.requesterEmail) !=
-                          null,
-                  // UI-AUDIT #48: and a company's portal shows the reply too.
-                  customerName: relations?.customerName,
-                )
-              : Padding(
-                  key: const Key('ticket-composer-closed'),
-                  padding: const EdgeInsets.only(top: AwSpace.x3),
-                  child: Text(
-                    'ee.tickets.composer.closed'.tr(),
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
+            ],
+          ),
+          if (ticket.terminalAt == null) const EeTicketActionsOffline(),
+          // EE-254 (D17.2): the request came as mail claiming a colleague's
+          // address that could not be proven. Said before anything else is
+          // read, because it changes who "the person who asked" is.
+          if (checked?.senderUnverified == true)
+            _Unverified(
+              key: const Key('ticket-sender-unverified'),
+              text: 'ee.tickets.senderUnverified'.tr(),
+            ),
+          // EE-258 (AW-E07): who asked, and where the answer goes — read before
+          // who is on it, because it is the first thing somebody asks.
+          _Requester(ticket: ticket, fromServer: checked),
+          // EE-224: the third door, beside the other two. Who is on it is read
+          // before anything else below: an agent asks "is somebody already
+          // here" before reading forty replies.
+          EeTicketAssigneeSection(ticket: ticket),
+          // EE-235: the desk's words — beside who is on it, both being what the
+          // desk says ABOUT the request rather than what the request says.
+          EeTicketTagsSection(ticket: ticket),
+          // EE-097: the countdown, under the chips and above the request itself.
+          // An agent deciding what to pick up next reads it before the body.
+          AwSlaCountdown(ticket: ticket),
+          if (ticket.body != null && ticket.body!.isNotEmpty) ...[
+            const SizedBox(height: AwSpace.x4),
+            Text(ticket.body!, style: theme.textTheme.bodyMedium),
+          ],
+          // EE-278: what the form asked, and what they answered — right under
+          // the request's own words, because it is part of what was asked.
+          if (checked != null && checked.answers.isNotEmpty)
+            EeTicketAnswersView(
+              answers: checked.answers,
+              dateFormat: dateFormat,
+            ),
+          // EE-189/EE-190: what this request has to do with anything else, and
+          // what came out of it. Below the request and ABOVE the conversation,
+          // because an agent picking this up asks "is this the known one, and
+          // has somebody already started" before reading forty replies.
+          _Relations(ticketId: ticket.id),
+          // EE-280: "let's open the known-error record" — from the request it
+          // was recognised in, linked to it in the same step.
+          _RaiseKnownError(ticket: ticket),
+          // EE-279: what planned work came of this request, and the door to
+          // raise some — right under the work it caused (EE-189/190).
+          _Changes(ticket: ticket),
+          _Knowledge(ticket: ticket),
+          _Attachments(ticket: ticket),
+          // EE-208: the hours, below the files and above the conversation.
+          // An agent scrolling to reply passes it, which is when they remember
+          // they have not written down this morning.
+          EeTicketWorklogSection(ticketId: ticket.id),
+          const SizedBox(height: AwSpace.x6),
+          Text('ee.tickets.thread'.tr(), style: theme.textTheme.titleSmall),
+          const SizedBox(height: AwSpace.x2),
+          comments.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, _) => AwErrorState(
+              message: localizedError(error),
+              onRetry: () => ref.invalidate(ticketCommentsProvider(ticket.id)),
+            ),
+            data: (rows) => rows.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: AwSpace.x2),
+                    child: Text(
+                      'ee.tickets.threadEmpty'.tr(),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  )
+                : Column(
+                    children: [
+                      for (final comment in rows)
+                        _CommentCard(
+                          comment: comment,
+                          dateFormat: dateFormat,
+                          meta: commentMeta[comment.id],
+                          unverified:
+                              checked?.unverifiedCommentIds.contains(
+                                comment.id,
+                              ) ??
+                              false,
+                        ),
+                    ],
+                  ),
+          ),
+          // EE-223: the answer, under the conversation it answers. Hidden — not
+          // disabled — without `tickets.comment` (EE-052's cache): a box that
+          // 403s on send is a dead button with extra steps. Whoever reaches
+          // this screen reads the request from the device's copy, which only a
+          // member of its desk syncs, so offering the internal note is right.
+          if (ref.watch(canProvider('tickets.comment')))
+            // The server closes a finished thread (TICKET_TERMINAL) and says so
+            // with the terminal stamp it sends down; the box follows that stamp
+            // rather than a list of statuses of its own.
+            ticket.terminalAt == null
+                ? EeTicketComposer(
+                    ticketId: ticket.id,
+                    workspaceId: ticket.workspaceId,
+                    asksHere: asksHere,
+                    // UI-AUDIT #21: a request that came by mail is answered by
+                    // mail — the box says so before the send.
+                    byEmail:
+                        ticket.source == 'email' &&
+                        (ticket.requesterEmail ?? checked?.requesterEmail) !=
+                            null,
+                    // UI-AUDIT #48: and a company's portal shows the reply too.
+                    customerName: relations?.customerName,
+                  )
+                : Padding(
+                    key: const Key('ticket-composer-closed'),
+                    padding: const EdgeInsets.only(top: AwSpace.x3),
+                    child: Text(
+                      'ee.tickets.composer.closed'.tr(),
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ),
-                ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -797,15 +821,17 @@ class _LinkPickerState extends ConsumerState<_LinkPicker> {
                 segments: [
                   ButtonSegment(
                     value: 'related',
-                    label: Text('ee.tickets.links.kind.related'.tr()),
+                    label: AwSegmentLabel('ee.tickets.links.kind.related'.tr()),
                   ),
                   ButtonSegment(
                     value: 'duplicate_of',
-                    label: Text('ee.tickets.links.kind.duplicateOf'.tr()),
+                    label: AwSegmentLabel(
+                      'ee.tickets.links.kind.duplicateOf'.tr(),
+                    ),
                   ),
                   ButtonSegment(
                     value: 'child_of',
-                    label: Text('ee.tickets.links.kind.childOf'.tr()),
+                    label: AwSegmentLabel('ee.tickets.links.kind.childOf'.tr()),
                   ),
                 ],
                 selected: {_type},
@@ -1373,6 +1399,8 @@ class EeTicketAnswersView extends StatelessWidget {
       final day? => awFormatDate(day, format: dateFormat),
       null => answer.value,
     },
+    // OPH-408: "48.500", not the "48500" the form stored.
+    'number' => awFormatNumberText(answer.value),
     _ => answer.value,
   };
 

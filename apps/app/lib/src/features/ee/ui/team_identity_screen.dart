@@ -13,6 +13,8 @@ import '../data/identity_api.dart';
 import '../data/identity_models.dart';
 import '../identity_providers.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/form_width.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// Where a team connects its own identity source (OPH-287).
 ///
@@ -57,37 +59,39 @@ class EeTeamIdentityScreen extends ConsumerWidget {
         leading: awRouteLeading(context),
         title: Text('ee.identity.title'.tr()),
       ),
-      body: data.when(
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, _) => AwErrorState(
-          message: localizedError(error),
-          onRetry: () => ref.invalidate(eeIdentityProvidersProvider),
+      body: AwFormWidth(
+        child: data.when(
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, _) => AwErrorState(
+            message: localizedError(error),
+            onRetry: () => ref.invalidate(eeIdentityProvidersProvider),
+          ),
+          data: (items) {
+            if (items == null) {
+              return AwEmptyState(
+                icon: Icons.domain_disabled_outlined,
+                title: 'ee.identity.unavailable'.tr(),
+                message: 'ee.identity.unavailableBody'.tr(),
+              );
+            }
+            if (items.isEmpty) {
+              return AwEmptyState(
+                icon: Icons.account_tree_outlined,
+                title: 'ee.identity.emptyTitle'.tr(),
+                message: 'ee.identity.emptyBody'.tr(),
+              );
+            }
+            return ListView(
+              padding: EdgeInsets.only(
+                bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
+              ),
+              children: [
+                const _StatusCard(),
+                for (final item in items) _ProviderTile(provider: item),
+              ],
+            );
+          },
         ),
-        data: (items) {
-          if (items == null) {
-            return AwEmptyState(
-              icon: Icons.domain_disabled_outlined,
-              title: 'ee.identity.unavailable'.tr(),
-              message: 'ee.identity.unavailableBody'.tr(),
-            );
-          }
-          if (items.isEmpty) {
-            return AwEmptyState(
-              icon: Icons.account_tree_outlined,
-              title: 'ee.identity.emptyTitle'.tr(),
-              message: 'ee.identity.emptyBody'.tr(),
-            );
-          }
-          return ListView(
-            padding: EdgeInsets.only(
-              bottom: awScrollEndPadding(context, AwSpace.x4, fab: true),
-            ),
-            children: [
-              const _StatusCard(),
-              for (final item in items) _ProviderTile(provider: item),
-            ],
-          );
-        },
       ),
       // OPH-356 (UI-AUDIT #61): a create button exists on a yes only.
       floatingActionButton:
@@ -372,7 +376,7 @@ class _EditorState extends ConsumerState<_Editor> {
             ),
             const SizedBox(height: 12),
             if (!editing)
-              DropdownButtonFormField<String>(
+              AwDropdownField<String>(
                 key: const Key('identity-type'),
                 initialValue: _type,
                 decoration: InputDecoration(

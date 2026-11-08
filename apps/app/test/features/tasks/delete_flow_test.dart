@@ -325,9 +325,10 @@ void main() {
     await tester.pumpWidget(await app(api));
     await tester.pumpAndSettle();
 
-    // OPH-213: the view switch is an app-bar ICON now, not a labelled
-    // segment — one tap, showing the view it will switch to.
-    await tester.tap(find.byKey(const Key('home-view-toggle')));
+    // OPH-398: on a phone the switch is an entry of the "View ⌄" menu.
+    await tester.tap(find.byKey(const Key('home-view-menu')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-view-board')));
     await tester.pumpAndSettle();
     expect(find.text('Panodan'), findsOneWidget);
     // The pager owns the horizontal gesture, so the card is deliberately not
@@ -376,9 +377,15 @@ void main() {
     await tester.pumpWidget(widget);
     await tester.pumpAndSettle();
 
-    // The header carries the group's COUNT ("Tomorrow · 1"), which is exactly
+    // The header carries the group's COUNT ("Tomorrow  1"), which is exactly
     // what would go stale if the pending row were only hidden by the row widget.
-    expect(find.text('Tomorrow · 1'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('home-section-tomorrow')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
     await swipeAndDelete(tester, task['id'] as String);
 
     // The row hides itself, but the GROUPING is computed from the raw list —

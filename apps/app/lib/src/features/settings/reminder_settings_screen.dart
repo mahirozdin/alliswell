@@ -12,6 +12,7 @@ import 'sound_picker_sheet.dart';
 import '../../theme/tokens.dart';
 import '../../widgets/status_views.dart';
 import '../../widgets/route_leading.dart';
+import '../../widgets/segment_label.dart';
 
 /// **Hatırlatıcı Sistemi Ayarları** (round 9 #7, OPH-179 — DESIGN §18).
 ///
@@ -73,14 +74,16 @@ class ReminderSettingsScreen extends ConsumerWidget {
                           for (final preset in kReminderProfilePresets)
                             ButtonSegment(
                               value: preset.id,
-                              label: Text(
+                              label: AwSegmentLabel(
                                 'reminderSettings.preset.${preset.id}'.tr(),
                               ),
                             ),
                           // A hand-built chain is a real state, not a blank.
                           ButtonSegment(
                             value: 'custom',
-                            label: Text('reminderSettings.preset.custom'.tr()),
+                            label: AwSegmentLabel(
+                              'reminderSettings.preset.custom'.tr(),
+                            ),
                           ),
                         ],
                         selected: {presetId ?? 'custom'},
@@ -494,7 +497,9 @@ class _WebAlertModeCard extends ConsumerWidget {
                 for (final value in WebAlertMode.values)
                   ButtonSegment(
                     value: value,
-                    label: Text('reminderSettings.webAlert.${value.id}'.tr()),
+                    label: AwSegmentLabel(
+                      'reminderSettings.webAlert.${value.id}'.tr(),
+                    ),
                   ),
               ],
               selected: {mode},

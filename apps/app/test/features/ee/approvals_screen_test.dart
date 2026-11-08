@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/day_boundary.dart';
+import 'package:alliswell/src/features/auth/data/models.dart';
+import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/approvals_providers.dart';
 import 'package:alliswell/src/core/api_exception.dart';
 import 'package:alliswell/src/features/ee/data/approvals_api.dart';
@@ -395,6 +397,7 @@ void main() {
         ProviderScope(
           overrides: [
             eeFeatureProvider.overrideWith((ref, name) => true),
+            authControllerProvider.overrideWith(_SignedIn.new),
             eeApprovalsApiProvider.overrideWithValue(
               EeApprovalsApi(notFound()),
             ),
@@ -436,6 +439,23 @@ void main() {
       );
       expect(find.byKey(const Key('ee-not-in-team')), findsOneWidget);
       expect(find.byKey(const Key('ee-team-address-required')), findsNothing);
+      // A-38 (OPH-407): which account is not registered, and a way out.
+      expect(
+        find.text("You're not a member of this company's workspace"),
+        findsOneWidget,
+      );
+      expect(find.textContaining('(mahir@example.com)'), findsOneWidget);
+      expect(
+        find.byKey(const Key('ee-not-in-team-switch-account')),
+        findsOneWidget,
+      );
     });
   });
+}
+
+/// Signed in as [fakeSession]'s account, without the restore and refresh
+/// machinery the real controller starts.
+class _SignedIn extends AuthController {
+  @override
+  Future<AuthSession?> build() async => fakeSession();
 }

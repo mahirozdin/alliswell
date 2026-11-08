@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/date_input.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../quick_access/data/quick_link.dart';
@@ -28,15 +28,17 @@ import '../../tags/ui/tag_input.dart';
 import '../../tags/ui/tag_manage_sheet.dart';
 import '../data/task.dart';
 import '../data/task_store.dart';
-import '../data/task_when.dart';
 import '../providers.dart';
 import 'duration_picker.dart';
-import 'task_tile.dart' show deleteTaskWithUndo;
+import 'task_tile.dart' show TaskTile, deleteTaskWithUndo;
 import 'repeat_row.dart';
 import 'task_visuals.dart';
 import '../../ee/assignments_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../theme/typography.dart';
+import '../../../widgets/popup_menu.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// One task write: gets the store + task id. Writes land in the local
 /// replica instantly and sync in the background (OPH-054/055).
@@ -47,29 +49,80 @@ typedef TaskAction = Future<Object?> Function(TaskStore store, String taskId);
 /// and checklist — every control writes the local replica (instant) and syncs
 /// in the background; failed writes surface as snackbars instead of vanishing.
 class TaskDetailScreen extends ConsumerWidget {
-  const TaskDetailScreen({super.key, required this.taskId});
+  const TaskDetailScreen({super.key, required this.taskId, this.onClose});
 
   final String taskId;
+
+  /// Set when the detail is the desktop pane beside a list (OPH-405,
+  /// DESIGN §51): the app bar leads with a close button instead of back,
+  /// and deleting the task closes the pane instead of popping a route.
+  final VoidCallback? onClose;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final task = ref.watch(taskDetailProvider(taskId));
     return task.when(
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      loading: () => _TaskDetailWaiting(taskId: taskId, onClose: onClose),
       error: (error, _) => Scaffold(
-        appBar: AppBar(leading: awRouteLeading(context)),
+        appBar: AppBar(leading: _leading(context, onClose)),
         body: Center(child: Text('$error')),
       ),
-      data: (value) => _TaskDetail(task: value),
+      data: (value) => _TaskDetail(task: value, onClose: onClose),
+    );
+  }
+}
+
+/// The app bar's leading button: the pane's close, or the route's own.
+Widget? _leading(BuildContext context, VoidCallback? onClose) => onClose == null
+    ? awRouteLeading(context)
+    : IconButton(
+        key: const Key('task-pane-close'),
+        icon: const Icon(Icons.close),
+        tooltip: 'task.paneClose'.tr(),
+        onPressed: onClose,
+      );
+
+/// The detail's row is not in the replica (yet). A spinner while the server
+/// says the task exists — the pull brings it — and an answer otherwise
+/// (OPH-392, E-17): a link to a deleted or foreign task, or one opened
+/// offline before it ever synced, used to spin forever.
+class _TaskDetailWaiting extends ConsumerWidget {
+  const _TaskDetailWaiting({required this.taskId, this.onClose});
+
+  final String taskId;
+  final VoidCallback? onClose;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final absence = ref.watch(taskAbsenceProvider(taskId)).value;
+    return Scaffold(
+      appBar: absence == null
+          ? null
+          : AppBar(leading: _leading(context, onClose)),
+      body: switch (absence) {
+        null => const Center(child: CircularProgressIndicator()),
+        TaskAbsence.gone => AwErrorState(
+          key: const Key('task-detail-gone'),
+          message: 'error.notFound'.tr(),
+          retryLabel: 'error.goHome'.tr(),
+          retryIcon: Icons.home_outlined,
+          onRetry: () => GoRouter.of(context).go(AppSection.home.path),
+        ),
+        TaskAbsence.unreachable => AwErrorState(
+          key: const Key('task-detail-unreachable'),
+          message: 'error.NETWORK_ERROR'.tr(),
+          onRetry: () => ref.invalidate(taskAbsenceProvider(taskId)),
+        ),
+      },
     );
   }
 }
 
 class _TaskDetail extends ConsumerStatefulWidget {
-  const _TaskDetail({required this.task});
+  const _TaskDetail({required this.task, this.onClose});
 
   final Task task;
+  final VoidCallback? onClose;
 
   @override
   ConsumerState<_TaskDetail> createState() => _TaskDetailState();
@@ -98,6 +151,29 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
         _title.text == oldWidget.task.title) {
       _title.text = widget.task.title;
     }
+  }
+
+  /// Leaving with a title still waiting for its autosave pause — another
+  /// task opened in the desktop pane, the pane closed, the page popped —
+  /// writes it now instead of dropping it. Here and not in [dispose]: `ref`
+  /// and the messenger are still reachable. No series question can be asked
+  /// from a detail that is going away, so on a recurring occurrence the
+  /// rename reaches this occurrence only (the write without a scope).
+  @override
+  void deactivate() {
+    final pending = _titleDebounce?.isActive ?? false;
+    _titleDebounce?.cancel();
+    final title = _title.text.trim();
+    if (pending && title.isNotEmpty && title != task.title) {
+      final store = ref.read(taskStoreProvider);
+      final messenger = ScaffoldMessenger.maybeOf(context);
+      store.update(task.id, {'title': title}).catchError((Object _) {
+        messenger?.showSnackBar(
+          SnackBar(content: Text('task.couldNotSave'.tr())),
+        );
+      });
+    }
+    super.deactivate();
   }
 
   @override
@@ -152,9 +228,14 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     // deleting, cancelling, the project, the repeat — is not offered here;
     // the server refuses each of them too (TICKET_WORK_BOUND / _LOCKED).
     final work = ref.watch(ticketWorkOfTaskProvider(task.id)).value;
+    final largeText =
+        MediaQuery.textScalerOf(context).scale(1) > kAwRowVerticalTextScale;
+    Widget half(Widget field) => largeText ? field : Expanded(child: field);
     return Scaffold(
       appBar: AppBar(
-        leading: awRouteLeading(context),
+        leading: _leading(context, widget.onClose),
+        // The pane has no route under it to imply a back button from.
+        automaticallyImplyLeading: widget.onClose == null,
         title: Text('task.detailTitle'.tr()),
         actions: [
           // EE-069 / item 10: the task's own history. Present only where there
@@ -197,7 +278,12 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
               icon: const Icon(Icons.delete_outline),
               onPressed: () async {
                 final router = GoRouter.of(context);
+                final close = widget.onClose;
                 await deleteTaskWithUndo(context, ref, task);
+                if (close != null) {
+                  close();
+                  return;
+                }
                 // Pop first: the row is already hidden everywhere, and staying on
                 // the detail of a deleted task would strand the user.
                 if (router.canPop()) {
@@ -207,7 +293,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 }
               },
             ),
-          PopupMenuButton<String>(
+          AwPopupMenuButton<String>(
             key: const Key('task-quick-menu'),
             tooltip: 'quick.actions'.tr(),
             onSelected: (_) => toggleQuickAccess(
@@ -289,10 +375,18 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
+                    // Polish 4 T-06: at large text the two half-width fields
+                    // scaled the longer value down ("Yüksek" drawn smaller
+                    // than "Açık"); there they stack, each at full width.
+                    Flex(
+                      direction: largeText ? Axis.vertical : Axis.horizontal,
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: largeText
+                          ? CrossAxisAlignment.stretch
+                          : CrossAxisAlignment.center,
                       children: [
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
+                        half(
+                          AwDropdownField<String>(
                             isExpanded: true,
                             key: const Key('status-dropdown'),
                             initialValue: task.status,
@@ -322,9 +416,9 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: DropdownButtonFormField<String>(
+                        const SizedBox(width: 12, height: 12),
+                        half(
+                          AwDropdownField<String>(
                             isExpanded: true,
                             key: const Key('priority-dropdown'),
                             initialValue: task.priority,
@@ -380,9 +474,16 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       ),
                       const SizedBox(height: 4),
                     ],
+                    // H-5 (OPH-400): the urgent row carries its icon like
+                    // every other switch row here, so its title starts on the
+                    // same line as "Sustur" and "Tekrarla" instead of the
+                    // card's edge (DESIGN §46 R8).
                     SwitchListTile(
                       key: const Key('urgent-switch'),
                       contentPadding: EdgeInsets.zero,
+                      secondary: const Icon(
+                        Icons.notification_important_outlined,
+                      ),
                       title: Text('task.urgentAlarm'.tr()),
                       subtitle: Text('task.urgentAlarmSub'.tr()),
                       value: task.isUrgent,
@@ -577,6 +678,29 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 ),
                 const SizedBox(height: AwSpace.x3),
               ],
+              // OPH-394 (E-07): a subtask is listed here, under its parent,
+              // and not as a row of its own on Home. Only when there is one:
+              // subtasks are written through the API and MCP, and an empty
+              // card would promise a control this screen does not have.
+              if (ref.watch(subtasksProvider(task.id)).value
+                  case final subtasks? when subtasks.isNotEmpty) ...[
+                _SectionCard(
+                  key: const Key('task-subtasks'),
+                  title: 'task.subtasks'.tr(),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final subtask in subtasks)
+                        TaskTile(
+                          task: subtask,
+                          showProjectBadge: false,
+                          swipeToDelete: false,
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AwSpace.x3),
+              ],
               _SectionCard(
                 title: 'task.checklist'.tr(),
                 child: _Checklist(
@@ -606,7 +730,7 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
 
 /// Rounded surface card with a small uppercase-ish section header.
 class _SectionCard extends StatelessWidget {
-  const _SectionCard({required this.title, required this.child});
+  const _SectionCard({required this.title, required this.child, super.key});
 
   final String title;
   final Widget child;
@@ -622,10 +746,8 @@ class _SectionCard extends StatelessWidget {
           children: [
             Text(
               title,
-              style: theme.textTheme.labelLarge?.copyWith(
+              style: context.awText.sectionLabel.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.4,
               ),
             ),
             const SizedBox(height: AwSpace.x3),
@@ -779,7 +901,9 @@ class _DurationRow extends StatelessWidget {
       leading: const Icon(Icons.timelapse_outlined),
       title: Text(label),
       subtitle: Text(
-        value == null ? 'task.notSet'.tr() : awFormatDuration(value),
+        value == null
+            ? 'task.notSet'.tr()
+            : awFormatDuration(value, days: false),
         style: TextStyle(
           color: value == null ? scheme.onSurfaceVariant : scheme.onSurface,
           fontWeight: value == null ? null : FontWeight.w600,

@@ -71,6 +71,7 @@ class AlarmSupport {
     this.alarmKitAuthorized,
     this.pendingCount,
     this.webPushReady,
+    this.webPushServerConfigured,
     this.webPermission,
   });
 
@@ -129,6 +130,15 @@ class AlarmSupport {
   /// the question does not arise.
   final bool? webPushReady;
 
+  /// Web only (OPH-393, E-14): does the SERVER do browser push at all.
+  ///
+  /// False only on the documented answer — `/api/v1/push/public-key` 404s
+  /// when the instance has no VAPID keys (OPH-310). Null off the web, while a
+  /// live subscription already proves the keys, and when the lookup could not
+  /// get an answer: an offline server is not the admin's missing setup, and
+  /// saying so would blame the wrong person a second time.
+  final bool? webPushServerConfigured;
+
   /// Web only (#19): why a browser that has not granted notifications has
   /// not. Null off the web, and on the web once permission is granted.
   ///
@@ -145,6 +155,13 @@ class AlarmSupport {
   /// of them, and adding five more conditions to both would have guaranteed it.
   /// Ordered by how completely each one silences an alarm.
   AlarmProblem? get worstProblem {
+    // First on the web (OPH-393): a server without keys silences every
+    // browser, and nothing the person grants or sets up here changes that —
+    // asking them to "allow" or "finish setup" was the server's gap shown as
+    // their own fault (E-14).
+    if (webPushServerConfigured == false) {
+      return AlarmProblem.webPushUnconfigured;
+    }
     if (!notificationsEnabled) {
       // On the web "off" is three problems, and naming the wrong one sent the
       // user to an iOS settings page from inside a browser (#19).
@@ -193,6 +210,10 @@ enum AlarmProblem {
   /// Web: permission is granted and nothing can still reach this browser —
   /// no subscription, or an instance with no keys to send with (OPH-313).
   webPushOff,
+
+  /// Web: the server has no keys to send a browser push with (OPH-393). The
+  /// one problem only the server's admin can fix.
+  webPushUnconfigured,
 
   /// iOS granted us the quiet kind of permission: no banner, no sound.
   provisional,

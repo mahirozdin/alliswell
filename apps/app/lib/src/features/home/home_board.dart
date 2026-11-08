@@ -1,3 +1,6 @@
+import 'dart:math' as math;
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +11,11 @@ import '../../i18n/i18n.dart';
 import '../../sections.dart';
 import '../../sync/refresh.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/list_detail.dart';
 import '../../widgets/refreshable.dart';
 import '../../widgets/snackbars.dart';
 import '../tasks/data/task.dart';
+import 'board_series.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/task_create_sheet.dart';
 import '../tasks/ui/task_tile.dart';
@@ -37,13 +42,25 @@ class HomeBoard extends ConsumerStatefulWidget {
 }
 
 class _HomeBoardState extends ConsumerState<HomeBoard> {
-  static const _columnWidth = 320.0;
-
   PageController? _pager;
+  final ScrollController _columnsScroll = ScrollController();
+
+  /// Whether the wide board has columns past its right edge (the fade).
+  final ValueNotifier<bool> _moreRight = ValueNotifier(true);
+
+  bool _trackEdge(ScrollNotification notification) {
+    final metrics = notification.metrics;
+    if (notification.depth == 0 && metrics.axis == Axis.horizontal) {
+      _moreRight.value = metrics.extentAfter > 0.5;
+    }
+    return false;
+  }
 
   @override
   void dispose() {
     _pager?.dispose();
+    _columnsScroll.dispose();
+    _moreRight.dispose();
     super.dispose();
   }
 
@@ -176,33 +193,78 @@ class _HomeBoardState extends ConsumerState<HomeBoard> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 720;
+        // OPH-405: a task open in the desktop pane narrows the board; it
+        // keeps its columns (scrolling sideways) rather than turning into the
+        // phone's pager.
+        final paneOpen = AwListDetailScope.isOpen(context, kAwTaskPane);
+        final isWide = paneOpen || awWideContent(context, constraints);
         if (isWide) {
-          return SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(
-              horizontal: AwSpace.x3,
-              vertical: AwSpace.x2,
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (final status in columns)
-                  SizedBox(
-                    width: _columnWidth,
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: AwSpace.x1,
-                      ),
-                      child: _BoardColumn(
-                        status: status,
-                        tasks: byStatus[status] ?? const [],
-                        onDropped: _setStatus,
-                        onMoveRequested: _showMoveSheet,
-                        onRefresh: _refresh,
-                      ),
-                    ),
+          // U-36 (DESIGN §51 D5): four columns share the width, none narrower
+          // than [kBoardMinColumnWidth]; a fifth — or a narrow window — scrolls
+          // sideways under a visible bar, and the edge that has more fades.
+          final available = constraints.maxWidth - 2 * AwSpace.x3;
+          final columnWidth = boardColumnWidth(available);
+          final overflowing = columns.length * columnWidth > available + 0.5;
+          // Metrics, not only scrolling: a column added or a pane opened
+          // changes what is past the edge without moving the scroll.
+          final board = NotificationListener<ScrollNotification>(
+            onNotification: _trackEdge,
+            child: NotificationListener<ScrollMetricsNotification>(
+              onNotification: (n) => _trackEdge(n.asScrollUpdate()),
+              child: Scrollbar(
+                controller: _columnsScroll,
+                thumbVisibility: overflowing,
+                trackVisibility: overflowing,
+                child: SingleChildScrollView(
+                  key: const Key('board-columns'),
+                  controller: _columnsScroll,
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.fromLTRB(
+                    AwSpace.x3,
+                    AwSpace.x2,
+                    AwSpace.x3,
+                    AwSpace.x4,
                   ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      for (final status in columns)
+                        SizedBox(
+                          width: columnWidth,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: AwSpace.x1,
+                            ),
+                            child: _BoardColumn(
+                              status: status,
+                              tasks: byStatus[status] ?? const [],
+                              onDropped: _setStatus,
+                              onMoveRequested: _showMoveSheet,
+                              onRefresh: _refresh,
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+          return AwListOrder(
+            // ↑/↓ in the pane walk the board as it reads: down a column,
+            // then on to the next one.
+            ids: [
+              for (final status in columns)
+                for (final entry in foldBoardSeries(
+                  status,
+                  byStatus[status] ?? const [],
+                ))
+                  entry.task.id,
+            ],
+            child: Stack(
+              children: [
+                board,
+                if (overflowing) _ColumnsEdgeFade(more: _moreRight),
               ],
             ),
           );
@@ -282,6 +344,9 @@ class _BoardColumn extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    // OPH-394 (E-25): a series shows its next occurrence once, and the count
+    // is the cards the column shows.
+    final entries = foldBoardSeries(status, tasks);
     return DragTarget<Task>(
       onWillAcceptWithDetails: (details) => details.data.status != status,
       onAcceptWithDetails: (details) => onDropped(details.data, status),
@@ -322,7 +387,7 @@ class _BoardColumn extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${tasks.length}',
+                      '${entries.length}',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
                         color: scheme.onSurfaceVariant,
                       ),
@@ -334,7 +399,7 @@ class _BoardColumn extends StatelessWidget {
                 // OPH-171: each column's card list pulls to refresh (§15). The
                 // horizontal pager is untouched, and a quick drag down beats
                 // the card's 200 ms long-press drag, so both gestures live.
-                child: tasks.isEmpty
+                child: entries.isEmpty
                     ? _EmptyColumn(status: status, dragging: highlighted)
                     : AwRefresh(
                         indicatorKey: Key('board-refresh-$status'),
@@ -347,9 +412,10 @@ class _BoardColumn extends StatelessWidget {
                             AwSpace.x2,
                             AwSpace.x2,
                           ),
-                          itemCount: tasks.length,
+                          itemCount: entries.length,
                           itemBuilder: (context, index) => _BoardCard(
-                            task: tasks[index],
+                            task: entries[index].task,
+                            moreOccurrences: entries[index].moreOccurrences,
                             onMoveRequested: onMoveRequested,
                           ),
                         ),
@@ -366,36 +432,67 @@ class _BoardColumn extends StatelessWidget {
 /// A draggable task card: the task row's DNA (K5) plus an explicit move
 /// affordance — the non-drag path is never hidden (K3b).
 class _BoardCard extends StatelessWidget {
-  const _BoardCard({required this.task, required this.onMoveRequested});
+  const _BoardCard({
+    required this.task,
+    required this.onMoveRequested,
+    this.moreOccurrences = 0,
+  });
 
   final Task task;
   final void Function(Task task) onMoveRequested;
 
+  /// Later occurrences of this series the card stands for (OPH-394, E-25).
+  final int moreOccurrences;
+
   @override
   Widget build(BuildContext context) {
-    final card = Stack(
-      children: [
-        // No project badge on the board: a 320-px status column has no room
-        // for it beside the title + status icons, and the column is already a
-        // status grouping. (The move affordance sits where the badge would.)
-        //
-        // No swipe-to-delete either (OPH-184, DESIGN §19 D6): the horizontal
-        // gesture belongs to the phone pager, and a 200 ms long-press drag
-        // already competes for this card. Delete lives in the move sheet.
-        TaskTile(task: task, showProjectBadge: false, swipeToDelete: false),
-        PositionedDirectional(
-          top: 10,
-          end: AwSpace.x1,
-          child: IconButton(
-            key: Key('board-move-button-${task.id}'),
-            tooltip: 'board.move'.tr(),
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.swap_horiz, size: 18),
-            onPressed: () => onMoveRequested(task),
-          ),
-        ),
-      ],
+    final theme = Theme.of(context);
+    // No project badge on the board: a 320-px status column has no room for
+    // it beside the title, and the column is already a status grouping. The
+    // move affordance takes the row's one right-hand slot instead (DESIGN §46
+    // R6), on the title's first line.
+    //
+    // No swipe-to-delete either (OPH-184, DESIGN §19 D6): the horizontal
+    // gesture belongs to the phone pager, and a 200 ms long-press drag already
+    // competes for this card. Delete lives in the move sheet.
+    final tile = TaskTile(
+      task: task,
+      showProjectBadge: false,
+      swipeToDelete: false,
+      trailingAction: IconButton(
+        key: Key('board-move-button-${task.id}'),
+        tooltip: 'board.move'.tr(),
+        visualDensity: VisualDensity.compact,
+        icon: const Icon(Icons.swap_horiz, size: 18),
+        onPressed: () => onMoveRequested(task),
+      ),
     );
+    final card = moreOccurrences == 0
+        ? tile
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              tile,
+              Padding(
+                padding: const EdgeInsetsDirectional.fromSTEB(
+                  AwSpace.x4,
+                  0,
+                  AwSpace.x4,
+                  AwSpace.x2,
+                ),
+                child: Text(
+                  'board.moreOccurrences'.tr(
+                    args: {'count': '$moreOccurrences'},
+                  ),
+                  key: Key('board-more-${task.id}'),
+                  textAlign: TextAlign.end,
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+            ],
+          );
     return LongPressDraggable<Task>(
       data: task,
       delay: const Duration(milliseconds: 200),
@@ -627,6 +724,53 @@ class _BoardColumnsSheetState extends ConsumerState<_BoardColumnsSheet> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The narrowest a board column gets on a wide layout (U-36).
+const double kBoardMinColumnWidth = 260;
+
+/// A wide board column: a quarter of [available], never below
+/// [kBoardMinColumnWidth] — so four columns fit a desktop window and a fifth
+/// is one scroll away instead of a cut-off edge (OPH-405).
+double boardColumnWidth(double available) =>
+    math.max(kBoardMinColumnWidth, available / 4);
+
+/// The 24 px fade on the edge of the board that has more columns past it
+/// (consolidated §3: a horizontal row ends in a fade, so a cut card reads as
+/// "more", not as a fault). Paint in the page colour, never glass (G1), and
+/// it takes no touches.
+class _ColumnsEdgeFade extends StatelessWidget {
+  const _ColumnsEdgeFade({required this.more});
+
+  /// Whether there are columns past the right edge.
+  final ValueListenable<bool> more;
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.awTokens;
+    final page = Color.alphaBlend(tokens.veil, tokens.auroraBottom);
+    return Positioned(
+      top: 0,
+      bottom: 0,
+      right: 0,
+      width: AwSpace.x6,
+      child: IgnorePointer(
+        child: ValueListenableBuilder<bool>(
+          valueListenable: more,
+          builder: (context, more, _) => more
+              ? DecoratedBox(
+                  key: const Key('board-edge-fade'),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [page.withValues(alpha: 0), page],
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
         ),
       ),
     );

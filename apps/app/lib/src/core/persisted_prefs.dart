@@ -61,6 +61,25 @@ final homeCalendarVisibleProvider = NotifierProvider<PersistedToggle, bool>(
   () => PersistedToggle('alliswell_home_calendar_visible', fallback: true),
 );
 
+/// Home's calendar on a phone (OPH-401, DESIGN §47 W1): 'week' (one strip of
+/// seven days) or 'month' (the grid). Empty means "never chosen" — then the
+/// window decides ([awHomeCalendarMode]), so a narrow phone opens on the strip
+/// and a tablet keeps the grid it had.
+final homeCalendarModeProvider = NotifierProvider<PersistedChoice, String>(
+  () => PersistedChoice('alliswell_home_calendar_mode', fallback: ''),
+);
+
+/// Below this width Home's calendar opens as a week strip until the person
+/// picks otherwise (U-04: the month grid was ~40 % of a phone's first screen).
+const double kAwWeekStripMaxWidth = 600;
+
+/// The calendar mode to draw: the stored choice when there is one, otherwise
+/// 'week' under [kAwWeekStripMaxWidth] and 'month' from it.
+String awHomeCalendarMode(String stored, double width) =>
+    stored == 'week' || stored == 'month'
+    ? stored
+    : (width < kAwWeekStripMaxWidth ? 'week' : 'month');
+
 /// Notes screen view mode: 'list' or 'grid'.
 final notesViewModeProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice('alliswell_notes_view_mode', fallback: 'list'),

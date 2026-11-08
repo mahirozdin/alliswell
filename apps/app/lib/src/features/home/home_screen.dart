@@ -1,5 +1,10 @@
+import 'dart:async';
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderAbstractViewport;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../core/date_format.dart';
 import '../../core/error_messages.dart';
@@ -14,11 +19,13 @@ import '../../screens/home_shell.dart';
 import '../../sections.dart';
 import '../../sync/refresh.dart';
 import '../../theme/tokens.dart';
+import '../../widgets/list_detail.dart';
 import '../../widgets/refreshable.dart';
 import '../../widgets/status_views.dart';
 import '../../search/providers.dart';
 import '../../search/search.dart';
 import '../../widgets/search_field.dart';
+import '../../widgets/snackbars.dart';
 import '../../widgets/sort_menu.dart';
 import '../../core/date_input.dart';
 import '../ai/data/ai_quick_add.dart';
@@ -27,6 +34,7 @@ import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
 import '../ee/providers.dart';
+import '../onboarding/tour.dart' show TourAnchor, TourTarget;
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/quick_add_apply.dart';
@@ -38,9 +46,12 @@ import '../tasks/ui/task_tile.dart';
 import '../workspaces/workspaces.dart';
 import 'home_board.dart';
 import 'home_create.dart';
+import 'home_view_menu.dart';
 import 'month_calendar.dart';
 import 'task_grouping.dart';
+import '../ee/ui/home_ticket_cards.dart';
 import '../ee/ui/team_address_views.dart' show EeTeamAddressBanner;
+import '../../theme/typography.dart';
 
 /// Home (feedback round 1): the one place everything shows. Chronological
 /// task list (overdue → today → tomorrow → this week → later → no date) with
@@ -57,6 +68,10 @@ import '../ee/ui/team_address_views.dart' show EeTeamAddressBanner;
 /// layouts keep their pinned chrome and side calendar (there is room), and the
 /// phone BOARD keeps its toggle pinned — a horizontal pager cannot scroll it
 /// away, and losing it would strand the user in the board (H3).
+/// How long Home's "Added: … · Undo" bar stays (DESIGN §47 Q6, OPH-401 R-04):
+/// at least 5 s, so a reader at large text or with a switch can reach Undo.
+const kQuickAddUndoWindow = Duration(seconds: 5);
+
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
@@ -81,6 +96,49 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   final _quickAddController = QuickAddTextController();
   final _quickAddFocus = FocusNode();
   final _quickAddKey = GlobalKey();
+
+  /// OPH-398 (ADR-0062 §6): on a phone Home's local filter is a field the
+  /// list reveals when pulled down — not a magnifier in the app bar beside
+  /// the search orb. Its text lives here for the H4 reason: it is a sliver.
+  final _filterController = TextEditingController();
+  Timer? _filterDebounce;
+
+  /// The field's sliver extent at the current text scale — the offset the
+  /// phone list rests at, so the field waits just above the quick add.
+  double _filterExtent = 0;
+  late final _homeScroll = _HomeScrollController(
+    () => ref.read(homeSearchQueryProvider).trim().isEmpty ? _filterExtent : 0,
+  );
+
+  /// The wide layout's list, so a quick-added row can be scrolled to there
+  /// too (OPH-401).
+  final _wideScroll = ScrollController();
+
+  /// OPH-401 (U-13, DESIGN §47 Q7): the row a quick add just made — lit for a
+  /// moment and scrolled into sight. [_flashKey] sits on that one row.
+  String? _flashId;
+  Timer? _flashTimer;
+  final _flashKey = GlobalKey();
+
+  /// Which section each task's row is in, as last built — so a reveal can
+  /// open a folded section first.
+  Map<String, String> _sectionOfTask = const {};
+
+  void _onFilterChanged(String value) {
+    _filterDebounce?.cancel();
+    _filterDebounce = Timer(
+      const Duration(milliseconds: 250),
+      () => ref.read(homeSearchQueryProvider.notifier).set(value.trim()),
+    );
+    setState(() {}); // the clear (×) follows the text
+  }
+
+  void _clearFilter() {
+    _filterDebounce?.cancel();
+    _filterController.clear();
+    ref.read(homeSearchQueryProvider.notifier).set('');
+    setState(() {});
+  }
 
   @override
   void initState() {
@@ -133,6 +191,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     _quickAddFocus.removeListener(_keepQuickAddVisible);
     _quickAddController.dispose();
     _quickAddFocus.dispose();
+    _filterDebounce?.cancel();
+    _filterController.dispose();
+    _homeScroll.dispose();
+    _wideScroll.dispose();
+    _flashTimer?.cancel();
     super.dispose();
   }
 
@@ -142,7 +205,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (!_quickAddFocus.hasFocus) return;
     final context = _quickAddKey.currentContext;
     if (context == null) return; // wide layout: nothing can scroll it away
-    if (Scrollable.maybeOf(context) == null) return;
+    final scrollable = Scrollable.maybeOf(context);
+    if (scrollable == null) return;
+    // OPH-398: already in full view — leave the list where it is. The phone
+    // list rests one filter-field down; aligning the bar at 10 % would pull
+    // the filter into sight (and move the bar under the finger) on every tap.
+    final box = context.findRenderObject();
+    final viewport = box == null ? null : RenderAbstractViewport.maybeOf(box);
+    if (box != null && viewport != null) {
+      final pixels = scrollable.position.pixels;
+      final atTop = viewport.getOffsetToReveal(box, 0).offset;
+      final atBottom = viewport.getOffsetToReveal(box, 1).offset;
+      if (pixels <= atTop && pixels >= atBottom) return;
+    }
     Scrollable.ensureVisible(
       context,
       duration: AwMotion.base,
@@ -165,7 +240,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     if (workspaceId == null) throw StateError('No workspace available');
     final parse = submission.parse;
     if (parse.hasSchedule) {
-      await createFromQuickParse(ref.read, parse: parse, withDefaults: true);
+      final id = await createFromQuickParse(
+        ref.read,
+        parse: parse,
+        withDefaults: true,
+      );
+      final due = parse.dueAt ?? parse.whenDay;
+      _afterQuickAdd(
+        id,
+        parse.title,
+        due,
+        withTime: parse.dueAt != null && parse.dueHasTime,
+      );
       return;
     }
     final selectedDay = ref.read(selectedDayProvider);
@@ -174,7 +260,18 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // sheet's own date+time picker, opening on the selected calendar day.
     // Backing out is the "skip" path and keeps the old semantics: the
     // selected day at the default task time, or no date at all.
-    DateTime? dueAt = await awPickDateTime(context, ref, anchor: selectedDay);
+    // OPH-401 (R-04): so its button says that — "Cancel" read as "don't add"
+    // and the task was added anyway.
+    DateTime? dueAt = await awPickDateTime(
+      context,
+      ref,
+      anchor: selectedDay,
+      cancelText:
+          (selectedDay == null
+                  ? 'home.askSkipNoDate'
+                  : 'home.askSkipSelectedDay')
+              .tr(),
+    );
     dueAt ??= selectedDay == null
         ? null
         : applyDefaultTaskTime(selectedDay, ref.read(defaultTaskTimeProvider));
@@ -182,11 +279,157 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // who added it: a task added from Home is that person's work. Round-14
     // defaults: medium priority, urgent alarm on, and a reminder an hour
     // before the deadline whenever one was picked.
-    await createFromQuickParse(
+    final id = await createFromQuickParse(
       ref.read,
       parse: parse,
       withDefaults: true,
       dueAt: dueAt,
+    );
+    _afterQuickAdd(id, parse.title, dueAt, withTime: true);
+  }
+
+  /// OPH-401 (U-13, A-67, DESIGN §47 Q6–Q7): say what was added and when,
+  /// offer it back for 5 s (R-04: 3 s was gone before a tap reached it), light the new row and bring it into sight. The
+  /// field had just emptied with no other sign — and the row could be under
+  /// the calendar or at the end of a long list — so people typed it twice.
+  void _afterQuickAdd(
+    String? id,
+    String title,
+    DateTime? due, {
+    required bool withTime,
+  }) {
+    if (id == null || !mounted) return;
+    final when = due == null
+        ? HomeBucket.noDate.label
+        : awFormatShort(
+            due,
+            format: ref.read(dateFormatProvider),
+            withTime: withTime,
+          );
+    final messenger = ScaffoldMessenger.of(context);
+    // Resolved now: Undo may land after this screen has rebuilt.
+    final store = ref.read(taskStoreProvider);
+    final seriesStore = ref.read(seriesStoreProvider);
+    messenger.hideCurrentSnackBar();
+    showAwActionSnackBar(
+      messenger,
+      key: const Key('quick-add-added'),
+      content: Text('home.added'.tr(args: {'title': title, 'when': when})),
+      actionLabel: 'common.undo'.tr(),
+      duration: kQuickAddUndoWindow,
+      onAction: () async {
+        _flashTimer?.cancel();
+        if (mounted) setState(() => _flashId = null);
+        // A typed repeat made a series; taking the task back without it
+        // would let the series make the next one.
+        final task = ref
+            .read(openTasksProvider)
+            .value
+            ?.where((t) => t.id == id)
+            .firstOrNull;
+        if (task != null && task.seriesId != null) {
+          await seriesStore.stop(
+            workspaceId: task.workspaceId,
+            seriesId: task.seriesId!,
+            fromDay: task.occurrenceDate,
+          );
+        }
+        await store.delete(id);
+      },
+    );
+    setState(() => _flashId = id);
+    _flashTimer?.cancel();
+    _flashTimer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _flashId = null);
+    });
+    unawaited(_revealFlash(id));
+  }
+
+  /// Brings the quick-added row into sight. A list builds only the rows near
+  /// the viewport, so a row far below has no context to scroll to yet: move a
+  /// screen at a time until it is built, then settle it in view. A row the
+  /// current filters hide is simply never found — nothing moves.
+  Future<void> _revealFlash(String id) async {
+    for (var i = 0; i < 60; i++) {
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted || _flashId != id) return;
+      final section = _sectionOfTask[id];
+      if (section == null) continue; // not in the list (yet)
+      if (ref.read(homeCollapsedSectionsProvider).contains(section)) {
+        ref.read(homeCollapsedSectionsProvider.notifier).expand(section);
+        continue;
+      }
+      final row = _flashKey.currentContext;
+      if (row != null) {
+        if (!row.mounted) return;
+        _ensureRowVisible(row);
+        return;
+      }
+      final controller = MediaQuery.sizeOf(context).width < kAwWideBreakpoint
+          ? _homeScroll
+          : _wideScroll;
+      if (!controller.hasClients) return;
+      final position = controller.position;
+      // P-04: the row may be above the built window as well as below it —
+      // a list scrolled to its end, a task due tomorrow.
+      final step = position.viewportDimension * 0.8;
+      if (_rowIsAboveBuilt(id, position)) {
+        if (position.pixels <= position.minScrollExtent) return;
+        position.jumpTo(
+          math.max(position.pixels - step, position.minScrollExtent),
+        );
+      } else {
+        if (position.pixels >= position.maxScrollExtent) return;
+        position.jumpTo(
+          math.min(position.pixels + step, position.maxScrollExtent),
+        );
+      }
+    }
+  }
+
+  /// Whether task [id]'s unbuilt row comes before the rows the list has
+  /// built: the first built row is compared with it in Home's order (the
+  /// order [_sectionOfTask] was filled in). No built row means nothing to
+  /// compare — the old downward search.
+  bool _rowIsAboveBuilt(String id, ScrollPosition position) {
+    final order = _sectionOfTask.keys.toList();
+    final target = order.indexOf(id);
+    String? firstBuilt;
+    void visit(Element element) {
+      if (firstBuilt != null) return;
+      final widget = element.widget;
+      if (widget is TaskTile) {
+        firstBuilt = widget.task.id;
+        return;
+      }
+      element.visitChildElements(visit);
+    }
+
+    final scrollContext = position.context.storageContext;
+    if (scrollContext is Element) scrollContext.visitChildElements(visit);
+    if (target < 0 || firstBuilt == null) return false;
+    final first = order.indexOf(firstBuilt!);
+    return first >= 0 && target < first;
+  }
+
+  void _ensureRowVisible(BuildContext row) {
+    final box = row.findRenderObject();
+    final viewport = box == null ? null : RenderAbstractViewport.maybeOf(box);
+    final scrollable = Scrollable.maybeOf(row);
+    if (box == null || viewport == null || scrollable == null) return;
+    final pixels = scrollable.position.pixels;
+    // What floats over the list's end (bar, buttons, fade) hides a row as
+    // surely as the edge does.
+    final covered = awListPadding(context, extraBottom: 72).bottom;
+    final atTop = viewport.getOffsetToReveal(box, 0).offset;
+    final atBottom = viewport.getOffsetToReveal(box, 1).offset + covered;
+    if (pixels <= atTop && pixels >= atBottom) return;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    Scrollable.ensureVisible(
+      row,
+      alignment: 0.3,
+      duration: reduce ? Duration.zero : AwMotion.base,
+      curve: AwMotion.enter,
     );
   }
 
@@ -220,7 +463,41 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Watched here (not inside the LayoutBuilder) so a layout pass never
     // subscribes providers.
     final calendarVisible = ref.watch(homeCalendarVisibleProvider);
+    // OPH-401 (U-04): a phone's calendar is a week strip until the person
+    // opens the month; the choice is kept.
+    final calendarMode = awHomeCalendarMode(
+      ref.watch(homeCalendarModeProvider),
+      MediaQuery.sizeOf(context).width,
+    );
     final dateFormat = ref.watch(dateFormatProvider);
+    // OPH-398 (ADR-0062 §6): a phone — no rail — gets the three-target bar
+    // and the pull-down filter; wide windows keep the bar below unchanged.
+    final phone = MediaQuery.sizeOf(context).width < kAwWideBreakpoint;
+    final sort = AwSortState.parse(
+      ref.watch(tasksSortProvider),
+      kTaskSortChoices,
+    );
+    void setView(String view) {
+      // OPH-306: leaving for the board drops the tag filter. The board is
+      // the one Home view with nowhere to put the filter's bar, and an
+      // active filter whose bar nobody can see is exactly what Epic 17's
+      // rule forbids — the same reason hiding the calendar clears the
+      // selected day.
+      if (view == 'board') ref.read(tagFilterProvider.notifier).clear();
+      ref.read(homeViewProvider.notifier).set(view);
+    }
+
+    void toggleCalendar() {
+      // Hiding the calendar clears the selection: a filter you can no
+      // longer see must not keep dimming Home (feedback round 6).
+      if (calendarVisible) {
+        ref.read(selectedDayProvider.notifier).select(null);
+      }
+      ref.read(homeCalendarVisibleProvider.notifier).toggle();
+    }
+
+    final textScaler = MediaQuery.textScalerOf(context);
+    _filterExtent = _HomeFilterField.extentFor(textScaler);
 
     // OPH-213 (DESIGN §16 H1, revised): the view controls left the scroll and
     // became app-bar icons — the Notes pattern. An icon shows the view it will
@@ -230,6 +507,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       // Round 13 #5: search is an app-bar action too, so the list keeps its
       // line. Closing it clears the query (see AwSearchAction).
       AwSearchAction(
+        // Keyed: the actions before it change while it is open (the ⚡
+        // steps aside), and an unkeyed field would lose its open state.
+        key: const ValueKey('home-search-action'),
         fieldKey: const Key('home-search'),
         hintText: 'home.searchHint'.tr(),
         onQuery: (q) => ref.read(homeSearchQueryProvider.notifier).set(q),
@@ -241,15 +521,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         icon: Icon(
           isBoard ? Icons.view_agenda_outlined : Icons.view_kanban_outlined,
         ),
-        onPressed: () {
-          // OPH-306: leaving for the board drops the tag filter. The board is
-          // the one Home view with nowhere to put the filter's bar, and an
-          // active filter whose bar nobody can see is exactly what Epic 17's
-          // rule forbids — the same reason hiding the calendar clears the
-          // selected day.
-          ref.read(tagFilterProvider.notifier).clear();
-          ref.read(homeViewProvider.notifier).set(isBoard ? 'list' : 'board');
-        },
+        onPressed: () => setView(isBoard ? 'list' : 'board'),
       ),
       if (isBoard)
         IconButton(
@@ -267,10 +539,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         AwSortMenuButton(
           key: const Key('home-sort'),
           choices: kTaskSortChoices,
-          sort: AwSortState.parse(
-            ref.watch(tasksSortProvider),
-            kTaskSortChoices,
-          ),
+          sort: sort,
           onChanged: (next) =>
               ref.read(tasksSortProvider.notifier).set(next.encode()),
         ),
@@ -285,15 +554,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 ? Icons.calendar_month
                 : Icons.calendar_month_outlined,
           ),
-          onPressed: () {
-            // Hiding the calendar clears the selection: a filter you can no
-            // longer see must not keep dimming Home (feedback round 6).
-            if (calendarVisible) {
-              ref.read(selectedDayProvider.notifier).select(null);
-            }
-            ref.read(homeCalendarVisibleProvider.notifier).toggle();
-          },
+          onPressed: toggleCalendar,
         ),
+    ];
+
+    // OPH-398 (ADR-0062 §6, R-05): a phone's bar is ⚡ + this + Settings.
+    // The magnifier is gone — the orb beside the tab bar is the one search
+    // glyph (ADR-0055) — and view, calendar, order and the board's columns
+    // are one labelled menu.
+    final phoneActions = <Widget>[
+      HomeViewMenuButton(
+        isBoard: isBoard,
+        calendarVisible: calendarVisible,
+        sortChoices: kTaskSortChoices,
+        sort: sort,
+        onView: setView,
+        onToggleCalendar: toggleCalendar,
+        onSort: (next) =>
+            ref.read(tasksSortProvider.notifier).set(next.encode()),
+        onEditColumns: () => showBoardColumnsSheet(context, ref),
+      ),
     ];
 
     // The create FAB is rendered by HomeShell's own Scaffold (OPH-101), so it
@@ -306,9 +586,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         onRefresh: () => refreshSection(ref, AppSection.home),
         // OPH-200: the entry point when the floating button is switched off —
         // the widget hides itself everywhere else (DESIGN §23 Q5).
-        leadingActions: const [QuickAccessAppBarButton()],
+        // The ⚡ steps aside while the search field is open, like the sort
+        // menu: a phone's bar has no room for both (OPH-396 — with the
+        // bubble off by default, ADR-0062 #5, this is the common case).
+        leadingActions: [if (!_searchOpen) const QuickAccessAppBarButton()],
         // OPH-213: the view + calendar controls, left of settings.
-        trailingActions: viewActions,
+        trailingActions: phone ? phoneActions : viewActions,
       ),
       body: tasks.when(
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -351,31 +634,65 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               kTaskSortChoices,
             ),
           );
+          _sectionOfTask = {
+            for (final group in groups)
+              for (final item in group.items)
+                if (item is TaskItem) item.task.id: homeSectionKey(group),
+          };
+          final markedDays = {
+            ...daysWithTasks(items),
+            ...daysWithEvents(events),
+          };
+          // The wide panel has room for the month and keeps it (no swap).
           final calendar = MonthCalendar(
             // A day with a meeting is not an empty day.
-            markedDays: {...daysWithTasks(items), ...daysWithEvents(events)},
+            markedDays: markedDays,
             selectedDay: selectedDay,
             onDaySelected: (day) =>
                 ref.read(selectedDayProvider.notifier).select(day),
+          );
+          final phoneCalendar = MonthCalendar(
+            key: const Key('home-calendar'),
+            markedDays: markedDays,
+            selectedDay: selectedDay,
+            onDaySelected: (day) =>
+                ref.read(selectedDayProvider.notifier).select(day),
+            mode: calendarMode == 'week'
+                ? AwCalendarMode.week
+                : AwCalendarMode.month,
+            onModeChanged: (mode) =>
+                ref.read(homeCalendarModeProvider.notifier).set(mode.name),
           );
 
           // OPH-222: the ✨ parse rider — only when AI is configured.
           final aiConfigured =
               ref.watch(aiStatusProvider).value?.configured ?? false;
-          final quickAdd = QuickAddBar(
-            key: const Key('home-quick-add'),
-            // Hoisted state (H4) — see [_quickAddController].
-            controller: _quickAddController,
-            focusNode: _quickAddFocus,
-            hintText: selectedDay == null
-                ? 'home.quickAddHint'.tr()
-                : 'home.quickAddForDay'.tr(
-                    args: {
-                      'date': awFormatDate(selectedDay, format: dateFormat),
-                    },
-                  ),
-            onAdd: _quickAdd,
-            onParse: aiConfigured ? _parseWithAi : null,
+          final quickAdd = TourAnchor(
+            target: TourTarget.quickAdd,
+            child: QuickAddBar(
+              key: const Key('home-quick-add'),
+              // Hoisted state (H4) — see [_quickAddController].
+              controller: _quickAddController,
+              focusNode: _quickAddFocus,
+              // A-13: the example does not fit at a large text size.
+              hintText: selectedDay == null
+                  ? (MediaQuery.textScalerOf(context).scale(1) > 1.3
+                            ? 'home.quickAddHintShort'
+                            : 'home.quickAddHint')
+                        .tr()
+                  : 'home.quickAddForDay'.tr(
+                      args: {
+                        'date': awFormatDate(selectedDay, format: dateFormat),
+                      },
+                    ),
+              onAdd: _quickAdd,
+              onParse: aiConfigured ? _parseWithAi : null,
+              // R-04: on a phone the list moves to the new row and takes the
+              // field with it, so the keyboard closes; a wide window pins the
+              // field above its list and keeps it for the next entry.
+              keepFocusAfterSubmit:
+                  MediaQuery.sizeOf(context).width >= kAwWideBreakpoint,
+            ),
           );
 
           // Honest alarm-degradation banner (OPH-143): only shown when the OS
@@ -388,14 +705,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             mainAxisSize: MainAxisSize.min,
             children: [
               EeTeamAddressBanner(),
+              // OPH-409 (U-22): requests on Home for an organisation's
+              // people; nothing on a plain build or a personal space.
+              EeHomeTicketCards(),
               AlarmDegradationBanner(),
               MissedAlarmCard(),
             ],
           );
 
+          final collapsed = ref.watch(homeCollapsedSectionsProvider);
           return LayoutBuilder(
             builder: (context, constraints) {
-              final isWide = constraints.maxWidth >= 720;
+              // OPH-405 (DESIGN §51 D3): with a task open in the desktop pane
+              // the list keeps its wide form — it only gives the calendar
+              // panel's room to the pane — instead of turning into the phone
+              // layout (and losing its scroll position) on every open.
+              final paneOpen = AwListDetailScope.isOpen(context, kAwTaskPane);
+              final isWide = paneOpen || awWideContent(context, constraints);
 
               // H2 — wide layouts are unchanged: there is room for pinned
               // chrome, and the calendar is a side panel.
@@ -430,33 +756,50 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                                                   AlwaysScrollableScrollPhysics(),
                                               slivers: [_HomeSearchResults()],
                                             )
-                                          : _GroupedTaskList(
-                                              groups: groups,
-                                              onTagTap: onTagTap,
-                                              dateFormat: dateFormat,
+                                          : AwListOrder(
+                                              ids: [
+                                                for (final group in groups)
+                                                  if (!collapsed.contains(
+                                                    homeSectionKey(group),
+                                                  ))
+                                                    for (final item
+                                                        in group.items)
+                                                      if (item is TaskItem)
+                                                        item.task.id,
+                                              ],
+                                              child: _GroupedTaskList(
+                                                groups: groups,
+                                                onTagTap: onTagTap,
+                                                dateFormat: dateFormat,
+                                                controller: _wideScroll,
+                                                flashId: _flashId,
+                                                flashKey: _flashKey,
+                                                quickAddFocus: _quickAddFocus,
+                                              ),
                                             ),
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                            SizedBox(
-                              width: 356,
-                              child: SingleChildScrollView(
-                                padding: const EdgeInsets.fromLTRB(
-                                  AwSpace.x1,
-                                  AwSpace.x2,
-                                  AwSpace.x4,
-                                  AwSpace.x4,
-                                ),
-                                child: Card(
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(AwSpace.x3),
-                                    child: calendar,
+                            if (!paneOpen)
+                              SizedBox(
+                                width: 356,
+                                child: SingleChildScrollView(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    AwSpace.x1,
+                                    AwSpace.x2,
+                                    AwSpace.x4,
+                                    AwSpace.x4,
+                                  ),
+                                  child: Card(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(AwSpace.x3),
+                                      child: calendar,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
                           ],
                         ),
                       ),
@@ -480,14 +823,31 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               // scrolls with them (OPH-103's philosophy, finished); only the
               // app bar is pinned. The search field's sliver position is the
               // same in both modes, so it never remounts mid-typing (OPH-167).
+              // OPH-398: on a phone the list rests with the filter field just
+              // above it (`_homeScroll`); a pull reveals it, and the same pull
+              // carried on past the top refreshes (`anywhere`).
+              final filterExtent = _filterExtent;
               return AwRefresh(
                 indicatorKey: const Key('home-refresh'),
                 onRefresh: () => refreshSection(ref, AppSection.home),
+                triggerMode: phone
+                    ? RefreshIndicatorTriggerMode.anywhere
+                    : RefreshIndicatorTriggerMode.onEdge,
                 child: CustomScrollView(
                   key: const Key('home-scroll'),
+                  controller: phone ? _homeScroll : null,
                   // A short list (or the empty state) must still be pullable.
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
+                    if (phone)
+                      SliverToBoxAdapter(
+                        child: _HomeFilterField(
+                          controller: _filterController,
+                          height: filterExtent,
+                          onChanged: _onFilterChanged,
+                          onClear: _clearFilter,
+                        ),
+                      ),
                     const SliverToBoxAdapter(child: banner),
                     SliverToBoxAdapter(
                       // The key rides a KeyedSubtree so `ensureVisible` has a
@@ -504,18 +864,19 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           child: Card(
                             child: Padding(
                               padding: const EdgeInsets.all(AwSpace.x2),
-                              child: calendar,
+                              child: phoneCalendar,
                             ),
                           ),
                         ),
                       ),
                     if (!searching && groups.isEmpty)
-                      const SliverFillRemaining(
+                      SliverFillRemaining(
                         hasScrollBody: false,
                         // Inside the scroll view already: its own scroll view
                         // must not eat the pull.
                         child: _HomeEmpty(
-                          physics: NeverScrollableScrollPhysics(),
+                          physics: const NeverScrollableScrollPhysics(),
+                          quickAddFocus: _quickAddFocus,
                         ),
                       ),
                     if (!searching && groups.isNotEmpty)
@@ -527,6 +888,25 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                               context,
                               groups,
                               onTagTap: onTagTap,
+                              dateFormat: dateFormat,
+                              flashId: _flashId,
+                              flashKey: _flashKey,
+                            ),
+                          ),
+                        ),
+                      ),
+                    // A short list still rests with the field out of sight:
+                    // the content is made at least one field taller than the
+                    // viewport, so the resting offset exists.
+                    if (phone)
+                      SliverLayoutBuilder(
+                        builder: (context, c) => SliverToBoxAdapter(
+                          child: SizedBox(
+                            height: math.max(
+                              0,
+                              c.viewportMainAxisExtent +
+                                  filterExtent -
+                                  c.precedingScrollExtent,
                             ),
                           ),
                         ),
@@ -550,19 +930,33 @@ class _GroupedTaskList extends StatelessWidget {
     required this.groups,
     this.onTagTap,
     required this.dateFormat,
+    this.controller,
+    this.flashId,
+    this.flashKey,
+    this.quickAddFocus,
   });
 
   final List<HomeGroup> groups;
   final ValueChanged<Tag>? onTagTap;
   final String dateFormat;
+  final ScrollController? controller;
+  final String? flashId;
+  final GlobalKey? flashKey;
+
+  /// The quick-add field the first-run empty state's button focuses.
+  final FocusNode? quickAddFocus;
 
   @override
   Widget build(BuildContext context) {
     // Both branches are the scrollable the pull gesture needs (OPH-171).
     if (groups.isEmpty) {
-      return const _HomeEmpty(physics: AlwaysScrollableScrollPhysics());
+      return _HomeEmpty(
+        physics: const AlwaysScrollableScrollPhysics(),
+        quickAddFocus: quickAddFocus,
+      );
     }
     return ListView(
+      controller: controller,
       physics: const AlwaysScrollableScrollPhysics(),
       padding: awListPadding(context, extraBottom: 72),
       children: buildHomeGroupRows(
@@ -570,6 +964,8 @@ class _GroupedTaskList extends StatelessWidget {
         groups,
         onTagTap: onTagTap,
         dateFormat: dateFormat,
+        flashId: flashId,
+        flashKey: flashKey,
       ),
     );
   }
@@ -578,15 +974,28 @@ class _GroupedTaskList extends StatelessWidget {
 /// Home's "nothing to do" state — shared by both layouts so it reads the same
 /// in the wide ListView and the narrow SliverFillRemaining.
 class _HomeEmpty extends ConsumerWidget {
-  const _HomeEmpty({this.physics});
+  const _HomeEmpty({this.physics, this.quickAddFocus});
 
   /// See [AwEmptyState.physics]: always-scrollable in the wide layout (it IS
   /// the scrollable), never-scrollable inside the narrow sliver (the
   /// CustomScrollView above it owns the gesture).
   final ScrollPhysics? physics;
 
+  /// See [_GroupedTaskList.quickAddFocus].
+  final FocusNode? quickAddFocus;
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // OPH-394 (polish 2 R-06): before the first pull has landed the replica is
+    // empty because nothing arrived yet — "No tasks yet" there flashed at a
+    // busy account on every cold sign-in. A skeleton until the replica knows;
+    // after [kFirstPullWait] the empty replica is trusted anyway, so a device
+    // with no server is never left on it.
+    final firstPullPending = ref.watch(firstPullPendingProvider).value ?? true;
+    if (firstPullPending &&
+        !(ref.watch(firstPullWaitOverProvider).value ?? false)) {
+      return _HomeFirstSyncSkeleton(physics: physics);
+    }
     // OPH-306: "you are all caught up" is a lie while a filter is hiding the
     // rest of the day. An empty FILTERED list has to say which filter emptied
     // it and offer the way out, or the user is looking at a beach umbrella
@@ -610,11 +1019,113 @@ class _HomeEmpty extends ConsumerWidget {
         ],
       );
     }
+    // OPH-404 (U-28, A-12, DESIGN §50 F3): "all caught up" said to someone
+    // who has never added a task is the wrong sentence. An account with no
+    // task of any status gets a first-run state with the way in; one whose
+    // work is done gets a done state. Unknown (the query has not answered)
+    // reads as done — the first-run face appearing a frame later is fine,
+    // telling a busy user "no tasks yet" is not.
+    if (ref.watch(hasAnyTaskProvider).value == false) {
+      final canCreate = ref.watch(canProvider('tasks.create'));
+      return AwEmptyState(
+        key: const Key('home-empty-first-run'),
+        icon: Icons.add_task,
+        title: 'home.firstRunTitle'.tr(),
+        message: 'home.firstRunBody'.tr(),
+        physics: physics,
+        action: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (canCreate)
+              FilledButton.icon(
+                key: const Key('home-empty-add-first'),
+                onPressed: () => quickAddFocus?.requestFocus(),
+                icon: const Icon(Icons.add),
+                label: Text('home.firstRunAdd'.tr()),
+              ),
+            const SizedBox(height: AwSpace.x2),
+            TextButton(
+              key: const Key('home-empty-import'),
+              onPressed: () => context.push('/settings/import'),
+              child: Text('home.firstRunImport'.tr()),
+            ),
+          ],
+        ),
+      );
+    }
     return AwEmptyState(
-      icon: Icons.beach_access_outlined,
+      key: const Key('home-empty-done'),
+      icon: Icons.check_circle_outline,
       title: 'home.allCaughtUp'.tr(),
       message: 'home.allCaughtUpBody'.tr(),
       physics: physics,
+    );
+  }
+}
+
+/// Home while the first pull is on its way (OPH-394): a few still rows in the
+/// shape of the task list — no shimmer, so reduced motion has nothing to
+/// switch off — announced once as "Loading your tasks…". Not glass: it is
+/// content, and glass is chrome-only (I-11).
+class _HomeFirstSyncSkeleton extends StatelessWidget {
+  const _HomeFirstSyncSkeleton({this.physics});
+
+  /// See [_HomeEmpty.physics].
+  final ScrollPhysics? physics;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final fill = scheme.onSurface.withValues(alpha: 0.08);
+    Widget bar(double widthFactor, double height) => FractionallySizedBox(
+      alignment: AlignmentDirectional.centerStart,
+      widthFactor: widthFactor,
+      child: Container(
+        height: height,
+        decoration: BoxDecoration(
+          color: fill,
+          borderRadius: BorderRadius.circular(AwRadius.s),
+        ),
+      ),
+    );
+    const widths = [0.72, 0.54, 0.8, 0.46];
+    return Semantics(
+      key: const Key('home-first-sync-loading'),
+      container: true,
+      liveRegion: true,
+      label: 'home.firstSyncLoading'.tr(),
+      child: ExcludeSemantics(
+        child: SingleChildScrollView(
+          physics: physics,
+          padding: awListPadding(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AwSpace.x2),
+              bar(0.28, 14),
+              const SizedBox(height: AwSpace.x3),
+              for (final w in widths)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AwSpace.x3),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: fill,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: AwSpace.x3),
+                      Expanded(child: bar(w, 16)),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -661,66 +1172,275 @@ class _TagFilterBar extends ConsumerWidget {
   }
 }
 
+/// Home's folded sections (OPH-401, DESIGN §47 S2), by [homeSectionKey].
+///
+/// For this session only: a section folded last week and forgotten would hide
+/// Overdue work behind a header the next morning.
+class HomeCollapsedSections extends Notifier<Set<String>> {
+  @override
+  Set<String> build() => const {};
+
+  void toggle(String key) =>
+      state = state.contains(key) ? ({...state}..remove(key)) : {...state, key};
+
+  void expand(String key) {
+    if (state.contains(key)) state = {...state}..remove(key);
+  }
+}
+
+final homeCollapsedSectionsProvider =
+    NotifierProvider<HomeCollapsedSections, Set<String>>(
+      HomeCollapsedSections.new,
+    );
+
+/// A Home section's identity: its bucket, plus the day for a split one.
+String homeSectionKey(HomeGroup group) {
+  final day = group.day;
+  return day == null
+      ? group.bucket.name
+      : '${group.bucket.name}-${day.year}-${day.month}-${day.day}';
+}
+
+/// The task the tour's alarm step spotlights (polish 4 T-03, DESIGN §50 F2):
+/// the first one in Home's order that is still open, due after [now], with
+/// its urgent alarm armed and not silenced — a row that will really ring.
+/// Null when Home has none; the step then points at the quick-add field.
+String? tourAlarmTaskId(List<HomeGroup> groups, DateTime now) {
+  for (final group in groups) {
+    for (final item in group.items) {
+      if (item case TaskItem(:final task)
+          when task.isUrgent &&
+              !task.isCompleted &&
+              task.completedAt == null &&
+              task.alarmsMutedAt == null &&
+              (task.dueAt?.isAfter(now) ?? false)) {
+        return task.id;
+      }
+    }
+  }
+  return null;
+}
+
 /// The header + row widgets for Home's groups, shared by the wide ListView and
 /// the narrow CustomScrollView (OPH-103) so the group/row logic lives in ONE
 /// place. Each group is a labelled header followed by its chronological rows
 /// (§12): a 10:00 meeting sits above a 16:00 task, each rendered as what it is.
+///
+/// The rows stay a flat list — a folded section folds row by row — so the
+/// phone's sliver list still builds only what is near the screen.
 List<Widget> buildHomeGroupRows(
   BuildContext context,
   List<HomeGroup> groups, {
   ValueChanged<Tag>? onTagTap,
   String dateFormat = kAwSystemDateFormat,
+  String? flashId,
+  GlobalKey? flashKey,
 }) {
-  final theme = Theme.of(context);
+  final alarmId = tourAlarmTaskId(groups, DateTime.now());
+  Widget tile(Task task, HomeGroup group) {
+    final row = TaskTile(
+      task: task,
+      dimmed: group.dimmed,
+      highlighted: group.bucket == HomeBucket.selectedDay,
+      onTagTap: onTagTap,
+    );
+    // Polish 4 T-03: the tour's alarm step points at this row.
+    return task.id == alarmId
+        ? TourAnchor(target: TourTarget.alarm, child: row)
+        : row;
+  }
+
   return [
     // OPH-306: the filter names itself directly above the list it is filtering.
     // Both layouts render these rows, so one insertion covers the wide ListView
     // and the narrow CustomScrollView.
     const _TagFilterBar(),
     for (final group in groups) ...[
-      Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AwSpace.x1,
-          AwSpace.x4,
-          AwSpace.x1,
-          AwSpace.x2,
+      _HomeSectionHeader(
+        group: group,
+        // OPH-307: a split group is named by its day, not by the bucket it
+        // came from — "Perşembe · 16 Tem" rather than a fourth "Bu hafta".
+        label: group.day == null
+            ? group.bucket.label
+            : awFormatDayHeading(group.day!, format: dateFormat),
+      ),
+      for (final item in group.items)
+        _HomeSectionRow(
+          section: homeSectionKey(group),
+          child: switch (item) {
+            TaskItem(:final task) when task.id == flashId => _FlashRow(
+              key: flashKey,
+              id: task.id,
+              child: tile(task, group),
+            ),
+            TaskItem(:final task) => tile(task, group),
+            EventItem(:final event) => ExternalEventTile(
+              event: event,
+              dimmed: group.dimmed,
+            ),
+          },
         ),
-        child: Text(
-          // OPH-307: a split group is named by its day, not by the bucket it
-          // came from — "Perşembe · 16 Tem" rather than a fourth "Bu hafta".
-          '${group.day == null ? group.bucket.label : awFormatDayHeading(group.day!, format: dateFormat)}'
-          ' · ${group.items.length}',
-          // OPH-301: the dimmed header used to take `onSurfaceVariant` at
-          // α=0.70 — 3.63:1, under the 4.5:1 floor. There is no header dim any
-          // more, and nothing is lost: the SELECTED day's header is the one
-          // that differs (it takes the accent), so fading the other six was a
-          // second encoding of a fact already stated once.
-          style: theme.textTheme.labelLarge?.copyWith(
-            color: switch (group.bucket) {
-              HomeBucket.overdue => theme.colorScheme.error,
-              HomeBucket.selectedDay => context.awTokens.link,
-              _ => theme.colorScheme.onSurfaceVariant,
-            },
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.4,
+    ],
+  ];
+}
+
+/// A Home section header (OPH-401, DESIGN §47 S1–S3): the name in the
+/// section role (15/20 w700) and, 8 pt after it, the count in its own text —
+/// `onSurfaceVariant`, tabular — so the number reads as a number and not as a
+/// word of the name. The whole 48 pt row folds and opens the section; the
+/// chevron's 48 pt target ends on the cards' trailing edge (polish 3 J-05),
+/// one control axis for every section, and turns 180°.
+class _HomeSectionHeader extends ConsumerWidget {
+  const _HomeSectionHeader({required this.group, required this.label});
+
+  final HomeGroup group;
+  final String label;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = Theme.of(context);
+    final key = homeSectionKey(group);
+    final collapsed = ref.watch(
+      homeCollapsedSectionsProvider.select((s) => s.contains(key)),
+    );
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final role = context.awText.sectionLabel;
+    final count = '${group.count}';
+    return Padding(
+      padding: const EdgeInsets.only(top: AwSpace.x2),
+      child: Semantics(
+        header: true,
+        button: true,
+        expanded: !collapsed,
+        excludeSemantics: true,
+        label: (collapsed ? 'home.expandSection' : 'home.collapseSection').tr(
+          args: {'section': label, 'count': count},
+        ),
+        onTap: () =>
+            ref.read(homeCollapsedSectionsProvider.notifier).toggle(key),
+        child: InkWell(
+          key: Key('home-section-$key'),
+          borderRadius: BorderRadius.circular(AwRadius.s),
+          onTap: () =>
+              ref.read(homeCollapsedSectionsProvider.notifier).toggle(key),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 48),
+            // J-05: the name and count take an Expanded, never a Flexible
+            // beside a Spacer — that pair splits the free space in two and
+            // left the chevron stranded on an interior column.
+            child: Row(
+              children: [
+                const SizedBox(width: AwSpace.x1),
+                Expanded(
+                  child: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          label,
+                          // OPH-301/OPH-399: no header dim; the SELECTED day's
+                          // header is the one that differs (the accent). The
+                          // header sits on the page, not a card, so Overdue takes
+                          // the page-safe red; Today and the rest the page ink.
+                          style: role.copyWith(
+                            color: switch (group.bucket) {
+                              HomeBucket.overdue =>
+                                context.awTokens.errorOnPage,
+                              HomeBucket.selectedDay => context.awTokens.link,
+                              _ => theme.colorScheme.onSurface,
+                            },
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: AwSpace.x2),
+                      Text(
+                        count,
+                        style: role.copyWith(
+                          fontWeight: FontWeight.w500,
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // The 48 pt target ends on the cards' trailing edge, so the
+                // glyph sits 12 pt inside it, on the row badges' axis.
+                SizedBox(
+                  key: const Key('home-section-chevron'),
+                  width: 48,
+                  height: 48,
+                  child: AnimatedRotation(
+                    turns: collapsed ? -0.5 : 0,
+                    duration: reduce ? Duration.zero : AwMotion.base,
+                    curve: AwMotion.enter,
+                    child: Icon(
+                      Icons.expand_less,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
-      for (final item in group.items)
-        switch (item) {
-          TaskItem(:final task) => TaskTile(
-            task: task,
-            dimmed: group.dimmed,
-            highlighted: group.bucket == HomeBucket.selectedDay,
-            onTagTap: onTagTap,
+    );
+  }
+}
+
+/// One row of a foldable section: its height animates to nothing (220 ms, at
+/// once with reduced motion) while the section is folded.
+class _HomeSectionRow extends ConsumerWidget {
+  const _HomeSectionRow({required this.section, required this.child});
+
+  final String section;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final collapsed = ref.watch(
+      homeCollapsedSectionsProvider.select((s) => s.contains(section)),
+    );
+    return AnimatedSize(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : AwMotion.base,
+      curve: AwMotion.enter,
+      alignment: Alignment.topCenter,
+      child: collapsed ? const SizedBox(width: double.infinity) : child,
+    );
+  }
+}
+
+/// The quick-added row's moment of light (OPH-401, DESIGN §47 Q7): a
+/// `primary` wash that fades out over 1.2 s — and simply stays for its two
+/// seconds with reduced motion.
+class _FlashRow extends StatelessWidget {
+  const _FlashRow({super.key, required this.id, required this.child});
+
+  final String id;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = Theme.of(context).colorScheme.primary;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    return KeyedSubtree(
+      key: Key('home-flash-$id'),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(begin: 1, end: reduce ? 1 : 0),
+        duration: const Duration(milliseconds: 1200),
+        curve: Curves.easeIn,
+        builder: (context, t, child) => DecoratedBox(
+          decoration: BoxDecoration(
+            color: primary.withValues(alpha: 0.16 * t),
+            borderRadius: BorderRadius.circular(AwRadius.m),
           ),
-          EventItem(:final event) => ExternalEventTile(
-            event: event,
-            dimmed: group.dimmed,
-          ),
-        },
-    ],
-  ];
+          child: child,
+        ),
+        child: child,
+      ),
+    );
+  }
 }
 
 /// Search-mode body (OPH-167): one ranked list — tasks (planning + inbox
@@ -887,4 +1607,77 @@ class _DelayedProgressState extends State<_DelayedProgress> {
           child: LinearProgressIndicator(minHeight: 2),
         )
       : const SizedBox.shrink();
+}
+
+/// The scroll controller of Home's phone list (OPH-398): it starts with the
+/// filter field scrolled away, unless a query is live — then the field the
+/// query is typed in stays in sight. Not kept in PageStorage: a remount
+/// (board → list) comes back to the resting place, not to a stale offset.
+class _HomeScrollController extends ScrollController {
+  _HomeScrollController(this._restingOffset) : super(keepScrollOffset: false);
+
+  final double Function() _restingOffset;
+
+  @override
+  double get initialScrollOffset => _restingOffset();
+}
+
+/// Home's local filter on a phone (OPH-398, DESIGN §12 S1, §16 H5): the
+/// body-level field — never in the glass bar (G1) — that the list reveals
+/// when pulled down. Its glyph is a filter, not a magnifier: the magnifier
+/// means "search everywhere" (the orb, ADR-0055), and one glyph with two
+/// scopes is what R-05 measured.
+class _HomeFilterField extends StatelessWidget {
+  const _HomeFilterField({
+    required this.controller,
+    required this.height,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+
+  /// The sliver's whole extent ([extentFor]).
+  final double height;
+  final ValueChanged<String> onChanged;
+  final VoidCallback onClear;
+
+  static const double _top = AwSpace.x2;
+
+  /// The field box grows with the text (one 16/24 line + 12 above and
+  /// below), never below the 48 dp target.
+  static double extentFor(TextScaler scaler) =>
+      _top + math.max(48.0, scaler.scale(16) * 1.5 + AwSpace.x6);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, _top, AwSpace.x4, 0),
+      child: SizedBox(
+        height: height - _top,
+        child: TextField(
+          key: const Key('home-search'),
+          controller: controller,
+          textInputAction: TextInputAction.search,
+          textAlignVertical: TextAlignVertical.center,
+          maxLines: 1,
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            hintText: 'home.searchHint'.tr(),
+            prefixIcon: const Icon(Icons.filter_list),
+            suffixIcon: controller.text.isEmpty
+                ? null
+                : IconButton(
+                    key: const Key('home-search-clear'),
+                    tooltip: 'common.clear'.tr(),
+                    icon: const Icon(Icons.close),
+                    onPressed: onClear,
+                  ),
+          ),
+        ),
+      ),
+    );
+  }
 }

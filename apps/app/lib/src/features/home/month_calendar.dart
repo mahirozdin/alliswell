@@ -2,10 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../../i18n/i18n.dart';
+import '../../theme/tokens.dart';
+import '../../theme/typography.dart';
+import '../../widgets/word_safe_text.dart';
+
+/// How Home draws its calendar (OPH-401, DESIGN §47 W1).
+enum AwCalendarMode { week, month }
 
 /// Apple-Calendar-style month grid: weekday header, 6 rows of days, a dot
 /// under days that have tasks, outlined today and a filled selected day.
 /// Tapping the selected day again clears the selection.
+///
+/// OPH-401 (U-04, DESIGN §47 W1–W2): in [AwCalendarMode.week] it is one strip
+/// of seven days (≈64 pt) instead of six rows; the header's arrows then move a
+/// week, and its third button ([onModeChanged]) swaps strip and grid. Without
+/// [onModeChanged] (the wide side panel) there is no swap — only the grid.
 class MonthCalendar extends StatefulWidget {
   const MonthCalendar({
     super.key,
@@ -13,6 +24,8 @@ class MonthCalendar extends StatefulWidget {
     required this.selectedDay,
     required this.onDaySelected,
     this.initialMonth,
+    this.mode = AwCalendarMode.month,
+    this.onModeChanged,
   });
 
   /// Local calendar days (midnight) that get a dot.
@@ -20,6 +33,8 @@ class MonthCalendar extends StatefulWidget {
   final DateTime? selectedDay;
   final void Function(DateTime? day) onDaySelected;
   final DateTime? initialMonth;
+  final AwCalendarMode mode;
+  final ValueChanged<AwCalendarMode>? onModeChanged;
 
   @override
   State<MonthCalendar> createState() => _MonthCalendarState();
@@ -27,12 +42,28 @@ class MonthCalendar extends StatefulWidget {
 
 class _MonthCalendarState extends State<MonthCalendar> {
   late DateTime _month; // first day of the shown month
+  late DateTime _week; // the Monday of the shown week (week mode)
+
+  static DateTime _mondayOf(DateTime day) =>
+      DateTime(day.year, day.month, day.day - (day.weekday - DateTime.monday));
 
   @override
   void initState() {
     super.initState();
     final base = widget.initialMonth ?? widget.selectedDay ?? DateTime.now();
     _month = DateTime(base.year, base.month);
+    // The strip opens on the week you are working in: the selected day's,
+    // else today's when the grid would open on this month, else the month's
+    // first week.
+    final now = DateTime.now();
+    final weekBase =
+        widget.selectedDay ??
+        (widget.initialMonth == null ||
+                (widget.initialMonth!.year == now.year &&
+                    widget.initialMonth!.month == now.month)
+            ? now
+            : _month);
+    _week = _mondayOf(weekBase);
   }
 
   @override
@@ -47,10 +78,35 @@ class _MonthCalendarState extends State<MonthCalendar> {
         (day.year != _month.year || day.month != _month.month)) {
       setState(() => _month = DateTime(day.year, day.month));
     }
+    if (day != null &&
+        day != oldWidget.selectedDay &&
+        _mondayOf(day) != _week) {
+      setState(() => _week = _mondayOf(day));
+    }
+    // Swapping modes keeps you where you were: the grid opens on the strip's
+    // month, the strip on the grid's selected day or today when it is in it.
+    if (widget.mode != oldWidget.mode) {
+      if (widget.mode == AwCalendarMode.month) {
+        final thursday = _week.add(const Duration(days: 3));
+        _month = DateTime(thursday.year, thursday.month);
+      } else {
+        final now = DateTime.now();
+        final inMonth = now.year == _month.year && now.month == _month.month;
+        _week = _mondayOf(day ?? (inMonth ? now : _month));
+      }
+    }
   }
 
-  void _shiftMonth(int delta) =>
-      setState(() => _month = DateTime(_month.year, _month.month + delta));
+  bool get _isWeek =>
+      widget.mode == AwCalendarMode.week && widget.onModeChanged != null;
+
+  void _shift(int delta) => setState(() {
+    if (_isWeek) {
+      _week = DateTime(_week.year, _week.month, _week.day + 7 * delta);
+    } else {
+      _month = DateTime(_month.year, _month.month + delta);
+    }
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -62,87 +118,122 @@ class _MonthCalendarState extends State<MonthCalendar> {
     // language — they were fixed English arrays, so a Turkish screen said
     // "October 2026 / Mon Tue". The grid stays Monday-first.
     final locale = AwI18n.instance.locale.toLanguageTag();
-    final monthTitle = DateFormat.yMMMM(locale).format(_month);
+    final week = _isWeek;
+    // A week across two months is named by its Thursday's (ISO 8601).
+    final monthTitle = DateFormat.yMMMM(
+      locale,
+    ).format(week ? _week.add(const Duration(days: 3)) : _month);
     final weekdays = [
       // 2024-01-01 was a Monday.
       for (var d = 1; d <= 7; d++)
         DateFormat.E(locale).format(DateTime(2024, 1, d)),
     ];
 
-    // Monday-first offset of the month's day 1.
-    final leading = (_month.weekday - DateTime.monday) % 7;
-    final firstCell = _month.subtract(Duration(days: leading));
+    final titleStyle = theme.textTheme.titleMedium?.copyWith(
+      fontWeight: FontWeight.w700,
+    );
+    final controls = <Widget>[
+      IconButton(
+        tooltip: week
+            ? 'calendar.previousWeek'.tr()
+            : 'calendar.previousMonth'.tr(),
+        icon: const Icon(Icons.chevron_left),
+        color: theme.colorScheme.onSurfaceVariant,
+        onPressed: () => _shift(-1),
+      ),
+      IconButton(
+        tooltip: week ? 'calendar.nextWeek'.tr() : 'calendar.nextMonth'.tr(),
+        icon: const Icon(Icons.chevron_right),
+        color: theme.colorScheme.onSurfaceVariant,
+        onPressed: () => _shift(1),
+      ),
+      if (widget.onModeChanged != null)
+        IconButton(
+          key: const Key('calendar-mode-toggle'),
+          tooltip: week ? 'calendar.showMonth'.tr() : 'calendar.showWeek'.tr(),
+          icon: Icon(week ? Icons.expand_more : Icons.expand_less),
+          color: theme.colorScheme.onSurfaceVariant,
+          onPressed: () => widget.onModeChanged!(
+            week ? AwCalendarMode.month : AwCalendarMode.week,
+          ),
+        ),
+    ];
+    // Drawn whole inside its slot: the FittedBox only shrinks a heading
+    // wider than the whole card (DESIGN §9 L2, OPH-400 R-09).
+    final title = FittedBox(
+      key: const Key('calendar-month-title'),
+      fit: BoxFit.scaleDown,
+      alignment: AlignmentDirectional.centerStart,
+      child: Text(monthTitle, maxLines: 1, softWrap: false, style: titleStyle),
+    );
+
+    // J-01 (OPH-398, AX3 judge: "Kasım 2…"): the heading keeps its reading
+    // size. When it does not fit beside the controls at that size, the
+    // controls take a second row, trailing-aligned, and the heading gets the
+    // card's whole width, instead of being cut or drawn small.
+    final header = LayoutBuilder(
+      builder: (context, constraints) {
+        final painter = TextPainter(
+          text: TextSpan(text: monthTitle, style: titleStyle),
+          textDirection: Directionality.of(context),
+          textScaler: MediaQuery.textScalerOf(context),
+          maxLines: 1,
+        )..layout();
+        final natural = painter.width;
+        painter.dispose();
+        // Only enlarged text reflows: at the default size every month name
+        // fits a phone card, and the header keeps its one-row geometry (the
+        // FittedBox stays the guard for an odd narrow window).
+        final enlarged = MediaQuery.textScalerOf(context).scale(1) > 1;
+        // Every control is a 48 pt target (G4); 8 pt leads the heading.
+        final besides =
+            8 + natural + kMinInteractiveDimension * controls.length;
+        if (!enlarged || besides <= constraints.maxWidth) {
+          return Row(
+            children: [
+              const SizedBox(width: 8),
+              Expanded(child: title),
+              ...controls,
+            ],
+          );
+        }
+        return Column(
+          key: const Key('calendar-header-stacked'),
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // The card's whole width, wrapping between words ("Kasım /
+            // 2026") at the reader's size, never inside one (DESIGN §45 W8).
+            Padding(
+              padding: const EdgeInsetsDirectional.only(start: 8, end: 8),
+              child: AwWordSafeText(
+                monthTitle,
+                key: const Key('calendar-month-title'),
+                style: titleStyle,
+              ),
+            ),
+            Row(mainAxisAlignment: MainAxisAlignment.end, children: controls),
+          ],
+        );
+      },
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            const SizedBox(width: 8),
-            // Expanded + ellipsis so long month names (or mid-animation
-            // widths) never overflow the header (DESIGN §9 L2).
-            Expanded(
-              child: Text(
-                monthTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-            IconButton(
-              tooltip: 'calendar.previousMonth'.tr(),
-              icon: const Icon(Icons.chevron_left),
-              color: theme.colorScheme.onSurfaceVariant,
-              onPressed: () => _shiftMonth(-1),
-            ),
-            IconButton(
-              tooltip: 'calendar.nextMonth'.tr(),
-              icon: const Icon(Icons.chevron_right),
-              color: theme.colorScheme.onSurfaceVariant,
-              onPressed: () => _shiftMonth(1),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            for (final label in weekdays)
-              Expanded(
-                child: Center(
-                  child: Text(
-                    label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 0.4,
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        for (var week = 0; week < 6; week++)
+        header,
+        if (week)
           Row(
+            key: const Key('calendar-week-strip'),
             children: [
               for (var dow = 0; dow < 7; dow++)
                 Expanded(
-                  child: _DayCell(
-                    day: firstCell.add(Duration(days: week * 7 + dow)),
-                    inMonth:
-                        firstCell.add(Duration(days: week * 7 + dow)).month ==
-                        _month.month,
-                    isToday:
-                        firstCell.add(Duration(days: week * 7 + dow)) ==
-                        todayDay,
-                    isSelected:
-                        widget.selectedDay != null &&
-                        firstCell.add(Duration(days: week * 7 + dow)) ==
-                            widget.selectedDay,
+                  child: _WeekDayCell(
+                    day: _week.add(Duration(days: dow)),
+                    weekday: weekdays[dow],
+                    isToday: _week.add(Duration(days: dow)) == todayDay,
+                    selectedDay: widget.selectedDay,
                     hasTasks: widget.markedDays.contains(
-                      firstCell.add(Duration(days: week * 7 + dow)),
+                      _week.add(Duration(days: dow)),
                     ),
                     onTap: (day) => widget.onDaySelected(
                       day == widget.selectedDay ? null : day,
@@ -151,8 +242,65 @@ class _MonthCalendarState extends State<MonthCalendar> {
                 ),
             ],
           ),
+        if (!week) ..._grid(theme, weekdays, todayDay),
       ],
     );
+  }
+
+  List<Widget> _grid(
+    ThemeData theme,
+    List<String> weekdays,
+    DateTime todayDay,
+  ) {
+    // Monday-first offset of the month's day 1.
+    final leading = (_month.weekday - DateTime.monday) % 7;
+    final firstCell = _month.subtract(Duration(days: leading));
+    return [
+      const SizedBox(height: 4),
+      Row(
+        children: [
+          for (final label in weekdays)
+            Expanded(
+              child: Center(
+                child: Text(
+                  label,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+      const SizedBox(height: 4),
+      for (var week = 0; week < 6; week++)
+        Row(
+          children: [
+            for (var dow = 0; dow < 7; dow++)
+              Expanded(
+                child: _DayCell(
+                  day: firstCell.add(Duration(days: week * 7 + dow)),
+                  inMonth:
+                      firstCell.add(Duration(days: week * 7 + dow)).month ==
+                      _month.month,
+                  isToday:
+                      firstCell.add(Duration(days: week * 7 + dow)) == todayDay,
+                  isSelected:
+                      widget.selectedDay != null &&
+                      firstCell.add(Duration(days: week * 7 + dow)) ==
+                          widget.selectedDay,
+                  hasTasks: widget.markedDays.contains(
+                    firstCell.add(Duration(days: week * 7 + dow)),
+                  ),
+                  onTap: (day) => widget.onDaySelected(
+                    day == widget.selectedDay ? null : day,
+                  ),
+                ),
+              ),
+          ],
+        ),
+    ];
   }
 }
 
@@ -243,6 +391,110 @@ class _DayCell extends StatelessWidget {
                         Icons.circle,
                         size: 5,
                         color: isSelected ? scheme.primary : scheme.tertiary,
+                      )
+                    : null,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// One day of the week strip (DESIGN §47 W2): weekday 11 pt w600 over the
+/// day, 17 pt, in a 32 pt circle, and the task dot under it. The circle is
+/// filled for the selected day — and for today while nothing is selected —
+/// so the strip always says where "now" is without a second encoding.
+class _WeekDayCell extends StatelessWidget {
+  const _WeekDayCell({
+    required this.day,
+    required this.weekday,
+    required this.isToday,
+    required this.selectedDay,
+    required this.hasTasks,
+    required this.onTap,
+  });
+
+  final DateTime day;
+  final String weekday;
+  final bool isToday;
+  final DateTime? selectedDay;
+  final bool hasTasks;
+  final void Function(DateTime day) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final isSelected = selectedDay == day;
+    final filled = isSelected || (isToday && selectedDay == null);
+    final ink = filled
+        ? scheme.onPrimary
+        : isToday
+        ? scheme.primary
+        : scheme.onSurface;
+    return InkWell(
+      key: Key('calendar-day-${day.year}-${day.month}-${day.day}'),
+      borderRadius: BorderRadius.circular(AwRadius.s),
+      onTap: () => onTap(day),
+      child: Semantics(
+        button: true,
+        selected: isSelected,
+        excludeSemantics: true,
+        label: [
+          '$weekday ${day.day}',
+          if (isToday) 'calendar.a11yToday'.tr(),
+          if (hasTasks) 'calendar.a11yHasTasks'.tr(),
+        ].join(', '),
+        child: SizedBox(
+          height: 64,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                weekday,
+                maxLines: 1,
+                overflow: TextOverflow.clip,
+                textScaler: MediaQuery.textScalerOf(
+                  context,
+                ).clamp(maxScaleFactor: 1.3),
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: isToday ? scheme.primary : scheme.onSurfaceVariant,
+                ),
+              ),
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 150),
+                curve: Curves.easeOutCubic,
+                width: 32,
+                height: 32,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: filled ? scheme.primary : null,
+                  border: isToday && !filled
+                      ? Border.all(color: scheme.primary, width: 1.5)
+                      : null,
+                ),
+                child: Text(
+                  '${day.day}',
+                  maxLines: 1,
+                  // Inside a fixed 32 pt circle: large text may not push the
+                  // number out of it (U-12: "takvim hücresi clamp 1.3").
+                  textScaler: MediaQuery.textScalerOf(
+                    context,
+                  ).clamp(maxScaleFactor: 1.3),
+                  style: context.awText.dayNumber.copyWith(color: ink),
+                ),
+              ),
+              SizedBox(
+                height: 6,
+                child: hasTasks
+                    ? Icon(
+                        Icons.circle,
+                        size: 5,
+                        color: filled ? scheme.primary : scheme.tertiary,
                       )
                     : null,
               ),

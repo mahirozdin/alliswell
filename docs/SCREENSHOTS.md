@@ -24,9 +24,38 @@ node scripts/seed-demo.mjs                 # demo@alliswell.space / AllisWellDem
 
 [`scripts/seed-demo.mjs`](../scripts/seed-demo.mjs) writes 7 projects, 9 tags,
 ~47 tasks (overdue, today, this week, the next 30 days, three board columns and
-a completed history), 4 recurring series, 8 notes, 4 folders, 7 uploaded files
+a completed history), 4 recurring series, 9 notes, 4 folders, 7 uploaded files
 and 7 quick-access shortcuts — all through the public REST API, so nothing in a
-screenshot is a state the product cannot actually reach.
+screenshot is a state the product cannot actually reach. It is idempotent: a
+second run reports everything as already there and changes nothing
+(`apps/api/test/integration/seed-demo.test.js` runs it twice).
+
+Since OPH-414 it also fills the surfaces that used to open on an empty state:
+
+| Surface | What the seed leaves | How |
+| --- | --- | --- |
+| Files | 7 small **real** files: PDFs a viewer opens, PNGs the app thumbnails, an SVG | [`scripts/seed-demo-files.mjs`](../scripts/seed-demo-files.mjs), no dependency; an older seed's space-filled stand-ins are replaced |
+| Note versions | "Launch checklist" has three: born as a draft, edited in the app, finished by an MCP client | The last write goes through the real OAuth flow and `tools/call update_note` |
+| AI | Anthropic configured with a placeholder key | Stored encrypted, **never called**; an AI action answers with the provider's "key rejected" |
+| API keys | "Backup script", used once (so it has a last-used time) | The secret is never printed |
+| Import | A Todoist export of 3 tasks into "Home renovation" | The real importer; the import ledger makes a re-run skip them |
+| Calendar | Nothing by default; `--caldav <url> --caldav-user … --caldav-password …` connects a CalDAV account | See below |
+
+What the seed cannot show, and why:
+
+- **A Google Calendar connection.** Connecting is an OAuth round trip to Google
+  and the API has no other way in. A row written straight into the database
+  would be a state the product cannot reach — and the sync worker would mark it
+  failed on its first pass.
+- **A connected CalDAV account without a network call.** Connecting verifies the
+  account against the server before it stores anything, then starts a sync loop.
+  So it is opt-in: point `--caldav` at a throwaway server (`docker compose up -d
+  radicale` gives one; do not use a radicale other people's tests share).
+- **An AI conversation.** It needs a real provider answering; the placeholder
+  key stops at configuration.
+- **A connected-apps list for the MCP client.** The OAuth grant exists, but the
+  app has no screen that lists OAuth clients; it shows up as the "MCP" origin in
+  the note's history.
 
 Dates are computed relative to the run, so "today" is always believable.
 
@@ -39,8 +68,10 @@ Two deliberate rules in that script, both learned the hard way:
 - **`--backdate`** rewrites `completed_at` directly in the database, because it
   is server-owned and always stamped `now`. Without it every completion reads as
   today, which buries Home under struck-through rows and leaves
-  Settings ▸ Completed with a one-day "timeline". It is the script's only bypass
-  of the API and it is skipped automatically when no database is reachable.
+  Settings ▸ Completed with a one-day "timeline". The same step spreads the
+  seeded note history over nine days (versions are stamped `now` too). It is the
+  script's only bypass of the API and it is skipped automatically when no
+  database is reachable.
 
 ---
 
@@ -293,17 +324,19 @@ is metered rather than what it does, and that is not the landing page's story.
 
 ## 4c. Enterprise sales set — `screenshots/sales/`
 
-The enterprise page's screens since OPH-388: the same "Demir Çelik" sample factory as the
-sales presentation, captured from the real web app (not goldens) in four variants each —
-`<name>-<light|dark>-<tr|en>.jpg` — plus `hero-*` (desktop + phone composite, 1600×1000) and
-`deck-cover-{tr,en}.jpg` (page 1 of the downloadable PDFs in `apps/landing/public/downloads/`).
+Since OPH-413 only four kinds of file stay here: `hero-<light|dark>-tr.jpg` (the Turkish
+enterprise page's hero), `hero-*-en.jpg` (composed by `scripts/screenshots/store.mjs`) and
+`deck-cover-{tr,en}.jpg` (page 1 of the downloadable PDFs in `apps/landing/public/downloads/`):
+the same "Demir Çelik" sample factory as the sales presentation, captured from the real web app
+(desktop + phone composite, 1600×1000). The enterprise page's tour and its English hero use the
+goldens in `screenshots/ee/`, whose `-en` files hold English sample records, so the English page
+shows no Turkish data (ADR-0065).
 
 They are finished JPEGs (≤ 400 kB, long edge ≤ 1600 px except native-width phone shots), so
 `sync-screenshots.mjs` copies them through untouched. The capture pipeline, the sample data and
 its fixes live with the presentation in the private extension repository; re-run it there and
 replace the whole folder rather than editing single files, so the four variants stay in step.
-Only images the page references are committed. The `workspace` and `identity` sections still
-use the goldens in `screenshots/ee/` because the sample factory has no tasks, notes or projects.
+Only images a page or the store script references are committed.
 
 ---
 
@@ -400,8 +433,9 @@ them is in [media/hyperframes/README.md](../media/hyperframes/README.md).
    what is `media/sources.json`.
 3. `npm run check:media` and `npm run check:docs` hold the files, the hashes and the budgets.
 4. A change to the homepage's look runs Hallmark's `sloplint --render` against `vite preview`
-   (`/` and `/tr`); zero FAIL is the bar. The OG cards (`screenshots/og/home-dusk*.png`) come from
-   `npm run shots:store -- --only og`.
+   (`/` and `/tr`); zero FAIL is the bar. The OG cards (`screenshots/og/home-alarm*.png`) and
+   the repository's social preview (`.github/social-preview.png`, 1280×640, uploaded by the owner)
+   come from `npm run shots:store -- --only og`; they read the hero from the content modules.
 
 Only approved finals are promoted: every promotion adds its new bytes to the history.
 

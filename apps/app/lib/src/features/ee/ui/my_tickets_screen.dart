@@ -8,8 +8,10 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/fabs.dart';
+import '../../../widgets/section_fab.dart';
 import '../../../widgets/status_views.dart';
 import '../data/my_tickets_api.dart';
+import '../data/team_address_api.dart' show EeNoTeamHereException;
 import '../my_tickets_providers.dart';
 import '../providers.dart';
 import 'ticket_archive_screen.dart' show EeMyArchivedTicketsScreen;
@@ -59,12 +61,21 @@ class EeMyTicketsScreen extends ConsumerWidget {
       // EE-225: the requester's own list is where asking for something new
       // belongs — and filing works with no signal (a draft), even though this
       // list does not.
-      floatingActionButton: ref.watch(canProvider('tickets.create'))
-          ? AwExtendedFab(
-              key: const Key('my-tickets-new'),
-              onPressed: () => context.push('/tickets/new'),
-              icon: const Icon(Icons.add),
-              label: Text('ee.tickets.new.fab'.tr()),
+      //
+      // OPH-409 (E-03): somebody signed in on a team's address who is not on
+      // that team got the "not in this team" state AND this button, which led
+      // to a form the server refuses. No team here, no way to file into it.
+      floatingActionButton:
+          ref.watch(canProvider('tickets.create')) &&
+              tickets.error is! EeNoTeamHereException
+          // R-02 (polish 2): one cluster with the shell's microphone.
+          ? AwSectionFab(
+              child: AwExtendedFab(
+                key: const Key('my-tickets-new'),
+                onPressed: () => context.push('/tickets/new'),
+                icon: const Icon(Icons.add),
+                label: Text('ee.tickets.new.fab'.tr()),
+              ),
             )
           : null,
       body: RefreshIndicator(

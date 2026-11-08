@@ -56,6 +56,8 @@ const PAIRS = [
     shotsPerLanguage: true,
     vocabulary: true,
     downloads: true,
+    // OPH-413 (landing-audit K8): rendered on the server like the homepage.
+    ssr: true,
   },
   {
     name: 'home',
@@ -433,13 +435,13 @@ const caps = await import(path.join(root, 'src/enterprise/capabilities.js'));
       if (!rows.has(JSON.stringify(row))) fail(`${tag} ${file}: the package table lacks "${row[0]}"`);
     }
     const offline = caps.OFFLINE[lang];
-    const integrity = content.security.items.find((item) => item.key === 'integrity');
+    const integrity = content.proof.items.find((item) => item.key === 'integrity');
     if (!content.hero.facts.includes(offline.fact)) {
       fail(`${tag} ${file}: the hero's offline fact is not the list's`);
     }
-    if (!content.itsm.points.includes(offline.queue)) {
-      fail(`${tag} ${file}: the queue's offline sentence is not the list's`);
-    }
+    // OPH-413: the request-list section that carried `offline.queue` is gone
+    // (one tabbed tour replaced it); the hero fact and the integrity card are
+    // the page's two offline claims now.
     if (!integrity?.body.startsWith(offline.integrity)) {
       fail(`${tag} ${file}: the integrity paragraph does not open with the list's offline sentence`);
     }

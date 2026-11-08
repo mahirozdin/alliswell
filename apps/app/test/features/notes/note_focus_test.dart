@@ -214,8 +214,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Başlık burada'));
     await tester.pumpAndSettle();
-    // A markdown-canonical note opens in Reading; Source is its editor.
-    await tester.tap(find.text('Source'));
+    // A markdown-canonical note opens in Read; Edit is its editor.
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('note-mode-control')),
+        matching: find.text('Edit'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     await tester.enterText(

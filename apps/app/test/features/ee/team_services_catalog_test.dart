@@ -19,6 +19,7 @@ import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
 import 'support/permissions.dart';
+import 'package:alliswell/src/widgets/dropdown_field.dart';
 
 /// EE-228 — the catalogue as the admin arranges it.
 ///
@@ -66,6 +67,9 @@ const _services = [
     unitIds: ['U1'],
     approvalMode: 'role',
     approverRoleKey: 'admin',
+    // OPH-415: a server that knows the company-portal switch sends it; S1–S3
+    // come from one that does not (the key is absent, not false).
+    customerPortal: false,
   ),
 ];
 
@@ -380,7 +384,7 @@ void main() {
       expect(await saveEnabled(tester), isFalse);
       expect(key('service-approval-incomplete'), findsOneWidget);
 
-      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.tap(find.byType(AwDropdownField<String>));
       await tester.pumpAndSettle();
       await tester.tap(key('service-approval-role-admin').last);
       await tester.pumpAndSettle();
@@ -450,6 +454,82 @@ void main() {
         find.widgetWithText(AppBar, 'Pres arızası'),
         findsOneWidget,
         reason: 'still on the setup screen',
+      );
+    });
+  });
+
+  group('OPH-415: open to customer companies', () {
+    test('an absent key is "this server has no such switch", not "off"', () {
+      final old = EeService.fromJson(const {'id': 'S', 'name': 'Eski'});
+      final known = EeService.fromJson(const {
+        'id': 'S',
+        'name': 'Yeni',
+        'customerPortal': false,
+      });
+      final open = EeService.fromJson(const {
+        'id': 'S',
+        'name': 'Açık',
+        'customerPortal': true,
+      });
+      expect(old.customerPortal, isNull);
+      expect(known.customerPortal, isFalse);
+      expect(open.customerPortal, isTrue);
+    });
+
+    testWidgets('an older server: no switch to offer', (tester) async {
+      await pumpCatalogue(tester);
+      await openSetup(tester, 'S1');
+      expect(key('service-customer-portal'), findsNothing);
+      expect(
+        find.text('Açarsanız müşteri firmalar bu hizmetten talep açabilir.'),
+        findsNothing,
+      );
+    });
+
+    testWidgets('off by default, with its warning; turning it on is one key, '
+        'and back again is no change', (tester) async {
+      await pumpCatalogue(tester);
+      await openSetup(tester, 'S4');
+      await reveal(tester, 'service-customer-portal');
+      expect(
+        tester.widget<SwitchListTile>(key('service-customer-portal')).value,
+        isFalse,
+      );
+      expect(find.text('Firmalara açık'), findsOneWidget);
+      expect(
+        find.text('Açarsanız müşteri firmalar bu hizmetten talep açabilir.'),
+        findsOneWidget,
+      );
+      expect(await saveEnabled(tester), isFalse);
+
+      await reveal(tester, 'service-customer-portal');
+      await tester.tap(key('service-customer-portal'));
+      await tester.pumpAndSettle();
+      await tester.tap(key('service-customer-portal'));
+      await tester.pumpAndSettle();
+      expect(await saveEnabled(tester), isFalse, reason: 'back to off');
+
+      await reveal(tester, 'service-customer-portal');
+      await tester.tap(key('service-customer-portal'));
+      await tester.pumpAndSettle();
+      await save(tester);
+      expect(api.patched.single.$1, 'S4');
+      expect(api.patched.single.$2, {'customerPortal': true});
+    });
+
+    testWidgets('the English sentence says the same thing', (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('en'));
+      addTearDown(() => AwI18n.instance.setActiveCached(const Locale('tr')));
+      await pumpCatalogue(tester);
+      await openSetup(tester, 'S4');
+      await reveal(tester, 'service-customer-portal');
+      expect(find.text('Open to customer companies'), findsOneWidget);
+      expect(
+        find.text(
+          'When on, your customer companies can open requests for this '
+          'service.',
+        ),
+        findsOneWidget,
       );
     });
   });
@@ -535,11 +615,8 @@ void main() {
       (tester) async {
         await openShelves(tester);
         await menu(tester, 'C1', 'shelf-edit-C1');
-        final parent = tester.widget<DropdownButton<String?>>(
-          find.descendant(
-            of: key('shelf-parent'),
-            matching: find.byType(DropdownButton<String?>),
-          ),
+        final parent = tester.widget<AwDropdownField<String?>>(
+          key('shelf-parent'),
         );
         expect(parent.onChanged, isNull);
         expect(find.textContaining('Alt rafları olan bir raf'), findsOneWidget);
@@ -562,7 +639,7 @@ void main() {
       await openShelves(tester);
       final before = api.lists;
       await menu(tester, 'C3', 'shelf-delete-C3');
-      expect(find.textContaining('hiçbir servis kaybolmaz'), findsOneWidget);
+      expect(find.textContaining('hiçbir hizmet kaybolmaz'), findsOneWidget);
       await tester.tap(key('shelf-delete-confirm'));
       await tester.pumpAndSettle();
       expect(api.deleted, ['C3']);

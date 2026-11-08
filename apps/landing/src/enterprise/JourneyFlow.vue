@@ -26,7 +26,7 @@ defineProps({
 </script>
 
 <template>
-  <section v-reveal class="aw-section journey">
+  <section class="aw-section journey">
     <div class="aw-shell">
       <header class="journey__head">
         <p v-if="eyebrow" class="aw-eyebrow"><LatinWords :text="eyebrow" /></p>
@@ -34,7 +34,7 @@ defineProps({
         <p v-if="lede" class="aw-lede">{{ lede }}</p>
       </header>
 
-      <ol class="journey__steps">
+      <ol class="journey__steps" :style="{ '--_n': steps.length }">
         <li v-for="(s, i) in steps" :key="s.n" :value="s.n" class="aw-card journey__step">
           <span v-if="i > 0" class="journey__arrow" aria-hidden="true">
             <AwIcon name="arrow-right" :size="18" />
@@ -130,10 +130,11 @@ defineProps({
   max-width: 70ch;
 }
 
-/* Six across: one row, arrows between the cards. */
+/* All across in one row, arrows between the cards (six for a request's road,
+   three for the pilot, OPH-413). */
 @media (min-width: 1100px) {
   .journey__steps {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--_n, 6), minmax(0, 1fr));
   }
   .journey__arrow {
     display: block;

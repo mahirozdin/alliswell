@@ -76,12 +76,14 @@ void main() {
     await tester.pumpWidget(await signedInApp(api));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('quick-add-parse')), findsOneWidget);
+    // OPH-401 (§47 Q2): ✨ arrives with the text, not before it.
+    expect(find.byKey(const Key('quick-add-parse')), findsNothing);
     await tester.enterText(
       find.byKey(const Key('home-quick-add')),
       'faturayı öde ve raporu gönder',
     );
     await tester.pump();
+    expect(find.byKey(const Key('quick-add-parse')), findsOneWidget);
     await tester.tap(find.byKey(const Key('quick-add-parse')));
     // Round 14: the row exists BEFORE the proposal answers — plain quick-add
     // semantics, marked by the enriching badge; no confirm card, no blocking.

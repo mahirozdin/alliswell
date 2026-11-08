@@ -7,10 +7,6 @@
 /// them a cycle.
 library;
 
-import 'package:intl/intl.dart';
-
-import '../../../i18n/i18n.dart';
-
 /// Money in ONE currency, which is the only shape this product prints money in.
 ///
 /// There is deliberately no `total` beside a list of these: adding two
@@ -73,26 +69,4 @@ class EeWorklogTotals {
             .map((e) => EeMoneyByCurrency.fromJson(e as Map<String, dynamic>))
             .toList(growable: false),
       );
-}
-
-/// One spelling of worked time for every surface that writes it (OPH-358,
-/// UI-AUDIT #71): whole minutes and hours, the way people say them — "45 dk",
-/// "1 sa 15 dk", "2 sa". The old one-decimal hours turned 45 minutes into
-/// "0.8" with an English decimal point, and lost the minutes doing it.
-String eeDurationText(int minutes) {
-  final h = minutes ~/ 60;
-  final m = minutes % 60;
-  if (h == 0) return 'ee.duration.minutes'.tr(args: {'m': '$m'});
-  if (m == 0) return 'ee.duration.hours'.tr(args: {'h': '$h'});
-  return 'ee.duration.hoursMinutes'.tr(args: {'h': '$h', 'm': '$m'});
-}
-
-/// Money in the reader's locale (OPH-358, UI-AUDIT #78): "385.000,00 TRY",
-/// never "385000.00 TRY". The currency is the record's own, never converted.
-String eeMoneyText(int minor, String? currency) {
-  final amount = NumberFormat.decimalPatternDigits(
-    locale: AwI18n.instance.locale.toLanguageTag(),
-    decimalDigits: 2,
-  ).format(minor / 100);
-  return currency == null ? amount : '$amount $currency';
 }

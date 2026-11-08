@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -7,6 +8,7 @@ import '../../../core/quick_parse.dart';
 import '../../../core/recurrence_text.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+import '../../../theme/typography.dart';
 import '../../projects/providers.dart';
 import '../data/quick_add_apply.dart';
 import 'quick_add_help_sheet.dart';
@@ -15,13 +17,23 @@ import 'task_visuals.dart';
 
 /// Rapid-entry task bar (feedback round 2): submit clears the field
 /// immediately and KEEPS focus, so type → Enter → type → Enter chains work
-/// without touching the mouse. Saving happens in the background; failures
+/// without touching the mouse — unless [keepFocusAfterSubmit] is off (a phone
+/// Home, OPH-401 R-04), where the list moves to the new row and the keyboard
+/// goes down with the field. A touch outside the bar closes the keyboard and
+/// keeps the text (the only way out used to be ✓, which submits). Saving happens in the background; failures
 /// surface as a snackbar carrying the lost title.
 ///
 /// OPH-373 (DESIGN §39): the bar reads what you type, offline, in Turkish and
 /// English (`core/quick_parse.dart`). Recognized words are highlighted and
 /// listed as chips under the field; a chip's ✕ keeps its words as plain
 /// title text. The ? opens the syntax sheet.
+///
+/// OPH-401 (C-06, R-11, DESIGN §47 Q1–Q5): empty, the bar is a field and its
+/// hint — no "+" glyph (the FAB's sign on something that is not a button) and
+/// nothing on the right that would do nothing. Text brings ✨ (with AI) and the
+/// ↑, a 32 pt filled circle. Focus brings a one-line strip of examples under
+/// the field, ending in "More" (the syntax sheet); typing replaces it with the
+/// recognized chips.
 class QuickAddBar extends ConsumerStatefulWidget {
   const QuickAddBar({
     super.key,
@@ -32,7 +44,13 @@ class QuickAddBar extends ConsumerStatefulWidget {
     this.focusNode,
     this.onParse,
     this.parseProject = true,
+    this.keepFocusAfterSubmit = true,
   });
+
+  /// Off where a submit takes the user away from the field — Home on a phone,
+  /// whose list scrolls to the new row and carries the field off screen: the
+  /// keyboard then closes instead of covering the list (OPH-401 R-04).
+  final bool keepFocusAfterSubmit;
 
   final String hintText;
 
@@ -82,6 +100,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
   @override
   void initState() {
     super.initState();
+    _focus.addListener(_onFocus);
     _controller.addListener(_onText);
     if (widget.parseProject) {
       // Keeps the project list alive and re-reads `+Name` when it changes.
@@ -98,12 +117,21 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
       _controller.addListener(_onText);
       _reparse(notify: false);
     }
+    if (old.focusNode != widget.focusNode) {
+      (old.focusNode ?? _ownFocus)?.removeListener(_onFocus);
+      _focus.addListener(_onFocus);
+    }
+  }
+
+  void _onFocus() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     _disposed = true;
     _controller.removeListener(_onText);
+    _focus.removeListener(_onFocus);
     // Only ever dispose what this widget created.
     _ownController?.dispose();
     _ownFocus?.dispose();
@@ -148,6 +176,21 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     _reparse();
   }
 
+  /// After a submit: keep the field for the next entry, or let the keyboard go.
+  void _settleFocus() {
+    if (widget.keepFocusAfterSubmit) {
+      _focus.requestFocus();
+    } else {
+      _focus.unfocus();
+    }
+  }
+
+  /// A touch outside the bar closes the keyboard; the text stays. A mouse
+  /// click does not — on a desktop the field keeps its focus as before.
+  void _onTapOutside(PointerDownEvent event) {
+    if (event.kind == PointerDeviceKind.touch) _focus.unfocus();
+  }
+
   Future<void> _submit() async {
     final raw = _controller.text.trim();
     if (raw.isEmpty) return;
@@ -156,7 +199,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     // Optimistic rapid entry: clear + refocus NOW, save in the background.
     _ignored.clear();
     _controller.clear();
-    _focus.requestFocus();
+    _settleFocus();
     setState(() => _inFlight++);
     try {
       await widget.onAdd(QuickAddSubmission(raw: raw, parse: parse));
@@ -170,7 +213,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
       if (mounted) {
         setState(() => _inFlight--);
         // Some platforms drop focus when dialogs/snackbars appear — reclaim it.
-        _focus.requestFocus();
+        _settleFocus();
       }
     }
   }
@@ -184,7 +227,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     // create, and the task row (with its AI badge) is the real feedback.
     _ignored.clear();
     _controller.clear();
-    _focus.requestFocus();
+    _settleFocus();
     setState(() => _inFlight++);
     try {
       await widget.onParse!(text);
@@ -197,7 +240,7 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
     } finally {
       if (mounted) {
         setState(() => _inFlight--);
-        _focus.requestFocus();
+        _settleFocus();
       }
     }
   }
@@ -217,77 +260,229 @@ class _QuickAddBarState extends ConsumerState<QuickAddBar> {
   Widget build(BuildContext context) {
     final parse = _parsed;
     final chips = parse?.chips ?? const <AwQuickChip>[];
+    final hasText = _controller.text.trim().isNotEmpty;
+    final reduce = MediaQuery.disableAnimationsOf(context);
+    final Widget? suffix = _inFlight > 0
+        ? const Padding(
+            padding: EdgeInsets.all(AwSpace.x3),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          )
+        : hasText
+        ? Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (widget.onParse != null)
+                _PopIn(
+                  reduce: reduce,
+                  child: IconButton(
+                    key: const Key('quick-add-parse'),
+                    icon: const Icon(Icons.auto_awesome_outlined),
+                    tooltip: 'ai.confirm.parse'.tr(),
+                    onPressed: _parse,
+                  ),
+                ),
+              _PopIn(
+                reduce: reduce,
+                child: _SubmitButton(onPressed: _submit),
+              ),
+            ],
+          )
+        : null;
+
+    // What sits under the field: the recognized chips while there is text,
+    // the examples strip while the empty field has focus, else nothing.
+    final Widget below = chips.isNotEmpty && parse != null
+        ? Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x2),
+            child: _TokenChips(
+              parse: parse,
+              chips: chips,
+              onDismiss: _dismiss,
+              onHelp: _openHelp,
+            ),
+          )
+        : !hasText && _focus.hasFocus
+        ? Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x1),
+            child: _HintStrip(
+              showProject: widget.parseProject,
+              onMore: _openHelp,
+            ),
+          )
+        : const SizedBox(width: double.infinity);
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          TextField(
-            controller: _controller,
-            focusNode: _focus,
-            autofocus: widget.autofocus,
-            textInputAction: TextInputAction.done,
-            onSubmitted: (_) => _submit(),
-            decoration: InputDecoration(
-              hintText: widget.hintText,
-              prefixIcon: const Icon(Icons.add),
-              suffixIcon: _inFlight > 0
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // §39 Q3: in the bar while it is empty; once you
-                        // type, it moves to the end of the chips row so
-                        // three icons never squeeze the text on a phone.
-                        if (_controller.text.isEmpty)
-                          IconButton(
-                            key: const Key('quick-add-help'),
-                            icon: const Icon(Icons.help_outline),
-                            tooltip: 'task.quickParse.helpTooltip'.tr(),
-                            onPressed: _openHelp,
-                          ),
-                        if (widget.onParse != null)
-                          IconButton(
-                            key: const Key('quick-add-parse'),
-                            icon: const Icon(Icons.auto_awesome_outlined),
-                            tooltip: 'ai.confirm.parse'.tr(),
-                            onPressed: _parse,
-                          ),
-                        IconButton(
-                          icon: const Icon(Icons.arrow_upward),
-                          tooltip: 'task.addTask'.tr(),
-                          onPressed: _submit,
-                        ),
-                      ],
-                    ),
+      // The chips and examples under the field count as the field: tapping
+      // one must not close the keyboard (R-04's touch-outside rule).
+      child: TextFieldTapRegion(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextField(
+              controller: _controller,
+              focusNode: _focus,
+              autofocus: widget.autofocus,
+              textInputAction: TextInputAction.done,
+              onSubmitted: (_) => _submit(),
+              onTapOutside: _onTapOutside,
+              decoration: InputDecoration(
+                hintText: widget.hintText,
+                suffixIcon: suffix,
+              ),
+            ),
+            AnimatedSize(
+              duration: reduce ? Duration.zero : AwMotion.base,
+              curve: AwMotion.enter,
+              alignment: Alignment.topCenter,
+              child: below,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// ✨ and ↑ arrive scaled in over 150 ms (DESIGN §47 Q2) — at once with
+/// reduced motion.
+class _PopIn extends StatelessWidget {
+  const _PopIn({required this.reduce, required this.child});
+
+  final bool reduce;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: reduce ? 1 : 0.6, end: 1),
+    duration: reduce ? Duration.zero : AwMotion.fast,
+    curve: AwMotion.enter,
+    builder: (context, t, child) => Transform.scale(scale: t, child: child),
+    child: child,
+  );
+}
+
+/// The send button: a 32 pt `primary` circle with ↑ inside a 48 pt target —
+/// the one filled control in the bar, so the primary action reads as one.
+class _SubmitButton extends StatelessWidget {
+  const _SubmitButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Tooltip(
+      message: 'task.addTask'.tr(),
+      child: Semantics(
+        button: true,
+        label: 'task.addTask'.tr(),
+        // excludeSemantics drops the InkResponse's own tap action with its
+        // node, so the one button node carries it — or a screen reader could
+        // announce ↑ but never press it (E35 G-B review r1).
+        onTap: onPressed,
+        excludeSemantics: true,
+        child: InkResponse(
+          key: const Key('quick-add-submit'),
+          onTap: onPressed,
+          radius: 24,
+          child: SizedBox(
+            width: 48,
+            height: 48,
+            child: Center(
+              child: Container(
+                key: const Key('quick-add-submit-dot'),
+                constraints: const BoxConstraints.tightFor(
+                  width: 32,
+                  height: 32,
+                ),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: scheme.primary,
+                ),
+                child: Icon(
+                  Icons.arrow_upward,
+                  size: 20,
+                  color: scheme.onPrimary,
+                ),
+              ),
             ),
           ),
-          AnimatedSize(
-            duration: AwMotion.base,
-            curve: AwMotion.enter,
-            alignment: Alignment.topCenter,
-            child: chips.isEmpty || parse == null
-                ? const SizedBox(width: double.infinity)
-                : Padding(
-                    padding: const EdgeInsets.only(top: AwSpace.x2),
-                    child: _TokenChips(
-                      parse: parse,
-                      chips: chips,
-                      onDismiss: _dismiss,
-                      onHelp: _openHelp,
-                    ),
-                  ),
-          ),
-        ],
+        ),
       ),
+    );
+  }
+}
+
+/// The examples under a focused, empty bar (DESIGN §47 Q3): one line of
+/// what the bar understands, ending in "More" — the syntax sheet. The examples
+/// are print, not buttons: there is nothing to do with "#home" but read it.
+class _HintStrip extends StatelessWidget {
+  const _HintStrip({required this.showProject, required this.onMore});
+
+  /// Off where `+Project` stays text (a project's own Tasks tab).
+  final bool showProject;
+  final VoidCallback onMore;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+    final examples = [
+      for (final example in 'task.quickParse.hintChips'.tr().split(' · '))
+        if (showProject || !example.startsWith('+')) example,
+    ];
+    return Row(
+      key: const Key('quick-add-hints'),
+      children: [
+        Expanded(
+          child: Semantics(
+            label:
+                '${'task.quickParse.hintsLabel'.tr()}: ${examples.join(', ')}',
+            excludeSemantics: true,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (final example in examples)
+                    Padding(
+                      padding: const EdgeInsets.only(right: AwSpace.x2),
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: scheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(AwRadius.s),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: AwSpace.x2,
+                            vertical: AwSpace.x1,
+                          ),
+                          child: Text(
+                            example,
+                            style: context.awText.meta.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        TextButton(
+          key: const Key('quick-add-help'),
+          style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+          onPressed: onMore,
+          child: Text('task.quickParse.more'.tr()),
+        ),
+      ],
     );
   }
 }

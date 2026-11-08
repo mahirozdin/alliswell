@@ -534,7 +534,10 @@ The prose below says what a column cannot:
   platform refuses to play (a browser's autoplay policy), the ring screen SAYS
   so and offers a manual "start the sound": a silent alarm that looks like it is
   ringing is the one outcome this section forbids. An `AlarmDegradationBanner` on Home surfaces the "never fail silently"
-  rule when notifications are off or Android exact alarms are denied.
+  rule for every `AlarmProblem` (DESIGN A4); a closed strip comes back after 7 days, and the
+  Settings row keeps naming the problem meanwhile. On the web, a 404 from `/push/public-key`
+  is `webPushUnconfigured` — the server's admin, not the person, has something to fix
+  (OPH-393).
 - **Windows (release zip, OPH-370)**: the plugin needs its own Windows settings
   (app name, AUMID `BubiApps.AllisWell.Desktop`, a fixed activation GUID) — without
   them every local reminder failed to initialise. The zip is unpackaged (no MSIX

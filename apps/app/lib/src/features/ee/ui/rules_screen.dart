@@ -10,6 +10,7 @@ import '../../../widgets/status_views.dart';
 import '../../../widgets/swipe_actions.dart' show awConfirmDelete;
 import '../rules_providers.dart';
 import 'rules_widgets.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// EE-308 — the team's automation and routing rules, in the order they run.
 ///
@@ -481,7 +482,7 @@ class _RuleRow extends StatelessWidget {
                     ),
                   ),
                 ),
-                PopupMenuButton<String>(
+                AwPopupMenuButton<String>(
                   key: Key('rule-menu-$id'),
                   tooltip: 'ee.rules.more'.tr(),
                   onSelected: (v) {

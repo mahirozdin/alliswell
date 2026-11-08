@@ -1,6 +1,6 @@
 /**
- * The page's shape, with none of its words (EE-153; reordered in EE-164, and
- * again in OPH-388 to follow the sales deck).
+ * The page's shape, with none of its words (EE-153; reordered in EE-164 and
+ * OPH-388, shortened to one argument in OPH-413).
  *
  * Order, anchors and which component renders each section. Nothing here is
  * translatable, which is the point: `check:copy` compares two content modules
@@ -13,86 +13,48 @@
  * this list can carry a row before its copy exists, and `check:copy` still
  * refuses a row whose copy exists in one language only.
  *
- * ── THE ORDER IS THE SALES CONVERSATION — THE DECK'S (OPH-388) ────────────
+ * ── THE ORDER IS ONE ARGUMENT (OPH-413) ────────────────────────────────────
  *
- * The page follows the 18-slide factory deck that is sent to buyers, so a
- * reader who saw one recognises the other. The reader is a factory's general
- * manager, IT manager, maintenance or after-sales manager.
+ * Problem → solution → proof → pilot → demo request (owner-approved plan,
+ * 2026-11-07, landing-audit K9). The page used to walk the 18-slide sales
+ * deck one slide per section: 27 sections, 26 000 px on a desktop and 39 000
+ * on a phone. The deck is still one click away as a PDF; the page argues once.
  *
  *   1. the promise (hero), then the reader's own Monday morning (problem: the
- *      phone call nobody wrote down) and what one request's road looks like
- *      when it is a record (journey, six steps);
- *   2. the steps one by one, in the order they happen: the organisation and
- *      roles, the service catalogue, the rules that route a request, the unit's
- *      request list, one request's whole story, approvals / changes / known
- *      errors, the machine a request is about;
- *   3. the promise kept: SLA, then the SLA board and performance;
- *   4. people: their own list, absences and on-call; the states, and what the
- *      requester sees of them;
- *   5. outside: the four ways in, the company portal and the tracking link;
- *   6. "on the shop floor, on your rules and your data" — offline, KVKK,
- *      installation and migration by us, a pilot with one unit;
- *   7. "also" — what the deck does not show but a buyer still buys: the daily
- *      work, identity, meeting notes; then cloud or own server, the cloud
- *      packages, the deck as a PDF, the form, the questions.
+ *      phone call nobody wrote down);
+ *   2. the solution: one request's road as a record (journey, six steps), then
+ *      the screens in one tabbed tour — the list, one request, the rules, the
+ *      SLA board, the company portal — instead of a section per screen;
+ *   3. the proof a buyer can check: offline, KVKK, our installation and
+ *      migration, and source the IT team can read;
+ *   4. the pilot: one unit, a few weeks, measured; where it runs, the cloud
+ *      packages and the deck to pass on;
+ *   5. the questions, then the demo request — the last thing on the page.
  *
- * `security` keeps its key (and its anchor `#factory`) because `check-copy`
- * holds its `integrity` card to capabilities.js; `itsm` keeps its key for the
- * same reason (`itsm.points` carries the offline sentence).
+ * `proof` holds the `integrity` card `check-copy` ties to capabilities.js.
  */
 export const SECTIONS = Object.freeze([
   { key: 'hero', component: 'EeHero' },
+  // Problem.
   { key: 'problem', component: 'ProblemGrid', anchor: 'problem' },
+  // Solution.
   { key: 'journey', component: 'JourneyFlow', anchor: 'journey' },
-
-  // Setting it up: the organisation, the catalogue, the rules.
-  { key: 'org', component: 'AnnotatedShots', anchor: 'admin' },
-  { key: 'catalog', component: 'AnnotatedShots', anchor: 'catalog' },
-  { key: 'rules', component: 'AnnotatedShots', anchor: 'rules' },
-
-  // Request management (ITSM): the list, the request, the hard cases, the machine.
-  { key: 'itsm', component: 'AnnotatedShots', anchor: 'itsm' },
-  { key: 'ticket', component: 'AnnotatedShots', anchor: 'request' },
-  { key: 'approvals', component: 'AnnotatedShots', anchor: 'approvals' },
-  { key: 'assets', component: 'AnnotatedShots', anchor: 'assets' },
-
-  // The promise and whether it was kept.
-  { key: 'sla', component: 'AnnotatedShots', anchor: 'sla' },
-  { key: 'slaReport', component: 'AnnotatedShots', anchor: 'sla-report' },
-
-  // People and the states a request moves through.
-  { key: 'people', component: 'AnnotatedShots', anchor: 'people' },
-  { key: 'statuses', component: 'StatusFlow', anchor: 'statuses' },
-
-  // From outside: customers, dealers, suppliers.
-  { key: 'intake', component: 'ChannelList', anchor: 'intake' },
-  { key: 'portal', component: 'AnnotatedShots', anchor: 'portal' },
-
-  // The deck's closing argument.
-  { key: 'security', component: 'PillarGrid', anchor: 'factory' },
-
-  // "Also": kept, shortened, after the factory story.
-  { key: 'extras', component: 'GroupHeading', anchor: 'also' },
-  { key: 'workspace', component: 'FeatureSection', anchor: 'work' },
-  { key: 'workspaceTabs', component: 'ShotTabs' },
-  { key: 'identity', component: 'FeatureSection', anchor: 'identity' },
-  { key: 'meetings', component: 'FeatureSection', anchor: 'meetings' },
-
-  // How you get it, and the way to ask.
+  { key: 'tour', component: 'ShotTabs', anchor: 'tour' },
+  // Proof.
+  { key: 'proof', component: 'PillarGrid', anchor: 'proof' },
+  // Pilot, and how you get it.
+  { key: 'pilot', component: 'JourneyFlow', anchor: 'pilot' },
   { key: 'deploy', component: 'DeployOptions', anchor: 'deploy' },
   { key: 'packages', component: 'ComparisonTable', anchor: 'packages' },
   { key: 'deck', component: 'DeckDownload', anchor: 'deck' },
-  { key: 'contact', component: 'ContactForm', anchor: 'contact' },
+  // The demo request, after the questions it answers.
   { key: 'faq', component: 'FaqSection', anchor: 'faq' },
+  { key: 'contact', component: 'ContactForm', anchor: 'contact' },
 ]);
 
 /**
- * The components that lay copy beside a picture, and therefore take part in
- * the zig-zag. They alternate on ONE running count rather than each on its
- * own, so consecutive two-column sections mirror each other — copy left, then
- * copy right — instead of two rows in a row with the copy on the same side.
- * `AnnotatedShots` counts only when it is side by side (`layout: 'side'`, or
- * `'phones'` with a list): a grid or a lone row of phones has no side to swap,
- * and counting it would put two neighbours' copy on the same side.
+ * The components that lay copy beside a picture and therefore take part in the
+ * zig-zag (one running count, so neighbours mirror each other). Since OPH-413
+ * the tour is the only one.
  */
-export const TWO_COLUMN_COMPONENTS = Object.freeze(['FeatureSection', 'ShotTabs', 'AnnotatedShots']);
+export const TWO_COLUMN_COMPONENTS = Object.freeze(['ShotTabs']);

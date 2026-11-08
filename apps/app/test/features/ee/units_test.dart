@@ -18,7 +18,6 @@ import 'package:alliswell/src/features/ee/ui/team_units_screen.dart';
 import 'package:alliswell/src/features/ee/units_providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/theme.dart';
-import 'package:alliswell/src/widgets/fab_clearance.dart';
 import '../auth/test_support.dart';
 import 'support/permissions.dart';
 
@@ -250,11 +249,11 @@ void main() {
   });
 
   // R3-1 (OPH-363): with the Quick Access bubble docked in the bar's row
-  // (OPH-362) nothing above the page cleared the page's OWN floating button
-  // any more — a units list ended under "+ New unit", and a tap on the last
+  // (OPH-362; today: off, or hidden on pushed pages) nothing above the page
+  // cleared the page's OWN floating button any more — a units list ended under "+ New unit", and a tap on the last
   // row's ⋮ at the end of the scroll opened the new-unit dialog instead.
   group('R3-1: the end of a list clears the page\'s own button', () {
-    Future<void> pumpDocked(WidgetTester tester, Widget child) async {
+    Future<void> pumpPhone(WidgetTester tester, Widget child) async {
       tester.view.physicalSize = const Size(390, 844);
       tester.view.devicePixelRatio = 1;
       tester.view.padding = const FakeViewPadding(bottom: 34);
@@ -284,13 +283,8 @@ void main() {
           ],
           child: MaterialApp(
             theme: buildAwTheme(Brightness.light),
-            // The bubble docked on the right of the bottom row, as on a phone.
-            builder: (context, child) => AwBubbleDock(
-              edge: AwDockEdge.right,
-              height: 80,
-              width: 72,
-              child: child!,
-            ),
+            // No bubble clearance above the page (the factory phone, and a
+            // pushed page since OPH-397): only the page's own button asks.
             home: child,
           ),
         ),
@@ -319,7 +313,7 @@ void main() {
     }
 
     testWidgets('the unit list', (tester) async {
-      await pumpDocked(tester, const EeTeamUnitsScreen());
+      await pumpPhone(tester, const EeTeamUnitsScreen());
       await expectLastMenuReachable(
         tester,
         fab: const Key('unit-new'),
@@ -328,7 +322,7 @@ void main() {
     });
 
     testWidgets('a unit\'s roster', (tester) async {
-      await pumpDocked(
+      await pumpPhone(
         tester,
         const EeUnitMembersScreen(
           unit: EeUnit(id: 'U1', name: 'Muhasebe', memberCount: 14),

@@ -2,9 +2,17 @@ import crypto from 'node:crypto';
 import { coded } from '../lib/errors.js';
 import { newId } from '../lib/ids.js';
 import { hashPassword, verifyPassword } from '../lib/passwords.js';
-import { OauthIdentityError, verifyIdentityToken } from '../lib/oauth-identity.js';
+import { OauthIdentityError, audiencesFor, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identities.js';
-import { hashRefreshToken } from '../lib/tokens.js';
+import { hashPasswordResetToken, hashRefreshToken } from '../lib/tokens.js';
+import {
+  EMAIL_RESETS_PER_HOUR,
+  issuePasswordReset,
+  resetLink,
+  resetLinkBase,
+  resetMail,
+  retirePasswordResets,
+} from '../lib/password-reset.js';
 import { uniqueSlug } from '../lib/slug.js';
 import { credentialRateLimit } from '../lib/rate-limit.js';
 import { assertSignInFactors } from '../lib/sign-in-factors.js';
@@ -237,6 +245,74 @@ const oauthSchema = {
   },
 };
 
+// OPH-406 (ADR-0064). One code for a link that is unknown, spent or expired:
+// whoever holds the link learns only that it no longer works.
+function invalidResetError(app) {
+  const err = app.httpErrors.badRequest('This reset link is invalid or has expired');
+  err.code = 'AUTH_RESET_INVALID';
+  return err;
+}
+
+const forgotSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['email'],
+    properties: {
+      email: { type: 'string', format: 'email', maxLength: 255 },
+      // The language of the mail. Absent or unknown → English.
+      locale: { type: 'string', enum: ['en', 'tr'] },
+    },
+  },
+  response: {
+    202: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['delivery'],
+      properties: {
+        // `email` — if the address has an account here, a link is on its way.
+        // `admin` — this server sends no mail: ask its operator for a link.
+        // A property of the SERVER, the same for every address.
+        delivery: { type: 'string', enum: ['email', 'admin'] },
+      },
+    },
+    429: errorResponseSchema,
+  },
+};
+
+const resetSchema = {
+  body: {
+    type: 'object',
+    additionalProperties: false,
+    required: ['token', 'password'],
+    properties: {
+      token: { type: 'string', minLength: 20, maxLength: 128 },
+      password: { type: 'string', minLength: 8, maxLength: 128 },
+    },
+  },
+  response: {
+    204: { type: 'null' },
+    400: errorResponseSchema,
+    429: errorResponseSchema,
+  },
+};
+
+/**
+ * The extension's password rules (length, reuse, a team's own policy), for
+ * every door that sets a password: the change below and the reset link.
+ */
+async function assertPasswordAllowed(app, { user, request, password }) {
+  for (const requirement of app.ee.passwordRequirements ?? []) {
+    const refusal = await requirement({ db: app.db, user, request, password });
+    if (refusal) {
+      throw coded(
+        app.httpErrors.badRequest(refusal.message ?? 'That password is not allowed'),
+        refusal.code ?? 'AUTH_PASSWORD_REJECTED',
+      );
+    }
+  }
+}
+
 export default async function authRoutes(app) {
   const { auth } = app.config;
   // Tighter than the global limiter — these are brute-force targets. Signed-in
@@ -250,6 +326,35 @@ export default async function authRoutes(app) {
     onRequest: [app.credentialIpCeiling],
     config: credentialRateLimit(app),
   };
+
+  // OPH-392 (E-23) — which social sign-ins this server can complete, asked by
+  // the sign-in screen before it offers a button. Without it the app offered
+  // Google everywhere, and on a server with no SIGN_IN_GOOGLE_* client the tap
+  // ended in OAUTH_PROVIDER_NOT_CONFIGURED. Booleans only — the client ids are
+  // not secrets, but nothing needs them here. Public, like the doors it
+  // describes; the global limiter is enough for a read with no lookup.
+  app.get(
+    '/providers',
+    {
+      schema: {
+        response: {
+          200: {
+            type: 'object',
+            additionalProperties: false,
+            required: ['google', 'apple'],
+            properties: {
+              google: { type: 'boolean' },
+              apple: { type: 'boolean' },
+            },
+          },
+        },
+      },
+    },
+    async () => ({
+      google: audiencesFor(app.config, 'google').length > 0,
+      apple: audiencesFor(app.config, 'apple').length > 0,
+    }),
+  );
 
   // Baseline argon2id hash so unknown-email logins burn the same verify cost as
   // wrong-password logins (no email-existence timing oracle).
@@ -886,23 +991,13 @@ export default async function authRoutes(app) {
       // rules). Same contract as sign-in: it runs only once the CURRENT
       // password has been proven, so it can say "no, pick a better one" and
       // never "wrong password, but here is a policy hint".
-      for (const requirement of app.ee.passwordRequirements ?? []) {
-        const refusal = await requirement({
-          db: app.db,
-          user,
-          request,
-          password: request.body.newPassword,
-        });
-        if (refusal) {
-          throw coded(
-            app.httpErrors.badRequest(refusal.message ?? 'That password is not allowed'),
-            refusal.code ?? 'AUTH_PASSWORD_REJECTED',
-          );
-        }
-      }
+      await assertPasswordAllowed(app, { user, request, password: request.body.newPassword });
 
       const now = new Date();
       await app.db.transaction(async (trx) => {
+        // The account row's lock serialises this with a reset link being spent
+        // (OPH-406): whichever writes second sees the other's change.
+        await trx('users').where({ id: user.id }).forUpdate().first('id');
         await trx('users')
           .where({ id: user.id })
           .update({
@@ -913,7 +1008,133 @@ export default async function authRoutes(app) {
           .where({ user_id: user.id })
           .whereNull('revoked_at')
           .update({ revoked_at: now });
+        // A reset link sent before this change must not undo it (OPH-406).
+        await retirePasswordResets(trx, user.id, now);
       });
+      return reply.code(204).send();
+    },
+  );
+
+  // ── OPH-406: "I forgot my password" (ADR-0064) ──────────────────────────
+  //
+  // Two public doors under the credential limits (per IP + the address named,
+  // and the shared per-IP ceiling). Neither says whether an account exists:
+  // the forgot form answers the same for every address, and the answer only
+  // describes the server — whether it can send mail at all.
+
+  app.post(
+    '/password/forgot',
+    { schema: forgotSchema, ...credentialLimit },
+    async (request, reply) => {
+      const base = resetLinkBase(app.config);
+      if (!app.mailer || !base) return reply.code(202).send({ delivery: 'admin' });
+
+      const email = request.body.email.trim().toLowerCase();
+      const { locale } = request.body;
+      // Everything about the address — the lookup, the hourly count, the
+      // issue, the SMTP round trip — runs after the answer. Database work done
+      // only for real accounts would otherwise be a timing answer to "does
+      // this address exist?". A failure is logged without the address; the
+      // person can ask again.
+      app.mailQueue.defer(
+        async () => {
+          const user = await app
+            .db('users')
+            .where({ email })
+            .whereNull('deleted_at')
+            .first('id', 'email');
+          if (!user) return;
+          // Over the hourly count the ask is dropped: the rate limit stops one
+          // address hammering, this stops many addresses filling one person's
+          // inbox. The count and the issue are one locked step.
+          const minutes = auth.passwordResetTtlMin;
+          const issued = await issuePasswordReset(app.db, {
+            userId: user.id,
+            secret: auth.refreshSecret,
+            ttlMs: minutes * 60 * 1000,
+            source: 'email',
+            perHourLimit: EMAIL_RESETS_PER_HOUR,
+          });
+          if (!issued) return;
+          const mail = resetMail(locale, resetLink(base, issued.token), minutes);
+          await app.mailer.send({ to: user.email, ...mail });
+        },
+        (err) => request.log.warn({ err: err.message }, 'password reset mail failed'),
+      );
+      return reply.code(202).send({ delivery: 'email' });
+    },
+  );
+
+  /**
+   * Spending a link. Same effects as changing the password (ADR-0006): every
+   * session ends. A second factor stays enrolled — the link replaces the
+   * password, not the authenticator, so the next sign-in still asks for it.
+   */
+  app.post(
+    '/password/reset',
+    { schema: resetSchema, ...credentialLimit },
+    async (request, reply) => {
+      const tokenHash = hashPasswordResetToken(request.body.token, auth.refreshSecret);
+      const now = new Date();
+      const row = await app.db('password_resets').where({ token_hash: tokenHash }).first();
+      if (!row || row.used_at || new Date(row.expires_at).getTime() <= now.getTime()) {
+        throw invalidResetError(app);
+      }
+      const user = await app
+        .db('users')
+        .where({ id: row.user_id })
+        .whereNull('deleted_at')
+        .first('id', 'password_hash', 'password_changed_at');
+      if (!user) throw invalidResetError(app);
+      // A link older than the current password is not spent by a door that
+      // forgot to retire it: the password it was sent to replace is gone.
+      if (
+        user.password_changed_at &&
+        new Date(row.created_at).getTime() < new Date(user.password_changed_at).getTime()
+      ) {
+        throw invalidResetError(app);
+      }
+
+      // Before the link is spent: a refused password leaves it usable.
+      await assertPasswordAllowed(app, { user, request, password: request.body.password });
+      const passwordHash = await hashPassword(request.body.password);
+
+      let claimed = 0;
+      await app.db.transaction(async (trx) => {
+        // Every door that sets a password writes under the account row's lock.
+        // The checks above ran outside it: a change that landed since then
+        // (its own retirement stamps this link's expiry with the change time,
+        // later than our `now`) is seen here, and the link is refused.
+        const locked = await trx('users')
+          .where({ id: user.id })
+          .whereNull('deleted_at')
+          .forUpdate()
+          .first('password_changed_at');
+        const changedAt = (v) => (v ? new Date(v).getTime() : null);
+        if (
+          !locked ||
+          changedAt(locked.password_changed_at) !== changedAt(user.password_changed_at)
+        ) {
+          return;
+        }
+        // Atomic claim: of two requests with one link, only one UPDATE matches.
+        claimed = await trx('password_resets')
+          .where({ id: row.id })
+          .whereNull('used_at')
+          .where('expires_at', '>', now)
+          .update({ used_at: now });
+        if (claimed === 0) return;
+        await trx('users')
+          .where({ id: user.id })
+          .update({ password_hash: passwordHash, password_changed_at: now });
+        await trx('refresh_tokens')
+          .where({ user_id: user.id })
+          .whereNull('revoked_at')
+          .update({ revoked_at: now });
+        // Any other link still out there stops working with this one.
+        await retirePasswordResets(trx, user.id, now);
+      });
+      if (claimed === 0) throw invalidResetError(app);
       return reply.code(204).send();
     },
   );

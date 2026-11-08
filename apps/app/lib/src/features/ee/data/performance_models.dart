@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'unit_tickets_api.dart' show EeFigureScope;
+
 /// An average and the population it speaks for (EE-205).
 ///
 /// The two never travel apart, and the reason is the same one `EeCsatSummary`
@@ -71,6 +73,7 @@ class EePerformanceRow {
     required this.mttr,
     required this.csat,
     this.compliance,
+    this.judged,
   });
 
   final String? key;
@@ -84,6 +87,11 @@ class EePerformanceRow {
   final EeCsatFigure csat;
   final double? compliance;
 
+  /// OPH-409 (U-20): the denominator [compliance] was computed over — kept
+  /// plus missed, among the period's requests. 0 or null draws "—", never
+  /// a percentage of nothing. Null from an older server.
+  final int? judged;
+
   factory EePerformanceRow.fromJson(Map<String, dynamic> json) =>
       EePerformanceRow(
         key: json['key'] as String?,
@@ -96,6 +104,7 @@ class EePerformanceRow {
         mttr: EeTimedAverage.fromJson(json['mttr'] as Map<String, dynamic>?),
         csat: EeCsatFigure.fromJson(json['csat'] as Map<String, dynamic>?),
         compliance: (json['compliance'] as num?)?.toDouble(),
+        judged: (json['judged'] as num?)?.toInt(),
       );
 }
 
@@ -104,7 +113,8 @@ class EePerformanceRow {
 /// `closedIsNotPerformance` arrives FROM THE SERVER rather than living in the
 /// app's strings, and that is deliberate: the sentence has to reach whoever
 /// pulls these figures out through the API too, and a warning that exists only
-/// in Flutter never does.
+/// in Flutter never does. R-12: the screen draws its own translated copy
+/// (`ee.perfPanel.caution`) — the server's is in one language only.
 @immutable
 class EePerformance {
   const EePerformance({
@@ -114,6 +124,7 @@ class EePerformance {
     required this.agents,
     required this.closedIsNotPerformance,
     this.processTypes = const [],
+    this.scope,
   });
 
   final String from;
@@ -126,6 +137,9 @@ class EePerformance {
   /// shape, keyed by the kind of work (`incident`, `request`, or null for
   /// work counted with no kind), each with its own SLA compliance.
   final List<EePerformanceRow> processTypes;
+
+  /// OPH-409 (U-20): whose requests; null from an older server.
+  final EeFigureScope? scope;
 
   factory EePerformance.fromJson(Map<String, dynamic> json) => EePerformance(
     from: json['from'] as String? ?? '',
@@ -145,5 +159,6 @@ class EePerformance {
           }),
         )
         .toList(growable: false),
+    scope: EeFigureScope.fromJson(json['scope']),
   );
 }

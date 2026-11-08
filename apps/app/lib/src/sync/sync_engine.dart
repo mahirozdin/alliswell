@@ -103,6 +103,10 @@ class SyncEngine {
     await syncNow();
   }
 
+  /// Whether [stop] (or [halt]) ran and no [start] re-armed it since —
+  /// what sign-out leaves every engine in (OPH-390).
+  bool get isStopped => _stopped;
+
   void stop() {
     _stopped = true;
     _debounceTimer?.cancel();
@@ -464,13 +468,25 @@ class SyncEngine {
 
   Future<void> _pullAll() async {
     while (true) {
+      if (_stopped) return;
       final state = await _ensureState();
       final page = await api.pull(
         workspaceId,
         sinceRevision: state.lastRevision,
         limit: pullPageSize,
       );
-      if (page.changes.isNotEmpty || page.toRevision != state.lastRevision) {
+      // Stopped while the request was out: sign-out gives up waiting after a
+      // bound and wipes the replica, and somebody else may already be signed
+      // in. A page answered after that belongs to nobody on this device — it
+      // is dropped, never applied (E35 G-A review r1). The revision is not
+      // advanced, so a running engine would simply pull it again.
+      if (_stopped) return;
+      // OPH-394: the first pull is applied even when it brings nothing — an
+      // empty workspace at revision 0 otherwise never stamps `lastPulledAt`,
+      // and Home could not tell "nothing pulled yet" from "pulled: empty".
+      if (page.changes.isNotEmpty ||
+          page.toRevision != state.lastRevision ||
+          state.lastPulledAt == null) {
         await applyPulledChanges(
           db,
           workspaceId: workspaceId,

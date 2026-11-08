@@ -11,6 +11,7 @@ import '../form_design.dart';
 import '../services_providers.dart';
 import 'form_field_view.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// EE-229 — a service's request form, designed beside its own preview.
 ///
@@ -717,7 +718,7 @@ class _FieldEditorState extends State<_FieldEditor> {
                   ),
                 ),
               const SizedBox(height: AwSpace.x3),
-              DropdownButtonFormField<String>(
+              AwDropdownField<String>(
                 key: const Key('field-type'),
                 initialValue: _type,
                 isExpanded: true,
@@ -780,7 +781,7 @@ class _FieldEditorState extends State<_FieldEditor> {
                     : (value) => setState(() => _conditional = value),
               ),
               if (_conditional && widget.earlier.isNotEmpty) ...[
-                DropdownButtonFormField<String>(
+                AwDropdownField<String>(
                   key: const Key('field-condition-key'),
                   initialValue: _conditionKey,
                   isExpanded: true,
@@ -800,7 +801,7 @@ class _FieldEditorState extends State<_FieldEditor> {
                   }),
                 ),
                 if (target?.type == 'select')
-                  DropdownButtonFormField<String>(
+                  AwDropdownField<String>(
                     // Keyed by the question, so picking another one starts
                     // this picker empty instead of holding a stale option.
                     key: ValueKey('field-condition-value-${target!.key}'),

@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart' show Locale;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/format.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/features/tasks/data/task_when.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -106,18 +107,19 @@ void main() {
 
     test('English', () async {
       await AwI18n.instance.setLocale(const Locale('en'));
-      expect(awFormatDuration(15), '15 min');
-      expect(awFormatDuration(60), '1 h');
-      expect(awFormatDuration(90), '1 h 30 min');
-      expect(awFormatDuration(1440), '24 h');
+      // OPH-408: whole words, and an estimate keeps counting hours.
+      expect(awFormatDuration(15, days: false), '15 min');
+      expect(awFormatDuration(60, days: false), '1 hour');
+      expect(awFormatDuration(90, days: false), '1 hour 30 min');
+      expect(awFormatDuration(1440, days: false), '24 hours');
     });
 
     test('Turkish', () async {
       await AwI18n.instance.setLocale(const Locale('tr'));
-      expect(awFormatDuration(15), '15 dk');
-      expect(awFormatDuration(60), '1 sa');
-      expect(awFormatDuration(90), '1 sa 30 dk');
-      expect(awFormatDuration(1440), '24 sa');
+      expect(awFormatDuration(15, days: false), '15 dk');
+      expect(awFormatDuration(60, days: false), '1 saat');
+      expect(awFormatDuration(90, days: false), '1 saat 30 dk');
+      expect(awFormatDuration(1440, days: false), '24 saat');
     });
   });
 }

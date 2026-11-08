@@ -2,12 +2,11 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../features/ee/providers.dart';
-import '../features/ee/team_origin.dart';
-import '../features/ee/ui/approvals_entry.dart';
 import '../features/ee/ui/team_chip.dart';
 import '../features/workspaces/ui/workspace_switcher.dart';
 import '../features/notes/ui/markdown_import_screen.dart';
@@ -28,11 +27,12 @@ import '../core/deep_link.dart';
 import '../core/persisted_prefs.dart';
 import '../features/tasks/data/capture_inbox.dart';
 import '../features/tasks/data/task_text.dart';
+import '../features/tasks/ui/task_detail_screen.dart';
 import '../features/workspaces/workspaces.dart';
 import '../features/onboarding/tour.dart';
 import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
-import '../features/quick_access/ui/quick_access_rail_section.dart';
+import '../features/quick_access/ui/quick_access_panel.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../i18n/i18n.dart';
 import '../notifications/alarm_overlay.dart';
@@ -41,12 +41,21 @@ import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
+import '../search/global_search.dart' show GlobalSearchKind;
+import '../search/search_recents.dart';
 import '../search/ui/global_search_entry.dart';
 import '../theme/tokens.dart';
+import '../widgets/offline_strip.dart';
 import '../widgets/document_surface.dart';
+import '../widgets/fab_cluster.dart';
 import '../widgets/fab_clearance.dart';
-import '../widgets/glass.dart';
+import '../widgets/section_fab.dart';
+import '../widgets/list_detail.dart';
+import 'shell_rail.dart';
 import '../widgets/refreshable.dart';
+import '../widgets/sheets.dart';
+import '../widgets/tab_capsule.dart';
+import '../widgets/shell_section.dart';
 
 /// Adaptive shell: floating Liquid Glass chrome — a glass rail panel on wide
 /// layouts (desktop/web/tablet), a glass capsule bottom bar on narrow ones
@@ -78,12 +87,25 @@ class HomeShell extends ConsumerWidget {
 
   /// The on-screen rect of the step's specific nav destination — works for both
   /// the bottom bar and the rail (whichever icon is mounted). Null for
-  /// welcome/farewell cards or an anchor that isn't laid out yet (graceful).
+  /// centred cards or an anchor that isn't laid out yet (graceful).
   static Rect? _anchorRect(TourStep step) {
+    final target = step.target;
+    if (target != null) {
+      final fallback = step.fallback;
+      if (fallback == null) return TourAnchor.rectOf(target);
+      // Polish 4 T-03: a target with a stand-in (the alarm step's row) must
+      // be on screen, or the stand-in takes its place.
+      return TourAnchor.visibleRectOf(target) ?? TourAnchor.rectOf(fallback);
+    }
     final section = step.section;
     if (section == null) return null;
     final keys = _navKeys[section]!;
-    return _rectOf(keys.icon) ?? _rectOf(keys.selected);
+    // A section behind the phone's "More" slot points at that slot.
+    return _rectOf(keys.icon) ??
+        _rectOf(keys.selected) ??
+        _rectOf(_moreKey) ??
+        _rectOf(_moreSelectedKey) ??
+        _rectOf(_menuKey);
   }
 
   void _goBranch(int index) {
@@ -106,28 +128,47 @@ class HomeShell extends ConsumerWidget {
   /// used to own these FABs, but as nested Scaffolds their FAB was painted
   /// behind the bar and could not be tapped (OPH-101). Sections with no create
   /// action (Inbox) get none.
-  /// OPH-223 (DESIGN §24 AI1): two FABs, two corners. The AI FAB sits
-  /// bottom-left, the create FAB stays bottom-right; a full-width Row with
-  /// space-between is the standard two-corner recipe. When AI is off, the
-  /// section FAB is returned alone (unchanged behavior).
-  Widget? _fabBar(BuildContext context, WidgetRef ref) {
+  /// OPH-397 (ADR-0062 §3, amending DESIGN §24 AI1): ONE action cluster on
+  /// the right — the microphone (48) beside the "+" (56), centres on one
+  /// line, the bottom-left corner empty. Until OPH-397 the microphone sat
+  /// bottom-left, on the section headers and the column of check circles,
+  /// and a tap meant for a task opened it (R-07, E-10). [AwFabLocation]
+  /// puts the cluster's end on the gutter, so the "+" stands in the same
+  /// place with AI on or off.
+  Widget? _fabCluster(BuildContext context, WidgetRef ref) {
     // OPH-271: the note editor takes the screen, so nothing floats over it —
     // neither "new note" nor the AI button. Someone writing is not shopping
     // for a second thing to start.
     if (awIsDocumentRoute(GoRouterState.of(context).uri.path)) return null;
-    final section = _sectionFab(context, ref);
+    // R-02 (polish 2): a screen inside the section may lend its own create
+    // button ([AwSectionFab]) — it stands where "+" stands, the microphone
+    // to its left, instead of under the microphone in its own Scaffold.
+    final section =
+        _sectionFab(context, ref) ?? ref.watch(awSectionFabProvider)?.fab;
     if (!aiFabVisible(ref)) return section;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AwSpace.x2),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const AiFab(),
-          if (section != null) section else const SizedBox.shrink(),
+    // H-2 (polish 3, DESIGN §44 F3): in a section whose screens lend their
+    // own create button, the microphone floats only beside it. Alone it
+    // stood on the gutter over the SLA board's and the workload report's
+    // right-hand figures (and over a selection's rows); a screen with no
+    // create button there is a board to read, and nothing floats over it.
+    if (section == null && _lendsItsCreate()) return null;
+    return Row(
+      key: const Key('shell-fab-cluster'),
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const TourAnchor(target: TourTarget.voice, child: AiFab()),
+        if (section != null) ...[
+          const SizedBox(width: kAwFabClusterGap),
+          section,
         ],
-      ),
+      ],
     );
   }
+
+  /// The sections whose screens lend their create button ([AwSectionFab])
+  /// rather than the shell drawing one: the requests section.
+  bool _lendsItsCreate() =>
+      AppSection.values[navigationShell.currentIndex] == AppSection.tickets;
 
   /// EE-052: a create button belongs to a verb, and a role that lacks the
   /// verb should not be shown the button at all.
@@ -140,18 +181,19 @@ class HomeShell extends ConsumerWidget {
   /// unavailability is the information.
   Widget? _sectionFab(BuildContext context, WidgetRef ref) {
     return switch (AppSection.values[navigationShell.currentIndex]) {
-      // EE-084: no "new request" button on the agent's queue. Opening a ticket
-      // means naming a SERVICE, and the catalogue is admin-gated — an agent
-      // cannot read it. The requester's own filing surface is EE-087's, and
-      // giving this screen a button that could not resolve a destination would
-      // be exactly the "greyed-out affordance" this method exists to avoid.
+      // The requests screens decide their own "new request" (it depends on
+      // the screen's state: a selection, the tab, the permission) and lend
+      // it to this cluster through [AwSectionFab] (R-02, polish 2).
       AppSection.tickets => null,
       AppSection.home when !ref.watch(canProvider('tasks.create')) => null,
       AppSection.projects when !ref.watch(canProvider('projects.create')) =>
         null,
       AppSection.notes when !ref.watch(canProvider('notes.create')) => null,
       AppSection.home => FloatingActionButton(
-        tooltip: 'shell.fabNewTask'.tr(),
+        // OPH-405: on a desktop the tooltip names the N key.
+        tooltip: MediaQuery.sizeOf(context).width >= kAwPaneBreakpoint
+            ? 'shell.fabNewTaskShortcut'.tr()
+            : 'shell.fabNewTask'.tr(),
         // The widget's "+" opens this same sheet (OPH-333) — one function.
         onPressed: () => showHomeTaskCreateSheet(context, ref),
         child: const Icon(Icons.add),
@@ -168,6 +210,247 @@ class HomeShell extends ConsumerWidget {
       ),
       AppSection.inbox || AppSection.files => null,
     };
+  }
+
+  /// The phone's [AwTabCapsule] (OPH-396, ADR-0062): every drawn section
+  /// up to five, or the first four and "More" (`phoneTabLayout`). Above
+  /// 1.3× text it is the labelled menu, which lists every drawn section
+  /// itself (DESIGN §43 N4, ADR-0066).
+  Widget _phoneTabs(BuildContext context, List<AppSection> visible) {
+    final current = AppSection.values[navigationShell.currentIndex];
+    if (awTabMenuMode(context)) {
+      return AwTabCapsule(
+        menuKey: _menuKey,
+        selectedIndex: visible.indexOf(current),
+        onSelected: (i) => _goBranch(visible[i].index),
+        items: [
+          for (final section in visible)
+            AwTabItem(
+              icon: section.icon,
+              selectedIcon: section.selectedIcon,
+              label: section.title,
+            ),
+        ],
+      );
+    }
+    final layout = phoneTabLayout(visible);
+    final direct = layout.direct.indexOf(current);
+    final hasMore = layout.overflow.isNotEmpty;
+    final selected = direct >= 0
+        ? direct
+        : hasMore && layout.overflow.contains(current)
+        ? layout.direct.length
+        : -1;
+    return AwTabCapsule(
+      selectedIndex: selected,
+      onSelected: (i) {
+        if (i < layout.direct.length) {
+          _goBranch(layout.direct[i].index);
+        } else {
+          unawaited(_showMoreSections(context, layout.overflow, current));
+        }
+      },
+      items: [
+        for (final section in layout.direct)
+          AwTabItem(
+            icon: section.icon,
+            selectedIcon: section.selectedIcon,
+            label: section.title,
+            iconKey: _navKeys[section]!.icon,
+            selectedIconKey: _navKeys[section]!.selected,
+            // ADR-0062 §5: with the bubble off by default, a long press on
+            // Home is one of Quick Access's ways in (with the ⚡ and the
+            // search palette's "Shortcuts").
+            onLongPress: section == AppSection.home
+                ? () => showQuickAccessPanel(context)
+                : null,
+            longPressHint: section == AppSection.home
+                ? 'nav.homeLongPressHint'.tr()
+                : null,
+          ),
+        if (hasMore)
+          AwTabItem(
+            icon: Icons.more_horiz,
+            selectedIcon: Icons.more_horiz,
+            label: 'nav.more'.tr(),
+            iconKey: _moreKey,
+            selectedIconKey: _moreSelectedKey,
+          ),
+      ],
+    );
+  }
+
+  static final GlobalKey _moreKey = GlobalKey(debugLabel: 'nav-more');
+  static final GlobalKey _moreSelectedKey = GlobalKey(
+    debugLabel: 'nav-sel-more',
+  );
+  static final GlobalKey _menuKey = GlobalKey(debugLabel: 'nav-menu');
+
+  /// "More" opens the sections that have no slot of their own (ADR-0062 §2):
+  /// a sheet with each one's icon, name and line, the open one marked.
+  Future<void> _showMoreSections(
+    BuildContext context,
+    List<AppSection> sections,
+    AppSection current,
+  ) async {
+    final picked = await showAwSheet<AppSection>(
+      context,
+      showDragHandle: true,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          key: const Key('nav-more-sheet'),
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(
+                AwSpace.x5,
+                0,
+                AwSpace.x5,
+                AwSpace.x2,
+              ),
+              child: Semantics(
+                header: true,
+                child: Text(
+                  'nav.moreTitle'.tr(),
+                  style: Theme.of(sheetContext).textTheme.titleMedium,
+                ),
+              ),
+            ),
+            for (final section in sections)
+              ListTile(
+                key: Key('nav-more-${section.name}'),
+                leading: Icon(
+                  section == current ? section.selectedIcon : section.icon,
+                ),
+                title: Text(section.title),
+                subtitle: Text(section.description),
+                selected: section == current,
+                onTap: () => Navigator.of(sheetContext).pop(section),
+              ),
+            const SizedBox(height: AwSpace.x2),
+          ],
+        ),
+      ),
+    );
+    if (picked != null) _goBranch(picked.index);
+  }
+
+  static const _newTaskKey = SingleActivator(LogicalKeyboardKey.keyN);
+
+  Widget _shellLayout(
+    BuildContext context,
+    WidgetRef ref,
+    List<AppSection> visibleSections,
+    Widget? fab,
+    double fabClearance,
+  ) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= kAwWideBreakpoint;
+        final extendedRail = constraints.maxWidth >= kAwExtendedRailBreakpoint;
+        if (isWide) {
+          // OPH-405 (U-08): from the desktop width a task opens in a pane
+          // beside the list; the floating cluster then stands left of it.
+          final paneOpen = AwListDetailScope.isOpen(context, kAwTaskPane);
+          return Scaffold(
+            backgroundColor: Colors.transparent,
+            // R-12: the cluster stands at the window's end, never on the
+            // rail (the microphone used to sit on its glass corner).
+            // No scroll scope here: on a tablet it only steps aside for the
+            // on-screen keyboard (T-01, polish 4).
+            floatingActionButton: fab == null ? null : AwFabDrop(child: fab),
+            floatingActionButtonLocation: AwFabLocation(
+              kAwFloatGutter +
+                  math.max(
+                    paneOpen ? kAwDetailPaneWidth : 0.0,
+                    ref.watch(awSectionFabProvider)?.endInset ?? 0,
+                  ),
+            ),
+            body: Row(
+              children: [
+                AwShellRail(
+                  sections: visibleSections,
+                  extended: extendedRail,
+                  selected: destinationIndexFor(
+                    visibleSections,
+                    navigationShell.currentIndex,
+                  ).clamp(0, visibleSections.length - 1),
+                  onSelected: (i) => _goVisible(visibleSections, i),
+                  navKeys: _navKeys,
+                  tourAnchors: true,
+                ),
+                // OPH-359 (UI-AUDIT #12): the content is its own semantics
+                // container. The section's Navigator paints its page route's
+                // ModalBarrier, and a barrier is a `BlockSemantics`: it hides
+                // every node painted BEFORE it in the same container. Without
+                // a boundary here that container was the shell's, and the
+                // rail — painted first in this Row — vanished from the
+                // accessibility tree: no screen reader, no Tab on the web.
+                // The phone's bar is painted after the body, which is why
+                // only the wide layout lost it.
+                Expanded(
+                  child: AwListDetailPane(
+                    kind: kAwTaskPane,
+                    detailBuilder: (context, id, close) =>
+                        TaskDetailScreen(taskId: id, onClose: close),
+                    child: Semantics(
+                      key: const Key('shell-content'),
+                      container: true,
+                      child: AwFabClearance(
+                        extent: fabClearance,
+                        child: AwSectionFabHost(child: navigationShell),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        // ADR-0062 §4 (OPH-397): one gutter for everything that floats.
+        final gutter = awFloatGutter(constraints.maxWidth);
+        return AwFabScrollScope(
+          child: Scaffold(
+            backgroundColor: Colors.transparent,
+            extendBody: true,
+            floatingActionButton: fab == null ? null : AwFabDrop(child: fab),
+            floatingActionButtonLocation: AwFabLocation(gutter),
+            // OPH-392 (E-22): the phone has no refresh button to fail, so the
+            // lost server is said here, above whichever section is open.
+            body: AwOfflineStrip(
+              child: _ShellBody(
+                fabClearance: fabClearance,
+                child: AwSectionFabHost(child: navigationShell),
+              ),
+            ),
+            bottomNavigationBar: Padding(
+              // The bar's row belongs to the capsule and the orb alone: the
+              // Quick Access bubble no longer docks in it (ADR-0062 §5).
+              padding: EdgeInsets.symmetric(horizontal: gutter),
+              child: SafeArea(
+                top: false,
+                minimum: const EdgeInsets.only(bottom: AwSpace.x3),
+                // OPH-374: the capsule shares its row with the search button
+                // (DESIGN §40 P1) — glass beside glass, one centre line.
+                child: Row(
+                  children: [
+                    // OPH-396 (ADR-0062): equal labelled slots; a sixth
+                    // section puts "More" in the fifth.
+                    Expanded(child: _phoneTabs(context, visibleSections)),
+                    const SizedBox(width: AwSpace.x2),
+                    const TourAnchor(
+                      target: TourTarget.search,
+                      child: AwGlobalSearchOrb(),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -189,21 +472,8 @@ class HomeShell extends ConsumerWidget {
     ref.watch(widgetSyncProvider);
     // EE-225's draft courier and "sent" listener live on the app itself
     // (`AllisWellApp`), not here: a page opened by its address has no shell.
-    // EE-084: which sections are DRAWN. Not the same list as the branches —
-    // `sections.dart` says why that distinction exists.
-    //
-    // EE-290: the service desk is drawn only in a TEAM's window. The license
-    // is the instance's, the desk is a team's, and every request endpoint
-    // answers only on the team's own address — which `teamOriginProvider`
-    // reads from the address this person signed in to and the cached status,
-    // so it is right offline. On the hosted service's own address somebody on
-    // their own has no desk, no catalogue and nobody to ask: the tab opened
-    // onto a list that could not load and a form that could not send.
-    final visibleSections = visibleAppSections(
-      itsm:
-          ref.watch(eeFeatureProvider('itsm')) &&
-          ref.watch(teamOriginProvider) != null,
-    );
+    // EE-084 / EE-290: which sections are DRAWN (`shellVisibleSections`).
+    final visibleSections = shellVisibleSections(ref);
     // …and a shell sitting on a branch it does not draw (an address typed or
     // restored on the web, a license that lapsed) moves to Home — once the
     // answer is SETTLED. While the status is still loading, the tab is hidden
@@ -292,218 +562,44 @@ class HomeShell extends ConsumerWidget {
 
     // OPH-359 (UI-AUDIT #58): what the floating buttons cover, said once for
     // every list inside the shell (see [AwFabClearance]).
-    final fabClearance = _fabBar(context, ref) == null
-        ? 0.0
-        : AwFabClearance.lane;
-    final shell = LayoutBuilder(
-      builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= kAwWideBreakpoint;
-        final extendedRail = constraints.maxWidth >= kAwExtendedRailBreakpoint;
-        if (isWide) {
-          return Scaffold(
-            backgroundColor: Colors.transparent,
-            floatingActionButton: _fabBar(context, ref),
-            floatingActionButtonLocation: aiFabVisible(ref)
-                ? FloatingActionButtonLocation.centerFloat
-                : FloatingActionButtonLocation.endFloat,
-            body: Row(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(
-                    AwSpace.x3,
-                    AwSpace.x3,
-                    0,
-                    AwSpace.x3,
-                  ),
-                  child: GlassSurface(
-                    floating: true,
-                    borderRadius: const BorderRadius.all(
-                      Radius.circular(AwRadius.xl),
-                    ),
-                    child: SafeArea(
-                      right: false,
-                      child: NavigationRail(
-                        extended: extendedRail,
-                        labelType: extendedRail
-                            ? NavigationRailLabelType.none
-                            : NavigationRailLabelType.all,
-                        selectedIndex: destinationIndexFor(
-                          visibleSections,
-                          navigationShell.currentIndex,
-                        ).clamp(0, visibleSections.length - 1),
-                        onDestinationSelected: (i) =>
-                            _goVisible(visibleSections, i),
-                        minWidth: kAwRailMinWidth,
-                        groupAlignment: -0.9,
-                        // OPH-374: search everywhere heads the rail — the
-                        // first thing on the left, as in every desktop app
-                        // with a palette (DESIGN §40 P1).
-                        leading: AwGlobalSearchRailEntry(
-                          extended: extendedRail,
-                        ),
-                        // OPH-199: the shortcut section sits right under the
-                        // destinations. `scrollable` is not optional — a full
-                        // rail on a short window would otherwise overflow.
-                        scrollable: true,
-                        trailing: SizedBox(
-                          // The rail lives in an unbounded Row, and
-                          // `minExtendedWidth` is only a floor, so a long
-                          // shortcut title would otherwise widen the whole rail.
-                          width: extendedRail ? 256 : kAwRailMinWidth,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              // EE-294: Approvals, directly under Requests —
-                              // the rail's last destination. A link rather
-                              // than a section (`approvals_entry.dart` says
-                              // why), drawn only for approval authority.
-                              EeApprovalsRailEntry(extended: extendedRail),
-                              extendedRail
-                                  ? const QuickAccessRailSection()
-                                  : const QuickAccessRailButton(),
-                            ],
-                          ),
-                        ),
-                        destinations: [
-                          for (final section in visibleSections)
-                            NavigationRailDestination(
-                              icon: KeyedSubtree(
-                                key: _navKeys[section]!.icon,
-                                child: Tooltip(
-                                  message: section.description,
-                                  waitDuration: const Duration(
-                                    milliseconds: 600,
-                                  ),
-                                  child: Icon(section.icon),
-                                ),
-                              ),
-                              selectedIcon: KeyedSubtree(
-                                key: _navKeys[section]!.selected,
-                                child: Icon(section.selectedIcon),
-                              ),
-                              label: Text(section.title),
-                            ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-                // OPH-359 (UI-AUDIT #12): the content is its own semantics
-                // container. The section's Navigator paints its page route's
-                // ModalBarrier, and a barrier is a `BlockSemantics`: it hides
-                // every node painted BEFORE it in the same container. Without
-                // a boundary here that container was the shell's, and the
-                // rail — painted first in this Row — vanished from the
-                // accessibility tree: no screen reader, no Tab on the web.
-                // The phone's bar is painted after the body, which is why
-                // only the wide layout lost it.
-                Expanded(
-                  child: Semantics(
-                    container: true,
-                    child: AwFabClearance(
-                      extent: fabClearance,
-                      child: navigationShell,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          );
+    final fab = _fabCluster(context, ref);
+    final fabClearance = fab == null ? 0.0 : AwFabClearance.lane;
+    // OPH-405: the task pane's state and keys (Esc, ↑/↓) sit above both
+    // layouts; switching sections closes it. N opens a new task anywhere
+    // in the shell (DESIGN §51 D4).
+    final canCreateTask = ref.watch(canProvider('tasks.create'));
+    final shell = Focus(
+      canRequestFocus: false,
+      includeSemantics: false,
+      skipTraversal: true,
+      onKeyEvent: (node, event) {
+        if (!canCreateTask ||
+            !_newTaskKey.accepts(event, HardwareKeyboard.instance) ||
+            awTextInputFocused() ||
+            ref.read(tourControllerProvider).running ||
+            ref.read(alarmOverlayControllerProvider).ringing != null) {
+          return KeyEventResult.ignored;
         }
-        return Scaffold(
-          backgroundColor: Colors.transparent,
-          extendBody: true,
-          floatingActionButton: _fabBar(context, ref),
-          floatingActionButtonLocation: aiFabVisible(ref)
-              ? FloatingActionButtonLocation.centerFloat
-              : FloatingActionButtonLocation.endFloat,
-          body: _ShellBody(fabClearance: fabClearance, child: navigationShell),
-          bottomNavigationBar: Padding(
-            // OPH-362: the docked Quick Access bubble rests in this row, so
-            // the capsule ends short of it instead of sliding under it.
-            padding: _barPadding(AwBubbleDock.maybeOf(context)),
-            child: SafeArea(
-              top: false,
-              minimum: const EdgeInsets.only(bottom: AwSpace.x3),
-              // OPH-374: the capsule shares its row with the search button
-              // (DESIGN §40 P1) — glass beside glass, one row of chrome.
-              child: Row(
-                children: [
-                  Expanded(
-                    child: LayoutBuilder(
-                      builder: (context, bar) => GlassSurface(
-                        floating: true,
-                        borderRadius: const BorderRadius.all(
-                          Radius.circular(AwRadius.pill),
-                        ),
-                        // OPH-359 (UI-AUDIT #58): the capsule's pill corners
-                        // clipped the outermost labels ("Ana Sayfa",
-                        // "Talepler"), so the bar sits inside the curve.
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: AwSpace.x3,
-                          ),
-                          child: NavigationBar(
-                            // Every label is written while each tab has room
-                            // for one; below that only the selected one is,
-                            // and the rest keep their icon and tooltip. Width
-                            // rather than count since OPH-374: the search
-                            // button takes a tab's width of the row, as the
-                            // docked Quick Access bubble does (OPH-362).
-                            labelBehavior:
-                                (bar.maxWidth - 2 * AwSpace.x3) /
-                                        visibleSections.length >=
-                                    kAwBarLabelSlot
-                                ? NavigationDestinationLabelBehavior.alwaysShow
-                                : NavigationDestinationLabelBehavior
-                                      .onlyShowSelected,
-                            selectedIndex: destinationIndexFor(
-                              visibleSections,
-                              navigationShell.currentIndex,
-                            ).clamp(0, visibleSections.length - 1),
-                            onDestinationSelected: (i) =>
-                                _goVisible(visibleSections, i),
-                            destinations: [
-                              for (final section in visibleSections)
-                                // A tab narrower than its label (TR "Ana
-                                // Sayfa" in a ~54 px slot beside the search
-                                // button) must not wrap the selected label
-                                // onto a second, clipped line. One line; in
-                                // `onlyShowSelected` the neighbours carry no
-                                // label for it to run into. Per destination:
-                                // the bar's Material resets any style above.
-                                DefaultTextStyle.merge(
-                                  maxLines: 1,
-                                  softWrap: false,
-                                  overflow: TextOverflow.visible,
-                                  child: NavigationDestination(
-                                    icon: KeyedSubtree(
-                                      key: _navKeys[section]!.icon,
-                                      child: Icon(section.icon),
-                                    ),
-                                    selectedIcon: KeyedSubtree(
-                                      key: _navKeys[section]!.selected,
-                                      child: Icon(section.selectedIcon),
-                                    ),
-                                    label: section.title,
-                                    tooltip: section.title,
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: AwSpace.x2),
-                  const AwGlobalSearchOrb(),
-                ],
-              ),
-            ),
-          ),
-        );
+        unawaited(showHomeTaskCreateSheet(context, ref));
+        return KeyEventResult.handled;
       },
+      child: AwListDetailScope(
+        kind: kAwTaskPane,
+        resetToken: navigationShell.currentIndex,
+        // P-07: a task opened in the pane is a visit like its own page.
+        onShow: (id) => unawaited(
+          ref
+              .read(searchRecentsProvider.notifier)
+              .record(SearchRecent(GlobalSearchKind.task, id)),
+        ),
+        // S-G1 review r1: the section on show, told to the screens of
+        // every (kept-mounted) branch — a pane that lent a unit closes on
+        // a switch.
+        child: AwShellSection(
+          index: navigationShell.currentIndex,
+          child: _shellLayout(context, ref, visibleSections, fab, fabClearance),
+        ),
+      ),
     );
 
     if (!tour.running && ringing == null) return shell;
@@ -514,7 +610,7 @@ class HomeShell extends ConsumerWidget {
           Positioned.fill(
             child: TourOverlay(
               state: tour,
-              anchorRect: _anchorRect(tour.current),
+              resolveAnchor: () => _anchorRect(tour.current),
               onNext: () => ref.read(tourControllerProvider.notifier).next(),
               onSkip: () => ref.read(tourControllerProvider.notifier).skip(),
             ),
@@ -706,21 +802,6 @@ Future<AiStatus> _aiStatusForShare(WidgetRef ref) async {
 
 const _shareStatusBudget = Duration(seconds: 2);
 
-/// The narrowest tab that still writes its label (OPH-374): "Ana Sayfa" and
-/// "Projeler" at the bar's label size fit 64 px; below it they ellipsize.
-const double kAwBarLabelSlot = 64;
-
-/// The phone bar's outer margins: [AwSpace.x3] each side, and on the side the
-/// Quick Access bubble docks, the bubble's lane instead (OPH-362).
-EdgeInsets _barPadding(AwBubbleDock? dock) {
-  const side = AwSpace.x3;
-  if (dock == null) return const EdgeInsets.symmetric(horizontal: side);
-  final lane = math.max(side, dock.width);
-  return dock.edge == AwDockEdge.left
-      ? EdgeInsets.only(left: lane, right: side)
-      : EdgeInsets.only(left: side, right: lane);
-}
-
 /// The phone shell's body (OPH-359, UI-AUDIT #10).
 ///
 /// `extendBody` lets the content scroll under the glass bar, and Scaffold
@@ -740,20 +821,83 @@ class _ShellBody extends StatelessWidget {
   Widget build(BuildContext context) {
     final media = MediaQuery.of(context);
     final covered = media.padding.bottom;
-    return MediaQuery(
-      data: media.copyWith(
-        viewPadding: media.viewPadding.copyWith(
-          bottom: math.max(media.viewPadding.bottom, covered),
+    final tokens = context.awTokens;
+    // The page's own colour at the bottom of the screen: the veil over the
+    // aurora's lower stop (`AuroraBackground`).
+    final page = Color.alphaBlend(tokens.veil, tokens.auroraBottom);
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: MediaQuery(
+            data: media.copyWith(
+              viewPadding: media.viewPadding.copyWith(
+                bottom: math.max(media.viewPadding.bottom, covered),
+              ),
+            ),
+            child: AwFabClearance(extent: fabClearance, child: child),
+          ),
         ),
-      ),
-      child: AwFabClearance(extent: fabClearance, child: child),
+        // R-03 (OPH-397, ADR-0062 §4): content no longer runs under the bar
+        // at full contrast. A passive fade in the PAGE colour — paint, not
+        // glass (G1), no motion, no touches — from 24 above the capsule to
+        // the screen's edge. No text rests here: every list ends above the
+        // action cluster (`awListPadding`).
+        if (covered > 0)
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            height: covered + kAwBottomScrimReach,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                key: const Key('shell-bottom-scrim'),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      page.withValues(alpha: 0),
+                      page.withValues(alpha: kAwBottomScrimAlpha),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }
 
+/// How far above the capsule the bottom fade starts, and how opaque it is
+/// at the screen's edge (Mobbin §1.5: 0 → 92 %).
+const double kAwBottomScrimReach = AwSpace.x6;
+const double kAwBottomScrimAlpha = 0.92;
+
 /// Below this width a section's app bar puts the team and unit under its
 /// title (OPH-359) — the switcher's own compact width, so the two agree.
 const double kAwCompactAppBarWidth = 600;
+
+/// The phone section bar's height (polish 4 T-06). At large text the unit's
+/// name under the title may take two lines, so the bar grows to hold the
+/// heading and two name lines there — measured at the scale the bar draws its
+/// title at (AppBar clamps it to 1.34) — instead of cutting the name to
+/// "Demir Çelik Fabri…". At normal sizes it is the standard bar.
+double awSectionAppBarHeight(BuildContext context) {
+  final scale = MediaQuery.textScalerOf(context).scale(1);
+  if (scale <= kAwRowVerticalTextScale) return kToolbarHeight;
+  final theme = Theme.of(context);
+  final drawn = math.min(scale, 1.34);
+  double line(TextStyle? style, double size, double height) =>
+      drawn * (style?.fontSize ?? size) * (style?.height ?? height);
+  final heading = line(
+    theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge,
+    22,
+    1.27,
+  );
+  final name = line(theme.textTheme.labelLarge, 14, 1.43);
+  return math.max(kToolbarHeight, heading + 2 * name).ceilToDouble();
+}
 
 /// Shared app bar for section screens with quick access to Settings.
 ///
@@ -780,6 +924,7 @@ AppBar buildSectionAppBar(
   // has the width to say its name.
   final compact = width < kAwCompactAppBarWidth;
   return AppBar(
+    toolbarHeight: compact ? awSectionAppBarHeight(context) : null,
     title: compact
         ? AwWorkspaceSwitcher(title: title, leading: const AwTeamChip())
         : Text(title),

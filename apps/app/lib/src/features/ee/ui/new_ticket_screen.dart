@@ -31,6 +31,7 @@ import '../unit_scope_providers.dart';
 import 'form_field_view.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
+import '../../../widgets/form_width.dart';
 
 /// EE-225 — filing a request from the app.
 ///
@@ -502,293 +503,300 @@ class _EeNewTicketScreenState extends ConsumerState<EeNewTicketScreen> {
         leading: awRouteLeading(context),
         title: Text('ee.tickets.new.title'.tr()),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(eeCatalogProvider.future),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(
-            AwSpace.x4,
-            AwSpace.x4,
-            AwSpace.x4,
-            AwSpace.x6 + MediaQuery.viewInsetsOf(context).bottom,
-          ),
-          children: [
-            if (widget.followUp case final followUp?) ...[
-              _Note(
-                key: const Key('new-ticket-follow-up'),
-                icon: Icons.link,
-                text: 'ee.tickets.new.followUpNote'.tr(
-                  args: {'ref': followUp.reference},
-                ),
-              ),
-              const SizedBox(height: AwSpace.x4),
-            ],
-            if (!online && canDraft) ...[
-              _Note(
-                key: const Key('new-ticket-offline'),
-                icon: Icons.cloud_off_outlined,
-                text: 'ee.tickets.new.offline'.tr(),
-              ),
-              const SizedBox(height: AwSpace.x2),
-              _Note(
-                key: const Key('new-ticket-draft-note'),
-                icon: Icons.inventory_2_outlined,
-                text: 'ee.tickets.new.draftCarries'.tr(),
-              ),
-              const SizedBox(height: AwSpace.x4),
-            ],
-            if (!canDraft) ...[
-              _Note(
-                key: const Key('new-ticket-offline-no-draft'),
-                icon: Icons.cloud_off_outlined,
-                text: 'ee.tickets.new.offlineNoDraft'.tr(),
-              ),
-              const SizedBox(height: AwSpace.x4),
-            ],
-            // ── The service ───────────────────────────────────────────────
-            Card(
-              margin: EdgeInsets.zero,
-              child: ListTile(
-                key: const Key('new-ticket-service'),
-                // UI-AUDIT #82: the chosen service wears its own icon, the
-                // one the list showed a moment ago.
-                leading: Icon(
-                  service == null
-                      ? Icons.category_outlined
-                      : serviceIconData(service.icon),
-                  key: const Key('new-ticket-service-icon'),
-                ),
-                title: Text(service?.name ?? 'ee.tickets.new.pickService'.tr()),
-                subtitle: Text(
-                  service?.description ?? 'ee.tickets.new.service'.tr(),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                trailing: const Icon(Icons.chevron_right),
-                enabled: !_busy,
-                onTap: () => _openCatalog(catalog),
-              ),
+      body: AwFormWidth(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(eeCatalogProvider.future),
+          child: ListView(
+            padding: EdgeInsets.fromLTRB(
+              AwSpace.x4,
+              AwSpace.x4,
+              AwSpace.x4,
+              AwSpace.x6 + MediaQuery.viewInsetsOf(context).bottom,
             ),
-            if (catalog.hasError || (catalog.hasValue && catalog.value == null))
-              Padding(
-                key: const Key('new-ticket-catalog-unavailable'),
-                padding: const EdgeInsets.only(top: AwSpace.x2),
-                child: Text(
-                  'ee.tickets.new.catalogUnavailable'.tr(),
-                  style: _quiet(theme),
+            children: [
+              if (widget.followUp case final followUp?) ...[
+                _Note(
+                  key: const Key('new-ticket-follow-up'),
+                  icon: Icons.link,
+                  text: 'ee.tickets.new.followUpNote'.tr(
+                    args: {'ref': followUp.reference},
+                  ),
+                ),
+                const SizedBox(height: AwSpace.x4),
+              ],
+              if (!online && canDraft) ...[
+                _Note(
+                  key: const Key('new-ticket-offline'),
+                  icon: Icons.cloud_off_outlined,
+                  text: 'ee.tickets.new.offline'.tr(),
+                ),
+                const SizedBox(height: AwSpace.x2),
+                _Note(
+                  key: const Key('new-ticket-draft-note'),
+                  icon: Icons.inventory_2_outlined,
+                  text: 'ee.tickets.new.draftCarries'.tr(),
+                ),
+                const SizedBox(height: AwSpace.x4),
+              ],
+              if (!canDraft) ...[
+                _Note(
+                  key: const Key('new-ticket-offline-no-draft'),
+                  icon: Icons.cloud_off_outlined,
+                  text: 'ee.tickets.new.offlineNoDraft'.tr(),
+                ),
+                const SizedBox(height: AwSpace.x4),
+              ],
+              // ── The service ───────────────────────────────────────────────
+              Card(
+                margin: EdgeInsets.zero,
+                child: ListTile(
+                  key: const Key('new-ticket-service'),
+                  // UI-AUDIT #82: the chosen service wears its own icon, the
+                  // one the list showed a moment ago.
+                  leading: Icon(
+                    service == null
+                        ? Icons.category_outlined
+                        : serviceIconData(service.icon),
+                    key: const Key('new-ticket-service-icon'),
+                  ),
+                  title: Text(
+                    service?.name ?? 'ee.tickets.new.pickService'.tr(),
+                  ),
+                  subtitle: Text(
+                    service?.description ?? 'ee.tickets.new.service'.tr(),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  enabled: !_busy,
+                  onTap: () => _openCatalog(catalog),
                 ),
               ),
-            if (service != null && service.needsApproval) ...[
-              const SizedBox(height: AwSpace.x2),
-              _Note(
-                key: const Key('new-ticket-approval'),
-                icon: Icons.approval_outlined,
-                text: 'ee.tickets.new.needsApproval'.tr(),
-              ),
-            ],
-            if (service != null && service.units.length > 1) ...[
-              const SizedBox(height: AwSpace.x4),
-              Text(
-                'ee.tickets.new.unit'.tr(),
-                style: theme.textTheme.titleSmall,
-              ),
-              if (!online)
+              if (catalog.hasError ||
+                  (catalog.hasValue && catalog.value == null))
                 Padding(
-                  padding: const EdgeInsets.only(top: AwSpace.x1),
+                  key: const Key('new-ticket-catalog-unavailable'),
+                  padding: const EdgeInsets.only(top: AwSpace.x2),
                   child: Text(
-                    'ee.tickets.new.draftMultiUnit'.tr(),
-                    key: const Key('new-ticket-draft-multi-unit'),
+                    'ee.tickets.new.catalogUnavailable'.tr(),
                     style: _quiet(theme),
                   ),
-                )
-              else
-                RadioGroup<String>(
-                  groupValue: _unitId,
-                  onChanged: (value) {
-                    if (!_busy) setState(() => _unitId = value);
-                  },
-                  child: Column(
-                    children: [
-                      for (final unit in service.units)
-                        RadioListTile<String>(
-                          key: Key('new-ticket-unit-${unit.id}'),
-                          contentPadding: EdgeInsets.zero,
-                          value: unit.id,
-                          title: Text(unit.name),
-                        ),
-                    ],
-                  ),
                 ),
-            ],
-            // ── EE-271: the machine it is about ───────────────────────────
-            // Beside the service because it answers the same question —
-            // WHERE this goes — and above the words, so a request filed from
-            // a card shows its machine first. Offered to whoever may see the
-            // register, and always shown when a card already chose one.
-            if (_asset != null || ref.watch(canProvider('assets.view'))) ...[
-              const SizedBox(height: AwSpace.x4),
-              _AssetField(
-                asset: _asset,
-                enabled: !_busy,
-                onPick: _pickAsset,
-                onClear: () => setState(() => _asset = null),
-              ),
-            ],
-            // ── What happened ─────────────────────────────────────────────
-            const SizedBox(height: AwSpace.x4),
-            TextField(
-              key: const Key('new-ticket-subject'),
-              controller: _subject,
-              enabled: !_busy,
-              maxLength: 200,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: 'ee.tickets.new.subject'.tr(),
-                hintText: 'ee.tickets.new.subjectHint'.tr(),
-              ),
-            ),
-            // ── EE-226: the answer may already be written ───────────────
-            if (online)
-              _Answers(query: _answersFor, read: _read, onOpen: _openAnswer),
-            const SizedBox(height: AwSpace.x2),
-            TextField(
-              key: const Key('new-ticket-body'),
-              controller: _body,
-              enabled: !_busy,
-              minLines: 3,
-              maxLines: 8,
-              keyboardType: TextInputType.multiline,
-              textCapitalization: TextCapitalization.sentences,
-              decoration: InputDecoration(
-                labelText: 'ee.tickets.new.body'.tr(),
-                hintText: 'ee.tickets.new.bodyHint'.tr(),
-              ),
-            ),
-            // ── The service's own questions — only with a connection ──────
-            if (service != null && online)
-              for (final field in visibleFormFields(service.fields, _answers))
-                Padding(
-                  padding: const EdgeInsets.only(top: AwSpace.x3),
-                  // Keyed by service AND field: two services may both ask
-                  // "line", and the second must not inherit the first's text.
-                  child: EeFormFieldView(
-                    key: ValueKey('${service.id}/${field.key}'),
-                    field: field,
-                    value: _answers[field.key],
-                    keyPrefix: 'new-ticket-field',
-                    enabled: !_busy,
-                    onChanged: (value) => setState(() {
-                      if (value == null) {
-                        _answers.remove(field.key);
-                      } else {
-                        _answers[field.key] = value;
-                      }
-                    }),
-                  ),
-                ),
-            // ── For somebody else (EE-170) ────────────────────────────────
-            if (mayActForOthers && online) ...[
-              const SizedBox(height: AwSpace.x3),
-              SwitchListTile(
-                key: const Key('new-ticket-on-behalf'),
-                contentPadding: EdgeInsets.zero,
-                value: _onBehalf,
-                title: Text('ee.tickets.new.onBehalf'.tr()),
-                subtitle: Text('ee.tickets.new.onBehalfHelp'.tr()),
-                onChanged: _busy
-                    ? null
-                    : (value) => setState(() => _onBehalf = value),
-              ),
-              if (_onBehalf) ...[
-                TextField(
-                  key: const Key('new-ticket-requester-name'),
-                  controller: _requesterName,
-                  enabled: !_busy,
-                  maxLength: 120,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: InputDecoration(
-                    labelText: 'ee.tickets.new.requesterName'.tr(),
-                  ),
-                ),
-                TextField(
-                  key: const Key('new-ticket-requester-email'),
-                  controller: _requesterEmail,
-                  enabled: !_busy,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: 'ee.tickets.new.requesterEmail'.tr(),
-                  ),
+              if (service != null && service.needsApproval) ...[
+                const SizedBox(height: AwSpace.x2),
+                _Note(
+                  key: const Key('new-ticket-approval'),
+                  icon: Icons.approval_outlined,
+                  text: 'ee.tickets.new.needsApproval'.tr(),
                 ),
               ],
-            ],
-            // ── Files (UI-AUDIT #34) ──────────────────────────────────────
-            if (mayAttach) ...[
-              const SizedBox(height: AwSpace.x3),
-              Wrap(
-                spacing: AwSpace.x2,
-                runSpacing: AwSpace.x1,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  AttachButton(
-                    buttonKey: const Key('new-ticket-attach'),
-                    style: AttachButtonStyle.text,
-                    enabled: !_busy,
-                    onPicked: (picks) async {
-                      if (mounted) setState(() => _files.addAll(picks));
-                    },
-                  ),
-                  for (final (i, file) in _files.indexed)
-                    InputChip(
-                      key: Key('new-ticket-file-$i'),
-                      avatar: const Icon(Icons.attach_file, size: 16),
-                      label: Text(
-                        file.name,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      onDeleted: _busy
-                          ? null
-                          : () => setState(() => _files.removeAt(i)),
+              if (service != null && service.units.length > 1) ...[
+                const SizedBox(height: AwSpace.x4),
+                Text(
+                  'ee.tickets.new.unit'.tr(),
+                  style: theme.textTheme.titleSmall,
+                ),
+                if (!online)
+                  Padding(
+                    padding: const EdgeInsets.only(top: AwSpace.x1),
+                    child: Text(
+                      'ee.tickets.new.draftMultiUnit'.tr(),
+                      key: const Key('new-ticket-draft-multi-unit'),
+                      style: _quiet(theme),
                     ),
-                ],
-              ),
-            ] else if (saysDeskOnly) ...[
-              const SizedBox(height: AwSpace.x3),
-              Text(
-                'ee.tickets.new.filesDeskOnly'.tr(),
-                key: const Key('new-ticket-files-desk-only'),
-                style: _quiet(theme),
-              ),
-            ],
-            if (_error != null) ...[
-              const SizedBox(height: AwSpace.x3),
-              AwInlineError(
-                message: _error!,
-                textKey: const Key('new-ticket-error'),
-              ),
-            ],
-            const SizedBox(height: AwSpace.x4),
-            Align(
-              alignment: AlignmentDirectional.centerEnd,
-              child: FilledButton.icon(
-                key: const Key('new-ticket-submit'),
-                onPressed: _busy || !canDraft ? null : _send,
-                icon: _busy
-                    ? const SizedBox.square(
-                        dimension: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : Icon(online ? Icons.send_outlined : Icons.save_outlined),
-                label: Text(
-                  (online
-                          ? 'ee.tickets.new.send'
-                          : canDraft
-                          ? 'ee.tickets.new.saveDraft'
-                          : 'ee.tickets.new.waitForSignal')
-                      .tr(),
+                  )
+                else
+                  RadioGroup<String>(
+                    groupValue: _unitId,
+                    onChanged: (value) {
+                      if (!_busy) setState(() => _unitId = value);
+                    },
+                    child: Column(
+                      children: [
+                        for (final unit in service.units)
+                          RadioListTile<String>(
+                            key: Key('new-ticket-unit-${unit.id}'),
+                            contentPadding: EdgeInsets.zero,
+                            value: unit.id,
+                            title: Text(unit.name),
+                          ),
+                      ],
+                    ),
+                  ),
+              ],
+              // ── EE-271: the machine it is about ───────────────────────────
+              // Beside the service because it answers the same question —
+              // WHERE this goes — and above the words, so a request filed from
+              // a card shows its machine first. Offered to whoever may see the
+              // register, and always shown when a card already chose one.
+              if (_asset != null || ref.watch(canProvider('assets.view'))) ...[
+                const SizedBox(height: AwSpace.x4),
+                _AssetField(
+                  asset: _asset,
+                  enabled: !_busy,
+                  onPick: _pickAsset,
+                  onClear: () => setState(() => _asset = null),
+                ),
+              ],
+              // ── What happened ─────────────────────────────────────────────
+              const SizedBox(height: AwSpace.x4),
+              TextField(
+                key: const Key('new-ticket-subject'),
+                controller: _subject,
+                enabled: !_busy,
+                maxLength: 200,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: 'ee.tickets.new.subject'.tr(),
+                  hintText: 'ee.tickets.new.subjectHint'.tr(),
                 ),
               ),
-            ),
-          ],
+              // ── EE-226: the answer may already be written ───────────────
+              if (online)
+                _Answers(query: _answersFor, read: _read, onOpen: _openAnswer),
+              const SizedBox(height: AwSpace.x2),
+              TextField(
+                key: const Key('new-ticket-body'),
+                controller: _body,
+                enabled: !_busy,
+                minLines: 3,
+                maxLines: 8,
+                keyboardType: TextInputType.multiline,
+                textCapitalization: TextCapitalization.sentences,
+                decoration: InputDecoration(
+                  labelText: 'ee.tickets.new.body'.tr(),
+                  hintText: 'ee.tickets.new.bodyHint'.tr(),
+                ),
+              ),
+              // ── The service's own questions — only with a connection ──────
+              if (service != null && online)
+                for (final field in visibleFormFields(service.fields, _answers))
+                  Padding(
+                    padding: const EdgeInsets.only(top: AwSpace.x3),
+                    // Keyed by service AND field: two services may both ask
+                    // "line", and the second must not inherit the first's text.
+                    child: EeFormFieldView(
+                      key: ValueKey('${service.id}/${field.key}'),
+                      field: field,
+                      value: _answers[field.key],
+                      keyPrefix: 'new-ticket-field',
+                      enabled: !_busy,
+                      onChanged: (value) => setState(() {
+                        if (value == null) {
+                          _answers.remove(field.key);
+                        } else {
+                          _answers[field.key] = value;
+                        }
+                      }),
+                    ),
+                  ),
+              // ── For somebody else (EE-170) ────────────────────────────────
+              if (mayActForOthers && online) ...[
+                const SizedBox(height: AwSpace.x3),
+                SwitchListTile(
+                  key: const Key('new-ticket-on-behalf'),
+                  contentPadding: EdgeInsets.zero,
+                  value: _onBehalf,
+                  title: Text('ee.tickets.new.onBehalf'.tr()),
+                  subtitle: Text('ee.tickets.new.onBehalfHelp'.tr()),
+                  onChanged: _busy
+                      ? null
+                      : (value) => setState(() => _onBehalf = value),
+                ),
+                if (_onBehalf) ...[
+                  TextField(
+                    key: const Key('new-ticket-requester-name'),
+                    controller: _requesterName,
+                    enabled: !_busy,
+                    maxLength: 120,
+                    textCapitalization: TextCapitalization.words,
+                    decoration: InputDecoration(
+                      labelText: 'ee.tickets.new.requesterName'.tr(),
+                    ),
+                  ),
+                  TextField(
+                    key: const Key('new-ticket-requester-email'),
+                    controller: _requesterEmail,
+                    enabled: !_busy,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'ee.tickets.new.requesterEmail'.tr(),
+                    ),
+                  ),
+                ],
+              ],
+              // ── Files (UI-AUDIT #34) ──────────────────────────────────────
+              if (mayAttach) ...[
+                const SizedBox(height: AwSpace.x3),
+                Wrap(
+                  spacing: AwSpace.x2,
+                  runSpacing: AwSpace.x1,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    AttachButton(
+                      buttonKey: const Key('new-ticket-attach'),
+                      style: AttachButtonStyle.text,
+                      enabled: !_busy,
+                      onPicked: (picks) async {
+                        if (mounted) setState(() => _files.addAll(picks));
+                      },
+                    ),
+                    for (final (i, file) in _files.indexed)
+                      InputChip(
+                        key: Key('new-ticket-file-$i'),
+                        avatar: const Icon(Icons.attach_file, size: 16),
+                        label: Text(
+                          file.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onDeleted: _busy
+                            ? null
+                            : () => setState(() => _files.removeAt(i)),
+                      ),
+                  ],
+                ),
+              ] else if (saysDeskOnly) ...[
+                const SizedBox(height: AwSpace.x3),
+                Text(
+                  'ee.tickets.new.filesDeskOnly'.tr(),
+                  key: const Key('new-ticket-files-desk-only'),
+                  style: _quiet(theme),
+                ),
+              ],
+              if (_error != null) ...[
+                const SizedBox(height: AwSpace.x3),
+                AwInlineError(
+                  message: _error!,
+                  textKey: const Key('new-ticket-error'),
+                ),
+              ],
+              const SizedBox(height: AwSpace.x4),
+              Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: FilledButton.icon(
+                  key: const Key('new-ticket-submit'),
+                  onPressed: _busy || !canDraft ? null : _send,
+                  icon: _busy
+                      ? const SizedBox.square(
+                          dimension: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Icon(
+                          online ? Icons.send_outlined : Icons.save_outlined,
+                        ),
+                  label: Text(
+                    (online
+                            ? 'ee.tickets.new.send'
+                            : canDraft
+                            ? 'ee.tickets.new.saveDraft'
+                            : 'ee.tickets.new.waitForSignal')
+                        .tr(),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

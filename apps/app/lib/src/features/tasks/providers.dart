@@ -3,8 +3,10 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show ProviderListenable;
 
+import '../../core/api_exception.dart';
 import '../../core/day_boundary.dart';
 import '../../sync/providers.dart';
+import '../auth/providers.dart' show apiClientProvider;
 import '../ee/assignments_providers.dart';
 import '../workspaces/workspaces.dart';
 import 'data/quick_add_apply.dart';
@@ -12,6 +14,7 @@ import 'data/series_store.dart';
 import 'data/task.dart';
 import 'data/task_scope.dart';
 import 'data/task_store.dart';
+import 'data/tasks_api.dart';
 
 export 'data/task_store.dart' show kPlanningStatuses;
 export 'data/task_scope.dart' show TaskScope;
@@ -125,6 +128,62 @@ final boardTasksProvider = StreamProvider<List<Task>>((ref) async* {
   yield* ref.watch(taskStoreProvider).watchAllIn(scope);
 });
 
+/// Whether this scope has ever held a task (OPH-404) — see
+/// [TaskStore.watchHasAnyIn]. No scope yet answers true: the first-run face
+/// is only for an account the replica KNOWS is empty.
+final hasAnyTaskProvider = StreamProvider<bool>((ref) async* {
+  ref.watch(syncEnginesProvider);
+  final scope = await ref.watch(taskScopeProvider.selectAsync((s) => s));
+  if (scope == null) {
+    yield true;
+    return;
+  }
+  yield* ref.watch(taskStoreProvider).watchHasAnyIn(scope);
+});
+
+/// How long Home waits for a first pull before it trusts an empty replica
+/// anyway (OPH-394). Long enough for a cold sync of a busy account; short
+/// enough that a device with no server is not left on a skeleton forever —
+/// the offline strip says the rest.
+const kFirstPullWait = Duration(seconds: 10);
+
+/// Whether a workspace of the task scope has not finished its first pull yet
+/// (OPH-394, polish 2 R-06). A replica that has never pulled is empty because
+/// nothing arrived, not because the account is: Home shows a skeleton then,
+/// never "No tasks yet". Read from the sync state rows the engines write
+/// (`lastPulledAt` is stamped by every applied pull), so it holds for every
+/// engine of a member's scope. A scope still loading counts as waiting; no
+/// scope at all (signed out, no workspace) does not.
+final firstPullPendingProvider = StreamProvider.autoDispose<bool>((ref) {
+  final scope = ref.watch(taskScopeProvider);
+  if (!scope.hasValue) return Stream.value(!scope.hasError);
+  final ids = scope.value?.workspaceIds ?? const <String>[];
+  if (ids.isEmpty) return Stream.value(false);
+  final db = ref.watch(databaseProvider);
+  return (db.select(
+    db.syncStates,
+  )..where((s) => s.workspaceId.isIn(ids))).watch().map((rows) {
+    final pulled = {
+      for (final r in rows)
+        if (r.lastPulledAt != null) r.workspaceId,
+    };
+    return !ids.every(pulled.contains);
+  }).distinct();
+});
+
+/// Turns true [kFirstPullWait] after Home first asked (OPH-394). Auto-dispose:
+/// nobody watches it once the first pull has landed, and its timer goes with
+/// it.
+final firstPullWaitOverProvider = StreamProvider.autoDispose<bool>((ref) {
+  final controller = StreamController<bool>()..add(false);
+  final timer = Timer(kFirstPullWait, () => controller.add(true));
+  ref.onDispose(() {
+    timer.cancel();
+    controller.close();
+  });
+  return controller.stream;
+});
+
 /// The calendar day selected on Home/Calendar (shared so the selection is
 /// consistent across both tabs). Null = no selection.
 class SelectedDayController extends Notifier<DateTime?> {
@@ -222,6 +281,51 @@ final taskDetailProvider = StreamProvider.family<Task, String>((ref, taskId) {
   ref.watch(syncEnginesProvider);
   return ref.watch(taskStoreProvider).watchDetail(taskId);
 });
+
+/// The subtasks a task's detail lists (OPH-394, E-07).
+final subtasksProvider = StreamProvider.family<List<Task>, String>((
+  ref,
+  parentTaskId,
+) {
+  ref.watch(syncEnginesProvider);
+  return ref.watch(taskStoreProvider).watchSubtasks(parentTaskId);
+});
+
+/// Why a task's detail has nothing to show (OPH-392, E-17).
+enum TaskAbsence {
+  /// The server has no such task for this person: deleted, or never theirs.
+  gone,
+
+  /// The task is not on this device and the server could not be asked.
+  unreachable,
+}
+
+/// The detail screen's answer while its row is absent from the replica.
+///
+/// [taskDetailProvider] drops a missing row, so a link to a task that is not
+/// on the device waited on it forever: a cold web start on `/#/tasks/<id>`
+/// for a task deleted since, or not yet pulled, was an endless spinner. Asked
+/// once: when the server still has the task, null — the pull brings it, and
+/// the spinner is the truth; otherwise the reason, which the screen says.
+/// A malformed id (400) counts as gone too.
+final taskAbsenceProvider = FutureProvider.autoDispose
+    .family<TaskAbsence?, String>((ref, taskId) async {
+      final store = ref.watch(taskStoreProvider);
+      if (await store.detailOnce(taskId) != null) return null;
+      try {
+        await TasksApi(ref.watch(apiClientProvider)).get(taskId);
+        return null;
+      } on ApiException catch (error) {
+        return switch (error.statusCode) {
+          // 400: the id is not a task id at all (a mistyped `/tasks/typo`
+          // link) — the API rejects it before looking, and no pull will ever
+          // bring it, so it is as gone as a deleted one.
+          400 || 403 || 404 => TaskAbsence.gone,
+          null => TaskAbsence.unreachable,
+          _ => null,
+        };
+      }
+    });
 
 /// Checkbox behavior shared by every task tile: complete an open task,
 /// reopen a completed one. The replica updates instantly; sync follows.

@@ -121,7 +121,7 @@ void main() {
   testWidgets('the address is shown as fixed, with the reason', (tester) async {
     await tester.pumpWidget(harness(FakeApi(settings())));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Address stays ayarlar'), findsOneWidget);
+    expect(find.textContaining('your web address (ayarlar)'), findsOneWidget);
   });
 
   testWidgets('a stored zone outside the short list is still shown', (

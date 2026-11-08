@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../i18n/i18n.dart';
+import 'list_detail.dart';
 
 /// The app bar's way out of a screen that has nothing under it (OPH-359,
 /// UI-AUDIT #30).
@@ -19,6 +20,17 @@ import '../i18n/i18n.dart';
 ///
 /// Use it as `AppBar(leading: awRouteLeading(context), …)`.
 Widget? awRouteLeading(BuildContext context) {
+  // OPH-410: drawn in a list's detail pane, the way out is the pane's close
+  // (DESIGN §51 D3) — never a back button that would pop the list behind.
+  final closePane = AwPaneCloser.maybeOf(context);
+  if (closePane != null) {
+    return IconButton(
+      key: const Key('list-detail-close'),
+      icon: const Icon(Icons.close),
+      tooltip: 'task.paneClose'.tr(),
+      onPressed: closePane,
+    );
+  }
   // Inside a section the shell's navigation is the way out; a section's root
   // (the request tab is one) must not grow a Home button beside it.
   if (StatefulNavigationShell.maybeOf(context) != null) return null;

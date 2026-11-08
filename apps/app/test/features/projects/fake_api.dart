@@ -1136,6 +1136,17 @@ class FakeApi {
     final singleNote = RegExp(r'^/api/v1/notes/([^/]+)$').firstMatch(path);
     if (singleNote != null) {
       final index = notes.indexWhere((n) => n['id'] == singleNote.group(1));
+      // Same ULID guard as tasks: a mistyped `/notes/typo` is a 400 (R-05).
+      if (index < 0 &&
+          options.method == 'GET' &&
+          singleNote.group(1)!.length != 26) {
+        return jsonBody(400, {
+          'statusCode': 400,
+          'code': 'FST_ERR_VALIDATION',
+          'error': 'Bad Request',
+          'message': 'params/noteId must NOT have fewer than 26 characters',
+        });
+      }
       if (index < 0) return _notFound('NOTE_NOT_FOUND');
       switch (options.method) {
         case 'GET':
@@ -1183,6 +1194,18 @@ class FakeApi {
     final singleTask = RegExp(r'^/api/v1/tasks/([^/]+)$').firstMatch(path);
     if (singleTask != null) {
       final index = tasks.indexWhere((t) => t['id'] == singleTask.group(1));
+      // apps/api validates `:id` as a 26-character ULID before any lookup, so
+      // a mistyped link (`/tasks/typo`) is a 400, not a 404 (OPH-392).
+      if (index < 0 &&
+          options.method == 'GET' &&
+          singleTask.group(1)!.length != 26) {
+        return jsonBody(400, {
+          'statusCode': 400,
+          'code': 'FST_ERR_VALIDATION',
+          'error': 'Bad Request',
+          'message': 'params/id must NOT have fewer than 26 characters',
+        });
+      }
       if (index < 0) return _notFound('TASK_NOT_FOUND');
       switch (options.method) {
         case 'GET':

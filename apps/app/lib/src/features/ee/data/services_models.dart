@@ -22,6 +22,7 @@ class EeService {
     this.approverUserIds = const [],
     this.formVersion = 0,
     this.processType = 'request',
+    this.customerPortal,
   });
 
   factory EeService.fromJson(Map<String, dynamic> json) => EeService(
@@ -38,6 +39,7 @@ class EeService {
         .cast<String>(),
     formVersion: (json['formVersion'] as num?)?.toInt() ?? 0,
     processType: (json['processType'] as String?) ?? 'request',
+    customerPortal: json['customerPortal'] as bool?,
     formFields:
         (((json['formSchema'] as Map<String, dynamic>?)?['fields'] as List?) ??
                 const [])
@@ -83,6 +85,14 @@ class EeService {
   /// EE-268: `incident | request` — the kind of work a request filed here is.
   /// A request copies it when it is opened; changing it moves no past work.
   final String processType;
+
+  /// OPH-415 (EE-309): whether customer companies may file requests for this
+  /// service from their company portal. The server's default is `false`.
+  ///
+  /// Null means the server never sent the key — an extension from before the
+  /// switch existed. That is not "off": the setup screen hides the switch
+  /// rather than offer a save the server would not understand.
+  final bool? customerPortal;
 
   /// The state worth drawing loudly: live, but reaching nobody.
   bool get unroutable => !archived && unitIds.isEmpty;

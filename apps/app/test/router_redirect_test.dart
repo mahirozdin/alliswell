@@ -1,3 +1,4 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/router.dart';
@@ -19,6 +20,70 @@ void main() {
     expect(redirect(restoring: true, at: '/splash'), isNull);
   });
 
+  test('OPH-413 (K3): "Start free" lands on the sign-up form, not sign-in', () {
+    String? signup(
+      String at, {
+      bool loggedIn = false,
+      bool restoring = false,
+    }) => computeAuthRedirect(
+      isRestoring: restoring,
+      isLoggedIn: loggedIn,
+      location: at,
+      preferSignup: true,
+    );
+    // The cold start: the restore parks on the splash, then signed out.
+    expect(signup('/splash', restoring: true), isNull);
+    expect(signup('/home', restoring: true), '/splash');
+    expect(signup('/splash'), '/register');
+    expect(signup('/'), '/register');
+    expect(signup('/home'), '/register');
+    // A form the person chose stays where it is: "Sign in instead" works.
+    expect(signup('/login'), isNull);
+    expect(signup('/register'), isNull);
+    // Signed in, the hint means nothing.
+    expect(signup('/register', loggedIn: true), '/home');
+    expect(signup('/home', loggedIn: true), isNull);
+  });
+
+  test(
+    'OPH-413: only signup=1 on the page address asks for the sign-up form',
+    () {
+      expect(
+        awWantsSignup(Uri.parse('https://alliswell.space/app/?signup=1')),
+        isTrue,
+      );
+      expect(
+        awWantsSignup(
+          Uri.parse('https://alliswell.space/app/?signup=1#/splash'),
+        ),
+        isTrue,
+      );
+      expect(awWantsSignup(Uri.parse('https://alliswell.space/app/')), isFalse);
+      expect(
+        awWantsSignup(Uri.parse('https://alliswell.space/app/?signup=0')),
+        isFalse,
+      );
+      expect(
+        awWantsSignup(Uri.parse('https://alliswell.space/app/#/login')),
+        isFalse,
+      );
+    },
+  );
+
+  test('OPH-413: the sign-up hint is spent once it has been used', () {
+    final container = ProviderContainer(
+      overrides: [signupIntentProvider.overrideWith(() => SignupIntent(true))],
+    );
+    addTearDown(container.dispose);
+    expect(container.read(signupIntentProvider), isTrue);
+    container.read(signupIntentProvider.notifier).spend();
+    expect(container.read(signupIntentProvider), isFalse);
+    // Off the web (and in this test VM) nothing asks for it.
+    final plain = ProviderContainer();
+    addTearDown(plain.dispose);
+    expect(plain.read(signupIntentProvider), isFalse);
+  });
+
   test('signed out: only /login and /register are reachable', () {
     expect(redirect(at: '/home'), '/login');
     expect(redirect(at: '/settings'), '/login');
@@ -37,6 +102,17 @@ void main() {
     expect(redirect(restoring: true, at: '/join/tok_1234567890abcdef'), isNull);
     expect(isJoinLocation('/join/x'), isTrue);
     expect(isJoinLocation('/joined'), isFalse);
+  });
+
+  test('OPH-406: the forgot form opens signed out, a reset link even '
+      'mid-restore, and both send a signed-in person Home', () {
+    expect(redirect(at: '/forgot-password'), isNull);
+    expect(redirect(loggedIn: true, at: '/forgot-password'), '/home');
+    expect(redirect(at: '/reset-password'), isNull);
+    // A cold start on the web opens at the link: parked on the splash, the
+    // token in its address was lost.
+    expect(redirect(restoring: true, at: '/reset-password'), isNull);
+    expect(redirect(loggedIn: true, at: '/reset-password'), '/home');
   });
 
   test('signed in: auth and splash pages bounce to Home', () {
@@ -124,6 +200,28 @@ void main() {
       expect(isAdminLocation('/admin-notes'), isFalse);
       expect(adminRedirect(loggedIn: true, at: '/administration'), isNull);
     });
+  });
+
+  test('OPH-390 (R-07): a remembered page that belongs to somebody is only '
+      'replayed for them', () {
+    final container = ProviderContainer();
+    addTearDown(container.dispose);
+    final pending = container.read(pendingDeepLinkProvider.notifier);
+
+    pending.remember('/settings', owner: 'user-1');
+    expect(pending.take(forUser: 'user-2'), isNull);
+    // Dropped, not kept for later.
+    expect(container.read(pendingDeepLinkProvider), isNull);
+    expect(pending.take(forUser: 'user-1'), isNull);
+
+    pending.remember('/settings', owner: 'user-1');
+    expect(pending.take(forUser: 'user-1'), '/settings');
+
+    // A link that arrived signed out is anybody's.
+    pending.remember('/tasks/t1');
+    expect(pending.take(forUser: 'user-2'), '/tasks/t1');
+    pending.rememberIfNone('/notes/n1');
+    expect(pending.take(forUser: 'user-2'), '/notes/n1');
   });
 
   group('the router error exit (OPH-189)', () {

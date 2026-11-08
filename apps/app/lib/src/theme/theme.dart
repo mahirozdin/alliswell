@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
-import '../widgets/fab_clearance.dart';
-import '../widgets/glass.dart';
 import 'tokens.dart';
+import 'typography.dart';
 
 /// AllisWell brand seed — matches the API's default project color
 /// (`#2563EB`, BLUEPRINT §10.2). Kept exported for the palette pickers.
@@ -17,6 +17,40 @@ const kSeedColor = Color(0xFF2563EB);
 /// [fontFamilyOverride] exists for the screenshot harness only (the platform
 /// default family renders as box glyphs inside `flutter test`); production
 /// callers pass nothing and keep the system font (DESIGN §3.3).
+/// The status bar's style for a theme (OPH-391, U-43): dark clock and icons on
+/// the light theme, light ones on the dark theme.
+///
+/// The app bars are transparent, and an `AppBar` with no explicit style
+/// guesses one from its background colour — a transparent colour reads as
+/// dark, so the light theme got WHITE status bar content over its pale aurora
+/// (~1.2:1 on iOS). The style follows the theme instead, never the screen.
+/// `statusBarBrightness` is iOS's (the brightness of what is BEHIND the
+/// text); `statusBarIconBrightness` is Android's (the icons' own).
+SystemUiOverlayStyle awSystemOverlayStyle(Brightness brightness) {
+  final dark = brightness == Brightness.dark;
+  return SystemUiOverlayStyle(
+    statusBarColor: Colors.transparent,
+    statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+    statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+  );
+}
+
+/// The theme's status bar style for screens that have no `AppBar` (the
+/// splash, sign-in, the shell's own frame): app bars set it themselves
+/// through `appBarTheme`, this covers the rest of the screen. Mounted once,
+/// in the app's builder.
+class AwSystemOverlay extends StatelessWidget {
+  const AwSystemOverlay({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: awSystemOverlayStyle(Theme.of(context).brightness),
+    child: child,
+  );
+}
+
 ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
   final isDark = brightness == Brightness.dark;
   final tokens = isDark ? AwTokens.dark : AwTokens.light;
@@ -97,9 +131,14 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
           surfaceTint: Colors.transparent,
         );
 
-  // Platform system fonts (SF Pro on Apple, Roboto/Segoe elsewhere) with an
-  // Apple-like tightening of the display sizes. No network fonts on purpose:
-  // the app must feel native and work fully offline.
+  // Platform system fonts (SF Pro on Apple, Roboto/Segoe elsewhere, the app's
+  // own Roboto on the web) — no network fonts: the app must feel native and
+  // work fully offline. Glass Type v1 (ADR-0063, DESIGN §3.3) sets the line
+  // heights, weights and the platform's own tracking; see `typography.dart`.
+  final apple = awUsesAppleSystemFont(
+    platform: defaultTargetPlatform,
+    fontFamilyOverride: fontFamilyOverride,
+  );
   final baseText =
       Typography.material2021(
         platform: defaultTargetPlatform,
@@ -109,25 +148,8 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
         displayColor: scheme.onSurface,
         fontFamily: fontFamilyOverride,
       );
-  final textTheme = baseText.copyWith(
-    headlineMedium: baseText.headlineMedium?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.5,
-    ),
-    headlineSmall: baseText.headlineSmall?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.4,
-    ),
-    titleLarge: baseText.titleLarge?.copyWith(
-      fontWeight: FontWeight.w700,
-      letterSpacing: -0.3,
-    ),
-    titleMedium: baseText.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-    titleSmall: baseText.titleSmall?.copyWith(fontWeight: FontWeight.w600),
-    labelLarge: baseText.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-    bodyLarge: baseText.bodyLarge?.copyWith(height: 1.5),
-    bodyMedium: baseText.bodyMedium?.copyWith(height: 1.45),
-  );
+  final textTheme = buildAwTextTheme(baseText, apple: apple);
+  final textRoles = AwTextRoles.build(apple: apple, ink: scheme.onSurface);
 
   final hairlineSide = BorderSide(color: tokens.hairline);
   OutlineInputBorder inputBorder(Color color, {double width = 1}) =>
@@ -140,7 +162,7 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
     colorScheme: scheme,
     brightness: brightness,
     textTheme: textTheme,
-    extensions: <ThemeExtension<dynamic>>[tokens],
+    extensions: <ThemeExtension<dynamic>>[tokens, textRoles],
     visualDensity: VisualDensity.standard,
     materialTapTargetSize: MaterialTapTargetSize.padded,
     // OPH-194 (DESIGN §21 T2): ONE transition family, every platform. Leaving
@@ -171,6 +193,8 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
       scrolledUnderElevation: 0,
       centerTitle: false,
       foregroundColor: scheme.onSurface,
+      // OPH-391 (U-43): from the theme, not from the transparent bar colour.
+      systemOverlayStyle: awSystemOverlayStyle(brightness),
       titleTextStyle: textTheme.titleLarge,
       iconTheme: IconThemeData(color: scheme.onSurfaceVariant),
       actionsIconTheme: IconThemeData(color: scheme.onSurfaceVariant),
@@ -190,9 +214,8 @@ ThemeData buildAwTheme(Brightness brightness, {String? fontFamilyOverride}) {
         borderRadius: BorderRadius.all(Radius.circular(AwRadius.m)),
       ),
       iconColor: scheme.onSurfaceVariant,
-      titleTextStyle: textTheme.bodyLarge?.copyWith(
-        fontWeight: FontWeight.w500,
-      ),
+      // Glass Type v1: the row title is bodyLarge 16/22 w400 (was w500).
+      titleTextStyle: textTheme.bodyLarge,
       subtitleTextStyle: textTheme.bodyMedium?.copyWith(
         color: scheme.onSurfaceVariant,
       ),
@@ -504,13 +527,10 @@ class AwPageTransitionsBuilder extends PageTransitionsBuilder {
             begin: Offset.zero,
             end: const Offset(-slide, 0),
           ).animate(outgoing),
-          // OPH-362: a page outside the shell ends above the docked Quick
-          // Access bubble — once, here, for every route (`AwBubbleDockInset`).
-          child: AwBubbleDockInset(
-            route: route,
-            background: (page) => AwPageBackground(child: page),
-            child: child ?? const SizedBox.shrink(),
-          ),
+          // OPH-391: no page gives up a lane to the Quick Access bubble
+          // (it shows on the shell only, OPH-397) — the page reaches the
+          // bottom edge (E-09).
+          child: child ?? const SizedBox.shrink(),
         ),
       ),
     );

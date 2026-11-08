@@ -1,0 +1,1446 @@
+import 'dart:convert';
+
+import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
+import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:alliswell/src/core/api_exception.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/auth/data/models.dart';
+import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/features/ee/approvals_providers.dart';
+import 'package:alliswell/src/features/ee/assignments_providers.dart';
+import 'package:alliswell/src/features/ee/data/csv_export_api.dart';
+import 'package:alliswell/src/features/ee/data/ee_models.dart';
+import 'package:alliswell/src/features/ee/data/my_tickets_api.dart';
+import 'package:alliswell/src/features/ee/data/performance_models.dart';
+import 'package:alliswell/src/features/ee/data/sla_dashboard_models.dart';
+import 'package:alliswell/src/features/ee/data/team_address_api.dart';
+import 'package:alliswell/src/features/ee/data/unit_tickets_api.dart';
+import 'package:alliswell/src/features/ee/my_tickets_providers.dart';
+import 'package:alliswell/src/features/ee/performance_providers.dart';
+import 'package:alliswell/src/features/ee/providers.dart';
+import 'package:alliswell/src/features/ee/sla_dashboard_providers.dart';
+import 'package:alliswell/src/features/ee/team_origin.dart';
+import 'package:alliswell/src/features/ee/tickets_providers.dart';
+import 'package:alliswell/src/features/ee/ui/assignments_moved_screen.dart';
+import 'package:alliswell/src/features/ee/ui/csv_download.dart';
+import 'package:alliswell/src/features/ee/ui/home_ticket_cards.dart';
+import 'package:alliswell/src/features/ee/ui/my_tickets_screen.dart';
+import 'package:alliswell/src/features/ee/ui/my_units_screen.dart';
+import 'package:alliswell/src/features/ee/ui/performance_screen.dart';
+import 'package:alliswell/src/features/ee/ui/sla_dashboard_screen.dart';
+import 'package:alliswell/src/features/ee/ui/ticket_detail_screen.dart';
+import 'package:alliswell/src/features/ee/ui/ticket_queue_screen.dart';
+import 'package:alliswell/src/features/ee/unit_scope_providers.dart';
+import 'package:alliswell/src/features/ee/unit_tickets_providers.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/widgets/fabs.dart';
+import 'package:alliswell/src/sync/db/database.dart';
+import 'package:alliswell/src/sync/providers.dart';
+import 'package:alliswell/src/theme/theme.dart';
+
+import '../auth/test_support.dart';
+
+/// OPH-409 — the extension's lists answer a manager's first questions: what
+/// is open across my units, whose is it, and what does each number count.
+///
+/// U-18: the queue opens on "All units", not on "choose a unit"; a unit chip
+/// filters to that unit's own (offline) queue. U-19: a row names who asked
+/// and who has it, and marks "nobody yet". U-20: every count carries its
+/// scope, and a share of nothing is "—". U-22: requests on Home. E-03: no
+/// "new request" for somebody the team does not know. E-19: the retired
+/// assignments address says where its list went. The SLA board and the
+/// workload report are tabs of the requests header.
+const _general = WorkspaceSummary(
+  id: '01HWS000000000000000GENERL',
+  name: 'Demir Çelik',
+  slug: 'demir-celik',
+  colorRgb: '#2563EB',
+  role: 'member',
+);
+const _bt = WorkspaceSummary(
+  id: '01HWS00000000000000000BTWS',
+  name: 'BT',
+  slug: 'bt',
+  colorRgb: '#2563EB',
+  role: 'member',
+);
+const _bakim = WorkspaceSummary(
+  id: '01HWS000000000000000BAKIMW',
+  name: 'Bakım',
+  slug: 'bakim',
+  colorRgb: '#16A34A',
+  role: 'member',
+);
+const _units = [
+  EeUnitScope(
+    unitId: 'U-BT',
+    unitName: 'BT',
+    workspaceId: '01HWS00000000000000000BTWS',
+  ),
+  EeUnitScope(
+    unitId: 'U-BAKIM',
+    unitName: 'Bakım',
+    workspaceId: '01HWS000000000000000BAKIMW',
+  ),
+];
+
+const _requester = '01USREQUESTERAAAAAAAAAAAAA';
+
+TicketRecord _ticket(String id, {String status = 'new'}) => TicketRecord(
+  id: id,
+  workspaceId: _bt.id,
+  subject: 'Yazıcı $id',
+  status: status,
+  priority: 'high',
+  source: 'app',
+  requesterId: _requester,
+  revision: 1,
+  createdAt: DateTime.utc(2026, 11, 1),
+);
+
+class _FakeUnitsApi extends Fake implements EeUnitTicketsApi {
+  _FakeUnitsApi(this.page);
+  final EeUnitTicketsPage page;
+
+  @override
+  Future<EeUnitTicketsPage> list({
+    bool alertsOnly = false,
+    String? except,
+    String? cursor,
+    int? limit,
+  }) async => page;
+}
+
+class _FakeCsv extends EeCsvExportApi {
+  _FakeCsv() : super(Dio());
+  final asked = <String>[];
+
+  @override
+  Future<EeCsvFile> tickets({
+    String? status,
+    String? priority,
+    String? source,
+    String? slaStatus,
+    String? serviceId,
+    String? unitId,
+  }) async {
+    asked.add('status=$status priority=$priority unitId=$unitId');
+    return EeCsvFile(bytes: Uint8List(0), filename: 'requests.csv');
+  }
+}
+
+class _LimitedCsv extends EeCsvExportApi {
+  _LimitedCsv({required this.limit}) : super(Dio());
+  final int limit;
+  int used = 0;
+  final asked = <String>[];
+
+  @override
+  Future<EeCsvFile> tickets({
+    String? status,
+    String? priority,
+    String? source,
+    String? slaStatus,
+    String? serviceId,
+    String? unitId,
+  }) async {
+    asked.add('$unitId');
+    if (used >= limit) {
+      throw const ApiException(
+        'RATE_LIMITED',
+        'Too many requests',
+        statusCode: 429,
+        retryAfter: 42,
+      );
+    }
+    used += 1;
+    return EeCsvFile(
+      bytes: Uint8List.fromList(utf8.encode('no\r\n$unitId\r\n')),
+      filename: 'requests.csv',
+    );
+  }
+}
+
+class _Sink extends EeCsvSink {
+  const _Sink();
+  @override
+  Future<String?> save(Uint8List bytes, String filename) async => null;
+}
+
+class _Selected extends SelectedWorkspace {
+  _Selected(this._id);
+  final String _id;
+  @override
+  String? build() => _id;
+}
+
+class _Sla extends EeSlaDashboardController {
+  _Sla(this._value);
+  final EeSlaDashboard? _value;
+  @override
+  Future<EeSlaDashboard?> build() async => _value;
+}
+
+class _Perf extends EePerformanceController {
+  _Perf(this._value);
+  final EePerformance? _value;
+  @override
+  Future<EePerformance?> build() async => _value;
+}
+
+class _Perms extends EePermissionsController {
+  _Perms(this._value);
+  final EePermissions _value;
+  @override
+  Future<EePermissions> build() async => _value;
+}
+
+final _acrossPage = EeUnitTicketsPage.fromJson({
+  'units': [
+    for (final u in _units)
+      {
+        'unitId': u.unitId,
+        'unitName': u.unitName,
+        'workspaceId': u.workspaceId,
+      },
+  ],
+  'alerts': {'breached': 3, 'warned': 1, 'unassigned': 2},
+  'scope': {'reach': 'member', 'unitCount': 2, 'tickets': 'open_now'},
+  'tickets': [
+    {
+      'id': 'A1',
+      'number': 41,
+      'subject': 'Kompresör',
+      'status': 'new',
+      'priority': 'high',
+      'slaStatus': 'breached',
+      'unitId': 'U-BAKIM',
+      'unitName': 'Bakım',
+      'workspaceId': _bakim.id,
+      'requesterName': 'Onur Depo',
+      'assigneeNames': <String>[],
+    },
+    {
+      'id': 'A2',
+      'number': 7,
+      'subject': 'VPN',
+      'status': 'in_progress',
+      'priority': 'normal',
+      'unitId': 'U-BT',
+      'unitName': 'BT',
+      'workspaceId': _bt.id,
+    },
+  ],
+});
+
+void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() async {
+    SharedPreferences.setMockInitialValues({});
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    await localKv.remove('${kEeMyUnitsCachePrefix}user-1');
+  });
+
+  Future<ProviderContainer> pump(
+    WidgetTester tester,
+    Widget screen, {
+    List<Override> overrides = const [],
+    bool listenWorkspace = false,
+    Size? desktop,
+  }) async {
+    tester.view.physicalSize = desktop ?? const Size(1170, 2532);
+    tester.view.devicePixelRatio = desktop == null ? 3 : 1;
+    addTearDown(tester.view.reset);
+    // No retry: a typed refusal (not in this team) is the answer under test.
+    final container = ProviderContainer(
+      overrides: overrides,
+      retry: (_, _) => null,
+    );
+    addTearDown(container.dispose);
+    // The app's shell watches the open unit all the time; only the queue's
+    // tests hand it the workspaces to watch.
+    if (listenWorkspace) {
+      container.listen(currentWorkspaceProvider, (_, _) {});
+    }
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(theme: buildAwTheme(Brightness.light), home: screen),
+      ),
+    );
+    await tester.pumpAndSettle();
+    return container;
+  }
+
+  List<Override> queue({
+    required String selected,
+    List<EeUnitScope>? units = _units,
+    Map<String, List<Assignee>> assignees = const {},
+    List<TicketRecord>? tickets,
+    EeUnitTicketsPage? across,
+    Set<String> grants = const {},
+  }) => [
+    eeFeatureProvider.overrideWith((ref, name) => true),
+    currentUserIdProvider.overrideWithValue('user-1'),
+    workspacesProvider.overrideWith(
+      (ref) async => const [_general, _bt, _bakim],
+    ),
+    selectedWorkspaceIdProvider.overrideWith(() => _Selected(selected)),
+    eeMyUnitsScopeProvider.overrideWith((ref) async => units),
+    eeUnitTicketsApiProvider.overrideWithValue(
+      _FakeUnitsApi(across ?? _acrossPage),
+    ),
+    eeCurrentUnitPulledAtProvider.overrideWith((ref) => Stream.value(null)),
+    syncEngineProvider.overrideWithValue(null),
+    ticketQueueProvider.overrideWith(
+      (ref) => Stream.value(tickets ?? [_ticket('T1'), _ticket('T2')]),
+    ),
+    ticketAssigneesProvider.overrideWith((ref) => Stream.value(assignees)),
+    eeMemberNamesProvider.overrideWith(
+      (ref) => Stream.value(const {_requester: 'Onur Depo'}),
+    ),
+    canProvider.overrideWith((ref, permission) => grants.contains(permission)),
+    eeSlaDashboardProvider.overrideWith(
+      () => _Sla(const EeSlaDashboard(compliance: 80, judged: 10)),
+    ),
+    eePerformanceProvider.overrideWith(
+      () => _Perf(
+        const EePerformance(
+          from: '2026-10-09',
+          to: '2026-11-07',
+          units: [],
+          agents: [],
+          closedIsNotPerformance: '',
+        ),
+      ),
+    ),
+  ];
+
+  bool chipSelected(WidgetTester tester, String key) =>
+      tester.widget<ChoiceChip>(find.byKey(Key(key))).selected;
+
+  group('U-18: the queue opens on all units', () {
+    testWidgets('on the general space the queue shows every unit\'s open '
+        'requests with their unit, and no replica filters', (tester) async {
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _general.id),
+      );
+      expect(find.byKey(const Key('ee-unit-scope-choose')), findsNothing);
+      expect(find.text('Tüm birimler'), findsWidgets);
+      expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
+      expect(chipSelected(tester, 'ticket-unit-${_bt.id}'), isFalse);
+      // The unit column: each row names its unit.
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(
+        tester.widget<Text>(find.byKey(const Key('unit-ticket-unit-A2'))).data,
+        'BT',
+      );
+      // Filter chips wait for a unit; so does the other-units strip.
+      expect(find.byKey(const Key('ticket-filter-new')), findsNothing);
+      expect(find.byKey(const Key('other-units-alerts')), findsNothing);
+    });
+
+    testWidgets('a unit chip filters to that unit\'s own queue; "all units" '
+        'brings every unit back without leaving it', (tester) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _general.id),
+      );
+      await tester.tap(find.byKey(Key('ticket-unit-${_bt.id}')));
+      await tester.pumpAndSettle();
+      expect(container.read(currentWorkspaceProvider).value?.id, _bt.id);
+      expect(chipSelected(tester, 'ticket-unit-${_bt.id}'), isTrue);
+      expect(find.byKey(const Key('ticket-T1')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-filter-new')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('ticket-unit-all')));
+      await tester.pumpAndSettle();
+      expect(container.read(currentWorkspaceProvider).value?.id, _bt.id);
+      expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-T1')), findsNothing);
+    });
+
+    // E35 polish P-08: opening a request selects its unit's workspace, and
+    // the queue behind the detail turned into that unit's list.
+    testWidgets('opening a request from the default all-units list keeps '
+        'the list it was opened from', (tester) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: [
+          ...queue(selected: _general.id),
+          ticketProvider.overrideWith((ref, id) => Stream.value(null)),
+        ],
+      );
+      expect(container.read(eeQueueAllUnitsChosenProvider), isFalse);
+      await tester.tap(find.byKey(const Key('unit-ticket-A1')));
+      await tester.pumpAndSettle();
+      expect(container.read(currentWorkspaceProvider).value?.id, _bakim.id);
+      expect(container.read(eeQueueShowsAllUnitsProvider), isTrue);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-T1')), findsNothing);
+    });
+
+    // E35 polish P-09: at a desktop width a request opened from the
+    // all-units list sits in the pane, but ↑/↓ did nothing — the list never
+    // said its order. They walk it now, and each step opens the request's
+    // own unit, as a tap on its row does.
+    testWidgets('↑/↓ in the pane walk the all-units list, unit by unit', (
+      tester,
+    ) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        desktop: const Size(1440, 900),
+        overrides: [
+          ...queue(selected: _general.id),
+          ticketProvider.overrideWith((ref, id) => Stream.value(null)),
+        ],
+      );
+      final pane = find.byKey(const Key('list-detail-pane'));
+      String? paneTicket() {
+        final found = find.descendant(
+          of: pane,
+          matching: find.byType(EeTicketDetailScreen),
+        );
+        if (found.evaluate().isEmpty) return null;
+        return tester.widget<EeTicketDetailScreen>(found).ticketId;
+      }
+
+      Future<void> settle() async {
+        for (var i = 0; i < 6; i += 1) {
+          await tester.pump(const Duration(milliseconds: 100));
+        }
+      }
+
+      await tester.tap(find.byKey(const Key('unit-ticket-A1')));
+      await settle();
+      expect(paneTicket(), 'A1');
+      expect(container.read(currentWorkspaceProvider).value?.id, _bakim.id);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settle();
+      expect(paneTicket(), 'A2');
+      expect(container.read(selectedWorkspaceIdProvider), _bt.id);
+      // The last row: another ↓ stays on it.
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+      await settle();
+      expect(paneTicket(), 'A2');
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await settle();
+      expect(paneTicket(), 'A1');
+      expect(container.read(selectedWorkspaceIdProvider), _bakim.id);
+      // The list behind the pane is still every unit's.
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+
+      // R-15: the units were lent for the reading — closing the pane brings
+      // back the space that was open before the first request.
+      await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+      await settle();
+      expect(pane, findsNothing);
+      expect(container.read(currentWorkspaceProvider).value?.id, _general.id);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+    });
+
+    testWidgets('inside a unit the unit\'s queue stays the default', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _bt.id),
+      );
+      expect(chipSelected(tester, 'ticket-unit-${_bt.id}'), isTrue);
+      expect(find.byKey(const Key('ticket-T1')), findsOneWidget);
+    });
+
+    testWidgets('units never answered: no scope chips, the queue as before', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _general.id, units: null),
+      );
+      expect(find.byKey(const Key('ticket-unit-scope')), findsNothing);
+      expect(find.byKey(const Key('ticket-filter-new')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-T1')), findsOneWidget);
+    });
+
+    // E35 G-D review r1: the toolbar's search used to filter only the unit
+    // replica, so across units every request stayed on screen.
+    testWidgets('search filters the all-units list and offers the archive', (
+      tester,
+    ) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _general.id),
+      );
+      container.read(ticketSearchQueryProvider.notifier).set('yokböyle');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A1')), findsNothing);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsNothing);
+      expect(find.byKey(const Key('my-units-search-empty')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-search-archive')), findsOneWidget);
+
+      container.read(ticketSearchQueryProvider.notifier).set('KOMPRES');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsNothing);
+      // A search that found live requests still asks the archive last.
+      expect(find.byKey(const Key('ticket-search-archive')), findsOneWidget);
+
+      container.read(ticketSearchQueryProvider.notifier).set('#7');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A1')), findsNothing);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+    });
+
+    // E35 polish P-10: with "All units" on screen the export still sent the
+    // unit the chips had hidden, and the unit's filter chips with it.
+    testWidgets('the CSV export carries the scope on screen: every unit '
+        'across units, the unit and its chips inside one', (tester) async {
+      final csv = _FakeCsv();
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        // At phone width a chosen filter's "clear" crowds the toolbar (a
+        // separate layout matter); the export reads the same at any width.
+        desktop: const Size(1440, 900),
+        overrides: [
+          ...queue(selected: _bt.id, grants: const {'tickets.export'}),
+          eeCsvExportApiProvider.overrideWithValue(csv),
+          eeCsvSinkProvider.overrideWithValue(const _Sink()),
+        ],
+      );
+      Future<void> export() async {
+        await tester.tap(find.byKey(const Key('ticket-more')));
+        await tester.pumpAndSettle();
+        await tester.tap(find.byKey(const Key('ticket-csv')));
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byKey(const Key('ticket-filter-new')));
+      await tester.pumpAndSettle();
+      await export();
+      expect(csv.asked.last, 'status=new priority=null unitId=U-BT');
+
+      await tester.tap(find.byKey(const Key('ticket-unit-all')));
+      await tester.pumpAndSettle();
+      expect(container.read(eeQueueShowsAllUnitsProvider), isTrue);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      await export();
+      expect(csv.asked.last, 'status=null priority=null unitId=null');
+    });
+
+    // E35 P-G1 review r1: `units.manage` widens an unfiltered export to the
+    // whole team on the server, while "All units" lists only the person's own
+    // units. The file asks for each listed unit, never for no unit.
+    testWidgets('across units, a units.manage holder exports each listed '
+        'unit, never the whole team', (tester) async {
+      final csv = _FakeCsv();
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        desktop: const Size(1440, 900),
+        overrides: [
+          ...queue(
+            selected: _general.id,
+            grants: const {'tickets.export', 'units.manage'},
+          ),
+          eeCsvExportApiProvider.overrideWithValue(csv),
+          eeCsvSinkProvider.overrideWithValue(const _Sink()),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('ticket-more')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ticket-csv')));
+      await tester.pumpAndSettle();
+      expect(csv.asked, [
+        'status=null priority=null unitId=U-BT',
+        'status=null priority=null unitId=U-BAKIM',
+      ]);
+    });
+  });
+
+  // E35 P-G1 review r2: `tickets.csv` takes ten requests a minute. A
+  // manager of eleven units asked for eleven files in a row, the eleventh
+  // was a 429, and nothing was saved. The parts already fetched are kept,
+  // the limiter's wait is honoured and the same unit is asked again.
+  group('exportTicketsPerUnit', () {
+    test(
+      'a 429 past the tenth unit waits and resumes, keeping every part',
+      () async {
+        final api = _LimitedCsv(limit: 10);
+        final waits = <Duration>[];
+        final file = await exportTicketsPerUnit(
+          api,
+          [for (var i = 1; i <= 11; i += 1) 'U$i'],
+          wait: (d) async {
+            waits.add(d);
+            api.used = 0;
+          },
+        );
+        expect(waits, [const Duration(seconds: 42)]);
+        expect(
+          api.asked,
+          [for (var i = 1; i <= 11; i += 1) 'U$i']..insert(10, 'U11'),
+        );
+        expect(
+          utf8.decode(file.bytes),
+          'no\r\n${[for (var i = 1; i <= 11; i += 1) 'U$i\r\n'].join()}',
+        );
+      },
+    );
+
+    test(
+      'a limiter that never lets go still fails after a few waits',
+      () async {
+        final api = _LimitedCsv(limit: 0);
+        var waits = 0;
+        await expectLater(
+          exportTicketsPerUnit(api, const ['U1'], wait: (_) async => waits++),
+          throwsA(isA<ApiException>()),
+        );
+        expect(waits, 3);
+      },
+    );
+  });
+
+  group('mergeCsvFiles', () {
+    Uint8List bytes(String text) => Uint8List.fromList(utf8.encode(text));
+
+    test('one header, every row, the first name, truncated if any was', () {
+      final merged = mergeCsvFiles([
+        EeCsvFile(
+          bytes: bytes('\uFEFFno,subject\r\n1,"a\r\nb"\r\n'),
+          filename: 'acme-requests.csv',
+        ),
+        EeCsvFile(
+          bytes: bytes('\uFEFFno,subject\r\n2,c\r\n'),
+          filename: 'other.csv',
+          truncated: true,
+        ),
+        EeCsvFile(bytes: bytes('\uFEFFno,subject\r\n'), filename: 'x.csv'),
+      ]);
+      // Bytes: a UTF-8 decoder drops the BOM this checks is kept.
+      expect(merged.bytes, bytes('\uFEFFno,subject\r\n1,"a\r\nb"\r\n2,c\r\n'));
+      expect(merged.filename, 'acme-requests.csv');
+      expect(merged.truncated, isTrue);
+    });
+  });
+
+  group('U-19: whose is it', () {
+    testWidgets('a row names who asked and who has it, and marks nobody', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(
+          selected: _bt.id,
+          assignees: const {
+            'T2': [
+              Assignee(
+                assignmentId: 'AS1',
+                userId: 'U2',
+                displayName: 'Kemal Usta',
+                initials: 'KU',
+                colorRgb: '#2563EB',
+              ),
+            ],
+          },
+        ),
+      );
+      expect(find.text('Açan: Onur Depo · Alan: atanmadı'), findsOneWidget);
+      expect(find.byKey(const Key('ticket-unassigned-T1')), findsOneWidget);
+      expect(find.text('Açan: Onur Depo · Alan: Kemal Usta'), findsOneWidget);
+      expect(find.byKey(const Key('ticket-unassigned-T2')), findsNothing);
+      // The "unassigned" filter is one tap away, word for word.
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('ticket-filter-unassigned')),
+          matching: find.text('Atanmamış'),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('across units the people line follows what the server says, '
+        'and says nothing it was not told', (tester) async {
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _general.id),
+      );
+      expect(find.text('Açan: Onur Depo · Alan: atanmadı'), findsOneWidget);
+      expect(find.byKey(const Key('ticket-people-A2')), findsNothing);
+    });
+
+    // Polish 4 T-08: the all-units answer now carries both fields; every
+    // shape the server can send draws its own line, on the phone and on the
+    // desktop, and a row it says nothing about stays as it was.
+    for (final desktop in [null, const Size(1440, 900)]) {
+      testWidgets('across units a row names who asked and who has it when '
+          'the server sends both (${desktop == null ? 'phone' : 'desktop'})', (
+        tester,
+      ) async {
+        Map<String, Object?> row(String id, Map<String, Object?> people) => {
+          'id': id,
+          'number': id.codeUnitAt(1),
+          'subject': 'Talep $id',
+          'status': 'new',
+          'priority': 'normal',
+          'unitId': 'U-BAKIM',
+          'unitName': 'Bakım',
+          'workspaceId': _bakim.id,
+          ...people,
+        };
+        final page = EeUnitTicketsPage.fromJson({
+          'units': [
+            for (final u in _units)
+              {
+                'unitId': u.unitId,
+                'unitName': u.unitName,
+                'workspaceId': u.workspaceId,
+              },
+          ],
+          'tickets': [
+            row('B1', {
+              'requesterName': 'Selin Kaya',
+              'assigneeNames': ['Kemal Usta'],
+            }),
+            row('B2', {
+              'requesterName': 'Selin Kaya',
+              'assigneeNames': ['Kemal Usta', 'Ayşe Demir', 'Can Er'],
+            }),
+            row('B3', {'requesterName': 'Onur Depo'}),
+            row('B4', {
+              'assigneeNames': ['Ayşe Demir'],
+            }),
+            row('B5', {'requesterName': null, 'assigneeNames': null}),
+          ],
+        });
+        await pump(
+          tester,
+          const EeTicketQueueScreen(),
+          listenWorkspace: true,
+          desktop: desktop,
+          overrides: queue(selected: _general.id, across: page),
+        );
+
+        String line(String id) => tester
+            .widget<Text>(
+              find.descendant(
+                of: find.byKey(Key('ticket-people-$id')),
+                matching: find.byType(Text),
+              ),
+            )
+            .data!;
+
+        expect(line('B1'), 'Açan: Selin Kaya · Alan: Kemal Usta');
+        expect(
+          line('B2'),
+          'Açan: Selin Kaya · Alan: Kemal Usta, Ayşe Demir +1',
+        );
+        expect(find.byKey(const Key('ticket-unassigned-B2')), findsNothing);
+        expect(line('B3'), 'Açan: Onur Depo');
+        expect(line('B4'), 'Alan: Ayşe Demir');
+        // Not told: no line, no guess ("bugünkü gibi").
+        expect(find.byKey(const Key('ticket-people-B5')), findsNothing);
+        expect(find.byKey(const Key('unit-ticket-B5')), findsOneWidget);
+      });
+    }
+  });
+
+  group('the dashboards are tabs of the requests header', () {
+    testWidgets(
+      'SLA and workload open as tabs; the menu no longer hides them',
+      (tester) async {
+        await pump(
+          tester,
+          const EeTicketQueueScreen(),
+          listenWorkspace: true,
+          overrides: queue(selected: _bt.id),
+        );
+        await tester.tap(find.byKey(const Key('ticket-more')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('ticket-sla-dashboard')), findsNothing);
+        expect(find.byKey(const Key('ticket-performance')), findsNothing);
+        await tester.tapAt(Offset.zero);
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const Key('ticket-tab-sla')));
+        await tester.pumpAndSettle();
+        expect(find.byType(EeSlaDashboardScreen), findsOneWidget);
+        expect(find.byKey(const Key('sla-compliance')), findsOneWidget);
+        expect(find.byKey(const Key('ticket-T1')), findsNothing);
+
+        await tester.tap(find.byKey(const Key('ticket-tab-workload')));
+        await tester.pumpAndSettle();
+        expect(find.byType(EePerformanceScreen), findsOneWidget);
+
+        await tester.tap(find.byKey(const Key('ticket-tab-queue')));
+        await tester.pumpAndSettle();
+        expect(find.byKey(const Key('ticket-T1')), findsOneWidget);
+      },
+    );
+
+    testWidgets('the tabs fit a 360 pt phone at 2× text', (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        // The header is under test; rows are measured elsewhere.
+        overrides: queue(
+          selected: _bt.id,
+          tickets: const [],
+          across: const EeUnitTicketsPage(units: _units),
+        ),
+      );
+      tester.view.physicalSize = const Size(1080, 2400);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+      expect(find.byKey(const Key('ticket-tab-workload')), findsOneWidget);
+    });
+  });
+
+  group('U-20: every number says what it counts', () {
+    testWidgets('the SLA board shows open-now apart from the stock, with '
+        'scope and target', (tester) async {
+      final board = EeSlaDashboard.fromJson({
+        'compliance': 51.4,
+        'judged': 144,
+        'bySla': [
+          {'key': 'breached', 'count': 70},
+          {'key': 'met', 'count': 74},
+        ],
+        'open': {'breached': 24, 'warned': 7},
+        'scope': {'reach': 'member', 'unitCount': 8},
+      });
+      await pump(
+        tester,
+        const EeSlaDashboardScreen(),
+        overrides: [eeSlaDashboardProvider.overrideWith(() => _Sla(board))],
+      );
+      expect(find.text('Şu an açık talepler'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('sla-open-breached')),
+          matching: find.text('24'),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('sla-outcome-breached')),
+          matching: find.text('70'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('sla-stock-scope')), findsOneWidget);
+      expect(find.text('Kapsam: birimleriniz (8)'), findsOneWidget);
+      expect(find.text('Hedef: %90'), findsOneWidget);
+      expect(find.text('144 talepten 74'), findsOneWidget);
+    });
+
+    testWidgets('an older server: no open card, no scope line, no guess', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const EeSlaDashboardScreen(),
+        overrides: [
+          eeSlaDashboardProvider.overrideWith(
+            () => _Sla(const EeSlaDashboard(compliance: 95, judged: 20)),
+          ),
+        ],
+      );
+      expect(find.byKey(const Key('sla-open-now')), findsNothing);
+      expect(find.byKey(const Key('ee-figure-scope')), findsNothing);
+    });
+
+    testWidgets('workload: a share with its denominator, "—" over nothing, '
+        'none for a person', (tester) async {
+      final panel = EePerformance.fromJson({
+        'from': '2026-10-09',
+        'to': '2026-11-07',
+        'closedIsNotPerformance': '',
+        'scope': {'reach': 'team', 'unitCount': 8},
+        'units': [
+          {
+            'key': 'U-BT',
+            'label': 'BT',
+            'opened': 150,
+            'compliance': 51.4,
+            'judged': 144,
+          },
+          {
+            'key': 'U-BAKIM',
+            'label': 'Bakım',
+            'opened': 0,
+            'compliance': null,
+            'judged': 0,
+          },
+        ],
+        'agents': [
+          {
+            'key': 'P1',
+            'label': 'Kemal Usta',
+            'opened': 3,
+            'compliance': null,
+            'judged': 0,
+          },
+        ],
+        'processTypes': [],
+      });
+      await pump(
+        tester,
+        const EePerformanceScreen(),
+        overrides: [eePerformanceProvider.overrideWith(() => _Perf(panel))],
+      );
+      final bt = find.byKey(const Key('perf-compliance-U-BT'));
+      expect(
+        find.descendant(of: bt, matching: find.text('%51,4')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: bt, matching: find.text('144 talepten')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('perf-compliance-U-BAKIM')),
+          matching: find.text('—'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('perf-compliance-P1')), findsNothing);
+      expect(find.byKey(const Key('perf-scope')), findsOneWidget);
+      expect(find.text('Kapsam: takımın tamamı'), findsOneWidget);
+    });
+
+    // P-14 (EE-310): the server now says what each figure is built on.
+    // Where it says so, the words follow it; an older server keeps today's
+    // text; a basis the app does not know is not described at all.
+    testWidgets('the SLA board follows the scope\'s own basis fields', (
+      tester,
+    ) async {
+      Future<void> board(Map<String, dynamic>? scope) => pump(
+        tester,
+        const EeSlaDashboardScreen(),
+        overrides: [
+          eeSlaDashboardProvider.overrideWith(
+            () => _Sla(
+              EeSlaDashboard.fromJson({
+                'compliance': 51.4,
+                'judged': 144,
+                'open': {'breached': 24, 'warned': 7},
+                'scope': ?scope,
+              }),
+            ),
+          ),
+        ],
+      );
+      await board({
+        'reach': 'member',
+        'unitCount': 8,
+        'stock': 'live',
+        'open': 'open_now',
+      });
+      expect(find.byKey(const Key('sla-stock-scope')), findsOneWidget);
+      expect(
+        find.text('Yalnız şu an açık olanlar; Birimlerim\'deki sayımla aynı'),
+        findsOneWidget,
+      );
+      await board({'reach': 'member', 'unitCount': 8, 'stock': 'monthly'});
+      expect(find.byKey(const Key('sla-stock-scope')), findsNothing);
+      expect(find.byKey(const Key('sla-open-scope')), findsNothing);
+      await board(null);
+      expect(find.byKey(const Key('sla-stock-scope')), findsOneWidget);
+      expect(find.byKey(const Key('sla-open-scope')), findsNothing);
+    });
+
+    testWidgets('workload: flow and compliance are named apart when the '
+        'server says so', (tester) async {
+      Future<void> panel(Map<String, dynamic> scope) => pump(
+        tester,
+        const EePerformanceScreen(),
+        overrides: [
+          eePerformanceProvider.overrideWith(
+            () => _Perf(
+              EePerformance.fromJson({
+                'from': '2026-10-09',
+                'to': '2026-11-07',
+                'closedIsNotPerformance': '',
+                'scope': scope,
+                'units': [],
+                'agents': [],
+                'processTypes': [],
+              }),
+            ),
+          ),
+        ],
+      );
+      await panel({
+        'reach': 'team',
+        'unitCount': 8,
+        'flow': 'events_in_window',
+        'compliance': 'opened_in_window',
+      });
+      expect(
+        find.text(
+          'Akış: seçili dönemdeki hareketler · Uyum: bu dönemde açılan '
+          'talepler',
+        ),
+        findsOneWidget,
+      );
+      await panel({'reach': 'team', 'unitCount': 8});
+      expect(
+        find.text('Rakamlar: seçili dönemde açılan talepler'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('the other-units strip names the unit it leaves out', (
+      tester,
+    ) async {
+      EeUnitTicketsPage strip(String? excluded) => EeUnitTicketsPage.fromJson({
+        'alerts': {'breached': 22, 'warned': 0},
+        'scope': {
+          'reach': 'member',
+          'unitCount': 3,
+          'tickets': 'open_now',
+          'excludedWorkspaceId': ?excluded,
+        },
+        'tickets': [
+          {
+            'id': 'A1',
+            'number': 41,
+            'subject': 'Kompresör',
+            'status': 'new',
+            'slaStatus': 'breached',
+            'unitId': 'U-BAKIM',
+            'unitName': 'Bakım',
+            'workspaceId': _bakim.id,
+          },
+        ],
+      });
+      Future<void> show(EeUnitTicketsPage page) => pump(
+        tester,
+        const Scaffold(body: EeOtherUnitsAlertStrip()),
+        overrides: [
+          workspacesProvider.overrideWith(
+            (ref) async => const [_general, _bt, _bakim],
+          ),
+          eeOtherUnitsAlertsProvider.overrideWith((ref) async => page),
+        ],
+      );
+      await show(strip(_bt.id));
+      expect(
+        find.text('BT hariç; o birimin talepleri aşağıda'),
+        findsOneWidget,
+      );
+      await show(strip('01HWS0000000000000000GONE0'));
+      expect(
+        find.text('Ekrandaki birim hariç; onun talepleri aşağıda'),
+        findsOneWidget,
+      );
+      await show(strip(null));
+      expect(find.byKey(const Key('other-units-excluded')), findsNothing);
+      // The strip's provider lets go after its last listener; settle that.
+      await tester.pumpWidget(const SizedBox());
+      await tester.pump(const Duration(seconds: 1));
+    });
+
+    testWidgets('Birimlerim says its counts are open now, and whose', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        const EeMyUnitsScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _bt.id),
+      );
+      expect(
+        find.text(
+          'Şu an açık: 3 talebin süresi aşıldı · 1 talebinki dolmak üzere',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('Kapsam: birimleriniz (2)'), findsOneWidget);
+    });
+  });
+
+  group('E-03: nobody files into a team that does not know them', () {
+    List<Override> mine(AsyncValue<List<EeMyTicket>?> Function() answer) => [
+      eeFeatureProvider.overrideWith((ref, name) => true),
+      currentUserIdProvider.overrideWithValue('user-1'),
+      workspacesProvider.overrideWith((ref) async => const [_general]),
+      canProvider.overrideWith((ref, permission) => true),
+      eeMyTicketsProvider.overrideWith((ref) async {
+        final value = answer();
+        if (value.hasError) throw value.error!;
+        return value.value;
+      }),
+    ];
+
+    testWidgets('not in this team: no "new request"', (tester) async {
+      await pump(
+        tester,
+        const EeMyTicketsScreen(),
+        overrides: mine(
+          () => const AsyncError(EeNoTeamHereException(), StackTrace.empty),
+        ),
+      );
+      expect(find.byKey(const Key('my-tickets-new')), findsNothing);
+    });
+
+    // E35 polish P-13: the screen the review photographed — signed in on a
+    // team's own address, not on that team. The state says so and offers
+    // another account; nothing on it files a request.
+    testWidgets('on the team\'s address, not on the team: the state, no '
+        '"new request"', (tester) async {
+      await pump(
+        tester,
+        const EeMyTicketsScreen(),
+        overrides: [
+          ...mine(
+            () => const AsyncError(EeNoTeamHereException(), StackTrace.empty),
+          ),
+          teamOriginProvider.overrideWithValue(
+            const AwTeamOrigin(slug: 'demir-celik', displayName: 'Demir Çelik'),
+          ),
+          authControllerProvider.overrideWith(_SignedIn.new),
+        ],
+      );
+      expect(find.byKey(const Key('ee-not-in-team')), findsOneWidget);
+      expect(
+        find.byKey(const Key('ee-not-in-team-switch-account')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('my-tickets-new')), findsNothing);
+      expect(find.byType(AwExtendedFab), findsNothing);
+    });
+
+    testWidgets('a member keeps it', (tester) async {
+      await pump(
+        tester,
+        const EeMyTicketsScreen(),
+        overrides: mine(() => const AsyncData([])),
+      );
+      expect(find.byKey(const Key('my-tickets-new')), findsOneWidget);
+    });
+  });
+
+  group('U-22: requests on Home', () {
+    EePermissions perms({required bool desk, bool governed = true}) =>
+        EePermissions(
+          workspaceId: _general.id,
+          governed: governed,
+          permissions: const ['tickets.create'],
+          desk: desk,
+        );
+
+    List<Override> home({
+      bool entitled = true,
+      required EePermissions permissions,
+      List<EeMyTicket>? mine,
+      bool approvalsDoor = false,
+      int approvals = 0,
+    }) => [
+      eeFeatureProvider.overrideWith((ref, name) => entitled),
+      currentUserIdProvider.overrideWithValue('user-1'),
+      eePermissionsProvider.overrideWith(() => _Perms(permissions)),
+      eeMyTicketsProvider.overrideWith((ref) async {
+        if (mine == null) throw const EeNoTeamHereException();
+        return mine;
+      }),
+      eeUnitTicketsApiProvider.overrideWithValue(_FakeUnitsApi(_acrossPage)),
+      // HK-1: Home's figures follow the unit's pull heartbeat.
+      eeCurrentUnitPulledAtProvider.overrideWith((ref) => Stream.value(null)),
+      eeApprovalsDoorProvider.overrideWith((ref) => approvalsDoor),
+      eeApprovalsBadgeProvider.overrideWith((ref) => approvals),
+    ];
+
+    EeMyTicket mineTicket(String id, String status) => EeMyTicket(
+      id: id,
+      subject: 'Talep $id',
+      status: status,
+      priority: 'normal',
+      createdAt: DateTime.utc(2026, 11, 1),
+    );
+
+    Widget host() => const Scaffold(body: EeHomeTicketCards());
+
+    testWidgets('a member gets "new request" and their open requests', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        host(),
+        overrides: home(
+          permissions: perms(desk: false),
+          mine: [
+            mineTicket('1', 'new'),
+            mineTicket('2', 'waiting'),
+            mineTicket('3', 'closed'),
+          ],
+        ),
+      );
+      expect(find.text('Yeni talep açın'), findsOneWidget);
+      expect(find.text('Açık taleplerim (2)'), findsOneWidget);
+      expect(find.byKey(const Key('ee-home-desk-summary')), findsNothing);
+    });
+
+    testWidgets('a desk gets late, unassigned and approvals — each a door', (
+      tester,
+    ) async {
+      await pump(
+        tester,
+        host(),
+        overrides: home(
+          permissions: perms(desk: true),
+          mine: const [],
+          approvalsDoor: true,
+          approvals: 2,
+        ),
+      );
+      expect(find.text('Birimleriniz'), findsOneWidget);
+      expect(find.text('3 talebin süresi aşıldı'), findsOneWidget);
+      expect(find.text('1 talebin süresi dolmak üzere'), findsOneWidget);
+      expect(find.text('2 talep atanmamış'), findsOneWidget);
+      expect(find.text('Onayınızı bekleyen 2'), findsOneWidget);
+      expect(find.byKey(const Key('ee-home-member-cards')), findsNothing);
+      // Each figure is a 44-point door.
+      final size = tester.getSize(find.byKey(const Key('ee-home-breached')));
+      expect(size.height, greaterThanOrEqualTo(44));
+    });
+
+    // E35 G-D review r1: the figure counts across the person's units, so
+    // its door opens every unit's list, filtered to nobody's — not the unit
+    // on screen, and not every request.
+    testWidgets('the unassigned figure opens every unit\'s unassigned '
+        'requests', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/home',
+        routes: [
+          GoRoute(path: '/home', builder: (_, _) => host()),
+          GoRoute(
+            path: '/tickets',
+            builder: (_, _) => const EeTicketQueueScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final container = ProviderContainer(
+        overrides: [
+          ...queue(selected: _bt.id),
+          eePermissionsProvider.overrideWith(() => _Perms(perms(desk: true))),
+          eeApprovalsDoorProvider.overrideWith((ref) => false),
+          eeApprovalsBadgeProvider.overrideWith((ref) => 0),
+        ],
+        retry: (_, _) => null,
+      );
+      addTearDown(container.dispose);
+      container.listen(currentWorkspaceProvider, (_, _) {});
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      // A search left behind on the requests screen (E35 G-D review r2):
+      // the figure's list must not open filtered by it.
+      container.read(ticketSearchQueryProvider.notifier).set('yokböyle');
+      await tester.tap(find.byKey(const Key('ee-home-unassigned')));
+      await tester.pumpAndSettle();
+      expect(container.read(ticketSearchQueryProvider), isEmpty);
+      // Inside unit BT, yet the list is every unit's: the count was.
+      expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
+      expect(find.byKey(const Key('ticket-T1')), findsNothing);
+      // A1 is nobody's; A2's people were not told, so it is not counted.
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsNothing);
+      expect(
+        tester
+            .widget<FilterChip>(find.byKey(const Key('my-units-unassigned')))
+            .selected,
+        isTrue,
+      );
+      // One tap takes the filter off again.
+      await tester.tap(find.byKey(const Key('my-units-unassigned')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+    });
+
+    // P-11: the requests screen stays mounted behind Home (an indexed
+    // shell branch), so the figure clearing the query must close the
+    // search field too, or it shows a term the list no longer applies.
+    testWidgets('the unassigned figure closes a search left open on the '
+        'requests screen', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/tickets',
+        routes: [
+          StatefulShellRoute.indexedStack(
+            builder: (_, _, shell) => shell,
+            branches: [
+              StatefulShellBranch(
+                routes: [
+                  GoRoute(
+                    path: '/tickets',
+                    builder: (_, _) => const EeTicketQueueScreen(),
+                  ),
+                ],
+              ),
+              StatefulShellBranch(
+                routes: [GoRoute(path: '/home', builder: (_, _) => host())],
+              ),
+            ],
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final container = ProviderContainer(
+        overrides: [
+          ...queue(selected: _bt.id),
+          eePermissionsProvider.overrideWith(() => _Perms(perms(desk: true))),
+          eeApprovalsDoorProvider.overrideWith((ref) => false),
+          eeApprovalsBadgeProvider.overrideWith((ref) => 0),
+        ],
+        retry: (_, _) => null,
+      );
+      addTearDown(container.dispose);
+      container.listen(currentWorkspaceProvider, (_, _) {});
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('search-open')));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byKey(const Key('ticket-search')), 'yazıcı');
+      await tester.pump(const Duration(milliseconds: 300)); // the debounce
+      await tester.pumpAndSettle();
+      expect(container.read(ticketSearchQueryProvider), 'yazıcı');
+
+      router.go('/home');
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ee-home-unassigned')));
+      await tester.pumpAndSettle();
+
+      expect(container.read(ticketSearchQueryProvider), isEmpty);
+      expect(find.byKey(const Key('ticket-search')), findsNothing);
+      expect(find.text('yazıcı'), findsNothing);
+      expect(find.byKey(const Key('search-open')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+
+      // Opening the field again starts empty.
+      await tester.tap(find.byKey(const Key('search-open')));
+      await tester.pumpAndSettle();
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('ticket-search')))
+            .controller!
+            .text,
+        isEmpty,
+      );
+    });
+
+    testWidgets('a plain build, a personal space and a stranger see nothing', (
+      tester,
+    ) async {
+      for (final overrides in [
+        home(entitled: false, permissions: perms(desk: false), mine: const []),
+        home(permissions: perms(desk: false, governed: false), mine: const []),
+        home(permissions: perms(desk: false)),
+      ]) {
+        await pump(tester, host(), overrides: overrides);
+        expect(find.byKey(const Key('ee-home-member-cards')), findsNothing);
+        expect(find.byKey(const Key('ee-home-desk-summary')), findsNothing);
+      }
+    });
+  });
+
+  testWidgets('E-19: the old assignments address says where the list went '
+      'and takes the person there', (tester) async {
+    final router = GoRouter(
+      initialLocation: '/settings/team/assignments',
+      routes: [
+        GoRoute(path: '/home', builder: (_, _) => const Text('home')),
+        GoRoute(
+          path: '/settings/team/assignments',
+          builder: (_, _) => const EeAssignmentsMovedScreen(),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      ProviderScope(
+        child: MaterialApp.router(
+          theme: buildAwTheme(Brightness.light),
+          routerConfig: router,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Atamalar Ana Sayfa\'ya taşındı'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('ee-assignments-moved-home')));
+    await tester.pumpAndSettle();
+    expect(find.text('home'), findsOneWidget);
+  });
+}
+
+/// Signed in as [fakeSession]'s account, without the restore and refresh
+/// machinery the real controller starts.
+class _SignedIn extends AuthController {
+  @override
+  Future<AuthSession?> build() async => fakeSession();
+}

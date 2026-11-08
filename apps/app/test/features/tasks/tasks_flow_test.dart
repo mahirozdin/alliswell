@@ -72,9 +72,11 @@ void main() {
         title: 'Gecikmiş iş',
         dueAt: isoAt(today.subtract(const Duration(days: 2, hours: -9))),
       )
+      // 23:59: a deadline that passed earlier today is Overdue (OPH-394), so
+      // a fixed afternoon hour would change groups with the clock.
       ..seedTask(
         title: 'Bugünkü iş',
-        dueAt: isoAt(today.add(const Duration(hours: 17))),
+        dueAt: isoAt(today.add(const Duration(hours: 23, minutes: 59))),
       )
       ..seedTask(title: 'Tarihsiz iş')
       ..seedTask(
@@ -90,14 +92,14 @@ void main() {
     await tester.pumpAndSettle();
 
     // Home is the initial section. No date now sits directly under Overdue.
-    expect(find.textContaining('Overdue ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-overdue')), findsOneWidget);
     expect(find.text('Gecikmiş iş'), findsOneWidget);
-    expect(find.textContaining('No date ·'), findsOneWidget);
-    expect(find.textContaining('Today ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-noDate')), findsOneWidget);
+    expect(find.byKey(const Key('home-section-today')), findsOneWidget);
 
     // Scroll the far group into view; the 30-day horizon keeps '+40d' off Home.
     await tester.dragUntilVisible(
-      find.textContaining('Next 30 days ·'),
+      find.byKey(const Key('home-section-next30Days')),
       find.byType(ListView),
       const Offset(0, -120),
     );
@@ -142,7 +144,7 @@ void main() {
       ..seedTask(title: 'Seçilen gün işi', dueAt: isoAt(target))
       ..seedTask(
         title: 'Bugünkü iş',
-        dueAt: isoAt(today.add(const Duration(hours: 18))),
+        dueAt: isoAt(today.add(const Duration(hours: 23, minutes: 59))),
       )
       ..seedTask(
         title: 'Yarınki iş',
@@ -155,7 +157,7 @@ void main() {
     await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('Selected day ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-selectedDay')), findsOneWidget);
     expect(find.text('Seçilen gün işi'), findsOneWidget);
     // Today is a current debt, not a future plan — it must never look
     // disabled while some other day is selected (feedback round 6).
@@ -164,7 +166,7 @@ void main() {
       find.byType(ListView),
       const Offset(0, -120),
     );
-    expect(find.textContaining('Today ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-today')), findsOneWidget);
     // OPH-301: recession is the CARD'S COLOUR now, not an `Opacity` layer over
     // the row. These assertions used to read the wrapper's alpha, which is
     // exactly why nothing noticed that the alpha put the text at 2.13:1 —
@@ -203,7 +205,7 @@ void main() {
     // Tapping the same day again clears the selection.
     await tester.tap(_calendarDay(target));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Selected day ·'), findsNothing);
+    expect(find.byKey(const Key('home-section-selectedDay')), findsNothing);
   });
 
   testWidgets('home quick-add chains rapid entries without losing focus', (
@@ -215,17 +217,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // type → Enter → type → Enter: no re-tap between entries. Round 14 puts a
-    // deadline picker on every Enter; Cancel is the "skip" path and must keep
+    // deadline picker on every Enter; its skip button (R-04) is the path and must keep
     // the rapid-entry chain (and its focus) intact.
     Future<void> submitThenSkipDate(String title) async {
       await tester.enterText(find.byKey(const Key('home-quick-add')), title);
       await tester.testTextInput.receiveAction(TextInputAction.done);
       // No pumpAndSettle while the deadline dialog is up: the bar's own
       // in-flight spinner animates until onAdd returns, so settle would spin
-      // forever. Bounded pumps open the dialog; Cancel is the skip path.
+      // forever. Bounded pumps open the dialog; skip is the skip path.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
-      await tester.tap(find.text('Cancel'));
+      await tester.tap(find.text('Add without date'));
       await tester.pumpAndSettle();
     }
 
@@ -236,7 +238,7 @@ void main() {
     expect(find.text('Birinci'), findsOneWidget);
     expect(find.text('İkinci'), findsOneWidget);
     // Dateless quick adds land in the No date group, visible immediately.
-    expect(find.textContaining('No date ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-noDate')), findsOneWidget);
     expect(api.tasks.every((t) => t['dueAt'] == null), isTrue);
     // Skipping the date skips the derived reminder too — but the round-14
     // creation defaults (medium priority, urgent alarm on) always apply.
@@ -284,7 +286,7 @@ void main() {
       api.tasks.single['remindAt'] as String,
     ).toLocal();
     expect(due.difference(remind), const Duration(hours: 1));
-    expect(find.textContaining('Selected day ·'), findsOneWidget);
+    expect(find.byKey(const Key('home-section-selectedDay')), findsOneWidget);
     expect(find.text('Seçili güne iş'), findsOneWidget);
   });
 
@@ -350,6 +352,9 @@ void main() {
       find.byKey(const Key('task-sheet-description')),
       'bağlam: https://x.dev/spec',
     );
+    // The caret's own scroll-into-view lands on the next frame; let it
+    // settle before scrolling the sheet (the form outgrew the dialog, H-6).
+    await tester.pumpAndSettle();
     // Pick a due date via the date + time dialogs (defaults accepted).
     await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
@@ -539,9 +544,10 @@ void main() {
     await tester.pumpWidget(await signedInAppWith(api));
     await tester.pumpAndSettle();
 
-    // Priority flag (colored) + status icon on the tile (open → hourglass).
+    // Priority flag (colored): high is not the default (medium), so it shows.
+    // OPH-400: open IS the default status, so no hourglass any more.
     expect(find.byIcon(Icons.flag), findsOneWidget);
-    expect(find.byIcon(Icons.hourglass_empty), findsOneWidget);
+    expect(find.byIcon(Icons.hourglass_empty), findsNothing);
   });
 
   testWidgets('task title edits in place and autosaves', (tester) async {
@@ -692,15 +698,19 @@ void main() {
         findsNothing,
       );
 
-      // Round 9 #3: the two fields read as one row — same height, same top.
+      // Round 9 #3, as OPH-403 (H-6) left it: project and priority are two
+      // rows of the sheet's one row pattern — same left edge, same width,
+      // same height — so nothing knocks one out of line with the other.
       final project = tester.getRect(
         find.byKey(const Key('task-sheet-project')),
       );
       final priority = tester.getRect(
         find.byKey(const Key('task-sheet-priority')),
       );
-      expect(project.top, priority.top);
+      expect(project.left, priority.left);
+      expect(project.width, priority.width);
       expect(project.height, priority.height);
+      expect(priority.top, greaterThan(project.bottom));
     },
   );
 
@@ -718,6 +728,9 @@ void main() {
       find.byKey(const Key('task-sheet-title')),
       'Yarına iş',
     );
+    // The caret's own scroll-into-view lands on the next frame; let it
+    // settle before scrolling the sheet (the form outgrew the dialog, H-6).
+    await tester.pumpAndSettle();
     // Accept both pickers untouched: whatever they OPENED on is what lands.
     await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
@@ -781,6 +794,9 @@ void main() {
       opensOn.month,
       opensOn.day == 15 ? 16 : 15,
     );
+    // The caret's own scroll-into-view lands on the next frame; let it
+    // settle before scrolling the sheet (the form outgrew the dialog, H-6).
+    await tester.pumpAndSettle();
     await tester.ensureVisible(find.byKey(const Key('task-sheet-due')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('task-sheet-due')));

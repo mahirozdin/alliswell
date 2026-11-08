@@ -5,7 +5,6 @@ import '../../../core/day_boundary.dart';
 import '../../../core/fold.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../core/quick_parse.dart';
-import '../../../i18n/i18n.dart';
 import '../../projects/providers.dart';
 import '../../../sync/providers.dart';
 import '../../tags/tags.dart';
@@ -41,7 +40,7 @@ class QuickAddSubmission {
 /// - `now` from [nowProvider], so tests and the day boundary agree;
 /// - a day-only deadline lands on the default task time (OPH-161);
 /// - `5/11` is month-first only under the US format preference, or when the
-///   format follows an English UI;
+///   default format follows a month-first region (OPH-408);
 /// - weeks start on Monday — the app has no week-start setting, and the
 ///   month grid and the recurrence engine are Monday-first (ADR-0020).
 AwQuickParseOptions quickParseOptions(
@@ -51,10 +50,7 @@ AwQuickParseOptions quickParseOptions(
 }) {
   final (hour, minute) = parseTaskTime(read(defaultTaskTimeProvider));
   final format = read(dateFormatProvider);
-  final monthFirst =
-      format == 'mdy_12h' ||
-      (format == kAwSystemDateFormat &&
-          AwI18n.instance.locale.languageCode == 'en');
+  final monthFirst = awMonthFirst(format: format);
   final projects = parseProject
       ? (read(projectsControllerProvider).value ?? const [])
       : const [];

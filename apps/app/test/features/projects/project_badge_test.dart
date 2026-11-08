@@ -7,21 +7,31 @@ import 'package:alliswell/src/features/projects/ui/project_edit_sheet.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
 void main() {
-  group('ProjectBadge.shortLabel', () {
-    test('keeps names of 6 or fewer characters whole', () {
-      expect(ProjectBadge.shortLabel('Deneme'), 'Deneme'); // exactly 6
-      expect(ProjectBadge.shortLabel('Ev'), 'Ev');
-    });
+  // Polish 3 J-03: the label is never cut; [fits] decides badge or meta.
+  group('ProjectBadge.fits', () {
+    Future<bool> fitsAt(WidgetTester tester, String name, double scale) async {
+      late bool result;
+      await tester.pumpWidget(
+        MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+          child: MaterialApp(
+            home: Builder(
+              builder: (context) {
+                result = ProjectBadge.fits(context, name);
+                return const SizedBox();
+              },
+            ),
+          ),
+        ),
+      );
+      return result;
+    }
 
-    test('truncates longer names to 6 graphemes + ellipsis', () {
-      expect(ProjectBadge.shortLabel('Deneme Projesi'), 'Deneme…');
-      expect(ProjectBadge.shortLabel('Website'), 'Websit…');
-    });
-
-    test('is grapheme-safe (a family emoji counts as one, never split)', () {
-      const family = '👨‍👩‍👧‍👦'; // a single grapheme cluster
-      expect(ProjectBadge.shortLabel('${family}abcde'), '${family}abcde');
-      expect(ProjectBadge.shortLabel('${family}abcdef'), '${family}abcde…');
+    testWidgets('a short name fits, a long one does not, a larger text '
+        'size moves the line', (tester) async {
+      expect(await fitsAt(tester, 'Ev', 1.0), isTrue);
+      expect(await fitsAt(tester, 'Launch AllisWell', 1.0), isFalse);
+      expect(await fitsAt(tester, 'Ev', 6.0), isFalse);
     });
   });
 
@@ -66,9 +76,7 @@ void main() {
     });
   });
 
-  testWidgets('renders the short label with the full name in a tooltip', (
-    tester,
-  ) async {
+  testWidgets('renders the whole name, never "…"', (tester) async {
     await tester.pumpWidget(
       const MaterialApp(
         home: Scaffold(
@@ -82,7 +90,8 @@ void main() {
       ),
     );
 
-    expect(find.text('Deneme…'), findsOneWidget);
+    expect(find.text('Deneme Projesi'), findsOneWidget);
+    expect(find.textContaining('…'), findsNothing);
     expect(
       tester.widget<Tooltip>(find.byType(Tooltip)).message,
       'Deneme Projesi',

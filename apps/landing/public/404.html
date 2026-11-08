@@ -1,0 +1,39 @@
+<!doctype html>
+<!--
+  OPH-412 (landing-audit K10): the body of every 404 on alliswell.space
+  (`ErrorDocument 404 /404.html` in .htaccess). It is served at whatever
+  address was asked for, so every link and stylesheet is root-absolute. Both
+  languages on one page, because the address that was not found says nothing
+  about the reader's language. Never indexed.
+-->
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#0B1233" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#E9F2FF" media="(prefers-color-scheme: light)">
+<title>Page not found · Sayfa bulunamadı — AllisWell</title>
+<link rel="icon" type="image/svg+xml" href="/logo.svg">
+<link rel="stylesheet" href="/legal.css">
+</head>
+<body>
+<header class="doc__top">
+  <a class="doc__brand" href="/">
+    <img src="/logo.svg" width="26" height="26" alt="">
+    <span>AllisWell</span>
+  </a>
+</header>
+<main class="doc">
+  <h1>Page not found</h1>
+  <p>There is no page at this address. It may have moved, or the link has a typo.</p>
+  <p><a href="/">Go to the homepage</a> · <a href="/app/">Open the app</a> · <a href="/support">Support</a></p>
+
+  <section lang="tr">
+    <h2>Sayfa bulunamadı</h2>
+    <p>Bu adreste bir sayfa yok. Taşınmış olabilir ya da bağlantıda bir yazım hatası var.</p>
+    <p><a href="/tr">Ana sayfaya gidin</a> · <a href="/app/">Uygulamayı açın</a> · <a href="/support/tr">Destek</a></p>
+  </section>
+</main>
+</body>
+</html>

@@ -19,12 +19,16 @@
  * 6. The Floor in the homepage's own CSS source: no colour literal outside
  *    tokens.css, no `transition: all`, no uppercase, and overflow-x: clip,
  *    :focus-visible and a reduced-motion block present.
+ * 7. The first screen (OPH-412): the server renders the desktop action in the
+ *    hero and the bar (a phone swaps it after hydration), the proof line, a
+ *    GitHub button in the bar, and the licence question; nothing on the page
+ *    calls the code open source except to say it is not.
  */
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { SSR_PAGES, distPath } from './routes.js';
+import { HOME_PAGES, distPath } from './routes.js';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(root, 'dist');
@@ -45,7 +49,7 @@ const cssOf = (html) =>
     .map((href) => readFileSync(path.join(dist, href), 'utf8'))
     .join('\n');
 
-for (const page of SSR_PAGES) {
+for (const page of HOME_PAGES) {
   const route = `/${page.route}`;
   const html = readFileSync(path.join(dist, distPath(page.route)), 'utf8');
   const content = (await import(path.join(root, page.lang === 'tr' ? 'src/content.tr.js' : 'src/content.js'))).default;
@@ -89,6 +93,34 @@ for (const page of SSR_PAGES) {
   if (!html.includes('href="/docs/api"')) fail(`${route}: no link to /docs/api`);
 
   // ── 5 ──
+  // ── 7 ──
+  const desktop = content.hero.primary.desktop;
+  for (const where of ['hero-primary', 'nav-primary']) {
+    const tag = html.match(new RegExp(`<a[^>]*data-cta="${where}"[^>]*>([^<]*)<`));
+    if (!tag) fail(`${route}: no ${where} button in the HTML`);
+    else if (!tag[0].includes(`href="${desktop.href}"`) || unescape(tag[1].trim()) !== desktop.label) {
+      fail(`${route}: the ${where} button is not the desktop action "${desktop.label}"`);
+    }
+  }
+  const proof = html.match(/<ul[^>]*data-proof[^>]*>([\s\S]*?)<\/ul>/);
+  if (!proof) fail(`${route}: no proof line under the hero`);
+  else {
+    const text = unescape(proof[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' '));
+    for (const want of [content.proof.source.label, content.proof.free]) {
+      if (!text.includes(want)) fail(`${route}: the proof line does not say "${want}"`);
+    }
+  }
+  const bar = html.match(/<header class="bar[\s\S]*?<\/header>/)?.[0] ?? '';
+  if (!bar.includes(`href="${content.nav.github.href}"`)) fail(`${route}: no GitHub button in the bar`);
+  if (!html.includes(unescape(content.faq.items[0].q)) || !/^(What is the licence\?|Lisans ne\?)$/.test(content.faq.items[0].q)) {
+    fail(`${route}: the FAQ does not open with the licence question`);
+  }
+  const visible = unescape(html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<[^>]+>/g, ' '));
+  const claims = (visible.match(/[^.]*\b(open[ -]source|açık kaynak)\b[^.]*/gi) ?? []).filter(
+    (s) => !/not open source|açık kaynak değil/i.test(s),
+  );
+  if (claims.length) fail(`${route}: the page calls the code open source ("${claims[0].trim().slice(0, 80)}")`);
+
   const css = cssOf(html);
   if (!css) fail(`${route}: no stylesheet linked`);
   if (/--aw-[a-z]/.test(css)) fail(`${route}: the homepage CSS carries the enterprise page's --aw- tokens`);
@@ -136,4 +168,4 @@ if (problems.length) {
   console.error(`\n✗ home: ${problems.length} problem(s).`);
   process.exit(1);
 }
-console.log(`✓ home: ${SSR_PAGES.length} pages rendered on the server, media whole, stylesheets apart, the Floor in the CSS`);
+console.log(`✓ home: ${HOME_PAGES.length} pages rendered on the server, media whole, stylesheets apart, the Floor in the CSS`);

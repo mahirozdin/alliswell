@@ -126,7 +126,12 @@ void main() {
 
     await tester.pumpWidget(await signedInAppWith(api));
     await openNote(tester, 'Görselli not');
-    await tester.tap(find.text('Reading'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('note-mode-control')),
+        matching: find.text('Read'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(MdImage), findsOneWidget);
@@ -172,7 +177,12 @@ void main() {
 
     await tester.pumpWidget(await signedInAppWith(api));
     await openNote(tester, 'Üç görselli not');
-    await tester.tap(find.text('Reading'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('note-mode-control')),
+        matching: find.text('Read'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(find.byType(MdImage), findsNWidgets(3));
@@ -204,7 +214,12 @@ void main() {
 
     await tester.pumpWidget(await signedInAppWith(api));
     await openNote(tester, 'Videolu not');
-    await tester.tap(find.text('Reading'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key('note-mode-control')),
+        matching: find.text('Read'),
+      ),
+    );
     await tester.pumpAndSettle();
 
     expect(

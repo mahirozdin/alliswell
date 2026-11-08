@@ -53,6 +53,13 @@ void main() {
           AuthApi(
             fakeDio(
               FakeHttpClientAdapter((options, body) {
+                // The sign-in screen first asks which providers the server
+                // has (OPH-392): a read, not one of the requests counted here.
+                if (options.path == '/api/v1/auth/providers') {
+                  return Future.value(
+                    jsonBody(200, {'google': true, 'apple': true}),
+                  );
+                }
                 bodies.add(body);
                 return handler(options, body);
               }),
@@ -126,7 +133,7 @@ void main() {
 
     await submitCode(tester, '123456');
     expect(find.byKey(const Key('second-factor-dialog')), findsNothing);
-    expect(find.text('All caught up'), findsOneWidget, reason: 'in the shell');
+    expect(find.text('No tasks yet'), findsOneWidget, reason: 'in the shell');
 
     expect(bodies, hasLength(3));
     for (final body in bodies) {
@@ -148,7 +155,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('second-factor-dialog')), findsNothing);
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     expect(find.byKey(const Key('login-error')), findsNothing);
     expect(bodies, hasLength(1));
   });
@@ -167,7 +174,7 @@ void main() {
     await typePassword(tester);
     await submitCode(tester, 'ABCDE-12345');
 
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
   });
 
   testWidgets('Google sign-in asks for the code and resends the SAME token '
@@ -196,7 +203,7 @@ void main() {
     );
     await submitCode(tester, '123456');
 
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
     expect(social.googleCalls, 1);
     expect(bodies, hasLength(3));
     for (final body in bodies) {
@@ -220,7 +227,7 @@ void main() {
     await tester.tap(find.byKey(const Key('second-factor-cancel')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Sign in to your space'), findsOneWidget);
+    expect(find.text('Sign in to your account'), findsOneWidget);
     expect(find.byKey(const Key('social-sign-in-error')), findsNothing);
     final google = tester.widget<ButtonStyleButton>(
       find.descendant(
@@ -242,7 +249,7 @@ void main() {
     await typePassword(tester);
 
     expect(find.byKey(const Key('second-factor-dialog')), findsNothing);
-    expect(find.text('All caught up'), findsOneWidget);
+    expect(find.text('No tasks yet'), findsOneWidget);
     expect(bodies.single?.containsKey('totpCode'), isFalse);
   });
 }

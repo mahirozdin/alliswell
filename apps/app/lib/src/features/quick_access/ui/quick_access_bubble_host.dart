@@ -21,12 +21,13 @@ import 'quick_access_panel.dart';
 // `MaterialApp.builder` — i.e. rebuilding during the router's own build, which
 // Flutter refuses ('!_dirty').
 
-/// Puts the floating button above EVERYTHING (OPH-200).
+/// Puts the floating button above the shell (OPH-200).
 ///
 /// It wraps `MaterialApp.builder`'s child, which is the router's Navigator —
-/// the only seam above every route. The shell's own `Stack` is inside a route,
-/// so a bubble there would vanish on task detail and settings, which is
-/// exactly where a navigation shortcut earns its keep.
+/// the only seam above every route, and the one that can tell the shell from
+/// a page pushed over it. Since OPH-397 (U-03, ADR-0062 §5) the button shows
+/// on the shell only: on task detail, settings and every other pushed page
+/// it is gone, and those pages give up nothing for it.
 ///
 /// The gates run cheapest-first on purpose: the rows stream is only subscribed
 /// once every cheap condition has passed, so existing widget tests (empty
@@ -118,42 +119,33 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
       media.viewInsets.bottom,
     );
 
-    // OPH-362: at rest in the dock the button covers no content — the shell
-    // shortens its bar beside it and every other page ends above it. A
-    // keyboard covers the bar's row, and the docked button goes with it
-    // rather than standing on whatever is being typed.
-    final docked = position.docked;
-    final keyboardUp = media.viewInsets.bottom > 0;
-    final lane = bubbleDockLane(resting, media.size);
-
     return Stack(
       // The child is the whole app: loose constraints would starve it.
       fit: StackFit.expand,
       children: [
         NotificationListener<ScrollNotification>(
           onNotification: _onScroll,
-          // UI-AUDIT #57 (retest): every route under the button learns how
-          // high it reaches, so its lists and forms end above it — when it
-          // floats over them; docked, the lane itself is kept free.
-          child: AwBubbleDock(
-            edge: position.edge == BubbleEdge.left
-                ? AwDockEdge.left
-                : AwDockEdge.right,
-            height: docked && !keyboardUp ? lane.height : 0,
-            width: lane.width,
-            child: AwBubbleClearance(
-              extent: docked ? 0 : bubbleClearance(resting, media.size),
-              child: child,
+          // UI-AUDIT #57 (retest): every list in the shell learns how high
+          // the button reaches, so it ends above it. A page pushed over the
+          // shell has no button (below), so it gives up nothing (E-09).
+          child: ValueListenableBuilder<bool>(
+            valueListenable: observer.outsideShell,
+            builder: (context, outside, child) => AwBubbleClearance(
+              extent: outside ? 0 : bubbleClearance(resting, media.size),
+              child: child!,
             ),
+            child: child,
           ),
         ),
-        ValueListenableBuilder<int>(
-          valueListenable: observer.depth,
-          builder: (context, depth, _) {
+        ListenableBuilder(
+          listenable: Listenable.merge([observer.depth, observer.outsideShell]),
+          builder: (context, _) {
             // A dialog or a sheet is up — including this feature's own panel.
             // A floating control over a modal is two competing surfaces.
-            if (depth > 0) return const SizedBox.shrink();
-            if (docked && keyboardUp) return const SizedBox.shrink();
+            if (observer.depth.value > 0) return const SizedBox.shrink();
+            // OPH-397 (U-03): pushed pages — task detail, settings — are
+            // read, not navigated from; the button stays on the shell.
+            if (observer.outsideShell.value) return const SizedBox.shrink();
             final origin = bubbleOrigin(
               position,
               media.size,
@@ -182,7 +174,12 @@ class _BubbleLayerState extends ConsumerState<_BubbleLayer> {
                   },
                 ),
                 if (!hinted)
-                  QuickBubbleIntro(anchor: origin, edge: position.edge),
+                  QuickBubbleIntro(
+                    anchor: origin,
+                    edge: position.edge,
+                    viewport: media.size,
+                    safeArea: media.viewPadding,
+                  ),
               ],
             );
           },

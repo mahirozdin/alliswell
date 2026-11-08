@@ -416,7 +416,7 @@ void main() {
 
     expect(key('settings-team-address-required'), findsOneWidget);
     expect(
-      find.text('Demir Çelik Fabrikası is at acme.example.com — tap to switch'),
+      find.text('Demir Çelik Fabrikası is at acme.example.com'),
       findsOneWidget,
     );
     for (final row in _memberRows) {

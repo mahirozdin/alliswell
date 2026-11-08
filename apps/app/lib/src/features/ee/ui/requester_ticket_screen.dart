@@ -3,14 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/api_exception.dart';
-import '../../../core/date_format.dart';
+import '../../../core/format.dart';
 import '../../../core/error_messages.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../core/reachability.dart';
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
-import '../../files/ui/file_widgets.dart' show formatBytes;
 import '../../integrations/providers.dart' show urlLauncherProvider;
 import '../../workspaces/workspaces.dart';
 import '../data/requester_ticket_api.dart';
@@ -508,7 +507,7 @@ class _Files extends ConsumerWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                subtitle: Text(formatBytes(file.sizeBytes)),
+                subtitle: Text(awFormatFileSize(file.sizeBytes)),
                 onTap: () => _open(context, ref, file),
               ),
           ],

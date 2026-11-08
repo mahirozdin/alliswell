@@ -98,3 +98,16 @@ export function hashRecoveryCode(code, secret) {
   const normalised = String(code).toUpperCase().replace(/[\s-]/g, '');
   return crypto.createHmac('sha256', secret).update(`totp-recovery:${normalised}`).digest('hex');
 }
+
+/**
+ * Password-reset links (OPH-406, ADR-0064): the same hash-only storage with
+ * their own separator. 32 random bytes (43 base64url chars) — the link is a
+ * bearer credential for one password change, and guessing 256 bits under a
+ * per-IP rate limit is not a plan anybody has.
+ *
+ * @param {string} token - the raw token as it sits in the link
+ * @param {string} secret - config.auth.refreshSecret
+ */
+export function hashPasswordResetToken(token, secret) {
+  return crypto.createHmac('sha256', secret).update(`password-reset:${token}`).digest('hex');
+}

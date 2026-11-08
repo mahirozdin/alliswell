@@ -1,0 +1,11 @@
+/* OPH-391 (E-13, U-14): iOS izin metinleri, Türkçe. Anahtarlar
+   ios/Runner/Info.plist'teki *UsageDescription anahtarlarıdır; mikrofon ve
+   konuşma tanıma metinleri persona incelemesi Ek A-65'tir, kelimesi
+   kelimesine. Ton: kişisel uygulama, "sen". */
+"NSAlarmKitUsageDescription" = "AllisWell, acil görevlerin telefonun sessizde ya da odak modundayken bile zamanında çalsın diye alarmları kullanır.";
+"NSCalendarsFullAccessUsageDescription" = "AllisWell takvimini görevlerinin yanında gösterir ve seçtiğin görevleri takvime etkinlik olarak ekler. Kendi oluşturmadığı etkinlikleri asla değiştirmez.";
+"NSCalendarsUsageDescription" = "AllisWell takvimini görevlerinin yanında gösterir ve seçtiğin görevleri takvime etkinlik olarak ekler. Kendi oluşturmadığı etkinlikleri asla değiştirmez.";
+"NSCameraUsageDescription" = "AllisWell, fotoğraf çekip bir göreve ya da nota ekleyebilmen için kamerayı kullanır. Fotoğraf yalnız sen istediğinde çekilir.";
+"NSPhotoLibraryUsageDescription" = "AllisWell, fotoğraflarını görevlere ve notlara ekleyebilmen için fotoğraflarına erişir.";
+"NSMicrophoneUsageDescription" = "AllisWell, görev ve notları sesle söyleyebilmen için mikrofonu kullanır. Konuşmak için basılı tutana kadar hiçbir şey kaydedilmez.";
+"NSSpeechRecognitionUsageDescription" = "AllisWell söylediklerini cihazında yazıya çevirir, böylece görevleri sesle ekleyebilirsin. Yapay zekâ kullandığında yalnız yazı gönderilir, ses kaydı asla gönderilmez.";

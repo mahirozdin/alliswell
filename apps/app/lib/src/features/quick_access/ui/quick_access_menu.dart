@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../i18n/i18n.dart';
 import '../data/quick_link.dart';
 import '../providers.dart';
+import '../../../widgets/popup_menu.dart';
 
 /// What a row's overflow menu can do. `moveUp`/`moveDown` are not garnish:
 /// dragging is the one interaction a screen-reader user cannot aim, so every
@@ -39,7 +40,7 @@ class QuickRowMenu extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    return PopupMenuButton<QuickRowAction>(
+    return AwPopupMenuButton<QuickRowAction>(
       key: Key('quick-menu-${row.id}'),
       tooltip: 'quick.actions'.tr(),
       icon: const Icon(Icons.more_horiz, size: 20),

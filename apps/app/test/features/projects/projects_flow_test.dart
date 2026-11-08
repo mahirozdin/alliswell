@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -9,11 +10,14 @@ import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
+import 'package:alliswell/src/theme/tokens.dart';
 
 import '../auth/test_support.dart';
 import 'fake_api.dart';
 import '../../support/sync_overrides.dart';
 import '../../support/nav.dart';
+import 'package:alliswell/src/widgets/popup_menu.dart';
+import 'package:alliswell/src/widgets/dropdown_field.dart';
 
 Future<Widget> signedInAppWith(FakeApi api) async {
   SharedPreferences.setMockInitialValues({});
@@ -92,6 +96,28 @@ void main() {
     expect(find.byIcon(Icons.star_border), findsOneWidget);
   });
 
+  // OPH-399 (T-06, DESIGN §4): the favourite star on the detail chip was
+  // `Colors.amber` — 1.55:1 on the light chip. It is the warning token.
+  testWidgets('a favourite project\'s star is the warning token', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Yıldızlı', isFavorite: true);
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Yıldızlı'));
+    await tester.pumpAndSettle();
+
+    final star = tester.widget<Icon>(
+      find.byKey(const Key('project-favorite-star')),
+    );
+    final context = tester.element(
+      find.byKey(const Key('project-favorite-star')),
+    );
+    expect(star.color, context.awTokens.warning);
+    expect(star.color, isNot(Colors.amber));
+  });
+
   testWidgets('the edit sheet has no status picker, and never sends one', (
     tester,
   ) async {
@@ -110,7 +136,7 @@ void main() {
 
     // OPH-193: the picker existed ONLY in edit mode — the same object had two
     // different forms — and it printed the raw server enum at the user.
-    expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+    expect(find.byType(AwDropdownField<String>), findsNothing);
     expect(find.text('paused'), findsNothing);
 
     await tester.enterText(find.byType(TextFormField).first, 'Yeni ad');
@@ -204,6 +230,40 @@ void main() {
 
     expect(find.text('Proje görevi'), findsOneWidget);
     expect(api.tasks.single['projectId'], api.projects.single['id']);
+  });
+
+  // OPH-407 (U-58, DESIGN §45): "Genel bakış" was cut to "Genel bak" on a
+  // phone. A tab label is never cut: the tabs scroll instead.
+  testWidgets('project tabs are whole on a narrow phone at 2x text', (
+    tester,
+  ) async {
+    final api = FakeApi()..seedProject(name: 'Dar');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    await openProjects(tester);
+    await tester.tap(find.text('Dar'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(360, 800);
+    tester.view.devicePixelRatio = 1;
+    tester.platformDispatcher.textScaleFactorTestValue = 2;
+    addTearDown(tester.view.reset);
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await tester.pumpAndSettle();
+
+    expect(tester.widget<TabBar>(find.byType(TabBar)).isScrollable, isTrue);
+    for (final label in ['Overview', 'Tasks', 'Notes', 'Files']) {
+      final paragraph = tester.renderObject<RenderParagraph>(
+        find.descendant(of: find.byType(TabBar), matching: find.text(label)),
+      );
+      expect(
+        paragraph.size.width,
+        greaterThanOrEqualTo(
+          paragraph.getMaxIntrinsicWidth(double.infinity) - 0.5,
+        ),
+        reason: '$label is cut',
+      );
+    }
   });
 
   // OPH-338: the Tasks tab takes Home's order AND Home's preference — the
@@ -365,7 +425,7 @@ void main() {
 
       // Default (All) hides the README; the READMEs chip surfaces it.
       expect(find.text('Dokümanlı'), findsNothing);
-      await tester.tap(find.text('READMEs'));
+      await tester.tap(find.text('Project overviews'));
       await tester.pumpAndSettle();
       expect(find.text('Dokümanlı'), findsOneWidget);
     },
@@ -381,7 +441,7 @@ void main() {
       expect(find.text('Arşivlenecek'), findsOneWidget);
 
       // Row menu → Archive… → confirm (no cascade → optimistic status flip).
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Archive…'));
       await tester.pumpAndSettle();
@@ -396,7 +456,7 @@ void main() {
       await tester.tap(find.text('Archived'));
       await tester.pumpAndSettle();
       expect(find.text('Arşivlenecek'), findsOneWidget);
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       expect(find.text('Unarchive…'), findsOneWidget);
     },
@@ -410,7 +470,7 @@ void main() {
       await tester.pumpAndSettle();
       await openProjects(tester);
 
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();
@@ -421,7 +481,7 @@ void main() {
       expect(find.text('active'), findsNothing);
       expect(find.text('paused'), findsNothing);
       expect(find.text('archived'), findsNothing);
-      expect(find.byType(DropdownButtonFormField<String>), findsNothing);
+      expect(find.byType(AwDropdownField<String>), findsNothing);
     },
   );
 
@@ -445,7 +505,7 @@ void main() {
       await tester.pumpAndSettle();
       await openProjects(tester);
 
-      await tester.tap(find.byType(PopupMenuButton<String>).first);
+      await tester.tap(find.byType(AwPopupMenuButton<String>).first);
       await tester.pumpAndSettle();
       await tester.tap(find.text('Edit'));
       await tester.pumpAndSettle();

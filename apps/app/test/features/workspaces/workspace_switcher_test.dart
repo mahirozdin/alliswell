@@ -214,6 +214,9 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(Key('workspace-option-${own.id}')), findsNothing);
       expect(find.byKey(Key('workspace-option-${saha.id}')), findsOneWidget);
+      // A-60 (OPH-407): in an organisation the workspaces are its units.
+      expect(find.text('Choose a unit'), findsOneWidget);
+      expect(find.text('Choose a workspace'), findsNothing);
     });
   });
 

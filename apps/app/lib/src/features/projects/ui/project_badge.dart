@@ -1,13 +1,20 @@
 import 'package:flutter/material.dart';
 
+import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart';
+
+/// The widest a project badge may be (polish 3 J-03, DESIGN §46 R6): about a
+/// quarter of a phone row. A name whose whole pill is wider is not cut — the
+/// row shows it in the meta line instead.
+const double kAwProjectBadgeMaxWidth = 96;
 
 /// A small filled pill in a project's color, used on task rows so the owning
 /// project is legible at a glance (OPH-104, docs/DESIGN.md §4 "Project badge").
 ///
-/// The label is the project name, truncated to its first 6 characters + "…"
-/// when longer (grapheme-safe); the FULL name is always reachable through the
-/// tooltip (hover + long-press) and the semantic label. The fill/ink pair is
+/// The label is the WHOLE project name, never cut (polish 3 J-03, DESIGN §46
+/// R6): a row shows the badge only when [fits] says the name fits a compact
+/// pill ([kAwProjectBadgeMaxWidth]); otherwise the row moves the full name to
+/// its meta line, behind the colour dot. The fill/ink pair is
 /// computed from the project color so the label always clears WCAG AA. The
 /// badge is tap-transparent — the surrounding row handles taps.
 class ProjectBadge extends StatelessWidget {
@@ -16,13 +23,27 @@ class ProjectBadge extends StatelessWidget {
   final String name;
   final Color color;
 
-  /// First 6 graphemes + "…" when longer, so the pill hugs a short label
-  /// (NOT `TextOverflow`, which would let it stretch to the row's width).
-  static String shortLabel(String name) {
-    final chars = name.characters;
-    if (chars.length <= 6) return name;
-    return '${chars.take(6)}…';
+  /// The label's style: `labelSmall` w600 (DESIGN §4 "Project badge").
+  static TextStyle? labelStyle(BuildContext context) => Theme.of(
+    context,
+  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600, height: 1.1);
+
+  /// Whether the pill holding the whole [name], at the reader's text size, is
+  /// no wider than [kAwProjectBadgeMaxWidth]. Measured, not counted: a name
+  /// of narrow letters may be longer than one of wide ones.
+  static bool fits(BuildContext context, String name) {
+    final painter = TextPainter(
+      text: TextSpan(text: name, style: labelStyle(context)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+      maxLines: 1,
+    )..layout();
+    final width = painter.width + _padX * 2;
+    painter.dispose();
+    return width <= kAwProjectBadgeMaxWidth;
   }
+
+  static const double _padX = 8;
 
   static const Color _ink = Color(0xFF101828); // near-black
   static const Color _paper = Color(0xFFFFFFFF); // white
@@ -60,11 +81,16 @@ class ProjectBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (:fill, :ink) = legibleColors(color);
+    // OPH-407 (T-07): one localized label, the name heard once. It was
+    // "Project: X" in every language, then X again from the text and again
+    // from the tooltip.
     return Tooltip(
       message: name,
       waitDuration: const Duration(milliseconds: 400),
+      excludeFromSemantics: true,
       child: Semantics(
-        label: 'Project: $name',
+        label: 'task.projectSemantic'.tr(args: {'project': name}),
+        excludeSemantics: true,
         // DecoratedBox + Padding sizes to the label, so the pill hugs its text.
         // (A Container with `alignment` set expanded to the row height under the
         // row's loose constraints — feedback round 5.)
@@ -74,15 +100,12 @@ class ProjectBadge extends StatelessWidget {
             borderRadius: BorderRadius.circular(AwRadius.s),
           ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+            padding: const EdgeInsets.symmetric(horizontal: _padX, vertical: 3),
             child: Text(
-              shortLabel(name),
+              name,
               maxLines: 1,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: ink,
-                fontWeight: FontWeight.w600,
-                height: 1.1,
-              ),
+              softWrap: false,
+              style: labelStyle(context)?.copyWith(color: ink),
             ),
           ),
         ),

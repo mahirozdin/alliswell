@@ -9,6 +9,7 @@ import 'package:alliswell/src/features/ee/assets_providers.dart';
 import 'package:alliswell/src/features/ee/data/ticket_archive_api.dart';
 import 'package:alliswell/src/features/ee/ticket_archive_providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+import 'package:alliswell/src/core/format.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/search/search.dart';
 import 'package:alliswell/src/features/ee/data/assets_models.dart';
@@ -352,10 +353,10 @@ void main() {
     // UI-AUDIT #71/#78: minutes and hours as said, money in the reader's
     // number format (English here).
     final hours = 'ee.assets.history.ticketLabour'.tr(
-      args: {'duration': '1 h 30 min'},
+      args: {'duration': '1 hour 30 min'},
     );
     expect(meta('T1'), contains(hours));
-    expect(meta('T1'), contains('150.00 TRY'));
+    expect(meta('T1'), contains('150\u00A0TL'));
     // Priced by nobody: the hours, and no money — never "0.00".
     expect(
       meta('T3'),
@@ -368,11 +369,11 @@ void main() {
     expect(meta('T2'), 'ee.tickets.status.closed'.tr());
 
     // The machine's total in the same spelling — twenty minutes are "20 min",
-    // and 110 minutes "1 h 50 min", where whole hours used to round them
+    // and 110 minutes "1 hour 50 min", where whole hours used to round them
     // away and one decimal turned 45 minutes into "0.8".
     expect(
       tester.widget<Text>(find.byKey(const Key('asset-history-labour'))).data,
-      'ee.assets.history.labour'.tr(args: {'duration': '1 h 50 min'}),
+      'ee.assets.history.labour'.tr(args: {'duration': '1 hour 50 min'}),
     );
     expect(
       tester
@@ -890,9 +891,16 @@ void main() {
           openMinutes: 40,
         ),
       );
-      expect(find.text('26.11.2026'), findsOneWidget);
-      expect(find.text('15.03.2024'), findsOneWidget);
-      expect(find.text('385.000,00 TRY'), findsOneWidget);
+      // OPH-408: day and month in words, never "26.11.2026"; lira as "TL".
+      expect(
+        find.text(
+          awFormatDate(DateTime(2026, 11, 26), format: kAwSystemDateFormat),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('15 Mar 2024'), findsOneWidget);
+      expect(find.text('385.000\u00A0TL'), findsOneWidget);
+      expect(find.textContaining('TRY'), findsNothing);
       expect(find.text('2026-11-26'), findsNothing);
       expect(find.text('385000.00 TRY'), findsNothing);
       expect(

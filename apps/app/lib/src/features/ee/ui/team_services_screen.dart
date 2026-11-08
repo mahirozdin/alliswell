@@ -18,6 +18,8 @@ import 'service_categories_screen.dart';
 import 'service_icons.dart';
 import '../../../widgets/route_leading.dart';
 import '../../../widgets/fab_clearance.dart';
+import '../../../widgets/popup_menu.dart';
+import '../../../widgets/dropdown_field.dart';
 
 /// The service catalogue (EE-082, madde 8).
 ///
@@ -443,7 +445,7 @@ class _ServiceCard extends ConsumerWidget {
               ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
+        trailing: AwPopupMenuButton<String>(
           key: Key('service-menu-${service.id}'),
           onSelected: (value) async {
             switch (value) {
@@ -510,6 +512,9 @@ class _EeServiceRoutingScreenState
   late String _mode = widget.service.approvalMode;
   // EE-268: incident or request.
   late String _processType = widget.service.processType;
+  // OPH-415 (EE-309): open to customer companies; null = the server has no
+  // such switch, and the section is not drawn.
+  late bool? _customerPortal = widget.service.customerPortal;
   late String? _roleKey = widget.service.approverRoleKey;
   late final Set<String> _approvers = widget.service.approverUserIds.toSet();
   bool _busy = false;
@@ -520,6 +525,7 @@ class _EeServiceRoutingScreenState
       _shelf != widget.service.categoryId ||
       _icon != widget.service.icon ||
       _processType != widget.service.processType ||
+      _customerPortal != widget.service.customerPortal ||
       _approvalChanged;
 
   /// The rule as the server will hold it: a role only where the mode reads
@@ -570,6 +576,8 @@ class _EeServiceRoutingScreenState
     final patch = <String, Object?>{
       if (_icon != service.icon) 'icon': _icon,
       if (_processType != service.processType) 'processType': _processType,
+      if (_customerPortal != service.customerPortal)
+        'customerPortal': _customerPortal,
       if (_approvalChanged) ...{
         'approvalMode': _mode,
         'approverRoleKey': _mode == 'manager' || _mode == 'role'
@@ -626,6 +634,10 @@ class _EeServiceRoutingScreenState
             const SizedBox(height: AwSpace.x6),
             ..._processTypeSection(context),
             const SizedBox(height: AwSpace.x6),
+            if (_customerPortal != null) ...[
+              ..._customerPortalSection(context),
+              const SizedBox(height: AwSpace.x6),
+            ],
             Text(
               'ee.team.services.units'.tr(),
               style: theme.textTheme.titleSmall,
@@ -716,6 +728,22 @@ class _EeServiceRoutingScreenState
     ];
   }
 
+  /// OPH-415 (EE-309): may customer companies file requests for this service
+  /// from their company portal? Off unless an admin turns it on, and the
+  /// sentence under the switch says what turning it on does — the one thing
+  /// worth knowing before a service is opened to people outside the team.
+  List<Widget> _customerPortalSection(BuildContext context) => [
+    Card(
+      child: SwitchListTile(
+        key: const Key('service-customer-portal'),
+        value: _customerPortal ?? false,
+        title: Text('ee.team.services.customerPortal.title'.tr()),
+        subtitle: Text('ee.team.services.customerPortal.hint'.tr()),
+        onChanged: _busy ? null : (on) => setState(() => _customerPortal = on),
+      ),
+    ),
+  ];
+
   /// The form's summary and the door to its designer (EE-229).
   ///
   /// Read from the LIST, not from `widget.service`: that is the snapshot this
@@ -780,7 +808,7 @@ class _EeServiceRoutingScreenState
     final tree = shelfTree(shelves);
     final known = {for (final shelf in shelves) shelf.id};
     return [
-      DropdownButtonFormField<String?>(
+      AwDropdownField<String?>(
         key: const Key('service-shelf'),
         // A shelf that no longer exists reads as "none" rather than asserting
         // on a value the list does not hold.
@@ -856,7 +884,7 @@ class _EeServiceRoutingScreenState
         ),
       ),
       if (needsRole)
-        DropdownButtonFormField<String>(
+        AwDropdownField<String>(
           key: const Key('service-approval-role'),
           initialValue: roles.any((r) => r.key == _roleKey) ? _roleKey : null,
           isExpanded: true,
