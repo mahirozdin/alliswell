@@ -12,6 +12,7 @@ import '../../../theme/tokens.dart';
 import '../../../widgets/status_views.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/unit_tickets_api.dart';
+import '../unit_scope_providers.dart';
 import '../unit_tickets_providers.dart';
 import 'figure_scope.dart';
 import 'sla_chip.dart';
@@ -31,6 +32,13 @@ Future<void> openTicketAcrossUnits(
   EeUnitTicket ticket,
 ) async {
   final here = ref.read(currentWorkspaceProvider).value?.id;
+  // E35 polish P-08: on a space that is not a unit, "all units" is the
+  // queue's default without being chosen — selecting the request's unit
+  // below would then turn the list it was opened from into that unit's
+  // queue. Opened from the cross-unit list, the cross-unit list stays.
+  if (ref.read(eeQueueShowsAllUnitsProvider)) {
+    ref.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
+  }
   if (ticket.workspaceId != here) {
     await ref
         .read(selectedWorkspaceIdProvider.notifier)

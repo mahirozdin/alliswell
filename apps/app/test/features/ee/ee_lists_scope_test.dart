@@ -303,6 +303,32 @@ void main() {
       expect(find.byKey(const Key('ticket-T1')), findsNothing);
     });
 
+    // E35 polish P-08: opening a request selects its unit's workspace, and
+    // the queue behind the detail turned into that unit's list.
+    testWidgets('opening a request from the default all-units list keeps '
+        'the list it was opened from', (tester) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: [
+          ...queue(selected: _general.id),
+          ticketProvider.overrideWith((ref, id) => Stream.value(null)),
+        ],
+      );
+      expect(container.read(eeQueueAllUnitsChosenProvider), isFalse);
+      await tester.tap(find.byKey(const Key('unit-ticket-A1')));
+      await tester.pumpAndSettle();
+      expect(container.read(currentWorkspaceProvider).value?.id, _bakim.id);
+      expect(container.read(eeQueueShowsAllUnitsProvider), isTrue);
+
+      await tester.pageBack();
+      await tester.pumpAndSettle();
+      expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-T1')), findsNothing);
+    });
+
     testWidgets('inside a unit the unit\'s queue stays the default', (
       tester,
     ) async {
