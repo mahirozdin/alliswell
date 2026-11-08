@@ -1060,8 +1060,15 @@ class _Parser {
       final f = unit(n(at), tr: true);
       // "bu ayda bir toplantı", "gelecek haftada bir görüşme": a period, not
       // a frequency (OPH-420). After "her" it is always a frequency.
+      // A unit right after a count ("iki haftada bir") is that count's
+      // match, read from the count's own position — where the determiner
+      // check above it applies. Read again from the unit, it would slip past
+      // that check: "önümüzdeki iki haftada bir" (ADR-0067, `[N]`).
+      final counted =
+          at == i && i > 0 && n(i - 1) != 'bir' && _count(n(i - 1)) != null;
       final period =
-          n(i) != 'her' && i > 0 && _trPeriodDeterminers.contains(n(i - 1));
+          counted ||
+          (n(i) != 'her' && i > 0 && _trPeriodDeterminers.contains(n(i - 1)));
       if (!period && f != null && n(at + 1) == 'bir' && (at > i)) {
         add(AwRepeatRule(freq: f, interval: c ?? 1), at - i + 2);
       } else if (!period &&

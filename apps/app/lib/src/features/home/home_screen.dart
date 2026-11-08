@@ -40,6 +40,7 @@ import '../onboarding/tour.dart' show TourAnchor, TourTarget;
 import '../tags/tags.dart';
 import '../tasks/data/task.dart';
 import '../tasks/data/quick_add_apply.dart';
+import '../tasks/data/series_store.dart' show dayBeforeAnchor;
 import '../tasks/data/task_sort.dart';
 import '../tasks/providers.dart';
 import '../tasks/ui/quick_add_bar.dart';
@@ -347,12 +348,20 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         // The task goes first: the stop drops the replica's occurrences from
         // its day on, and a task already gone locally would never enqueue
         // its own delete (OPH-418).
+        final series = task?.seriesId == null
+            ? null
+            : await seriesStore.byId(task!.seriesId!);
         await store.delete(id);
         if (task != null && task.seriesId != null) {
+          // Before the first pull the adopted task has no day yet; a stop
+          // without one would keep the server's next occurrence (#32). This
+          // series is brand new, so the day before its anchor takes all of it.
           await seriesStore.stop(
             workspaceId: task.workspaceId,
             seriesId: task.seriesId!,
-            fromDay: task.occurrenceDate,
+            fromDay:
+                task.occurrenceDate ??
+                (series == null ? null : dayBeforeAnchor(series.anchorAt)),
           );
         }
       },

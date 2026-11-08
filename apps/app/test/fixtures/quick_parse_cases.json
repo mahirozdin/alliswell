@@ -3464,6 +3464,57 @@
   },
   {
    "group": "negative",
+   "text": "önümüzdeki iki haftada bir toplantı ayarla",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "önümüzdeki iki haftada bir toplantı ayarla",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "önümüzdeki 2 haftada bir toplantı ayarla",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "önümüzdeki 2 haftada bir toplantı ayarla",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
+   "text": "bu üç ayda bir kez",
+   "options": {
+    "language": "tr"
+   },
+   "expect": {
+    "title": "bu üç ayda bir kez",
+    "due": null,
+    "when": null,
+    "repeat": null,
+    "tags": [],
+    "project": null,
+    "priority": null,
+    "kinds": []
+   }
+  },
+  {
+   "group": "negative",
    "text": "daily toplantısı",
    "options": {
     "language": "tr"

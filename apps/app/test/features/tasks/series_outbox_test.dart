@@ -184,6 +184,36 @@ void main() {
     });
   });
 
+  test('an archived occurrence after the cut is history, as on the server '
+      '(FINISHED_STATUSES)', () async {
+    // The server never retires an archived occurrence and writes no revision
+    // for it, so a pull would never bring back a row the replica dropped.
+    final workspaceId = 'WB'.padRight(26, '0');
+    final head = 'TH'.padRight(26, '0');
+    final archived = 'TI'.padRight(26, '0');
+    final later = 'TJ'.padRight(26, '0');
+    final store = SeriesStore(db, () {}, clock: () => DateTime(2030, 6, 5, 12));
+    final id = await store.create(
+      workspaceId: workspaceId,
+      rule: const AwRepeatRule(freq: AwRepeatFreq.daily),
+      template: const {'title': 'Read mail'},
+      anchorAt: DateTime.utc(2030, 6, 5, 9),
+    );
+    await seed(workspaceId, id, [
+      (head, '2030-06-05', 'open'),
+      (archived, '2030-06-06', 'archived'),
+      (later, '2030-06-07', 'open'),
+    ]);
+
+    await store.stop(workspaceId: workspaceId, seriesId: id, keepTaskId: head);
+
+    expect((await task(head))!.seriesId, isNull);
+    final kept = (await task(archived))!;
+    expect(kept.seriesId, id);
+    expect(kept.occurrenceDate, '2030-06-06');
+    expect(await task(later), isNull);
+  });
+
   test(
     'stopping on an overdue occurrence still keeps today\'s (OPH-417 rule)',
     () async {

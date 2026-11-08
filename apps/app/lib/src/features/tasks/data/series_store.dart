@@ -247,7 +247,10 @@ class SeriesStore {
     _poke();
   }
 
-  static const _finishedStatuses = ['completed', 'cancelled'];
+  // The server's FINISHED_STATUSES (task-series.js): an archived occurrence
+  // is history too — the server keeps it and writes no revision for it, so
+  // a row dropped here would never come back on a pull.
+  static const _finishedStatuses = ['completed', 'cancelled', 'archived'];
 
   /// The server retires these with a task tombstone; the replica drops them
   /// the way that tombstone would, so nothing is left to flicker back.
@@ -260,6 +263,15 @@ class SeriesStore {
       _db.checklistItems,
     )..where((c) => c.taskId.equals(taskId))).go();
   }
+}
+
+/// The local day before [anchorAt] (`YYYY-MM-DD`). A series' occurrences are
+/// on or after its anchor's day in the series' zone, which is at most a day
+/// off this device's — so a stop from here takes every one of them (undoing a
+/// quick add before its occurrences were pulled, #32).
+String dayBeforeAnchor(DateTime anchorAt) {
+  final local = anchorAt.toLocal();
+  return awDayKey(DateTime(local.year, local.month, local.day - 1));
 }
 
 /// The day after [day] (`YYYY-MM-DD`), or null for anything else — then the
