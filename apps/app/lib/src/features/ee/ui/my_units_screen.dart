@@ -56,6 +56,8 @@ class EeMyUnitsScreen extends ConsumerStatefulWidget {
     this.embedded = false,
     this.query = '',
     this.onSearchArchive,
+    this.unassignedOnly = false,
+    this.onUnassignedOnly,
     super.key,
   });
 
@@ -74,6 +76,15 @@ class EeMyUnitsScreen extends ConsumerStatefulWidget {
   /// Where a search goes for the requests that are no longer open — the
   /// queue's archive door. Null draws no such door.
   final ValueChanged<String>? onSearchArchive;
+
+  /// E35 G-D review r1: only requests nobody has taken — Home's
+  /// "unassigned" figure counts across the person's units and opens here.
+  /// A row whose people the server did not send is left out: "not told" is
+  /// not "nobody" (U-19).
+  final bool unassignedOnly;
+
+  /// Turns [unassignedOnly] on or off; null draws no chip for it.
+  final ValueChanged<bool>? onUnassignedOnly;
 
   @override
   ConsumerState<EeMyUnitsScreen> createState() => _EeMyUnitsScreenState();
@@ -111,6 +122,10 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
   String get _query => widget.query.trim();
 
   bool _keep(EeUnitTicket ticket) {
+    if (widget.unassignedOnly) {
+      final names = ticket.assigneeNames;
+      if (names == null || names.isNotEmpty) return false;
+    }
     final q = _query.toLowerCase();
     if (q.isEmpty) return true;
     if (ticket.subject.toLowerCase().contains(q)) return true;
@@ -177,6 +192,8 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
             page: page,
             alertsOnly: _alertsOnly,
             onAlertsOnly: _setAlertsOnly,
+            unassignedOnly: widget.unassignedOnly,
+            onUnassignedOnly: widget.onUnassignedOnly,
           ),
           if (page.units.isEmpty)
             AwEmptyState(
@@ -185,21 +202,31 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
               title: 'ee.myUnits.noUnitsTitle'.tr(),
               message: 'ee.myUnits.noUnitsBody'.tr(),
             )
-          else if (searching && visible.isEmpty && _cursors.length == 1) ...[
-            AwEmptyState(
-              key: const Key('my-units-search-empty'),
-              icon: Icons.search_off_outlined,
-              title: 'ee.tickets.searchEmptyTitle'.tr(),
-              message: 'ee.myUnits.searchEmptyBody'.tr(),
-              action: widget.onSearchArchive == null
-                  ? null
-                  : FilledButton.tonalIcon(
-                      key: const Key('ticket-search-archive'),
-                      onPressed: () => widget.onSearchArchive!(_query),
-                      icon: const Icon(Icons.inventory_2_outlined),
-                      label: Text('ee.tickets.archive.searchAction'.tr()),
-                    ),
-            ),
+          else if ((searching || widget.unassignedOnly) &&
+              visible.isEmpty &&
+              _cursors.length == 1) ...[
+            if (!searching)
+              AwEmptyState(
+                key: const Key('my-units-filtered-empty'),
+                icon: Icons.filter_alt_off_outlined,
+                title: 'ee.tickets.emptyFilteredTitle'.tr(),
+                message: 'ee.tickets.emptyFilteredBody'.tr(),
+              )
+            else
+              AwEmptyState(
+                key: const Key('my-units-search-empty'),
+                icon: Icons.search_off_outlined,
+                title: 'ee.tickets.searchEmptyTitle'.tr(),
+                message: 'ee.myUnits.searchEmptyBody'.tr(),
+                action: widget.onSearchArchive == null
+                    ? null
+                    : FilledButton.tonalIcon(
+                        key: const Key('ticket-search-archive'),
+                        onPressed: () => widget.onSearchArchive!(_query),
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        label: Text('ee.tickets.archive.searchAction'.tr()),
+                      ),
+              ),
             if (page.hasMore)
               _MoreButton(
                 onPressed: () => setState(() => _cursors.add(page.nextCursor!)),
@@ -246,11 +273,15 @@ class _Header extends StatelessWidget {
     required this.page,
     required this.alertsOnly,
     required this.onAlertsOnly,
+    this.unassignedOnly = false,
+    this.onUnassignedOnly,
   });
 
   final EeUnitTicketsPage page;
   final bool alertsOnly;
   final ValueChanged<bool> onAlertsOnly;
+  final bool unassignedOnly;
+  final ValueChanged<bool>? onUnassignedOnly;
 
   @override
   Widget build(BuildContext context) {
@@ -311,11 +342,27 @@ class _Header extends StatelessWidget {
           // U-20: whose requests the counts are.
           EeFigureScopeLine(scope: page.scope),
           const SizedBox(height: AwSpace.x2),
-          FilterChip(
-            key: const Key('my-units-alerts'),
-            label: Text('ee.myUnits.alertsOnly'.tr()),
-            selected: alertsOnly,
-            onSelected: onAlertsOnly,
+          Wrap(
+            spacing: AwSpace.x2,
+            runSpacing: AwSpace.x2,
+            children: [
+              FilterChip(
+                key: const Key('my-units-alerts'),
+                label: Text('ee.myUnits.alertsOnly'.tr()),
+                selected: alertsOnly,
+                onSelected: onAlertsOnly,
+              ),
+              // Offered where the server counts unassigned requests (it then
+              // says who has each one), and always while it is on.
+              if (onUnassignedOnly != null &&
+                  (unassignedOnly || page.unassigned != null))
+                FilterChip(
+                  key: const Key('my-units-unassigned'),
+                  label: Text('ee.tickets.filter.unassigned'.tr()),
+                  selected: unassignedOnly,
+                  onSelected: onUnassignedOnly,
+                ),
+            ],
           ),
         ],
       ),

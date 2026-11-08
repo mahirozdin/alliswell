@@ -9,6 +9,7 @@ import '../approvals_providers.dart';
 import '../my_tickets_providers.dart';
 import '../providers.dart';
 import '../tickets_providers.dart';
+import '../unit_scope_providers.dart';
 import '../unit_tickets_providers.dart';
 import 'desk_paths.dart';
 
@@ -153,10 +154,14 @@ class _DeskSummary extends ConsumerWidget {
           label: 'ee.home.unassigned'.tr(
             args: {'count': awFormatNumber(unassigned)},
           ),
+          // The figure counts across the person's units, so its door is
+          // every unit's list filtered to nobody's — not the unit on screen
+          // (E35 G-D review r1).
           onTap: () {
             ref
                 .read(ticketFilterProvider.notifier)
                 .setAssignee(TicketAssigneeScope.unassigned);
+            ref.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
             context.go('/tickets');
           },
         ),

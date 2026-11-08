@@ -715,6 +715,66 @@ void main() {
       expect(size.height, greaterThanOrEqualTo(44));
     });
 
+    // E35 G-D review r1: the figure counts across the person's units, so
+    // its door opens every unit's list, filtered to nobody's — not the unit
+    // on screen, and not every request.
+    testWidgets('the unassigned figure opens every unit\'s unassigned '
+        'requests', (tester) async {
+      final router = GoRouter(
+        initialLocation: '/home',
+        routes: [
+          GoRoute(path: '/home', builder: (_, _) => host()),
+          GoRoute(
+            path: '/tickets',
+            builder: (_, _) => const EeTicketQueueScreen(),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      tester.view.physicalSize = const Size(1170, 2532);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      final container = ProviderContainer(
+        overrides: [
+          ...queue(selected: _bt.id),
+          eePermissionsProvider.overrideWith(() => _Perms(perms(desk: true))),
+          eeApprovalsDoorProvider.overrideWith((ref) => false),
+          eeApprovalsBadgeProvider.overrideWith((ref) => 0),
+        ],
+        retry: (_, _) => null,
+      );
+      addTearDown(container.dispose);
+      container.listen(currentWorkspaceProvider, (_, _) {});
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp.router(
+            theme: buildAwTheme(Brightness.light),
+            routerConfig: router,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('ee-home-unassigned')));
+      await tester.pumpAndSettle();
+      // Inside unit BT, yet the list is every unit's: the count was.
+      expect(chipSelected(tester, 'ticket-unit-all'), isTrue);
+      expect(find.byKey(const Key('ticket-T1')), findsNothing);
+      // A1 is nobody's; A2's people were not told, so it is not counted.
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsNothing);
+      expect(
+        tester
+            .widget<FilterChip>(find.byKey(const Key('my-units-unassigned')))
+            .selected,
+        isTrue,
+      );
+      // One tap takes the filter off again.
+      await tester.tap(find.byKey(const Key('my-units-unassigned')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+    });
+
     testWidgets('a plain build, a personal space and a stranger see nothing', (
       tester,
     ) async {

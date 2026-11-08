@@ -401,6 +401,16 @@ class EeTicketQueueScreen extends ConsumerWidget {
                 embedded: true,
                 query: query,
                 onSearchArchive: (q) => _openArchive(context, q),
+                // Home's "unassigned" figure opens here (E35 G-D review r1).
+                unassignedOnly:
+                    filter.assigneeScope == TicketAssigneeScope.unassigned,
+                onUnassignedOnly: (on) => ref
+                    .read(ticketFilterProvider.notifier)
+                    .setAssignee(
+                      on
+                          ? TicketAssigneeScope.unassigned
+                          : TicketAssigneeScope.any,
+                    ),
               ),
             )
           else
