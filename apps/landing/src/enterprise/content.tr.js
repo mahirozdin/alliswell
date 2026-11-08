@@ -353,7 +353,7 @@ export default {
         points: [
           'Kurumunuza özel adres: sirketiniz.alliswell.space',
           'Kurulum, yedekleme, güncelleme ve izleme bizden',
-          'Starter, Business ya da Enterprise paketi; büyüdükçe geçiş yapılır',
+          'Başlangıç, İşletme ya da Kurumsal paket; büyüdükçe geçiş yapılır',
           'Verileriniz yalnız size ait, diğer müşterilerden ayrı bir alanda tutulur',
         ],
         cta: { label: 'Bulut paketlerini görün', href: '#packages' },
@@ -383,11 +383,13 @@ export default {
     title: 'Bulutta üç hazır paket',
     lede:
       'Bu paketler bulutta kullanan kurumlar içindir. Kendi sunucunuza kurulumda hazır paket ' +
-      'yoktur; sınırlar ve modüller ihtiyacınıza göre belirlenir.',
+      'yoktur; sınırlar ve modüller ihtiyacınıza göre belirlenir. Uygulamanın yönetim ' +
+      'ekranında ve sözleşmede paketler İngilizce adlarıyla geçer: Starter, Business ve ' +
+      'Enterprise.',
     caption: 'Bulut paketleri karşılaştırması',
     featureHeading: 'Kapsam',
     labels: { yes: 'Var', no: 'Yok', partial: 'Kısmi' },
-    columns: ['Starter', 'Business', 'Enterprise'],
+    columns: ['Başlangıç', 'İşletme', 'Kurumsal'],
     pinnedRows: 3,
     moreLabel: 'Ayrıntılı kapsam',
     rows: [
@@ -449,9 +451,9 @@ export default {
         label: 'İlgilendiğiniz seçenek',
         placeholder: 'Henüz karar vermedim',
         options: [
-          'Bulut — Starter',
-          'Bulut — Business',
-          'Bulut — Enterprise',
+          'Bulut — Başlangıç',
+          'Bulut — İşletme',
+          'Bulut — Kurumsal',
           'Kendi sunucumuza kurulum',
         ],
       },
@@ -535,7 +537,7 @@ export default {
         a:
           'Evet. Active Directory ve LDAP bağlantısı, Microsoft Entra ID gibi sistemlerle tek ' +
           'oturum açma (SAML, OpenID Connect) ve otomatik kullanıcı aktarımı (SCIM) bulutta ' +
-          'Enterprise paketinde, kendi sunucunuzda ise istediğiniz kapsamda vardır. ' +
+          'Kurumsal pakette, kendi sunucunuzda ise istediğiniz kapsamda vardır. ' +
           pilotNote('directory', 'tr'),
       },
       {
@@ -568,13 +570,14 @@ export default {
     notes:
       'Microsoft, Apple, Google, Anthropic ya da OpenAI ile bağlantılı değildir. Ürün adları ' +
       'sahiplerine aittir.',
+    registeredAs: 'Ticaret unvanı',
     privacyLabel: 'Gizlilik',
     supportLabel: 'Destek',
     starsWord: 'yıldız',
     forksWord: 'çatal',
     columns: [
       {
-        title: 'Enterprise',
+        title: 'Kurumsal sürüm',
         links: [
           { label: 'Ekranlar', href: '#tour' },
           { label: 'Karar vermeden önce', href: '#proof' },

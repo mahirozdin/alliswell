@@ -585,6 +585,7 @@ export default {
     notes:
       'Not affiliated with Microsoft, Apple, Google, Anthropic or OpenAI. Product names belong ' +
       'to their owners.',
+    registeredAs: 'Registered name',
     privacyLabel: 'Privacy',
     supportLabel: 'Support',
     starsWord: 'stars',

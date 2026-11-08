@@ -29,6 +29,14 @@ defineProps({
     default:
       'Not affiliated with Apple, Google, Anthropic or OpenAI. Product names are their owners’.',
   },
+  /**
+   * OPH-412 (M-1) — the label in front of the registered name. The line leads
+   * with the name we go by and labels the registered one, as the home footer
+   * does (U-81): a reader who met "BubiApps" everywhere read the register's
+   * capitals alone after the © as the company misspelling its own name. The
+   * registered name itself is reproduced as the trade register spells it.
+   */
+  registeredAs: { type: String, default: 'Registered name' },
   privacyLabel: { type: String, default: 'Privacy' },
   supportLabel: { type: String, default: 'Support' },
   privacyHref: { type: String, default: '/privacy' },
@@ -93,7 +101,8 @@ defineProps({
 
       <div class="ftr__bottom">
         <p>
-          © {{ new Date().getFullYear() }} {{ company.legalName }} ·
+          © {{ new Date().getFullYear() }} {{ company.tradingName }} · {{ registeredAs }}:
+          {{ company.legalName }} ·
           <a :href="privacyHref">{{ privacyLabel }}</a> ·
           <a :href="supportHref">{{ supportLabel }}</a> ·
           <a :href="`mailto:${email || company.email}`">{{ email || company.email }}</a>

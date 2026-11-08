@@ -193,6 +193,7 @@ function bindingsFor(section) {
     :columns="content.footer.columns"
     :blurb="content.footer.blurb"
     :notes="content.footer.notes"
+    :registered-as="content.footer.registeredAs"
     :privacy-label="content.footer.privacyLabel"
     :support-label="content.footer.supportLabel"
     :stars-word="content.footer.starsWord"
