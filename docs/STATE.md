@@ -18,7 +18,7 @@
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
-| Last completed           | P-06 (OPH-408 cilası) — sayısal form cevabı girildiği kadar ondalıkla gösterilir ("0.001" → "0,001", iki ondalıkta kırpılmaz). Önceki: P-05 sembolü paylaşan para birimleri ISO koduyla ayrışır ("CAD 100"). |
+| Last completed           | P-07 (OPH-405 cilası) — masaüstü panelde açılan görev (tıklama ya da ↑/↓) aramanın son öğelerine kaydedilir. Önceki: P-06 sayısal form cevabı girildiği kadar ondalıkla gösterilir ("0.001" → "0,001"). |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

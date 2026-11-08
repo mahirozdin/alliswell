@@ -92,7 +92,8 @@ This file holds the unreleased changes and the latest release; at each release t
   Done adds the task too. On a computer it opens as a dialog and Ctrl/⌘+Enter adds it, and
   swiping the form away asks before throwing away what you typed.
 - **On a desktop, a task opens beside the list** instead of covering it: Escape closes it and the
-  arrow keys move to the previous or next task. The side bar now stays on Settings and every
+  arrow keys move to the previous or next task, and every task opened there shows up in search's
+  recent items. The side bar now stays on Settings and every
   other page, the board fits four columns and scrolls sideways for more, N adds a task and /
   opens search.
 - **The first-run tour is four short steps** — typing a task with its time and tag, adding by

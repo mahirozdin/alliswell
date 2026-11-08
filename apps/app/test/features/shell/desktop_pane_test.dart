@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/home/home_board.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/search/search_recents.dart';
 
 import '../projects/fake_api.dart';
 import 'shell_harness.dart';
@@ -14,7 +15,10 @@ import 'shell_harness.dart';
 /// list), N and "/" as shortcuts, and a board whose columns fit the window
 /// and scroll sideways past four.
 void main() {
-  setUp(() => AwI18n.instance.setActiveCached(const Locale('en')));
+  setUp(() async {
+    AwI18n.instance.setActiveCached(const Locale('en'));
+    await localKv.remove(kSearchRecentsKey);
+  });
 
   const desktop = Size(1440, 900);
   final pane = find.byKey(const Key('list-detail-pane'));
@@ -204,6 +208,36 @@ void main() {
     await tester.tap(find.text('nav.projects'.tr()).last);
     await tester.pumpAndSettle();
     expect(pane, findsNothing);
+  });
+
+  testWidgets('a task opened in the pane, by a tap or by ↓, is a recent '
+      'item in search (P-07)', (tester) async {
+    final api = await pumpApp(tester);
+    String idOf(String title) =>
+        api.tasks.firstWhere((t) => t['title'] == title)['id'] as String;
+
+    await tester.tap(listRow('Alpha'));
+    await tester.pumpAndSettle();
+    await press(tester, LogicalKeyboardKey.arrowDown);
+    expect(paneTitle(tester), 'Beta');
+    await press(tester, LogicalKeyboardKey.escape);
+    expect(pane, findsNothing);
+    // The address never left Home — the visits are the pane's own.
+    expect(appRouter().state.uri.path, '/home');
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.slash, character: '/');
+    await tester.pumpAndSettle();
+    final beta = find.byKey(Key('global-search-task-${idOf('Beta')}'));
+    final alpha = find.byKey(Key('global-search-task-${idOf('Alpha')}'));
+    expect(beta, findsOneWidget);
+    expect(alpha, findsOneWidget);
+    // Most recent first.
+    expect(tester.getTopLeft(beta).dy, lessThan(tester.getTopLeft(alpha).dy));
+    expect(
+      find.byKey(Key('global-search-task-${idOf('Gamma')}')),
+      findsNothing,
+    );
+    await press(tester, LogicalKeyboardKey.escape);
   });
 
   testWidgets('below the desktop width a task still opens as its own page', (

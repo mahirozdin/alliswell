@@ -41,6 +41,8 @@ import '../notifications/providers.dart';
 import '../sections.dart';
 import '../sync/providers.dart';
 import '../sync/sync_engine.dart';
+import '../search/global_search.dart' show GlobalSearchKind;
+import '../search/search_recents.dart';
 import '../search/ui/global_search_entry.dart';
 import '../theme/tokens.dart';
 import '../widgets/offline_strip.dart';
@@ -538,6 +540,12 @@ class HomeShell extends ConsumerWidget {
       child: AwListDetailScope(
         kind: kAwTaskPane,
         resetToken: navigationShell.currentIndex,
+        // P-07: a task opened in the pane is a visit like its own page.
+        onShow: (id) => unawaited(
+          ref
+              .read(searchRecentsProvider.notifier)
+              .record(SearchRecent(GlobalSearchKind.task, id)),
+        ),
         child: _shellLayout(context, ref, visibleSections, fab, fabClearance),
       ),
     );

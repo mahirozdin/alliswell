@@ -56,9 +56,16 @@ class AwListDetailScope extends StatefulWidget {
     required this.kind,
     required this.child,
     this.resetToken,
+    this.onShow,
   });
 
   final String kind;
+
+  /// Called with each item the pane comes to show — opened from a row or
+  /// reached with ↑/↓. The address never changes for a pane visit, so a
+  /// route observer (the search recents, ADR-0055) cannot see it; the host
+  /// records it here instead (P-07).
+  final ValueChanged<String>? onShow;
 
   /// A change closes the pane: the shell passes its section, so switching
   /// sections does not leave a task from the last one open.
@@ -141,6 +148,7 @@ class _AwListDetailScopeState extends State<AwListDetailScope>
       final at = order?.ids?.indexOf(id) ?? -1;
       _heldIndex = at < 0 ? null : at;
     });
+    widget.onShow?.call(id);
     // The keys work at once, without a click into the pane first.
     if (!awTextInputFocused()) _keys.requestFocus();
   }
@@ -173,6 +181,7 @@ class _AwListDetailScopeState extends State<AwListDetailScope>
     }
     _heldIndex = next;
     setState(() => _selected = ids[next]);
+    widget.onShow?.call(ids[next]);
     _order?.reveal(ids[next], forward: delta > 0);
   }
 
