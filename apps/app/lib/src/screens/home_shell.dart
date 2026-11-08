@@ -351,7 +351,9 @@ class HomeShell extends ConsumerWidget {
             backgroundColor: Colors.transparent,
             // R-12: the cluster stands at the window's end, never on the
             // rail (the microphone used to sit on its glass corner).
-            floatingActionButton: fab,
+            // No scroll scope here: on a tablet it only steps aside for the
+            // on-screen keyboard (T-01, polish 4).
+            floatingActionButton: fab == null ? null : AwFabDrop(child: fab),
             floatingActionButtonLocation: AwFabLocation(
               kAwFloatGutter +
                   math.max(

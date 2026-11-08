@@ -43,9 +43,9 @@ class AwFabLocation extends StandardFabLocation with FabFloatOffsetY {
 }
 
 /// Listens to the vertical scrolling under the cluster and says whether it
-/// should step down (ADR-0062 §3): a scroll toward the end of a list of more
-/// than [_threshold] lowers it [kAwFabScrollDrop]; scrolling back, or
-/// [_settle] of stillness, raises it again.
+/// should retract (ADR-0062 §3, OPH-397 polish 4 T-01): a scroll toward the
+/// end of a list of more than [_threshold] retracts it; scrolling back, or
+/// [_settle] of stillness, brings it back.
 ///
 /// Wrap the Scaffold whose `floatingActionButton` is an [AwFabDrop]: the
 /// body's scroll notifications bubble up through the Scaffold to here, and
@@ -110,9 +110,20 @@ class _FabDropped extends InheritedNotifier<ValueNotifier<bool>> {
   const _FabDropped({required super.notifier, required super.child});
 }
 
-/// The cluster, lowered while its [AwFabScrollScope] says so — 150 ms,
-/// at once with reduced motion. A translation, not a fade: the buttons stay
-/// whole and tappable (DESIGN §20 C3).
+/// The cluster, retracted while its [AwFabScrollScope] says the list is
+/// scrolling down, and while the on-screen keyboard is up (OPH-397 polish 4,
+/// T-01) — in [AwMotion.fast], at once with reduced motion.
+///
+/// Until polish 4 it only stepped down [kAwFabScrollDrop] and stayed whole:
+/// the microphone and "+" went on covering the right end of every row a
+/// reader scrolled past and the last visible title, and with the quick add
+/// focused they stood on the calendar and a section's arrow (persona
+/// recheck 2).
+///
+/// Retracting is a scale to nothing while it steps down — never an `Opacity`
+/// layer (DESIGN §20 C3: nothing is ever drawn half-legible at rest). A
+/// retracted cluster takes no touch and leaves the semantics tree, so a tap
+/// meant for the row beneath reaches the row.
 class AwFabDrop extends StatelessWidget {
   const AwFabDrop({super.key, required this.child});
 
@@ -124,14 +135,25 @@ class AwFabDrop extends StatelessWidget {
         .dependOnInheritedWidgetOfExactType<_FabDropped>()
         ?.notifier;
     final dropped = scope?.value ?? false;
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom > 0;
+    final retracted = dropped || keyboard;
     final reduced = MediaQuery.disableAnimationsOf(context);
-    return TweenAnimationBuilder<double>(
-      tween: Tween(end: dropped ? kAwFabScrollDrop : 0),
-      duration: reduced ? Duration.zero : AwMotion.fast,
-      curve: AwMotion.enter,
-      builder: (context, dy, child) =>
-          Transform.translate(offset: Offset(0, dy), child: child),
-      child: child,
+    return IgnorePointer(
+      key: const Key('shell-fab-retract'),
+      ignoring: retracted,
+      child: ExcludeSemantics(
+        excluding: retracted,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(end: retracted ? 1 : 0),
+          duration: reduced ? Duration.zero : AwMotion.fast,
+          curve: AwMotion.enter,
+          builder: (context, t, child) => Transform.translate(
+            offset: Offset(0, kAwFabScrollDrop * t),
+            child: Transform.scale(scale: 1 - t, child: child),
+          ),
+          child: child,
+        ),
+      ),
     );
   }
 }

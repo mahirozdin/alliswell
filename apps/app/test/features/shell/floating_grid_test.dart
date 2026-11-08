@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_bubble.dart';
 import 'package:alliswell/src/features/quick_access/ui/quick_access_panel.dart';
+import 'package:alliswell/src/features/tasks/ui/task_create_sheet.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 import 'package:alliswell/src/widgets/fab_clearance.dart';
@@ -122,7 +123,38 @@ void main() {
     });
   });
 
-  group('ADR-0062 §3: scrolling down lowers the cluster 16 pt', () {
+  // OPH-397 (polish 4, T-01): the cluster no longer only steps down 16 pt —
+  // it went on covering the right end of the rows a reader scrolls past and
+  // the last visible title. While the list scrolls down it retracts, while
+  // the keyboard is up it is gone; scrolling back up or 600 ms of stillness
+  // brings it back.
+  group('T-01: the cluster retracts while a list scrolls down', () {
+    final veil = find.byKey(const Key('shell-fab-retract'));
+
+    /// Retracted = takes no touch, says nothing — and, once its 150 ms are
+    /// over, drawn at nothing (checked by every caller that has waited).
+    bool retracting(WidgetTester tester) {
+      final ignoring = tester.widget<IgnorePointer>(veil).ignoring;
+      final silent = tester
+          .widget<ExcludeSemantics>(
+            find
+                .descendant(of: veil, matching: find.byType(ExcludeSemantics))
+                .first,
+          )
+          .excluding;
+      if (ignoring != silent) fail('touch and semantics disagree');
+      return ignoring;
+    }
+
+    bool retracted(WidgetTester tester) {
+      final ignoring = retracting(tester);
+      final drawn = tester.getRect(plus);
+      if (ignoring) {
+        expect(drawn.width, lessThan(0.5), reason: 'still drawn: $drawn');
+      }
+      return ignoring;
+    }
+
     Future<TestGesture> scrollDown(WidgetTester tester) async {
       final gesture = await tester.startGesture(
         tester.getCenter(find.byKey(const Key('home-scroll'))),
@@ -138,18 +170,33 @@ void main() {
       await pumpPhone(tester, aiApi(tasks: 30));
       final rest = tester.getRect(plus);
       final micRest = tester.getRect(mic);
+      expect(retracted(tester), isFalse);
 
-      final gesture = await scrollDown(tester);
+      // Step by step, so the motion is caught where it begins.
+      final gesture = await tester.startGesture(
+        tester.getCenter(find.byKey(const Key('home-scroll'))),
+      );
+      for (var i = 0; i < 8 && !retracting(tester); i++) {
+        await gesture.moveBy(const Offset(0, -20));
+        await tester.pump(const Duration(milliseconds: 1));
+      }
+      // Partway through it is still on its way out, not snapped.
+      await tester.pump(const Duration(milliseconds: 30));
+      final half = tester.getRect(plus).width;
+      expect(half, greaterThan(1));
+      expect(half, lessThan(56));
       await tester.pump(AwMotion.fast);
-      expect(tester.getRect(plus).top, moreOrLessEquals(rest.top + 16));
-      expect(tester.getRect(mic).top, moreOrLessEquals(micRest.top + 16));
+      expect(retracted(tester), isTrue);
+      expect(tester.getRect(mic).width, lessThan(0.5));
 
       for (var i = 0; i < 3; i++) {
         await gesture.moveBy(const Offset(0, 20));
         await tester.pump(const Duration(milliseconds: 16));
       }
       await tester.pump(AwMotion.fast);
-      expect(tester.getRect(plus).top, moreOrLessEquals(rest.top));
+      expect(retracted(tester), isFalse);
+      expect(tester.getRect(plus), rectMoreOrLessEquals(rest));
+      expect(tester.getRect(mic), rectMoreOrLessEquals(micRest));
       await gesture.up();
       await tester.pumpAndSettle();
     });
@@ -159,27 +206,81 @@ void main() {
       final rest = tester.getRect(plus);
       final gesture = await scrollDown(tester);
       await tester.pump(AwMotion.fast);
-      expect(tester.getRect(plus).top, moreOrLessEquals(rest.top + 16));
+      expect(retracted(tester), isTrue);
       await gesture.up();
       await tester.pumpAndSettle();
       await tester.pump(const Duration(milliseconds: 700));
       await tester.pumpAndSettle();
-      expect(tester.getRect(plus).top, moreOrLessEquals(rest.top));
+      expect(retracted(tester), isFalse);
+      expect(tester.getRect(plus), rectMoreOrLessEquals(rest));
     });
 
-    testWidgets('with reduced motion it moves at once', (tester) async {
+    testWidgets('with reduced motion it goes and comes at once', (
+      tester,
+    ) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue =
           const FakeAccessibilityFeatures(disableAnimations: true);
       addTearDown(
         tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
       );
       await pumpPhone(tester, aiApi(tasks: 30));
-      final rest = tester.getRect(plus);
       final gesture = await scrollDown(tester);
       await tester.pump();
-      expect(tester.getRect(plus).top, moreOrLessEquals(rest.top + 16));
+      expect(retracted(tester), isTrue);
+      await gesture.moveBy(const Offset(0, 20));
+      await tester.pump();
+      await tester.pump();
+      expect(retracted(tester), isFalse);
+      expect(tester.getRect(plus).width, moreOrLessEquals(56));
       await gesture.up();
       await tester.pumpAndSettle();
+    });
+
+    testWidgets('while the keyboard is up the cluster is gone, and it '
+        'returns when the keyboard closes', (tester) async {
+      await pumpPhone(tester, aiApi(tasks: 4));
+      final rest = tester.getRect(plus);
+      expect(retracted(tester), isFalse);
+
+      // ios/24 (polish 4): the quick add focused, the keyboard up — the
+      // microphone and "+" stood on the calendar and "Geciken 11"'s arrow.
+      tester.view.viewInsets = const FakeViewPadding(bottom: 336);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pump();
+      await tester.pump(AwMotion.fast);
+      expect(retracted(tester), isTrue);
+      // A pause while typing does not bring it back.
+      await tester.pump(const Duration(seconds: 1));
+      expect(retracted(tester), isTrue);
+
+      tester.view.resetViewInsets();
+      await tester.pump();
+      await tester.pump(AwMotion.fast);
+      expect(retracted(tester), isFalse);
+      expect(tester.getRect(plus), rectMoreOrLessEquals(rest));
+    });
+
+    testWidgets('a retracted "+" takes no tap', (tester) async {
+      await pumpPhone(tester, aiApi(tasks: 4));
+      tester.view.viewInsets = const FakeViewPadding(bottom: 336);
+      addTearDown(tester.view.resetViewInsets);
+      await tester.pump();
+      await tester.pump(AwMotion.fast);
+      // The "+" ends the cluster: its centre is 28 in from the slot's
+      // corner, wherever the keyboard put the slot.
+      await tester.tapAt(
+        tester.getRect(veil).bottomRight - const Offset(28, 28),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskCreateSheet), findsNothing);
+      // The control: back in place, the same tap opens the sheet.
+      tester.view.resetViewInsets();
+      await tester.pumpAndSettle();
+      await tester.tapAt(
+        tester.getRect(veil).bottomRight - const Offset(28, 28),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byType(TaskCreateSheet), findsOneWidget);
     });
   });
 

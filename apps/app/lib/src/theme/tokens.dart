@@ -84,8 +84,9 @@ const double kAwSearchOrbSize = 56;
 const double kAwMicFabSize = 48;
 const double kAwFabClusterGap = AwSpace.x2;
 
-/// How far the cluster drops while the list is scrolled down (150 ms,
-/// [AwMotion.fast]; instant with reduced motion).
+/// How far the cluster steps down while it retracts — the list scrolled
+/// down, or the keyboard up (150 ms, [AwMotion.fast]; instant with reduced
+/// motion). It shrinks to nothing on the way (OPH-397 polish 4, T-01).
 const double kAwFabScrollDrop = AwSpace.x4;
 
 /// Motion tokens: quick, physical, never decorative-slow.
