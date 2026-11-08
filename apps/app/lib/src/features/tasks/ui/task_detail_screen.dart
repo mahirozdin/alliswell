@@ -228,6 +228,9 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
     // deleting, cancelling, the project, the repeat — is not offered here;
     // the server refuses each of them too (TICKET_WORK_BOUND / _LOCKED).
     final work = ref.watch(ticketWorkOfTaskProvider(task.id)).value;
+    final largeText =
+        MediaQuery.textScalerOf(context).scale(1) > kAwRowVerticalTextScale;
+    Widget half(Widget field) => largeText ? field : Expanded(child: field);
     return Scaffold(
       appBar: AppBar(
         leading: _leading(context, widget.onClose),
@@ -372,10 +375,18 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
+                    // Polish 4 T-06: at large text the two half-width fields
+                    // scaled the longer value down ("Yüksek" drawn smaller
+                    // than "Açık"); there they stack, each at full width.
+                    Flex(
+                      direction: largeText ? Axis.vertical : Axis.horizontal,
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: largeText
+                          ? CrossAxisAlignment.stretch
+                          : CrossAxisAlignment.center,
                       children: [
-                        Expanded(
-                          child: AwDropdownField<String>(
+                        half(
+                          AwDropdownField<String>(
                             isExpanded: true,
                             key: const Key('status-dropdown'),
                             initialValue: task.status,
@@ -405,9 +416,9 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                             },
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: AwDropdownField<String>(
+                        const SizedBox(width: 12, height: 12),
+                        half(
+                          AwDropdownField<String>(
                             isExpanded: true,
                             key: const Key('priority-dropdown'),
                             initialValue: task.priority,

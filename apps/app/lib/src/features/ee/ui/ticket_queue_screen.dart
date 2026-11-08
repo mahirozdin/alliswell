@@ -889,7 +889,13 @@ class _TicketCard extends ConsumerWidget {
               ticket.number == null
                   ? ticket.subject
                   : '#${ticket.number} · ${ticket.subject}',
-              maxLines: 2,
+              // Polish 4 T-06: at large text two lines held half a subject
+              // ("ölçü sa…"); there it flows on to six before it shortens.
+              maxLines:
+                  MediaQuery.textScalerOf(context).scale(1) >
+                      kAwRowVerticalTextScale
+                  ? 6
+                  : 2,
               overflow: TextOverflow.ellipsis,
               style: finished
                   // Muted, never struck through: the work happened, it is simply

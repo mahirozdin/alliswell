@@ -99,12 +99,18 @@ TextScaler awWordSafeScaler(
   return TextScaler.linear(current * (maxWidth / widest) * 0.98);
 }
 
-/// An e-mail address (or host) that can wrap where a reader would break it:
-/// before the `@` and before each `.` — "demo / @alliswell / .space", never
-/// "demo@alliswel / l.space" (OPH-400 / R-09). Pair it with the plain
-/// address as the semantics label.
-String awBreakableAddress(String address) =>
-    address.replaceAllMapped(RegExp(r'(?<=.)([@.])'), (m) => '$kAwZwsp${m[1]}');
+/// An e-mail address that can wrap where a reader would break it: right
+/// after the `@`, and nowhere else — "demo@ / alliswell.space", never
+/// "demo@alliswel / l.space" (OPH-400 / R-09) nor "demo@alliswell / .space"
+/// (polish 4 T-06: a line that starts with a dot reads as a new word). The
+/// domain stays one piece; when even that is wider than its slot,
+/// [AwWordSafeText] draws it smaller rather than breaking it. Pair it with
+/// the plain address as the semantics label.
+String awBreakableAddress(String address) {
+  final at = address.lastIndexOf('@');
+  if (at <= 0 || at == address.length - 1) return address;
+  return '${address.substring(0, at + 1)}$kAwZwsp${address.substring(at + 1)}';
+}
 
 /// Room above the first outlined field of a scrolling form so its floating
 /// label is not clipped by the scroll view (OPH-400 / R-09): the label floats

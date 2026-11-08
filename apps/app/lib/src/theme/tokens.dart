@@ -43,6 +43,13 @@ const double kAwExtendedRailBreakpoint = 1160;
 /// a list opens its item in a [kAwDetailPaneWidth] pane beside itself
 /// instead of pushing a page over it.
 const double kAwPaneBreakpoint = 1200;
+
+/// Above this text scale the task row lays itself out vertically (OPH-400,
+/// DESIGN §46 R5): at 1.3 a two-column row still reads; past it the title
+/// column is too narrow for Turkish words. Polish 4 T-06: the other places
+/// that give large text more lines (a request's subject, the unit's name
+/// under the phone's title) or stack side-by-side fields switch here too.
+const double kAwRowVerticalTextScale = 1.3;
 const double kAwDetailPaneWidth = 480;
 
 /// The widest a form or a settings page's content grows (OPH-410, DESIGN

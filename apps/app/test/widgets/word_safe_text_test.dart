@@ -87,10 +87,12 @@ void main() {
   setUp(() => AwI18n.instance.setActiveCached(const Locale('tr')));
   tearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
 
-  test('an address breaks before "@" and ".", nowhere else', () {
+  // Polish 4 T-06 narrowed this: after the "@" only, the domain one piece
+  // (`large_text_cuts_test.dart` draws it).
+  test('an address breaks after "@", nowhere else', () {
     expect(
       awBreakableAddress('demo@alliswell.space'),
-      'demo$kAwZwsp@alliswell$kAwZwsp.space',
+      'demo@${kAwZwsp}alliswell.space',
     );
     expect(awBreakableAddress('.x'), '.x');
   });

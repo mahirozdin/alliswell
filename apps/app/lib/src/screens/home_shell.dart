@@ -878,6 +878,27 @@ const double kAwBottomScrimAlpha = 0.92;
 /// title (OPH-359) — the switcher's own compact width, so the two agree.
 const double kAwCompactAppBarWidth = 600;
 
+/// The phone section bar's height (polish 4 T-06). At large text the unit's
+/// name under the title may take two lines, so the bar grows to hold the
+/// heading and two name lines there — measured at the scale the bar draws its
+/// title at (AppBar clamps it to 1.34) — instead of cutting the name to
+/// "Demir Çelik Fabri…". At normal sizes it is the standard bar.
+double awSectionAppBarHeight(BuildContext context) {
+  final scale = MediaQuery.textScalerOf(context).scale(1);
+  if (scale <= kAwRowVerticalTextScale) return kToolbarHeight;
+  final theme = Theme.of(context);
+  final drawn = math.min(scale, 1.34);
+  double line(TextStyle? style, double size, double height) =>
+      drawn * (style?.fontSize ?? size) * (style?.height ?? height);
+  final heading = line(
+    theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge,
+    22,
+    1.27,
+  );
+  final name = line(theme.textTheme.labelLarge, 14, 1.43);
+  return math.max(kToolbarHeight, heading + 2 * name).ceilToDouble();
+}
+
 /// Shared app bar for section screens with quick access to Settings.
 ///
 /// [onRefresh] adds the pointer-only refresh action (OPH-171, DESIGN §15 R5):
@@ -903,6 +924,7 @@ AppBar buildSectionAppBar(
   // has the width to say its name.
   final compact = width < kAwCompactAppBarWidth;
   return AppBar(
+    toolbarHeight: compact ? awSectionAppBarHeight(context) : null,
     title: compact
         ? AwWorkspaceSwitcher(title: title, leading: const AwTeamChip())
         : Text(title),

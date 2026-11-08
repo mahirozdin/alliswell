@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
-import '../../../theme/tokens.dart' show AwRadius, AwSpace;
+import '../../../theme/tokens.dart'
+    show AwRadius, AwSpace, kAwRowVerticalTextScale;
 import '../workspaces.dart';
 
 /// Which workspace this window is showing, and how to change it (EE-061).
@@ -135,7 +136,15 @@ class AwWorkspaceSwitcher extends ConsumerWidget {
               Flexible(
                 child: Text(
                   current.name,
-                  maxLines: 1,
+                  // Polish 4 T-06: at large text a long unit name wraps onto
+                  // a second line ("Demir Çelik / Fabrikası") instead of
+                  // "Demir Çelik Fabri…"; the section bar grows by that line
+                  // ([awSectionAppBarHeight]).
+                  maxLines:
+                      MediaQuery.textScalerOf(context).scale(1) >
+                          kAwRowVerticalTextScale
+                      ? 2
+                      : 1,
                   overflow: TextOverflow.ellipsis,
                   style: Theme.of(context).textTheme.labelLarge,
                 ),

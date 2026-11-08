@@ -564,8 +564,24 @@ void main() {
               reason: '$label $id: check on the first line',
             );
           }
+          // Polish 4 T-06: the date now wraps between its words instead of
+          // ending in "12:…", so a date wider than the meta line adds its
+          // own lines. Everything else keeps the 240 pt budget.
+          final due = tester.renderObject<RenderParagraph>(
+            find.descendant(
+              of: find.byKey(const Key('task-due-long')),
+              matching: find.byType(RichText),
+            ),
+          );
+          expect(due.didExceedMaxLines, isFalse, reason: '$label: date cut');
+          final duePainter = _painterLike(due);
+          final dueLines = duePainter.computeLineMetrics();
+          final wrapped = dueLines
+              .skip(1)
+              .fold(0.0, (h, line) => h + line.height);
+          duePainter.dispose();
           expect(
-            _rect(tester, _in('long', find.byType(Card))).height,
+            _rect(tester, _in('long', find.byType(Card))).height - wrapped,
             lessThanOrEqualTo(240),
             reason: label,
           );

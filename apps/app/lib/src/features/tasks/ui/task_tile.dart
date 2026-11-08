@@ -36,11 +36,6 @@ import '../../../theme/typography.dart';
 String _formatDue(DateTime due, String dateFormat) =>
     awFormatShort(due, format: dateFormat);
 
-/// Above this text scale the task row lays itself out vertically (OPH-400,
-/// DESIGN §46 R5): at 1.3 a two-column row still reads; past it the title
-/// column is too narrow for Turkish words.
-const double kAwRowVerticalTextScale = 1.3;
-
 /// Shared task row (DESIGN §46): check circle on the title's first line, a
 /// title of at most two lines, ONE meta line that only shows what differs from
 /// a new task's defaults, and at most one item on the right. `highlighted`
@@ -254,8 +249,11 @@ class TaskTile extends ConsumerWidget {
       if (due != null)
         Text.rich(
           key: Key('task-due-${task.id}'),
-          maxLines: 1,
-          softWrap: false,
+          // Polish 4 T-06: in the large-text row the date wraps between its
+          // words ("Son tarih 14 Kas, / 12:30") instead of ending in "12:…";
+          // the one-line row keeps squeezing it (R3, [AwMetaLine]).
+          maxLines: vertical ? 3 : 1,
+          softWrap: vertical,
           overflow: TextOverflow.ellipsis,
           style: metaStyle,
           // ADR-0063 #3: a date is data — tabular figures ([metaStyle]).
