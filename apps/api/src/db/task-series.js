@@ -1353,11 +1353,14 @@ async function detachOpenOccurrences(trx, { workspaceId, seriesId, onlyId = null
  * Without an explicit `fromDay` this is "Tekrarı durdur": the series' head —
  * its earliest open occurrence, the task the Repeat switch sits on — stays as
  * an ordinary task and only the occurrences after it go (#32). A stop must
- * never delete the very task the user turned repeating off on.
+ * never delete the very task the user turned repeating off on. `keepTaskId`
+ * names that task when it is not the head (the app sends the task the switch
+ * sits on); an id that is not an open occurrence of this series falls back
+ * to the head.
  */
 export async function softDeleteSeries(
   trx,
-  { workspaceId, series, now = new Date(), fromDay: overrideDay = null },
+  { workspaceId, series, now = new Date(), fromDay: overrideDay = null, keepTaskId = null },
 ) {
   // `fromDay` lets "this and future" start at the occurrence the user swiped
   // rather than at today — stopping a series from next March must not take
@@ -1372,12 +1375,18 @@ export async function softDeleteSeries(
   if (keepHead && isCompletionSeries(series)) {
     await detachOpenOccurrences(trx, { workspaceId, seriesId: series.id });
   } else if (keepHead) {
-    const head = await trx('tasks')
-      .where({ workspace_id: workspaceId, series_id: series.id })
-      .whereNull('deleted_at')
-      .whereNotIn('status', FINISHED_STATUSES)
-      .orderBy('occurrence_date', 'asc')
-      .first('id');
+    const openOccurrences = () =>
+      trx('tasks')
+        .where({ workspace_id: workspaceId, series_id: series.id })
+        .whereNull('deleted_at')
+        .whereNotIn('status', FINISHED_STATUSES);
+    // The task the user turned Repeat off on, when the caller names it and it
+    // is still an open occurrence of this series — otherwise the earliest open
+    // one. A stop from today's task must not keep yesterday's overdue one and
+    // delete today's (#32).
+    const named =
+      keepTaskId != null ? await openOccurrences().where({ id: keepTaskId }).first('id') : null;
+    const head = named ?? (await openOccurrences().orderBy('occurrence_date', 'asc').first('id'));
     const rows = await futureOccurrences(trx, { workspaceId, seriesId: series.id, fromDay });
     removed = await retireOccurrences(trx, {
       workspaceId,

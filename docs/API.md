@@ -4782,6 +4782,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/task-series/:seriesId' \
 | Name | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `fromDay` | string | no | pattern `^\d{4}-\d{2}-\d{2}$` |
+| `keepTaskId` | ULID | no | 26-character identifier |
 
 **Request**
 

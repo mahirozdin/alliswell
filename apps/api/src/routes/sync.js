@@ -95,6 +95,20 @@ const color = (v) => typeof v === 'string' && COLOR_RE.test(v);
 const colorOrNull = (v) => v === null || color(v);
 const ulidArray = (v) => Array.isArray(v) && v.length <= 50 && v.every(ulid);
 
+/**
+ * A task_series delete's options, read off its patch the way the REST route
+ * reads its query (`DELETE /task-series/:id?fromDay=&keepTaskId=`). A delete's
+ * patch skips field validation, so a malformed value is simply not an option.
+ */
+const seriesStopOptions = (patch) => {
+  const options = {};
+  if (patch == null || typeof patch !== 'object') return options;
+  if (typeof patch.fromDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(patch.fromDay))
+    options.fromDay = patch.fromDay;
+  if (ulid(patch.keepTaskId)) options.keepTaskId = patch.keepTaskId;
+  return options;
+};
+
 const toDate = (v) => (v == null ? null : new Date(v));
 
 // Field spec: patch key → { col, ok, date? , virtual? , createOnly? }.
@@ -972,10 +986,15 @@ export default async function syncRoutes(app) {
       },
       // Stopping a series removes its future and keeps its past (DESIGN §25 R7),
       // so the delete cannot be the generic soft-delete patch.
-      async customDelete(trx, ctx, row) {
+      // The delete's patch carries the same two options as the REST query —
+      // `fromDay` ("this and future") and `keepTaskId` (the task the Repeat
+      // switch sits on, #32) — so a pushed stop and DELETE /task-series agree.
+      async customDelete(trx, ctx, row, mutation) {
+        const options = seriesStopOptions(mutation?.patch);
         const { revision } = await softDeleteSeries(trx, {
           workspaceId: ctx.workspaceId,
           series: row,
+          ...options,
         });
         return revision;
       },
@@ -1553,7 +1572,7 @@ export default async function syncRoutes(app) {
     let revision;
     await app.db.transaction(async (trx) => {
       if (entity.customDelete) {
-        revision = await entity.customDelete(trx, ctx, row);
+        revision = await entity.customDelete(trx, ctx, row, mutation);
       } else {
         revision = await recordSyncWrite(trx, {
           workspaceId: ctx.workspaceId,

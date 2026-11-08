@@ -281,6 +281,47 @@ describe('task series (OPH-205, ADR-0020)', () => {
     ).toBe(true);
   });
 
+  it('stopping from a task that is not the head keeps THAT task (#32, review r2)', async () => {
+    // Yesterday's occurrence is still open (overdue); the user opens today's
+    // and turns Repeat off. Today's task stays; yesterday's is history.
+    const yesterday = dayAfter(-1);
+    const { series } = (
+      await create({
+        rule: { freq: 'daily', interval: 1 },
+        anchorAt: `${yesterday}T09:00:00.000Z`,
+      })
+    ).json();
+    const rows = occurrencesOf(series.id);
+    const todays = rows[0];
+    expect(String(todays.occurrence_date).slice(0, 10)).toBe(today());
+    const overdue = {
+      ...todays,
+      id: '01JOVERDUE0000000000000000',
+      occurrence_date: yesterday,
+      status: 'open',
+    };
+    tables.tasks.push(overdue);
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/task-series/${series.id}?keepTaskId=${todays.id}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().removed).toBe(rows.length - 1);
+
+    const kept = tables.tasks.find((t) => t.id === todays.id);
+    expect(kept.deleted_at ?? null).toBeNull();
+    expect(kept.series_id).toBeNull();
+    expect(
+      tables.sync_revisions.some(
+        (r) => r.entity_type === 'task' && r.entity_id === todays.id && r.operation === 'delete',
+      ),
+    ).toBe(false);
+    // The past open occurrence is untouched history (DESIGN §25 R7).
+    expect(tables.tasks.find((t) => t.id === overdue.id).deleted_at ?? null).toBeNull();
+  });
+
   it('completing one occurrence leaves its siblings and the series untouched', async () => {
     const { series } = (await create()).json();
     const rows = occurrencesOf(series.id);

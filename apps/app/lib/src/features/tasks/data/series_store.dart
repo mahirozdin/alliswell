@@ -157,9 +157,10 @@ class SeriesStore {
   /// Locally we drop the rule row: which other occurrences survive is the
   /// server's decision (it keeps everything finished), and guessing here would
   /// make the list flicker into a state that is about to be corrected. The one
-  /// exception is [keepTaskId], the open task the user stopped it on: the
-  /// server keeps the series' open head as an ordinary task (#32), so the row
-  /// loses its series link now — optimistic, like [create]'s adoption.
+  /// exception is [keepTaskId], the open task the user stopped it on: it
+  /// loses its series link now — optimistic, like [create]'s adoption — and
+  /// rides the outbox so the server keeps that very task, not merely the
+  /// series' earliest open one (#32).
   Future<void> stop({
     required String workspaceId,
     required String seriesId,
@@ -170,16 +171,16 @@ class SeriesStore {
       await (_db.delete(
         _db.taskSeries,
       )..where((s) => s.id.equals(seriesId))).go();
-      if (keepTaskId != null && fromDay == null) {
-        await (_db.update(_db.tasks)..where(
-              (t) => t.id.equals(keepTaskId) & t.seriesId.equals(seriesId),
-            ))
-            .write(
-              const TasksCompanion(
-                seriesId: Value(null),
-                occurrenceDate: Value(null),
-              ),
-            );
+      final keep = fromDay == null ? keepTaskId : null;
+      if (keep != null) {
+        await (_db.update(
+          _db.tasks,
+        )..where((t) => t.id.equals(keep) & t.seriesId.equals(seriesId))).write(
+          const TasksCompanion(
+            seriesId: Value(null),
+            occurrenceDate: Value(null),
+          ),
+        );
       }
       await enqueueMutation(
         _db,
@@ -188,8 +189,9 @@ class SeriesStore {
         entityId: seriesId,
         operation: 'delete',
         // `fromDay` makes "this and future" start at the occurrence the user
-        // swiped instead of at today (OPH-208).
-        patch: {'fromDay': ?fromDay},
+        // swiped instead of at today (OPH-208); `keepTaskId` is the task the
+        // stop keeps (REST: the same two query parameters).
+        patch: {'fromDay': ?fromDay, 'keepTaskId': ?keep},
       );
     });
     _poke();

@@ -284,6 +284,9 @@ export default async function taskSeriesRoutes(app) {
           properties: {
             // "This and future" from a specific occurrence, not from today.
             fromDay: { type: 'string', pattern: '^\\d{4}-\\d{2}-\\d{2}$' },
+            // "Stop repeating" from this open occurrence: it stays as an
+            // ordinary task even when it is not the series' earliest (#32).
+            keepTaskId: ULID_PARAM,
           },
         },
         response: {
@@ -304,6 +307,7 @@ export default async function taskSeriesRoutes(app) {
           workspaceId: row.workspace_id,
           series: row,
           fromDay: request.query.fromDay ?? null,
+          keepTaskId: request.query.keepTaskId ?? null,
         }));
       });
       return { removed };

@@ -159,8 +159,59 @@ void main() {
       final rows = await db.select(db.pendingMutations).get();
       final stop = rows.last;
       expect(stop.operation, 'delete');
-      // The wire body is unchanged — the server keeps the head by itself.
-      expect(jsonDecode(stop.patchJson!), isEmpty);
+      // The wire names the kept task: the server must keep THIS one, not
+      // whichever open occurrence is earliest (#32, review r2).
+      expect(jsonDecode(stop.patchJson!), {'keepTaskId': head});
+    },
+  );
+
+  test(
+    'stopping on a later occurrence sends that task to the server (#32)',
+    () async {
+      final workspaceId = 'W5'.padRight(26, '0');
+      final overdue = 'T6'.padRight(26, '0');
+      final today = 'T7'.padRight(26, '0');
+      final store = SeriesStore(db, () {});
+      final id = await store.create(
+        workspaceId: workspaceId,
+        rule: const AwRepeatRule(freq: AwRepeatFreq.daily),
+        template: const {'title': 'Read mail'},
+        anchorAt: DateTime.utc(2030, 6, 4, 9),
+      );
+      for (final (taskId, day) in [
+        (overdue, '2030-06-04'),
+        (today, '2030-06-05'),
+      ]) {
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: taskId,
+                workspaceId: workspaceId,
+                title: 'Read mail',
+                seriesId: Value(id),
+                occurrenceDate: Value(day),
+              ),
+            );
+      }
+
+      await store.stop(
+        workspaceId: workspaceId,
+        seriesId: id,
+        keepTaskId: today,
+      );
+
+      final rows = await db.select(db.pendingMutations).get();
+      expect(jsonDecode(rows.last.patchJson!), {'keepTaskId': today});
+      // "This and future" names a day, never a kept task.
+      await store.stop(
+        workspaceId: workspaceId,
+        seriesId: id,
+        fromDay: '2030-06-05',
+        keepTaskId: today,
+      );
+      final again = await db.select(db.pendingMutations).get();
+      expect(jsonDecode(again.last.patchJson!), {'fromDay': '2030-06-05'});
     },
   );
 }
