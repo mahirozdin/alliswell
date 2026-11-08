@@ -394,8 +394,15 @@ class EeTicketQueueScreen extends ConsumerWidget {
           // The chips filter the unit's replica; across units they would
           // filter nothing, so they wait for a unit (U-18).
           if (!allUnits) const _FilterBar(),
+          // The toolbar's search reaches this list too (E35 G-D review r1).
           if (allUnits)
-            const Expanded(child: EeMyUnitsScreen(embedded: true))
+            Expanded(
+              child: EeMyUnitsScreen(
+                embedded: true,
+                query: query,
+                onSearchArchive: (q) => _openArchive(context, q),
+              ),
+            )
           else
             Expanded(
               child: EeUnitScopeGate(

@@ -54,6 +54,8 @@ class EeMyUnitsScreen extends ConsumerStatefulWidget {
   const EeMyUnitsScreen({
     this.alertsOnly = false,
     this.embedded = false,
+    this.query = '',
+    this.onSearchArchive,
     super.key,
   });
 
@@ -64,6 +66,14 @@ class EeMyUnitsScreen extends ConsumerStatefulWidget {
   /// under its own bar — no second app bar, and room for its "new request"
   /// button under the last row.
   final bool embedded;
+
+  /// E35 G-D review r1: the queue's search, applied to the rows this list
+  /// has loaded (subject or `#number`). Empty means no search.
+  final String query;
+
+  /// Where a search goes for the requests that are no longer open — the
+  /// queue's archive door. Null draws no such door.
+  final ValueChanged<String>? onSearchArchive;
 
   @override
   ConsumerState<EeMyUnitsScreen> createState() => _EeMyUnitsScreenState();
@@ -98,6 +108,31 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
     unawaited(ref.read(syncEngineProvider)?.syncNow());
   }
 
+  String get _query => widget.query.trim();
+
+  bool _keep(EeUnitTicket ticket) {
+    final q = _query.toLowerCase();
+    if (q.isEmpty) return true;
+    if (ticket.subject.toLowerCase().contains(q)) return true;
+    final number = ticket.number;
+    if (number == null) return false;
+    final digits = q.startsWith('#') ? q.substring(1) : q;
+    return digits.isNotEmpty && '$number'.contains(digits);
+  }
+
+  Widget? _archiveFooter() {
+    final open = widget.onSearchArchive;
+    if (_query.isEmpty || open == null) return null;
+    return ListTile(
+      key: const Key('ticket-search-archive'),
+      leading: const Icon(Icons.inventory_2_outlined),
+      title: Text(
+        'ee.tickets.archive.searchFooter'.tr(args: {'query': _query}),
+      ),
+      onTap: () => open(_query),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final first = ref.watch(eeUnitTicketsPageProvider(_key('')));
@@ -116,60 +151,7 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
               ),
             )
           : AwErrorState(message: localizedError(error), onRetry: _refresh),
-      data: (page) => RefreshIndicator(
-        key: const Key('my-units-refresh'),
-        onRefresh: _refresh,
-        child: ListView(
-          padding: awListPadding(
-            context,
-            top: AwSpace.x2,
-            fab: widget.embedded,
-          ),
-          children: [
-            _Header(
-              page: page,
-              alertsOnly: _alertsOnly,
-              onAlertsOnly: _setAlertsOnly,
-            ),
-            if (page.units.isEmpty)
-              AwEmptyState(
-                key: const Key('my-units-no-units'),
-                icon: Icons.groups_outlined,
-                title: 'ee.myUnits.noUnitsTitle'.tr(),
-                message: 'ee.myUnits.noUnitsBody'.tr(),
-              )
-            else if (page.tickets.isEmpty)
-              _alertsOnly
-                  ? AwEmptyState(
-                      key: const Key('my-units-no-alerts'),
-                      icon: Icons.verified_outlined,
-                      title: 'ee.myUnits.noAlertsTitle'.tr(),
-                      message: 'ee.myUnits.noAlertsBody'.tr(),
-                    )
-                  : AwEmptyState(
-                      key: const Key('my-units-empty'),
-                      icon: Icons.inbox_outlined,
-                      title: 'ee.myUnits.emptyTitle'.tr(),
-                      message: 'ee.myUnits.emptyBody'.tr(),
-                    )
-            else ...[
-              for (final ticket in page.tickets) _Row(ticket: ticket),
-              for (var i = 1; i < _cursors.length; i += 1)
-                _Page(
-                  key: ValueKey(_key(_cursors[i])),
-                  pageKey: _key(_cursors[i]),
-                  last: i == _cursors.length - 1,
-                  onMore: (cursor) => setState(() => _cursors.add(cursor)),
-                ),
-              if (_cursors.length == 1 && page.hasMore)
-                _MoreButton(
-                  onPressed: () =>
-                      setState(() => _cursors.add(page.nextCursor!)),
-                ),
-            ],
-          ],
-        ),
-      ),
+      data: (page) => _list(context, page),
     );
     if (widget.embedded) return body;
     return Scaffold(
@@ -178,6 +160,82 @@ class _EeMyUnitsScreenState extends ConsumerState<EeMyUnitsScreen> {
         title: Text('ee.myUnits.title'.tr()),
       ),
       body: body,
+    );
+  }
+
+  Widget _list(BuildContext context, EeUnitTicketsPage page) {
+    final visible = page.tickets.where(_keep).toList();
+    final searching = _query.isNotEmpty;
+    final footer = _archiveFooter();
+    return RefreshIndicator(
+      key: const Key('my-units-refresh'),
+      onRefresh: _refresh,
+      child: ListView(
+        padding: awListPadding(context, top: AwSpace.x2, fab: widget.embedded),
+        children: [
+          _Header(
+            page: page,
+            alertsOnly: _alertsOnly,
+            onAlertsOnly: _setAlertsOnly,
+          ),
+          if (page.units.isEmpty)
+            AwEmptyState(
+              key: const Key('my-units-no-units'),
+              icon: Icons.groups_outlined,
+              title: 'ee.myUnits.noUnitsTitle'.tr(),
+              message: 'ee.myUnits.noUnitsBody'.tr(),
+            )
+          else if (searching && visible.isEmpty && _cursors.length == 1) ...[
+            AwEmptyState(
+              key: const Key('my-units-search-empty'),
+              icon: Icons.search_off_outlined,
+              title: 'ee.tickets.searchEmptyTitle'.tr(),
+              message: 'ee.myUnits.searchEmptyBody'.tr(),
+              action: widget.onSearchArchive == null
+                  ? null
+                  : FilledButton.tonalIcon(
+                      key: const Key('ticket-search-archive'),
+                      onPressed: () => widget.onSearchArchive!(_query),
+                      icon: const Icon(Icons.inventory_2_outlined),
+                      label: Text('ee.tickets.archive.searchAction'.tr()),
+                    ),
+            ),
+            if (page.hasMore)
+              _MoreButton(
+                onPressed: () => setState(() => _cursors.add(page.nextCursor!)),
+              ),
+          ] else if (page.tickets.isEmpty)
+            _alertsOnly
+                ? AwEmptyState(
+                    key: const Key('my-units-no-alerts'),
+                    icon: Icons.verified_outlined,
+                    title: 'ee.myUnits.noAlertsTitle'.tr(),
+                    message: 'ee.myUnits.noAlertsBody'.tr(),
+                  )
+                : AwEmptyState(
+                    key: const Key('my-units-empty'),
+                    icon: Icons.inbox_outlined,
+                    title: 'ee.myUnits.emptyTitle'.tr(),
+                    message: 'ee.myUnits.emptyBody'.tr(),
+                  )
+          else ...[
+            for (final ticket in visible) _Row(ticket: ticket),
+            for (var i = 1; i < _cursors.length; i += 1)
+              _Page(
+                key: ValueKey(_key(_cursors[i])),
+                pageKey: _key(_cursors[i]),
+                last: i == _cursors.length - 1,
+                keep: _keep,
+                onMore: (cursor) => setState(() => _cursors.add(cursor)),
+              ),
+            if (_cursors.length == 1 && page.hasMore)
+              _MoreButton(
+                onPressed: () => setState(() => _cursors.add(page.nextCursor!)),
+              ),
+            ?footer,
+          ],
+        ],
+      ),
     );
   }
 }
@@ -329,12 +387,14 @@ class _Page extends ConsumerWidget {
   const _Page({
     required this.pageKey,
     required this.last,
+    required this.keep,
     required this.onMore,
     super.key,
   });
 
   final EeUnitTicketsKey pageKey;
   final bool last;
+  final bool Function(EeUnitTicket) keep;
   final ValueChanged<String> onMore;
 
   @override
@@ -348,7 +408,7 @@ class _Page extends ConsumerWidget {
       error: (error, _) => AwInlineError(message: localizedError(error)),
       data: (page) => Column(
         children: [
-          for (final ticket in page.tickets) _Row(ticket: ticket),
+          for (final ticket in page.tickets.where(keep)) _Row(ticket: ticket),
           if (last && page.hasMore)
             _MoreButton(onPressed: () => onMore(page.nextCursor!)),
         ],

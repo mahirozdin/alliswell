@@ -3773,6 +3773,7 @@
     },
     "myUnits": {
       "title": "My units",
+      "searchEmptyBody": "This searches the open requests loaded in this list. Finished ones are in the archive.",
       "live": "Live data · needs a connection",
       "scope": "Your units: {units}",
       "counts": "Open now: {breached} requests past SLA · {warned} due soon",

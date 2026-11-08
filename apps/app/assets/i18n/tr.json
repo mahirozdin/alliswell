@@ -3772,6 +3772,7 @@
     },
     "myUnits": {
       "title": "Birimlerim",
+      "searchEmptyBody": "Arama bu listede yüklenen açık talepleri tarar. Biten talepler arşivde.",
       "live": "Anlık veri · internet bağlantısı gerekir",
       "scope": "Birimleriniz: {units}",
       "counts": "Şu an açık: {breached} talebin süresi aşıldı · {warned} talebinki dolmak üzere",

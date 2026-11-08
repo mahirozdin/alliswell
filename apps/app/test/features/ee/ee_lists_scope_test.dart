@@ -329,6 +329,37 @@ void main() {
       expect(find.byKey(const Key('ticket-filter-new')), findsOneWidget);
       expect(find.byKey(const Key('ticket-T1')), findsOneWidget);
     });
+
+    // E35 G-D review r1: the toolbar's search used to filter only the unit
+    // replica, so across units every request stayed on screen.
+    testWidgets('search filters the all-units list and offers the archive', (
+      tester,
+    ) async {
+      final container = await pump(
+        tester,
+        const EeTicketQueueScreen(),
+        listenWorkspace: true,
+        overrides: queue(selected: _general.id),
+      );
+      container.read(ticketSearchQueryProvider.notifier).set('yokböyle');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A1')), findsNothing);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsNothing);
+      expect(find.byKey(const Key('my-units-search-empty')), findsOneWidget);
+      expect(find.byKey(const Key('ticket-search-archive')), findsOneWidget);
+
+      container.read(ticketSearchQueryProvider.notifier).set('KOMPRES');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A1')), findsOneWidget);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsNothing);
+      // A search that found live requests still asks the archive last.
+      expect(find.byKey(const Key('ticket-search-archive')), findsOneWidget);
+
+      container.read(ticketSearchQueryProvider.notifier).set('#7');
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('unit-ticket-A1')), findsNothing);
+      expect(find.byKey(const Key('unit-ticket-A2')), findsOneWidget);
+    });
   });
 
   group('U-19: whose is it', () {
