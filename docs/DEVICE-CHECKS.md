@@ -5,6 +5,10 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Mikrofonsuz cihazda dikte (2026-11-08)
+
+- OPH-402 — **iPhone simülatörü, mikrofonu olmayan bir Mac'te (ses girişi yok), AI açık, TR ve EN**: mikrofona dokununca ve basılı tutunca uygulama çökmüyor (6 sn sonra da); sayfa "Bu cihazda mikrofon kullanılamıyor. Görevini yazarak ekleyebilirsin." / "No microphone is available on this device. You can type your task instead." diyor ve yazma alanıyla açılıyor; sohbet balonunun bas-konuş düğmesi yazı moduna düşüyor. Mikrofonlu Mac'te ve gerçek iPhone'da dikte eskisi gibi dinliyor. Neden cihazda: eski çökme speech_to_text'in AVAudioEngine inputNode okumasında AudioToolbox'ın `abort()` çağrısı (SIGABRT); istisna değil, Dart'tan da Swift'ten de yakalanamıyor; koruma yalnız `AVAudioSession.isInputAvailable` önyoklaması ve bu değerin mikrofonsuz simülatörde `false` döndüğü Linux'ta doğrulanamadı. `true` dönerse çökme yalnız o simülatörde sürer: TASKS'a iş açılır.
+
 ## /app açılış ekranı ve kurumsal sayfa (2026-11-08)
 
 - OPH-414 — **iPhone 17 Pro Max simülatörü (Mac) + Pixel 9 Pro XL emülatörü, yeni tohumlanmış demo hesabı, EN**: `screenshots/ios/` ve `screenshots/android/` setlerini docs/SCREENSHOTS.md §2–§3 ile yeni arayüzden yeniden çek (Linux makinede yapılamadı), sonra `npm run shots:store -- --only ios-6.9,ios-6.5,android-phone`; Dosyalar ekranında `floor-plan.png` ve `counter-samples.png` küçük resim, PDF'ler önizlemede açılıyor; "Launch checklist" notunun geçmişinde üç sürüm (oluşturma, düzenleme, MCP). Mağazaya yükleme yok.
