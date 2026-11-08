@@ -40,8 +40,8 @@ This file holds the unreleased changes and the latest release; at each release t
   at the bottom. The status bar stays readable in the light theme, and on an iPhone in Turkish
   the microphone, speech, camera, photos, calendar and alarm permission prompts are in Turkish.
 - **A task link opened in a fresh web tab opens the task**, instead of spinning forever; a link to
-  a task that is gone says so. "Continue with Google" appears only when your server supports it, and
-  a phone now says when it can't reach the server.
+  a task that is gone, or a mistyped one, says so. "Continue with Google" appears only when your
+  server supports it, and a phone now says when it can't reach the server.
 - **Notification warnings are calmer and can be closed**: an amber strip with one short sentence
   and a button that says what it does, hidden for a week with "×". A server without browser-push
   keys now says so as a note for its admin instead of blaming you, the strip no longer appears

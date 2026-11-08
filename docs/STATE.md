@@ -18,7 +18,7 @@
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
-| Last completed           | P-01 (OPH-395 cilası) — web'de eksik glifler için `fontFallbackBaseUrl: "fonts/noto/"`; derleme (Dockerfile, deploy) motorun kendi listesindeki 724 Noto dilimini (20.7 MB) `tool/mirror_noto_fallback.dart` ile bir kez indirir, tarayıcı Google'a gitmez. Önceki: OPH-414 demo tohumu. |
+| Last completed           | P-02 (OPH-392 cilası) — bozuk görev bağlantısı (`/#/tasks/typo`, API 400) artık sonsuz yükleme değil, "Bulunamadı" + "Ana sayfaya dön"; `taskAbsenceProvider` 400'ü de yok sayar. Önceki: P-01 web Noto yedek glifleri. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

@@ -49,4 +49,17 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(TaskDetailScreen), findsNothing);
   });
+
+  testWidgets('a mistyped task link the API rejects as a bad id (400) says '
+      'not found too, not an endless spinner', (tester) async {
+    final api = FakeApi()..seedTask(title: 'Something else');
+    coldStartAt(tester, '/tasks/typo');
+    await tester.pumpWidget(await signedInAppWith(api));
+    await tester.pumpAndSettle();
+    expect(find.byType(TaskDetailScreen), findsOneWidget);
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    expect(find.byKey(const Key('task-detail-gone')), findsOneWidget);
+    expect(find.text('error.notFound'.tr()), findsOneWidget);
+    expect(find.text('error.goHome'.tr()), findsOneWidget);
+  });
 }

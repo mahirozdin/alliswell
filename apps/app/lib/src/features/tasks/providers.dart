@@ -264,6 +264,7 @@ enum TaskAbsence {
 /// for a task deleted since, or not yet pulled, was an endless spinner. Asked
 /// once: when the server still has the task, null — the pull brings it, and
 /// the spinner is the truth; otherwise the reason, which the screen says.
+/// A malformed id (400) counts as gone too.
 final taskAbsenceProvider = FutureProvider.autoDispose
     .family<TaskAbsence?, String>((ref, taskId) async {
       final store = ref.watch(taskStoreProvider);
@@ -273,7 +274,10 @@ final taskAbsenceProvider = FutureProvider.autoDispose
         return null;
       } on ApiException catch (error) {
         return switch (error.statusCode) {
-          403 || 404 => TaskAbsence.gone,
+          // 400: the id is not a task id at all (a mistyped `/tasks/typo`
+          // link) — the API rejects it before looking, and no pull will ever
+          // bring it, so it is as gone as a deleted one.
+          400 || 403 || 404 => TaskAbsence.gone,
           null => TaskAbsence.unreachable,
           _ => null,
         };
