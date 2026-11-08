@@ -5,6 +5,17 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Cila turu 4 (2026-11-08)
+
+- OPH-397 — **telefon**: Ana Sayfa ve Talepler'i aşağı ve yukarı kaydır, hızlı eklemeye odaklan: mikrofon ve "+" 150 ms'de küçülüp çekiliyor (azaltılmış harekette anında), yukarı kaydırınca ya da kısa bir duraklamadan sonra dönüyor, klavye açıkken gizli kalıyor.
+- OPH-392 — **telefon + web**: telefonda bir not aç, webden sil; eşitlemeden sonra "Bu not silindi" uyarısı çıkıyor, not salt okunur, Kapat listeye dönüyor. Silinmiş bir notun bağlantısı "Not bulunamadı" diyor.
+- OPH-404 — **iPhone ilk açılış**: adım 3 yaklaşan acil bir görev satırını (boş hesapta hızlı ekleme alanını) çerçeveliyor, kart onu örtmüyor; adım 4 arama düğmesine dokunmayı söylüyor, Ctrl+K yok.
+- OPH-402 — **iPhone, AI sağlayıcılı, açık ve koyu**: mikrofona dokun: sayfa kısa rehberi ve üç çipi gösteriyor, bir çip alanı dolduruyor; sağ üstteki Kapat, tutamağa dokunma ve VoiceOver'ın "Kapat"ı sayfayı kapatıyor.
+- OPH-400 — **Android 2.0× / iOS AX3**: alt görev tarihi, Ayarlar'daki e-posta, görev detayında Durum/Öncelik alanları, Ana Sayfa başlığı altındaki birim adı ve uzun bir talep konusu tam okunuyor.
+- OPH-407 — **iOS AX3, VoiceOver**: görev satırı "Proje: X"i bir kez söylüyor, "Sesi aç" öyle okunuyor, Görünüm menüsü geçerli görünüm ve sırada "seçili" diyor, Bölümler sayfasında her satır tek adlı düğme.
+- OPH-405 — **masaüstü/web 1440 px**: "Design System" gibi Hızlı Erişim adları kesilmiyor; satırın üstüne gelince sürükleme tutamacı menünün solunda çıkıyor, menü yer değiştirmiyor.
+- OPH-409 — **masa üyesi, telefon ve masaüstü**: Talepler > Tüm birimler satırlarında birim listesindeki gibi "Açan: … · Alan: …" görünüyor.
+
 ## Cila turu 3 (2026-11-08)
 
 - OPH-396 — **en büyük metin (iOS AX3, Android 2.0×)**: alt bar açık bölümün tam adını taşıyan tek düğme; dokununca bütün bölümler büyük yazıyla listeleniyor, açık olan işaretli, birini seçince açılıyor; 1.3×'te beş sekme değişmiyor; VoiceOver/TalkBack "Gezinme, Ana Sayfa" ve her satırın seçili durumunu okuyor.

@@ -143,6 +143,21 @@ This file holds the unreleased changes and the latest release; at each release t
 - **The website says what it means**: the self-hosting section says the install is four steps and
   labels the compose command as the last one; the enterprise page footer reads "BubiApps ·
   Registered name: …" and the Turkish page names its cloud packages Başlangıç, İşletme and Kurumsal.
+- **The buttons and guides get out of your way**: the microphone and "+" shrink away while you
+  scroll down a list or type and come back when you scroll up or stop; the AI sheet opens with a
+  short guide and three starter suggestions, and its Close button and handle close it; the app
+  tour's alarm step points at a task that will ring (or the quick-add field), and on a phone the
+  search step names the search button instead of Ctrl+K.
+- **A deleted note says so**: a link to a deleted note says "Note not found", and a note deleted
+  on another device while open becomes read-only with a "This note was deleted" notice instead of
+  staying editable.
+- **Large text and screen readers read it whole**: at large text sizes dates, your e-mail address,
+  unit names and request subjects wrap instead of being cut, and Priority is as large as Status;
+  screen readers hear task rows, the unmute button, the View menu's current choice and the
+  large-text section list the way they read on screen; on desktop, Quick access names in the
+  sidebar show in full again and the drag handle appears only on hover.
+- **All units rows name the people**: in Requests > All units, each row shows who opened it and who
+  has it once the server sends those names.
 
 ### Changed
 

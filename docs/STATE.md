@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — Epic 35 cila turu 3 (görsel hakem + persona doğrulaması, `.ceo/polish-3-judge.md`) S-G1 kapandı: J-01…J-07, H-2, H-5, H-6, HK-1, HK-2, M-1, M-2; Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — Epic 35 cila turu 4 (`.ceo/polish-4.md`) T-G1 kapandı: T-01…T-08; Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
-| Last completed           | Cila 3 S-G1 (OPH-396, 397, 398, 400, 401, 403, 405, 409, 412) — 1.3× üstü metinde etiketli gezinme menüsü, takvim başlığı büyük metinde tam, proje adı tam ve "Sesi aç" kesilmez, bölüm okları sağ kenarda, Hızlı Erişim menü/tutamaç ayrı, mikrofon sakin yüzey + ölçülü kenar ve salt okunur sekmelerde gizli, Acil alarm satırı ikon sütununda, yeni görev sayfası tek giriş stili + seçim satırları, açılır liste kapatma alanı, Ana Sayfa ve SLA panosu aynı açık çift, "Tüm birimler" bütün sayfalarda en yeni önce, landing kurulum dört adım + TR paket adları. |
+| Last completed           | Cila 4 T-G1 (OPH-392, 397, 400, 402, 404, 405, 407, 409) — mikrofon ve "+" aşağı kaydırmada ve klavye açıkken çekiliyor, silinmiş not "Not bulunamadı" ve açıkken silinince salt okunur, tur alarm adımı çalacak göreve, arama adımı telefonda düğmeye işaret ediyor, AI sayfası boşken rehber + üç çip ve gerçek Kapat, büyük metinde tarih/e-posta/birim adı/konu kesilmiyor ve Öncelik Durum'la aynı boyda, ekran okuyucu satırları ekranda yazdığı gibi okuyor, masaüstü Hızlı Erişim adları tam, "Tüm birimler" satırlarında açan ve alan. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
