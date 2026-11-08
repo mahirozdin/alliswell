@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
@@ -183,6 +186,58 @@ void main() {
     await tester.tap(find.byKey(const Key('quick-add-submit')));
     await tester.pumpAndSettle();
     expect(api.tasks.single['status'], 'inbox');
+  });
+
+  testWidgets('R-10: no microphone on the device — says so, never listens', (
+    tester,
+  ) async {
+    _phone(tester);
+    final api = _noProvider();
+    final stt = FakeSttController(noMicrophone: true);
+    await tester.pumpWidget(await _app(api, stt));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('ai-fab')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(_sheet), findsOneWidget);
+    expect(find.text('ai.voice.noMicrophone'.tr()), findsOneWidget);
+    expect(find.text('ai.voice.denied'.tr()), findsNothing);
+    expect(find.byKey(_field), findsOneWidget);
+    // The recognizer is never started: that is what aborts the app natively.
+    expect(stt.calls.where((c) => c.startsWith('start')), isEmpty);
+  });
+
+  testWidgets('R-10: a recognizer that fails to start leaves a quick add', (
+    tester,
+  ) async {
+    _phone(tester);
+    final api = _noProvider();
+    final stt = FakeSttController(
+      startError: PlatformException(code: 'error_audio'),
+    );
+    await tester.pumpWidget(await _app(api, stt));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('ai-fab')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(_field), findsOneWidget);
+    expect(find.text('ai.voice.listening'.tr()), findsNothing);
+  });
+
+  test('R-10: the no-microphone line in both languages', () {
+    String line(String code) {
+      final json =
+          jsonDecode(File('assets/i18n/$code.json').readAsStringSync())
+              as Map<String, dynamic>;
+      return ((json['ai'] as Map)['voice'] as Map)['noMicrophone'] as String;
+    }
+
+    expect(
+      line('tr'),
+      'Bu cihazda mikrofon kullanılamıyor. Görevini yazarak ekleyebilirsin.',
+    );
+    expect(line('en'), startsWith('No microphone is available'));
   });
 
   testWidgets('the button says what it does: "add a task by voice"', (

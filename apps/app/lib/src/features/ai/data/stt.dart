@@ -1,3 +1,4 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -13,10 +14,50 @@ class SttLocale {
 }
 
 class SttInit {
-  const SttInit({required this.available, required this.onDevice, this.error});
+  const SttInit({
+    required this.available,
+    required this.onDevice,
+    this.error,
+    this.noMicrophone = false,
+  });
   final bool available;
   final bool onDevice;
   final String? error;
+
+  /// R-10 (OPH-402): the device has no audio input at all (a simulator on a
+  /// Mac without a microphone). Distinct from a denied permission, so the
+  /// sheet can say which one it is.
+  final bool noMicrophone;
+}
+
+/// Asks the platform whether any audio input exists, BEFORE the recognizer
+/// touches the microphone (R-10, OPH-402).
+///
+/// Why it has to come first: on iOS `speech_to_text`'s `listen` reads
+/// `AVAudioEngine.inputNode`. With no input device, AudioToolbox waits on an
+/// RPC that never answers and calls `abort()` about six seconds later
+/// (`_ReportRPCTimeout`, SIGABRT). That is a native abort, not an exception:
+/// no `try`/`catch` in Dart or Swift can catch it, and the plugin's
+/// `initialize`/`hasPermission` say yes (they check the permission and the
+/// recognizer, not the hardware). So the only safe answer is not to start.
+///
+/// `true`/`false` is the platform's answer (iOS:
+/// `AVAudioSession.isInputAvailable`, `ios/Runner/AppDelegate.swift`). `null`
+/// means "nobody here can tell" (no handler on Android/macOS, where a missing
+/// microphone comes back as a recognizer error instead of a crash): the
+/// caller goes on as before.
+typedef AudioInputProbe = Future<bool?> Function();
+
+const audioInputChannel = MethodChannel('alliswell/audio_input');
+
+Future<bool?> platformAudioInputAvailable() async {
+  try {
+    return await audioInputChannel.invokeMethod<bool>('isInputAvailable');
+  } on MissingPluginException {
+    return null;
+  } on PlatformException {
+    return null;
+  }
 }
 
 abstract class SttController {
@@ -43,11 +84,24 @@ abstract class SttController {
 
 /// The real controller over `speech_to_text`. Never referenced in tests.
 class SpeechToTextController implements SttController {
-  final stt.SpeechToText _speech = stt.SpeechToText();
+  SpeechToTextController({AudioInputProbe? hasAudioInput})
+    : _hasAudioInput = hasAudioInput ?? platformAudioInputAvailable;
+
+  final AudioInputProbe _hasAudioInput;
+  stt.SpeechToText? _plugin;
+  stt.SpeechToText get _speech => _plugin ??= stt.SpeechToText();
   bool _onDevice = false;
 
   @override
   Future<SttInit> initialize() async {
+    // R-10: no microphone → never reach the plugin (see AudioInputProbe).
+    if (await _hasAudioInput() == false) {
+      return const SttInit(
+        available: false,
+        onDevice: false,
+        noMicrophone: true,
+      );
+    }
     try {
       final available = await _speech.initialize(
         onError: (_) {},

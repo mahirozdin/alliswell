@@ -1404,6 +1404,7 @@
       "fabLabel": "Yapay zekâyla konuş",
       "fabHint": "Konuşmak için basılı tut, yazmak için dokun",
       "denied": "Mikrofon veya konuşma erişimi kapalı — yine de yazabilirsin.",
+      "noMicrophone": "Bu cihazda mikrofon kullanılamıyor. Görevini yazarak ekleyebilirsin.",
       "listening": "Dinliyorum…",
       "localeLabel": "Ses dili",
       "cancel": "Vazgeç",

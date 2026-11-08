@@ -1405,6 +1405,7 @@
       "fabLabel": "Talk to AI",
       "fabHint": "Hold to speak, tap to type",
       "denied": "Microphone or speech access is off — you can still type.",
+      "noMicrophone": "No microphone is available on this device. You can type your task instead.",
       "listening": "Listening…",
       "localeLabel": "Voice language",
       "cancel": "Cancel",

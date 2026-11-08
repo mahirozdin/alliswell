@@ -8,6 +8,8 @@ class FakeSttController implements SttController {
   FakeSttController({
     this.available = true,
     this.onDevice = true,
+    this.noMicrophone = false,
+    this.startError,
     this.localesList = const [
       SttLocale(id: 'tr_TR', name: 'Türkçe'),
       SttLocale(id: 'en_US', name: 'English'),
@@ -16,6 +18,12 @@ class FakeSttController implements SttController {
 
   final bool available;
   final bool onDevice;
+
+  /// R-10: answer like a device with no audio input at all.
+  final bool noMicrophone;
+
+  /// R-10: [start] throws this (a recognizer that refuses to start).
+  final Object? startError;
   final List<SttLocale> localesList;
 
   final List<String> calls = [];
@@ -30,7 +38,11 @@ class FakeSttController implements SttController {
     calls.add('initialize');
     final gate = initGate;
     if (gate != null) await gate.future;
-    return SttInit(available: available, onDevice: onDevice);
+    return SttInit(
+      available: available && !noMicrophone,
+      onDevice: onDevice,
+      noMicrophone: noMicrophone,
+    );
   }
 
   @override
@@ -44,6 +56,8 @@ class FakeSttController implements SttController {
     Duration pauseFor = const Duration(seconds: 2),
   }) async {
     calls.add('start:$localeId');
+    final error = startError;
+    if (error != null) throw error;
     _onResult = onResult;
   }
 

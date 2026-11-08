@@ -44,6 +44,7 @@ class DictationState {
     this.partial = '',
     this.text = '',
     this.unavailable = false,
+    this.noMicrophone = false,
   });
   final DictationPhase phase;
   final String partial;
@@ -52,16 +53,22 @@ class DictationState {
   /// No recognizer or no permission: the sheet is a plain quick add.
   final bool unavailable;
 
+  /// R-10 (OPH-402): unavailable because the device has no microphone, not
+  /// because access is off — the sheet names the right reason.
+  final bool noMicrophone;
+
   DictationState copyWith({
     DictationPhase? phase,
     String? partial,
     String? text,
     bool? unavailable,
+    bool? noMicrophone,
   }) => DictationState(
     phase: phase ?? this.phase,
     partial: partial ?? this.partial,
     text: text ?? this.text,
     unavailable: unavailable ?? this.unavailable,
+    noMicrophone: noMicrophone ?? this.noMicrophone,
   );
 }
 
@@ -101,13 +108,29 @@ class DictationController extends Notifier<DictationState> {
     if (!ref.mounted || session != _session) return;
     if (!init.available) {
       _stt = null;
-      state = const DictationState(
+      state = DictationState(
         phase: DictationPhase.editing,
         unavailable: true,
+        noMicrophone: init.noMicrophone,
       );
       return;
     }
     state = state.copyWith(phase: DictationPhase.listening);
+    try {
+      await _startListening(stt, session);
+    } catch (_) {
+      // A recognizer that refuses to start (an audio error the plugin does
+      // report) leaves the plain quick add, not a sheet stuck on "listening".
+      if (!ref.mounted || session != _session) return;
+      _stt = null;
+      state = const DictationState(
+        phase: DictationPhase.editing,
+        unavailable: true,
+      );
+    }
+  }
+
+  Future<void> _startListening(SttController stt, int session) async {
     await stt.start(
       localeId: AwI18n.instance.locale.languageCode == 'tr' ? 'tr_TR' : 'en_US',
       onResult: (text, isFinal) {
@@ -366,7 +389,8 @@ class _DictationSheetState extends ConsumerState<DictationSheet> {
       children: [
         if (state.unavailable) ...[
           Text(
-            'ai.voice.denied'.tr(),
+            (state.noMicrophone ? 'ai.voice.noMicrophone' : 'ai.voice.denied')
+                .tr(),
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
