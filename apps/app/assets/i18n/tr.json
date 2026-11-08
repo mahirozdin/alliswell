@@ -2955,6 +2955,7 @@
     },
     "perfPanel": {
       "title": "İş yükü raporu",
+      "caution": "Kapanan talep sayısı bir performans ölçüsü değildir: zor talepleri alan kişi daha az kapatır. Bu sayılar iş yükünü gösterir, başarıyı değil.",
       "unavailable": "Pano burada yok",
       "unavailableBody": "Bu takımda talep yönetimi açık değil ya da bu ekranı göremiyorsunuz.",
       "byUnit": "Birime göre",

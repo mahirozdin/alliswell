@@ -2956,6 +2956,7 @@
     },
     "perfPanel": {
       "title": "Workload report",
+      "caution": "The number of closed requests is not a measure of performance: whoever takes the hard requests closes fewer. These numbers show workload, not success.",
       "unavailable": "No panel here",
       "unavailableBody": "This team has no request management, or this screen is not yours to see.",
       "byUnit": "By unit",

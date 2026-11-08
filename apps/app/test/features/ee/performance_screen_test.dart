@@ -207,4 +207,28 @@ void main() {
     await pump(tester, entitled: false);
     expect(server.asked, isEmpty);
   });
+
+  // R-12: the server's sentence is Turkish whatever the reader's language;
+  // the screen says it in the app's language (the API keeps its own copy).
+  for (final locale in const ['en', 'tr']) {
+    testWidgets('R-12: the workload caution is in the app’s language '
+        '($locale)', (tester) async {
+      AwI18n.instance.setActiveCached(Locale(locale));
+      addTearDown(() => AwI18n.instance.setActiveCached(const Locale('tr')));
+      await pump(tester);
+      final caution = find.byKey(const Key('perf-caution'));
+      expect(caution, findsOneWidget);
+      expect(
+        find.descendant(
+          of: caution,
+          matching: find.text('ee.perfPanel.caution'.tr()),
+        ),
+        findsOneWidget,
+      );
+      if (locale == 'en') {
+        expect(find.textContaining('performans ölçüsü'), findsNothing);
+        expect(find.textContaining('not a measure'), findsOneWidget);
+      }
+    });
+  }
 }

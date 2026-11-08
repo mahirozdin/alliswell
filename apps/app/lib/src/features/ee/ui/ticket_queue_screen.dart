@@ -163,7 +163,11 @@ class EeTicketQueueScreen extends ConsumerWidget {
                 // with no signal — which is the whole reason the queue is a replica
                 // query and not a request.
                 // OPH-359 (UI-AUDIT #29): change unit where the queue is.
-                const AwWorkspaceSwitcher(),
+                // R-12: not across units — the title says "All units" and
+                // the chips under the bar are the choice, while the open
+                // workspace follows the request being read; a chip naming
+                // it there contradicted the title.
+                if (!allUnits) const AwWorkspaceSwitcher(),
                 AwSearchAction(
                   fieldKey: const Key('ticket-search'),
                   hintText: 'ee.tickets.searchHint'.tr(),

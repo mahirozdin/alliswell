@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../i18n/i18n.dart';
 import '../../../theme/tokens.dart' show AwSpace;
+import '../../workspaces/workspaces.dart';
 import '../team_origin.dart';
 
 /// Which team this window belongs to (EE-018). Lives in the shared section
@@ -10,12 +11,19 @@ import '../team_origin.dart';
 /// on a CE server or a plain host, which is what keeps the community build
 /// pixel-identical (proven in the widget suite, not assumed).
 ///
-/// Narrow screens keep only the colour dot: identity without stealing the
-/// section title's room.
+/// Narrow screens keep only the colour dot when the unit switcher beside it
+/// names the unit: identity without stealing the section title's room.
+///
+/// R-12: the dot alone said nothing where nothing else was named — a member
+/// in no unit has one workspace, no switcher, and saw a bare dot under the
+/// title. Then the chip names the team at any width. And where the switcher
+/// already shows a workspace with the team's own name (the team's general
+/// space), the chip draws only its dot: one name, said once.
 class AwTeamChip extends ConsumerWidget {
   const AwTeamChip({super.key, this.compactWidth = 600});
 
-  /// Below this width only the dot is drawn.
+  /// Below this width only the dot is drawn — unless nothing else names
+  /// where the person is.
   final double compactWidth;
 
   @override
@@ -25,7 +33,20 @@ class AwTeamChip extends ConsumerWidget {
     if (team == null) return const SizedBox.shrink();
 
     final scheme = Theme.of(context).colorScheme;
-    final compact = MediaQuery.sizeOf(context).width < compactWidth;
+    // What the switcher beside the chip shows: nothing with one workspace,
+    // the open one's name otherwise (the switcher's own rule).
+    final switchable =
+        switchableWorkspacesOf(
+          ref.watch(workspacesProvider).value ?? const [],
+        ).length >=
+        2;
+    final shown = switchable
+        ? ref.watch(currentWorkspaceProvider).value?.name
+        : null;
+    final sameName = shown != null && _fold(shown) == _fold(team.displayName);
+    final compact =
+        sameName ||
+        (switchable && MediaQuery.sizeOf(context).width < compactWidth);
     final dot = Container(
       width: 10,
       height: 10,
@@ -49,6 +70,7 @@ class AwTeamChip extends ConsumerWidget {
                       constraints: const BoxConstraints(maxWidth: 160),
                       child: Text(
                         team.displayName,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: scheme.onSurfaceVariant,
@@ -61,4 +83,7 @@ class AwTeamChip extends ConsumerWidget {
       ),
     );
   }
+
+  /// Two spellings of one name compare equal: case and the spaces around.
+  static String _fold(String name) => name.trim().toLowerCase();
 }

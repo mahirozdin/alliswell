@@ -78,7 +78,10 @@ class EePerformanceScreen extends ConsumerWidget {
           child: ListView(
             padding: awPagePadding(context, AwSpace.x4),
             children: [
-              _Caution(text: data.closedIsNotPerformance),
+              // R-12: the server's copy of the sentence is for whoever reads
+              // the figures through the API, and it is in one language; the
+              // screen says the same thing in the reader's.
+              _Caution(text: 'ee.perfPanel.caution'.tr()),
               const SizedBox(height: AwSpace.x4),
               _RangePicker(
                 days: days,

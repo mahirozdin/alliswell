@@ -113,7 +113,8 @@ class EePerformanceRow {
 /// `closedIsNotPerformance` arrives FROM THE SERVER rather than living in the
 /// app's strings, and that is deliberate: the sentence has to reach whoever
 /// pulls these figures out through the API too, and a warning that exists only
-/// in Flutter never does.
+/// in Flutter never does. R-12: the screen draws its own translated copy
+/// (`ee.perfPanel.caution`) — the server's is in one language only.
 @immutable
 class EePerformance {
   const EePerformance({

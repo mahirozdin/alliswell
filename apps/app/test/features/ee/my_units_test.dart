@@ -134,6 +134,11 @@ void main() {
       overrides: <Override>[
         // OPH-359: the unit scope in the bar reads this.
         eeMyUnitsScopeProvider.overrideWith((ref) async => null),
+        // With no answer about units the queue is one unit's; a test that
+        // wants the across-units view chooses it, as the scope bar does.
+        eeQueueShowsAllUnitsProvider.overrideWith(
+          (ref) => ref.watch(eeQueueAllUnitsChosenProvider),
+        ),
         eeUnitTicketsApiProvider.overrideWithValue(EeUnitTicketsApi(dio)),
         eeFeatureProvider.overrideWith((ref, name) => entitled),
         currentUserIdProvider.overrideWithValue(_me),
@@ -520,6 +525,23 @@ void main() {
     expect(container.read(selectedWorkspaceIdProvider), isNull);
     expect(openUnit(), _bt);
     expect(find.text('opened $_vpn'), findsOneWidget);
+  });
+
+  testWidgets('R-12: across units the bar does not name one workspace — the '
+      'chips under it say the scope, and opening a request cannot make the '
+      'bar contradict "All units"', (tester) async {
+    await pump(tester, const EeTicketQueueScreen());
+    // One unit's queue: the switcher is where the queue is (OPH-359).
+    expect(find.byKey(const Key('workspace-switcher')), findsOneWidget);
+
+    container.read(eeQueueAllUnitsChosenProvider.notifier).set(true);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('ee-unit-scope-name')), findsOneWidget);
+    expect(
+      tester.widget<Text>(find.byKey(const Key('ee-unit-scope-name'))).data,
+      'ee.unitScope.all'.tr(),
+    );
+    expect(find.byKey(const Key('workspace-switcher')), findsNothing);
   });
 
   testWidgets('without the entitlement nothing is asked', (tester) async {
