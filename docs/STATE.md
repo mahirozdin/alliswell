@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — Epic 35 cila turu 2 (gezinti bulguları, `.ceo/polish-2.md`) R-G1 kapandı: R-01…R-13 ve R-15; Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — Epic 35 cila turu 3 (görsel hakem + persona doğrulaması, `.ceo/polish-3-judge.md`) S-G1 kapandı: J-01…J-07, H-2, H-5, H-6, HK-1, HK-2, M-1, M-2; Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
-| Last completed           | Cila 2 R-G1 (OPH-390, 392, 394, 397, 398, 400, 401, 402, 404, 407, 409, 413) — tur hatasız 4 adım, Talepler'de mikrofon + "Yeni talep" yan yana, menü kapatma öğesi yalnız kapatır, hızlı ekleme "Tarihsiz ekle" + 5 sn geri al, silinmiş not "bulunamadı", soğuk eşitlemede iskelet, başka hesap Ana Sayfa'da açılır, /app açılışı telefon genişliğinde, büyük metinde kelime sınırı, mikrofonsuz cihazda dikte çökmez, "Tüm birimler" en yeni önce, iş yükü notu çevrili, üyenin bilgi bankası metni, talep okumak Ana Sayfa birimini değiştirmez. |
+| Last completed           | Cila 3 S-G1 (OPH-396, 397, 398, 400, 401, 403, 405, 409, 412) — 1.3× üstü metinde etiketli gezinme menüsü, takvim başlığı büyük metinde tam, proje adı tam ve "Sesi aç" kesilmez, bölüm okları sağ kenarda, Hızlı Erişim menü/tutamaç ayrı, mikrofon sakin yüzey + ölçülü kenar ve salt okunur sekmelerde gizli, Acil alarm satırı ikon sütununda, yeni görev sayfası tek giriş stili + seçim satırları, açılır liste kapatma alanı, Ana Sayfa ve SLA panosu aynı açık çift, "Tüm birimler" bütün sayfalarda en yeni önce, landing kurulum dört adım + TR paket adları. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

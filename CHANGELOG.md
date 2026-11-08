@@ -124,6 +124,25 @@ This file holds the unreleased changes and the latest release; at each release t
   first); opening another unit's request from All units no longer switches Home's unit; the
   workload note is translated and the bar names your team once; a member without a unit who opens
   the knowledge base is told answers are suggested while filing a request, with a button to open one.
+- **Very large text keeps every control whole**: above 1.3x text the phone's bottom bar becomes one
+  button with the open section's name that opens a list of every section in large type; Home's
+  calendar shows the whole month and year with its arrows on a second row; task rows show a
+  project's full name (a long one under the title with its colour dot) and a silenced task's
+  "Sesi aç" button is never cut off.
+- **Calmer, tidier controls**: the microphone is a quieter button with a visible edge in light mode
+  and no longer covers the figures on the requests screen's read-only tabs; Home's fold arrows line
+  up on the cards' right edge and the whole heading folds a section; the task detail's Urgent alarm
+  row has its icon, lines up with the other switches and says it rings until you dismiss it; the
+  new-task sheet uses one field style and picks project, priority and files from rows instead of
+  drop-down menus; in the desktop sidebar's Quick access list the row menu and the drag handle are
+  separate controls; with a screen reader, a drop-down list's close area only closes it.
+- **Team request figures agree**: Home's unit summary shows past-SLA and due-soon requests apart,
+  in the same words and numbers as the SLA board, and both stay current; with many open requests
+  the All units list shows the newest first across the whole list; leaving it while another unit's
+  request is opening no longer leaves Home on that unit.
+- **The website says what it means**: the self-hosting section says the install is four steps and
+  labels the compose command as the last one; the enterprise page footer reads "BubiApps ·
+  Registered name: …" and the Turkish page names its cloud packages Başlangıç, İşletme and Kurumsal.
 
 ### Changed
 

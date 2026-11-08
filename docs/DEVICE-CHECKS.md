@@ -5,6 +5,18 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Cila turu 3 (2026-11-08)
+
+- OPH-396 — **en büyük metin (iOS AX3, Android 2.0×)**: alt bar açık bölümün tam adını taşıyan tek düğme; dokununca bütün bölümler büyük yazıyla listeleniyor, açık olan işaretli, birini seçince açılıyor; 1.3×'te beş sekme değişmiyor; VoiceOver/TalkBack "Gezinme, Ana Sayfa" ve her satırın seçili durumunu okuyor.
+- OPH-398 — **iPhone AX3 ve AX5**: Ana Sayfa haftalık takviminde ay ve yıl tam, oklar altında; başlıkta şimşek, Görünüm ve Ayarlar görünür. **iOS simülatörü, VoiceOver**: görev detayında Durum açılır listesinde "Menüyü kapat" odağı listenin yanında, etkinleştirince durum değişmeden kapanıyor.
+- OPH-400 — **telefon, varsayılan ve en büyük metin, açık ve koyu**: Ana Sayfa ve görev listelerinde "Launch AllisWell", "Home renovation", "Personal" "…" olmadan tam, öğeler birbirine yapışmıyor; sesi kapatılmış görevin satırında "Sesi aç" düğmesi normal ve AX3'te tam, dokununca alarm açılıyor; görev detayında (telefon ve masaüstü yan panel) Acil alarm, Sessize al ve Tekrar satırları aynı ikon sütununda.
+- OPH-401 — **Ana Sayfa, açık ve koyu, varsayılan ve en büyük metin**: bölüm okları görev rozetleriyle aynı sağ çizgide; başlığın herhangi bir yerine dokununca bölüm katlanıyor.
+- OPH-405 — **masaüstü/web 1440 px**: Hızlı Erişim satırlarında fareyle ve Tab ile gezinince menü ile sürükleme tutamacı hiç birbirine değmiyor, sürükleme yine sıralıyor.
+- OPH-397 — **iOS/Android Ana Sayfa, açık ve koyu**: mikrofonda ince gri halka, "+"dan yumuşak gölge, kaydırılmış kartların üstünde okunuyor. **Telefon, Talepler**: ikinci ve üçüncü sekmede mikrofon yok; ilk sekmede tam "Yeni talep"in solunda.
+- OPH-403 — **telefon ve masaüstü, açık ve koyu**: + ile yeni görev: başlık, açıklama ve etiketler aynı çizgide başlıyor; Proje ve Öncelik satırları mevcut seçimi işaretli bir sayfa açıyor.
+- OPH-409 — **web 1440, uzantılı takım**: Ana Sayfa'nın "SLA aşıldı" ve "dolmak üzere" rakamları SLA panosunun "Şu an açık" çiftine eşit, bir eşitlemeden sonra da; 100'den fazla açık talepte "Tüm birimler"in ilk satırı en büyük talep numarası, "Daha fazla" yok; başka birimin talebine dokunup hemen Ana Sayfa'ya geçince Ana Sayfa önceki birimi gösteriyor.
+- OPH-412 — **tarayıcı, telefon ve masaüstü genişliği**: `/` ve `/tr` kendi sunucunda bölümünün başlığı, girişi ve "Son adım" etiketi; `/enterprise/tr` alt bilgi satırı ve paket tablosu başlıkları açık ve koyu temada.
+
 ## Cila turu 2 (2026-11-08)
 
 - OPH-404 — **iPhone + web, yeni girişte (AI açık ama sağlayıcı yok, ayrıca takım üyesi)**: Ana Sayfa çizildikten sonra tur kırmızı ekran olmadan açılıyor, her koşuda 4 adım; adım 1 alarm şeridinin altındaki hızlı ekleme alanını çerçeveliyor.
