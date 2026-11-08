@@ -19,6 +19,17 @@
 
     <meta charset="UTF-8" />
     <meta content="IE=Edge" http-equiv="X-UA-Compatible" />
+    <!--
+    OPH-413 (R-08) — the opening screen below is plain HTML that paints long
+    before the engine. Without a viewport tag a phone lays it out at 980 px
+    and shrinks it (a 32 px icon, unreadable text), then re-flows when the
+    engine adds its own tag. This is exactly the tag the engine writes
+    (FullPageEmbeddingStrategy._applyViewportMeta), so the swap at boot
+    changes nothing; `flt-viewport` marks it as the engine's, which keeps the
+    debug console free of the "existing viewport tag" warning. Pinch zoom
+    stays (WCAG 1.4.4). Guarded by test/web_shell_test.dart.
+  -->
+    <meta name="viewport" flt-viewport content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
     <meta name="description" content="Tasks, projects, notes and alarm-grade reminders — with two-way Google Calendar sync and an Apple Calendar mirror. Source-available and self-hostable." />
 
     <!-- iOS meta tags & icons -->
