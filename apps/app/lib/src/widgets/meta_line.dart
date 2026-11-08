@@ -15,6 +15,10 @@ import 'package:flutter/widgets.dart';
 /// it hold its `minWidth` back: the date squeezes and the others drop rather
 /// than crowd it out. A dropped item is neither painted, hit nor read out.
 ///
+/// An item wrapped in [AwMetaWrap] is never dropped or cut either: when it
+/// does not fit after the others it starts a line of its own and wraps there
+/// between words (polish 3 J-03: a project's full name).
+///
 /// With [wrap] (the large-text row) the items flow onto as many lines as they
 /// need instead, [runSpacing] apart.
 class AwMetaLine extends MultiChildRenderObjectWidget {
@@ -54,6 +58,29 @@ class _MetaParentData extends ContainerBoxParentData<RenderBox> {
   /// Set by [AwMetaShrink]: the narrowest width the item may be squeezed to
   /// instead of being dropped. Null — the item is shown whole or not at all.
   double? shrinkTo;
+
+  /// Set by [AwMetaWrap]: the item moves to a new line (and wraps there)
+  /// instead of being dropped.
+  bool wraps = false;
+}
+
+/// Marks an [AwMetaLine] item that is never dropped: if it does not fit on
+/// the line it starts a new one, at the line's full width, and its text wraps
+/// there (polish 3 J-03, DESIGN §46 R6: the project's full name, never
+/// "Launch…"). Items after it continue beside it, or drop as usual.
+class AwMetaWrap extends ParentDataWidget<_MetaParentData> {
+  const AwMetaWrap({super.key, required super.child});
+
+  @override
+  void applyParentData(RenderObject renderObject) {
+    final data = renderObject.parentData! as _MetaParentData;
+    if (data.wraps) return;
+    data.wraps = true;
+    renderObject.parent?.markNeedsLayout();
+  }
+
+  @override
+  Type get debugTypicalAncestorWidgetClass => AwMetaLine;
 }
 
 /// Marks an [AwMetaLine] item that shortens (its child ellipsizes) rather
@@ -165,7 +192,8 @@ class RenderAwMetaLine extends RenderBox
       final data = child.parentData! as _MetaParentData;
       final next = data.nextSibling;
       final shrinkTo = data.shrinkTo;
-      if (stopped || (dropping && shrinkTo == null)) {
+      final wraps = data.wraps;
+      if (!wraps && (stopped || (dropping && shrinkTo == null))) {
         hidden.add(child);
         child = next;
         continue;
@@ -179,7 +207,7 @@ class RenderAwMetaLine extends RenderBox
       final gap = lines.last.isEmpty ? 0.0 : _spacing;
       if (x + gap + size.width > (shrinkTo == null ? room : maxWidth)) {
         final left = maxWidth - x - gap;
-        if (_wrap) {
+        if (_wrap || wraps) {
           if (lines.last.isNotEmpty) {
             lines.add([]);
             x = 0;

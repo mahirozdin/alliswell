@@ -89,7 +89,7 @@ Task _task(
 const _project = Project(
   id: 'P1',
   workspaceId: 'W1',
-  name: 'Ev tadilatı',
+  name: 'Ev',
   colorRgb: '#16A34A',
   status: 'active',
   sortOrder: 0,

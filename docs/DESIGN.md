@@ -207,10 +207,11 @@ and tracking.
   a FILLED pill in the project's color, rightmost element of the row's
   trailing cluster. Radius `AwRadius.s`, padding 8×2, `labelSmall` w600,
   min height 22, tap-transparent (the row handles taps). _Since OPH-400 it is
-  the row's one right-hand item (§46 R6), on the title's first line._ Label = the project
-  name, truncated to its first 6 characters + "…" when longer (grapheme-safe
-  via `Characters`); the FULL name is always available through `Tooltip`
-  (hover + long-press) and `semanticLabel` (`Project: <name>`). The foreground
+  the row's one right-hand item (§46 R6), on the title's first line._ Label = the WHOLE
+  project name, never cut (polish 3 J-03): the row shows the badge only when that pill,
+  measured at the reader's text size, is ≤ `kAwProjectBadgeMaxWidth` (96 pt); otherwise
+  the name moves to the meta line (§46 R6). `Tooltip` (hover + long-press) and
+  `semanticLabel` (`Project: <name>`) carry the name too. The foreground
   is computed, never fixed: relative luminance of the fill > 0.45 → ink
   `#101828`, otherwise white `#FFFFFF` — one shared helper (with a unit test
   sweeping `kProjectPalette` and the full color-grid) so the pair stays
@@ -1853,10 +1854,10 @@ R-09, T-02, U-06, U-12 ([research](research/2026-11-design-ux/ux-shell-mobile.md
 | --- | --- | --- |
 | R1 | **The check circle sits on the title's first line.** Its 48 pt target is centred on that line; the title starts 12 pt down (lower only when a large line needs it). Indent: 4 + 48 + 4. | The circle sat in the middle of a five-line card (U-06). |
 | R2 | **Title:** `rowTitle` 16/22 w400, at most **2 lines + "…"** (3 in the vertical row, R5); the detail screen shows all of it. A done row is struck through in `onSurfaceVariant`. | A short title broke into 3–5 lines beside the right column. |
-| R3 | **One meta line** (`AwMetaLine`, `meta` 13/18 tabular, 8 apart, glyphs 14): date · repeat · alarm · status · priority · duration · first tag "+N" · the rest. Only what differs from a new task's defaults (§26 C1: open, medium, urgent-armed) gets a glyph: no hourglass on an open task, no flag on medium, no bell on an urgent alarm. The alarm item shows a snooze, a silenced alarm with its "turn back on" (§11 A5), or a plain bell for a reminder that is NOT urgent. "Overdue" is the red word (`metaStrong`, `error`), the date stays neutral. An item that does not fit whole is dropped from the end; only the date may shrink — and the silenced alarm (`AwMetaShrink`), whose way back ellipsizes instead and whose minimum the line holds back (the date squeezes, the items before it drop), so a muted row never reads as armed at any horizontal scale. | A flag, a bell and an hourglass on nearly every row said "default" (K6). |
+| R3 | **One meta line** (`AwMetaLine`, `meta` 13/18 tabular, 8 apart, glyphs 14): date · repeat · alarm · status · priority · duration · first tag "+N" · the rest. Only what differs from a new task's defaults (§26 C1: open, medium, urgent-armed) gets a glyph: no hourglass on an open task, no flag on medium, no bell on an urgent alarm. The alarm item shows a snooze, a silenced alarm with its "turn back on" (§11 A5), or a plain bell for a reminder that is NOT urgent. "Overdue" is the red word (`metaStrong`, `error`), the date stays neutral. An item that does not fit whole is dropped from the end; only the date may shrink — and the silenced alarm (`AwMetaShrink`), whose way back ellipsizes instead and whose minimum the line holds back (the date squeezes, the items before it drop), so a muted row never reads as armed at any horizontal scale. The project name is the one exception that may open a second line (R6). | A flag, a bell and an hourglass on nearly every row said "default" (K6). |
 | R4 | **A bare link is one line:** a title that is only a URL reads "host › path" after a link glyph (`awRowTitle`). A URL inside a title gets zero-width breaks after `/ ? & =`. No row breaks inside a word. | A pasted URL took five lines (U-12). |
 | R5 | **Above 1.3× text the row goes vertical** (`kAwRowVerticalTextScale`): circle + title at full width, then the meta items (and the right item) wrapping under the title. | The title column was one word wide at large text. |
-| R6 | **At most one item on the right**, centred on the first line: the screen's own action (Completed's "Reopen", the board's "Move"), else the assignee avatars, else the project badge. A project that loses the slot shows in the meta line as an 8 pt dot and its name. | The right column took 25–35 % of the width. |
+| R6 | **At most one item on the right**, centred on the first line: the screen's own action (Completed's "Reopen", the board's "Move"), else the assignee avatars, else the project badge — only when the whole name fits a ≤ 96 pt pill (`ProjectBadge.fits`). A project that loses the slot, or whose name is longer, shows in the meta line as an 8 pt dot and its **full** name (`AwMetaWrap`): never "…", never dropped; when it does not fit after the other items it takes a line of its own and wraps between words. Items stay 8 pt apart. Measured: `task_row_project_test.dart` (seeded names, 360/393 × 1.0/3.1×, real glyphs). | The right column took 25–35 % of the width; the six-letter badge ("Launch…", "Home r…") lost the project (polish 3 J-03). |
 | R7 | **Measured:** `test/features/tasks/task_row_test.dart` — 360/375/393/430 × 1.0/1.3 × TR/EN × light/dark (≤ 2 title lines, circle on the first line, one meta line); 2.0× with the real Roboto/DejaVu (no mid-word break, ≤ 3 lines, the long row ≤ 240 pt). Goldens `phone_task_rows_*` with `--dart-define=screenshots=true`. | Kabul of OPH-400. |
 
 ## 47. Home's first screen: week strip, section headers, quick add (OPH-401)

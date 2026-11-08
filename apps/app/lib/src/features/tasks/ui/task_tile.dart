@@ -228,7 +228,9 @@ class TaskTile extends ConsumerWidget {
                 key: Key('assignees-${task.id}'),
                 taskId: task.id,
               )
-            : project != null
+            // Polish 3 J-03: the badge only when the WHOLE name fits a
+            // compact pill; a longer name goes to the meta line, never cut.
+            : project != null && ProjectBadge.fits(context, project.name)
             ? ProjectBadge(name: project.name, color: project.color)
             : null);
     final projectInMeta = project != null && (right is! ProjectBadge);
@@ -428,8 +430,15 @@ class TaskTile extends ConsumerWidget {
             style: roles.metaStrong.copyWith(color: scheme.onSurfaceVariant),
           ),
         ),
+      // Polish 3 J-03: the full name, never dropped — on a line of its own,
+      // wrapping between words, when it does not fit after the others.
       if (projectInMeta)
-        _ProjectDot(key: Key('task-project-${task.id}'), project: project),
+        AwMetaWrap(
+          child: _ProjectDot(
+            key: Key('task-project-${task.id}'),
+            project: project,
+          ),
+        ),
       if (unit != null)
         Row(
           key: Key('task-unit-${task.id}'),
@@ -777,23 +786,27 @@ class _ProjectDot extends StatelessWidget {
       child: Semantics(
         label: 'task.projectSemantic'.tr(args: {'project': project.name}),
         excludeSemantics: true,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CircleAvatar(backgroundColor: project.color, radius: 4),
-            const SizedBox(width: AwSpace.x1),
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 120),
-              child: Text(
-                project.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: roles.meta.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+        // One paragraph, the dot inline: it measures at its natural width on
+        // a roomy line and wraps between words on a narrow one (J-03).
+        child: Text.rich(
+          TextSpan(
+            children: [
+              WidgetSpan(
+                alignment: PlaceholderAlignment.middle,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(end: AwSpace.x1),
+                  child: CircleAvatar(
+                    backgroundColor: project.color,
+                    radius: 4,
+                  ),
                 ),
               ),
-            ),
-          ],
+              TextSpan(text: project.name),
+            ],
+          ),
+          style: roles.meta.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ),
     );
