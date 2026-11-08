@@ -9,7 +9,7 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — Epic 35 cila turu P-01: web eksik glif yedeği (CJK, emoji) Google yerine uygulamanın `fonts/noto/` klasöründen; Epic 35 işleri bitti (OPH-390…OPH-414), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-08 — Epic 35 cila turu P-01…P-15 kapandı (uzantı listeleri, ↑/↓, CSV kapsamı, kapsam satırları, "SLA aşıldı", hizmet ayarında "Firmalara açık" OPH-415); Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
 
 ## Snapshot
 
@@ -18,7 +18,7 @@
 | Current phase            | **v1.18.2 son sürüm.** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
 | Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
 | ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
-| Last completed           | P-07 (OPH-405 cilası) — masaüstü panelde açılan görev (tıklama ya da ↑/↓) aramanın son öğelerine kaydedilir. Önceki: P-06 sayısal form cevabı girildiği kadar ondalıkla gösterilir ("0.001" → "0,001"). |
+| Last completed           | P-08…P-15 (OPH-407, OPH-409, OPH-410, OPH-415) — "Tüm birimler" talep açınca korunur, ↑/↓ ile gezilir, CSV görünen kapsamı indirir, atanmamış rakamı açık aramayı kapatır, sayılar sunucunun kapsam alanlarını söyler; bildirimler "SLA aşıldı"; hizmet ayarında "Firmalara açık" anahtarı. Önceki: P-07 masaüstü panelde açılan görev aramanın son öğelerine kaydedilir. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 

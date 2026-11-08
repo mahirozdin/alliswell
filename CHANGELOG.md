@@ -13,6 +13,8 @@ This file holds the unreleased changes and the latest release; at each release t
   works once, for an hour; setting the new password signs you out everywhere. A self-hosted
   server without email says so, and its admin can create the link with one command
   (`password-reset-link`, see SELF-HOSTING). The link can also be pasted into the app.
+- **A team's service can be opened to customer companies** from its setup screen with an "Open to
+  customer companies" switch, off by default, with one line saying what it does.
 
 ### Fixed
 
@@ -21,12 +23,16 @@ This file holds the unreleased changes and the latest release; at each release t
   provider, an API key and a Todoist import are set up; a second run no longer uploads the files
   and the project overview notes again.
 - **Team screens use a desktop's width**: from 1200 px the requests list is one aligned line per
-  request, a request opens beside the list (Esc closes, ↑/↓ moves), the workload report is one
+  request, a request opens beside the list (Esc closes, ↑/↓ moves, also through the All units
+  list, opening each request in its own unit), the workload report is one
   table you can sort by any column, and team forms stay 720 px wide.
 - **Team request lists answer "what, whose, how many" at a glance**: the requests list opens on
   all your units instead of an empty "choose a unit", a row names who opened it and who has it,
-  every count says what it counts ("open now" apart from all time), and a share of nothing reads
-  "—". Home shows your open requests, or what is late in your units.
+  every count says what it counts ("open now" apart from all time, and which unit a strip leaves
+  out), and a share of nothing reads "—". Home shows your open requests, or what is late in your
+  units. Opening a request keeps the All units list behind it, a CSV downloaded from All units
+  holds every unit you work in, and the unassigned figure on Home no longer leaves an old search
+  showing on the requests screen.
 - **Dates and numbers read the way your region writes them**: "13:47", "Yarın 11:00", "7 Kas,
   13:47" instead of "07.11.2026 17:00"; an English app on a German phone shows "7 Nov, 13:47";
   amounts, percentages, file sizes ("6,3 MB") and durations ("2 gün 12 saat") follow the same rules
@@ -35,6 +41,7 @@ This file holds the unreleased changes and the latest release; at each release t
 - **One voice in Turkish, one word for one thing**: the personal app says "sen" everywhere and
   team screens say "siz"; due dates read "Son tarih", notes switch between "Düzenle" and "Oku", and
   labels such as "Standart" or a project's "Özet" tab are no longer cut in the middle of a word.
+  Notifications say "SLA missed" ("SLA aşıldı") and "SLA due soon", the same words as the e-mails.
 - **Signing out works again**, and changing the server now signs you out of the old one first:
   nothing of the previous account, its team or its sync stays on screen.
 - **Pushed screens use the whole screen again** (task detail, settings, a note): no empty band
