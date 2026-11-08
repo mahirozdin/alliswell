@@ -706,6 +706,81 @@ void main() {
       expect(find.text('Açan: Onur Depo · Alan: atanmadı'), findsOneWidget);
       expect(find.byKey(const Key('ticket-people-A2')), findsNothing);
     });
+
+    // Polish 4 T-08: the all-units answer now carries both fields; every
+    // shape the server can send draws its own line, on the phone and on the
+    // desktop, and a row it says nothing about stays as it was.
+    for (final desktop in [null, const Size(1440, 900)]) {
+      testWidgets('across units a row names who asked and who has it when '
+          'the server sends both (${desktop == null ? 'phone' : 'desktop'})', (
+        tester,
+      ) async {
+        Map<String, Object?> row(String id, Map<String, Object?> people) => {
+          'id': id,
+          'number': id.codeUnitAt(1),
+          'subject': 'Talep $id',
+          'status': 'new',
+          'priority': 'normal',
+          'unitId': 'U-BAKIM',
+          'unitName': 'Bakım',
+          'workspaceId': _bakim.id,
+          ...people,
+        };
+        final page = EeUnitTicketsPage.fromJson({
+          'units': [
+            for (final u in _units)
+              {
+                'unitId': u.unitId,
+                'unitName': u.unitName,
+                'workspaceId': u.workspaceId,
+              },
+          ],
+          'tickets': [
+            row('B1', {
+              'requesterName': 'Selin Kaya',
+              'assigneeNames': ['Kemal Usta'],
+            }),
+            row('B2', {
+              'requesterName': 'Selin Kaya',
+              'assigneeNames': ['Kemal Usta', 'Ayşe Demir', 'Can Er'],
+            }),
+            row('B3', {'requesterName': 'Onur Depo'}),
+            row('B4', {
+              'assigneeNames': ['Ayşe Demir'],
+            }),
+            row('B5', {'requesterName': null, 'assigneeNames': null}),
+          ],
+        });
+        await pump(
+          tester,
+          const EeTicketQueueScreen(),
+          listenWorkspace: true,
+          desktop: desktop,
+          overrides: queue(selected: _general.id, across: page),
+        );
+
+        String line(String id) => tester
+            .widget<Text>(
+              find.descendant(
+                of: find.byKey(Key('ticket-people-$id')),
+                matching: find.byType(Text),
+              ),
+            )
+            .data!;
+
+        expect(line('B1'), 'Açan: Selin Kaya · Alan: Kemal Usta');
+        expect(
+          line('B2'),
+          'Açan: Selin Kaya · Alan: Kemal Usta, Ayşe Demir +1',
+        );
+        expect(find.byKey(const Key('ticket-unassigned-B2')), findsNothing);
+        expect(line('B3'), 'Açan: Onur Depo');
+        expect(line('B4'), 'Alan: Ayşe Demir');
+        // Not told: no line, no guess ("bugünkü gibi").
+        expect(find.byKey(const Key('ticket-people-B5')), findsNothing);
+        expect(find.byKey(const Key('unit-ticket-B5')), findsOneWidget);
+      });
+    }
   });
 
   group('the dashboards are tabs of the requests header', () {
