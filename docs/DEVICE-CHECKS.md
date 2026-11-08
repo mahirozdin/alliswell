@@ -5,6 +5,20 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Cila turu 2 (2026-11-08)
+
+- OPH-404 — **iPhone + web, yeni girişte (AI açık ama sağlayıcı yok, ayrıca takım üyesi)**: Ana Sayfa çizildikten sonra tur kırmızı ekran olmadan açılıyor, her koşuda 4 adım; adım 1 alarm şeridinin altındaki hızlı ekleme alanını çerçeveliyor.
+- OPH-397 — **iOS simülatörü + 393 px web, 1× ve 2× metin, ajan ve üye**: Talepler'de mikrofon, tam okunan "Yeni talep" düğmesinin solunda; üst üste binme yok.
+- OPH-398 — **iOS simülatörü, VoiceOver**: Ana Sayfa Görünüm menüsünde ve bir sayfada "Menüyü kapat" / "Kapat" odağı menünün ya da sayfanın dışında; etkinleştirince sıralama değişmeden kapanıyor.
+- OPH-401 — **telefon**: hızlı eklemede tarih sorusunun düğmesi "Tarihsiz ekle"; ekledikten sonra klavye kapanıyor, alan dışına dokununca da; "Geri al" ~5 sn duruyor.
+- OPH-392 — **web ve telefon**: `/#/notes/<silinmiş id>` uygulama çubuğu ve "Bulunamadı" gösteriyor; "Ana sayfaya dön" Ana Sayfa'yı açıyor.
+- OPH-394 — **web ve iOS, temiz kurulum, çok görevli hesap**: Ana Sayfa iskelet satırlardan doğrudan görevlere geçiyor, "Henüz görev yok" hiç görünmüyor.
+- OPH-390 — **web ve iOS**: Ayarlar'dan çıkıp başka hesapla girince Ana Sayfa açılıyor; aynı hesap oturum süresi dolunca kendi sayfasına dönüyor.
+- OPH-413 — **telefon tarayıcısı (ya da 393 px öykünme), yavaş ağ**: `/app` açılış ekranında simge, yazı ve çubuk tam boy; uygulama gelince zıplama yok.
+- OPH-400 — **iPhone AX3 ve AX5, TR, açık ve koyu**: Ayarlar'da "Entegrasyonlar" ve e-posta kelime ortasında kırılmıyor; takvimde "Kasım 2026" tam; yeni görev sayfasında "Yeni görev" ve "Başlık" etiketi kırpılmıyor.
+- OPH-409 — **uzantılı takım, telefon ve masaüstü**: "Tüm birimler" listesinin ilk satırları en yeni talepler, "Yalnız SLA uyarıları" çipi en çok gecikeni öne alıyor; başka birimin talebini açıp geri dönünce (telefon) ya da paneli kapatınca (masaüstü) Ana Sayfa önceki birimi gösteriyor; birimsiz üye /kb'de yanıtların talep formunda önerildiğini ve "Yeni talep açın" düğmesini görüyor.
+- OPH-407 — **uzantılı takım, EN ve TR**: İngilizcede iş yükü notu İngilizce; birimsiz üyenin telefonunda Ana Sayfa başlığı altında takım adı; masaüstünde "Tüm birimler" seçiliyken çubukta birim çipi yok.
+
 ## Mikrofonsuz cihazda dikte (2026-11-08)
 
 - OPH-402 — **iPhone simülatörü, mikrofonu olmayan bir Mac'te (ses girişi yok), AI açık, TR ve EN**: mikrofona dokununca ve basılı tutunca uygulama çökmüyor (6 sn sonra da); sayfa "Bu cihazda mikrofon kullanılamıyor. Görevini yazarak ekleyebilirsin." / "No microphone is available on this device. You can type your task instead." diyor ve yazma alanıyla açılıyor; sohbet balonunun bas-konuş düğmesi yazı moduna düşüyor. Mikrofonlu Mac'te ve gerçek iPhone'da dikte eskisi gibi dinliyor. Neden cihazda: eski çökme speech_to_text'in AVAudioEngine inputNode okumasında AudioToolbox'ın `abort()` çağrısı (SIGABRT); istisna değil, Dart'tan da Swift'ten de yakalanamıyor; koruma yalnız `AVAudioSession.isInputAvailable` önyoklaması ve bu değerin mikrofonsuz simülatörde `false` döndüğü Linux'ta doğrulanamadı. `true` dönerse çökme yalnız o simülatörde sürer: TASKS'a iş açılır.

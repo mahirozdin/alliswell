@@ -106,6 +106,24 @@ This file holds the unreleased changes and the latest release; at each release t
 - **The first-run tour is four short steps** — typing a task with its time and tag, adding by
   voice, the urgent alarm and search — each pointing at its own button. A new account's empty
   Home now offers "Add your first task" and a way to move in from Todoist or TickTick.
+- **The first-run tour no longer shows an error screen**: it waits for Home, spotlights the
+  quick-add field and keeps its voice and Requests steps on a slow first start.
+- **Quick add, links and sign-in behave**: the date question says "Add without date" instead of
+  "Cancel", the keyboard closes after adding on a phone and Undo stays for 5 seconds; a link to a
+  deleted or mistyped note says "not found" with a way home; a new device shows a loading
+  placeholder instead of briefly claiming you have no tasks; signing in with another account opens
+  Home, not the page the previous one signed out from; on a phone the web app's loading screen is
+  shown at full size.
+- **Menus, large text and dictation**: the close area of a menu (or "Dismiss menu" for a screen
+  reader) only closes it instead of choosing an item; at the largest text sizes Settings no longer
+  splits words or your e-mail mid-word and the calendar month and the new-task sheet's title are
+  whole; on a device without a microphone dictation says so and lets you type instead of closing
+  the app.
+- **Team requests read straight**: "New request" and the microphone stand side by side with the
+  label whole; the All units list shows the newest first ("SLA alerts only" keeps the most overdue
+  first); opening another unit's request from All units no longer switches Home's unit; the
+  workload note is translated and the bar names your team once; a member without a unit who opens
+  the knowledge base is told answers are suggested while filing a request, with a button to open one.
 
 ### Changed
 
