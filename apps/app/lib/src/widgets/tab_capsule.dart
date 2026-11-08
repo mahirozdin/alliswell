@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
 import 'glass.dart';
+import 'sheets.dart';
 import '../theme/typography.dart';
 
 /// One slot of the phone's [AwTabCapsule].
@@ -25,8 +27,8 @@ class AwTabItem {
   final Key? selectedIconKey;
 
   /// A second way in through this slot (Home's long press opens Quick
-  /// Access, ADR-0062 §5), and what a screen reader says it does. Not
-  /// offered while the large content viewer owns the long press (N4).
+  /// Access, ADR-0062 §5), and what a screen reader says it does. Slots
+  /// only: the large-text menu (N4) has no long press.
   final VoidCallback? onLongPress;
   final String? longPressHint;
 }
@@ -50,9 +52,17 @@ const double kAwTabIconSize = 22;
 const double kAwTabLabelSize = 11;
 const double kAwTabLabelLineHeight = 13;
 
-/// Label text scaling stops here; past it a long press names the tab in a
-/// large bubble instead (DESIGN §43 N4).
+/// Label text scaling stops here; past it the capsule is one labelled
+/// menu button instead of slots (DESIGN §43 N4, ADR-0066).
 const double kAwTabLabelMaxScale = 1.3;
+
+/// Whether the reader's text is larger than the slots' labels may be: then
+/// the capsule is the labelled menu (DESIGN §43 N4, ADR-0066), and the
+/// caller hands it every section — the menu has no "More" step.
+bool awTabMenuMode(BuildContext context) {
+  final scaler = MediaQuery.textScalerOf(context);
+  return scaler.scale(kAwTabLabelSize) / kAwTabLabelSize > kAwTabLabelMaxScale;
+}
 
 /// The phone's bottom navigation (OPH-396, ADR-0062): a 64 pt glass capsule
 /// with equal slots, every one labelled.
@@ -65,9 +75,11 @@ const double kAwTabLabelMaxScale = 1.3;
 ///    selecting a tab changes a colour and a glyph, and moves nothing;
 ///  * the label is one line, scaled down to fit its slot rather than clipped,
 ///    and never leaves the capsule;
-///  * label scaling is clamped at 1.3; above that a long press shows the
-///    name in a large bubble, and lifting the finger selects the slot under
-///    it (iOS's large content viewer);
+///  * label scaling is clamped at 1.3; above that ([awTabMenuMode]) the
+///    capsule is one button naming the open section, and it opens a sheet
+///    with every section in full at the reader's size, in rows that grow
+///    with the text (OPH-396 J-02, ADR-0066) — the clamped labels were
+///    unreadable at AX sizes and a long-press bubble was not a way in;
 ///  * each slot is one semantics node: button, selected, "Home\nTab 1 of 5".
 class AwTabCapsule extends StatefulWidget {
   const AwTabCapsule({
@@ -75,79 +87,46 @@ class AwTabCapsule extends StatefulWidget {
     required this.items,
     required this.selectedIndex,
     required this.onSelected,
+    this.menuKey,
   });
 
+  /// The sections: at most five slots, or — in [awTabMenuMode] — every one.
   final List<AwTabItem> items;
 
   /// -1 draws no selection.
   final int selectedIndex;
   final ValueChanged<int> onSelected;
 
+  /// Anchors the onboarding tour on the large-text menu button.
+  final Key? menuKey;
+
   @override
   State<AwTabCapsule> createState() => _AwTabCapsuleState();
 }
 
 class _AwTabCapsuleState extends State<AwTabCapsule> {
-  OverlayEntry? _bubble;
-  int? _pressed;
+  bool _menuOpen = false;
 
-  @override
-  void dispose() {
-    _hideBubble();
-    super.dispose();
-  }
-
-  int _slotAt(Offset local, double width) {
-    final inner = width - 2 * kAwTabCapsulePadding;
-    final slot = inner / widget.items.length;
-    final index = ((local.dx - kAwTabCapsulePadding) / slot).floor();
-    return index.clamp(0, widget.items.length - 1);
-  }
-
-  void _showBubble(int index) {
-    if (_pressed == index && _bubble != null) return;
-    _pressed = index;
-    _bubble?.remove();
-    _bubble = null;
-    final overlay = Overlay.maybeOf(context, rootOverlay: true);
-    if (overlay == null) return;
-    final box = context.findRenderObject() as RenderBox?;
-    final top = box?.localToGlobal(Offset.zero).dy;
-    final item = widget.items[index];
-    _bubble = OverlayEntry(
-      builder: (overlayContext) {
-        final media = MediaQuery.of(overlayContext);
-        final bottom = top == null
-            ? media.size.height / 2
-            : media.size.height - top + AwSpace.x4;
-        return Positioned(
-          left: AwSpace.x4,
-          right: AwSpace.x4,
-          bottom: bottom,
-          child: IgnorePointer(
-            child: Center(child: _LargeLabel(item: item)),
-          ),
-        );
-      },
+  Future<void> _openMenu() async {
+    if (_menuOpen) return;
+    _menuOpen = true;
+    final picked = await showAwSheet<int>(
+      context,
+      showDragHandle: true,
+      builder: (sheetContext) => _TabMenuSheet(
+        items: widget.items,
+        selectedIndex: widget.selectedIndex,
+      ),
     );
-    overlay.insert(_bubble!);
-  }
-
-  void _hideBubble() {
-    _bubble?.remove();
-    _bubble = null;
-    _pressed = null;
+    _menuOpen = false;
+    if (picked != null && mounted) widget.onSelected(picked);
   }
 
   @override
   Widget build(BuildContext context) {
-    final scaler = MediaQuery.textScalerOf(context);
-    // The large content viewer is for people whose text is bigger than the
-    // clamp lets the label be (DESIGN §43 N4).
-    final bigText =
-        scaler.scale(kAwTabLabelSize) / kAwTabLabelSize > kAwTabLabelMaxScale;
     final count = widget.items.length;
     final localizations = MaterialLocalizations.of(context);
+    final menu = awTabMenuMode(context);
 
     return GlassSurface(
       key: const Key('tab-capsule'),
@@ -155,48 +134,35 @@ class _AwTabCapsuleState extends State<AwTabCapsule> {
       borderRadius: const BorderRadius.all(Radius.circular(AwRadius.pill)),
       child: SizedBox(
         height: kAwTabCapsuleHeight,
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final row = Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: kAwTabCapsulePadding,
-              ),
-              child: Row(
-                children: [
-                  for (var i = 0; i < count; i++)
-                    Expanded(
-                      child: _TabSlot(
-                        key: Key('tab-slot-$i'),
-                        item: widget.items[i],
-                        selected: i == widget.selectedIndex,
-                        semanticLabel:
-                            '${widget.items[i].label}\n'
-                            '${localizations.tabLabel(tabIndex: i + 1, tabCount: count)}',
-                        onTap: () => widget.onSelected(i),
-                        onLongPress: bigText
-                            ? null
-                            : widget.items[i].onLongPress,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: kAwTabCapsulePadding),
+          child: menu
+              ? _TabMenuButton(
+                  key: widget.menuKey,
+                  item:
+                      widget.selectedIndex >= 0 &&
+                          widget.selectedIndex < count
+                      ? widget.items[widget.selectedIndex]
+                      : null,
+                  onTap: _openMenu,
+                )
+              : Row(
+                  children: [
+                    for (var i = 0; i < count; i++)
+                      Expanded(
+                        child: _TabSlot(
+                          key: Key('tab-slot-$i'),
+                          item: widget.items[i],
+                          selected: i == widget.selectedIndex,
+                          semanticLabel:
+                              '${widget.items[i].label}\n'
+                              '${localizations.tabLabel(tabIndex: i + 1, tabCount: count)}',
+                          onTap: () => widget.onSelected(i),
+                          onLongPress: widget.items[i].onLongPress,
+                        ),
                       ),
-                    ),
-                ],
-              ),
-            );
-            if (!bigText) return row;
-            return GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onLongPressStart: (d) =>
-                  _showBubble(_slotAt(d.localPosition, constraints.maxWidth)),
-              onLongPressMoveUpdate: (d) =>
-                  _showBubble(_slotAt(d.localPosition, constraints.maxWidth)),
-              onLongPressEnd: (d) {
-                final index = _slotAt(d.localPosition, constraints.maxWidth);
-                _hideBubble();
-                widget.onSelected(index);
-              },
-              onLongPressCancel: _hideBubble,
-              child: row,
-            );
-          },
+                  ],
+                ),
         ),
       ),
     );
@@ -320,37 +286,171 @@ class _TabSlot extends StatelessWidget {
   }
 }
 
-/// The large content bubble (DESIGN §43 N4): a solid surface, never glass —
-/// it carries text (G1).
-class _LargeLabel extends StatelessWidget {
-  const _LargeLabel({required this.item});
+/// The capsule above 1.3× text (DESIGN §43 N4, ADR-0066): one button the
+/// capsule wide — the open section's glyph and whole name, and an unfold
+/// glyph that says a menu opens. The name is at the reader's size, shrunk
+/// only if the 64 pt capsule cannot hold it, never cut.
+class _TabMenuButton extends StatelessWidget {
+  const _TabMenuButton({super.key, required this.item, required this.onTap});
 
-  final AwTabItem item;
+  /// The open section; null when none of the items is open.
+  final AwTabItem? item;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Material(
-      key: const Key('tab-capsule-large-label'),
-      color: scheme.surfaceContainerHigh,
-      elevation: 6,
-      borderRadius: const BorderRadius.all(Radius.circular(AwRadius.xl)),
-      child: Padding(
-        padding: const EdgeInsets.all(AwSpace.x5),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(item.selectedIcon, size: 48, color: scheme.onSurface),
-            const SizedBox(height: AwSpace.x2),
-            Text(
-              item.label,
-              textAlign: TextAlign.center,
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge!.copyWith(color: scheme.onSurface),
-            ),
-          ],
+    final textTheme = Theme.of(context).textTheme;
+    final name = item?.label ?? 'nav.menuTitle'.tr();
+    return Semantics(
+      container: true,
+      button: true,
+      label: 'nav.menuLabel'.tr(args: {'name': name}),
+      onTapHint: 'nav.menuHint'.tr(),
+      excludeSemantics: true,
+      onTap: onTap,
+      child: InkWell(
+        key: const Key('tab-menu-button'),
+        onTap: onTap,
+        borderRadius: const BorderRadius.all(
+          Radius.circular(kAwTabSelectionHeight / 2),
         ),
+        child: SizedBox(
+          height: kAwTabCapsuleHeight,
+          child: Center(
+            child: Container(
+              height: kAwTabSelectionHeight + AwSpace.x2,
+              padding: const EdgeInsets.symmetric(horizontal: AwSpace.x3),
+              decoration: BoxDecoration(
+                color: scheme.primaryContainer,
+                borderRadius: const BorderRadius.all(
+                  Radius.circular((kAwTabSelectionHeight + AwSpace.x2) / 2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    item?.selectedIcon ?? Icons.menu,
+                    size: 24,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                  const SizedBox(width: AwSpace.x3),
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: AlignmentDirectional.centerStart,
+                      child: Text(
+                        name,
+                        key: const Key('tab-menu-label'),
+                        maxLines: 1,
+                        softWrap: false,
+                        style: textTheme.titleSmall!.copyWith(
+                          fontWeight: FontWeight.w600,
+                          color: scheme.onPrimaryContainer,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: AwSpace.x2),
+                  Icon(
+                    Icons.unfold_more,
+                    size: 24,
+                    color: scheme.onPrimaryContainer,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The large-text menu's sheet: every section, its glyph and its whole name
+/// at the reader's size, wrapping rather than cut; rows grow with the text
+/// from 56 pt; the open one is selected and carries a check. A solid sheet,
+/// never glass — it carries text (G1).
+class _TabMenuSheet extends StatelessWidget {
+  const _TabMenuSheet({required this.items, required this.selectedIndex});
+
+  final List<AwTabItem> items;
+  final int selectedIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final localizations = MaterialLocalizations.of(context);
+    return SafeArea(
+      child: Column(
+        key: const Key('tab-menu-sheet'),
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(
+              AwSpace.x5,
+              0,
+              AwSpace.x5,
+              AwSpace.x2,
+            ),
+            child: Semantics(
+              header: true,
+              child: Text('nav.menuTitle'.tr(), style: textTheme.titleMedium),
+            ),
+          ),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  for (var i = 0; i < items.length; i++)
+                    Semantics(
+                      key: Key('tab-menu-row-$i'),
+                      container: true,
+                      button: true,
+                      selected: i == selectedIndex,
+                      hint: localizations.tabLabel(
+                        tabIndex: i + 1,
+                        tabCount: items.length,
+                      ),
+                      child: ListTile(
+                        minTileHeight: 56,
+                        selected: i == selectedIndex,
+                        leading: Icon(
+                          i == selectedIndex
+                              ? items[i].selectedIcon
+                              : items[i].icon,
+                          size: 24,
+                        ),
+                        title: Text(
+                          items[i].label,
+                          key: const Key('tab-menu-row-title'),
+                          style: textTheme.titleMedium!.copyWith(
+                            fontWeight: i == selectedIndex
+                                ? FontWeight.w600
+                                : null,
+                            color: scheme.onSurface,
+                          ),
+                        ),
+                        trailing: i == selectedIndex
+                            ? Icon(
+                                Icons.check,
+                                key: const Key('tab-menu-current'),
+                                size: 24,
+                                color: scheme.primary,
+                              )
+                            : null,
+                        onTap: () => Navigator.of(context).pop(i),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: AwSpace.x2),
+        ],
       ),
     );
   }

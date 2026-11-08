@@ -2,6 +2,7 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/gestures.dart' show kLongPressTimeout;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/i18n/i18n.dart';
@@ -19,6 +20,10 @@ import 'shell_harness.dart';
 /// slots ≥ 48 dp, every slot is labelled, every label stays inside the
 /// capsule's curve, every glyph sits on one centre line, and the label's
 /// text scaling stops at 1.3.
+///
+/// OPH-396 (J-02, ADR-0066): above 1.3× text the five clamped labels give
+/// way to one labelled menu button in the capsule, whose sheet names every
+/// section in full at the reader's size, in rows that grow with the text.
 void main() {
   setUp(() => AwI18n.instance.setActiveCached(const Locale('en')));
   tearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
@@ -32,7 +37,8 @@ void main() {
       find.descendant(of: slot(i), matching: find.byType(Icon));
 
   const widths = [360.0, 375.0, 393.0, 412.0, 430.0];
-  const scales = [1.0, 1.3, 2.0];
+  const scales = [1.0, 1.3];
+  const largeScales = [1.5, 2.0, 3.1];
 
   for (final team in [false, true]) {
     for (final language in ['tr', 'en']) {
@@ -214,44 +220,185 @@ void main() {
     );
   });
 
-  testWidgets('above 1.3× text a long press names the tab in a large '
-      'bubble, and lifting the finger selects it', (tester) async {
+  Finder menuButton() => find.byKey(const Key('tab-menu-button'));
+  Finder menuLabel() => find.byKey(const Key('tab-menu-label'));
+  Finder menuRow(int i) => find.byKey(Key('tab-menu-row-$i'));
+  Finder rowTitle(int i) => find.descendant(
+    of: menuRow(i),
+    matching: find.byKey(const Key('tab-menu-row-title')),
+  );
+
+  for (final team in [false, true]) {
+    for (final language in ['tr', 'en']) {
+      final sections = team ? 6 : 5;
+      testWidgets('large text: $sections sections, $language — one '
+          'labelled menu button fills the capsule, no clamped slots', (
+        tester,
+      ) async {
+        AwI18n.instance.setActiveCached(Locale(language));
+        sizeTo(tester, const Size(393, 852));
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+        await tester.pumpWidget(await teamApp(team ? teamApi() : FakeApi()));
+        await tester.pumpAndSettle();
+        final home = 'nav.home'.tr();
+
+        for (final brightness in Brightness.values) {
+          for (final width in widths) {
+            for (final scale in largeScales) {
+              final cell = '${width.toInt()} × $scale × ${brightness.name}';
+              tester.view.physicalSize = Size(width, 852);
+              tester.platformDispatcher.textScaleFactorTestValue = scale;
+              tester.platformDispatcher.platformBrightnessTestValue =
+                  brightness;
+              await tester.pumpAndSettle();
+              expect(tester.takeException(), isNull, reason: cell);
+
+              final capsule = tester.getRect(
+                find.byKey(const Key('tab-capsule')),
+              );
+              expect(capsule.height, kAwTabCapsuleHeight, reason: cell);
+              expect(slot(0), findsNothing, reason: '$cell: tiny slots');
+              expect(menuButton(), findsOneWidget, reason: cell);
+              final button = tester.getRect(menuButton());
+              expect(button.height, greaterThanOrEqualTo(48), reason: cell);
+              expect(
+                button.width,
+                greaterThanOrEqualTo(capsule.width - 2 * 12 - 0.01),
+                reason: '$cell: the button is the whole capsule',
+              );
+              final curve = RRect.fromRectAndRadius(
+                capsule,
+                const Radius.circular(32),
+              ).deflate(2);
+              final label = tester.getRect(menuLabel());
+              for (final corner in [
+                label.topLeft,
+                label.topRight,
+                label.bottomLeft,
+                label.bottomRight,
+              ]) {
+                expect(
+                  curve.contains(corner),
+                  isTrue,
+                  reason: '$cell: the name leaves the capsule at $corner',
+                );
+              }
+              // The open section's whole name, never "Ana S…".
+              expect(tester.widget<Text>(menuLabel()).data, home, reason: cell);
+              final paragraph = tester.renderObject<RenderParagraph>(
+                menuLabel(),
+              );
+              expect(paragraph.didExceedMaxLines, isFalse, reason: cell);
+            }
+          }
+        }
+      });
+    }
+  }
+
+  for (final scale in [2.0, 3.1]) {
+    testWidgets('at $scale× text the menu names every section in full, '
+        'rows ≥ 48 that grow with the text, the open one marked', (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      sizeTo(tester, const Size(393, 852));
+      tester.platformDispatcher.textScaleFactorTestValue = scale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      await tester.pumpWidget(await teamApp(teamApi()));
+      await tester.pumpAndSettle();
+
+      final button = tester.getSemantics(menuButton());
+      expect(button.flagsCollection.isButton, isTrue);
+      expect(button.label, contains('Home'));
+
+      await tester.tap(menuButton());
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('tab-menu-sheet')), findsOneWidget);
+      // Six sections, six rows: no "More" step in the menu.
+      expect(menuRow(5), findsOneWidget);
+      expect(menuRow(6), findsNothing);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('tab-menu-sheet')),
+          matching: find.text('More'),
+        ),
+        findsNothing,
+      );
+      final titles = [
+        'Home',
+        'Inbox',
+        'Projects',
+        'Notes',
+        'Files',
+        'Requests',
+      ];
+      for (var i = 0; i < titles.length; i++) {
+        await tester.ensureVisible(menuRow(i));
+        await tester.pumpAndSettle();
+        expect(tester.widget<Text>(rowTitle(i)).data, titles[i]);
+        final paragraph = tester.renderObject<RenderParagraph>(rowTitle(i));
+        expect(paragraph.didExceedMaxLines, isFalse, reason: titles[i]);
+        // The reader's size, not the capsule's 1.3 clamp.
+        expect(
+          paragraph.textScaler.scale(16),
+          moreOrLessEquals(16 * scale, epsilon: 0.01),
+          reason: '${titles[i]} is not at the reader\'s size',
+        );
+        final row = tester.getRect(menuRow(i));
+        expect(row.height, greaterThanOrEqualTo(48), reason: titles[i]);
+        expect(
+          row.height,
+          greaterThanOrEqualTo(tester.getRect(rowTitle(i)).height),
+          reason: '${titles[i]}: the row grows with its name',
+        );
+        final node = tester.getSemantics(menuRow(i));
+        expect(
+          node.flagsCollection.isSelected,
+          i == 0 ? Tristate.isTrue : Tristate.isFalse,
+          reason: titles[i],
+        );
+        expect(
+          find.descendant(
+            of: menuRow(i),
+            matching: find.byKey(const Key('tab-menu-current')),
+          ),
+          i == 0 ? findsOneWidget : findsNothing,
+        );
+      }
+
+      await tester.tap(menuRow(5));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('tab-menu-sheet')), findsNothing);
+      expect(appRouter().state.uri.path, '/tickets');
+      expect(tester.widget<Text>(menuLabel()).data, 'Requests');
+      semantics.dispose();
+    });
+  }
+
+  testWidgets('at 1.3× the five slots stay; the menu is for larger text', (
+    tester,
+  ) async {
     sizeTo(tester, const Size(393, 852));
-    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    tester.platformDispatcher.textScaleFactorTestValue = 1.3;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.pumpWidget(await teamApp(FakeApi()));
     await tester.pumpAndSettle();
-
-    final bubble = find.byKey(const Key('tab-capsule-large-label'));
-    final gesture = await tester.startGesture(tester.getCenter(slot(3)));
-    await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    expect(bubble, findsOneWidget);
-    expect(
-      find.descendant(of: bubble, matching: find.text('Notes')),
-      findsOneWidget,
-    );
-    final box = tester.getRect(bubble);
-    expect(
-      box.bottom,
-      lessThanOrEqualTo(
-        tester.getRect(find.byKey(const Key('tab-capsule'))).top,
-      ),
-      reason: 'the bubble sits above the capsule, not over the finger',
-    );
-    await gesture.up();
-    await tester.pumpAndSettle();
-    expect(bubble, findsNothing);
-    expect(appRouter().state.uri.path, '/notes');
+    expect(slot(4), findsOneWidget);
+    expect(menuButton(), findsNothing);
   });
 
-  testWidgets('at 1.0× a long press shows no bubble', (tester) async {
+  testWidgets('at 1.0× a long press on a slot opens no menu', (
+    tester,
+  ) async {
     sizeTo(tester, const Size(393, 852));
     await tester.pumpWidget(await teamApp(FakeApi()));
     await tester.pumpAndSettle();
 
     final gesture = await tester.startGesture(tester.getCenter(slot(3)));
     await tester.pump(kLongPressTimeout + const Duration(milliseconds: 50));
-    expect(find.byKey(const Key('tab-capsule-large-label')), findsNothing);
+    expect(find.byKey(const Key('tab-menu-sheet')), findsNothing);
     await gesture.up();
     await tester.pumpAndSettle();
   });

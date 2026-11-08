@@ -110,7 +110,10 @@
     "ticketsDesc": "Birimin gelen kutusu",
     "more": "Diğer",
     "moreTitle": "Diğer bölümler",
-    "homeLongPressHint": "Hızlı Erişim'i açar"
+    "homeLongPressHint": "Hızlı Erişim'i açar",
+    "menuTitle": "Bölümler",
+    "menuLabel": "Gezinme, {name}",
+    "menuHint": "Bütün bölümleri gösterir"
   },
   "auth": {
     "signInTitle": "Hesabına giriş yap",

@@ -97,7 +97,8 @@ class HomeShell extends ConsumerWidget {
     return _rectOf(keys.icon) ??
         _rectOf(keys.selected) ??
         _rectOf(_moreKey) ??
-        _rectOf(_moreSelectedKey);
+        _rectOf(_moreSelectedKey) ??
+        _rectOf(_menuKey);
   }
 
   void _goBranch(int index) {
@@ -194,10 +195,27 @@ class HomeShell extends ConsumerWidget {
   }
 
   /// The phone's [AwTabCapsule] (OPH-396, ADR-0062): every drawn section
-  /// up to five, or the first four and "More" (`phoneTabLayout`).
+  /// up to five, or the first four and "More" (`phoneTabLayout`). Above
+  /// 1.3× text it is the labelled menu, which lists every drawn section
+  /// itself (DESIGN §43 N4, ADR-0066).
   Widget _phoneTabs(BuildContext context, List<AppSection> visible) {
-    final layout = phoneTabLayout(visible);
     final current = AppSection.values[navigationShell.currentIndex];
+    if (awTabMenuMode(context)) {
+      return AwTabCapsule(
+        menuKey: _menuKey,
+        selectedIndex: visible.indexOf(current),
+        onSelected: (i) => _goBranch(visible[i].index),
+        items: [
+          for (final section in visible)
+            AwTabItem(
+              icon: section.icon,
+              selectedIcon: section.selectedIcon,
+              label: section.title,
+            ),
+        ],
+      );
+    }
+    final layout = phoneTabLayout(visible);
     final direct = layout.direct.indexOf(current);
     final hasMore = layout.overflow.isNotEmpty;
     final selected = direct >= 0
@@ -248,6 +266,7 @@ class HomeShell extends ConsumerWidget {
   static final GlobalKey _moreSelectedKey = GlobalKey(
     debugLabel: 'nav-sel-more',
   );
+  static final GlobalKey _menuKey = GlobalKey(debugLabel: 'nav-menu');
 
   /// "More" opens the sections that have no slot of their own (ADR-0062 §2):
   /// a sheet with each one's icon, name and line, the open one marked.

@@ -111,7 +111,10 @@
     "ticketsDesc": "The unit's inbox",
     "more": "More",
     "moreTitle": "More sections",
-    "homeLongPressHint": "Opens Quick Access"
+    "homeLongPressHint": "Opens Quick Access",
+    "menuTitle": "Sections",
+    "menuLabel": "Navigation, {name}",
+    "menuHint": "Shows every section"
   },
   "auth": {
     "signInTitle": "Sign in to your account",
