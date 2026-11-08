@@ -318,8 +318,86 @@ describe('task series (OPH-205, ADR-0020)', () => {
         (r) => r.entity_type === 'task' && r.entity_id === todays.id && r.operation === 'delete',
       ),
     ).toBe(false);
-    // The past open occurrence is untouched history (DESIGN §25 R7).
-    expect(tables.tasks.find((t) => t.id === overdue.id).deleted_at ?? null).toBeNull();
+    // The past open occurrence is kept too (DESIGN §25 R7) — as a plain task,
+    // not linked to a series that no longer exists (OPH-417).
+    const past = tables.tasks.find((t) => t.id === overdue.id);
+    expect(past.deleted_at ?? null).toBeNull();
+    expect(past.series_id).toBeNull();
+  });
+
+  it('a stop without keepTaskId keeps today and every earlier open occurrence (OPH-417)', async () => {
+    const yesterday = dayAfter(-1);
+    const { series } = (
+      await create({ rule: { freq: 'daily', interval: 1 }, anchorAt: `${yesterday}T09:00:00.000Z` })
+    ).json();
+    const rows = occurrencesOf(series.id);
+    const todays = rows[0];
+    const overdue = { ...todays, id: '01JOVERDUE0000000000000000', occurrence_date: yesterday };
+    tables.tasks.push(overdue);
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/task-series/${series.id}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().removed).toBe(rows.length - 1);
+    for (const id of [todays.id, overdue.id]) {
+      const row = tables.tasks.find((t) => t.id === id);
+      expect(row.deleted_at ?? null).toBeNull();
+      expect(row.series_id).toBeNull();
+      expect(
+        tables.sync_revisions.some(
+          (r) => r.entity_type === 'task' && r.entity_id === id && r.operation === 'update',
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it('a stop on a series that starts later keeps its anchor-day task (OPH-417)', async () => {
+    const { series } = (
+      await create({
+        rule: { freq: 'daily', interval: 1 },
+        anchorAt: `${dayAfter(3)}T09:00:00.000Z`,
+      })
+    ).json();
+    const rows = occurrencesOf(series.id);
+    expect(String(rows[0].occurrence_date).slice(0, 10)).toBe(dayAfter(3));
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/task-series/${series.id}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(200);
+    const kept = tables.tasks.find((t) => t.id === rows[0].id);
+    expect(kept.deleted_at ?? null).toBeNull();
+    expect(kept.series_id).toBeNull();
+    expect(occurrencesOf(series.id)).toHaveLength(0);
+    expect(tables.task_series.find((s) => s.id === series.id).deleted_at).toBeTruthy();
+  });
+
+  it('"this and future" via REST: from fromDay on goes, earlier open stays plain, completed keeps its link (OPH-417)', async () => {
+    const { series } = (await create({ rule: { freq: 'daily', interval: 1 } })).json();
+    const rows = occurrencesOf(series.id);
+    const [first, second, third] = rows;
+    tables.tasks.find((t) => t.id === second.id).status = 'completed';
+    const fromDay = String(third.occurrence_date).slice(0, 10);
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/task-series/${series.id}?fromDay=${fromDay}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().removed).toBe(rows.length - 2);
+    const firstRow = tables.tasks.find((t) => t.id === first.id);
+    expect(firstRow.deleted_at ?? null).toBeNull();
+    expect(firstRow.series_id).toBeNull();
+    const done = tables.tasks.find((t) => t.id === second.id);
+    expect(done.deleted_at ?? null).toBeNull();
+    expect(done.series_id).toBe(series.id);
+    expect(tables.tasks.find((t) => t.id === third.id).deleted_at).toBeTruthy();
   });
 
   it('completing one occurrence leaves its siblings and the series untouched', async () => {

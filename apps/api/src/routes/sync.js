@@ -44,6 +44,7 @@ import {
   propagateSeriesScope,
   rebuildFuture,
   softDeleteSeries,
+  stopOptionsError,
   validateSeriesInput,
 } from '../db/task-series.js';
 import { foldSearchText } from '../lib/fold.js';
@@ -97,15 +98,15 @@ const ulidArray = (v) => Array.isArray(v) && v.length <= 50 && v.every(ulid);
 
 /**
  * A task_series delete's options, read off its patch the way the REST route
- * reads its query (`DELETE /task-series/:id?fromDay=&keepTaskId=`). A delete's
- * patch skips field validation, so a malformed value is simply not an option.
+ * reads its query (`DELETE /task-series/:id?fromDay=&keepTaskId=`). The patch
+ * was validated first (`validateDelete` → `stopOptionsError`), so what is here
+ * is well formed.
  */
 const seriesStopOptions = (patch) => {
   const options = {};
-  if (patch == null || typeof patch !== 'object') return options;
-  if (typeof patch.fromDay === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(patch.fromDay))
-    options.fromDay = patch.fromDay;
-  if (ulid(patch.keepTaskId)) options.keepTaskId = patch.keepTaskId;
+  if (patch == null) return options;
+  if (patch.fromDay != null) options.fromDay = patch.fromDay;
+  if (patch.keepTaskId != null) options.keepTaskId = patch.keepTaskId;
   return options;
 };
 
@@ -989,6 +990,9 @@ export default async function syncRoutes(app) {
       // The delete's patch carries the same two options as the REST query —
       // `fromDay` ("this and future") and `keepTaskId` (the task the Repeat
       // switch sits on, #32) — so a pushed stop and DELETE /task-series agree.
+      // A delete's patch skips field validation, so the stop options are
+      // checked here — a malformed one is rejected, not read as "none".
+      validateDelete: (patch) => stopOptionsError(patch, ulid),
       async customDelete(trx, ctx, row, mutation) {
         const options = seriesStopOptions(mutation?.patch);
         const { revision } = await softDeleteSeries(trx, {
@@ -1629,6 +1633,11 @@ export default async function syncRoutes(app) {
         }
         if (!spec.ok(value)) return rejected('SYNC_INVALID_VALUE');
       }
+    } else if (entity.validateDelete) {
+      // Most deletes ignore their patch; an entity whose delete takes options
+      // (task_series: fromDay, keepTaskId) validates them before any write.
+      const code = entity.validateDelete(mutation.patch);
+      if (code) return rejected(code);
     }
 
     // Extension guards (EE-051). They run after validation and before any

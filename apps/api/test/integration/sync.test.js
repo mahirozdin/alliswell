@@ -679,4 +679,128 @@ describe.runIf(enabled)('integration: a write retired in its own transaction', (
     expect((await live()).length).toBe(all);
     expect(await pullTasks(since)).toEqual({ deletes: 0, creates: all - kept });
   });
+
+  it('OPH-417: a stop pushed with fromDay and the REST stop treat occurrences the same', async () => {
+    const clientId = newId();
+    const DAY = 86400000;
+    const dayAfter = (n) => new Date(Date.now() + n * DAY).toISOString().slice(0, 10);
+    const revisionNow = async () =>
+      Number(
+        (await app.db('workspaces').where({ id: owner.workspace.id }).first('revision')).revision,
+      );
+    const push = async (mutations) =>
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/sync/push',
+          headers: owner.headers,
+          payload: {
+            clientId,
+            workspaceId: owner.workspace.id,
+            baseRevision: await revisionNow(),
+            mutations,
+          },
+        })
+      ).json().results;
+    const makeSeries = async () => {
+      const id = newId();
+      const [created] = await push([
+        {
+          clientMutationId: newId(),
+          operation: 'create',
+          entityType: 'task_series',
+          entityId: id,
+          patch: {
+            rule: { freq: 'daily', interval: 1 },
+            template: { title: 'Su iç' },
+            timezone: 'UTC',
+            anchorAt: `${dayAfter(0)}T08:00:00.000Z`,
+          },
+        },
+      ]);
+      expect(created.status).toBe('applied');
+      const rows = await app
+        .db('tasks')
+        .where({ series_id: id })
+        .whereNull('deleted_at')
+        .orderBy('occurrence_date', 'asc')
+        .select('id');
+      return { id, rows };
+    };
+    // Today and tomorrow open, the day after completed; stop from day 3 on.
+    const outcome = async (id, rows) => {
+      const get = (row) => app.db('tasks').where({ id: row.id }).first();
+      return {
+        today: await get(rows[0]),
+        done: await get(rows[2]),
+        swiped: await get(rows[3]),
+        later: await get(rows[4]),
+        series: await app.db('task_series').where({ id }).first(),
+      };
+    };
+
+    const viaSync = await makeSeries();
+    const viaRest = await makeSeries();
+    for (const { rows } of [viaSync, viaRest]) {
+      await app.db('tasks').where({ id: rows[2].id }).update({ status: 'completed' });
+    }
+
+    // Invalid option: rejected with a code, nothing stopped.
+    const [bad] = await push([
+      {
+        clientMutationId: newId(),
+        operation: 'delete',
+        entityType: 'task_series',
+        entityId: viaSync.id,
+        patch: { fromDay: '3 Mart' },
+      },
+    ]);
+    expect(bad).toMatchObject({ status: 'rejected', errorCode: 'SYNC_INVALID_VALUE' });
+    expect((await app.db('task_series').where({ id: viaSync.id }).first()).deleted_at).toBeNull();
+
+    const since = await revisionNow();
+    const stop = {
+      clientMutationId: newId(),
+      operation: 'delete',
+      entityType: 'task_series',
+      entityId: viaSync.id,
+      patch: { fromDay: dayAfter(3) },
+    };
+    const [applied] = await push([stop]);
+    expect(applied.status).toBe('applied');
+    const rest = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/task-series/${viaRest.id}?fromDay=${dayAfter(3)}`,
+      headers: owner.headers,
+    });
+    expect(rest.statusCode).toBe(200);
+
+    for (const { id, rows } of [viaSync, viaRest]) {
+      const o = await outcome(id, rows);
+      expect(o.series.deleted_at).not.toBeNull();
+      expect(o.today).toMatchObject({ deleted_at: null, series_id: null, occurrence_date: null });
+      expect(o.done).toMatchObject({ deleted_at: null, series_id: id, status: 'completed' });
+      expect(o.swiped.deleted_at).not.toBeNull();
+      expect(o.later.deleted_at).not.toBeNull();
+    }
+
+    // A replay answers the same and writes nothing.
+    const before = await revisionNow();
+    const [replayed] = await push([stop]);
+    expect(replayed).toMatchObject({ status: 'applied', revision: applied.revision });
+    expect(await revisionNow()).toBe(before);
+
+    // Another device pulls the kept task as a plain, live task.
+    const pull = await app.inject({
+      method: 'GET',
+      url: `/api/v1/sync/pull?workspaceId=${owner.workspace.id}&sinceRevision=${since}&limit=500`,
+      headers: owner.headers,
+    });
+    const kept = pull
+      .json()
+      .changes.filter((c) => c.entityId === viaSync.rows[0].id)
+      .at(-1);
+    expect(kept.operation).not.toBe('delete');
+    expect(kept.data.seriesId).toBeNull();
+  });
 });
