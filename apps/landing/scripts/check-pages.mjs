@@ -25,6 +25,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { SITE_ROUTES, VUE_PAGES, canonicalUrl, distPath } from './routes.js';
+import { STORE_REQUIRED_ROUTES } from './static-pages.js';
 import { SECTIONS } from '../src/enterprise/page.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -118,6 +119,22 @@ for (const { route, kind } of SITE_ROUTES) {
       problems.push(`.htaccess must end with the 404 rule, not "${rewrites.at(-1)}" (a soft 404 serves the homepage)`);
     }
   }
+}
+
+// The URLs a store console names (Play's Data safety account-deletion link,
+// the privacy and support URLs) are fetched by reviewers, and a 404 there is a
+// rejected release — /delete-account was one on 2026-11-09. CI has the same
+// check; this one runs locally, before a tag.
+for (const route of ['privacy', 'support', 'delete-account']) {
+  if (!STORE_REQUIRED_ROUTES.includes(route)) problems.push(`/${route} is not in STORE_REQUIRED_ROUTES`);
+}
+for (const route of STORE_REQUIRED_ROUTES) {
+  const file = path.join(DIST, distPath(route));
+  if (!existsSync(file)) {
+    problems.push(`/${route} was not built — a store console links to it`);
+    continue;
+  }
+  if (!readFileSync(file, 'utf8').includes('info@bubiapps.com')) problems.push(`/${route} has no contact address`);
 }
 
 if (problems.length) {
