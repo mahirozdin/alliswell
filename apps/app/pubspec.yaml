@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.19.1+51
+version: 1.19.2+52
 environment:
   sdk: ^3.12.0
 
@@ -70,7 +70,7 @@ dependencies:
   # from github.com/BubiApps-LTD/markdown_forge — changes to it land THERE and
   # come back as a version bump. It cannot see AwTokens, `.tr()` or riverpod —
   # the seams are in `features/notes/markdown/markdown_forge_adapters.dart`.
-  markdown_forge: ^0.1.0
+  markdown_forge: ^0.1.1
   # 12.x (beta) is REQUIRED on AGP 9: 11.0.2 skips applying its own Kotlin
   # plugin when it detects AGP 9, expecting Flutter to compile its Kotlin —
   # which Flutter 3.44 does not, so the release build cannot find
