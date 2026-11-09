@@ -69,8 +69,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Reading mode text is selectable and select-all copies the '
-      'whole note (#43)', (tester) async {
+  testWidgets('#43 select-all copies the whole note', (tester) async {
     tester.view
       ..physicalSize = const Size(1200, 700)
       ..devicePixelRatio = 1;
@@ -90,9 +89,9 @@ void main() {
     // The last line is far below the 700 px screen.
     expect(find.text('Notun son satırı.'), findsNothing);
 
+    final first = find.text('İlk paragraf burada.');
     final gesture = await tester.startGesture(
-      tester.getTopLeft(find.text('İlk paragraf burada.')) +
-          const Offset(2, 2),
+      tester.getTopLeft(first) + const Offset(2, 2),
       kind: PointerDeviceKind.mouse,
     );
     addTearDown(gesture.removePointer);
@@ -111,9 +110,7 @@ void main() {
     expect(copied!.trimRight(), endsWith('Notun son satırı.'));
   });
 
-  testWidgets('a mouse drag over one paragraph copies just that text (#43)', (
-    tester,
-  ) async {
+  testWidgets('#43 a drag copies one paragraph', (tester) async {
     tester.view
       ..physicalSize = const Size(1200, 700)
       ..devicePixelRatio = 1;
