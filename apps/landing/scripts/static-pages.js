@@ -100,6 +100,35 @@ export const STATIC_PAGES = [
     ],
   },
   {
+    // Google Play's Data safety form links here as the account-deletion URL,
+    // and Play REJECTS a release when it 404s (1.19.0, 2026-11-09). The page
+    // used to be a file placed by hand in the server's docroot; every deploy
+    // replaces the docroot with this build, so it vanished. Generated pages
+    // cannot: if it is not in this list, it does not exist.
+    route: 'delete-account',
+    file: 'docs/DELETE-ACCOUNT.md',
+    title: 'Delete your account — AllisWell',
+    description:
+      'How to delete your AllisWell account and its data, in the app or by e-mail, what is erased and what is kept.',
+    lang: 'en',
+    alternates: [
+      { hreflang: 'en', label: 'English', href: '/delete-account' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/delete-account/tr' },
+    ],
+  },
+  {
+    route: 'delete-account/tr',
+    file: 'docs/DELETE-ACCOUNT.tr.md',
+    title: 'Hesabını sil — AllisWell',
+    description:
+      'AllisWell hesabını ve verilerini uygulamadan ya da e-postayla silmek: neler silinir, neler kalır.',
+    lang: 'tr',
+    alternates: [
+      { hreflang: 'en', label: 'English', href: '/delete-account' },
+      { hreflang: 'tr', label: 'Türkçe', href: '/delete-account/tr' },
+    ],
+  },
+  {
     // OPH-412 (landing-audit K10): the hosted service opens accounts, so it
     // has terms, on this domain and in both languages. The Turkish twin
     // follows the site's `/x/tr` pairs (sitemap.js reads them that way);
@@ -172,6 +201,10 @@ export const STORE_REQUIRED_ROUTES = Object.freeze([
   'privacy/tr',
   'support',
   'support/tr',
+  // The Play Console Data safety account-deletion URL. A page a store console
+  // names must be on this list, or nothing notices when it goes.
+  'delete-account',
+  'delete-account/tr',
 ]);
 
 /**

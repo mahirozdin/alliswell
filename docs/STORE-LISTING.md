@@ -612,7 +612,12 @@ security-logging note, matching the "Technical logs" section of `docs/PRIVACY.md
   https://alliswell.space/delete-account
   ```
 
-  ✅ **Live** at <https://alliswell.space/delete-account>. It states: the in-app path
+  ✅ **Live** at <https://alliswell.space/delete-account> (Turkish: `/delete-account/tr`),
+  generated from [DELETE-ACCOUNT.md](DELETE-ACCOUNT.md) like the privacy and
+  support pages. It used to be a hand-placed file in the server's docroot; a
+  deploy replaces the docroot, the page 404'd and Play rejected 1.19.0
+  (2026-11-09). It is now on `STORE_REQUIRED_ROUTES`, so `check:pages` and CI
+  fail when it is missing. It states: the in-app path
   (Settings → Delete account), the 3-day grace period and how to cancel, exactly
   what is erased, what is retained and for how long, and an off-app route
   (**info@bubiapps.com**) for users who can no longer sign in. Apple has the
