@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart'
     show TargetPlatform, defaultTargetPlatform, kIsWeb;
@@ -343,7 +344,7 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
 
   // Taps/actions from EITHER lane route through the one handler — an AlarmKit
   // "Onayla"/"Ertele" is the same acknowledge/snooze as a notification button.
-  void onEvent(NotificationEvent event) => handleNotificationEvent(
+  Future<void> onEvent(NotificationEvent event) => handleNotificationEvent(
     event,
     tasks: ref.read(taskStoreProvider),
     reminders: ref.read(reminderStoreProvider),
@@ -352,8 +353,61 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
   );
   final responses = gateway.events.listen(onEvent);
   ref.onDispose(responses.cancel);
-  final alarmKitResponses = alarmKit.events.listen(onEvent);
-  ref.onDispose(alarmKitResponses.cancel);
+  // AlarmKit presses are PULLED (§2b.3): one pull when this listener attaches,
+  // one per native `onActionsPending`. An entry is acked only after its write;
+  // one this bridge cannot express yet stays queued for the next pull.
+  var pulling = false;
+  var again = false;
+  Future<void> pullAlarmKit() async {
+    if (pulling) {
+      again = true;
+      return;
+    }
+    pulling = true;
+    try {
+      do {
+        again = false;
+        for (final pulled in await alarmKit.pullPendingActions()) {
+          final event = _legacyEventFor(pulled);
+          if (event == null) continue;
+          await onEvent(event);
+          await alarmKit.ackActions([pulled.eventId]);
+        }
+        await alarmKit.copyNativeFailures(ref.read(alarmLogProvider));
+      } while (again);
+    } on Object {
+      // The container is gone or a write failed: the queue keeps the entry.
+    } finally {
+      pulling = false;
+    }
+  }
+
+  final alarmKitPending = alarmKit.actionsPending.listen(
+    (_) => unawaited(pullAlarmKit()),
+  );
+  ref.onDispose(alarmKitPending.cancel);
 
   return scheduler;
 });
+
+/// A pulled AlarmKit press as the notification handler's `(actionId,
+/// payload)` pair — the shape it took before contract v2. Null when that shape
+/// cannot carry it (a snooze known only by its `untilMs`, an acknowledgement
+/// without a reminder id); such an entry stays in the native queue.
+NotificationEvent? _legacyEventFor(AlarmKitActionEvent event) {
+  if (event.taskIds.isEmpty) return null;
+  final actionId = switch (event.action) {
+    'complete' => kActionComplete,
+    'acknowledge' when event.reminderId != null => kActionAcknowledge,
+    'snooze' when event.preset != null => snoozeActionId(event.preset!),
+    _ => null,
+  };
+  if (actionId == null) return null;
+  return NotificationEvent(
+    actionId: actionId,
+    payload: jsonEncode({
+      'taskId': event.taskIds.first,
+      'reminderId': event.reminderId ?? '',
+    }),
+  );
+}
