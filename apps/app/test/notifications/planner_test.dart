@@ -1,7 +1,10 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/notifications/alarmkit.dart';
+import 'package:alliswell/src/notifications/alarmkit_identity.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/reminder_profile.dart';
+import 'package:alliswell/src/notifications/reminder_store.dart';
 
 final now = DateTime.utc(2026, 7, 15, 12);
 
@@ -202,5 +205,123 @@ void main() {
       privacyMode: false,
     );
     expect(legacy.first.body, contains('round 1'));
+  });
+  group('AlarmKit occurrence identity (OPH-424, #49)', () {
+    const taskId = '01JTASK0000000000000000001';
+    AlarmInput urgent({
+      String reminderId = '01JREM00000000000000000001',
+      String title = 'Toplantı',
+      DateTime? at,
+      String kind = 'remind',
+    }) => AlarmInput(
+      reminderId: reminderId,
+      taskId: taskId,
+      taskTitle: title,
+      kind: kind,
+      remindAt: at ?? DateTime.utc(2026, 7, 16, 9),
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+    );
+    AlarmKitAlarm plan(AlarmInput a) =>
+        planAlarmKitAlarms(alarms: [a], now: now, privacyMode: false).single;
+
+    test(
+      'moving an urgent task from 09:00 to 10:00 changes its AlarmKit id',
+      () {
+        final nine = plan(urgent(at: DateTime.utc(2026, 7, 16, 9)));
+        final ten = plan(urgent(at: DateTime.utc(2026, 7, 16, 10)));
+        expect(nine.id, isNot(ten.id));
+        expect(
+          ten.id,
+          alarmKitOccurrenceId([
+            taskId,
+          ], DateTime.utc(2026, 7, 16, 10).millisecondsSinceEpoch),
+        );
+        expect(ten.members, [taskId]);
+      },
+    );
+
+    test(
+      'a renamed task keeps its AlarmKit id and changes only its fingerprint',
+      () {
+        final before = plan(urgent(title: 'Toplantı'));
+        final after = plan(urgent(title: 'Toplantı (ertelendi)'));
+        expect(after.id, before.id);
+        expect(after.fp, isNot(before.fp));
+        // Sound, labels and preset are presentation too.
+        AlarmKitAlarm withSound(String? s) => planAlarmKitAlarms(
+          alarms: [urgent()],
+          now: now,
+          privacyMode: false,
+          soundName: s,
+        ).single;
+        expect(withSound('aw_chime.caf').id, withSound(null).id);
+        expect(withSound('aw_chime.caf').fp, isNot(withSound(null).fp));
+        AlarmKitAlarm withPreset(String p) => planAlarmKitAlarms(
+          alarms: [urgent()],
+          now: now,
+          privacyMode: false,
+          snoozePreset: p,
+        ).single;
+        expect(withPreset('30_min').id, withPreset('5_min').id);
+        expect(withPreset('30_min').fp, isNot(withPreset('5_min').fp));
+      },
+    );
+
+    test(
+      'a synthetic alarm and its synced reminder row share one AlarmKit id',
+      () {
+        final synthetic = plan(
+          urgent(reminderId: syntheticReminderId('remind', taskId)),
+        );
+        final synced = plan(urgent(reminderId: '01JREM00000000000000000009'));
+        expect(synced.id, synthetic.id);
+        expect(synced.fp, synthetic.fp);
+      },
+    );
+
+    test('remind and due of one task at one instant are one alarm', () {
+      final out = planAlarmKitAlarms(
+        alarms: [
+          urgent(),
+          urgent(reminderId: '01JREM00000000000000000002', kind: 'due'),
+        ],
+        now: now,
+        privacyMode: false,
+      );
+      expect(out, hasLength(1));
+      // Both rows are covered, so neither keeps a notification chain.
+      final covered = {for (final a in out) ...a.reminderIds};
+      expect(covered, {
+        '01JREM00000000000000000001',
+        '01JREM00000000000000000002',
+      });
+      expect(
+        planNotifications(
+          alarms: [
+            urgent(),
+            urgent(reminderId: '01JREM00000000000000000002', kind: 'due'),
+          ],
+          now: now,
+          privacyMode: false,
+          alarmKitReminderIds: covered,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('the bridge gets members, fp and a second-floored fireAtMs', () {
+      final at = DateTime.utc(2026, 7, 16, 9, 0, 0, 750);
+      final args = plan(urgent(at: at)).toArgs();
+      expect(args['fireAtMs'], at.millisecondsSinceEpoch - 750);
+      expect(args['members'], [taskId]);
+      expect(args['taskId'], taskId);
+      expect(args['fp'], isA<int>());
+      expect(
+        args['id'],
+        alarmKitOccurrenceId([taskId], at.millisecondsSinceEpoch - 750),
+      );
+    });
   });
 }

@@ -12,6 +12,29 @@ import 'task.dart';
 import 'task_scope.dart';
 import 'task_when.dart';
 
+/// The snooze target for [preset] pressed at [nowWall] (NOTIFICATIONS.md
+/// §2b.3, native snooze step 2). Pure: offsets add to [nowWall];
+/// `tomorrow_morning` is 09:00:00 on the calendar day after [nowWall]'s,
+/// also when pressed before 09:00. The result keeps [nowWall]'s UTC flag, so a
+/// UTC value can carry zone-free wall-clock fields.
+DateTime snoozeUntilWallClock(String preset, DateTime nowWall) {
+  switch (preset) {
+    case '5_min':
+      return nowWall.add(const Duration(minutes: 5));
+    case '30_min':
+      return nowWall.add(const Duration(minutes: 30));
+    case '1_hour':
+      return nowWall.add(const Duration(hours: 1));
+    case 'tomorrow_morning':
+      final n = nowWall;
+      return n.isUtc
+          ? DateTime.utc(n.year, n.month, n.day + 1, 9)
+          : DateTime(n.year, n.month, n.day + 1, 9);
+    default:
+      throw ArgumentError.value(preset, 'preset');
+  }
+}
+
 /// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
 /// (`inbox`) are excluded — they live only in the Inbox until triaged (OPH-107);
 /// terminal statuses (completed/cancelled/archived) never appear here either.
@@ -560,22 +583,15 @@ class TaskStore {
 
   /// Snooze presets shared with the server (BLUEPRINT §4.9). Offsets are
   /// from "now"; tomorrow_morning is 09:00 on the device's wall clock — the
-  /// server's task-timezone version applies when snoozing over REST.
+  /// server's task-timezone version applies when snoozing over REST. The rule
+  /// itself is [snoozeUntilWallClock], which the native AlarmKit snooze
+  /// mirrors (fixture `test/fixtures/snooze_preset_cases.json`).
   static DateTime snoozeUntilFor(String preset, {DateTime? now}) {
     final base = now ?? DateTime.now();
-    switch (preset) {
-      case '5_min':
-        return base.add(const Duration(minutes: 5));
-      case '30_min':
-        return base.add(const Duration(minutes: 30));
-      case '1_hour':
-        return base.add(const Duration(hours: 1));
-      case 'tomorrow_morning':
-        final local = base.toLocal();
-        return DateTime(local.year, local.month, local.day + 1, 9);
-      default:
-        throw ArgumentError.value(preset, 'preset');
-    }
+    return snoozeUntilWallClock(
+      preset,
+      preset == 'tomorrow_morning' ? base.toLocal() : base,
+    );
   }
 
   /// Silence this task's alarms indefinitely (OPH-178, round 9 #6.7) — WITHOUT

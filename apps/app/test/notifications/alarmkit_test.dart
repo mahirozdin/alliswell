@@ -123,10 +123,12 @@ void main() {
       ).single;
 
       expect(withSound('aw_chime.caf').soundName, 'aw_chime.caf');
-      expect(withSound('aw_chime.caf').id, withSound('aw_chime.caf').id);
+      expect(withSound('aw_chime.caf').fp, withSound('aw_chime.caf').fp);
       // OPH-181's rule, applied to this lane too: changing the sound must
-      // re-schedule, not quietly apply "from the next alarm on".
-      expect(withSound('aw_chime.caf').id, isNot(withSound('aw_ping.caf').id));
+      // re-schedule, not quietly apply "from the next alarm on". Since OPH-424
+      // the sound is presentation: same occurrence id, new fingerprint.
+      expect(withSound('aw_chime.caf').id, withSound('aw_ping.caf').id);
+      expect(withSound('aw_chime.caf').fp, isNot(withSound('aw_ping.caf').fp));
     });
   });
 

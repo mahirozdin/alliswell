@@ -401,7 +401,7 @@ class NotificationScheduler {
     // to prove themselves.
     final accepted = <String>{
       for (final entry in desiredById.entries)
-        if (scheduled.contains(entry.key)) entry.value.reminderId,
+        if (scheduled.contains(entry.key)) ...entry.value.reminderIds,
     };
 
     for (final id in desiredById.keys.toSet().difference(scheduled)) {
@@ -412,7 +412,7 @@ class NotificationScheduler {
       } on Object catch (error) {
         outcome = AlarmKitScheduleResult.failed('$error');
       }
-      if (outcome.ok) accepted.add(alarm.reminderId);
+      if (outcome.ok) accepted.addAll(alarm.reminderIds);
       await log?.record(
         // A refused alarm is a degradation, not a schedule — saying
         // "scheduled" for something the OS threw away is precisely the lie
@@ -437,7 +437,9 @@ class NotificationScheduler {
     // otherwise.
     for (final a in _latest) {
       if (!a.urgent || accepted.contains(a.reminderId)) continue;
-      if (!desiredById.values.any((d) => d.reminderId == a.reminderId)) {
+      if (!desiredById.values.any(
+        (d) => d.reminderIds.contains(a.reminderId),
+      )) {
         await log?.record(
           event: AlarmLogEvent.degraded,
           lane: AlarmLogLane.alarmkit,

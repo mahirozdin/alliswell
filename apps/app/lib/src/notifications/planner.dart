@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../i18n/i18n.dart';
 import 'alarmkit.dart';
+import 'alarmkit_identity.dart';
 import 'gateway.dart';
 import 'reminder_profile.dart';
 
@@ -155,10 +156,11 @@ List<PlannedNotification> planNotifications({
 
 /// Pure AlarmKit lane (OPH-141, NOTIFICATIONS.md §2b): the URGENT alarms, one
 /// AlarmKit alarm each. AlarmKit rings-until-answered natively, so there is NO
-/// re-alert chain here — a single entry per reminder replaces the notification
-/// lane's 5 slots. Ids are content hashes in their OWN namespace (`|alarmkit|`)
-/// so the scheduler's set-diff cancels them on acknowledge, exactly like
-/// notifications. Non-urgent reminders never enter this lane. Windowed and
+/// re-alert chain here — a single entry per occurrence replaces the
+/// notification lane's 5 slots. Ids are occurrence ids (task + instant,
+/// [alarmKitOccurrenceId]) so the scheduler's set-diff cancels them on
+/// acknowledge and replaces them when the time moves; a renamed task keeps its
+/// id and changes only its fingerprint. Non-urgent reminders never enter this lane. Windowed and
 /// past-skipped on the same rules as [planNotifications].
 ///
 /// Capped at [maxAlarms] NEAREST alarms (OPH-182): the per-app AlarmKit ceiling
@@ -180,6 +182,7 @@ List<AlarmKitAlarm> planAlarmKitAlarms({
   String? soundName,
 }) {
   final planned = <AlarmKitAlarm>[];
+  final covered = <int, List<String>>{};
   // Localized HERE, not in Swift: the bridge has no translations, and a
   // hard-coded "Onayla" is how the alert ended up Turkish-only for every user.
   final stopLabel = 'notif.action.acknowledge'.tr();
@@ -198,18 +201,37 @@ List<AlarmKitAlarm> planAlarmKitAlarms({
 
     final title = privacyMode ? 'AllisWell' : alarm.taskTitle;
     final body = privacyMode ? 'notif.privateBody'.tr() : _firstBody(alarm);
+    final members = [alarm.taskId];
+    final id = alarmKitOccurrenceId(members, alarmKitFireAtMs(fireAt));
+    // One task rings once per instant: a snooze lands its remind and due rows
+    // on the same moment, and they are one occurrence (NOTIFICATIONS.md
+    // §2b.3). The second row rides on the first alarm, so the notification
+    // lane still knows AlarmKit covers it.
+    final rows = covered[id];
+    if (rows != null) {
+      rows.add(alarm.reminderId);
+      continue;
+    }
+    final reminderIds = covered[id] = [alarm.reminderId];
 
     planned.add(
       AlarmKitAlarm(
-        id: notificationIdFor(
-          '${alarm.reminderId}|alarmkit|${fireAt.millisecondsSinceEpoch}|$title'
-          '|$soundName',
+        id: id,
+        members: members,
+        fp: alarmKitFingerprint(
+          title: title,
+          body: body,
+          soundName: soundName,
+          stopLabel: stopLabel,
+          snoozeLabel: snoozeLabel,
+          snoozePreset: snoozePreset,
         ),
         title: title,
         body: body,
         fireAt: fireAt,
         taskId: alarm.taskId,
         reminderId: alarm.reminderId,
+        reminderIds: reminderIds,
         stopLabel: stopLabel,
         snoozeLabel: snoozeLabel,
         snoozePreset: snoozePreset,

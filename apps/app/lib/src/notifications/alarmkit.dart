@@ -17,6 +17,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 
+import 'alarmkit_identity.dart';
 import 'gateway.dart';
 
 /// How many alarms the AlarmKit lane may hold at once (OPH-182).
@@ -29,25 +30,38 @@ import 'gateway.dart';
 const int kMaxAlarmKitAlarms = 8;
 
 /// One AlarmKit alarm we want to exist on iOS 26+. Unlike the notification
-/// chain, an AlarmKit alarm is a SINGLE entry per reminder — AlarmKit does the
-/// ring-until-answered presentation natively, so there is no pre-scheduled
-/// re-alert chain to model. [id] is a content hash (same scheme as
-/// [PlannedNotification]) so set-diffing cancels it on acknowledge.
+/// chain, an AlarmKit alarm is a SINGLE entry per occurrence — AlarmKit does
+/// the ring-until-answered presentation natively, so there is no pre-scheduled
+/// re-alert chain to model. [id] is the occurrence id (members + instant,
+/// NOTIFICATIONS.md §2b.3) so set-diffing cancels it on acknowledge and
+/// replaces it when the time moves; [fp] fingerprints the presentation.
 class AlarmKitAlarm {
-  const AlarmKitAlarm({
+  AlarmKitAlarm({
     required this.id,
+    required this.members,
+    required this.fp,
     required this.title,
     required this.body,
     required this.fireAt,
     required this.taskId,
     required this.reminderId,
+    List<String>? reminderIds,
     this.stopLabel = '',
     this.snoozeLabel = '',
     this.snoozePreset = '',
     this.soundName,
-  });
+  }) : reminderIds = reminderIds ?? [reminderId];
 
+  /// `alarmKitOccurrenceId(members, alarmKitFireAtMs(fireAt))`.
   final int id;
+
+  /// The task ids this alarm rings for, sorted and unique. The member key is
+  /// the task id, never the reminder id (§2b.3).
+  final List<String> members;
+
+  /// `alarmKitFingerprint(...)` of title, body, sound, labels and preset: a
+  /// change here rebuilds the alarm under the same [id].
+  final int fp;
   final String title;
   final String body;
 
@@ -55,6 +69,10 @@ class AlarmKitAlarm {
   final DateTime fireAt;
   final String taskId;
   final String reminderId;
+
+  /// Every reminder row this occurrence rings for (a snoozed task's remind and
+  /// due rows land on one instant). The notification lane skips all of them.
+  final List<String> reminderIds;
 
   /// The alert's two buttons, already in the user's language (OPH-182). The
   /// bridge cannot localize: it has no access to the app's translations, and a
@@ -69,14 +87,16 @@ class AlarmKitAlarm {
   final String snoozePreset;
 
   /// The installed iOS sound file (OPH-181), or null for the system alarm sound.
-  /// Part of the id seed, so changing the sound reschedules.
+  /// Part of the fingerprint, so changing the sound reschedules.
   final String? soundName;
 
   Map<String, Object?> toArgs() => {
     'id': id,
+    'members': members,
+    'fp': fp,
     'title': title,
     'body': body,
-    'fireAtMs': fireAt.toUtc().millisecondsSinceEpoch,
+    'fireAtMs': alarmKitFireAtMs(fireAt),
     'taskId': taskId,
     'reminderId': reminderId,
     'stopLabel': stopLabel,
