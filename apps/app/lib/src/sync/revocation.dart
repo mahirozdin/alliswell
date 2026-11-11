@@ -51,8 +51,14 @@ const Map<String, String> _noteChildren = {'note_link_rows': 'note_id'};
 /// Device-local records that are NOT replicated content and therefore survive
 /// a revocation: the person's own diagnostic logs. Losing access to a team's
 /// workspace is not a reason to erase the evidence of what their own phone
-/// did.
-const Set<String> kDeviceLocalTables = {'alarm_events', 'share_events'};
+/// did. `action_receipts` (OPH-421) is the same kind of record: which alarm
+/// actions this device already applied, content-free, and the guard against
+/// applying a redelivered one twice.
+const Set<String> kDeviceLocalTables = {
+  'alarm_events',
+  'share_events',
+  'action_receipts',
+};
 
 /// Every table this module has an opinion about. [revocationCoverage] compares
 /// it with the live schema so a table added in a later version cannot quietly

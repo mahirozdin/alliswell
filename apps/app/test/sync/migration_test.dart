@@ -50,6 +50,8 @@ void main() {
     // before it, too. Deleting the v29 step left the suite green; that is how
     // this was found, and it had been true for ten versions.
     //
+    // v40 (OPH-421): the device-local action receipts — a v1 device had none.
+    await db.customStatement('DROP TABLE action_receipts');
     // v37 (EE-296): who made a task. `tickets` and `task_assignments` go
     // whole below, and their v37 column and index go with them.
     await db.customStatement('ALTER TABLE tasks DROP COLUMN created_by');
@@ -228,6 +230,9 @@ void main() {
       // v16 (OPH-242): the share pipeline's diagnostic trail, same story —
       // device-local, never synced, blank until something is shared here.
       expect(await db.select(db.shareEvents).get(), isEmpty);
+      // v40 (OPH-421): the alarm-action receipts, device-local and created
+      // empty — no action had been answered under this ledger yet.
+      expect(await db.select(db.actionReceipts).get(), isEmpty);
       // v17 (OPH-248) added a `content_format` COLUMN with no backfill.
       // v19 (OPH-274, ADR-0033) is the backfill it never needed until markdown
       // became the only canonical form — and it is the one migration in this
@@ -403,7 +408,7 @@ void main() {
       await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -429,6 +434,7 @@ void main() {
   Future<void> seedV24Database() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     for (final drop in [
+      'DROP TABLE action_receipts', // v40
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       // v37 — an indexed column cannot be dropped, so the index goes first.
@@ -546,7 +552,7 @@ void main() {
       expect(workIndexes, hasLength(2));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
     },
   );
@@ -565,6 +571,7 @@ void main() {
     // none of it, and a fixture that kept a later column would have the step
     // that adds it fail the open (OPH-350 found this one).
     for (final drop in [
+      'DROP TABLE action_receipts', // v40
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       'DROP INDEX idx_tickets_work_task', // v37
@@ -635,7 +642,7 @@ void main() {
       expect(filled.assetId, 'A1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
     },
   );
@@ -646,6 +653,7 @@ void main() {
   /// with a real mapping — the one row whose loss would duplicate an event.
   Future<void> seedV37AppleDatabase() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement('DROP TABLE action_receipts'); // v40
     await db.customStatement(
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
     );
@@ -694,7 +702,7 @@ void main() {
       );
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
 
       // A second open is a no-op, not a second ALTER.
@@ -710,6 +718,7 @@ void main() {
   /// person will type the name of into the global search.
   Future<void> seedV38FileDatabase() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement('DROP TABLE action_receipts'); // v40
     await db.customStatement(
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
     );
@@ -740,12 +749,112 @@ void main() {
       expect(hits.single.id, 'F1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
 
       // A second open is a no-op, not a second ALTER.
       final again = AwDatabase(DatabaseConnection(NativeDatabase(file)));
       expect(await again.select(again.fileRows).get(), hasLength(1));
+      await again.close();
+    },
+  );
+
+  /// Every table's columns and rows, in a stable order, so a step that should
+  /// touch one table can be proven to have touched no other.
+  Future<Map<String, Object>> snapshotTables(
+    AwDatabase db, {
+    required Set<String> except,
+  }) async {
+    final tables = await db
+        .customSelect(
+          "SELECT name FROM sqlite_master WHERE type = 'table' "
+          "AND name NOT LIKE 'sqlite_%' ORDER BY name",
+        )
+        .get();
+    final out = <String, Object>{};
+    for (final t in tables) {
+      final name = t.read<String>('name');
+      if (except.contains(name)) continue;
+      final columns = await db.customSelect('PRAGMA table_info($name)').get();
+      final rows = await db
+          .customSelect('SELECT * FROM $name ORDER BY rowid')
+          .get();
+      out[name] = {
+        'columns': [for (final c in columns) c.data.toString()],
+        'rows': [for (final r in rows) r.data.toString()],
+      };
+    }
+    return out;
+  }
+
+  /// A device on v39 when the receipts step arrives (OPH-421): the synced
+  /// tables hold real rows, with a write still queued behind them, so the
+  /// snapshot below has something to lose.
+  Future<Map<String, Object>> seedV39Database() async {
+    final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement('DROP TABLE action_receipts'); // v40
+    await db.customStatement('PRAGMA user_version = 39');
+    await db.customStatement('''
+      INSERT INTO tasks (id, workspace_id, title, status, priority, timezone,
+                         is_urgent, requires_acknowledgement, sort_order, revision)
+      VALUES ('T1', 'W1', 'Acil kontrol', 'open', 'high',
+              'Europe/Istanbul', 1, 1, 0, 12)
+    ''');
+    await db.customStatement('''
+      INSERT INTO reminders (id, task_id, remind_at, kind, snooze_count)
+      VALUES ('R1', 'T1', '2026-11-12T09:00:00.000Z', 'alarm', 2)
+    ''');
+    await db.customStatement('''
+      INSERT INTO pending_mutations (id, workspace_id, entity_type, entity_id,
+                                     operation, local_updated_at, created_at, attempts)
+      VALUES ('M1', 'W1', 'reminder', 'R1', 'update',
+              '2026-11-12T09:05:00.000Z', '2026-11-12T09:05:00.000Z', 0)
+    ''');
+    final before = await snapshotTables(db, except: {'action_receipts'});
+    await db.close();
+    return before;
+  }
+
+  test(
+    'v39 → v40 adds action_receipts without touching synced tables',
+    () async {
+      final before = await seedV39Database();
+      expect(before, isNot(contains('action_receipts')));
+      expect(before, contains('tasks'));
+
+      final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+      // The table exists, empty, with exactly the contract's three columns.
+      expect(await db.select(db.actionReceipts).get(), isEmpty);
+      final columns = await db
+          .customSelect('PRAGMA table_info(action_receipts)')
+          .get();
+      expect(
+        {
+          for (final c in columns)
+            c.read<String>('name'): (
+              c.read<String>('type'),
+              c.read<int>('notnull'),
+              c.read<int>('pk'),
+            ),
+        },
+        {
+          'event_id': ('TEXT', 1, 1),
+          'action': ('TEXT', 1, 0),
+          'applied_at': ('INTEGER', 1, 0),
+        },
+      );
+
+      // Every other table — columns AND rows — is what it was on v39.
+      final after = await snapshotTables(db, except: {'action_receipts'});
+      expect(after, before);
+
+      final version = await db.customSelect('PRAGMA user_version').getSingle();
+      expect(version.data['user_version'], 40);
+      await db.close();
+
+      // A second open is a no-op, not a second CREATE.
+      final again = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+      expect(await again.select(again.actionReceipts).get(), isEmpty);
       await again.close();
     },
   );
@@ -782,7 +891,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
     },
   );
@@ -829,7 +938,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 39);
+      expect(version.data['user_version'], 40);
       await db.close();
     },
   );
