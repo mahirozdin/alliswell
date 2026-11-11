@@ -459,7 +459,9 @@ notifications with (confirm against the plugin version in `pubspec.lock`) and `p
 only when (4) succeeded. A group snooze or stop is one event for every member.
 
 **Plan pass (Dart):** pull and apply first; then for each `scheduledAlarms` row — `alerting` and
-some member still due at that minute (and inside the stale window) → untouched; `alerting`
+some member still due at that minute (and inside the stale window) → untouched; `alerting`,
+`origin: native` and its `eventId` without a receipt from before this pass's drain (inside the
+stale window) → untouched, the model has not seen that snooze yet; `alerting`
 otherwise → `stop`, **never** `cancel` (no ledger record: only after the stale window);
 `origin: native` whose `eventId` has no receipt yet → untouched; `id` not desired → `cancel`;
 desired with another `fp` → `cancel` + `schedule` under the same `id`; desired and missing →

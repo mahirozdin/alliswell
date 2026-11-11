@@ -631,7 +631,10 @@ class AlarmKitPassPlan {
 /// Per [current] row, in this order:
 /// 1. `alerting` — kept while some member task still has an active urgent
 ///    occurrence in the alarm's UTC minute and `now - fireAtMs` is inside
-///    [staleWindow]; otherwise stopped. A row with no ledger record cannot be
+///    [staleWindow]; otherwise stopped. An `origin: native` row whose event
+///    has no receipt is kept inside [staleWindow] whatever the model says: the
+///    model has not heard about that snooze yet (receipts are read before the
+///    drain, so this covers an event the same pass's drain applied). A row with no ledger record cannot be
 ///    judged and is stopped only once it is older than [staleWindow].
 /// 2. `origin: native` whose event has no receipt — kept: the model has not
 ///    heard about that snooze yet.
@@ -671,6 +674,22 @@ AlarmKitPassPlan planAlarmKitPass({
   int minuteOf(int ms) => ms ~/ 60000;
   int instantMs(AlarmInput a) => alarmKitFireAtMs(alarmFireAt(a));
 
+  bool unapplied(AlarmKitScheduled row) =>
+      row.origin == 'native' &&
+      row.eventId != null &&
+      !appliedEventIds.contains(row.eventId);
+
+  // The snooze that made a native [row] is still on its way into the model,
+  // which may yet say the old instant: whatever is due by now, or rang in this
+  // alarm's minute, is this alarm's to ring.
+  Iterable<AlarmInput> heldByNative(AlarmKitScheduled row) => occurrences(
+    row,
+    (a) =>
+        instantMs(a) <= nowMs ||
+        (row.fireAtMs != null &&
+            minuteOf(instantMs(a)) == minuteOf(row.fireAtMs!)),
+  );
+
   for (final row in current) {
     handled.add(row.id);
     final fireAtMs = row.fireAtMs;
@@ -685,6 +704,14 @@ AlarmKitPassPlan planAlarmKitPass({
         continue;
       }
       final fresh = nowMs - fireAtMs < staleWindow.inMilliseconds;
+      if (fresh && unapplied(row)) {
+        // A native snooze ringing before the model heard of it (its event is
+        // unapplied, or applied by this very drain and not yet in [alarms]):
+        // the model still says the old instant, so no member matches this
+        // minute. It is current all the same.
+        held.addAll(heldByNative(row).map((a) => a.reminderId));
+        continue;
+      }
       final live = fresh
           ? occurrences(
               row,
@@ -699,22 +726,8 @@ AlarmKitPassPlan planAlarmKitPass({
       continue;
     }
 
-    final eventId = row.eventId;
-    if (row.origin == 'native' &&
-        eventId != null &&
-        !appliedEventIds.contains(eventId)) {
-      // The snooze that made this alarm is still on its way into the model,
-      // which may yet say the old instant: whatever is due by now, or rang in
-      // this alarm's minute, is this alarm's to ring.
-      held.addAll(
-        occurrences(
-          row,
-          (a) =>
-              instantMs(a) <= nowMs ||
-              (fireAtMs != null &&
-                  minuteOf(instantMs(a)) == minuteOf(fireAtMs)),
-        ).map((a) => a.reminderId),
-      );
+    if (unapplied(row)) {
+      held.addAll(heldByNative(row).map((a) => a.reminderId));
       final wanted = desiredById[row.id];
       if (wanted != null) held.addAll(wanted.reminderIds);
       continue;

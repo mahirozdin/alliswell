@@ -750,6 +750,59 @@ void main() {
     );
 
     test(
+      'a ringing native snooze survives the pass whose drain applies its event',
+      () async {
+        // A rang at 11:59; Ertele → B (12:04, e1). The app opens at 12:04:30
+        // while B rings. The drain applies e1, but the replica has not emitted
+        // yet, so the plan still sees 11:59 delivered.
+        final a = DateTime.utc(2026, 7, 15, 11, 59);
+        final b = DateTime.utc(2026, 7, 15, 12, 4);
+        clock = DateTime.utc(2026, 7, 15, 12, 4, 30);
+        final after = urgent(
+          at: a,
+          status: 'snoozed',
+          snoozedUntil: b,
+          snoozeRound: 1,
+        );
+        final native = planned(after);
+        alarmKit.foreign[native.id] = AlarmKitScheduled(
+          id: native.id,
+          fp: native.fp,
+          state: AlarmKitAlarmState.alerting,
+          members: native.members,
+          fireAtMs: fireAtMs(b),
+          origin: 'native',
+          eventId: 'e1',
+        );
+        onDrain = () => receipts.add('e1');
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        alarms.add([urgent(at: a, status: 'delivered')]);
+        await pump();
+        expect(drains, greaterThan(0));
+        expect(
+          alarmKit.stopped,
+          isEmpty,
+          reason: 'the snoozed ring is current',
+        );
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.foreign, contains(native.id));
+        expect(gateway.scheduled, isEmpty);
+
+        // The write lands in the replica: the occurrence is B, still current.
+        alarms.add([after]);
+        await pump();
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.scheduled, isEmpty, reason: 'no duplicate of B');
+        expect(alarmKit.foreign, contains(native.id));
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
+    test(
       'a synthetic alarm keeps its AlarmKit id when its reminder row syncs down',
       () async {
         final at = now.add(const Duration(hours: 1));
@@ -960,6 +1013,48 @@ void main() {
         expect(at(stale + const Duration(minutes: 1)).toStop.map((r) => r.id), [
           42,
         ]);
+      },
+    );
+
+    test(
+      'an alerting native alarm whose event has no receipt is kept until the stale window',
+      () {
+        final b = noon.add(const Duration(minutes: 4));
+        AlarmKitPassPlan at(Duration after, {Set<String> applied = const {}}) =>
+            planAlarmKitPass(
+              desired: const [],
+              current: [
+                AlarmKitScheduled(
+                  id: 42,
+                  fp: 7,
+                  state: AlarmKitAlarmState.alerting,
+                  members: const ['TASK1'],
+                  fireAtMs: b.millisecondsSinceEpoch,
+                  origin: 'native',
+                  eventId: 'e1',
+                ),
+              ],
+              // The model still says the pre-snooze 12:00.
+              alarms: [row(noon)],
+              appliedEventIds: applied,
+              now: b.add(after),
+              staleWindow: stale,
+            );
+        final early = at(const Duration(seconds: 30));
+        expect(early.toStop, isEmpty);
+        expect(early.toCancel, isEmpty);
+        expect(early.held, contains('REM1'));
+        expect(at(stale + const Duration(seconds: 1)).toStop.map((r) => r.id), [
+          42,
+        ]);
+        // Once applied, a model that disagrees supersedes it.
+        expect(
+          at(
+            const Duration(seconds: 30),
+            applied: const {'e1'},
+          ).toStop.map((r) => r.id),
+          [42],
+        );
       },
     );
 
