@@ -5,8 +5,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/date_format.dart';
+import 'package:alliswell/src/core/day_boundary.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
@@ -176,6 +178,37 @@ void main() {
     expect(find.textContaining('Rings again at'), findsOneWidget);
     // Let the snackbar's own dismiss timer (and the session's) run out, or the
     // test tears down with a pending timer.
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  // ── #46 / OPH-422: the Turkish suffix follows the spoken time ─────────────
+
+  testWidgets('Turkish snooze tile reads 09:05’te çalar, not 09:05’de', (
+    tester,
+  ) async {
+    // A fixed 09:00 so "5 dk" lands on 09:05 and "30 dk" on 09:30.
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(),
+        nowProvider.overrideWithValue(() => DateTime(2030, 6, 1, 9)),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+    await seed();
+    await pumpRing(tester);
+
+    expect(find.text('09:05’te çalar'), findsOneWidget);
+    expect(find.text('09:30’da çalar'), findsOneWidget);
+    expect(find.text('10:00’da çalar'), findsOneWidget);
+    expect(find.textContaining('09:05’de'), findsNothing);
+
+    await tester.tap(find.byKey(const Key('alarm-snooze-30_min')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('09:30’da tekrar çalacak'), findsOneWidget);
     await tester.pump(const Duration(seconds: 6));
   });
 

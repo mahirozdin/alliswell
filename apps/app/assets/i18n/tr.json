@@ -943,8 +943,8 @@
       "showHow": "Nasıl açılır?",
       "close": "7 gün gizle"
     },
-    "snoozeRingsAt": "{time}’de çalar",
-    "snoozeConfirmed": "{time}’de tekrar çalacak",
+    "snoozeRingsAt": "{time} çalar",
+    "snoozeConfirmed": "{time} tekrar çalacak",
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
     "startSound": "Sesi başlat",

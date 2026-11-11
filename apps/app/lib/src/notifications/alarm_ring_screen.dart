@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/date_format.dart';
+import '../core/day_boundary.dart';
 import '../core/persisted_prefs.dart';
+import '../core/tr_locative.dart';
 import '../features/tasks/data/task_store.dart';
 import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
@@ -124,7 +126,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   void _snooze(String preset) {
     // Say what will happen, in the moment it happens (OPH-177, round 9 #6.5:
     // "5 dk sonra ne olacak?" should not be a question the user has to ask).
-    final until = TaskStore.snoozeUntilFor(preset);
+    final until = TaskStore.snoozeUntilFor(
+      preset,
+      now: ref.read(nowProvider)(),
+    );
     _confirm(until);
     _run(
       () => ref
@@ -185,9 +190,14 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         content: Text(
           'alarm.snoozeConfirmed'.tr(
             args: {
-              'time': awFormatTime(
-                until,
-                format: format ?? ref.read(dateFormatProvider),
+              // Turkish takes the suffix of the spoken time (#46):
+              // "09:05’te", "09:30’da"; the catalogue no longer hard-codes it.
+              'time': awAt(
+                awFormatTime(
+                  until,
+                  format: format ?? ref.read(dateFormatProvider),
+                ),
+                languageCode: AwI18n.instance.locale.languageCode,
               ),
             },
           ),
@@ -434,9 +444,18 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                                   Text(
                                     'alarm.snoozeRingsAt'.tr(
                                       args: {
-                                        'time': awFormatTime(
-                                          TaskStore.snoozeUntilFor(preset),
-                                          format: dateFormat,
+                                        'time': awAt(
+                                          awFormatTime(
+                                            TaskStore.snoozeUntilFor(
+                                              preset,
+                                              now: ref.watch(nowProvider)(),
+                                            ),
+                                            format: dateFormat,
+                                          ),
+                                          languageCode: AwI18n
+                                              .instance
+                                              .locale
+                                              .languageCode,
                                         ),
                                       },
                                     ),
