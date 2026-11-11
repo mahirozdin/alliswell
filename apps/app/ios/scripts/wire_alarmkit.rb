@@ -14,8 +14,10 @@ project = Xcodeproj::Project.open(project_path)
 
 runner = project.targets.find { |t| t.name == 'Runner' }
 widget = project.targets.find { |t| t.name == 'AllisWellWidgetExtension' }
+tests = project.targets.find { |t| t.name == 'RunnerTests' }
 raise 'Runner target not found' unless runner
 raise 'AllisWellWidgetExtension target not found' unless widget
+raise 'RunnerTests target not found' unless tests
 
 runner_group = project.main_group['Runner']
 raise 'Runner group not found' unless runner_group
@@ -45,6 +47,22 @@ add_source(runner, bridge_ref, 'Runner/AlarmKitBridge.swift')
 shared_ref = file_ref(shared_group, 'AWAlarmShared.swift')
 add_source(runner, shared_ref, 'Shared/AWAlarmShared.swift')
 add_source(widget, shared_ref, 'Shared/AWAlarmShared.swift')
+
+# OPH-429 — the occurrence id and fingerprint (NOTIFICATIONS.md 2b.3). Foundation
+# only, so the widget extension compiles it too: a native snooze inside the
+# widget process names the same alarm Dart would plan.
+identity_ref = file_ref(shared_group, 'AWAlarmIdentity.swift')
+add_source(runner, identity_ref, 'Shared/AWAlarmIdentity.swift')
+add_source(widget, identity_ref, 'Shared/AWAlarmIdentity.swift')
+
+# XCTest sources go into the one existing RunnerTests target (hosted in
+# Runner.app, `@testable import Runner`); never a second test target.
+tests_group = project.main_group['RunnerTests']
+raise 'RunnerTests group not found' unless tests_group
+
+%w[AlarmIdentityTests.swift].each do |name|
+  add_source(tests, file_ref(tests_group, name), "RunnerTests/#{name}")
+end
 
 project.save
 puts "saved #{project_path}"
