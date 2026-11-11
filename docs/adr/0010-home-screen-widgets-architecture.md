@@ -131,3 +131,31 @@ Three hard platform facts shape everything (full citations in docs/WIDGETS.md):
   `onOpenURL`/router must accept `task/{id}` and a new `add` route.
 - Establishes docs/WIDGETS.md as the binding widget plan (the NOTIFICATIONS.md /
   CALDAV.md analog) and DESIGN §8 as the widget visual spec.
+
+## Revision — 2026-11-12 (#50; OPH-437, OPH-438, OPH-451)
+
+Decision 5 said the WidgetKit timeline "re-buckets Today/Overdue when the app never opens". On iOS
+that was not true: every timeline entry, the midnight ones included, rendered the one snapshot Dart
+had written, bucketed for the day it was written. After midnight the widget showed yesterday's
+Today under today's date until the app ran. Android was right all along — its midnight worker runs
+Dart.
+
+1. **The snapshot carries per-day views (version 6).** `days[]` holds today and the next two days,
+   each a full view: date header, open count and its label, the next task, the buckets with that
+   day's calendar rows, and every project view. Day 0 equals the top-level fields, which stay in
+   place so an older extension still renders. A task completed today is not a dimmed row tomorrow.
+2. **Each entry renders its own day.** The extension picks the `days[]` element equal to the
+   entry's local date (one pure function, tested from the Runner test target). Past the last day
+   it shows a **stale state**: the header date stays correct, the list is replaced by
+   "Liste güncel değil · Güncellemek için aç", and the counter and the next task are hidden. The
+   widget never shows an old list under a new date.
+3. **What stays in Dart.** Grouping, the DESIGN §8 W1/W9 rules, labels and date formats are still
+   computed only in Dart; native code chooses a day and draws it. The snapshot size limit is
+   measured and locked by a test.
+4. **One more write.** When the app goes to the background it writes the last snapshot and reloads
+   the timelines (a foreground reload is outside WidgetKit's budget). The `home_widget`
+   interactivity callback is registered only after the App Group is set.
+
+Not in this revision: a widget that stays current while the app is swiped away (self-fetch with
+its own widget token) has its own ADRs; iOS background refresh and silent push stay off
+(ADR-0038 §8).

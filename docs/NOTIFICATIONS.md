@@ -342,6 +342,139 @@ edited was a week in which the 40-slot window never advanced. There is now an
 `AppLifecycleListener` and a six-hour heartbeat, both injected as a seam so a
 pure scheduler test needs no `WidgetsBinding`.
 
+### 2b.3 AlarmKit channel contract v2 (#46–#49, 2026-11-12)
+
+The single agreement between the Dart lane (`lib/src/notifications/alarmkit.dart`, `scheduler.dart`,
+`actions.dart`) and the Swift lane (`ios/Runner/AlarmKitBridge.swift`, `ios/Shared/*`). When this
+text and a task brief differ, this text wins and the other side adapts; a change to the contract
+edits this section in the same commit. Decisions behind it: ADR-0015 revision 2026-11-12,
+[ADR-0068](adr/0068-urgent-alarms-in-one-minute-ring-as-one.md). §2b.1's "Dart drains, native
+pushes `onAlarmAction`" is replaced by the pull model below; everything else in §2b.1 stands.
+
+**Channel** `alliswell/alarmkit` (`MethodChannel`). Every AlarmKit call stays under
+`#if canImport(AlarmKit) && os(iOS)` and `@available(iOS 26.0, *)`. A platform without the bridge
+answers `MissingPluginException` / `notImplemented`, and Dart then behaves exactly as before
+(`UnsupportedAlarmKitHost`: Android, web, Windows, Linux).
+
+#### Identity (both sides, byte for byte)
+
+| Name | Formula |
+| --- | --- |
+| `fnv1a(s)` | FNV-1a 32-bit over the **UTF-16 code units** of `s`: `h = 0x811c9dc5`; per unit `h ^= unit; h = (h * 0x01000193) & 0xffffffff`; result `h & 0x7fffffff` (Dart `notificationIdFor`, `gateway.dart`) |
+| `fireAtMs` | UTC epoch ms floored to the whole second: `ms - ms % 1000` (Swift computes it from `Date` without floating error) |
+| `members` | the alarm's task ids, de-duplicated and sorted by code unit; a single alarm has one member. The member key is `taskId`, never `reminderId` |
+| `id` | `fnv1a("akv2\|" + members.join(",") + "\|" + fireAtMs)` — `fireAtMs` as a decimal integer |
+| `fp` | `fnv1a("fp1\|" + title + "\|" + body + "\|" + (soundName ?? "") + "\|" + stopLabel + "\|" + snoozeLabel + "\|" + snoozePreset)` |
+| UUID | unchanged: 8-byte namespace `A1 15 00 00 A1 15 00 00` + `id` big-endian (`uuid(for:)`) |
+
+A group ([ADR-0068](adr/0068-urgent-alarms-in-one-minute-ring-as-one.md)) = every urgent
+occurrence in one UTC minute (`floor(ms / 60000)`); its `fireAtMs` is the earliest member's.
+
+#### Dart → native methods
+
+| Method | Arguments | Result |
+| --- | --- | --- |
+| `isSupported`, `requestAuthorization`, `isAuthorized`, `timeSensitiveEnabled` | — | unchanged (`bool`; `timeSensitiveEnabled` `bool?`) |
+| `schedule` | today's keys `id, title, body, fireAtMs, taskId, reminderId, stopLabel, snoozeLabel, snoozePreset, soundName` **+** `members: [String]`, `fp: int`. `fireAtMs` is floored; `taskId` = first member and `reminderId` stay for an older native side | `null`; errors `limit_reached`, `schedule_failed`, `bad_args` (unchanged). Writes a ledger record `origin: "dart"` (replacing any record with that `id`) |
+| `cancel` | `{id}` | `null`; also removes the ledger record |
+| `stop` **(new)** | `{id}` | `{stopped: bool, cancelled: bool, error: String?}` — `AlarmManager.stop`, `cancel` when stop throws; the ledger record is removed either way |
+| `scheduledAlarms` **(new)** | — | `[{id, fp, state, members, fireAtMs, origin, eventId}]`; `state` ∈ `scheduled` `countdown` `paused` `alerting`. An OS alarm with no ledger record: `members: []`, `fp: 0`, `origin: "dart"`, `fireAtMs` from its fixed schedule. Ledger records the OS no longer holds are pruned on read |
+| `scheduledIds` | — | `[int]`, derived from `scheduledAlarms` (kept for older callers) |
+| `pullPendingActions` **(new)** | — | `[event]` (shape below), sorted by `pressedAtMs`, **not removed** |
+| `ackActions` **(new)** | `{eventIds: [String]}` | `null`; removes those queue entries, unknown ids ignored |
+| `clearFallbacks` **(new)** | `{eventIds: [String]}` | `null`; removes pending and delivered requests `aw.fallback.<eventId>` |
+| `pullFailures` **(new)** | — | `[failure]` (shape below); the returned rows are removed |
+| `drainPendingActions` | — | iOS: a no-op kept for an older Dart (removes nothing). macOS: legacy drain, see below |
+
+**Native → Dart:** `onActionsPending` with no arguments — sent when an intent enqueues in a live
+process and on `didBecomeActive`. Dart pulls on: the host attaching, every `onActionsPending`,
+every resume, and before each AlarmKit plan pass. Nothing else is pushed.
+
+**Legacy and macOS.** If `pullPendingActions` answers `notImplemented` / `MissingPlugin`, Dart keeps
+today's path: call `drainPendingActions` and handle `onAlarmAction {actionId, payload}` pushes.
+The macOS bridge (`macos/Runner/MainFlutterWindow.swift`) stays on that path; because
+`AWWidgetCompleteIntent` now enqueues v2 entries, its drain must read them (a v2 `complete` →
+`actionId: "complete"`, payload `{taskId, reminderId: ""}`) instead of skipping anything that is
+not `[String: String]`.
+
+#### Action event (queue entry v2; also Dart's `NotificationEvent` fields)
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `eventId` | String | unique; native: `UUID().uuidString`; notification lane: `<notificationId>\|<actionId>\|<deliveryTimestamp>`; in-app: a fresh id. Key of `action_receipts` |
+| `action` | `snooze` · `acknowledge` · `complete` | what to apply |
+| `taskIds` | [String] | the members it applies to, de-duplicated |
+| `untilMs` | int? | snooze target, floored to the second. Dart writes a native (`origin: alarmkit`) value **unchanged** |
+| `preset` | String? | only on an entry converted from v1 (no `untilMs`): Dart computes the target from `pressedAtMs` |
+| `occurrenceFireAtMs` | int? | the instant of the occurrence that rang; `acknowledge` acknowledges each member's active urgent reminder at that instant (same UTC minute for a group) |
+| `pressedAtMs` | int | press time, UTC ms; the apply order |
+| `origin` | `alarmkit` · `widget` (native) · `inapp` · `notification` (Dart only) | source; `alarmkit` → alarm-log lane `alarmkit` |
+| `alarmId` | int? | the AlarmKit id that rang |
+| `newId` | int? | the alarm the native snooze scheduled |
+| `scheduleOutcome` | `ok` · `limitReached` · `failed` ? | native snooze only |
+| `stopOutcome` | `stopped` · `cancelled` · `failed` ? | native snooze only |
+
+Order on the Dart side: pull → per event one transaction (`insertReceiptIfAbsent(eventId)`; false
+⇒ no-op; model write; outbox) → `ackActions([eventId])` after the commit → `pullFailures` into the
+alarm log (`degraded`, lane `alarmkit`) → after the next plan pass, `clearFallbacks` for applied
+snoozes whose `scheduleOutcome` is not `ok`.
+
+#### App Group keys (`group.com.alliswell.alliswell` UserDefaults)
+
+| Key | Value | Rules |
+| --- | --- | --- |
+| `aw.alarmkit.ledger` | array of `{id: int, fp: int, members: [String], fireAtMs: int, origin: "dart"·"native", eventId: String?}` | one record per `id`; written by `schedule` (`dart`) and by a successful native snooze (`native` + `eventId`); removed by `cancel`, `stop` and the stop intent |
+| `aw.alarmkit.failures` | array of `{eventId, atMs, stage: schedule·stop·cancel·fallback, code: maximumLimitReached·other, message}` | ring of the last 50 |
+| `aw_alarm_pending_actions` | array of v2 events | kept until `ackActions`; cap 32 (oldest dropped only when full). A v1 entry `{actionId: "acknowledge"·"complete"·"snooze:<preset>", taskId, reminderId}` is rewritten as v2 on first read (new `eventId`, `pressedAtMs` = read time, `taskIds: [taskId]`, `preset` for a snooze) so its `eventId` is stable |
+
+#### Intents (`ios/Shared`)
+
+| Intent | Parameters | `perform()` |
+| --- | --- | --- |
+| `AWAlarmStopIntent` | `taskIds: [String]`, `alarmId: Int`, `fireAtMs: Int`; legacy `taskId`, `reminderId` (optional) | enqueue `acknowledge` with `occurrenceFireAtMs = fireAtMs`; remove the ledger record (AlarmKit stops the alert itself) |
+| `AWAlarmSnoozeIntent` | `taskIds`, `alarmId`, `fireAtMs`, `title`, `body`, `soundName` (`""` = system sound), `stopLabel`, `snoozeLabel`, `preset`; legacy `taskId`, `reminderId` | the steps below; `supportedModes = .background`, `openAppWhenRun = false`, `authenticationPolicy = .alwaysAllowed`; never throws, always `.result()` |
+| `AWWidgetCompleteIntent` (`ios/AllisWellWidget/AllisWellWidget.swift`; iOS and macOS widget) | `taskId` | enqueue v2 `complete`, `taskIds: [taskId]`, `origin: "widget"`; then `markAWSnapshotDone` + reload as today |
+
+`AWCompleteTaskIntent` in `ios/Shared` is unused legacy; delete it or leave it untouched.
+
+`schedule` builds both intents from its arguments (`taskIds = members`, `alarmId = id`). An alarm
+scheduled by a build before this contract carries only the legacy parameters: `taskIds =
+[taskId]`, and with no `alarmId` the snooze stops every `.alerting` alarm in our namespace, skips
+the native schedule (`scheduleOutcome: failed`, message `legacy-intent`) and adds the fallback.
+
+**Native snooze, in order:** (1) `eventId`, `pressedAtMs = now`. (2) Target `T`: `5_min` +5 min,
+`30_min` +30 min, `1_hour` +1 h, `tomorrow_morning` 09:00:00 local on the calendar day after the
+press (also when pressed before 09:00 — today's Dart rule); floored to the second. (3) **+1 min
+rule (native only):** while the ledger holds a record with `id ≠ alarmId` whose
+`floor(fireAtMs / 60000)` equals `floor(T / 60000)`, `T += 60 s` — at most 30 times, then keep `T`.
+Dart never shifts. (4) `newId`, `fp` from the intent's parameters and `T`; schedule `.fixed(T)`
+with the same presentation and new intents (`alarmId = newId`, `fireAtMs = T`) → outcome.
+(5) **Always** `stop(alarmId)`; `cancel` if stop throws; both recorded, independent of (4).
+(6) If (4) failed: one `.timeSensitive` `UNNotificationRequest` `aw.fallback.<eventId>` at `T`,
+category `aw_urgent`, `userInfo` carrying the keys `flutter_local_notifications` marks its own
+notifications with (confirm against the plugin version in `pubspec.lock`) and `payload` =
+`{"taskId": first, "taskIds": [...], "eventId": ...}`, so its buttons reach the same Dart handler.
+(7) Each failing stage → `aw.alarmkit.failures`. (8) Enqueue the `snooze` event (`untilMs = T`,
+`occurrenceFireAtMs = fireAtMs`, `alarmId`, `newId`, both outcomes); write a `native` ledger record
+only when (4) succeeded. A group snooze or stop is one event for every member.
+
+**Plan pass (Dart):** pull and apply first; then for each `scheduledAlarms` row — `alerting` and
+some member still due at that minute (and inside the stale window) → untouched; `alerting`
+otherwise → `stop`, **never** `cancel` (no ledger record: only after the stale window);
+`origin: native` whose `eventId` has no receipt yet → untouched; `id` not desired → `cancel`;
+desired with another `fp` → `cancel` + `schedule` under the same `id`; desired and missing →
+`schedule`.
+
+#### Shared fixtures (Dart writes them with `UPDATE_FIXTURES=1`; Swift reads only)
+
+| File | Shape | Dart test | Swift test (`ios/RunnerTests`) |
+| --- | --- | --- | --- |
+| `apps/app/test/fixtures/alarmkit_identity_cases.json` | `{cases: [{name, members, fireAtMs, title, body, soundName, stopLabel, snoozeLabel, snoozePreset, expect: {fireAtMs, id, fp}}]}` — input `fireAtMs` may carry ms; ≥ 12 cases (Turkish letters, a surrogate pair, null and empty sound, unsorted and duplicated members) | `test/notifications/alarmkit_identity_test.dart` | `AlarmIdentityTests.swift` |
+| `apps/app/test/fixtures/snooze_preset_cases.json` | `{cases: [{name, now, preset, until}]}` — local wall-clock ISO strings without offset; every preset, `tomorrow_morning` before and after 09:00 and across a month end; no case crosses a DST change | `test/notifications/snooze_preset_parity_test.dart` | `SnoozeTargetTests.swift` (`testBaseTargetMatchesDartFixture`) |
+
+The +1 min rule has no Dart counterpart and no shared fixture; Swift tests it alone
+(`SnoozeCoreTests.swift`, `AlarmLedgerTests.swift`). A fixture field may be added, never renamed.
+
 ## 2c. User-supplied sounds — what is actually possible (round 9, OPH-181)
 
 Round 9 asks for a user-selectable ringtone, uploadable through our own storage.
