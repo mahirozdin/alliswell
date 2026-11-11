@@ -1,5 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { buildTestApp, registerUser } from '../helpers/authed.js';
+import {
+  decideNewDeviceRinging,
+  pickPromotion,
+  platformLabel,
+} from '../../src/db/notification-devices.js';
 
 let app;
 let tables;
@@ -245,5 +250,142 @@ describe('notification device registry (OPH-060)', () => {
       payload: { platform: 'web' },
     });
     expect(unauthenticated.statusCode).toBe(401);
+  });
+});
+
+describe('urgent-alarm device rule (OPH-433, ADR-0069 #2)', () => {
+  const ring = (id, platform, source = 'auto') => ({ id, platform, rings_urgent_source: source });
+
+  it('the first device rings, web included', () => {
+    expect(decideNewDeviceRinging([], 'web')).toEqual({ ringsUrgent: true, handOver: [] });
+    expect(decideNewDeviceRinging([], 'ios')).toEqual({ ringsUrgent: true, handOver: [] });
+  });
+
+  it('a phone or desktop takes over from automatic web rows', () => {
+    const rows = [ring('W1', 'web', 'auto'), ring('W2', 'web', 'backfill')];
+    expect(decideNewDeviceRinging(rows, 'android')).toEqual({
+      ringsUrgent: true,
+      handOver: ['W1', 'W2'],
+    });
+    expect(decideNewDeviceRinging(rows, 'linux').ringsUrgent).toBe(true);
+  });
+
+  it('a web row the user chose, a ringing phone, or a new web tab: joins off', () => {
+    expect(decideNewDeviceRinging([ring('W', 'web', 'user')], 'ios')).toEqual({
+      ringsUrgent: false,
+      handOver: [],
+    });
+    expect(decideNewDeviceRinging([ring('W', 'web'), ring('P', 'ios')], 'android')).toEqual({
+      ringsUrgent: false,
+      handOver: [],
+    });
+    expect(decideNewDeviceRinging([ring('W', 'web')], 'web')).toEqual({
+      ringsUrgent: false,
+      handOver: [],
+    });
+  });
+
+  it('promotion prefers the most recently seen non-web device, else web', () => {
+    const at = (iso) => new Date(iso);
+    const rows = [
+      { id: 'A', platform: 'web', last_seen_at: at('2026-11-10T00:00:00Z') },
+      { id: 'B', platform: 'ios', last_seen_at: at('2026-11-01T00:00:00Z') },
+      { id: 'C', platform: 'android', last_seen_at: at('2026-11-05T00:00:00Z') },
+    ];
+    expect(pickPromotion(rows).id).toBe('C');
+    expect(pickPromotion(rows.filter((r) => r.platform === 'web')).id).toBe('A');
+    expect(pickPromotion([])).toBeNull();
+  });
+
+  it('names every platform', () => {
+    expect(['ios', 'android', 'macos', 'windows', 'linux', 'web'].map(platformLabel)).toEqual([
+      'iPhone',
+      'Android',
+      'Mac',
+      'Windows',
+      'Linux',
+      'Web',
+    ]);
+  });
+});
+
+describe('PATCH /notification-devices/:id and ringsUrgent fields (OPH-433)', () => {
+  const patch = (deviceId, payload, headers = owner.headers) =>
+    app.inject({
+      method: 'PATCH',
+      url: `/api/v1/notification-devices/${deviceId}`,
+      headers,
+      payload,
+    });
+
+  it('register answers ringsUrgent and its source; old clients only gain fields', async () => {
+    const created = await register(DEVICE, { platform: 'ios' });
+    expect(created.json()).toMatchObject({ ringsUrgent: true, ringsUrgentSource: 'auto' });
+    const second = await register('01DEVICEBBBBBBBBBBBBBBBBBB', { platform: 'android' });
+    expect(second.json()).toMatchObject({ ringsUrgent: false, ringsUrgentSource: 'auto' });
+    const items = (await list()).json().items;
+    expect(items.every((d) => typeof d.ringsUrgent === 'boolean')).toBe(true);
+  });
+
+  it('a ringsUrgent key on PUT is ignored: only PATCH chooses', async () => {
+    await register(DEVICE, { platform: 'ios' });
+    const second = await register('01DEVICEBBBBBBBBBBBBBBBBBB', {
+      platform: 'android',
+      ringsUrgent: true,
+    });
+    expect(second.json()).toMatchObject({ ringsUrgent: false });
+  });
+
+  it('PATCH writes source user, warns when nothing rings, 404s foreign rows', async () => {
+    await register(DEVICE, { platform: 'ios' });
+    const off = await patch(DEVICE, { ringsUrgent: false });
+    expect(off.statusCode).toBe(200);
+    expect(off.json()).toMatchObject({
+      ringsUrgent: false,
+      ringsUrgentSource: 'user',
+      warnings: ['NO_URGENT_DEVICE'],
+    });
+    const on = await patch(DEVICE, { ringsUrgent: true });
+    expect(on.json()).toMatchObject({ ringsUrgent: true, warnings: [] });
+
+    const other = await registerUser(app, { email: 'other@example.com' });
+    const foreign = await patch(DEVICE, { ringsUrgent: false }, other.headers);
+    expect(foreign.statusCode).toBe(404);
+    expect(foreign.json().code).toBe('DEVICE_NOT_FOUND');
+    expect(tables.notification_devices[0].rings_urgent).toBe(true);
+  });
+
+  it('PATCH validates its body', async () => {
+    await register(DEVICE, { platform: 'ios' });
+    const bad = await patch(DEVICE, { ringsUrgent: 'yes' });
+    expect(bad.statusCode).toBe(400);
+    const long = await patch(DEVICE, { deviceName: 'x'.repeat(256) });
+    expect(long.statusCode).toBe(400);
+  });
+
+  it('a blank name falls back to the platform label', async () => {
+    await register(DEVICE, { platform: 'android', deviceName: 'Pixel' });
+    const blank = await patch(DEVICE, { deviceName: '  ' });
+    expect(blank.json()).toMatchObject({ deviceName: 'Android', ringsUrgentSource: 'auto' });
+  });
+
+  it('DELETE of the ringing device promotes the most recent non-web one', async () => {
+    await register(DEVICE, { platform: 'ios' });
+    await register('01DEVICEBBBBBBBBBBBBBBBBBB', { platform: 'web' });
+    await register('01DEVICECCCCCCCCCCCCCCCCCC', { platform: 'android' });
+    const byId = (id) => tables.notification_devices.find((r) => r.id === id);
+    byId('01DEVICEBBBBBBBBBBBBBBBBBB').last_seen_at = new Date('2026-11-10T00:00:00Z');
+    byId('01DEVICECCCCCCCCCCCCCCCCCC').last_seen_at = new Date('2026-11-01T00:00:00Z');
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/notification-devices/${DEVICE}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(204);
+    expect(byId('01DEVICECCCCCCCCCCCCCCCCCC')).toMatchObject({
+      rings_urgent: true,
+      rings_urgent_source: 'auto',
+    });
+    expect(byId('01DEVICEBBBBBBBBBBBBBBBBBB').rings_urgent).toBe(false);
   });
 });

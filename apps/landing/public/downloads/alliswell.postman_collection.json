@@ -1669,6 +1669,47 @@
           }
         },
         {
+          "name": "PATCH /api/v1/notification-devices/{deviceId}",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/notification-devices/:deviceId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "notification-devices",
+                ":deviceId"
+              ],
+              "variable": [
+                {
+                  "key": "deviceId",
+                  "value": "",
+                  "description": ""
+                }
+              ]
+            },
+            "description": "Accepts either a session JWT or a personal API key.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ringsUrgent\": false,\n  \"deviceName\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
           "name": "DELETE /api/v1/notification-devices/{deviceId}",
           "request": {
             "method": "DELETE",

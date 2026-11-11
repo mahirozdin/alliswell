@@ -1,6 +1,15 @@
 import { toIso } from '../lib/serialize.js';
 import { coded } from '../lib/errors.js';
 import { deviceLabel } from '../db/sessions.js';
+import { transactionWithRetry } from '../db/tx.js';
+import {
+  RINGS_URGENT_SOURCES,
+  anyRinging,
+  decideForNewRow,
+  lockUsers,
+  platformLabel,
+  promoteIfNoneRings,
+} from '../db/notification-devices.js';
 
 /**
  * Notification device registry (OPH-060, BLUEPRINT §8): which installs may
@@ -20,6 +29,14 @@ import { deviceLabel } from '../db/sessions.js';
  *
  * `locale` is the device's, not the account's: the fallback push renders a fixed
  * string and a phone can be in a different language from the laptop (ADR-0038).
+ *
+ * **Which device rings urgent alarms (OPH-433, ADR-0069).** `ringsUrgent` is
+ * decided by the server when a row is created for a user (insert or takeover),
+ * with the user's row locked; a heartbeat never touches it, `PATCH` is the
+ * user's choice, and deleting the last ringing row promotes another one. The
+ * rule itself lives in `db/notification-devices.js`. REST only: MCP does not
+ * get these routes — they are device infrastructure, not task data, and
+ * removing a device is delete-like (I-12).
  */
 
 const PLATFORMS = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
@@ -38,7 +55,7 @@ const errorResponseSchema = {
 
 const deviceSchema = {
   type: 'object',
-  required: ['id', 'platform', 'lastSeenAt'],
+  required: ['id', 'platform', 'lastSeenAt', 'ringsUrgent'],
   properties: {
     id: { type: 'string' },
     platform: { type: 'string', enum: PLATFORMS },
@@ -53,6 +70,22 @@ const deviceSchema = {
     lastSeenAt: { type: 'string' },
     createdAt: { type: 'string' },
     updatedAt: { type: 'string' },
+    // OPH-433: does this device ring urgent alarms, and who decided — the
+    // server's first-device rule ('auto'), the user ('user') or the OPH-432
+    // migration ('backfill'). Old clients ignore both.
+    ringsUrgent: { type: 'boolean' },
+    ringsUrgentSource: { type: ['string', 'null'], enum: [...RINGS_URGENT_SOURCES, null] },
+  },
+};
+
+const patchResponseSchema = {
+  ...deviceSchema,
+  required: [...deviceSchema.required, 'warnings'],
+  properties: {
+    ...deviceSchema.properties,
+    // 'NO_URGENT_DEVICE' when none of the user's devices rings any more:
+    // allowed, never blocked, so the client can warn instead.
+    warnings: { type: 'array', items: { type: 'string', enum: ['NO_URGENT_DEVICE'] } },
   },
 };
 
@@ -75,6 +108,9 @@ function serializeDevice(row) {
     lastSeenAt: toIso(row.last_seen_at),
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
+    // mysql2 reads BOOLEAN (TINYINT(1)) back as 0/1.
+    ringsUrgent: Boolean(Number(row.rings_urgent ?? 0)),
+    ringsUrgentSource: row.rings_urgent_source ?? null,
   };
 }
 
@@ -176,25 +212,58 @@ export default async function notificationDeviceRoutes(app) {
         updated_at: new Date(),
       };
 
-      const existing = await app.db('notification_devices').where({ id: deviceId }).first('id');
-      if (existing) {
+      const userId = request.user.id;
+      const existing = await app
+        .db('notification_devices')
+        .where({ id: deviceId })
+        .first('id', 'user_id');
+
+      let status = 200;
+      if (existing && existing.user_id === userId) {
+        // Heartbeat: the common path, no lock, and `rings_urgent` untouched.
         await app.db('notification_devices').where({ id: deviceId }).update(values);
       } else {
-        // A device with no name answers no question, and OPH-284 already
-        // settled what to write instead: the User-Agent, RAW, because parsing
-        // one is guessing and a client can shorten a string it can see. On
-        // INSERT only — a heartbeat must never overwrite a name a client set
-        // on purpose, which is also why `deviceName` keeps its key-presence
-        // semantics above.
-        await app.db('notification_devices').insert({
-          id: deviceId,
-          device_name: deviceLabel(request),
-          ...values,
+        // Insert or takeover: the urgent-device rule runs with the user's row
+        // locked (and the previous owner's, whose ringing device may leave).
+        status = await transactionWithRetry(app.db, async (trx) => {
+          await lockUsers(trx, [userId, existing?.user_id]);
+          const current = await trx('notification_devices')
+            .where({ id: deviceId })
+            .forUpdate()
+            .first('id', 'user_id', 'rings_urgent');
+          if (current && current.user_id === userId) {
+            // Lost a race to our own first registration: a heartbeat now.
+            await trx('notification_devices').where({ id: deviceId }).update(values);
+            return 200;
+          }
+          const flags = await decideForNewRow(trx, userId, deviceId, body.platform);
+          if (current) {
+            await trx('notification_devices')
+              .where({ id: deviceId })
+              .update({ ...values, ...flags });
+            if (Number(current.rings_urgent) === 1) {
+              await promoteIfNoneRings(trx, current.user_id);
+            }
+            return 200;
+          }
+          // A device with no name answers no question, and OPH-284 already
+          // settled what to write instead: the User-Agent, RAW, because
+          // parsing one is guessing and a client can shorten a string it can
+          // see. On INSERT only — a heartbeat must never overwrite a name a
+          // client set on purpose, which is also why `deviceName` keeps its
+          // key-presence semantics above.
+          await trx('notification_devices').insert({
+            id: deviceId,
+            device_name: deviceLabel(request),
+            ...values,
+            ...flags,
+          });
+          return 201;
         });
       }
 
       const row = await app.db('notification_devices').where({ id: deviceId }).first();
-      return reply.code(existing ? 200 : 201).send(serializeDevice(row));
+      return reply.code(status).send(serializeDevice(row));
     },
   );
 
@@ -221,8 +290,68 @@ export default async function notificationDeviceRoutes(app) {
     },
   );
 
+  // The user's own choices for one of their devices (OPH-433): whether it rings
+  // urgent alarms, and its name. Another account's device answers 404, the
+  // same as one that does not exist.
+  app.patch(
+    '/notification-devices/:deviceId',
+    {
+      ...auth,
+      schema: {
+        params: { type: 'object', properties: { deviceId: ULID_PARAM } },
+        body: {
+          type: 'object',
+          additionalProperties: false,
+          properties: {
+            ringsUrgent: { type: 'boolean' },
+            deviceName: { type: ['string', 'null'], maxLength: 255 },
+          },
+        },
+        response: {
+          200: patchResponseSchema,
+          400: errorResponseSchema,
+          404: errorResponseSchema,
+        },
+      },
+    },
+    async (request) => {
+      const { deviceId } = request.params;
+      const userId = request.user.id;
+      const body = request.body ?? {};
+      return transactionWithRetry(app.db, async (trx) => {
+        await lockUsers(trx, [userId]);
+        const row = await trx('notification_devices')
+          .where({ id: deviceId, user_id: userId })
+          .first('id', 'platform');
+        if (!row) {
+          throw coded(app.httpErrors.notFound('Device not found'), 'DEVICE_NOT_FOUND');
+        }
+        const changes = {};
+        if ('ringsUrgent' in body) {
+          changes.rings_urgent = body.ringsUrgent;
+          changes.rings_urgent_source = 'user';
+        }
+        if ('deviceName' in body) {
+          const name = (body.deviceName ?? '').trim();
+          changes.device_name = name === '' ? platformLabel(row.platform) : name;
+        }
+        if (Object.keys(changes).length > 0) {
+          await trx('notification_devices')
+            .where({ id: deviceId })
+            .update({ ...changes, updated_at: new Date() });
+        }
+        const updated = await trx('notification_devices').where({ id: deviceId }).first();
+        return {
+          ...serializeDevice(updated),
+          warnings: (await anyRinging(trx, userId)) ? [] : ['NO_URGENT_DEVICE'],
+        };
+      });
+    },
+  );
+
   // Unregister. Always 204: repeating it (or aiming at a device you no longer
-  // own) must never fail a sign-out flow.
+  // own) must never fail a sign-out flow. Removing the device that rang hands
+  // the alarm to the most recently seen remaining one (OPH-433).
   app.delete(
     '/notification-devices/:deviceId',
     {
@@ -233,10 +362,15 @@ export default async function notificationDeviceRoutes(app) {
       },
     },
     async (request, reply) => {
-      await app
-        .db('notification_devices')
-        .where({ id: request.params.deviceId, user_id: request.user.id })
-        .delete();
+      const userId = request.user.id;
+      const where = { id: request.params.deviceId, user_id: userId };
+      await transactionWithRetry(app.db, async (trx) => {
+        await lockUsers(trx, [userId]);
+        const row = await trx('notification_devices').where(where).first('id', 'rings_urgent');
+        if (!row) return;
+        await trx('notification_devices').where(where).delete();
+        if (Number(row.rings_urgent) === 1) await promoteIfNoneRings(trx, userId);
+      });
       return reply.code(204).send();
     },
   );

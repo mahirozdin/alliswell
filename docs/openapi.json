@@ -6139,7 +6139,8 @@
                         "required": [
                           "id",
                           "platform",
-                          "lastSeenAt"
+                          "lastSeenAt",
+                          "ringsUrgent"
                         ],
                         "properties": {
                           "id": {
@@ -6201,6 +6202,19 @@
                           },
                           "updatedAt": {
                             "type": "string"
+                          },
+                          "ringsUrgent": {
+                            "type": "boolean"
+                          },
+                          "ringsUrgentSource": {
+                            "type": "string",
+                            "nullable": true,
+                            "enum": [
+                              "auto",
+                              "user",
+                              "backfill",
+                              null
+                            ]
                           }
                         }
                       }
@@ -6320,7 +6334,8 @@
                   "required": [
                     "id",
                     "platform",
-                    "lastSeenAt"
+                    "lastSeenAt",
+                    "ringsUrgent"
                   ],
                   "properties": {
                     "id": {
@@ -6382,6 +6397,19 @@
                     },
                     "updatedAt": {
                       "type": "string"
+                    },
+                    "ringsUrgent": {
+                      "type": "boolean"
+                    },
+                    "ringsUrgentSource": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "auto",
+                        "user",
+                        "backfill",
+                        null
+                      ]
                     }
                   }
                 }
@@ -6397,7 +6425,8 @@
                   "required": [
                     "id",
                     "platform",
-                    "lastSeenAt"
+                    "lastSeenAt",
+                    "ringsUrgent"
                   ],
                   "properties": {
                     "id": {
@@ -6459,6 +6488,19 @@
                     },
                     "updatedAt": {
                       "type": "string"
+                    },
+                    "ringsUrgent": {
+                      "type": "boolean"
+                    },
+                    "ringsUrgentSource": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "auto",
+                        "user",
+                        "backfill",
+                        null
+                      ]
                     }
                   }
                 }
@@ -6466,6 +6508,204 @@
             }
           },
           "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Devices"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          },
+          {
+            "apiKey": []
+          }
+        ],
+        "description": "Accepts either a session JWT or a personal API key."
+      },
+      "patch": {
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "ringsUrgent": {
+                    "type": "boolean"
+                  },
+                  "deviceName": {
+                    "type": "string",
+                    "nullable": true,
+                    "maxLength": 255
+                  }
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 26,
+              "maxLength": 26
+            },
+            "in": "path",
+            "name": "deviceId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "id",
+                    "platform",
+                    "lastSeenAt",
+                    "ringsUrgent",
+                    "warnings"
+                  ],
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "platform": {
+                      "type": "string",
+                      "enum": [
+                        "ios",
+                        "android",
+                        "macos",
+                        "windows",
+                        "linux",
+                        "web"
+                      ]
+                    },
+                    "pushToken": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "deviceName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "appVersion": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "locale": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "pushProvider": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "fcm",
+                        "webpush",
+                        null
+                      ]
+                    },
+                    "pushEndpoint": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "invalidAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lastPushAt": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "lastSeenAt": {
+                      "type": "string"
+                    },
+                    "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
+                      "type": "string"
+                    },
+                    "ringsUrgent": {
+                      "type": "boolean"
+                    },
+                    "ringsUrgentSource": {
+                      "type": "string",
+                      "nullable": true,
+                      "enum": [
+                        "auto",
+                        "user",
+                        "backfill",
+                        null
+                      ]
+                    },
+                    "warnings": {
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "NO_URGENT_DEVICE"
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Default Response",
             "content": {
               "application/json": {
