@@ -1,6 +1,6 @@
 import { toIso } from '../lib/serialize.js';
 import { coded } from '../lib/errors.js';
-import { deviceLabel } from '../db/sessions.js';
+import { deviceLabel, devicesWithSession, revokeDeviceSessions } from '../db/sessions.js';
 import { transactionWithRetry } from '../db/tx.js';
 import {
   RINGS_URGENT_SOURCES,
@@ -37,6 +37,12 @@ import {
  * rule itself lives in `db/notification-devices.js`. REST only: MCP does not
  * get these routes — they are device infrastructure, not task data, and
  * removing a device is delete-like (I-12).
+ *
+ * **Removing a device signs it out (OPH-435, #48).** `DELETE` revokes every
+ * refresh family bound to the device (`refresh_tokens.device_id`, OPH-434) in
+ * the transaction that removes the row; the reverse holds too — a session
+ * that ends takes its bound device with it (`db/sessions.js`). `GET` says per
+ * device whether a live session is still bound to it (`hasSession`).
  */
 
 const PLATFORMS = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
@@ -76,6 +82,15 @@ const deviceSchema = {
     ringsUrgent: { type: 'boolean' },
     ringsUrgentSource: { type: ['string', 'null'], enum: [...RINGS_URGENT_SOURCES, null] },
   },
+};
+
+// GET only: is somebody still signed in on this device — a live refresh family
+// bound to it (OPH-435). False for a device whose session ended and for one an
+// older client registered without binding its sign-in.
+const listedDeviceSchema = {
+  ...deviceSchema,
+  required: [...deviceSchema.required, 'hasSession'],
+  properties: { ...deviceSchema.properties, hasSession: { type: 'boolean' } },
 };
 
 const patchResponseSchema = {
@@ -275,18 +290,26 @@ export default async function notificationDeviceRoutes(app) {
         response: {
           200: {
             type: 'object',
-            properties: { items: { type: 'array', items: deviceSchema } },
+            properties: { items: { type: 'array', items: listedDeviceSchema } },
           },
         },
       },
     },
     async (request) => {
+      const userId = request.user.id;
       const rows = await app
         .db('notification_devices')
-        .where({ user_id: request.user.id })
+        .where({ user_id: userId })
         .orderBy('last_seen_at', 'desc')
         .select();
-      return { items: rows.map(serializeDevice) };
+      const signedIn = await devicesWithSession(
+        app.db,
+        userId,
+        rows.map((row) => row.id),
+      );
+      return {
+        items: rows.map((row) => ({ ...serializeDevice(row), hasSession: signedIn.has(row.id) })),
+      };
     },
   );
 
@@ -349,16 +372,32 @@ export default async function notificationDeviceRoutes(app) {
     },
   );
 
-  // Unregister. Always 204: repeating it (or aiming at a device you no longer
-  // own) must never fail a sign-out flow. Removing the device that rang hands
-  // the alarm to the most recently seen remaining one (OPH-433).
+  // Unregister, which is also a remote sign-out (OPH-435). Always 204:
+  // repeating it (or aiming at a device you no longer own, or one that does
+  // not exist) must never fail a sign-out flow, and such a call revokes
+  // nothing. On the caller's own row, in one transaction: every refresh family
+  // bound to the device is revoked, the row is removed, and removing the
+  // device that rang hands the alarm to the most recently seen remaining one
+  // (OPH-433).
+  //
+  // The app's own sign-out calls this on its own device BEFORE /auth/logout,
+  // so it revokes its own family first; /auth/logout is always 204 and the
+  // sign-out completes unchanged.
+  //
+  // The limit: an access token is a stateless JWT, so the removed device keeps
+  // the one it holds until it expires (at most AUTH_ACCESS_TTL_SEC, 15 minutes
+  // by default). Its next refresh is refused and the client signs out then.
+  //
+  // Closed to API keys: signing a device out is session management, which a
+  // delegated machine credential never reaches (ADR-0032).
   app.delete(
     '/notification-devices/:deviceId',
     {
       ...auth,
+      preHandler: [app.rejectApiKeys],
       schema: {
         params: { type: 'object', properties: { deviceId: ULID_PARAM } },
-        response: { 204: { type: 'null' } },
+        response: { 204: { type: 'null' }, 403: errorResponseSchema },
       },
     },
     async (request, reply) => {
@@ -368,6 +407,7 @@ export default async function notificationDeviceRoutes(app) {
         await lockUsers(trx, [userId]);
         const row = await trx('notification_devices').where(where).first('id', 'rings_urgent');
         if (!row) return;
+        await revokeDeviceSessions(trx, { userId, deviceId: row.id });
         await trx('notification_devices').where(where).delete();
         if (Number(row.rings_urgent) === 1) await promoteIfNoneRings(trx, userId);
       });

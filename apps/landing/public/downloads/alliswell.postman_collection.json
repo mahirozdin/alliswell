@@ -1733,7 +1733,17 @@
                 }
               ]
             },
-            "description": "Accepts either a session JWT or a personal API key."
+            "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
           }
         }
       ]

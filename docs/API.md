@@ -2117,7 +2117,8 @@ curl -X GET 'https://api.alliswell.space/api/v1/notification-devices' \
       "createdAt": "2026-09-04T14:30:00.000Z",
       "updatedAt": "2026-09-04T14:30:00.000Z",
       "ringsUrgent": false,
-      "ringsUrgentSource": "auto"
+      "ringsUrgentSource": "auto",
+      "hasSession": false
     }
   ]
 }
@@ -2250,7 +2251,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/notification-devices/:deviceId
 
 #### <a name="delete-api-v1-notification-devices-deviceid"></a>`DELETE /api/v1/notification-devices/{deviceId}`
 
-**Auth:** Personal API key **or** session JWT.
+**Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
 **Path parameters**
 
@@ -2262,7 +2263,7 @@ curl -X PATCH 'https://api.alliswell.space/api/v1/notification-devices/:deviceId
 
 ```bash
 curl -X DELETE 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' \
-  -H "Authorization: Bearer $ALLISWELL_KEY"
+  -H "Authorization: Bearer $ALLISWELL_JWT"
 ```
 
 **Responses**
@@ -2270,6 +2271,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/notification-devices/:deviceI
 | Status | Meaning |
 | --- | --- |
 | `204` | Done. No body. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
 
 
 ### Files

@@ -6160,7 +6160,8 @@
                           "id",
                           "platform",
                           "lastSeenAt",
-                          "ringsUrgent"
+                          "ringsUrgent",
+                          "hasSession"
                         ],
                         "properties": {
                           "id": {
@@ -6235,6 +6236,9 @@
                               "backfill",
                               null
                             ]
+                          },
+                          "hasSession": {
+                            "type": "boolean"
                           }
                         }
                       }
@@ -6779,6 +6783,30 @@
         "responses": {
           "204": {
             "description": "Default Response"
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -6787,12 +6815,9 @@
         "security": [
           {
             "sessionJwt": []
-          },
-          {
-            "apiKey": []
           }
         ],
-        "description": "Accepts either a session JWT or a personal API key."
+        "description": "Session JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4)."
       }
     },
     "/api/v1/projects/{projectId}": {

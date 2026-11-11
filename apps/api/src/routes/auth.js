@@ -193,12 +193,13 @@ function refreshReusedError(app) {
   return err;
 }
 
-/** Reuse of any token in a family means the chain may be stolen — kill all of it. */
-async function revokeFamily(db, familyId) {
-  await db('refresh_tokens')
-    .where({ family_id: familyId })
-    .whereNull('revoked_at')
-    .update({ revoked_at: new Date() });
+/**
+ * Reuse of any token in a family means the chain may be stolen — kill all of
+ * it. `revokeSession` also removes the notification device the family is
+ * bound to (OPH-435): a burned family is a signed-out install either way.
+ */
+function revokeFamily(db, row) {
+  return revokeSession(db, { userId: row.user_id, familyId: row.family_id });
 }
 
 // One error for wrong password AND unknown email — no user/pass distinction (OPH-021).
@@ -712,7 +713,7 @@ export default async function authRoutes(app) {
     // An already-rotated (or revoked) token coming back means theft or a very
     // broken client — either way the whole rotation chain is burned.
     if (row.rotated_at || row.revoked_at) {
-      await revokeFamily(app.db, row.family_id);
+      await revokeFamily(app.db, row);
       throw refreshReusedError(app);
     }
     if (new Date(row.expires_at).getTime() <= Date.now()) throw invalidRefreshError(app);
@@ -753,7 +754,7 @@ export default async function authRoutes(app) {
     });
     if (claimed === 0) {
       // Lost the race — the token was concurrently rotated, i.e. reused.
-      await revokeFamily(app.db, row.family_id);
+      await revokeFamily(app.db, row);
       throw refreshReusedError(app);
     }
 
@@ -770,10 +771,10 @@ export default async function authRoutes(app) {
     const row = await app
       .db('refresh_tokens')
       .where({ token_hash: tokenHash })
-      .first('id', 'family_id');
+      .first('id', 'family_id', 'user_id');
     if (row) {
       if (request.query.all) {
-        await revokeFamily(app.db, row.family_id);
+        await revokeFamily(app.db, row);
       } else {
         await app
           .db('refresh_tokens')
@@ -1033,10 +1034,8 @@ export default async function authRoutes(app) {
             password_hash: await hashPassword(request.body.newPassword),
             password_changed_at: now,
           });
-        await trx('refresh_tokens')
-          .where({ user_id: user.id })
-          .whereNull('revoked_at')
-          .update({ revoked_at: now });
+        // Every session ends, and the devices bound to them go too (OPH-435).
+        await revokeOtherSessions(trx, { userId: user.id, at: now });
         // A reset link sent before this change must not undo it (OPH-406).
         await retirePasswordResets(trx, user.id, now);
       });
@@ -1156,10 +1155,8 @@ export default async function authRoutes(app) {
         await trx('users')
           .where({ id: user.id })
           .update({ password_hash: passwordHash, password_changed_at: now });
-        await trx('refresh_tokens')
-          .where({ user_id: user.id })
-          .whereNull('revoked_at')
-          .update({ revoked_at: now });
+        // Every session ends, and the devices bound to them go too (OPH-435).
+        await revokeOtherSessions(trx, { userId: user.id, at: now });
         // Any other link still out there stops working with this one.
         await retirePasswordResets(trx, user.id, now);
       });
