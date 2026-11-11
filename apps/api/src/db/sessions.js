@@ -160,7 +160,7 @@ export function deviceLabel(request) {
 export async function createRefreshRecord(
   executor,
   auth,
-  { userId, familyId, ip, deviceName = null },
+  { userId, familyId, ip, deviceName = null, deviceId = null },
 ) {
   const token = newRefreshToken();
   const expiresAt = new Date(Date.now() + auth.refreshTtlDays * 24 * 60 * 60 * 1000);
@@ -172,6 +172,8 @@ export async function createRefreshRecord(
     expires_at: expiresAt,
     created_ip: ip ?? null,
     device_name: deviceName,
+    // OPH-434 — the notification device this family is bound to, or null.
+    device_id: deviceId,
   });
   return { token, expiresAt };
 }

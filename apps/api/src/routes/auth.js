@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import { coded } from '../lib/errors.js';
-import { newId } from '../lib/ids.js';
+import { ULID_RE, newId } from '../lib/ids.js';
 import { hashPassword, verifyPassword } from '../lib/passwords.js';
 import { OauthIdentityError, audiencesFor, verifyIdentityToken } from '../lib/oauth-identity.js';
 import { linkIdentity, matchSocialIdentity, touchIdentity } from '../db/identities.js';
@@ -54,6 +54,18 @@ const userSchema = {
   },
 };
 
+// OPH-434 (#48) — the notification device (`notification_devices.id`) this
+// sign-in runs on. Optional on every door that starts a session family and on
+// /refresh; it binds the family once (`refresh_tokens.device_id`), so a device
+// row can name the sessions that live on it. A client that never sends it
+// gets an unbound family, exactly as before. Anything but a ULID is a 400.
+const deviceIdField = {
+  type: 'string',
+  pattern: ULID_RE.source,
+  description:
+    'Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400.',
+};
+
 // Register and login return this exact same shape (OPH-021).
 const tokensSchema = {
   type: 'object',
@@ -75,6 +87,7 @@ const registerSchema = {
       email: { type: 'string', format: 'email', maxLength: 255 },
       password: { type: 'string', minLength: 8, maxLength: 128 },
       displayName: { type: 'string', minLength: 1, maxLength: 255 },
+      deviceId: deviceIdField,
     },
   },
   response: {
@@ -114,6 +127,7 @@ const loginSchema = {
       // Wide enough for a recovery code, which is the other thing this field
       // legitimately carries.
       totpCode: { type: 'string', minLength: 6, maxLength: 32 },
+      deviceId: deviceIdField,
     },
   },
   response: {
@@ -134,7 +148,11 @@ const refreshBodySchema = {
 };
 
 const refreshSchema = {
-  body: refreshBodySchema,
+  // /logout keeps the bare body; only a refresh may bind its family (OPH-434).
+  body: {
+    ...refreshBodySchema,
+    properties: { ...refreshBodySchema.properties, deviceId: deviceIdField },
+  },
   response: {
     200: {
       type: 'object',
@@ -233,6 +251,7 @@ const oauthSchema = {
       // authenticator or recovery code. The app resends the SAME idToken with
       // it after an AUTH_MFA_REQUIRED, rather than running the provider again.
       totpCode: { type: 'string', minLength: 6, maxLength: 32 },
+      deviceId: deviceIdField,
     },
   },
   response: {
@@ -402,6 +421,7 @@ export default async function authRoutes(app) {
           familyId: newId(),
           ip: request.ip,
           deviceName: deviceLabel(request),
+          deviceId: request.body.deviceId ?? null,
         });
       });
     } catch (err) {
@@ -493,6 +513,7 @@ export default async function authRoutes(app) {
           familyId: newId(),
           ip: request.ip,
           deviceName: deviceLabel(request),
+          deviceId: request.body.deviceId ?? null,
         });
       });
     } else if (match.kind === 'link') {
@@ -505,6 +526,7 @@ export default async function authRoutes(app) {
           familyId: newId(),
           ip: request.ip,
           deviceName: deviceLabel(request),
+          deviceId: request.body.deviceId ?? null,
         });
       });
     } else {
@@ -559,6 +581,7 @@ export default async function authRoutes(app) {
             familyId: newId(),
             ip: request.ip,
             deviceName: deviceLabel(request),
+            deviceId: request.body.deviceId ?? null,
           });
         });
       } catch (err) {
@@ -671,6 +694,7 @@ export default async function authRoutes(app) {
       familyId: newId(),
       ip: request.ip,
       deviceName: deviceLabel(request),
+      deviceId: request.body.deviceId ?? null,
     });
 
     return {
@@ -720,6 +744,11 @@ export default async function authRoutes(app) {
         // its refresh calls, which is common and is how this line was found.
         // The fallback covers families that predate this column being written.
         deviceName: row.device_name ?? deviceLabel(request),
+        // OPH-434 — the device binding travels the same way, and is set once:
+        // a bound family keeps its device whatever this call names (a family
+        // is one install; relabelling it only makes sense with a stolen
+        // token), an unbound one takes the device this refresh names.
+        deviceId: row.device_id ?? request.body.deviceId ?? null,
       });
     });
     if (claimed === 0) {

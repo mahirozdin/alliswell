@@ -780,6 +780,11 @@
                     "type": "string",
                     "minLength": 6,
                     "maxLength": 32
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "description": "Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400."
                   }
                 }
               }
@@ -1172,6 +1177,11 @@
                     "type": "string",
                     "minLength": 6,
                     "maxLength": 32
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "description": "Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400."
                   }
                 }
               }
@@ -1678,6 +1688,11 @@
                     "type": "string",
                     "minLength": 20,
                     "maxLength": 512
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "description": "Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400."
                   }
                 }
               }
@@ -1803,6 +1818,11 @@
                     "type": "string",
                     "minLength": 1,
                     "maxLength": 255
+                  },
+                  "deviceId": {
+                    "type": "string",
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "description": "Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400."
                   }
                 }
               }

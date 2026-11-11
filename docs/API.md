@@ -1210,6 +1210,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/me/deletion/cancel' \
 | `email` | string (email) | **yes** | length 0–255 |
 | `password` | string | **yes** | length 1–128 |
 | `totpCode` | string | no | length 6–32 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -1441,6 +1442,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp/recovery-codes' \
 | `provider` | `google` · `apple` | **yes** | — |
 | `idToken` | string | **yes** | length 16–8192 |
 | `totpCode` | string | no | length 6–32 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -1606,6 +1608,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/auth/providers'
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `refreshToken` | string | **yes** | length 20–512 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -1652,6 +1655,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/refresh' \
 | `email` | string (email) | **yes** | length 0–255 |
 | `password` | string | **yes** | length 8–128 |
 | `displayName` | string | no | length 1–255 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
