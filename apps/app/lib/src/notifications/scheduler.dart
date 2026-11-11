@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'alarm_log.dart';
+import 'alarm_overlay.dart' show alarmFireAt, alarmStaleWindowFor;
 import 'alarmkit.dart';
+import 'alarmkit_identity.dart';
 import 'planner.dart';
 import 'gateway.dart';
 import 'alarm_sound.dart';
@@ -29,8 +31,12 @@ class NotificationScheduler {
     this.onForeground,
     this.refillEvery = const Duration(hours: 6),
     this.onPermissionAsk,
+    this.drainActions,
+    this.appliedEventIds,
+    Duration? staleWindow,
     DateTime Function()? clock,
-  }) : _now = clock ?? (() => DateTime.now().toUtc());
+  }) : _now = clock ?? (() => DateTime.now().toUtc()),
+       staleWindow = staleWindow ?? alarmStaleWindowFor(profile);
 
   final NotificationsGateway gateway;
   final Stream<List<AlarmInput>> alarms;
@@ -76,6 +82,20 @@ class NotificationScheduler {
   /// once every prompt it shows has been answered (OPH-393): the Home strip
   /// waits for the answer instead of naming the problem behind the prompt.
   final void Function(bool asking)? onPermissionAsk;
+
+  /// Pulls the native action queue and applies it (NOTIFICATIONS §2b.3), run
+  /// before every AlarmKit plan so a native snooze is in the model before the
+  /// plan judges the alarm it left behind. Null is a no-op.
+  final Future<void> Function()? drainActions;
+
+  /// The event ids `action_receipts` holds. A native alarm whose event is not
+  /// among them is left alone: the model does not know about it yet. Null
+  /// treats every event as applied (the id diff of before #49).
+  final Future<Set<String>> Function()? appliedEventIds;
+
+  /// How long after its instant a ringing alarm may still be current — the
+  /// ring screen's window ([alarmStaleWindowFor]).
+  final Duration staleWindow;
 
   final DateTime Function() _now;
 
@@ -316,7 +336,7 @@ class NotificationScheduler {
   }
 
   /// Converges the AlarmKit lane and reports which reminders it **actually
-  /// holds**.
+  /// holds** (NOTIFICATIONS §2b.3 "Plan pass").
   ///
   /// ## The bug this shape exists to prevent (round 19 K1)
   ///
@@ -324,19 +344,44 @@ class NotificationScheduler {
   /// the alarms we *intended* to put on this lane. `planNotifications` then
   /// dropped every one of them, so an alarm AlarmKit refused at runtime
   /// (`limit_reached`, a revoked grant, any `PlatformException`) was scheduled
-  /// on NEITHER lane. It was written to the log as `degraded` and otherwise
-  /// forgotten, and the file's own comment claimed the opposite was true.
+  /// on NEITHER lane. Returning what was accepted rather than what was
+  /// attempted closes that; the cap ([kMaxAlarmKitAlarms]) leaves the rest on
+  /// their chain.
   ///
-  /// The comment was right about the CAP — `planAlarmKitAlarms` returns at most
-  /// [kMaxAlarmKitAlarms], and the rest keep their chain — and wrong about
-  /// every other way this lane can say no. Returning what was accepted rather
-  /// than what was attempted closes both.
+  /// ## Occurrences, not ids (#49)
+  ///
+  /// The plan is [planAlarmKitPass]; this method only reads, executes and
+  /// logs. A ringing alarm is never `cancel`led: it stays while its occurrence
+  /// is current and is `stop`ped once it is superseded.
   Future<Set<String>> _applyAlarmKit({
     required DateTime now,
     required String? soundName,
   }) async {
     final host = alarmKit;
     if (host == null || !_alarmKitSupported) return const {};
+
+    // Read BEFORE the drain: an event the drain applies now is not in
+    // [_latest] until the replica emits, so its alarm waits for that pass.
+    Set<String>? applied;
+    try {
+      applied = await appliedEventIds?.call();
+    } on Object catch (error) {
+      applied = const {};
+      await log?.record(
+        event: AlarmLogEvent.degraded,
+        lane: AlarmLogLane.alarmkit,
+        detail: 'receipts unreadable: $error — native alarms kept',
+      );
+    }
+    try {
+      await drainActions?.call();
+    } on Object catch (error) {
+      await log?.record(
+        event: AlarmLogEvent.degraded,
+        lane: AlarmLogLane.alarmkit,
+        detail: 'drain failed: $error',
+      );
+    }
 
     // K4: re-READ the grant (never re-ask). A permission revoked in Settings
     // mid-session used to leave urgent alarms routed to a lane that would
@@ -363,11 +408,10 @@ class NotificationScheduler {
       snoozePreset: snoozePreset,
       soundName: soundName,
     );
-    final desiredById = {for (final a in desired) a.id: a};
 
-    final Set<int> scheduled;
+    final List<AlarmKitScheduled> current;
     try {
-      scheduled = await host.scheduledIds();
+      current = await host.scheduledAlarms();
     } on Object catch (error) {
       // We cannot tell what this lane holds, so we must not tell the
       // notification lane to skip anything. Every urgent alarm keeps its chain.
@@ -375,61 +419,88 @@ class NotificationScheduler {
         event: AlarmLogEvent.degraded,
         lane: AlarmLogLane.alarmkit,
         detail:
-            'scheduledIds failed: $error — urgent alarms stay on notifications',
+            'scheduledAlarms failed: $error — urgent alarms stay on notifications',
       );
       return const {};
     }
 
-    for (final id in scheduled.difference(desiredById.keys.toSet())) {
+    final plan = planAlarmKitPass(
+      desired: desired,
+      current: current,
+      alarms: _latest,
+      appliedEventIds:
+          applied ??
+          {
+            for (final row in current)
+              if (row.eventId != null) row.eventId!,
+          },
+      now: now,
+      staleWindow: staleWindow,
+    );
+
+    // Everything left as it is counts as accepted; changes have to prove
+    // themselves.
+    final accepted = <String>{...plan.held};
+
+    for (final row in plan.toStop) {
       try {
-        await host.cancel(id);
+        final result = await host.stop(row.id);
         await log?.record(
-          event: AlarmLogEvent.cancelled,
+          event: result.error == null
+              ? AlarmLogEvent.cancelled
+              : AlarmLogEvent.degraded,
           lane: AlarmLogLane.alarmkit,
-          detail: 'id=$id',
+          urgent: true,
+          fireAt: _instant(row.fireAtMs),
+          detail:
+              'stop id=${row.id} superseded '
+              '(stopped=${result.stopped} cancelled=${result.cancelled}'
+              '${result.error == null ? '' : ' error=${result.error}'})',
         );
       } on Object catch (error) {
         await log?.record(
           event: AlarmLogEvent.degraded,
           lane: AlarmLogLane.alarmkit,
-          detail: 'cancel id=$id failed: $error',
+          detail: 'stop id=${row.id} failed: $error',
         );
       }
     }
 
-    // Everything still on the lane counts as accepted; only the new ones have
-    // to prove themselves.
-    final accepted = <String>{
-      for (final entry in desiredById.entries)
-        if (scheduled.contains(entry.key)) ...entry.value.reminderIds,
-    };
-
-    for (final id in desiredById.keys.toSet().difference(scheduled)) {
-      final alarm = desiredById[id]!;
-      AlarmKitScheduleResult outcome;
+    for (final row in plan.toCancel) {
       try {
-        outcome = await host.schedule(alarm);
+        await host.cancel(row.id);
+        await log?.record(
+          event: AlarmLogEvent.cancelled,
+          lane: AlarmLogLane.alarmkit,
+          detail: 'id=${row.id}',
+        );
       } on Object catch (error) {
-        outcome = AlarmKitScheduleResult.failed('$error');
+        await log?.record(
+          event: AlarmLogEvent.degraded,
+          lane: AlarmLogLane.alarmkit,
+          detail: 'cancel id=${row.id} failed: $error',
+        );
       }
-      if (outcome.ok) accepted.addAll(alarm.reminderIds);
-      await log?.record(
-        // A refused alarm is a degradation, not a schedule — saying
-        // "scheduled" for something the OS threw away is precisely the lie
-        // OPH-176 built this log to catch.
-        event: outcome.ok ? AlarmLogEvent.scheduled : AlarmLogEvent.degraded,
-        lane: AlarmLogLane.alarmkit,
-        urgent: true,
-        // AlarmKit rings until answered natively: one entry, no chain.
-        sound: alarm.soundName ?? kAwAlarmSoundName,
-        level: 'alarmkit',
-        fireAt: alarm.fireAt,
-        taskId: alarm.taskId,
-        reminderId: alarm.reminderId,
-        detail: outcome.ok
-            ? null
-            : '${outcome.reason} — notification chain keeps it',
-      );
+    }
+
+    for (final alarm in plan.toReschedule) {
+      try {
+        await host.cancel(alarm.id);
+      } on Object catch (error) {
+        // The old presentation still rings: better than none.
+        accepted.addAll(alarm.reminderIds);
+        await log?.record(
+          event: AlarmLogEvent.degraded,
+          lane: AlarmLogLane.alarmkit,
+          detail: 'reschedule id=${alarm.id} cancel failed: $error',
+        );
+        continue;
+      }
+      await _scheduleOne(host, alarm, accepted);
+    }
+
+    for (final alarm in plan.toSchedule) {
+      await _scheduleOne(host, alarm, accepted);
     }
 
     // Urgent alarms the CAP pushed back onto the notification chain. Said out
@@ -437,9 +508,7 @@ class NotificationScheduler {
     // otherwise.
     for (final a in _latest) {
       if (!a.urgent || accepted.contains(a.reminderId)) continue;
-      if (!desiredById.values.any(
-        (d) => d.reminderIds.contains(a.reminderId),
-      )) {
+      if (!desired.any((d) => d.reminderIds.contains(a.reminderId))) {
         await log?.record(
           event: AlarmLogEvent.degraded,
           lane: AlarmLogLane.alarmkit,
@@ -452,6 +521,40 @@ class NotificationScheduler {
     }
     return accepted;
   }
+
+  Future<void> _scheduleOne(
+    AlarmKitHost host,
+    AlarmKitAlarm alarm,
+    Set<String> accepted,
+  ) async {
+    AlarmKitScheduleResult outcome;
+    try {
+      outcome = await host.schedule(alarm);
+    } on Object catch (error) {
+      outcome = AlarmKitScheduleResult.failed('$error');
+    }
+    if (outcome.ok) accepted.addAll(alarm.reminderIds);
+    await log?.record(
+      // A refused alarm is a degradation, not a schedule — saying
+      // "scheduled" for something the OS threw away is precisely the lie
+      // OPH-176 built this log to catch.
+      event: outcome.ok ? AlarmLogEvent.scheduled : AlarmLogEvent.degraded,
+      lane: AlarmLogLane.alarmkit,
+      urgent: true,
+      // AlarmKit rings until answered natively: one entry, no chain.
+      sound: alarm.soundName ?? kAwAlarmSoundName,
+      level: 'alarmkit',
+      fireAt: alarm.fireAt,
+      taskId: alarm.taskId,
+      reminderId: alarm.reminderId,
+      detail: outcome.ok
+          ? null
+          : '${outcome.reason} — notification chain keeps it',
+    );
+  }
+
+  static DateTime? _instant(int? ms) =>
+      ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
 
   /// Works out what happened to the requests we made last pass (OPH-277).
   ///
@@ -492,3 +595,151 @@ class NotificationScheduler {
     }
   }
 }
+
+/// What one AlarmKit pass does to the lane (NOTIFICATIONS §2b.3 "Plan pass").
+class AlarmKitPassPlan {
+  const AlarmKitPassPlan({
+    this.toStop = const [],
+    this.toCancel = const [],
+    this.toSchedule = const [],
+    this.toReschedule = const [],
+    this.held = const {},
+  });
+
+  /// Ringing alarms whose occurrence is superseded: `stop`, never `cancel`.
+  final List<AlarmKitScheduled> toStop;
+
+  /// Alarms the plan no longer wants and that are not ringing.
+  final List<AlarmKitScheduled> toCancel;
+
+  /// Desired alarms the lane does not hold.
+  final List<AlarmKitAlarm> toSchedule;
+
+  /// Desired alarms the lane holds under the same id with another
+  /// fingerprint: `cancel` + `schedule` under that id.
+  final List<AlarmKitAlarm> toReschedule;
+
+  /// Reminder ids covered by alarms the pass leaves exactly as they are — the
+  /// notification lane must not ring them a second time.
+  final Set<String> held;
+}
+
+/// The pure AlarmKit pass (#49, NOTIFICATIONS §2b.3): [desired] from
+/// `planAlarmKitAlarms`, [current] from `scheduledAlarms`, [alarms] the model
+/// the plan was built from, [appliedEventIds] the receipts.
+///
+/// Per [current] row, in this order:
+/// 1. `alerting` — kept while some member task still has an active urgent
+///    occurrence in the alarm's UTC minute and `now - fireAtMs` is inside
+///    [staleWindow]; otherwise stopped. A row with no ledger record cannot be
+///    judged and is stopped only once it is older than [staleWindow].
+/// 2. `origin: native` whose event has no receipt — kept: the model has not
+///    heard about that snooze yet.
+/// 3. not desired — cancelled.
+/// 4. desired with another fingerprint — rescheduled under the same id. A row
+///    with no ledger record has no fingerprint to compare and is kept.
+///
+/// Then every desired id the lane does not hold is scheduled.
+AlarmKitPassPlan planAlarmKitPass({
+  required List<AlarmKitAlarm> desired,
+  required List<AlarmKitScheduled> current,
+  required List<AlarmInput> alarms,
+  required Set<String> appliedEventIds,
+  required DateTime now,
+  required Duration staleWindow,
+}) {
+  final desiredById = {for (final a in desired) a.id: a};
+  final nowMs = now.toUtc().millisecondsSinceEpoch;
+  final toStop = <AlarmKitScheduled>[];
+  final toCancel = <AlarmKitScheduled>[];
+  final toReschedule = <AlarmKitAlarm>[];
+  final held = <String>{};
+  final handled = <int>{};
+
+  // The active urgent reminders of [row]'s members that fall in [minute].
+  Iterable<AlarmInput> occurrences(
+    AlarmKitScheduled row,
+    bool Function(AlarmInput) at,
+  ) => alarms.where(
+    (a) =>
+        a.urgent &&
+        _kActive.contains(a.status) &&
+        row.members.contains(a.taskId) &&
+        at(a),
+  );
+
+  int minuteOf(int ms) => ms ~/ 60000;
+  int instantMs(AlarmInput a) => alarmKitFireAtMs(alarmFireAt(a));
+
+  for (final row in current) {
+    handled.add(row.id);
+    final fireAtMs = row.fireAtMs;
+
+    if (row.state == AlarmKitAlarmState.alerting) {
+      if (!row.hasLedger || fireAtMs == null) {
+        // An alarm from before the ledger: nothing says what it rings for.
+        if (fireAtMs != null &&
+            nowMs - fireAtMs >= staleWindow.inMilliseconds) {
+          toStop.add(row);
+        }
+        continue;
+      }
+      final fresh = nowMs - fireAtMs < staleWindow.inMilliseconds;
+      final live = fresh
+          ? occurrences(
+              row,
+              (a) => minuteOf(instantMs(a)) == minuteOf(fireAtMs),
+            ).toList()
+          : const <AlarmInput>[];
+      if (live.isEmpty) {
+        toStop.add(row);
+      } else {
+        held.addAll(live.map((a) => a.reminderId));
+      }
+      continue;
+    }
+
+    final eventId = row.eventId;
+    if (row.origin == 'native' &&
+        eventId != null &&
+        !appliedEventIds.contains(eventId)) {
+      // The snooze that made this alarm is still on its way into the model,
+      // which may yet say the old instant: whatever is due by now, or rang in
+      // this alarm's minute, is this alarm's to ring.
+      held.addAll(
+        occurrences(
+          row,
+          (a) =>
+              instantMs(a) <= nowMs ||
+              (fireAtMs != null &&
+                  minuteOf(instantMs(a)) == minuteOf(fireAtMs)),
+        ).map((a) => a.reminderId),
+      );
+      final wanted = desiredById[row.id];
+      if (wanted != null) held.addAll(wanted.reminderIds);
+      continue;
+    }
+
+    final wanted = desiredById[row.id];
+    if (wanted == null) {
+      toCancel.add(row);
+    } else if (row.hasLedger && row.fp != wanted.fp) {
+      toReschedule.add(wanted);
+    } else {
+      held.addAll(wanted.reminderIds);
+    }
+  }
+
+  return AlarmKitPassPlan(
+    toStop: toStop,
+    toCancel: toCancel,
+    toSchedule: [
+      for (final a in desired)
+        if (!handled.contains(a.id)) a,
+    ],
+    toReschedule: toReschedule,
+    held: held,
+  );
+}
+
+const _kActive = {'scheduled', 'snoozed', 'delivered'};
