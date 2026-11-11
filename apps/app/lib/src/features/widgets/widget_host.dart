@@ -76,16 +76,18 @@ WidgetHost defaultWidgetHost() =>
     ? const MacWidgetHost()
     : const HomeWidgetHost();
 
-/// Whether `home_widget`'s interactivity callback can be registered at all
-/// (OPH-370). The plugin declares android and ios only: on web, Windows, Linux
-/// — and macOS, whose widget runs over [MacWidgetHost]'s own channel — the call
-/// ended in an unawaited MissingPluginException at every start.
+/// Whether `home_widget`'s interactivity callback is registered (OPH-370,
+/// OPH-438). Android only. The plugin declares android and ios: on web,
+/// Windows, Linux — and macOS, whose widget runs over [MacWidgetHost]'s own
+/// channel — the call ended in an unawaited MissingPluginException at every
+/// start. On iOS `main()` registers before [HomeWidgetHost.configure] sets the
+/// App Group, and home_widget 0.9.3 answers that with error -7 (#50, RC4) —
+/// and iOS never runs `HomeWidgetBackgroundWorker` anyway: its widget writes
+/// through the app's own App Intent and App Group queue (ADR-0016).
 bool homeWidgetCallbackSupported({
   required bool isWeb,
   required TargetPlatform platform,
-}) =>
-    !isWeb &&
-    (platform == TargetPlatform.android || platform == TargetPlatform.iOS);
+}) => !isWeb && platform == TargetPlatform.android;
 
 /// The active host. Tests override this with a fake.
 final widgetHostProvider = Provider<WidgetHost>((_) => defaultWidgetHost());
