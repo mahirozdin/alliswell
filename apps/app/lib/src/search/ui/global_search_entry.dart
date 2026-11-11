@@ -113,7 +113,7 @@ class _AwGlobalSearchHostState extends ConsumerState<AwGlobalSearchHost> {
     // a ringing alarm (both paint inside the shell, under this layer).
     if (ref.read(authControllerProvider).value == null) return;
     if (ref.read(tourControllerProvider).running) return;
-    if (ref.read(alarmOverlayControllerProvider).ringing != null) return;
+    if (ref.read(alarmOverlayControllerProvider).ringing.isNotEmpty) return;
     final rootContext = awRootNavigatorKey.currentContext;
     if (rootContext == null) return;
     unawaited(showGlobalSearch(rootContext, ref));

@@ -378,6 +378,13 @@ PAIRS = [
     ('D mic ring on surface', '#7186B5', '#151F3C', 3.0),
     ('D mic ring on surfaceContainerHighest', '#7186B5', '#26345E', 3.0),
     ('D mic ring on surfaceBright', '#7186B5', '#2A3963', 3.0),
+    # #46 (OPH-423): a failed alarm action comes back with AwInlineError on the
+    # ring screen — errorContainer at 60% over the ring's urgency wash
+    # (prioUrgent 10% over surface) — and a "Try again" outlined button.
+    ('L ring action error text', '#99000F', '#FEE5E3', 4.5),
+    ('L ring retry label on ring wash', '#0A5CFF', '#FCE9E8', 4.5),
+    ('D ring action error text', '#FFD9D5', '#5B2126', 4.5),
+    ('D ring retry label on ring wash', '#3E9BFF', '#2C233C', 4.5),
 ]
 
 # ── Text on the PAGE (ADR-0063 #4, OPH-399) ──

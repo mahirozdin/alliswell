@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +18,29 @@ import 'alarm_overlay.dart';
 import 'planner.dart';
 import 'providers.dart';
 import '../theme/typography.dart';
+import '../widgets/status_views.dart';
+
+/// The shell's alarm layer: the first ringing occurrence, keyed by
+/// [alarmOccurrenceKey] (#46). Unkeyed, the next alarm inherited the previous
+/// screen's State — its pulse, its log entry and a "busy" flag that left every
+/// button dead.
+class AlarmOverlayLayer extends ConsumerWidget {
+  const AlarmOverlayLayer({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final overlay = ref.watch(alarmOverlayControllerProvider);
+    if (overlay.ringing.isEmpty) return const SizedBox.shrink();
+    final alarm = overlay.ringing.first;
+    return AlarmRingScreen(
+      key: ValueKey<String>(alarmOccurrenceKey(alarm)),
+      alarm: alarm,
+      failed: overlay.isFailed(alarm),
+      onHandled: (_) =>
+          ref.read(alarmOverlayControllerProvider.notifier).handled(alarm),
+    );
+  }
+}
 
 /// Full-screen "alarm ringing" surface (OPH-143). Shown while an URGENT alarm is
 /// due and the app is open — desktop/web's only alarm surface, and the
@@ -29,6 +54,7 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
     required this.alarm,
     required this.onHandled,
     this.missed = false,
+    this.failed = false,
   });
 
   final AlarmInput alarm;
@@ -46,6 +72,10 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
   /// three days ago is the bug; hiding it would be a different one.
   final bool missed;
 
+  /// Shown again because the write behind the last action failed (#46): the
+  /// sound stays off, the screen says so and offers the same action again.
+  final bool failed;
+
   @override
   ConsumerState<AlarmRingScreen> createState() => _AlarmRingScreenState();
 }
@@ -56,38 +86,21 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     vsync: this,
     duration: const Duration(milliseconds: 900),
   );
-  // Held in a field so dispose() never touches `ref` (unsafe once unmounting).
-  AlarmFeedback? _feedback;
+
+  /// A second tap while the first action is on its way is ignored. Never
+  /// painted: a disabled button on an alarm reads as "this alarm is stuck".
   bool _busy = false;
 
-  /// Silent because of a setting, not because the platform refused. The
-  /// screen has to tell those apart: one is a setting, the other is a failure.
-  bool _silent = false;
-
-  /// ...and whether the person picked that setting, or it is the browser's
-  /// default nobody chose (OPH-393, E-20). Only the first may be claimed as
-  /// theirs.
-  bool _silenceChosen = false;
+  AlarmOverlayController get _controller =>
+      ref.read(alarmOverlayControllerProvider.notifier);
 
   @override
   void initState() {
     super.initState();
     if (!widget.missed) _pulse.repeat(reverse: true);
-    // A missed alarm is reviewed, not answered under pressure: silent, and the
-    // seam still exists so the "start sound" affordance has something to talk
-    // to if the screen is ever reused.
-    final feedback = widget.missed
-        ? const SilentAlarmFeedback()
-        : ref.read(alarmFeedbackProvider);
-    _feedback = feedback;
-    // OPH-316: the user asked this browser to be quiet, so the screen opens
-    // and says nothing out loud. Deliberately NOT `SilentAlarmFeedback` — its
-    // `start()` is a no-op, which would make the manual "start the sound" a
-    // dead button, and an offer that does nothing is the same lie as an alarm
-    // that looks like it is ringing.
-    _silent = !widget.missed && ref.read(alarmOpensSilentProvider);
-    _silenceChosen = _silent && ref.read(alarmSilenceChosenProvider);
-    if (!_silent) feedback.start();
+    // The sound is not this screen's: AlarmOverlayController starts and stops
+    // it (#46). A missed alarm is reviewed, not answered under pressure, and
+    // never makes a sound.
     // The one alarm surface we can prove rang (OPH-176): this screen.
     ref
         .read(alarmLogProvider)
@@ -103,25 +116,59 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   }
 
   @override
+  void didUpdateWidget(AlarmRingScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (alarmOccurrenceKey(oldWidget.alarm) !=
+        alarmOccurrenceKey(widget.alarm)) {
+      _busy = false;
+    }
+  }
+
+  @override
   void dispose() {
-    _feedback?.stop();
     _pulse.dispose();
     super.dispose();
   }
 
-  Future<void> _run(Future<void> Function() action) async {
+  /// The action contract (#46): silence synchronously, dismiss at once, then
+  /// await the write. Nothing here awaits before the screen is gone; a failed
+  /// write brings the alarm back through the controller, with the error.
+  void _run(Future<void> Function() write, {void Function()? onSaved}) =>
+      _runAction(AlarmPendingAction(write, onSaved: onSaved));
+
+  void _runAction(AlarmPendingAction action) {
     if (_busy) return;
-    setState(() => _busy = true);
-    try {
-      await action();
-    } finally {
-      widget.onHandled(widget.alarm.reminderId);
-    }
+    _busy = true;
+    final controller = _controller;
+    final alarm = widget.alarm;
+    controller.silence();
+    widget.onHandled(alarm.reminderId);
+    unawaited(
+      controller.commit(alarm, action).then((saved) {
+        // The failed occurrence can come back before a frame ever removed
+        // this screen (same key, same State): it is no longer busy then.
+        if (!saved && mounted) _busy = false;
+      }),
+    );
   }
 
-  void _acknowledge() => _run(
-    () => ref.read(reminderStoreProvider).acknowledge(widget.alarm.reminderId),
-  );
+  void _retry() {
+    final action = _controller.failedAction(widget.alarm);
+    if (action != null) _runAction(action);
+  }
+
+  /// Shows [message] on the messenger captured now, once the write landed —
+  /// the screen is gone by then.
+  void Function() _sayLater(String message) {
+    final messenger = ScaffoldMessenger.maybeOf(context);
+    return () => messenger?.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _acknowledge() {
+    final store = ref.read(reminderStoreProvider);
+    final reminderId = widget.alarm.reminderId;
+    _run(() => store.acknowledge(reminderId));
+  }
 
   void _snooze(String preset) {
     // Say what will happen, in the moment it happens (OPH-177, round 9 #6.5:
@@ -130,17 +177,24 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       preset,
       now: ref.read(nowProvider)(),
     );
-    _confirm(until);
-    _run(
-      () => ref
-          .read(taskStoreProvider)
-          .snooze(widget.alarm.taskId, preset: preset),
-    );
+    final store = ref.read(taskStoreProvider);
+    final taskId = widget.alarm.taskId;
+    _run(() => store.snooze(taskId, preset: preset), onSaved: _confirm(until));
   }
 
   /// Round 9's "Özel ertele" (BLUEPRINT §8.2, unimplemented until now): pick the
   /// exact minute instead of picking from four presets.
   Future<void> _snoozeCustom() async {
+    if (_busy) return;
+    // The person is dealing with it: quiet now, before the pickers open. If
+    // they back out, the alarm is still unanswered and its sound comes back.
+    final controller = _controller;
+    final wasSounding = controller.sounding;
+    controller.silence();
+    void backOut() {
+      if (wasSounding) controller.startSound();
+    }
+
     final now = DateTime.now();
     // Both pickers are anchored on the SAME instant — "half an hour from now" —
     // because that instant is TOMORROW whenever the alarm rings after 23:30.
@@ -156,7 +210,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       firstDate: DateTime(now.year, now.month, now.day),
       lastDate: now.add(const Duration(days: 365)),
     );
-    if (date == null || !mounted) return;
+    if (!mounted) return;
+    if (date == null) return backOut();
     final time = await showTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(suggested),
@@ -175,53 +230,57 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       ScaffoldMessenger.maybeOf(
         context,
       )?.showSnackBar(SnackBar(content: Text('alarm.snoozePast'.tr())));
-      return;
+      return backOut();
     }
-    _confirm(until, format: format);
+    final store = ref.read(taskStoreProvider);
+    final taskId = widget.alarm.taskId;
     _run(
-      () =>
-          ref.read(taskStoreProvider).snooze(widget.alarm.taskId, until: until),
+      () => store.snooze(taskId, until: until),
+      onSaved: _confirm(until, format: format),
     );
   }
 
-  void _confirm(DateTime until, {String? format}) {
-    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-      SnackBar(
-        content: Text(
-          'alarm.snoozeConfirmed'.tr(
-            args: {
-              // Turkish takes the suffix of the spoken time (#46):
-              // "09:05’te", "09:30’da"; the catalogue no longer hard-codes it.
-              'time': awAt(
-                awFormatTime(
-                  until,
-                  format: format ?? ref.read(dateFormatProvider),
-                ),
-                languageCode: AwI18n.instance.locale.languageCode,
-              ),
-            },
-          ),
+  /// "Rings again at 09:05" — said after the screen closed and the snooze
+  /// landed (OPH-177, #46): before the write it could be a promise broken.
+  void Function() _confirm(DateTime until, {String? format}) => _sayLater(
+    'alarm.snoozeConfirmed'.tr(
+      args: {
+        // Turkish takes the suffix of the spoken time (#46):
+        // "09:05’te", "09:30’da"; the catalogue no longer hard-codes it.
+        'time': awAt(
+          awFormatTime(until, format: format ?? ref.read(dateFormatProvider)),
+          languageCode: AwI18n.instance.locale.languageCode,
         ),
-      ),
-    );
-  }
+      },
+    ),
+  );
 
-  void _complete() =>
-      _run(() => ref.read(taskStoreProvider).complete(widget.alarm.taskId));
+  void _complete() {
+    final store = ref.read(taskStoreProvider);
+    final taskId = widget.alarm.taskId;
+    _run(() => store.complete(taskId));
+  }
 
   /// Silence this task's alarms for good (OPH-178). The task stays OPEN, and the
   /// snackbar says what just happened — a silent silence would be the worst of
   /// both worlds.
   void _silence() {
-    ScaffoldMessenger.maybeOf(
-      context,
-    )?.showSnackBar(SnackBar(content: Text('task.alarmsMuted'.tr())));
-    _run(() => ref.read(taskStoreProvider).muteAlarms(widget.alarm.taskId));
+    final store = ref.read(taskStoreProvider);
+    final taskId = widget.alarm.taskId;
+    _run(
+      () => store.muteAlarms(taskId),
+      onSaved: _sayLater('task.alarmsMuted'.tr()),
+    );
   }
 
+  /// "Aç" silences and dismisses but does not acknowledge (fix-spec §2.2):
+  /// the person went to look, the answer comes from the task.
   void _open() {
+    if (_busy) return;
+    _busy = true;
     final router = GoRouter.of(context);
     final taskId = widget.alarm.taskId;
+    _controller.silence();
     widget.onHandled(widget.alarm.reminderId);
     router.push('/tasks/$taskId');
   }
@@ -232,6 +291,13 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     final tokens = context.awTokens;
     final text = Theme.of(context).textTheme;
     final dateFormat = ref.watch(dateFormatProvider);
+    // OPH-316: the person asked this browser to be quiet, so the alarm opens
+    // and says nothing out loud — declared, with the sound one press away.
+    // OPH-393: "you set this" only when the person did (E-20).
+    final silent =
+        !widget.missed &&
+        ref.watch(alarmOverlayControllerProvider.select((s) => s.silentHere));
+    final silenceChosen = silent && ref.watch(alarmSilenceChosenProvider);
     final fireAt = alarmFireAt(widget.alarm).toLocal();
     final time = MaterialLocalizations.of(
       context,
@@ -348,16 +414,16 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                       // NOTIFICATIONS §3 forbids. OPH-393: "you set this" only
                       // when the person did; a fresh browser is silent by
                       // default and says that instead (E-20).
-                      if (_silent)
+                      if (silent)
                         Padding(
                           padding: const EdgeInsets.only(top: AwSpace.x4),
                           child: Column(
                             children: [
                               Text(
-                                _silenceChosen
+                                silenceChosen
                                     ? 'alarm.silentByChoice'.tr()
                                     : 'alarm.silentByDefault'.tr(),
-                                key: _silenceChosen
+                                key: silenceChosen
                                     ? const Key('alarm-silent-declared')
                                     : const Key('alarm-silent-default'),
                                 textAlign: TextAlign.center,
@@ -368,19 +434,19 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                               const SizedBox(height: AwSpace.x2),
                               OutlinedButton.icon(
                                 key: const Key('alarm-start-sound'),
-                                onPressed: () => _feedback?.start(),
+                                onPressed: () => _controller.startSound(),
                                 icon: const Icon(Icons.volume_up, size: 18),
                                 label: Text('alarm.startSound'.tr()),
                               ),
                             ],
                           ),
                         )
-                      else
+                      else if (!widget.missed)
                         // OPH-180: when the platform refused to make noise (a
                         // browser's autoplay policy, no audio device), say so and
                         // offer to start it — never pretend the room is loud.
                         ValueListenableBuilder<bool>(
-                          valueListenable: _feedback!.soundBlocked,
+                          valueListenable: _controller.soundBlocked,
                           builder: (context, blocked, _) => blocked
                               ? Padding(
                                   padding: const EdgeInsets.only(
@@ -388,19 +454,42 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                                   ),
                                   child: OutlinedButton.icon(
                                     key: const Key('alarm-start-sound'),
-                                    onPressed: () => _feedback?.start(),
+                                    onPressed: () => _controller.startSound(),
                                     icon: const Icon(Icons.volume_up, size: 18),
                                     label: Text('alarm.startSound'.tr()),
                                   ),
                                 )
                               : const SizedBox.shrink(),
                         ),
+                      // #46: the write behind the last action failed. The
+                      // sound stays off; the screen says so and offers the
+                      // same action again — no snackbar behind the overlay.
+                      if (widget.failed) ...[
+                        const SizedBox(height: AwSpace.x5),
+                        AwInlineError(
+                          message: 'alarm.actionFailed'.tr(),
+                          textKey: const Key('alarm-action-failed'),
+                        ),
+                        const SizedBox(height: AwSpace.x2),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            key: const Key('alarm-retry'),
+                            onPressed: _retry,
+                            style: OutlinedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(48),
+                            ),
+                            icon: const Icon(Icons.refresh, size: 18),
+                            label: Text('alarm.retry'.tr()),
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AwSpace.x6),
                       SizedBox(
                         width: double.infinity,
                         child: FilledButton.icon(
                           key: const Key('alarm-acknowledge'),
-                          onPressed: _busy ? null : _acknowledge,
+                          onPressed: _acknowledge,
                           style: FilledButton.styleFrom(
                             backgroundColor: scheme.error,
                             foregroundColor: scheme.onError,
@@ -434,7 +523,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                           ))
                             OutlinedButton(
                               key: Key('alarm-snooze-$preset'),
-                              onPressed: _busy ? null : () => _snooze(preset),
+                              onPressed: () => _snooze(preset),
                               // The offset AND the instant it lands on: "5 dk"
                               // alone made the user ask what happens next.
                               child: Column(
@@ -468,14 +557,14 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                             ),
                           OutlinedButton(
                             key: const Key('alarm-snooze-custom'),
-                            onPressed: _busy ? null : _snoozeCustom,
+                            onPressed: _snoozeCustom,
                             child: Text('alarm.snoozeCustom'.tr()),
                           ),
                           // OPH-178: the way out that does NOT require lying
                           // about the task being done.
                           OutlinedButton.icon(
                             key: const Key('alarm-silence'),
-                            onPressed: _busy ? null : _silence,
+                            onPressed: _silence,
                             icon: const Icon(Icons.notifications_off, size: 18),
                             label: Text('alarm.silence'.tr()),
                           ),
@@ -487,7 +576,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                         children: [
                           TextButton.icon(
                             key: const Key('alarm-complete'),
-                            onPressed: _busy ? null : _complete,
+                            onPressed: _complete,
                             icon: const Icon(
                               Icons.check_circle_outline,
                               size: 18,
@@ -497,7 +586,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                           const SizedBox(width: AwSpace.x2),
                           TextButton.icon(
                             key: const Key('alarm-open'),
-                            onPressed: _busy ? null : _open,
+                            onPressed: _open,
                             icon: const Icon(Icons.open_in_new, size: 18),
                             label: Text('notif.action.open'.tr()),
                           ),

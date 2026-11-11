@@ -558,7 +558,9 @@ class HomeShell extends ConsumerWidget {
     // app is open, it takes over the screen — desktop/web's only alarm surface,
     // and the companion to the OS notification on mobile. Gated OFF in tests
     // (alarmOverlayAutoShowProvider) so a due alarm never covers the app.
-    final ringing = ref.watch(alarmOverlayControllerProvider).ringing;
+    final ringing = ref.watch(
+      alarmOverlayControllerProvider.select((s) => s.ringing.isNotEmpty),
+    );
 
     // OPH-359 (UI-AUDIT #58): what the floating buttons cover, said once for
     // every list inside the shell (see [AwFabClearance]).
@@ -577,7 +579,7 @@ class HomeShell extends ConsumerWidget {
             !_newTaskKey.accepts(event, HardwareKeyboard.instance) ||
             awTextInputFocused() ||
             ref.read(tourControllerProvider).running ||
-            ref.read(alarmOverlayControllerProvider).ringing != null) {
+            ref.read(alarmOverlayControllerProvider).ringing.isNotEmpty) {
           return KeyEventResult.ignored;
         }
         unawaited(showHomeTaskCreateSheet(context, ref));
@@ -602,7 +604,7 @@ class HomeShell extends ConsumerWidget {
       ),
     );
 
-    if (!tour.running && ringing == null) return shell;
+    if (!tour.running && !ringing) return shell;
     return Stack(
       children: [
         shell,
@@ -616,14 +618,9 @@ class HomeShell extends ConsumerWidget {
             ),
           ),
         // An urgent alarm outranks onboarding — layered last, so it is on top.
-        if (ringing != null)
-          Positioned.fill(
-            child: AlarmRingScreen(
-              alarm: ringing,
-              onHandled: (id) =>
-                  ref.read(alarmOverlayControllerProvider.notifier).handled(id),
-            ),
-          ),
+        // Keyed per occurrence ('<taskId>|<fireAtMs>', #46) inside the layer,
+        // so the next alarm never inherits this one's screen state.
+        if (ringing) const Positioned.fill(child: AlarmOverlayLayer()),
       ],
     );
   }

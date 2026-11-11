@@ -1,6 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show ValueListenable, ValueNotifier;
+import 'package:flutter/foundation.dart'
+    show ValueListenable, ValueNotifier, debugPrint;
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -160,11 +161,46 @@ DateTime? nextUrgentFireAfter(List<AlarmInput> alarms, DateTime now) {
   return next;
 }
 
-/// What the shell needs to know: the alarm currently ringing, if any.
-class AlarmOverlayState {
-  const AlarmOverlayState({this.ringing});
+/// The identity of one ringing OCCURRENCE: the task plus the instant it fires
+/// at (#46). Keyed on the instant, not on the reminder, so a snoozed alarm is a
+/// new occurrence and rings again at its `snoozedUntil` in the same session —
+/// a reminder-keyed "already handled" set swallowed it until the app restarted.
+/// The shell keys the ring screen with it, so a different alarm never inherits
+/// the previous screen's state.
+String alarmOccurrenceKey(AlarmInput a) =>
+    '${a.taskId}|${alarmFireAt(a).millisecondsSinceEpoch}';
 
-  final AlarmInput? ringing;
+/// A write the ring screen started that has to be repeatable: "Tekrar dene"
+/// runs the same thing again (#46).
+class AlarmPendingAction {
+  const AlarmPendingAction(this.write, {this.onSaved});
+
+  /// The store call: acknowledge, snooze, complete, mute.
+  final Future<void> Function() write;
+
+  /// What to say once it landed (the snooze confirmation) — never before.
+  final void Function()? onSaved;
+}
+
+/// What the shell needs to know: the alarms ringing now, and whether this
+/// device stays quiet while they do.
+class AlarmOverlayState {
+  const AlarmOverlayState({
+    this.ringing = const [],
+    this.silentHere = false,
+    this.failed = const {},
+  });
+
+  /// One element in this wave; the minute's whole group later (ADR-0068).
+  final List<AlarmInput> ringing;
+
+  /// The alarm shows here without the in-app sound (a browser set to Silent).
+  final bool silentHere;
+
+  /// Occurrences shown again because the write behind an action failed.
+  final Set<String> failed;
+
+  bool isFailed(AlarmInput a) => failed.contains(alarmOccurrenceKey(a));
 }
 
 /// Drives the foreground ring overlay (OPH-143). Watches the alarm feed plus a
@@ -172,13 +208,46 @@ class AlarmOverlayState {
 /// due WHILE the app is open rings without waiting for a DB emission. The OS
 /// notification (OPH-139) stays the primary channel; this is the surface while
 /// the app is open, and desktop/web's ONLY alarm surface.
+///
+/// It is also the ONLY owner of the in-app sound ([AlarmFeedback], #46). The
+/// ring screen used to start the bed in `initState` and stop it in `dispose`:
+/// when one alarm's screen gave way to the next, the old screen's `dispose`
+/// stopped the sound the new one had just started on the shared player. Now
+/// the sound follows the occurrences: a newly shown one starts it, an empty
+/// overlay and every [silence] / [handled] stop it.
 class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   Timer? _timer;
 
-  /// Alarms the user just acted on: hide immediately and don't re-ring before
-  /// the write lands (and, for an offline synthetic acknowledge that no-ops, at
-  /// all). Cleared once an alarm leaves the feed.
+  /// Occurrences the user just acted on: hide immediately and don't re-ring
+  /// before the write lands (and, for an offline synthetic acknowledge that
+  /// no-ops, at all). Keyed by [alarmOccurrenceKey]; cleared once that
+  /// occurrence leaves the feed.
   final Set<String> _handled = {};
+
+  /// Occurrences that have been shown once — their sound was started then (or
+  /// deliberately not). A re-shown occurrence never starts it again.
+  final Set<String> _announced = {};
+
+  /// Occurrences whose write failed, with the action "Tekrar dene" repeats.
+  final Map<String, AlarmPendingAction> _failures = {};
+
+  AlarmFeedback? _feedback;
+  bool _sounding = false;
+
+  /// Whether the in-app sound is playing right now.
+  bool get sounding => _sounding;
+
+  /// The ring screen's "the platform refused to play" signal (OPH-180).
+  ValueListenable<bool> get soundBlocked => _sound().soundBlocked;
+
+  // Read lazily: a screen that never rings never creates an audio player.
+  AlarmFeedback _sound() {
+    final existing = _feedback;
+    if (existing != null) return existing;
+    final AlarmFeedback created = ref.read(alarmFeedbackProvider);
+    _feedback = created;
+    return created;
+  }
 
   DateTime _now() => ref.read(alarmClockProvider)();
 
@@ -187,44 +256,118 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
 
   @override
   AlarmOverlayState build() {
+    // Only the timer here: build re-runs on every feed emission, and stopping
+    // the sound in onDispose would cut it on each of them.
     ref.onDispose(() => _timer?.cancel());
     if (!ref.watch(alarmOverlayAutoShowProvider)) {
-      return const AlarmOverlayState();
+      return AlarmOverlayState(silentHere: ref.read(alarmOpensSilentProvider));
     }
     return _evaluate(ref.watch(alarmFeedProvider).value ?? const []);
   }
 
   AlarmOverlayState _evaluate(List<AlarmInput> alarms) {
     _timer?.cancel();
-    // Drop handled-ids whose alarm has left the feed, so a legitimately
-    // re-armed alarm can ring again later.
-    _handled.retainWhere((id) => alarms.any((a) => a.reminderId == id));
+    final silentHere = ref.read(alarmOpensSilentProvider);
+    if (!ref.read(alarmOverlayAutoShowProvider)) {
+      return AlarmOverlayState(silentHere: silentHere);
+    }
+    // Drop keys whose occurrence has left the feed: a snoozed alarm is a new
+    // occurrence, so it rings again at its new instant.
+    final present = {for (final a in alarms) alarmOccurrenceKey(a)};
+    _handled.retainWhere(present.contains);
+    _announced.retainWhere(present.contains);
+    _failures.removeWhere((key, _) => !present.contains(key));
 
     final now = _now();
-    final live = alarms.where((a) => !_handled.contains(a.reminderId)).toList();
-    final ringing = ringingAlarm(
-      live,
-      now,
-      staleAfter: ref.read(alarmStaleWindowProvider),
-    );
-    if (ringing != null) return AlarmOverlayState(ringing: ringing);
+    final live = alarms
+        .where((a) => !_handled.contains(alarmOccurrenceKey(a)))
+        .toList();
+    final shown =
+        ringingAlarm(
+          live,
+          now,
+          staleAfter: ref.read(alarmStaleWindowProvider),
+        ) ??
+        // A failed write brings its alarm back even when it was opened from
+        // the missed card, outside the ring window: say it, never lose it.
+        live
+            .where((a) => _failures.containsKey(alarmOccurrenceKey(a)))
+            .firstOrNull;
 
-    final next = nextUrgentFireAfter(alarms, now);
-    if (next != null) {
-      final wait = next.difference(now);
-      _timer = Timer(wait.isNegative ? Duration.zero : wait, _tick);
+    if (shown == null) {
+      if (_sounding) _stopSound();
+      final next = nextUrgentFireAfter(live, now);
+      if (next != null) {
+        final wait = next.difference(now);
+        _timer = Timer(wait.isNegative ? Duration.zero : wait, _tick);
+      }
+      return AlarmOverlayState(silentHere: silentHere);
     }
-    return const AlarmOverlayState();
+
+    final key = alarmOccurrenceKey(shown);
+    final failed = _failures.containsKey(key);
+    if (_announced.add(key) && !failed && !silentHere && !_sounding) {
+      // A newly shown occurrence. A re-shown failed one stays quiet: its
+      // sound comes back only through the no-interaction rule, never here.
+      _sound().start();
+      _sounding = true;
+    }
+    return AlarmOverlayState(
+      ringing: [shown],
+      silentHere: silentHere,
+      failed: failed ? {key} : const {},
+    );
   }
 
   void _tick() => state = _evaluate(_feed());
 
-  /// The overlay calls this after the user acknowledges / snoozes / completes:
-  /// dismiss now; the feed confirms a beat later.
-  void handled(String reminderId) {
-    _handled.add(reminderId);
+  void _stopSound() {
+    _feedback?.stop();
+    _sounding = false;
+  }
+
+  /// Stop the in-app sound now, synchronously — the first thing every ring
+  /// screen action does, before any await.
+  void silence() => _stopSound();
+
+  /// Start the in-app sound on request: the screen's "Sesi başlat", and a
+  /// custom snooze whose pickers were cancelled.
+  void startSound() {
+    _sound().start();
+    _sounding = true;
+  }
+
+  /// The ring screen calls this the moment the user acts: silence, dismiss;
+  /// the feed confirms a beat later.
+  void handled(AlarmInput alarm) {
+    final key = alarmOccurrenceKey(alarm);
+    _handled.add(key);
+    _failures.remove(key);
+    silence();
     state = _evaluate(_feed());
   }
+
+  /// Await [action]'s write after the screen closed. True when it landed; on
+  /// a throw the occurrence comes back with the error and stays silent
+  /// (decision K-01: say it, the alarm comes back) — no snackbar.
+  Future<bool> commit(AlarmInput alarm, AlarmPendingAction action) async {
+    try {
+      await action.write();
+    } on Object catch (e) {
+      debugPrint('alarm action failed: $e');
+      final key = alarmOccurrenceKey(alarm);
+      _handled.remove(key);
+      _failures[key] = action;
+      state = _evaluate(_feed());
+      return false;
+    }
+    action.onSaved?.call();
+    return true;
+  }
+
+  /// The action "Tekrar dene" repeats for [alarm], if its write failed.
+  AlarmPendingAction? failedAction(AlarmInput alarm) =>
+      _failures[alarmOccurrenceKey(alarm)];
 }
 
 final alarmOverlayControllerProvider =

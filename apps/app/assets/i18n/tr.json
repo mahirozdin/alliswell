@@ -949,6 +949,8 @@
     "silence": "Süresiz ertele",
     "startSound": "Sesi başlat",
     "snoozePast": "O saat geçti. Daha ileri bir saat seç.",
+    "actionFailed": "Kaydedilemedi. Ses durdu, tekrar dene.",
+    "retry": "Tekrar dene",
     "problem": {
       "notificationsOff": "Bildirimler kapalı. Hatırlatıcılar sana ulaşamaz.",
       "webPermissionPrompt": "Bu tarayıcıda bildirimlere henüz izin vermedin.",

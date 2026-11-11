@@ -1,13 +1,22 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
+import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
+import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/providers.dart';
+import 'package:alliswell/src/notifications/reminder_store.dart';
 import 'package:alliswell/src/notifications/reminder_profile.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
+import 'package:alliswell/src/theme/tokens.dart';
 
 import '../support/sync_overrides.dart';
 
@@ -256,9 +265,11 @@ void main() {
 
     test('rings a due urgent alarm when auto-show is on', () async {
       await boot(autoShow: true);
-      final ringing = container.read(alarmOverlayControllerProvider).ringing;
-      expect(ringing, isNotNull);
-      expect(ringing!.taskId, id('T1'));
+      final ringing = container
+          .read(alarmOverlayControllerProvider)
+          .ringing
+          .single;
+      expect(ringing.taskId, id('T1'));
       expect(ringing.urgent, isTrue);
     });
 
@@ -266,8 +277,208 @@ void main() {
       'the gate keeps the overlay off (tests default OFF, OPH-111)',
       () async {
         await boot(autoShow: false);
-        expect(container.read(alarmOverlayControllerProvider).ringing, isNull);
+        expect(container.read(alarmOverlayControllerProvider).ringing, isEmpty);
       },
     );
   });
+
+  // ── #46 / OPH-423: occurrences, and one owner for the sound ───────────────
+  group('AlarmOverlayController (#46)', () {
+    late List<String> log;
+    late DateTime clock;
+    late StreamController<List<AlarmInput>> feed;
+    late ProviderContainer container;
+
+    ProviderContainer boot({List<Override> extra = const []}) {
+      log = [];
+      clock = now;
+      feed = StreamController<List<AlarmInput>>();
+      container = ProviderContainer(
+        overrides: [
+          ...syncTestOverrides(
+            alarmOverlayAutoShow: true,
+            alarmFeedback: _LogFeedback(log),
+          ),
+          alarmFeedProvider.overrideWith((ref) => feed.stream),
+          alarmClockProvider.overrideWithValue(() => clock),
+          ...extra,
+        ],
+      );
+      addTearDown(() async {
+        container.dispose();
+        await feed.close();
+      });
+      container.listen(alarmOverlayControllerProvider, (_, _) {});
+      return container;
+    }
+
+    AlarmOverlayState overlay() =>
+        container.read(alarmOverlayControllerProvider);
+    AlarmOverlayController controller() =>
+        container.read(alarmOverlayControllerProvider.notifier);
+
+    testWidgets(
+      'a snoozed alarm rings again at snoozedUntil in the same session',
+      (tester) async {
+        boot();
+        final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+        feed.add([due]);
+        await tester.pump();
+        expect(overlay().ringing.single.reminderId, 'R1');
+
+        controller().handled(due);
+        expect(overlay().ringing, isEmpty);
+        // The snooze lands: the same reminder, a new instant five minutes out.
+        final snoozed = alarm(
+          remindAt: due.remindAt,
+          status: 'snoozed',
+          snoozedUntil: now.add(const Duration(minutes: 5)),
+        );
+        feed.add([snoozed]);
+        await tester.pump();
+        expect(overlay().ringing, isEmpty);
+
+        // The foreground timer wheel brings it back on time — the old
+        // reminder-keyed "handled" set kept it quiet until the app restarted.
+        clock = now.add(const Duration(minutes: 5));
+        await tester.pump(const Duration(minutes: 5));
+        expect(overlay().ringing.single.reminderId, 'R1');
+        expect(_squash(log), ['start', 'stop', 'start']);
+      },
+    );
+
+    testWidgets(
+      'swapping the ringing alarm never stops the sound it just started',
+      (tester) async {
+        final first = alarm(
+          rid: 'R1',
+          remindAt: now.subtract(const Duration(minutes: 1)),
+        );
+        final second = alarm(
+          rid: 'R2',
+          remindAt: now.subtract(const Duration(seconds: 40)),
+        );
+        boot(
+          extra: [
+            reminderStoreProvider.overrideWith(
+              (ref) => _NoopReminderStore(ref.watch(databaseProvider)),
+            ),
+          ],
+        );
+        feed.add([first, second]);
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: ThemeData(extensions: const [AwTokens.light]),
+              home: const Scaffold(body: AlarmOverlayLayer()),
+            ),
+          ),
+        );
+        await tester.pump();
+        expect(find.text('Task R1'), findsOneWidget);
+        expect(log, ['start']);
+
+        await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+        // Several frames: the first screen is torn down after the second one
+        // mounted — the moment its dispose() used to stop the shared player.
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+
+        expect(find.text('Task R2'), findsOneWidget);
+        expect(_squash(log), ['start', 'stop', 'start']);
+        expect(controller().sounding, isTrue);
+      },
+    );
+
+    test('a failed write re-shows the alarm silently with the error', () async {
+      boot();
+      final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+      feed.add([due]);
+      await pumpEventQueue();
+      expect(log, ['start']);
+
+      // The screen's order: silence, dismiss, then the write.
+      controller().silence();
+      controller().handled(due);
+      expect(overlay().ringing, isEmpty);
+      final saved = await controller().commit(
+        due,
+        AlarmPendingAction(() async => throw StateError('database is locked')),
+      );
+
+      expect(saved, isFalse);
+      expect(overlay().ringing.single.reminderId, 'R1');
+      expect(overlay().isFailed(due), isTrue);
+      expect(controller().failedAction(due), isNotNull);
+      // Silent: only the no-interaction rule may bring its sound back.
+      expect(_squash(log), ['start', 'stop']);
+      expect(controller().sounding, isFalse);
+
+      // A feed emission does not restart it either.
+      feed.add([due]);
+      await pumpEventQueue();
+      expect(overlay().isFailed(due), isTrue);
+      expect(_squash(log), ['start', 'stop']);
+
+      // Tekrar dene: it stays out of the handled set only until this lands.
+      var confirmed = false;
+      controller().handled(due);
+      final retried = await controller().commit(
+        due,
+        AlarmPendingAction(() async {}, onSaved: () => confirmed = true),
+      );
+      expect(retried, isTrue);
+      expect(confirmed, isTrue);
+      expect(overlay().ringing, isEmpty);
+      expect(controller().failedAction(due), isNull);
+    });
+
+    test(
+      'a silent-here device shows the alarm without starting the sound',
+      () async {
+        boot(extra: [alarmOpensSilentProvider.overrideWithValue(true)]);
+        feed.add([alarm(remindAt: now.subtract(const Duration(minutes: 1)))]);
+        await pumpEventQueue();
+        expect(overlay().ringing, hasLength(1));
+        expect(overlay().silentHere, isTrue);
+        expect(log, isEmpty);
+        controller().startSound();
+        expect(log, ['start']);
+      },
+    );
+  });
+}
+
+/// [log] with repeated neighbours folded: `silence()` and `handled()` both
+/// stop, and stopping twice is one silence.
+List<String> _squash(List<String> log) => [
+  for (var i = 0; i < log.length; i++)
+    if (i == 0 || log[i] != log[i - 1]) log[i],
+];
+
+/// Records the order of start/stop calls (#46).
+class _LogFeedback implements AlarmFeedback {
+  _LogFeedback(this.log);
+
+  final List<String> log;
+  final ValueNotifier<bool> _blocked = ValueNotifier(false);
+
+  @override
+  ValueListenable<bool> get soundBlocked => _blocked;
+
+  @override
+  void start() => log.add('start');
+
+  @override
+  void stop() => log.add('stop');
+}
+
+/// Acknowledges nothing: this file is about the sound, not the row.
+class _NoopReminderStore extends ReminderStore {
+  _NoopReminderStore(AwDatabase db) : super(db, () {});
+
+  @override
+  Future<void> acknowledge(String reminderId) async {}
 }

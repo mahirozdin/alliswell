@@ -2,18 +2,22 @@ import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/core/day_boundary.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/providers.dart';
+import 'package:alliswell/src/notifications/reminder_store.dart';
 import 'package:alliswell/src/notifications/web_alert_mode.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -71,6 +75,45 @@ void main() {
         );
   }
 
+  // The second urgent alarm of the same minute (#46).
+  Future<void> seedSecond() async {
+    await db
+        .into(db.tasks)
+        .insert(
+          TasksCompanion.insert(
+            id: id('T2'),
+            workspaceId: wsId,
+            title: 'Call the clinic',
+            status: const Value('open'),
+            isUrgent: const Value(true),
+            requiresAcknowledgement: const Value(true),
+            dueAt: Value(at),
+          ),
+        );
+    await db
+        .into(db.reminders)
+        .insert(
+          RemindersCompanion.insert(
+            id: id('R2'),
+            taskId: id('T2'),
+            remindAt: at.add(const Duration(seconds: 20)),
+            status: const Value('scheduled'),
+            alarmLevel: const Value('urgent'),
+            requiresAcknowledgement: const Value(true),
+          ),
+        );
+  }
+
+  AlarmInput secondAlarm() => AlarmInput(
+    reminderId: id('R2'),
+    taskId: id('T2'),
+    taskTitle: 'Call the clinic',
+    remindAt: at.add(const Duration(seconds: 20)),
+    status: 'scheduled',
+    urgent: true,
+    requiresAcknowledgement: true,
+  );
+
   AlarmInput theAlarm() => AlarmInput(
     reminderId: id('R1'),
     taskId: id('T1'),
@@ -98,6 +141,74 @@ void main() {
     );
     await tester.pump();
   }
+
+  /// The production composition (#46): the controller decides what rings and
+  /// owns the sound; the shell's [AlarmOverlayLayer] shows the keyed screen.
+  /// A GoRouter so "Aç" has somewhere to go.
+  Future<void> pumpLayer(
+    WidgetTester tester, {
+    required List<AlarmInput> feed,
+    AlarmFeedback? feedback,
+    List<Override> extra = const [],
+    bool second = false,
+  }) async {
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(
+          alarmOverlayAutoShow: true,
+          alarmFeedback: feedback,
+        ),
+        alarmFeedProvider.overrideWith((ref) => Stream.value(feed)),
+        alarmClockProvider.overrideWithValue(
+          () => at.add(const Duration(minutes: 1)),
+        ),
+        ...extra,
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    await seed();
+    if (second) await seedSecond();
+    final router = GoRouter(
+      routes: [
+        GoRoute(
+          path: '/',
+          builder: (_, _) => const Scaffold(
+            body: Stack(
+              children: [
+                Center(child: Text('home')),
+                Positioned.fill(child: AlarmOverlayLayer()),
+              ],
+            ),
+          ),
+        ),
+        GoRoute(
+          path: '/tasks/:id',
+          builder: (_, state) =>
+              Scaffold(body: Text('task ${state.pathParameters['id']}')),
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp.router(theme: _theme, routerConfig: router),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+  }
+
+  Iterable<ButtonStyleButton> ringButtons(WidgetTester tester) =>
+      tester.widgetList<ButtonStyleButton>(
+        find.descendant(
+          of: find.byKey(const Key('alarm-ring')),
+          matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
+        ),
+      );
 
   testWidgets('renders the task, an acknowledge and snooze presets', (
     tester,
@@ -291,12 +402,7 @@ void main() {
     final sound = _RefusingSound();
     final feedback = AudioAlarmFeedback(sound);
     addTearDown(feedback.dispose);
-    container = ProviderContainer(
-      overrides: syncTestOverrides(alarmFeedback: feedback),
-    );
-    addTearDown(container.dispose);
-    await seed();
-    await pumpRing(tester);
+    await pumpLayer(tester, feed: [theAlarm()], feedback: feedback);
     await tester.pump();
 
     expect(find.byKey(const Key('alarm-start-sound')), findsOneWidget);
@@ -322,18 +428,15 @@ void main() {
     required bool silent,
     bool chosen = true,
   }) async {
-    container.dispose();
-    container = ProviderContainer(
-      overrides: [
-        ...syncTestOverrides(alarmFeedback: spy),
+    await pumpLayer(
+      tester,
+      feed: [theAlarm()],
+      feedback: spy,
+      extra: [
         alarmOpensSilentProvider.overrideWithValue(silent),
         alarmSilenceChosenProvider.overrideWithValue(chosen),
       ],
     );
-    addTearDown(container.dispose);
-    db = container.read(databaseProvider);
-    await seed();
-    await pumpRing(tester);
   }
 
   testWidgets('declares a silence the user asked for, and still offers sound', (
@@ -397,6 +500,208 @@ void main() {
     await fresh.read(webAlertModeRawProvider.notifier).set('loud');
     expect(fresh.read(alarmSilenceChosenProvider), isFalse);
   });
+
+  // ── #46 / OPH-423: one sound owner, silence → dismiss → write ─────────────
+
+  testWidgets(
+    'acting on the first of two due alarms leaves the second fully actionable',
+    (tester) async {
+      await pumpLayer(tester, feed: [theAlarm(), secondAlarm()], second: true);
+      expect(find.text('Take pills'), findsOneWidget);
+
+      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await tester.pump();
+      await tester.pump();
+
+      // The second alarm has its own screen (keyed per occurrence), not the
+      // first one's State with a "busy" flag that disabled every button.
+      expect(find.text('Call the clinic'), findsOneWidget);
+      expect(find.text('Take pills'), findsNothing);
+      expect(
+        find.byKey(
+          ValueKey<String>(
+            '${id('T2')}|${secondAlarm().remindAt.millisecondsSinceEpoch}',
+          ),
+        ),
+        findsOneWidget,
+      );
+      final buttons = ringButtons(tester).toList();
+      expect(buttons, isNotEmpty);
+      for (final b in buttons) {
+        expect(b.onPressed, isNotNull, reason: '${b.key} is never disabled');
+      }
+
+      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('alarm-ring')), findsNothing);
+      final rows = await db.select(db.reminders).get();
+      expect(
+        {for (final r in rows) r.id: r.status},
+        {id('R1'): 'acknowledged', id('R2'): 'acknowledged'},
+      );
+      // The real stores poke sync, whose auth probe arms a short timer.
+      await tester.pump(const Duration(seconds: 5));
+    },
+  );
+
+  testWidgets(
+    'every action silences feedback before the write and dismisses at once',
+    (tester) async {
+      const actions = [
+        'alarm-snooze-5_min',
+        'alarm-snooze-30_min',
+        'alarm-snooze-1_hour',
+        'alarm-snooze-tomorrow_morning',
+        'alarm-snooze-custom',
+        'alarm-silence',
+        'alarm-acknowledge',
+        'alarm-complete',
+        'alarm-open',
+      ];
+      for (final action in actions) {
+        final log = <String>[];
+        void write(String what) => log.add(
+          'write $what, overlay '
+          '${container.read(alarmOverlayControllerProvider).ringing.length}',
+        );
+        await pumpLayer(
+          tester,
+          feed: [theAlarm()],
+          feedback: _LogFeedback(log),
+          extra: [
+            taskStoreProvider.overrideWith(
+              (ref) => _RecordingTaskStore(ref.watch(databaseProvider), write),
+            ),
+            reminderStoreProvider.overrideWith(
+              (ref) =>
+                  _RecordingReminderStore(ref.watch(databaseProvider), write),
+            ),
+          ],
+        );
+        expect(log, ['start'], reason: '$action: the controller starts it');
+        for (final b in ringButtons(tester)) {
+          expect(b.onPressed, isNotNull, reason: '$action: ${b.key}');
+        }
+
+        await tester.ensureVisible(find.byKey(Key(action)));
+        await tester.pump();
+        await tester.tap(find.byKey(Key(action)));
+        // No pump yet: the sound stopped inside the tap, before any await.
+        expect(log.take(2), ['start', 'stop'], reason: action);
+
+        if (action == 'alarm-snooze-custom') {
+          // Silent while the pickers are open; accept both.
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+          await tester.tap(find.text('OK'));
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+          await tester.tap(find.text('OK'));
+          await tester.pump();
+          expect(log.where((e) => e == 'start'), hasLength(1));
+        } else {
+          // Dismissed in the same tap, not after the write.
+          expect(
+            container.read(alarmOverlayControllerProvider).ringing,
+            isEmpty,
+            reason: action,
+          );
+        }
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(find.byKey(const Key('alarm-ring')), findsNothing);
+
+        if (action == 'alarm-open') {
+          // Aç silences and opens; it acknowledges nothing.
+          expect(log.where((e) => e.startsWith('write')), isEmpty);
+          expect(find.text('task ${id('T1')}'), findsOneWidget);
+        } else {
+          final writes = log.where((e) => e.startsWith('write')).toList();
+          expect(writes, hasLength(1), reason: action);
+          expect(writes.single, endsWith('overlay 0'), reason: action);
+          expect(
+            log.indexOf('stop'),
+            lessThan(log.indexOf(writes.single)),
+            reason: action,
+          );
+        }
+        expect(log.where((e) => e == 'start'), hasLength(1), reason: action);
+        await tester.pump(const Duration(seconds: 6));
+      }
+    },
+  );
+
+  testWidgets('backing out of the custom pickers brings the sound back', (
+    tester,
+  ) async {
+    final log = <String>[];
+    await pumpLayer(tester, feed: [theAlarm()], feedback: _LogFeedback(log));
+    await tester.ensureVisible(find.byKey(const Key('alarm-snooze-custom')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('alarm-snooze-custom')));
+    expect(log, ['start', 'stop']);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(log, ['start', 'stop', 'start']);
+    expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+  });
+
+  testWidgets(
+    'a failed write comes back with the error; Try again repeats it',
+    (tester) async {
+      final log = <String>[];
+      var failuresLeft = 1;
+      await pumpLayer(
+        tester,
+        feed: [theAlarm()],
+        feedback: _LogFeedback(log),
+        extra: [
+          reminderStoreProvider.overrideWith(
+            (ref) => _RecordingReminderStore(ref.watch(databaseProvider), (w) {
+              log.add('write $w');
+              if (failuresLeft-- > 0) throw StateError('database is locked');
+            }),
+          ),
+        ],
+      );
+      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await tester.pump();
+      await tester.pump();
+
+      // Back, with the error above the actions and the sound still off.
+      expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+      expect(find.byKey(const Key('alarm-action-failed')), findsOneWidget);
+      expect(
+        find.text("Couldn't save. The sound stopped, try again."),
+        findsOneWidget,
+      );
+      expect(find.byType(SnackBar), findsNothing);
+      // Stopped before the write, and not restarted by the re-show.
+      expect(_squash(log), ['start', 'stop', 'write acknowledge']);
+      for (final b in ringButtons(tester)) {
+        expect(b.onPressed, isNotNull, reason: '${b.key}');
+      }
+
+      await tester.ensureVisible(find.byKey(const Key('alarm-retry')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('alarm-retry')));
+      await tester.pump();
+      await tester.pump();
+      expect(find.byKey(const Key('alarm-ring')), findsNothing);
+      expect(_squash(log), [
+        'start',
+        'stop',
+        'write acknowledge',
+        'stop',
+        'write acknowledge',
+      ]);
+      expect(find.byType(SnackBar), findsNothing);
+    },
+  );
 
   testWidgets('E-20: the screen underneath leaves the semantics tree', (
     tester,
@@ -473,4 +778,55 @@ class _SpyFeedback implements AlarmFeedback {
 
   @override
   void stop() {}
+}
+
+/// [log] with repeated neighbours folded: `silence()` and `handled()` both
+/// stop, and stopping twice is one silence.
+List<String> _squash(List<String> log) => [
+  for (var i = 0; i < log.length; i++)
+    if (i == 0 || log[i] != log[i - 1]) log[i],
+];
+
+/// Records the order of start/stop calls into a shared log (#46).
+class _LogFeedback implements AlarmFeedback {
+  _LogFeedback(this.log);
+
+  final List<String> log;
+  final ValueNotifier<bool> _blocked = ValueNotifier(false);
+
+  @override
+  ValueListenable<bool> get soundBlocked => _blocked;
+
+  @override
+  void start() => log.add('start');
+
+  @override
+  void stop() => log.add('stop');
+}
+
+/// A task store that records each write instead of performing it.
+class _RecordingTaskStore extends TaskStore {
+  _RecordingTaskStore(AwDatabase db, this.onWrite) : super(db, () {});
+
+  final void Function(String what) onWrite;
+
+  @override
+  Future<void> snooze(String taskId, {String? preset, DateTime? until}) async =>
+      onWrite('snooze');
+
+  @override
+  Future<void> complete(String taskId) async => onWrite('complete');
+
+  @override
+  Future<void> muteAlarms(String taskId) async => onWrite('mute');
+}
+
+/// A reminder store whose acknowledge is the test's to decide.
+class _RecordingReminderStore extends ReminderStore {
+  _RecordingReminderStore(AwDatabase db, this.onWrite) : super(db, () {});
+
+  final void Function(String what) onWrite;
+
+  @override
+  Future<void> acknowledge(String reminderId) async => onWrite('acknowledge');
 }

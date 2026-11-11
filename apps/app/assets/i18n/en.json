@@ -950,6 +950,8 @@
     "silence": "Silence indefinitely",
     "startSound": "Start the sound",
     "snoozePast": "That time has already passed. Pick a later one.",
+    "actionFailed": "Couldn't save. The sound stopped, try again.",
+    "retry": "Try again",
     "problem": {
       "notificationsOff": "Notifications are off. Reminders can't reach you.",
       "webPermissionPrompt": "You haven't allowed notifications in this browser yet.",
