@@ -1118,7 +1118,8 @@
     },
     "privateTitle": "Gizli görev",
     "privateEvent": "Gizli etkinlik",
-    "allDay": "Tüm gün"
+    "allDay": "Tüm gün",
+    "stale": "Liste güncel değil · Güncellemek için aç"
   },
   "file": {
     "add": "Dosya ekle",

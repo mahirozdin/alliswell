@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/features/projects/data/project.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
 import 'package:alliswell/src/features/widgets/widget_bridge.dart';
 import 'package:alliswell/src/features/widgets/widget_grouping.dart';
@@ -20,10 +21,12 @@ Task _task(
   String status = 'open',
   int sortOrder = 0,
   DateTime? startAt,
+  DateTime? completedAt,
+  String? title,
 }) => Task(
   id: id,
   workspaceId: 'W1',
-  title: id,
+  title: title ?? id,
   status: status,
   priority: priority,
   timezone: 'Europe/Istanbul',
@@ -35,7 +38,27 @@ Task _task(
   startAt: startAt,
   projectId: projectId,
   colorRgb: colorRgb,
+  completedAt: completedAt,
 );
+
+Project _project(String id) => Project(
+  id: id,
+  workspaceId: 'W1',
+  name: 'Project $id',
+  colorRgb: '#0A5CFF',
+  status: 'active',
+  sortOrder: 0,
+  isFavorite: false,
+  revision: 1,
+);
+
+Map<String, dynamic> _json(WidgetSnapshot snapshot) =>
+    jsonDecode(jsonEncode(snapshot.toJson())) as Map<String, dynamic>;
+
+List<String> _ids(Map<String, dynamic> view) => [
+  for (final bucket in view['buckets'] as List)
+    for (final item in (bucket as Map)['items'] as List) item['id'] as String,
+];
 
 void main() {
   final now = DateTime(2026, 7, 17, 10); // Friday
@@ -183,6 +206,156 @@ void main() {
       expect(snap.buckets.single.items.single.time, isNull);
       expect(snap.openToday, 1);
     });
+  });
+
+  // Snapshot v6 (#50, ADR-0010 revision 2026-11-12): today and the next two
+  // days, each a full view, so a WidgetKit entry past midnight draws its own
+  // day instead of yesterday's list under today's date.
+  group('snapshot v6 day views', () {
+    final tasks = [
+      _task('late', dueAt: DateTime(2026, 7, 10, 9), projectId: 'P1'),
+      _task('today', dueAt: DateTime(2026, 7, 17, 14), projectId: 'P1'),
+      _task('tomorrow', dueAt: DateTime(2026, 7, 18, 9), projectId: 'P2'),
+      _task('later', dueAt: DateTime(2026, 7, 25, 9)),
+      _task('undated'),
+      _task(
+        'done-today',
+        dueAt: DateTime(2026, 7, 17, 8),
+        status: 'completed',
+        completedAt: DateTime(2026, 7, 17, 8, 30),
+      ),
+    ];
+    final projects = [_project('P1'), _project('P2')];
+
+    test('day views use the same grouping as the top level for day 0', () {
+      final json = _json(
+        buildWidgetSnapshot(tasks, now: now, projects: projects),
+      );
+      expect(json['v'], 6);
+      final days = json['days'] as List;
+      expect(days, hasLength(3));
+      expect(
+        [for (final d in days) d['date']],
+        ['2026-07-17', '2026-07-18', '2026-07-19'],
+      );
+      final day0 = days.first as Map<String, dynamic>;
+      // Day 0 IS the v5 top level: an old extension reads the top level, a
+      // new one reads days[0], and both draw the same widget.
+      expect(day0['header'], json['date']);
+      expect(day0['buckets'], json['buckets']);
+      expect(day0['openToday'], json['openToday']);
+      expect(day0['openTodayLabel'], json['strings']['openToday']);
+      expect(day0['next'], json['next']);
+      expect(day0['views'], json['views']);
+      // Every v5 field is still where a v5 reader looks for it.
+      for (final key in [
+        'v',
+        'generatedAt',
+        'locale',
+        'date',
+        'strings',
+        'clockFormat',
+        'openToday',
+        'next',
+        'buckets',
+        'lists',
+        'views',
+      ]) {
+        expect(json.containsKey(key), isTrue, reason: key);
+      }
+      // Tomorrow is its own day: today's task is late, tomorrow's is Today.
+      final day1 = days[1] as Map<String, dynamic>;
+      expect(day1['header'], {
+        'weekday': 'Saturday',
+        'day': '18',
+        'month': 'July',
+      });
+      final byKey = {
+        for (final b in day1['buckets'] as List) b['key']: b['items'],
+      };
+      expect(
+        [for (final i in byKey['overdue'] as List) i['id']],
+        ['late', 'today'],
+      );
+      expect([for (final i in byKey['today'] as List) i['id']], ['tomorrow']);
+      expect(day1['openToday'], 3);
+      expect(day1['openTodayLabel'], '3 open');
+      expect(day1['next']['id'], 'late');
+    });
+
+    test("a task completed today is not a dimmed row in tomorrow's view", () {
+      final json = _json(buildWidgetSnapshot(tasks, now: now));
+      final days = json['days'] as List;
+      final day0 = _ids(days[0] as Map<String, dynamic>);
+      expect(day0, contains('done-today'), reason: 'OPH-185: dimmed today');
+      for (final day in days.skip(1)) {
+        expect(
+          _ids(day as Map<String, dynamic>),
+          isNot(contains('done-today')),
+        );
+      }
+    });
+
+    test('the stale line is the app\'s words, in its language', () {
+      expect(
+        buildWidgetSnapshot(const [], now: now).strings['stale'],
+        'List out of date · Open to update',
+      );
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      expect(
+        buildWidgetSnapshot(const [], now: now).strings['stale'],
+        'Liste güncel değil · Güncellemek için aç',
+      );
+    });
+
+    test(
+      'snapshot stays under kWidgetSnapshotMaxBytes for 300 tasks and 20 projects',
+      () {
+        // A heavy but real account: 20 projects, 300 open tasks spread over
+        // every bucket, titles of a long sentence, Turkish letters (two bytes
+        // each in UTF-8). The limit is a measurement plus headroom, and this
+        // test is what keeps it honest when a field is added.
+        AwI18n.instance.setActiveCached(const Locale('tr'));
+        final projects = [for (var p = 0; p < 20; p++) _project('P$p')];
+        final offsets = [-9, -2, 0, 0, 1, 2, 4, 9, 20, null];
+        final heavy = [
+          for (var i = 0; i < 300; i++)
+            _task(
+              'T${i.toString().padLeft(25, '0')}',
+              title:
+                  'Görev $i · müşteriyle sözleşme taslağını gözden geçir ve '
+                  'çağrı notlarını işle',
+              projectId: 'P${i % 20}',
+              priority: const ['none', 'low', 'medium', 'high'][i % 4],
+              dueAt: offsets[i % offsets.length] == null
+                  ? null
+                  : DateTime(
+                      2026,
+                      7,
+                      17 + offsets[i % offsets.length]!,
+                      9 + i % 12,
+                    ),
+            ),
+        ];
+        final bytes = utf8
+            .encode(
+              jsonEncode(
+                buildWidgetSnapshot(
+                  heavy,
+                  now: now,
+                  projects: projects,
+                  projectColorById: {
+                    for (final p in projects) p.id: p.colorRgb,
+                  },
+                ).toJson(),
+              ),
+            )
+            .length;
+        // ignore: avoid_print
+        print('widget snapshot v6, 300 tasks / 20 projects: $bytes bytes');
+        expect(bytes, lessThanOrEqualTo(kWidgetSnapshotMaxBytes));
+      },
+    );
   });
 
   group('WidgetBridge (OPH-130)', () {

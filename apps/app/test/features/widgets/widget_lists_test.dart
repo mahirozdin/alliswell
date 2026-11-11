@@ -144,7 +144,7 @@ void main() {
         (withLists['buckets'] as List).expand((b) => b['items'] as List),
         hasLength(tasks.length),
       );
-      expect(withLists['v'], 5);
+      expect(withLists['v'], 6);
     });
 
     test('the picker offers the whole list, then the live projects', () {
@@ -205,6 +205,29 @@ void main() {
       ]);
       expect(json.containsKey('views'), isFalse);
       expect(json['next']['id'], 'work-late');
+    });
+
+    // v6 (#50): a widget set to a project keeps drawing that project after
+    // midnight, so every day view carries every project view.
+    test('project views exist in every day view', () {
+      final json = jsonOf(
+        buildWidgetSnapshot(tasks, now: now, projects: projects),
+      );
+      final days = (json['days'] as List).cast<Map<String, dynamic>>();
+      expect(days, hasLength(3));
+      for (final day in days) {
+        expect((day['views'] as Map).keys, ['work', 'home', 'quiet']);
+        expect(day['views']['quiet'], {'buckets': <Object>[]});
+      }
+      // Tomorrow, the work project's Today task is late with the other one.
+      final work = days[1]['views']['work'] as Map<String, dynamic>;
+      expect((work['buckets'] as List).single['key'], 'overdue');
+      expect(work['openToday'], 2);
+      expect(work['next']['id'], 'work-late');
+      // Day 3 is Sunday: 'loose' (Monday) is still this week, in no project.
+      final home = days[2]['views']['home'] as Map<String, dynamic>;
+      expect((home['buckets'] as List).single['key'], 'overdue');
+      expect(jsonEncode(days[2]['views']), isNot(contains('loose')));
     });
 
     test('the words are the app’s, in the app’s language', () {

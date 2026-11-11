@@ -44,7 +44,26 @@ import 'widget_grouping.dart';
 /// about work. A v4 widget that ignores `kind` draws an event as a task row —
 /// a tap opens nothing and a circle press completes nothing (no task has
 /// that id), so the fallback is harmless.
-const int kWidgetSnapshotVersion = 5;
+///
+/// **v6 (#50, ADR-0010 revision 2026-11-12):** adds `days`, today and the next
+/// [kWidgetSnapshotDays] - 1 days, each a full [WidgetDayView] — header, open
+/// count, next task, buckets with that day's calendar rows, every project
+/// view — so a WidgetKit entry past midnight draws its own day without Dart.
+/// Every top-level field stays and equals `days[0]`, so a v5 extension keeps
+/// rendering. `strings.stale` is what a widget says once its date is past the
+/// last day it holds: the old list is never shown under a new date.
+const int kWidgetSnapshotVersion = 6;
+
+/// How many days the snapshot carries (v6): today + 2. A WidgetKit timeline
+/// past the last one shows `strings.stale`.
+const int kWidgetSnapshotDays = 3;
+
+/// The largest snapshot the app expects to write, in UTF-8 bytes (v6). Set from
+/// a measurement — 300 open tasks in 20 projects, every bucket full, long
+/// Turkish titles: 282 425 bytes on 2026-11-12 — plus about a third of
+/// headroom, and locked by widget_core_test.dart. It is a budget, not a cut:
+/// a failing test means "look at what grew", not "trim the snapshot".
+const int kWidgetSnapshotMaxBytes = 384 * 1024;
 
 /// How many rows per bucket the snapshot carries; the native layer trims further
 /// per widget size. The largest tier shows the most, so keep this generous.
@@ -221,6 +240,45 @@ class WidgetListView {
   };
 }
 
+/// One day of the widget (v6): what the snapshot's top level carries for
+/// today, computed for that day — the day's header, its open count and words,
+/// its next task, its buckets (calendar rows included) and every project's
+/// view. The native side picks the element whose [date] is the entry's local
+/// day; it never re-buckets (DESIGN §8 W9).
+class WidgetDayView {
+  const WidgetDayView({
+    required this.date,
+    required this.header,
+    required this.openToday,
+    required this.openTodayLabel,
+    required this.buckets,
+    this.next,
+    this.views = const {},
+  });
+
+  /// The local day as `yyyy-MM-dd`.
+  final String date;
+  final WidgetDateHeader header;
+  final int openToday;
+  final String openTodayLabel;
+  final List<WidgetBucketData> buckets;
+  final WidgetNextTask? next;
+  final Map<String, WidgetListView> views;
+
+  Map<String, dynamic> toJson() => {
+    'date': date,
+    'header': header.toJson(),
+    if (openToday > 0) 'openToday': openToday,
+    if (openToday > 0) 'openTodayLabel': openTodayLabel,
+    if (next != null) 'next': next!.toJson(),
+    'buckets': [for (final bucket in buckets) bucket.toJson()],
+    if (views.isNotEmpty)
+      'views': {
+        for (final entry in views.entries) entry.key: entry.value.toJson(),
+      },
+  };
+}
+
 class WidgetSnapshot {
   const WidgetSnapshot({
     required this.version,
@@ -234,6 +292,7 @@ class WidgetSnapshot {
     this.next,
     this.lists = const [],
     this.views = const {},
+    this.days = const [],
     this.compact = false,
   });
 
@@ -272,6 +331,10 @@ class WidgetSnapshot {
   /// it does only for an id this map has never heard of (a deleted project).
   final Map<String, WidgetListView> views;
 
+  /// v6: today and the next days, each a full view; `days[0]` equals the top
+  /// level above.
+  final List<WidgetDayView> days;
+
   /// Draw tighter rows (OPH-337) — `"density": "compact"` in the JSON, absent
   /// for the normal density so an unchanged widget writes unchanged bytes.
   final bool compact;
@@ -292,6 +355,7 @@ class WidgetSnapshot {
       'views': {
         for (final entry in views.entries) entry.key: entry.value.toJson(),
       },
+    if (days.isNotEmpty) 'days': [for (final day in days) day.toJson()],
   };
 }
 
@@ -537,8 +601,97 @@ WidgetSnapshot buildWidgetSnapshot(
 }) {
   final localeTag = AwI18n.instance.locale.toLanguageTag();
 
+  // OPH-336: every list a widget can be set to is computed HERE, with the same
+  // function as the whole list — the native side only picks one by id.
+  final lists = widgetListChoices(projects);
+
+  // v6: one full view per day, every one out of the SAME function — so day 0
+  // and the top level cannot drift apart, and tomorrow is grouped by the
+  // rules today is (W1/W9 stay in Dart).
+  final today = DateTime(now.year, now.month, now.day);
+  final days = [
+    for (var d = 0; d < kWidgetSnapshotDays; d++)
+      _dayView(
+        tasks,
+        events: events,
+        // Today is "now"; a later day is seen from its first minute, which is
+        // when its WidgetKit entry starts drawing it.
+        now: d == 0 ? now : DateTime(today.year, today.month, today.day + d),
+        // A task finished today is today's dimmed row (OPH-185), not
+        // tomorrow's: a later day keeps only what was finished on it.
+        keepCompletedSince: d == 0
+            ? null
+            : DateTime(today.year, today.month, today.day + d),
+        lists: lists,
+        projectColorById: projectColorById,
+        rowsPerBucket: rowsPerBucket,
+        dateFormat: dateFormat,
+        localeTag: localeTag,
+        hideTitles: hideTitles,
+      ),
+  ];
+  final day0 = days.first;
+
+  return WidgetSnapshot(
+    version: kWidgetSnapshotVersion,
+    openToday: day0.openToday,
+    // The header clock's pattern, from the same preference the rows above use
+    // (OPH-253 — the native side formats the minute, it does not choose how).
+    clockFormat: widgetClockPattern(format: dateFormat, locale: localeTag),
+    generatedAt: now.toUtc().toIso8601String(),
+    locale: AwI18n.instance.locale.languageCode,
+    date: day0.header,
+    strings: {
+      'allCaughtUp': 'widget.allCaughtUp'.tr(),
+      'addTask': 'widget.addTask'.tr(),
+      // Pre-localized like every other widget word — the native side owns no
+      // translations (W-rule).
+      'openToday': day0.openTodayLabel,
+      // OPH-336: the lock screen's heading, and the Android configure
+      // screen's title — native words, the app's translations.
+      'upNext': 'widget.upNext'.tr(),
+      'chooseList': 'widget.chooseList'.tr(),
+      // v6: what a widget says once its date is past the last day it holds.
+      'stale': 'widget.stale'.tr(),
+    },
+    buckets: day0.buckets,
+    next: day0.next,
+    lists: lists,
+    views: day0.views,
+    days: days,
+    compact: compact,
+  );
+}
+
+/// One day's full view (v6): the whole list and every project's view, seen
+/// from [now]. [keepCompletedSince] drops a finished task completed before it
+/// (null keeps every task given — today's caller already asked the store for
+/// today's finished work only).
+WidgetDayView _dayView(
+  List<Task> tasks, {
+  required List<ExternalEvent> events,
+  required DateTime now,
+  required DateTime? keepCompletedSince,
+  required List<WidgetListChoice> lists,
+  required Map<String, String> projectColorById,
+  required int rowsPerBucket,
+  required String dateFormat,
+  required String localeTag,
+  required bool hideTitles,
+}) {
+  final since = keepCompletedSince;
+  final dayTasks = since == null
+      ? tasks
+      : [
+          for (final task in tasks)
+            if (!task.isCompleted ||
+                (task.completedAt != null &&
+                    !task.completedAt!.isBefore(since)))
+              task,
+        ];
+
   final all = _listData(
-    tasks,
+    dayTasks,
     events: events,
     now: now,
     projectColorById: projectColorById,
@@ -548,14 +701,11 @@ WidgetSnapshot buildWidgetSnapshot(
     hideTitles: hideTitles,
   );
 
-  // OPH-336: every list a widget can be set to is computed HERE, with the same
-  // function as the whole list — the native side only picks one by id.
-  final lists = widgetListChoices(projects);
   final views = <String, WidgetListView>{};
   for (final list in lists) {
     if (list.id == kWidgetListAll) continue;
     final data = _listData(
-      filterTasksForWidgetList(tasks, list.id),
+      filterTasksForWidgetList(dayTasks, list.id),
       now: now,
       projectColorById: projectColorById,
       rowsPerBucket: rowsPerBucket,
@@ -565,42 +715,26 @@ WidgetSnapshot buildWidgetSnapshot(
     );
     views[list.id] = WidgetListView(
       openToday: data.openToday,
-      openTodayLabel: 'widget.openToday'.tr(
-        args: {'count': '${data.openToday}'},
-      ),
+      openTodayLabel: _openLabel(data.openToday),
       buckets: data.buckets,
       next: data.next,
     );
   }
 
-  return WidgetSnapshot(
-    version: kWidgetSnapshotVersion,
-    openToday: all.openToday,
-    // The header clock's pattern, from the same preference the rows above use
-    // (OPH-253 — the native side formats the minute, it does not choose how).
-    clockFormat: widgetClockPattern(format: dateFormat, locale: localeTag),
-    generatedAt: now.toUtc().toIso8601String(),
-    locale: AwI18n.instance.locale.languageCode,
-    date: WidgetDateHeader(
+  return WidgetDayView(
+    date: awDayParam(DateTime(now.year, now.month, now.day)),
+    header: WidgetDateHeader(
       weekday: DateFormat.EEEE(localeTag).format(now),
       day: DateFormat.d(localeTag).format(now),
       month: DateFormat.MMMM(localeTag).format(now),
     ),
-    strings: {
-      'allCaughtUp': 'widget.allCaughtUp'.tr(),
-      'addTask': 'widget.addTask'.tr(),
-      // Pre-localized like every other widget word — the native side owns no
-      // translations (W-rule).
-      'openToday': 'widget.openToday'.tr(args: {'count': '${all.openToday}'}),
-      // OPH-336: the lock screen's heading, and the Android configure
-      // screen's title — native words, the app's translations.
-      'upNext': 'widget.upNext'.tr(),
-      'chooseList': 'widget.chooseList'.tr(),
-    },
+    openToday: all.openToday,
+    openTodayLabel: _openLabel(all.openToday),
     buckets: all.buckets,
     next: all.next,
-    lists: lists,
     views: views,
-    compact: compact,
   );
 }
+
+String _openLabel(int count) =>
+    'widget.openToday'.tr(args: {'count': '$count'});

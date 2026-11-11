@@ -1119,7 +1119,8 @@
     },
     "privateTitle": "Private task",
     "privateEvent": "Private event",
-    "allDay": "All day"
+    "allDay": "All day",
+    "stale": "List out of date · Open to update"
   },
   "file": {
     "add": "Add file",
