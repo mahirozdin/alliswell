@@ -297,6 +297,29 @@ export async function sweepDuePushes(app, { now = new Date() } = {}) {
  * construction and the query would only cost a join to learn that.
  */
 export async function sendWakeHint(app, { workspaceId }) {
+  return wakeAndroid(app, workspaceId, { ringsUrgentOnly: false });
+}
+
+/**
+ * The alarm-stop wake (OPH-436, #48 phase 1): an urgent alarm that may still
+ * be ringing was acknowledged, snoozed or closed, so the OTHER phones ringing
+ * it are told to sync — and the client's reconcile silences the notification
+ * it is showing.
+ *
+ * The same message and the same platforms as [sendWakeHint] (`{v:1,
+ * type:'wake'}`, Android FCM only; iOS gets no data message, ADR-0038 §8). The
+ * only difference is WHO: a device with `rings_urgent` off never rang this
+ * alarm as an alarm (ADR-0069 #2), so there is nothing on it to stop.
+ *
+ * The acknowledging device is not excluded: the sync event does not carry
+ * the client that wrote it, and one extra wake on a phone that is already
+ * silent costs less than threading a client id through every write path.
+ */
+export async function sendAlarmStopWake(app, { workspaceId }) {
+  return wakeAndroid(app, workspaceId, { ringsUrgentOnly: true });
+}
+
+async function wakeAndroid(app, workspaceId, { ringsUrgentOnly }) {
   if (!app.pushTransport || !app.pushTransport.providers.includes('fcm')) return 0;
 
   const members = await app
@@ -305,15 +328,16 @@ export async function sendWakeHint(app, { workspaceId }) {
     .select('user_id');
   if (members.length === 0) return 0;
 
-  const devices = await app
+  const query = app
     .db('notification_devices')
     .whereIn(
       'user_id',
       members.map((m) => m.user_id),
     )
     .where({ platform: 'android', push_provider: 'fcm' })
-    .whereNull('invalid_at')
-    .select();
+    .whereNull('invalid_at');
+  if (ringsUrgentOnly) query.where({ rings_urgent: true });
+  const devices = await query.select();
   if (devices.length === 0) return 0;
 
   const results = await app.pushTransport.send(devices, buildWakePayload());
