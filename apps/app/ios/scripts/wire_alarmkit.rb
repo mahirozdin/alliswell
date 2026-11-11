@@ -55,12 +55,19 @@ identity_ref = file_ref(shared_group, 'AWAlarmIdentity.swift')
 add_source(runner, identity_ref, 'Shared/AWAlarmIdentity.swift')
 add_source(widget, identity_ref, 'Shared/AWAlarmIdentity.swift')
 
+# OPH-430 — the AlarmKit ledger and failure ring (NOTIFICATIONS.md 2b.3 "App
+# Group keys"). The alert's intents in AWAlarmShared.swift write the ledger, and
+# the widget extension compiles those intents, so both targets need it.
+ledger_ref = file_ref(shared_group, 'AWAlarmLedger.swift')
+add_source(runner, ledger_ref, 'Shared/AWAlarmLedger.swift')
+add_source(widget, ledger_ref, 'Shared/AWAlarmLedger.swift')
+
 # XCTest sources go into the one existing RunnerTests target (hosted in
 # Runner.app, `@testable import Runner`); never a second test target.
 tests_group = project.main_group['RunnerTests']
 raise 'RunnerTests group not found' unless tests_group
 
-%w[AlarmIdentityTests.swift].each do |name|
+%w[AlarmIdentityTests.swift AlarmLedgerTests.swift].each do |name|
   add_source(tests, file_ref(tests_group, name), "RunnerTests/#{name}")
 end
 

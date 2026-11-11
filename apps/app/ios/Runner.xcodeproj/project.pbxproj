@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0485E1C2090A6E227B7107C6 /* AWAlarmLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */; };
+		05FA36610EE25FC86CDBCE88 /* AWAlarmLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */; };
 		0F391A000000000000000001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0F391A000000000000000003 /* InfoPlist.strings */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */; };
@@ -40,6 +42,7 @@
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
 		DCB1241EC7970CB68479F292 /* ShareNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */; };
+		FB633E0800E6DFC8B6E198FF /* AlarmLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -100,6 +103,7 @@
 		12BA16DF6E2B364938EE1707 /* AllisWellShareDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareDebug.xcconfig; path = Flutter/AllisWellShareDebug.xcconfig; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmLedger.swift; sourceTree = "<group>"; };
 		310613F65256275C5E5875F9 /* Pods-AllisWellShare.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.debug.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.debug.xcconfig"; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -119,6 +123,7 @@
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7B7A51A1D5AE98E32CC7F99E /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		7D5609174DA84123DA2FFE05 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmLedgerTests.swift; sourceTree = "<group>"; };
 		85A46C53A340932C6DBE7C2E /* AllisWellShareProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareProfile.xcconfig; path = Flutter/AllisWellShareProfile.xcconfig; sourceTree = "<group>"; };
 		914B58EC491C15E69D71AF02 /* Pods-AllisWellShare.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.profile.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.profile.xcconfig"; sourceTree = "<group>"; };
 		95CB1B3B360E2D9C0F9F87A2 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
@@ -222,6 +227,7 @@
 				3E101FA48BBDE185AC9536AC /* AppShortcuts.strings */,
 				A31D141CA43C61BDA8B5ED22 /* Localizable.strings */,
 				FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */,
+				2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -231,6 +237,7 @@
 			children = (
 				331C807B294A618700263BE5 /* RunnerTests.swift */,
 				0E41DF2EA06800FA1261BCFC /* AlarmIdentityTests.swift */,
+				7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -663,6 +670,7 @@
 			files = (
 				331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */,
 				3B1016BC5B030568075708B9 /* AlarmIdentityTests.swift in Sources */,
+				FB633E0800E6DFC8B6E198FF /* AlarmLedgerTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -687,6 +695,7 @@
 				4E2F5686630E1B33A7600A18 /* ShareInboxBridge.swift in Sources */,
 				1C805BE1C3654858412D4CB6 /* AWAppShortcuts.swift in Sources */,
 				A27462FC05C6C20A744A7DA9 /* AWAlarmIdentity.swift in Sources */,
+				0485E1C2090A6E227B7107C6 /* AWAlarmLedger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -696,6 +705,7 @@
 			files = (
 				771B0720300A7CD52641BBEA /* AWAlarmShared.swift in Sources */,
 				ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */,
+				05FA36610EE25FC86CDBCE88 /* AWAlarmLedger.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

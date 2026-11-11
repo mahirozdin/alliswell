@@ -257,8 +257,8 @@ private func awMarkDone(
 /// half-born process crashed when the user then opened the app, and the
 /// completion only surfaced after a force-kill relaunch (the owner's exact
 /// device report). A plain `AppIntent` runs HERE in the widget extension:
-/// stamp the shared snapshot, queue the real completion for the app's
-/// existing drain (AlarmKitBridge → Dart), redraw. No app launch at all.
+/// stamp the shared snapshot, queue the real completion for the app to pull
+/// (AlarmKitBridge → Dart), redraw. No app launch at all.
 @available(iOS 17.0, macOS 14.0, *)
 struct AWWidgetCompleteIntent: AppIntent {
   static var title: LocalizedStringResource = "Complete task"
@@ -274,7 +274,8 @@ struct AWWidgetCompleteIntent: AppIntent {
   }
 
   func perform() async throws -> some IntentResult {
-    AWAlarmActionQueue.enqueue(actionId: "complete", taskId: taskId, reminderId: "")
+    // Queue entry v2 (NOTIFICATIONS.md §2b.3): kept until Dart acks it.
+    AWAlarmActionQueue.enqueue(action: "complete", taskIds: [taskId], origin: "widget")
     markAWSnapshotDone(taskId: taskId)
     WidgetCenter.shared.reloadTimelines(ofKind: kWidgetKind)
     return .result()

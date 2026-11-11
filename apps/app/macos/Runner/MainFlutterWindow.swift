@@ -100,23 +100,49 @@ final class AWMacWidgetBridge {
     }
   }
 
-  /// Same payload shape as the iOS bridge's (`AlarmKitBridge.payloadJson`), so
-  /// the one Dart handler cannot tell the platforms apart.
+  /// Contract v1's push drain, which the Mac keeps (NOTIFICATIONS.md §2b.3
+  /// "Legacy and macOS"): Dart's `pullPendingActions` gets `notImplemented`
+  /// here and falls back to this. The widget's complete intent now writes v2
+  /// entries (`{eventId, action, taskIds, …}`); an older build's v1 entries
+  /// (`{actionId, taskId, reminderId}`) may still be queued. Both become the
+  /// same `onAlarmAction {actionId, payload}` the one Dart handler knows.
   private func drain() {
     guard
       let defaults,
-      let queued = defaults.array(forKey: Self.actionsKey) as? [[String: String]],
+      let queued = defaults.array(forKey: Self.actionsKey),
       !queued.isEmpty
     else { return }
     defaults.removeObject(forKey: Self.actionsKey)
-    for action in queued {
-      guard let actionId = action["actionId"] else { continue }
-      let payload = ["taskId": action["taskId"] ?? "", "reminderId": action["reminderId"] ?? ""]
-      guard
-        let data = try? JSONSerialization.data(withJSONObject: payload),
-        let json = String(data: data, encoding: .utf8)
-      else { continue }
-      alarms.invokeMethod("onAlarmAction", arguments: ["actionId": actionId, "payload": json])
+    for case let entry as [String: Any] in queued {
+      for (actionId, taskId) in Self.legacyActions(entry) {
+        let payload = ["taskId": taskId, "reminderId": entry["reminderId"] as? String ?? ""]
+        guard
+          let data = try? JSONSerialization.data(withJSONObject: payload),
+          let json = String(data: data, encoding: .utf8)
+        else { continue }
+        alarms.invokeMethod("onAlarmAction", arguments: ["actionId": actionId, "payload": json])
+      }
     }
+  }
+
+  /// `(actionId, taskId)` pairs for one queue entry: a v1 entry as it is, a v2
+  /// entry once per member (`complete` → `complete`, `acknowledge` →
+  /// `acknowledge`, a preset snooze → `snooze:<preset>`).
+  private static func legacyActions(_ entry: [String: Any]) -> [(String, String)] {
+    if let actionId = entry["actionId"] as? String {
+      return [(actionId, entry["taskId"] as? String ?? "")]
+    }
+    guard let action = entry["action"] as? String else { return [] }
+    let actionId: String
+    switch action {
+    case "complete", "acknowledge":
+      actionId = action
+    case "snooze":
+      guard let preset = entry["preset"] as? String, !preset.isEmpty else { return [] }
+      actionId = "snooze:\(preset)"
+    default:
+      return []
+    }
+    return (entry["taskIds"] as? [String] ?? []).map { (actionId, $0) }
   }
 }
