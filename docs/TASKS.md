@@ -69,6 +69,27 @@ Kritik yol: push-notifications. Found: phase-end review, `apps/app/lib/src/notif
 - **Test first:** widget test — acknowledge one row, scroll at 50 s, no sound at 60 s, sound at 110 s.
   **Verify:** `npm run verify:task -- <that test>` + `check:notify-matrix`.
 
+### OPH-478 — A widget completion leaves counts unchanged where the task was trimmed
+
+Found: phase-end review (`apps/app/ios/Shared/AWSnapshotModel.swift`, `awCompleteInView`). Left
+open: minor, heals on the next Dart publish.
+
+- [ ] With 13 tasks due today the whole list holds 12 rows; completing task 13 from a project
+      widget skips the whole-list bucket (its rows lack the id), so its count and `openToday`
+      stay 13 in every day view. Decrement a counted bucket whose `more` > 0 when the task's due
+      day puts it there, even when its row was trimmed.
+- **Test first:** XCTest on the Mac — 13 due today, complete the 13th: counts read 12. **Verify:** K1.
+
+### OPH-479 — Completing the next task can show "All caught up" while a trimmed task is open
+
+Found: phase-end review (`apps/app/ios/Shared/AWSnapshotModel.swift`, `awNextOpen`). Left open: minor.
+
+- [ ] 11 events then tasks A and B: the whole list draws 12 rows (A, `more` = 1). Completing A in
+      a project widget searches only the drawn rows, finds none and drops `next`, so the
+      lock-screen widget says "All caught up" while B is open. When a bucket has `more` > 0 keep
+      a stale-but-honest `next` (or take it from another view's rows) instead of removing it.
+- **Test first:** XCTest on the Mac with that fixture: `next` is B or kept. **Verify:** K1.
+
 ---
 
 ## Epic 37 — Widget fetches its own data (#50, PR-2)
