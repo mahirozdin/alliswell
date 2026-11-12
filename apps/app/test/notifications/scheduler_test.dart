@@ -1290,6 +1290,80 @@ void main() {
       },
     );
 
+    group('a replan inside a grouped minute (ADR-0068)', () {
+      final nine = DateTime.utc(2026, 7, 15, 9);
+      AlarmInput urgentAt(String task, DateTime at) => AlarmInput(
+        reminderId: 'R$task',
+        taskId: 'T$task',
+        taskTitle: 'Görev $task',
+        remindAt: at,
+        status: 'scheduled',
+        urgent: true,
+        requiresAcknowledgement: true,
+      );
+      final a = urgentAt('A', nine);
+      final b = urgentAt('B', nine.add(const Duration(seconds: 30)));
+
+      AlarmKitScheduled ringing(AlarmKitAlarm alarm) => AlarmKitScheduled(
+        id: alarm.id,
+        fp: alarm.fp,
+        state: AlarmKitAlarmState.alerting,
+        members: alarm.members,
+        fireAtMs: alarm.fireAt.millisecondsSinceEpoch,
+      );
+
+      test('the alarm ringing for the whole minute is the only one: no '
+          'second alarm for the member still ahead', () {
+        final grouped = planAlarmKitAlarms(
+          alarms: [a, b],
+          now: nine.subtract(const Duration(minutes: 1)),
+          privacyMode: false,
+        ).single;
+        expect(grouped.members, ['TA', 'TB']);
+
+        final replanAt = nine.add(const Duration(seconds: 10));
+        final plan = planAlarmKitPass(
+          desired: planAlarmKitAlarms(
+            alarms: [a, b],
+            now: replanAt,
+            privacyMode: false,
+          ),
+          current: [ringing(grouped)],
+          alarms: [a, b],
+          appliedEventIds: const {},
+          now: replanAt,
+          staleWindow: stale,
+        );
+        expect(plan.held, {'RA', 'RB'});
+        expect(plan.toStop, isEmpty);
+        expect(plan.toSchedule, isEmpty);
+      });
+
+      test('a task added to a minute that already rang without it still '
+          'gets its alarm', () {
+        final alone = planAlarmKitAlarms(
+          alarms: [a],
+          now: nine.subtract(const Duration(minutes: 1)),
+          privacyMode: false,
+        ).single;
+        final replanAt = nine.add(const Duration(seconds: 10));
+        final plan = planAlarmKitPass(
+          desired: planAlarmKitAlarms(
+            alarms: [a, b],
+            now: replanAt,
+            privacyMode: false,
+          ),
+          current: [ringing(alone)],
+          alarms: [a, b],
+          appliedEventIds: const {},
+          now: replanAt,
+          staleWindow: stale,
+        );
+        expect(plan.held, {'RA'});
+        expect(plan.toSchedule.single.members, ['TB']);
+      });
+    });
+
     test('a ledger-less scheduled row is never rescheduled for its fp', () {
       final alarm = planAlarmKitAlarms(
         alarms: [row(noon, status: 'scheduled')],

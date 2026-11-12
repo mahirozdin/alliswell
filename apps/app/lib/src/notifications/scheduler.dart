@@ -709,7 +709,9 @@ class AlarmKitPassPlan {
 /// 4. desired with another fingerprint — rescheduled under the same id. A row
 ///    with no ledger record has no fingerprint to compare and is kept.
 ///
-/// Then every desired id the lane does not hold is scheduled.
+/// Then every desired id the lane does not hold is scheduled, unless the
+/// alarms the pass keeps already cover all of its reminders — a grouped
+/// minute replanned while it rings (ADR-0068: one alarm per minute).
 AlarmKitPassPlan planAlarmKitPass({
   required List<AlarmKitAlarm> desired,
   required List<AlarmKitScheduled> current,
@@ -815,7 +817,13 @@ AlarmKitPassPlan planAlarmKitPass({
     toCancel: toCancel,
     toSchedule: [
       for (final a in desired)
-        if (!handled.contains(a.id)) a,
+        // A replan inside a minute that is already ringing drops the members
+        // whose instant passed and re-forms the rest as a new occurrence
+        // (ADR-0068): when an alarm the pass keeps already covers every
+        // reminder of it, scheduling it would ring that minute twice.
+        if (!handled.contains(a.id) &&
+            !(a.reminderIds.isNotEmpty && a.reminderIds.every(held.contains)))
+          a,
     ],
     toReschedule: toReschedule,
     held: held,
