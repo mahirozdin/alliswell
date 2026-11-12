@@ -1069,7 +1069,9 @@
       "joinsGroup": "başka alarmla birlikte"
     },
     "row": {
-      "failed": "Kaydedilmedi"
+      "failed": "Kaydedilmedi",
+      "snoozeSpoken": "{title}: Ertele",
+      "acknowledgeSpoken": "{title}: Onayla"
     }
   },
   "alarmLog": {

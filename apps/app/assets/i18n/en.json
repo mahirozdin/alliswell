@@ -1070,7 +1070,9 @@
       "joinsGroup": "with another alarm"
     },
     "row": {
-      "failed": "Not saved"
+      "failed": "Not saved",
+      "snoozeSpoken": "{title}: Snooze",
+      "acknowledgeSpoken": "{title}: Acknowledge"
     }
   },
   "alarmLog": {

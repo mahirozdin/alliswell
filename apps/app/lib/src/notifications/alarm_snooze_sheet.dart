@@ -195,6 +195,18 @@ class _AlarmSnoozeSheetState extends State<_AlarmSnoozeSheet>
                 TaskStore.snoozeUntilFor(preset, now: shownAt),
                 shownAt,
               ),
+              // Z-04: read as the single layout's tile is — "5 dakika
+              // ertele, 09:05’te çalar", "· başka alarmla birlikte" when
+              // the minute is taken.
+              spoken: () {
+                final until = TaskStore.snoozeUntilFor(preset, now: shownAt);
+                final subline = snoozeTileSubline(
+                  until,
+                  joinsGroup: _joins(until),
+                  format: widget.dateFormat,
+                );
+                return '${kSnoozePresetSpokenLabels[preset]!.tr()}, $subline';
+              }(),
               // Counted from the press, never from the opening.
               onTap: () => onChoose(
                 AlarmSheetSnooze(TaskStore.snoozeUntilFor(preset, now: now())),
@@ -249,6 +261,10 @@ class _AlarmSnoozeSheetState extends State<_AlarmSnoozeSheet>
 
 /// One 56 pt row on `surfaceContainerHigh`, radius 16 (the sheet-tile
 /// pattern): icon, label (and hint), the landing minute or a chevron.
+///
+/// Z-04: ONE button node for a screen reader, with a tap and a merged label
+/// — [spoken], or the label and its hint. Its pieces were bare text nodes
+/// VoiceOver could read but not press.
 class _SheetRow extends StatelessWidget {
   const _SheetRow({
     super.key,
@@ -257,6 +273,7 @@ class _SheetRow extends StatelessWidget {
     required this.onTap,
     this.hint,
     this.trailing,
+    this.spoken,
     this.chevron = false,
   });
 
@@ -264,6 +281,7 @@ class _SheetRow extends StatelessWidget {
   final String label;
   final String? hint;
   final String? trailing;
+  final String? spoken;
   final bool chevron;
   final VoidCallback onTap;
 
@@ -272,57 +290,69 @@ class _SheetRow extends StatelessWidget {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
     final trailing = this.trailing;
-    return Material(
-      color: scheme.surfaceContainerHigh,
-      borderRadius: BorderRadius.circular(AwRadius.m),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: kAwAlarmSheetRowHeight),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AwSpace.x4,
-              vertical: AwSpace.x2,
+    final hint = this.hint;
+    return Semantics(
+      container: true,
+      button: true,
+      label: spoken ?? (hint == null ? label : '$label, $hint'),
+      onTap: onTap,
+      excludeSemantics: true,
+      child: Material(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(AwRadius.m),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              minHeight: kAwAlarmSheetRowHeight,
             ),
-            child: Row(
-              children: [
-                Icon(icon, size: 20, color: scheme.onSurfaceVariant),
-                const SizedBox(width: AwSpace.x3),
-                Expanded(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: text.bodyLarge?.copyWith(
-                          color: scheme.onSurface,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (hint != null)
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AwSpace.x4,
+                vertical: AwSpace.x2,
+              ),
+              child: Row(
+                children: [
+                  Icon(icon, size: 20, color: scheme.onSurfaceVariant),
+                  const SizedBox(width: AwSpace.x3),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         Text(
-                          hint!,
-                          style: text.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
+                          label,
+                          style: text.bodyLarge?.copyWith(
+                            color: scheme.onSurface,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
-                    ],
-                  ),
-                ),
-                if (trailing != null) ...[
-                  const SizedBox(width: AwSpace.x3),
-                  Text(
-                    trailing,
-                    style: awTabular(
-                      text.bodyMedium!.copyWith(color: scheme.onSurfaceVariant),
+                        if (hint != null)
+                          Text(
+                            hint,
+                            style: text.bodySmall?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                      ],
                     ),
                   ),
+                  if (trailing != null) ...[
+                    const SizedBox(width: AwSpace.x3),
+                    Text(
+                      trailing,
+                      style: awTabular(
+                        text.bodyMedium!.copyWith(
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (chevron)
+                    Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
                 ],
-                if (chevron)
-                  Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-              ],
+              ),
             ),
           ),
         ),

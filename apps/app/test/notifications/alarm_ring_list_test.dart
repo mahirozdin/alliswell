@@ -1,12 +1,17 @@
+import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/day_boundary.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_action_tile.dart';
+import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_list.dart';
 import 'package:alliswell/src/notifications/planner.dart';
+import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
 import '../support/created_tickers.dart';
@@ -38,6 +43,8 @@ void main() {
     List<AlarmInput> alarms = const [],
     Size size = const Size(430, 932),
     bool reduceMotion = false,
+    List<Override> extra = const [],
+    ValueListenable<List<AlarmInput>>? live,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -53,6 +60,7 @@ void main() {
       overrides: [
         ...syncTestOverrides(),
         nowProvider.overrideWithValue(() => now),
+        ...extra,
       ],
     );
     addTearDown(container.dispose);
@@ -67,7 +75,13 @@ void main() {
             extensions: const [AwTokens.light],
           ),
           home: Scaffold(
-            body: AlarmRingList(rows: rows, alarms: alarms),
+            body: live == null
+                ? AlarmRingList(rows: rows, alarms: alarms)
+                : ValueListenableBuilder<List<AlarmInput>>(
+                    valueListenable: live,
+                    builder: (_, rows, _) =>
+                        AlarmRingList(rows: rows, alarms: alarms),
+                  ),
           ),
         ),
       ),
@@ -252,11 +266,11 @@ void main() {
     final expected = [
       at('2 URGENT REMINDERS'),
       card1,
-      at('Snooze', card1 + 1),
-      at('Acknowledge', card1 + 1),
+      at('Task 1: Snooze'),
+      at('Task 1: Acknowledge'),
       card2,
-      at('Snooze', card2 + 1),
-      at('Acknowledge', card2 + 1),
+      at('Task 2: Snooze'),
+      at('Task 2: Acknowledge'),
       at('Snooze all'),
       at('Snooze 5 minutes'),
       at('Snooze 30 minutes'),
@@ -288,4 +302,162 @@ void main() {
     expect(created, isEmpty);
     expect(tester.takeException(), isNull);
   });
+
+  // ── S3 (Y-03): list mode for a screen reader ─────────────────────────────
+
+  testWidgets('list mode is not one labelled group; row buttons name their '
+      'task', (tester) async {
+    final semantics = tester.ensureSemantics();
+    // A fresh browser: the silent sentence shows under the header (Y-03 was
+    // seen with it; it named the whole list).
+    await pumpList(
+      tester,
+      [
+        row('1', now.add(const Duration(seconds: 1))),
+        row('2', now.add(const Duration(seconds: 2))),
+      ],
+      extra: [alarmOpensSilentProvider.overrideWithValue(true)],
+    );
+    expect(find.byKey(const Key('alarm-silent-default')), findsOneWidget);
+
+    // Nothing above the header carries a name: the group is a plain
+    // container, as on the single layout (X-07).
+    final head = tester.getSemantics(
+      find.bySemanticsLabel(RegExp(r'^2 URGENT REMINDERS')),
+    );
+    final named = <String>[];
+    for (var node = head.parent; node != null; node = node.parent) {
+      if (node.label.isNotEmpty) named.add(node.label);
+    }
+    expect(named, isEmpty);
+
+    // The sentence is a node of its own, with no child under it.
+    final sentence = tester.getSemantics(
+      find.bySemanticsLabel(RegExp(r'^Alarms in this browser are silent')),
+    );
+    expect(sentence.childrenCount, 0);
+
+    // Each row's buttons say which task they answer; the pills still read
+    // "Snooze" and "Acknowledge".
+    for (final n in ['1', '2']) {
+      for (final action in ['Snooze', 'Acknowledge']) {
+        final button = find.bySemanticsLabel('Task $n: $action');
+        expect(button, findsOneWidget, reason: 'Task $n: $action');
+        expect(
+          tester.getSemantics(button),
+          isSemantics(isButton: true, hasTapAction: true),
+        );
+      }
+      final pill = find.byKey(Key('alarm-row-snooze-${id('T$n')}'));
+      expect(
+        find.descendant(of: pill, matching: find.text('Snooze')),
+        findsOneWidget,
+      );
+    }
+    semantics.dispose();
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  // ── S3 (run 7): the keyboard after a row's sheet ─────────────────────────
+
+  for (final close in ['the scrim', 'a snooze that takes the row away']) {
+    testWidgets('after the row sheet closes Enter acknowledges all '
+        '(closed by $close)', (tester) async {
+      final rows = ValueNotifier([row('1', now), row('2', now), row('3', now)]);
+      addTearDown(rows.dispose);
+      // A row answered leaves the list, as the overlay's state does.
+      final spy = _SpyOverlay(
+        onRow: (task) => rows.value = [
+          for (final r in rows.value)
+            if (r.taskId != task) r,
+        ],
+      );
+      await pumpList(
+        tester,
+        rows.value,
+        live: rows,
+        size: const Size(1280, 800),
+        extra: [alarmOverlayControllerProvider.overrideWith(() => spy)],
+      );
+
+      // A web screen reader's click focuses the node it presses: the row's
+      // "Snooze" holds the focus when its sheet opens.
+      final pill = find.byKey(Key('alarm-row-snooze-${id('T1')}'));
+      Focus.of(
+        tester.element(
+          find.descendant(of: pill, matching: find.text('Snooze')),
+        ),
+      ).requestFocus();
+      await tester.tap(pill);
+      // The header badge pulses forever: the sheet's 250 ms in fixed steps.
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(const Key('alarm-sheet-open')), findsOneWidget);
+      if (close == 'the scrim') {
+        await tester.tapAt(const Offset(8, 8));
+      } else {
+        await tester.tap(find.byKey(const Key('alarm-sheet-snooze-5_min')));
+      }
+      // While the sheet is still sliding out, the focus is already back on
+      // the list. On the web its focused node is a DOM element: left in the
+      // sheet, the element's removal blurs the page and parks the focus
+      // outside every widget, so Enter and 1–3 reached nothing (run 7).
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 50));
+      expect(find.byKey(const Key('alarm-sheet-open')), findsOneWidget);
+      final focused = FocusManager.instance.primaryFocus?.context;
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('alarm-acknowledge-all')),
+          matching: find.byElementPredicate((e) => e == focused),
+        ),
+        findsOneWidget,
+        reason: '${FocusManager.instance.primaryFocus}',
+      );
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.byKey(const Key('alarm-sheet-open')), findsNothing);
+      expect(spy.rowAnswers, close == 'the scrim' ? isEmpty : [id('T1')]);
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      expect(spy.acknowledgedAll, 1);
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+      await tester.pump();
+      expect(spy.snoozedAll, hasLength(1));
+      await tester.pumpWidget(const SizedBox());
+    });
+  }
+}
+
+/// The overlay controller with its bulk answers recorded instead of written.
+class _SpyOverlay extends AlarmOverlayController {
+  _SpyOverlay({this.onRow});
+
+  final void Function(String taskId)? onRow;
+  int acknowledgedAll = 0;
+  final List<String> rowAnswers = [];
+  final List<DateTime> snoozedAll = [];
+
+  @override
+  Future<bool> acknowledgeAll({void Function()? onSaved}) async {
+    acknowledgedAll++;
+    return true;
+  }
+
+  @override
+  Future<bool> snoozeAll(DateTime until, {void Function()? onSaved}) async {
+    snoozedAll.add(until);
+    return true;
+  }
+
+  @override
+  Future<bool> actOnRow(
+    String taskId,
+    AlarmRowAction action, {
+    void Function()? onSaved,
+  }) async {
+    rowAnswers.add(taskId);
+    onRow?.call(taskId);
+    return true;
+  }
 }

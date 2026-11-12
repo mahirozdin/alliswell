@@ -111,6 +111,12 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
 
   bool _reduceMotion = false;
 
+  /// "Tümünü onayla": the list's first focus, and where the focus goes back
+  /// to after a row's sheet or the pickers (S3).
+  final FocusNode _primaryFocus = FocusNode(
+    debugLabel: 'alarm-acknowledge-all',
+  );
+
   AlarmOverlayController get _controller =>
       ref.read(alarmOverlayControllerProvider.notifier);
 
@@ -124,6 +130,21 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
     _logShown(widget.rows);
     // A screen reader hears how many ring, and when (spec §1.8).
     WidgetsBinding.instance.addPostFrameCallback((_) => _announce());
+  }
+
+  @override
+  void dispose() {
+    _primaryFocus.dispose();
+    super.dispose();
+  }
+
+  /// The keyboard back on the list once a sheet or a picker closes, or a row
+  /// is answered: Enter and 1–3 work again. Requested while the sheet still
+  /// slides out — on the web a focused node is a DOM element, and one that
+  /// leaves (the sheet's, a leaving row's pill) blurs the page and parks the
+  /// focus outside every widget (run 7).
+  void _refocus() {
+    if (mounted && !_primaryFocus.hasPrimaryFocus) _primaryFocus.requestFocus();
   }
 
   @override
@@ -223,11 +244,11 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
     unawaited(_controller.acknowledgeAll(onSaved: say));
   }
 
-  void _row(
-    AlarmInput row,
-    AlarmRowAction action, {
-    void Function()? onSaved,
-  }) => unawaited(_controller.actOnRow(row.taskId, action, onSaved: onSaved));
+  void _row(AlarmInput row, AlarmRowAction action, {void Function()? onSaved}) {
+    unawaited(_controller.actOnRow(row.taskId, action, onSaved: onSaved));
+    // The row leaves the list, and its focused pill with it.
+    _refocus();
+  }
 
   void _snoozeRow(AlarmInput row, DateTime until) => _row(
     row,
@@ -279,6 +300,7 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
   Future<void> _openSheet(AlarmInput row) async {
     final backOut = _quietFor();
     void Function()? openTask;
+    var picking = false;
     final chosen = await showAlarmSnoozeSheet(
       context,
       alarm: row,
@@ -288,19 +310,29 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
       // X-04: a preset landing in a minute another task's urgent alarm
       // holds says so, as the single layout's tile does.
       alarms: widget.alarms,
-      onChoose: (choice) => switch (choice) {
-        AlarmSheetSnooze(:final until) => _snoozeRow(row, until),
-        AlarmSheetCustom() => unawaited(_pickTime(row: row, backOut: backOut)),
-        AlarmSheetMute() => _row(
-          row,
-          AlarmRowAction.mute,
-          onSaved: _sayLater('task.alarmsMuted'.tr()),
-        ),
-        AlarmSheetComplete() => _row(row, AlarmRowAction.complete),
-        AlarmSheetOpen() => openTask = _dismissToOpen(row),
+      onChoose: (choice) {
+        switch (choice) {
+          case AlarmSheetSnooze(:final until):
+            _snoozeRow(row, until);
+          case AlarmSheetCustom():
+            picking = true;
+            unawaited(_pickTime(row: row, backOut: backOut));
+          case AlarmSheetMute():
+            _row(
+              row,
+              AlarmRowAction.mute,
+              onSaved: _sayLater('task.alarmsMuted'.tr()),
+            );
+          case AlarmSheetComplete():
+            _row(row, AlarmRowAction.complete);
+          case AlarmSheetOpen():
+            openTask = _dismissToOpen(row);
+        }
       },
     );
     if (!chosen) backOut();
+    // The pickers take the focus from here, and give it back when they close.
+    if (!picking && openTask == null) _refocus();
     // Pushed once the sheet's route is off the stack, not while it pops.
     openTask?.call();
   }
@@ -309,6 +341,17 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
   /// date and time pickers as the single layout, anchored on the same
   /// instant (half an hour from now).
   Future<void> _pickTime({
+    AlarmInput? row,
+    required void Function() backOut,
+  }) async {
+    try {
+      await _pickTimeFor(row: row, backOut: backOut);
+    } finally {
+      _refocus();
+    }
+  }
+
+  Future<void> _pickTimeFor({
     AlarmInput? row,
     required void Function() backOut,
   }) async {
@@ -599,10 +642,15 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
     if (onLockScreen) {
       return Padding(
         padding: const EdgeInsets.only(top: AwSpace.x3),
-        child: Text(
-          'alarm.ringingOnLockScreen'.tr(),
-          key: const Key('alarm-rings-on-lock-screen'),
-          style: style,
+        // Y-03: a node of its own — a bare text merged into the list's
+        // unnamed group and became the name of the whole screen.
+        child: Semantics(
+          container: true,
+          child: Text(
+            'alarm.ringingOnLockScreen'.tr(),
+            key: const Key('alarm-rings-on-lock-screen'),
+            style: style,
+          ),
         ),
       );
     }
@@ -613,14 +661,18 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              chosen
-                  ? 'alarm.silentByChoice'.tr()
-                  : 'alarm.silentByDefault'.tr(),
-              key: chosen
-                  ? const Key('alarm-silent-declared')
-                  : const Key('alarm-silent-default'),
-              style: style,
+            // Y-03: its own node, not the name of the list's group.
+            Semantics(
+              container: true,
+              child: Text(
+                chosen
+                    ? 'alarm.silentByChoice'.tr()
+                    : 'alarm.silentByDefault'.tr(),
+                key: chosen
+                    ? const Key('alarm-silent-declared')
+                    : const Key('alarm-silent-default'),
+                style: style,
+              ),
             ),
             const SizedBox(height: AwSpace.x2),
             _startSoundTile(oneColumn),
@@ -714,6 +766,11 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
                     child: _pill(
                       'alarm-row-snooze-$id',
                       label: 'alarm.ringing.snooze'.tr(),
+                      // Y-03: "Annemi ara: Ertele" — a screen reader that
+                      // lands on the pill hears which task it answers.
+                      spoken: 'alarm.row.snoozeSpoken'.tr(
+                        args: {'title': row.taskTitle},
+                      ),
                       icon: Icons.arrow_drop_down,
                       iconAtEnd: true,
                       onPressed: () => unawaited(_openSheet(row)),
@@ -724,6 +781,9 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
                     child: _pill(
                       'alarm-row-ack-$id',
                       label: 'notif.action.acknowledge'.tr(),
+                      spoken: 'alarm.row.acknowledgeSpoken'.tr(
+                        args: {'title': row.taskTitle},
+                      ),
                       icon: Icons.check,
                       onPressed: () => _row(row, AlarmRowAction.acknowledge),
                     ),
@@ -740,6 +800,7 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
   Widget _pill(
     String key, {
     required String label,
+    required String spoken,
     required IconData icon,
     required VoidCallback onPressed,
     bool iconAtEnd = false,
@@ -756,7 +817,12 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
         iconAlignment: iconAtEnd ? IconAlignment.end : IconAlignment.start,
       ),
       icon: Icon(icon, size: 18),
-      label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+      label: Text(
+        label,
+        semanticsLabel: spoken,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
     );
   }
 
@@ -845,6 +911,7 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
           key: const Key('alarm-acknowledge-all'),
           // Keyboard: the first focus is the primary answer (Enter, too).
           autofocus: true,
+          focusNode: _primaryFocus,
           onPressed: _acknowledgeAll,
           style: FilledButton.styleFrom(
             backgroundColor: scheme.error,
