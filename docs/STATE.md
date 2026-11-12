@@ -15,7 +15,7 @@
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36 (PR-1) tamam; OPH-468, 470, sonra Epic 37 (PR-2). |
+| Current phase            | **v1.20.0 son sürüm (2026-11-12).** Epic 36 (PR-1) tamam; OPH-468, 470, sonra Epic 37 (PR-2). |
 | Current epic             | **Epic 36 follow-up** (OPH-468, 470), sonra **Epic 37** (#50, PR-2; `/faz E37`) |
 | ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
 | Last completed           | Epic 36 (OPH-421…456, 466, 467) + üç cila turu (OPH-469, 471, 472, 480); ayrıntı CHANGELOG'da. |
