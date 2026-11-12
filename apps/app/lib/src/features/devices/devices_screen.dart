@@ -143,23 +143,31 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       useRootNavigator: true,
-      builder: (dialogContext) => AlertDialog(
-        key: const Key('devices-last-off-dialog'),
-        title: Text('settings.devices.lastOffTitle'.tr()),
-        content: Text('settings.devices.lastOffBody'.tr()),
-        actions: [
-          TextButton(
-            key: const Key('devices-last-off-cancel'),
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text('common.cancel'.tr()),
-          ),
-          FilledButton(
-            key: const Key('devices-last-off-confirm'),
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            child: Text('settings.devices.lastOffConfirm'.tr()),
-          ),
-        ],
-      ),
+      builder: (dialogContext) {
+        final scheme = Theme.of(dialogContext).colorScheme;
+        return AlertDialog(
+          key: const Key('devices-last-off-dialog'),
+          title: Text('settings.devices.lastOffTitle'.tr()),
+          content: Text('settings.devices.lastOffBody'.tr()),
+          actions: [
+            TextButton(
+              key: const Key('devices-last-off-cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text('settings.devices.lastOffKeep'.tr()),
+            ),
+            // Destructive, so the error role (DESIGN §19 D5), never primary.
+            FilledButton(
+              key: const Key('devices-last-off-confirm'),
+              style: FilledButton.styleFrom(
+                backgroundColor: scheme.error,
+                foregroundColor: scheme.onError,
+              ),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text('settings.devices.lastOffConfirm'.tr()),
+            ),
+          ],
+        );
+      },
     );
     return confirmed == true;
   }

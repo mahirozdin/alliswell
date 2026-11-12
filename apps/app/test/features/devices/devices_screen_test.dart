@@ -918,6 +918,51 @@ void main() {
     expect(_switchOf(tester, _webId).value, isTrue);
   });
 
+  testWidgets('the last-ringing-device dialog offers Vazgeç and colours '
+      '"Yine de kapat" as the destructive action', (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+    final api = _FakeApi(_rows());
+    await _pump(tester, api);
+
+    await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
+    await tester.pumpAndSettle();
+    final cancel = find.byKey(const Key('devices-last-off-cancel'));
+    final confirm = find.byKey(const Key('devices-last-off-confirm'));
+    expect(
+      find.descendant(of: cancel, matching: find.text('Vazgeç')),
+      findsOneWidget,
+    );
+    expect(find.text('İptal'), findsNothing);
+    expect(
+      find.descendant(of: confirm, matching: find.text('Yine de kapat')),
+      findsOneWidget,
+    );
+    // DESIGN §19 D5: the error-role FilledButton, not the primary one.
+    final scheme = Theme.of(tester.element(confirm)).colorScheme;
+    final style = tester.widget<FilledButton>(confirm).style;
+    expect(style?.backgroundColor?.resolve({}), scheme.error);
+    expect(style?.foregroundColor?.resolve({}), scheme.onError);
+
+    await tester.tap(cancel);
+    await tester.pumpAndSettle();
+    expect(api.patches, isEmpty);
+    expect(_switchOf(tester, _thisId).value, isTrue);
+
+    // The remove dialog speaks the same words (mobbin-alarm §2.4).
+    await _openSheet(tester, _macId);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('device-remove-cancel')),
+        matching: find.text('Vazgeç'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('İptal'), findsNothing);
+  });
+
   testWidgets('a web row that is off says only that it rings while the tab '
       'is open', (tester) async {
     await _pump(tester, _FakeApi(_rows()));

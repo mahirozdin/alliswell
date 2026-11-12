@@ -147,7 +147,7 @@ class _DeviceDetailSheetState extends ConsumerState<DeviceDetailSheet> {
             TextButton(
               key: const Key('device-remove-cancel'),
               onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: Text('common.cancel'.tr()),
+              child: Text('settings.devices.removeKeep'.tr()),
             ),
             FilledButton(
               key: const Key('device-remove-confirm'),
