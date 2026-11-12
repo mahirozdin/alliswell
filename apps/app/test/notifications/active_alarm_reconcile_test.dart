@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/gateway_local.dart';
 import 'package:alliswell/src/notifications/planner.dart';
@@ -33,6 +34,67 @@ AlarmInput alarm(
 
 ActiveAlarmNotification shown(int id, String rid, {bool urgent = true}) =>
     ActiveAlarmNotification(id: id, urgent: urgent, reminderIds: [rid]);
+
+/// One process's preferences file seen from two isolates (the app and the
+/// headless wake), the way the legacy SharedPreferences behaves: each isolate
+/// keeps the copy it loaded first and only sees another isolate's write after
+/// a reload. A write goes through to the shared file.
+class _Disk {
+  final Map<String, String> values = {};
+}
+
+class _IsolateKv implements LocalKv {
+  _IsolateKv(this._disk);
+
+  final _Disk _disk;
+  Map<String, String>? _cache;
+  var reloads = 0;
+
+  Map<String, String> get _view => _cache ??= Map.of(_disk.values);
+
+  Future<void> reload() async {
+    reloads++;
+    _cache = Map.of(_disk.values);
+  }
+
+  @override
+  Future<String?> get(String key) async => _view[key];
+
+  @override
+  Future<void> set(String key, String value) async {
+    _view[key] = value;
+    _disk.values[key] = value;
+  }
+
+  @override
+  Future<void> remove(String key) async {
+    _view.remove(key);
+    _disk.values.remove(key);
+  }
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {
+    for (final key in _view.keys.where(test).toList()) {
+      await remove(key);
+    }
+  }
+}
+
+class _ShownPlugin extends Fake implements FlutterLocalNotificationsPlugin {
+  List<ActiveNotification> shown = const [];
+
+  @override
+  Future<List<ActiveNotification>> getActiveNotifications() async => shown;
+}
+
+PlannedNotification urgentPlan(int id, String rid) => PlannedNotification(
+  id: id,
+  title: 'AllisWell',
+  body: '',
+  fireAt: DateTime.now().toUtc(),
+  urgent: true,
+  payload: jsonEncode({'taskId': 'T-$rid', 'reminderId': rid}),
+);
 
 void main() {
   group('activeToCancel (pure)', () {
@@ -184,5 +246,74 @@ void main() {
       expect(readUrgentPayloads(null), isEmpty);
       expect(readUrgentPayloads('{"x":1}'), isEmpty);
     });
+  });
+
+  group('the urgent payload record across isolates', () {
+    test(
+      'the wake isolate maps a ringing alarm the app isolate scheduled after the wake isolate loaded its copy',
+      () async {
+        final disk = _Disk();
+        final appKv = _IsolateKv(disk);
+        final wakeKv = _IsolateKv(disk);
+        final plugin = _ShownPlugin();
+        final wake = LocalNotificationsGateway(
+          plugin: plugin,
+          kv: wakeKv,
+          android: true,
+          refreshKv: wakeKv.reload,
+        );
+        final app = LocalNotificationsGateway(
+          plugin: _ShownPlugin(),
+          kv: appKv,
+          android: true,
+          refreshKv: appKv.reload,
+        );
+
+        // (1) An earlier wake loaded the preferences in the wake isolate.
+        expect(await wake.activeNotifications(), isEmpty);
+        await wakeKv.get(kUrgentPayloadsKey);
+        // (2) The app isolate schedules urgent R5 and stores its payload.
+        await app.rememberUrgent(urgentPlan(55, 'R5'));
+        // (3) R5 rings; (4) the next wake reads the record.
+        plugin.shown = const [
+          ActiveNotification(id: 55, channelId: 'urgent_alarms_v2_aw'),
+        ];
+        final active = await wake.activeNotifications();
+
+        expect(active.single.reminderIds, ['R5']);
+        // Acknowledged on the other device: the reconcile now cancels it.
+        expect(activeToCancel(active, const [], now, window), {55});
+      },
+    );
+
+    test(
+      'a write from the wake isolate keeps the entries the app isolate wrote after it loaded',
+      () async {
+        final disk = _Disk();
+        final appKv = _IsolateKv(disk);
+        final wakeKv = _IsolateKv(disk);
+        final wake = LocalNotificationsGateway(
+          plugin: _ShownPlugin(),
+          kv: wakeKv,
+          android: true,
+          refreshKv: wakeKv.reload,
+        );
+        final app = LocalNotificationsGateway(
+          plugin: _ShownPlugin(),
+          kv: appKv,
+          android: true,
+          refreshKv: appKv.reload,
+        );
+
+        await wake.rememberUrgent(urgentPlan(1, 'R1'));
+        await app.rememberUrgent(urgentPlan(5, 'R5'));
+        await wake.rememberUrgent(urgentPlan(2, 'R2'));
+
+        expect(
+          readUrgentPayloads(disk.values[kUrgentPayloadsKey]).keys.toSet(),
+          {1, 2, 5},
+        );
+      },
+    );
   });
 }

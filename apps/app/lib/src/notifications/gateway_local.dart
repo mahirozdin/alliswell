@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
@@ -81,8 +82,10 @@ class LocalNotificationsGateway implements NotificationsGateway {
     FlutterLocalNotificationsPlugin? plugin,
     LocalKv? kv,
     bool? android,
+    Future<void> Function()? refreshKv,
   }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
        _kv = kv ?? localKv,
+       _refreshKv = refreshKv ?? (kv == null ? reloadSharedPreferences : null),
        _isAndroid =
            android ??
            (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
@@ -92,6 +95,14 @@ class LocalNotificationsGateway implements NotificationsGateway {
   /// Where an urgent notification's payload is kept for [activeNotifications]
   /// (OPH-445): Android hands back no payload for a SHOWN notification.
   final LocalKv _kv;
+
+  /// Re-reads [_kv] from disk before [kUrgentPayloadsKey] is used. The
+  /// legacy SharedPreferences behind [localKv] caches every value per isolate
+  /// and never sees another isolate's write on its own, and on Android the
+  /// headless wake isolate lives as long as the process: without this it maps
+  /// shown alarms through a stale copy and overwrites the app's entries with
+  /// it. Null when [_kv] has no cache to refresh.
+  final Future<void> Function()? _refreshKv;
 
   /// The one platform whose shown urgent notification loops until cancelled.
   final bool _isAndroid;
@@ -473,6 +484,8 @@ class LocalNotificationsGateway implements NotificationsGateway {
     if (!_isAndroid) return const [];
     final raw = await _plugin.getActiveNotifications();
     if (raw.isEmpty) return const [];
+    await _kvTail;
+    await _refreshKv?.call();
     return activeAlarmsFrom(
       raw,
       readUrgentPayloads(await _kv.get(kUrgentPayloadsKey)),
@@ -482,9 +495,11 @@ class LocalNotificationsGateway implements NotificationsGateway {
   /// Records an urgent notification's payload (ids only, I-13) under its id.
   /// Never throws: a lost record only means that notification cannot be
   /// mapped, which is how every notification behaved before OPH-445.
-  Future<void> _rememberUrgent(PlannedNotification notification) {
+  @visibleForTesting
+  Future<void> rememberUrgent(PlannedNotification notification) {
     final next = _kvTail.then((_) async {
       try {
+        await _refreshKv?.call();
         await _kv.set(
           kUrgentPayloadsKey,
           rememberUrgentPayload(
@@ -629,7 +644,7 @@ class LocalNotificationsGateway implements NotificationsGateway {
       payload: notification.payload,
     );
     if (_isAndroid && urgent && notification.id != kAlarmTestNotificationId) {
-      await _rememberUrgent(notification);
+      await rememberUrgent(notification);
     }
     return delivery;
   }
@@ -705,3 +720,17 @@ List<ActiveAlarmNotification> activeAlarmsFrom(
         payload: n.payload ?? stored[id],
       ),
 ];
+
+/// Re-reads this isolate's SharedPreferences copy from the platform, so a
+/// value another isolate wrote is seen (OPH-445). Never throws or hangs: on a
+/// failure the cached copy is used, as before.
+Future<void> reloadSharedPreferences() async {
+  try {
+    final prefs = await SharedPreferences.getInstance().timeout(
+      const Duration(seconds: 3),
+    );
+    await prefs.reload().timeout(const Duration(seconds: 3));
+  } on Object {
+    // See above.
+  }
+}
