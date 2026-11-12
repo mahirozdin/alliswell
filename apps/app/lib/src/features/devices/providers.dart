@@ -286,11 +286,14 @@ class DevicesController extends AsyncNotifier<DevicesView> {
     );
     ref.onDispose(lifecycle.dispose);
     final cache = ref.read(_devicesCacheProvider);
+    final store = ref.read(ringsUrgentStoreProvider);
+    final askedAt = store.generation;
     try {
       final devices = await ref.read(deviceApiProvider).list();
       cache
         ..userId = userId
         ..devices = devices;
+      await _cacheThisDevice(devices, store, askedAt);
       return DevicesView(devices: devices);
     } on Object catch (error) {
       final cached = cache.userId == userId ? cache.devices : null;
@@ -300,6 +303,37 @@ class DevicesController extends AsyncNotifier<DevicesView> {
       if (error is DioException) throw asApiException(error);
       rethrow;
     }
+  }
+
+  /// The list is the server's answer for THIS device too: a switch turned on
+  /// another device since the last heartbeat reaches the alarm gate here as
+  /// soon as the list shows it (listed-flag-does-not-update-gate), so the
+  /// switch on screen and the flag that decides whether alarms ring here never
+  /// disagree. Written like a heartbeat answer: dropped when a change made here
+  /// came after the list was asked for.
+  Future<void> _cacheThisDevice(
+    List<DeviceInfo> devices,
+    RingsUrgentStore store,
+    int askedAt,
+  ) async {
+    if (!ref.mounted) return;
+    // Listened, not read: the list can be built before anything else asked
+    // for the client id, and an unlistened stream provider is paused.
+    final clientId = ref.listen(syncClientIdProvider.future, (_, _) {});
+    final String? thisId;
+    try {
+      thisId = await clientId.read().timeout(const Duration(seconds: 2));
+    } on Object {
+      return;
+    } finally {
+      clientId.close();
+    }
+    if (thisId == null || !ref.mounted) return;
+    final self = devices.where((d) => d.id == thisId).firstOrNull;
+    if (self == null) return;
+    final gateChanged = ref.read(_ringsUrgentChangedProvider);
+    final here = ringsUrgentHereFromServer(self.ringsUrgent);
+    if (await store.writeObserved(here, askedAt: askedAt)) gateChanged();
   }
 
   /// Turns urgent ringing on or off for one device.
@@ -406,6 +440,7 @@ class DevicesController extends AsyncNotifier<DevicesView> {
 
     final api = ref.read(deviceApiProvider);
     final store = ref.read(ringsUrgentStoreProvider);
+    final askedAt = store.generation;
     final thisId = ref.read(syncClientIdProvider).value;
     final cache = ref.read(_devicesCacheProvider);
     final gateChanged = ref.read(_ringsUrgentChangedProvider);
@@ -428,8 +463,11 @@ class DevicesController extends AsyncNotifier<DevicesView> {
     if (thisId != null) {
       final self = fresh.where((d) => d.id == thisId).firstOrNull;
       final rings = self?.ringsUrgent;
-      if (rings != null && rings != current.byId(thisId)?.ringsUrgent) {
-        await store.write(ringsUrgentHereFromServer(rings));
+      if (rings != null &&
+          await store.writeObserved(
+            ringsUrgentHereFromServer(rings),
+            askedAt: askedAt,
+          )) {
         gateChanged();
       }
     }

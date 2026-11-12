@@ -305,6 +305,7 @@ void main() {
 
     // Another device on: the server is told, nothing local changes.
     expect(_switchOf(tester, _macId).value, isFalse);
+    final gateBefore = kv.values[kRingsUrgentKey];
     api.patchGate = Completer<void>();
     await tester.tap(find.byKey(const Key('device-switch-$_macId')));
     await tester.pump();
@@ -317,7 +318,7 @@ void main() {
     expect(api.patches, [(_macId, true)]);
     expect(find.byKey(const Key('device-saving-$_macId')), findsNothing);
     expect(_switchOf(tester, _macId).value, isTrue);
-    expect(kv.values[kRingsUrgentKey], isNull);
+    expect(kv.values[kRingsUrgentKey], gateBefore);
     // Two ringing devices: the hint says what that means.
     expect(
       find.text('settings.devices.multiHint'.tr(args: {'count': '2'})),
@@ -335,6 +336,32 @@ void main() {
     );
     expect(_switchOf(tester, _thisId).value, isFalse);
     expect(find.text('settings.devices.offHint'.tr()), findsWidgets);
+  });
+
+  // listed-flag-does-not-update-gate: the list is the server's answer for
+  // this device too. A switch turned elsewhere since the last heartbeat must
+  // reach this device's alarm gate when the list shows it, not only at the
+  // next launch or resume.
+  testWidgets('the list carries a switch changed elsewhere to this device\'s '
+      'alarm gate', (tester) async {
+    final kv = _MemoryKv()..values[kRingsUrgentKey] = RingsUrgentHere.on.name;
+    final api = _FakeApi(_rows(thisRings: false, macRings: true));
+    final container = await _pump(tester, api, kv: kv);
+    final gate = container.listen(ringsUrgentHereProvider, (_, _) {});
+    addTearDown(gate.close);
+    await tester.pumpAndSettle();
+
+    expect(_switchOf(tester, _thisId).value, isFalse);
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+    expect(gate.read().value, RingsUrgentHere.off);
+
+    // And back: switched on elsewhere, read again on the next list.
+    api.rows = _rows(thisRings: true);
+    container.invalidate(devicesProvider);
+    await tester.pumpAndSettle();
+    expect(_switchOf(tester, _thisId).value, isTrue);
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.on.name);
+    expect(gate.read().value, RingsUrgentHere.on);
   });
 
   // late-heartbeat-overwrites-switch: a heartbeat that left before this
@@ -388,8 +415,9 @@ void main() {
     expect(api.patches, [(_thisId, false)]);
     expect(_switchOf(tester, _thisId).value, isTrue);
     expect(find.text('settings.devices.saveFailed'.tr()), findsOneWidget);
-    // Nothing the server did not confirm reaches the local gate.
-    expect(kv.values[kRingsUrgentKey], isNull);
+    // Nothing the server did not confirm reaches the local gate: it keeps
+    // what the list said.
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.on.name);
   });
 
   testWidgets('an old server hides the switches and explains why', (
