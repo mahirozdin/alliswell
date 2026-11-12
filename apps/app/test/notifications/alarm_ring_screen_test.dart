@@ -563,12 +563,9 @@ void main() {
     await pumpLayer(tester, feed: late, second: true);
     expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
     final header = tester.widget<Text>(
-      find.descendant(
-        of: find.byKey(const Key('alarm-list-header')),
-        matching: find.byType(Text),
-      ),
+      find.byKey(const Key('alarm-list-header-text')),
     );
-    expect(header.data, endsWith(' · 5 min ago'));
+    expect(header.textSpan!.toPlainText(), endsWith(' · 5 min ago'));
   });
 
   testWidgets(
@@ -2044,15 +2041,202 @@ void main() {
     }
     await container.read(dateFormatProvider.notifier).set(kAwSystemDateFormat);
   });
+
+  // ── P2 polish: the list and the row sheet (OPH-443) ────────────────────
+
+  /// The list of three with a clock the test moves.
+  Future<List<NotificationEvent>> pumpListAt(
+    WidgetTester tester,
+    DateTime Function() clock, {
+    Size? size,
+  }) async {
+    if (size != null) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+    final events = <NotificationEvent>[];
+    await pumpLayer(
+      tester,
+      feed: [theAlarm(), secondAlarm(), thirdAlarm()],
+      extra: [
+        nowProvider.overrideWithValue(clock),
+        alarmActionApplierProvider.overrideWithValue((event) async {
+          events.add(event);
+          return true;
+        }),
+      ],
+    );
+    return events;
+  }
+
+  Finder inTile(String key, String text) => find.descendant(
+    of: find.byKey(Key(key)),
+    matching: find.textContaining(text),
+  );
+
+  // W-03: "Tümünü ertele" said 5:24 at 05:20:03 and wrote 5:25.
+  testWidgets('the bulk snooze tile follows the minute and equals what '
+      'Tümünü ertele writes', (tester) async {
+    var clock = DateTime(2030, 6, 1, 9, 0, 50);
+    final events = await pumpListAt(tester, () => clock);
+    String hm(int h, int m) =>
+        awFormatTime(DateTime(2030, 6, 1, h, m), format: kAwSystemDateFormat);
+    expect(inTile('alarm-all-snooze-5_min', hm(9, 5)), findsOneWidget);
+
+    clock = DateTime(2030, 6, 1, 9, 1, 5);
+    await tester.pump(const Duration(seconds: 15));
+    expect(inTile('alarm-all-snooze-5_min', hm(9, 6)), findsOneWidget);
+
+    clock = DateTime(2030, 6, 1, 9, 1, 40);
+    await tester.tap(find.byKey(const Key('alarm-all-snooze-5_min')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final until = DateTime.fromMillisecondsSinceEpoch(events.single.untilMs!);
+    expect((until.hour, until.minute), (9, 6));
+    expect(find.textContaining(hm(9, 6)), findsWidgets);
+    await settle(tester);
+  });
+
+  testWidgets('the row sheet\'s landing minutes follow the clock while it is '
+      'open', (tester) async {
+    var clock = DateTime(2030, 6, 1, 9, 0, 50);
+    final events = await pumpListAt(tester, () => clock);
+    String hm(int h, int m) =>
+        awFormatTime(DateTime(2030, 6, 1, h, m), format: kAwSystemDateFormat);
+    await tester.tap(find.byKey(Key('alarm-row-snooze-${id('T2')}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(inTile('alarm-sheet-snooze-5_min', hm(9, 5)), findsOneWidget);
+
+    clock = DateTime(2030, 6, 1, 9, 1, 5);
+    await tester.pump(const Duration(seconds: 15));
+    expect(inTile('alarm-sheet-snooze-5_min', hm(9, 6)), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('alarm-sheet-snooze-5_min')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    final until = DateTime.fromMillisecondsSinceEpoch(events.single.untilMs!);
+    expect((until.hour, until.minute), (9, 6));
+    await settle(tester);
+  });
+
+  // W-13 + W-05: the count in the urgent ink, the time in the page's ink and
+  // in the user's format.
+  testWidgets('the list header: count in the urgent ink, time onSurface', (
+    tester,
+  ) async {
+    await pumpList(tester);
+    final context = tester.element(find.byKey(const Key('alarm-ring-list')));
+    final tokens = context.awTokens;
+    final scheme = Theme.of(context).colorScheme;
+    final header = tester.widget<Text>(
+      find.byKey(const Key('alarm-list-header-text')),
+    );
+    final spans = (header.textSpan! as TextSpan).children!.cast<TextSpan>();
+    expect(spans.first.text, '3 URGENT REMINDERS');
+    expect(spans.first.style!.color, tokens.errorOnPage);
+    expect(spans.last.text, ' · ${_clock(tester, at)}');
+    expect(spans.last.style!.color, scheme.onSurface);
+    await settle(tester);
+  });
+
+  testWidgets('the list header time follows the user\'s time format', (
+    tester,
+  ) async {
+    await pumpList(tester);
+    await container.read(dateFormatProvider.notifier).set('iso');
+    await tester.pump();
+    final header = tester.widget<Text>(
+      find.byKey(const Key('alarm-list-header-text')),
+    );
+    expect(
+      header.textSpan!.toPlainText(),
+      endsWith(' · ${awFormatTime(at, format: 'iso')}'),
+    );
+    final card = find.descendant(
+      of: find.byKey(Key('alarm-row-${id('T1')}')),
+      matching: find.text(awFormatTime(at, format: 'iso')),
+    );
+    expect(card, findsOneWidget);
+    await container.read(dateFormatProvider.notifier).set(kAwSystemDateFormat);
+    await settle(tester);
+  });
+
+  testWidgets('the list keeps the single layout\'s 24 pt side margins', (
+    tester,
+  ) async {
+    await pumpList(tester, size: const Size(360, 640));
+    final card = rectOf(tester, 'alarm-row-${id('T1')}');
+    expect(card.left, AwSpace.x6);
+    expect(card.right, 360 - AwSpace.x6);
+    final ack = rectOf(tester, 'alarm-acknowledge-all');
+    expect(ack.left, AwSpace.x6);
+    expect(ack.right, 360 - AwSpace.x6);
+    await settle(tester);
+  });
+
+  testWidgets('on a wide screen the list is the single layout\'s centred '
+      'column', (tester) async {
+    await pumpList(tester, size: const Size(1280, 800));
+    final ack = rectOf(tester, 'alarm-acknowledge-all');
+    expect(ack.width, kAlarmRingMaxWidth);
+    expect(ack.center.dx, 640);
+    final header = rectOf(tester, 'alarm-list-header');
+    // Centred vertically: the space above the header and below the
+    // answers is the same, not a header stuck to the top.
+    final above = header.top;
+    final below = 800 - ack.bottom;
+    expect(above, greaterThan(AwSpace.x8));
+    expect((above - below).abs(), lessThanOrEqualTo(1));
+    await settle(tester);
+  });
+
+  // W-15: a card cut by the edge fades; the end of the list does not.
+  testWidgets('the rows fade at their bottom edge while more lie below', (
+    tester,
+  ) async {
+    await pumpList(tester, size: const Size(360, 640));
+    await tester.pump();
+    final rows = find.byKey(const Key('alarm-ring-rows'));
+    final fade = tester.state<AlarmEdgeFadeState>(
+      find.ancestor(of: rows, matching: find.byType(AlarmEdgeFade)),
+    );
+    expect(fade.fading, isTrue);
+    final position = tester
+        .state<ScrollableState>(
+          find.descendant(of: rows, matching: find.byType(Scrollable)).first,
+        )
+        .position;
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pump();
+    await tester.pump();
+    expect(fade.fading, isFalse);
+    await settle(tester);
+  });
+
+  testWidgets('two rows that fit are not faded', (tester) async {
+    await pumpList(
+      tester,
+      feed: [theAlarm(), secondAlarm()],
+      size: const Size(430, 932),
+    );
+    await tester.pump();
+    final fade = tester.state<AlarmEdgeFadeState>(
+      find.ancestor(
+        of: find.byKey(const Key('alarm-ring-rows')),
+        matching: find.byType(AlarmEdgeFade),
+      ),
+    );
+    expect(fade.fading, isFalse);
+    await settle(tester);
+  });
 }
 
-/// [when] as the ring screen prints it (MaterialLocalizations, local time).
-String _clock(WidgetTester tester, DateTime when) {
-  final context = tester.element(find.byType(Scaffold).first);
-  return MaterialLocalizations.of(
-    context,
-  ).formatTimeOfDay(TimeOfDay.fromDateTime(when.toLocal()));
-}
+/// [when] as the ring screen prints it: the user's time format (W-05),
+/// the system default in these tests, local time.
+String _clock(WidgetTester tester, DateTime when) =>
+    awFormatTime(when.toLocal(), format: kAwSystemDateFormat);
 
 /// Refuses to play, the way a browser's autoplay policy does.
 class _RefusingSound implements AlarmSoundPlayer {

@@ -5,6 +5,7 @@ import '../features/tasks/data/task_store.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
 import '../theme/typography.dart';
+import 'alarm_minute_tick.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
 
@@ -96,7 +97,7 @@ Future<bool> showAlarmSnoozeSheet(
   return chosen;
 }
 
-class _AlarmSnoozeSheet extends StatelessWidget {
+class _AlarmSnoozeSheet extends StatefulWidget {
   const _AlarmSnoozeSheet({
     required this.alarm,
     required this.presets,
@@ -111,9 +112,20 @@ class _AlarmSnoozeSheet extends StatelessWidget {
   final String dateFormat;
   final void Function(AlarmSheetChoice choice) onChoose;
 
+  @override
+  State<_AlarmSnoozeSheet> createState() => _AlarmSnoozeSheetState();
+}
+
+/// The landing minutes follow the clock (W-03): a sheet left open across a
+/// minute change shows what a press writes now, not what it wrote then.
+class _AlarmSnoozeSheetState extends State<_AlarmSnoozeSheet>
+    with AlarmMinuteTick {
+  @override
+  DateTime Function() get minuteClock => widget.now;
+
   /// "09:05", or "tomorrow 09:00" when the preset lands on another day.
   String _lands(DateTime until, DateTime now) {
-    final time = awFormatTime(until, format: dateFormat);
+    final time = awFormatTime(until, format: widget.dateFormat);
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(until.year, until.month, until.day);
     if (day == today) return time;
@@ -124,10 +136,13 @@ class _AlarmSnoozeSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final text = Theme.of(context).textTheme;
+    final alarm = widget.alarm;
+    final now = widget.now;
+    final onChoose = widget.onChoose;
     final fireAt =
         (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
         alarm.remindAt;
-    final time = awFormatTime(fireAt.toLocal(), format: dateFormat);
+    final time = awFormatTime(fireAt.toLocal(), format: widget.dateFormat);
     final shownAt = now();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(AwSpace.x4, 0, AwSpace.x4, AwSpace.x4),
@@ -150,7 +165,7 @@ class _AlarmSnoozeSheet extends StatelessWidget {
             style: text.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: AwSpace.x3),
-          for (final preset in presets) ...[
+          for (final preset in widget.presets) ...[
             _SheetRow(
               key: Key('alarm-sheet-snooze-$preset'),
               icon: Icons.schedule,

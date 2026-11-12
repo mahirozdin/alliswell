@@ -17,7 +17,9 @@ import '../theme/typography.dart';
 import '../widgets/status_views.dart';
 import '../widgets/word_safe_text.dart';
 import 'alarm_action_tile.dart';
+import 'alarm_edge_fade.dart';
 import 'alarm_log.dart';
+import 'alarm_minute_tick.dart';
 import 'alarm_overlay.dart';
 import 'alarm_ring_screen.dart';
 import 'alarm_snooze_sheet.dart';
@@ -88,7 +90,8 @@ class AlarmRingList extends ConsumerStatefulWidget {
   ConsumerState<AlarmRingList> createState() => _AlarmRingListState();
 }
 
-class _AlarmRingListState extends ConsumerState<AlarmRingList> {
+class _AlarmRingListState extends ConsumerState<AlarmRingList>
+    with AlarmMinuteTick {
   /// Rows on their way out (220 ms), by task id.
   final Map<String, AlarmInput> _leaving = {};
 
@@ -99,6 +102,10 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
 
   AlarmOverlayController get _controller =>
       ref.read(alarmOverlayControllerProvider.notifier);
+
+  /// The bulk tiles' clock (W-03): they rebuild when its minute changes.
+  @override
+  DateTime Function() get minuteClock => ref.read(nowProvider);
 
   @override
   void initState() {
@@ -142,9 +149,9 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
     }
   }
 
-  String _clock(DateTime at) => MaterialLocalizations.of(
-    context,
-  ).formatTimeOfDay(TimeOfDay.fromDateTime(at.toLocal()));
+  /// W-05: the user's time format, as on the tiles and the confirmations.
+  String _clock(DateTime at) =>
+      awFormatTime(at.toLocal(), format: ref.read(dateFormatProvider));
 
   void _announce() {
     if (!mounted) return;
@@ -361,6 +368,12 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
           )
         : clock;
 
+    final headerStyle = awTabular(
+      text.labelLarge!.copyWith(
+        fontWeight: FontWeight.w800,
+        letterSpacing: 1.2,
+      ),
+    );
     final header = Semantics(
       header: true,
       child: Row(
@@ -373,18 +386,27 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
           ),
           const SizedBox(width: AwSpace.x3),
           Expanded(
-            child: Text(
-              '${alarmUpper('alarm.ringing.count'.tr(args: {'count': '$count'}))}'
-              ' · $time',
+            // W-13, mockup A3: the count in the urgent ink, the time in
+            // the page's own ink, as the single layout's label and time.
+            child: Text.rich(
+              TextSpan(
+                children: [
+                  TextSpan(
+                    text: alarmUpper(
+                      'alarm.ringing.count'.tr(args: {'count': '$count'}),
+                    ),
+                    style: headerStyle.copyWith(color: tokens.errorOnPage),
+                  ),
+                  TextSpan(
+                    text: ' · $time',
+                    style: headerStyle.copyWith(color: scheme.onSurface),
+                  ),
+                ],
+              ),
+              key: const Key('alarm-list-header-text'),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: awTabular(
-                text.labelLarge!.copyWith(
-                  color: tokens.errorOnPage,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.2,
-                ),
-              ),
+              style: headerStyle,
             ),
           ),
         ],
@@ -427,6 +449,8 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
     );
     final status = _status(oneColumn);
 
+    // Desktop and web: the list column is centred as the single layout's.
+    final wide = screen.width >= kAwWideBreakpoint;
     final Widget body;
     if (oneColumn) {
       // Past 1.3 the grid is one column and nothing fits pinned: the whole
@@ -446,21 +470,26 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
         ),
       );
     } else {
+      // Only the rows scroll; the bulk answers stay where the thumb is. A
+      // card cut by the edge fades out (W-15), so it reads as "more below".
+      final rows = AlarmEdgeFade(
+        child: ListView.builder(
+          key: const Key('alarm-ring-rows'),
+          padding: EdgeInsets.zero,
+          shrinkWrap: wide,
+          itemCount: shown.length,
+          itemBuilder: (_, i) => rowAt(i),
+        ),
+      );
       body = Column(
+        // Desktop: header, rows and answers centre together (W-13).
+        mainAxisSize: wide ? MainAxisSize.min : MainAxisSize.max,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           header,
           status,
           const SizedBox(height: AwSpace.x3),
-          // Only the rows scroll; the bulk answers stay where the thumb is.
-          Expanded(
-            child: ListView.builder(
-              key: const Key('alarm-ring-rows'),
-              padding: EdgeInsets.zero,
-              itemCount: shown.length,
-              itemBuilder: (_, i) => rowAt(i),
-            ),
-          ),
+          if (wide) Flexible(child: rows) else Expanded(child: rows),
           Divider(height: 1, thickness: 1, color: tokens.hairline),
           const SizedBox(height: AwSpace.x3),
           bulk,
@@ -479,13 +508,20 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
           child: CallbackShortcuts(
             bindings: _shortcuts(),
             child: SafeArea(
-              child: Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(
-                    maxWidth: kAlarmRingMaxWidth,
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(AwSpace.x4),
+              // W-13: the single layout's 24 pt side margins and its column
+              // (at most 440 wide, centred).
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AwSpace.x6,
+                  AwSpace.x4,
+                  AwSpace.x6,
+                  AwSpace.x4,
+                ),
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: kAlarmRingMaxWidth,
+                    ),
                     child: body,
                   ),
                 ),
