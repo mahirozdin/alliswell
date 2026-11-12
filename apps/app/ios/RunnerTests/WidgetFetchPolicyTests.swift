@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import XCTest
 
 @testable import Runner
@@ -297,4 +298,320 @@ final class WidgetFetchPolicyTests: XCTestCase {
       awSnapshotQuery(profile: mine, timeZone: "America/Argentina/Buenos_Aires"),
       "tz=America%2FArgentina%2FBuenos_Aires&workspaceIds=01JW1,01JW2&mine=1&private=0&days=3")
   }
+}
+
+/// The widget's self-fetch (#50, OPH-462; WIDGETS.md §3.2 steps 2–5): the one
+/// request through an injected URLProtocol, the App Group stamps it leaves, and
+/// what the widget draws after it.
+final class WidgetFetcherTests: XCTestCase {
+
+  private let start = Date(timeIntervalSince1970: 1_762_934_400)  // 2025-11-12 08:00 UTC
+  private var startMs: Int { Int(start.timeIntervalSince1970 * 1000) }
+  private let zone = "Europe/Istanbul"
+  private var suite = ""
+  private var defaults: UserDefaults!
+  private var clock = Date()
+  private var token: String? = "aww_test"
+
+  private let localJSON = """
+    {"v":6,"generatedAt":"2025-11-12T07:50:00.000Z","locale":"tr",
+     "date":{"weekday":"Çarşamba","day":"12","month":"Kasım"},
+     "strings":{"openToday":"1 açık","openTodayPattern":"{count} açık"},
+     "buckets":[{"key":"today","label":"Bugün","count":1,
+       "items":[{"id":"L","title":"local row","done":false,"priority":"none"}]}]}
+    """
+
+  override func setUp() {
+    super.setUp()
+    suite = "aw.fetcher.tests.\(UUID().uuidString)"
+    defaults = UserDefaults(suiteName: suite)
+    clock = start
+    token = "aww_test"
+    AWStubProtocol.reset()
+    defaults.set(localJSON, forKey: kAWLocalSnapshotKey)
+    defaults.set(profileJSON(localWrittenAtMs: startMs - 600_000), forKey: kAWFetchProfileKey)
+  }
+
+  override func tearDown() {
+    defaults.removePersistentDomain(forName: suite)
+    AWStubProtocol.reset()
+    super.tearDown()
+  }
+
+  private func profileJSON(localWrittenAtMs: Int, outbox: Int = 0) -> String {
+    """
+    {"v":1,"baseUrl":"https://api.example.test/","scope":{"workspaceIds":["01JW1"]},
+     "private":true,"locale":"tr",
+     "patterns":{"time":"HH:mm","day":"d MMM","dayYear":"d MMM y","relativeDays":true},
+     "strings":{"bucket.overdue":"Gecikmiş","bucket.today":"Bugün","privateTitle":"Gizli görev",
+       "privateEvent":"Gizli etkinlik","allDay":"Tüm gün","today":"Bugün","tomorrow":"Yarın",
+       "yesterday":"Dün"},
+     "pendingOutbox":\(outbox),"localWrittenAtMs":\(localWrittenAtMs)}
+    """
+  }
+
+  private func fetcher() -> AWWidgetFetcher {
+    let configuration = AWWidgetFetcher.sessionConfiguration()
+    configuration.protocolClasses = [AWStubProtocol.self]
+    return AWWidgetFetcher(
+      defaults: defaults, session: URLSession(configuration: configuration),
+      readToken: { [unowned self] in self.token }, now: { [unowned self] in self.clock },
+      timeZone: zone)
+  }
+
+  /// A private (no titles) server view: an overdue task, a timed task and a
+  /// timed event today, a task due tomorrow evening.
+  private func serverBody() -> [String: Any] {
+    let overdue: [String: Any] = [
+      "id": "A", "done": false, "priority": "high", "dueAt": "2025-11-11T09:00:00.000Z",
+      "timeStyle": "day", "projectColor": "#2563EB",
+    ]
+    let timed: [String: Any] = [
+      "id": "B", "done": false, "priority": "none", "dueAt": "2025-11-12T15:00:00.000Z",
+      "timeStyle": "time",
+    ]
+    let event: [String: Any] = [
+      "id": "E", "done": false, "priority": "none", "kind": "event", "day": "2025-11-12",
+      "dueAt": "2025-11-12T11:00:00.000Z", "endAt": "2025-11-12T12:30:00.000Z", "allDay": false,
+      "timeStyle": "range",
+    ]
+    let tomorrow: [String: Any] = [
+      "id": "C", "done": false, "priority": "none", "dueAt": "2025-11-13T17:00:00.000Z",
+      "timeStyle": "dayTime",
+    ]
+    let next: [String: Any] = [
+      "id": "A", "bucket": "overdue", "dueAt": "2025-11-11T09:00:00.000Z", "timeStyle": "day",
+    ]
+    let day0: [String: Any] = [
+      "date": "2025-11-12", "openToday": 2, "next": next,
+      "buckets": [
+        ["key": "overdue", "count": 1, "items": [overdue]],
+        ["key": "today", "count": 2, "items": [timed, event, tomorrow]],
+      ],
+      "views": ["p1": ["openToday": 1, "next": next, "buckets": [["key": "overdue", "count": 1, "items": [overdue]]]]],
+    ]
+    let day1: [String: Any] = [
+      "date": "2025-11-13", "openToday": 1, "buckets": [["key": "today", "count": 1, "items": [tomorrow]]],
+    ]
+    return ["v": 1, "generatedAt": "2025-11-12T08:00:00.000Z", "tz": zone, "days": [day0, day1]]
+  }
+
+  private func respond(_ status: Int, body: Data = Data(), headers: [String: String] = [:]) {
+    AWStubProtocol.handler = { request in
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: status, httpVersion: "HTTP/1.1", headerFields: headers)!
+      return (response, body)
+    }
+  }
+
+  private func drawn() throws -> AWSnapshot {
+    let local = try JSONDecoder().decode(AWSnapshot.self, from: Data(localJSON.utf8))
+    return fetcher().snapshotToDraw(local: local, today: "2025-11-12")
+  }
+
+  private func int(_ key: String) -> Int? { defaults.object(forKey: key) as? Int }
+
+  // MARK: - 200
+
+  func testServerSnapshotIsStoredUnderItsOwnKey() async throws {
+    let body = try JSONSerialization.data(withJSONObject: serverBody())
+    respond(200, body: body, headers: ["ETag": "\"abc\"", "Cache-Control": "no-store"])
+    clock = start.addingTimeInterval(1)
+
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .stored)
+
+    // One request, the contract's: path, query, bearer token, no If-None-Match.
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    let request = try XCTUnwrap(AWStubProtocol.requests.first)
+    XCTAssertEqual(request.url?.host, "api.example.test")
+    XCTAssertEqual(request.url?.path, "/api/v1/widget/snapshot")
+    let sentQuery = request.url.flatMap {
+      URLComponents(url: $0, resolvingAgainstBaseURL: false)?.percentEncodedQuery
+    }
+    XCTAssertEqual(sentQuery, "tz=Europe%2FIstanbul&workspaceIds=01JW1&mine=0&private=1&days=3")
+    XCTAssertEqual(request.value(forHTTPHeaderField: "Authorization"), "Bearer aww_test")
+    XCTAssertNil(request.value(forHTTPHeaderField: "If-None-Match"))
+
+    // Its own key: Dart's snapshot is untouched.
+    XCTAssertEqual(defaults.string(forKey: kAWLocalSnapshotKey), localJSON)
+    let envelope = try XCTUnwrap(
+      AWServerEnvelope(json: defaults.string(forKey: kAWServerSnapshotKey)))
+    XCTAssertEqual(envelope.fetchedAtMs, startMs + 1000)
+    XCTAssertEqual(envelope.etag, "\"abc\"")
+    XCTAssertEqual(envelope.query, sentQuery)
+    XCTAssertEqual(int(kAWFetchedAtKey), startMs + 1000)
+    XCTAssertEqual(int(kAWFetchFailuresKey), 0)
+    XCTAssertNil(defaults.object(forKey: kAWBackoffUntilKey))
+
+    // The server's days drawn in the app's words (profile strings and
+    // patterns, Istanbul time), the chrome from the app's snapshot.
+    let snap = try drawn()
+    XCTAssertEqual(snap.days?.map(\.date), ["2025-11-12", "2025-11-13"])
+    XCTAssertEqual(snap.date.weekday, "Çarşamba")
+    XCTAssertEqual(snap.date.day, "12")
+    XCTAssertEqual(snap.date.month, "Kasım")
+    XCTAssertEqual(snap.openToday, 2)
+    XCTAssertEqual(snap.strings?["openToday"], "2 açık")
+    XCTAssertEqual(snap.buckets.map(\.label), ["Gecikmiş", "Bugün"])
+    let overdue = try XCTUnwrap(snap.buckets.first?.items.first)
+    XCTAssertEqual(overdue.title, "Gizli görev", "private: the app's word, never the server's")
+    XCTAssertEqual(overdue.time, "11 Kas")
+    XCTAssertEqual(overdue.projectColor, "#2563EB")
+    let today = try XCTUnwrap(snap.buckets.last?.items)
+    XCTAssertEqual(today.map(\.time), ["18:00", "14:00–15:30", "Yarın\u{00A0}20:00"])
+    XCTAssertEqual(today[1].title, "Gizli etkinlik")
+    XCTAssertTrue(today[1].isEvent)
+    XCTAssertEqual(snap.next?.label, "Gecikmiş")
+    XCTAssertEqual(snap.next?.title, "Gizli görev")
+    XCTAssertEqual(snap.views?["p1"]?.openTodayLabel, "1 açık")
+    // Tomorrow's own view: the same row is now on its own day.
+    let day1 = try XCTUnwrap(snap.days?[1])
+    XCTAssertEqual(day1.header?.weekday, "Perşembe")
+    XCTAssertEqual(day1.buckets?.first?.items.first?.time, "20:00")
+
+    // The N widgets WidgetKit reloads together make one request.
+    clock = start.addingTimeInterval(60)
+    let again = await fetcher().refresh()
+    XCTAssertEqual(again, .skipped)
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+  }
+
+  func testNotModifiedRefreshesTheStamp() async throws {
+    let body = try JSONSerialization.data(withJSONObject: serverBody())
+    respond(200, body: body, headers: ["ETag": "\"abc\""])
+    _ = await fetcher().refresh()
+
+    respond(304, headers: ["ETag": "\"abc\""])
+    clock = start.addingTimeInterval(180)
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .notModified)
+    XCTAssertEqual(AWStubProtocol.requests.last?.value(forHTTPHeaderField: "If-None-Match"), "\"abc\"")
+    let envelope = try XCTUnwrap(
+      AWServerEnvelope(json: defaults.string(forKey: kAWServerSnapshotKey)))
+    XCTAssertEqual(envelope.fetchedAtMs, startMs + 180_000)
+    XCTAssertEqual(int(kAWFetchedAtKey), startMs + 180_000)
+    XCTAssertNotNil(awServerView(envelope, pendingCompletionTaskIds: [], today: nil))
+  }
+
+  func testAPendingLocalChangeKeepsTheAppSnapshotAfterAFetch() async throws {
+    let body = try JSONSerialization.data(withJSONObject: serverBody())
+    respond(200, body: body, headers: ["ETag": "\"abc\""])
+    defaults.set(profileJSON(localWrittenAtMs: startMs - 600_000, outbox: 1), forKey: kAWFetchProfileKey)
+    _ = await fetcher().refresh()
+    XCTAssertNotNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
+  }
+
+  // MARK: - 401
+
+  func testUnauthorizedMarksTheTokenInvalidAndStops() async throws {
+    respond(401, body: Data(#"{"statusCode":401,"code":"AUTH_WIDGET_TOKEN_INVALID"}"#.utf8))
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .unauthorized)
+    XCTAssertEqual(defaults.string(forKey: kAWTokenStateKey), kAWTokenStateInvalid)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
+
+    // Hours later, still nothing: only the app's re-mint (`valid`) resumes it.
+    clock = start.addingTimeInterval(6 * 3600)
+    let later = await fetcher().refresh()
+    XCTAssertEqual(later, .skipped)
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    defaults.set("valid", forKey: kAWTokenStateKey)
+    respond(304)
+    _ = await fetcher().refresh()
+    XCTAssertEqual(AWStubProtocol.requests.count, 2)
+  }
+
+  func testNoTokenMeansNoRequest() async {
+    token = nil
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .skipped)
+    XCTAssertTrue(AWStubProtocol.requests.isEmpty)
+    XCTAssertNil(defaults.object(forKey: kAWFetchFailuresKey))
+    XCTAssertNil(defaults.object(forKey: kAWBackoffUntilKey))
+  }
+
+  func testTheKeychainQueryIsTheContract() {
+    let query = awWidgetTokenQuery()
+    XCTAssertEqual(query[kSecClass as String] as? String, kSecClassGenericPassword as String)
+    XCTAssertEqual(query[kSecAttrService as String] as? String, "flutter_secure_storage_service")
+    XCTAssertEqual(query[kSecAttrAccount as String] as? String, "aw_widget_token")
+    XCTAssertEqual(
+      query[kSecAttrAccessGroup as String] as? String, "group.com.alliswell.alliswell")
+    XCTAssertEqual(query[kSecReturnData as String] as? Bool, true)
+    XCTAssertEqual(query[kSecMatchLimit as String] as? String, kSecMatchLimitOne as String)
+  }
+
+  // MARK: - Failure
+
+  func testTimeoutFallsBackToTheAppGroupSnapshot() async throws {
+    let configuration = AWWidgetFetcher.sessionConfiguration()
+    XCTAssertEqual(configuration.timeoutIntervalForRequest, 6)
+    XCTAssertEqual(configuration.timeoutIntervalForResource, 8)
+    XCTAssertFalse(configuration.waitsForConnectivity)
+
+    AWStubProtocol.handler = { _ in throw URLError(.timedOut) }
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .failed)
+    XCTAssertEqual(int(kAWFetchFailuresKey), 1)
+    XCTAssertEqual(int(kAWBackoffUntilKey), startMs + 300_000)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertEqual(defaults.string(forKey: kAWLocalSnapshotKey), localJSON)
+    let snap = try drawn()
+    XCTAssertEqual(snap.buckets.first?.items.first?.title, "local row")
+
+    // Inside the backoff: no request. After it, a 5xx doubles it.
+    clock = start.addingTimeInterval(299)
+    let waiting = await fetcher().refresh()
+    XCTAssertEqual(waiting, .skipped)
+    clock = start.addingTimeInterval(300)
+    respond(503)
+    let second = await fetcher().refresh()
+    XCTAssertEqual(second, .failed)
+    XCTAssertEqual(int(kAWFetchFailuresKey), 2)
+    XCTAssertEqual(int(kAWBackoffUntilKey), startMs + 300_000 + 600_000)
+    XCTAssertEqual(AWStubProtocol.requests.count, 2)
+
+    // The App Group snapshot is still what the widget draws.
+    XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
+  }
+
+  func testAnUnreadableBodyIsAFailure() async {
+    respond(200, body: Data("<html>".utf8))
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .failed)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertEqual(int(kAWFetchFailuresKey), 1)
+  }
+}
+
+/// Answers every request of a session configured with it from `handler`.
+final class AWStubProtocol: URLProtocol {
+  static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
+  static var requests: [URLRequest] = []
+
+  static func reset() {
+    handler = nil
+    requests = []
+  }
+
+  override class func canInit(with request: URLRequest) -> Bool { true }
+  override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+
+  override func startLoading() {
+    Self.requests.append(request)
+    do {
+      guard let handler = Self.handler else { throw URLError(.notConnectedToInternet) }
+      let (response, data) = try handler(request)
+      client?.urlProtocol(self, didReceive: response, cacheStoragePolicy: .notAllowed)
+      client?.urlProtocol(self, didLoad: data)
+      client?.urlProtocolDidFinishLoading(self)
+    } catch {
+      client?.urlProtocol(self, didFailWithError: error)
+    }
+  }
+
+  override func stopLoading() {}
 }

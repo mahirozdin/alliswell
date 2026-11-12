@@ -46,6 +46,7 @@ class AddWidgetExtensionTest
     AWSnapshotModel.swift
     AWWidgetDayPick.swift
     AWWidgetFetchPolicy.swift
+    AWWidgetFetcher.swift
   ].freeze
 
   def setup

@@ -49,6 +49,8 @@ DEPLOYMENT = '14.0'
 # - OPH-461: the self-fetch policy. The Mac widget does not fetch (iOS only,
 #   WIDGETS.md 3.2); it compiles the shared set whole, so a shared type the
 #   widget source names never goes missing here.
+# - OPH-462: the self-fetch itself. Only its queue helper runs on a Mac (the
+#   widget's read of queued completions); the fetch is compiled out there.
 SHARED_GROUP = 'AllisWellWidgetShared (ios)'
 SHARED_SOURCES = %w[
   AllisWellWidget/AllisWellWidget.swift
@@ -56,6 +58,7 @@ SHARED_SOURCES = %w[
   Shared/AWSnapshotModel.swift
   Shared/AWWidgetDayPick.swift
   Shared/AWWidgetFetchPolicy.swift
+  Shared/AWWidgetFetcher.swift
 ].freeze
 
 project_path = ARGV[0] || File.expand_path('../Runner.xcodeproj', __dir__)

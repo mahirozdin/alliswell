@@ -79,9 +79,7 @@ func loadAWSnapshot() -> AWSnapshot {
     let raw = defaults.string(forKey: kSnapshotKey),
     var data = raw.data(using: .utf8)
   else { return .empty }
-  let queued = AWAlarmActionQueue.pending(in: defaults)
-    .filter { $0.action == "complete" }
-    .flatMap(\.taskIds)
+  let queued = awQueuedCompletionTaskIds(in: defaults)
   if !queued.isEmpty,
     var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
     awApplyPendingCompletions(&json, taskIds: queued, today: awToday()),
@@ -90,6 +88,24 @@ func loadAWSnapshot() -> AWSnapshot {
     data = out
   }
   return (try? JSONDecoder().decode(AWSnapshot.self, from: data)) ?? .empty
+}
+
+/// What a timeline turn draws (#50, OPH-462; WIDGETS.md §3.2 "The
+/// extension's turn"): the app's snapshot, or — with the app swiped away and
+/// nothing changed on the phone that has not synced — the server's newer days
+/// in the app's words. With `fetch`, the turn first makes its one request when
+/// the contract allows it (8 s at most; any failure keeps the App Group
+/// snapshot). iOS only: the macOS widget's self-fetch is a later candidate.
+func loadAWDrawnSnapshot(fetch: Bool) async -> AWSnapshot {
+  let local = loadAWSnapshot()
+  #if os(iOS)
+    guard let fetcher = AWWidgetFetcher.live() else { return local }
+    if fetch { await fetcher.refresh() }
+    fetcher.session.finishTasksAndInvalidate()
+    return fetcher.snapshotToDraw(local: local, today: awToday())
+  #else
+    return local
+  #endif
 }
 
 /// Today's local day as the snapshot spells it: a completion leaves the
@@ -214,7 +230,16 @@ struct AWProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<AWEntry>) -> Void) {
-    completion(awTimeline(snapshot: loadAWSnapshot(), listId: nil, family: context.family))
+    #if os(iOS)
+      // OPH-462: the completion-based provider wraps the one async fetch.
+      let family = context.family
+      Task {
+        let snapshot = await loadAWDrawnSnapshot(fetch: true)
+        completion(awTimeline(snapshot: snapshot, listId: nil, family: family))
+      }
+    #else
+      completion(awTimeline(snapshot: loadAWSnapshot(), listId: nil, family: context.family))
+    #endif
   }
 }
 
@@ -275,7 +300,18 @@ func awTimeline(snapshot: AWSnapshot, listId: String?, family: WidgetFamily)
   // the new day even if the reload is deferred, OPH-451), and a reload a
   // minute past midnight to pick up whatever the app wrote last.
   if awIsAccessory(family) {
-    let reload = midnights.first ?? start.addingTimeInterval(3600)
+    #if os(iOS)
+      // OPH-462 (#50): the self-fetch needs turns while the app is swiped
+      // away — every 30 min plus a jitter, or 00:01 plus a jitter, whichever
+      // comes first, so devices do not all ask the server at once.
+      let midnightReload =
+        awMidnightReloadDate(after: start, calendar: calendar, jitter: awReloadJitter())
+        ?? start.addingTimeInterval(3600)
+      let reload = awReloadDate(
+        now: start, clockHorizon: midnightReload, jitter: awReloadJitter())
+    #else
+      let reload = midnights.first ?? start.addingTimeInterval(3600)
+    #endif
     return Timeline(
       entries: [entry(at: start, clock: false)] + midnights.map { entry(at: $0, clock: false) },
       policy: .after(reload))
@@ -327,7 +363,16 @@ func awTimeline(snapshot: AWSnapshot, listId: String?, family: WidgetFamily)
   // Reload when the minute entries run out: 1440 / horizon times a day. An
   // empty widget affords the full 240 (6 a day); a ten-row one settles around
   // 115 (13 a day), still under a fifth of the 40–70 floor.
-  return Timeline(entries: entries, policy: .after(clockHorizon))
+  #if os(iOS)
+    // OPH-462 (#50): no later than 30 min plus a jitter, so the self-fetch
+    // gets a turn while the app is swiped away. `.after` is the earliest
+    // date, not a promise: WidgetKit's budget decides (15–60 min typically).
+    return Timeline(
+      entries: entries,
+      policy: .after(awReloadDate(now: start, clockHorizon: clockHorizon, jitter: awReloadJitter())))
+  #else
+    return Timeline(entries: entries, policy: .after(clockHorizon))
+  #endif
 }
 
 // MARK: - Per-widget list (OPH-336)
@@ -403,13 +448,16 @@ struct AWIntentProvider: AppIntentTimelineProvider {
 
   func snapshot(for configuration: AWWidgetConfigIntent, in context: Context) async -> AWEntry {
     AWEntry(
-      date: Date(), from: loadAWSnapshot(), listId: configuration.list?.id, showsClock: true)
+      date: Date(), from: await loadAWDrawnSnapshot(fetch: false),
+      listId: configuration.list?.id, showsClock: true)
   }
 
   func timeline(for configuration: AWWidgetConfigIntent, in context: Context) async
     -> Timeline<AWEntry>
   {
-    awTimeline(snapshot: loadAWSnapshot(), listId: configuration.list?.id, family: context.family)
+    awTimeline(
+      snapshot: await loadAWDrawnSnapshot(fetch: true), listId: configuration.list?.id,
+      family: context.family)
   }
 }
 

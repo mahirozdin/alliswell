@@ -51,8 +51,10 @@
 		ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
+		BD44DFEF2A5C23E9A8B0D341 /* AWWidgetFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCE78EEF2051D5580EC0373 /* AWWidgetFetcher.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
+		D0C90C5AAFC93791DE04E79A /* AWWidgetFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CCE78EEF2051D5580EC0373 /* AWWidgetFetcher.swift */; };
 		D19B82EA6B0F29C7546E9014 /* AWWidgetFetchPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFF4C0212EC9CD4AC7669C93 /* AWWidgetFetchPolicy.swift */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
 		DCB1241EC7970CB68479F292 /* ShareNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */; };
@@ -143,6 +145,7 @@
 		7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7B7A51A1D5AE98E32CC7F99E /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		7CCE78EEF2051D5580EC0373 /* AWWidgetFetcher.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWWidgetFetcher.swift; sourceTree = "<group>"; };
 		7D5609174DA84123DA2FFE05 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmLedgerTests.swift; sourceTree = "<group>"; };
 		85A46C53A340932C6DBE7C2E /* AllisWellShareProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareProfile.xcconfig; path = Flutter/AllisWellShareProfile.xcconfig; sourceTree = "<group>"; };
@@ -257,6 +260,7 @@
 				6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */,
 				5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */,
 				DFF4C0212EC9CD4AC7669C93 /* AWWidgetFetchPolicy.swift */,
+				7CCE78EEF2051D5580EC0373 /* AWWidgetFetcher.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -742,6 +746,7 @@
 				221336FE2A9B37697ABB9DA6 /* AWSnapshotModel.swift in Sources */,
 				14236ED5CCE6645EE7BDCF18 /* AWWidgetDayPick.swift in Sources */,
 				D19B82EA6B0F29C7546E9014 /* AWWidgetFetchPolicy.swift in Sources */,
+				D0C90C5AAFC93791DE04E79A /* AWWidgetFetcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -756,6 +761,7 @@
 				2EB2A92600196B4057BA4B6F /* AWSnapshotModel.swift in Sources */,
 				23159A0B9C0D21FC08609BA9 /* AWWidgetDayPick.swift in Sources */,
 				FCE7416C683E24D9C37E0ABB /* AWWidgetFetchPolicy.swift in Sources */,
+				BD44DFEF2A5C23E9A8B0D341 /* AWWidgetFetcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

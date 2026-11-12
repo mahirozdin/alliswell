@@ -75,7 +75,12 @@ add_source(widget, snooze_ref, 'Shared/AWSnoozeCore.swift')
 # OPH-461 — the self-fetch policy (WIDGETS.md 3.2): when the widget may fetch,
 # its backoff and reload dates, and the local-or-server choice
 # (WidgetFetchPolicyTests). Foundation only.
-%w[AWSnapshotModel.swift AWWidgetDayPick.swift AWWidgetFetchPolicy.swift].each do |name|
+# OPH-462 — the self-fetch itself: the Keychain read, the one request and the
+# server's view in the app's words. Runner compiles it so WidgetFetchPolicyTests
+# drives it through a URLProtocol stub. Foundation and Security only.
+%w[
+  AWSnapshotModel.swift AWWidgetDayPick.swift AWWidgetFetchPolicy.swift AWWidgetFetcher.swift
+].each do |name|
   ref = file_ref(shared_group, name)
   add_source(runner, ref, "Shared/#{name}")
   add_source(widget, ref, "Shared/#{name}")
