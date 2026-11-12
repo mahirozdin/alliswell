@@ -212,15 +212,13 @@ Future<void> endRevokedSessionHeadless(
 }) async {
   final store = kv ?? localKv;
   if (kv == null) await reloadSharedPreferences();
-  var nothingUnsent = false;
-  try {
-    nothingUnsent = await unsentChangeCount(db) == 0;
-  } on Object {
-    // A count that cannot be read is unsent work.
-  }
   final owner = await store.get(kReplicaOwnerKey);
-  if (nothingUnsent && (owner == null || owner == userId)) {
-    await LocalDataGuard(database: () => db, kv: store).wipe();
+  if (owner == null || owner == userId) {
+    // The outbox is checked inside the wipe's transaction, not before it: the
+    // app can resume and commit an edit on its own connection while this
+    // turn is still awaiting, and a count read earlier would let the wipe
+    // delete that edit unasked (headless-revocation-wipe-race).
+    await LocalDataGuard(database: () => db, kv: store).wipeIfNothingUnsent();
   }
   await dropEveryOsAlarm(gateway: gateway);
 }

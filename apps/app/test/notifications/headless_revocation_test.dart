@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -10,6 +11,7 @@ import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/headless.dart';
+import 'package:alliswell/src/sync/db/connection_native.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/local_data.dart';
 import 'package:alliswell/src/sync/outbox.dart';
@@ -174,6 +176,156 @@ void main() {
       expect(gateway.scheduled, isNotEmpty);
     },
   );
+
+  // headless-revocation-wipe-race: the app comes back to the foreground while
+  // the background turn is cleaning up, and the person's edit commits through
+  // the foreground's own connection. The empty-outbox check and the wipe are
+  // one decision; an edit that lands around them is never deleted unasked.
+  group('an edit the foreground commits during the cleanup survives it', () {
+    late AwDatabase background;
+    late AwDatabase foreground;
+
+    // Two connections on one file, opened the way the app opens them.
+    AwDatabase connect() => AwDatabase(
+      NativeDatabase.createInBackground(
+        File('${dir.path}/alliswell.sqlite'),
+        setup: (raw) {
+          for (final pragma in awSqlitePragmas) {
+            raw.execute(pragma);
+          }
+        },
+      ),
+    );
+
+    setUp(() async {
+      await db.close();
+      background = connect();
+      foreground = connect();
+    });
+
+    tearDown(() async {
+      await background.close();
+      await foreground.close();
+      db = open();
+    });
+
+    Future<void> edit(AwDatabase on) async {
+      await on
+          .into(on.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: _id('T2'),
+              workspaceId: _ws,
+              title: 'yeni',
+            ),
+          );
+      await enqueueMutation(
+        on,
+        workspaceId: _ws,
+        entityType: 'task',
+        entityId: _id('T2'),
+        operation: 'create',
+        patch: {'title': 'yeni'},
+      );
+    }
+
+    Future<void> expectEditKept() async {
+      final tasks = await foreground.select(foreground.tasks).get();
+      expect(tasks.map((t) => t.id), contains(_id('T2')));
+      expect(await unsentChangeCount(foreground), 1);
+      expect(gateway.active, isEmpty, reason: 'the alarms still go');
+    }
+
+    test('committed while the cleanup reads whose replica it is', () async {
+      final kv = _HookKv(
+        onOwnerRead: () => foreground.transaction(() => edit(foreground)),
+      );
+
+      await endRevokedSessionHeadless(
+        background,
+        userId: 'U1',
+        gateway: gateway,
+        kv: kv,
+      );
+
+      await expectEditKept();
+      expect(kv.removed, isFalse, reason: 'the owner record stays with it');
+    });
+
+    // SQLite either makes the cleanup wait for this write or refuses it the
+    // lock; in neither case may it judge the outbox empty and then delete.
+    test('still being written when the cleanup checks the outbox', () async {
+      final inserted = Completer<void>();
+      final release = Completer<void>();
+      late Future<void> writing;
+      final kv = _HookKv(
+        onOwnerRead: () async {
+          writing = foreground.transaction(() async {
+            await edit(foreground);
+            inserted.complete();
+            await release.future;
+          });
+          await inserted.future;
+          // The write lock is held; it commits once the cleanup is waiting.
+          unawaited(
+            Future<void>.delayed(
+              const Duration(milliseconds: 300),
+              release.complete,
+            ),
+          );
+        },
+      );
+
+      await endRevokedSessionHeadless(
+        background,
+        userId: 'U1',
+        gateway: gateway,
+        kv: kv,
+      );
+      await writing;
+
+      await expectEditKept();
+    });
+
+    test('a clean replica is still wiped', () async {
+      final kv = _HookKv();
+
+      await endRevokedSessionHeadless(
+        background,
+        userId: 'U1',
+        gateway: gateway,
+        kv: kv,
+      );
+
+      expect(await foreground.select(foreground.tasks).get(), isEmpty);
+      expect(kv.removed, isTrue);
+    });
+  });
+}
+
+/// An empty store that runs [onOwnerRead] while the replica owner is read.
+class _HookKv implements LocalKv {
+  _HookKv({this.onOwnerRead});
+
+  final Future<void> Function()? onOwnerRead;
+  bool removed = false;
+
+  @override
+  Future<String?> get(String key) async {
+    if (key == kReplicaOwnerKey) await onOwnerRead?.call();
+    return null;
+  }
+
+  @override
+  Future<void> set(String key, String value) async {}
+
+  @override
+  Future<void> remove(String key) async {}
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {
+    removed = true;
+  }
 }
 
 /// A store that remembers nothing — the ordinary "app is not running" state.

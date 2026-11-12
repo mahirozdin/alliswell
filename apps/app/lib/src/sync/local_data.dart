@@ -72,16 +72,56 @@ Future<int> unsentChangeCount(AwDatabase db) async {
 /// those pages, so the bytes are gone from the storage too (on web the
 /// IndexedDB blocks hold the same file), not merely unreachable.
 Future<void> wipeReplica(AwDatabase db) async {
+  await _wipeReplicaWhen(db, () async => true);
+}
+
+/// [wipeReplica], but only when [unsentChangeCount] is zero — decided inside
+/// the wipe's own transaction (OPH-447, headless-revocation-wipe-race).
+///
+/// A count read before the wipe is stale by the time the wipe runs: another
+/// connection on the same file (the foreground app resuming while a
+/// background turn cleans up) can commit an edit in between, and the wipe
+/// would delete it and its outbox row unasked. drift opens a native
+/// transaction with `BEGIN IMMEDIATE`, so the check and the deletes hold the
+/// write lock together: a writer that got there first is seen (or the lock is
+/// refused and nothing is deleted), one that comes later lands after the
+/// wipe. Returns whether the replica was emptied; a count that cannot be read
+/// is unsent work.
+Future<bool> wipeReplicaIfNothingUnsent(AwDatabase db) async {
+  try {
+    return await _wipeReplicaWhen(
+      db,
+      () async => await unsentChangeCount(db) == 0,
+    );
+  } on Object {
+    return false;
+  }
+}
+
+Future<bool> _wipeReplicaWhen(
+  AwDatabase db,
+  Future<bool> Function() allowed,
+) async {
   await _quietly(() => db.customStatement('PRAGMA secure_delete = ON'));
-  await db.transaction(() async {
-    for (final table in db.allTables) {
-      if (kDeviceLocalTables.contains(table.actualTableName)) continue;
-      await db.delete(table).go();
+  try {
+    final wiped = await db.transaction(() async {
+      if (!await allowed()) return false;
+      for (final table in db.allTables) {
+        if (kDeviceLocalTables.contains(table.actualTableName)) continue;
+        await db.delete(table).go();
+      }
+      return true;
+    });
+    if (wiped) {
+      await _quietly(() => db.customStatement('VACUUM'));
+      await _quietly(
+        () => db.customStatement('PRAGMA wal_checkpoint(TRUNCATE)'),
+      );
     }
-  });
-  await _quietly(() => db.customStatement('VACUUM'));
-  await _quietly(() => db.customStatement('PRAGMA wal_checkpoint(TRUNCATE)'));
-  await _quietly(() => db.customStatement('PRAGMA secure_delete = OFF'));
+    return wiped;
+  } finally {
+    await _quietly(() => db.customStatement('PRAGMA secure_delete = OFF'));
+  }
 }
 
 /// The sign-out and sign-in halves of "the replica is one person's".
@@ -105,6 +145,20 @@ class LocalDataGuard {
       (key) => kUserBoundKvPrefixes.any((prefix) => key.startsWith(prefix)),
     );
     return wiped;
+  }
+
+  /// [wipe], but only when nothing in the replica is unsent, checked inside
+  /// the replica's wipe transaction ([wipeReplicaIfNothingUnsent]). When the
+  /// replica stays, so does everything else: the owner record is what lets
+  /// the same person's next sign-in adopt it. Returns whether it wiped.
+  Future<bool> wipeIfNothingUnsent() async {
+    if (!await wipeReplicaIfNothingUnsent(_database())) return false;
+    final clearAlerts = _clearAlerts;
+    if (clearAlerts != null) await _quietly(clearAlerts);
+    await _kv.removeWhere(
+      (key) => kUserBoundKvPrefixes.any((prefix) => key.startsWith(prefix)),
+    );
+    return true;
   }
 
   /// Called with the person a session is about to start for, BEFORE anything
