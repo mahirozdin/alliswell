@@ -157,6 +157,32 @@ void main() {
       );
     });
 
+    test('a stand-in that synced into its real reminder keeps ringing, and '
+        'stops once that reminder is answered', () {
+      // An offline-created task rang through its stand-in; a background sync
+      // then brought the real row for the same task, kind and instant.
+      const shownSynthetic = ActiveAlarmNotification(
+        id: 31,
+        urgent: true,
+        reminderIds: ['local:remind:T-R1'],
+        taskIds: ['T-R1'],
+      );
+      final real = alarm('R1'); // taskId T-R1, kind remind
+      expect(activeToCancel([shownSynthetic], [real], now, window), isEmpty);
+
+      // The real reminder acknowledged (left the active set): it stops.
+      expect(activeToCancel([shownSynthetic], const [], now, window), {31});
+
+      // Another kind of the same task ringing is not this alarm.
+      const shownDue = ActiveAlarmNotification(
+        id: 32,
+        urgent: true,
+        reminderIds: ['local:due:T-R1'],
+        taskIds: ['T-R1'],
+      );
+      expect(activeToCancel([shownDue], [real], now, window), {32});
+    });
+
     test('is idempotent across two passes', () {
       final active = [shown(11, 'R1'), shown(12, 'R2')];
       final alarms = [alarm('R2')];

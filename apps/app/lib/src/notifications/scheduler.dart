@@ -10,6 +10,7 @@ import 'planner.dart';
 import 'gateway.dart';
 import 'alarm_sound.dart';
 import 'reminder_profile.dart';
+import 'reminder_store.dart' show parseSyntheticReminderId;
 
 /// Keeps the OS notification schedule equal to the plan (OPH-061): every
 /// replica change re-plans (window ≤[maxPending], urgent chains) and the diff
@@ -860,22 +861,33 @@ const _kActive = {'scheduled', 'snoozed', 'delivered'};
 /// (it does not loop) and the rehearsal alarm are never touched.
 ///
 /// Idempotent: a cancelled notification is gone from the next [active].
+///
+/// A stand-in id (`local:<kind>:<taskId>`, an alarm created before its row
+/// synced) still rings while the real reminder of that task and kind does: a
+/// sync that brings the row replaces the stand-in in the model, and nobody
+/// answered the alarm.
 Set<int> activeToCancel(
   List<ActiveAlarmNotification> active,
   List<AlarmInput> alarms,
   DateTime now,
   Duration staleWindow,
 ) {
-  final ringing = {
-    for (final a in ringingAlarms(alarms, now, staleAfter: staleWindow))
-      a.reminderId,
-  };
+  final ringingNow = ringingAlarms(alarms, now, staleAfter: staleWindow);
+  final ringing = {for (final a in ringingNow) a.reminderId};
+  final ringingKinds = {for (final a in ringingNow) '${a.taskId}|${a.kind}'};
+  bool rings(String reminderId) {
+    if (ringing.contains(reminderId)) return true;
+    final standIn = parseSyntheticReminderId(reminderId);
+    return standIn != null &&
+        ringingKinds.contains('${standIn.taskId}|${standIn.kind}');
+  }
+
   return {
     for (final n in active)
       if (n.urgent &&
           n.id != kAlarmTestNotificationId &&
           n.reminderIds.isNotEmpty &&
-          !n.reminderIds.any(ringing.contains))
+          !n.reminderIds.any(rings))
         n.id,
   };
 }
