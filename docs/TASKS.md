@@ -92,6 +92,23 @@ Found: phase-end review (`apps/app/ios/Shared/AWSnapshotModel.swift`, `awNextOpe
 
 ---
 
+## Epic 37 follow-up — phase-end review findings (PR-2)
+
+### OPH-483 — A stale widget fetch's cleanup can delete a newer fetch's server view
+
+Found: phase-end review (`apps/app/ios/Shared/AWWidgetFetcher.swift`, `store`). Left open: minor,
+needs two overlapping refreshes and heals on the next timeline reload.
+
+- [ ] An old-profile reply writes its envelope, sees the profile changed and the JSON still equal,
+      then a current-profile fetch stores its envelope before `removeObject` runs → the newer
+      view is deleted while its success time stays, so the widget draws local data and skips
+      fetching for 2 min. Make compare-and-remove one step with every envelope writer (a lock or
+      a generation stamp checked under it).
+- **Test first:** XCTest on the Mac with interleaved stores: the current envelope survives.
+  **Verify:** K1 + Mac XCTest.
+
+---
+
 ## Epic 36 follow-up 2 — walkthrough leftovers (minor)
 
 Minor findings of the web and iOS simulator walkthroughs (2026-11-12) that the three polish rounds

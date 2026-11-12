@@ -26,7 +26,8 @@ This file holds the unreleased changes and the latest release; at each release t
   iOS sets that timing, so there is no minute guarantee. A change made on the phone that has not
   synced yet is never undone, offline or before the first unlock the widget keeps its last list,
   and with Private widget on no task title leaves the server. Signing out or removing the phone
-  turns the key off.
+  turns the key off. Each day's list stays right across a daylight-saving change that skips
+  midnight.
 
 ### Fixed
 

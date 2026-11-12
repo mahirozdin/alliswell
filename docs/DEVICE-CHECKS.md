@@ -19,6 +19,9 @@ sahip S-50'yi onaylayınca kapanır (STATE "Kullanıcıdan bekleyen").
 - OPH-462 #50 D-W5 — **iPhone, Türkçe ve İngilizce** (NOT RUN): sunucudan gelen satırlardaki saat ve tarih metni uygulamadakiyle aynı; fark varsa Dart/ICU farkı olarak kaydet.
 - OPH-462 #50 D-W8 — **iPhone, sunucu kapalı ya da uçak modu** (NOT RUN): widget 8 sn içinde son listeyi gösteriyor, çökme yok; bir sonraki deneme geri çekilmeden sonra.
 - OPH-458 #50 D-W9 — **iPhone** (NOT RUN): oturumu kapat ya da Ayarlar ▸ Cihazlar'dan telefonu kaldır: widget sonraki yenilemede 401 alıp çekmeyi bırakıyor, başlık sızmıyor; yeniden girişten sonra uygulama açılınca çekim geri geliyor.
+- OPH-462 #50 — **iPhone, uygulama kapalı** (NOT RUN): başka cihazda görev ekle, widget çeksin: o satırın dairesi uygulamayı açıyor; telefonda zaten olan görevin dairesi yerinde tamamlıyor.
+- OPH-463 #50 — **iPhone** (NOT RUN): çevrimdışı bir notu düzenle, çevrimiçi olup eşitlensin, uygulamayı kaydırıp kapat: sonraki yenilemede başka cihazdaki değişiklik görünüyor (yerel liste değil sunucunun cevabı).
+- OPH-464 #50 — **iPhone** (NOT RUN): widget token'ı varken oturumun süresi dolsun (ya da oturumu sil), aynı kişiyle yeniden gir, uygulamayı kapat: widget 401'de durmadan çekmeye devam ediyor.
 
 ## Üçüncü cila turu: cevapsız istek, web flush'ı, ekran okuyucu, widget "+N" (2026-11-12, #46–#50)
 

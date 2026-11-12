@@ -202,7 +202,7 @@
 - **DERS** iOS 18+ uzantı ana uygulamayı açamaz, `getInitialMedia()` App Group'u okumaz → açılış/resume'da drain (ADR-0029); iOS 26'da dönüş URL'i rota sanılıp /not-found'a gider → SceneDelegate `super`'e vermez.
 - **DERS** Uzantı sürümü `$(FLUTTER_BUILD_NAME/NUMBER)` olmalı (yeni hedef 1.0/1 doğar); yükseltince `flutter clean && pub get && pod install`. App Group dizesi her yerde bayt-bayt aynı: `group.com.alliswell.alliswell`.
 - **DERS** `LiveActivityIntent` DAİMA ana uygulamada koşar → widget sürecinde düz `AppIntent` + App Group kuyruğu; Dart her öne gelişte `drainPendingActions`. Siri niyeti `openAppWhenRun`, cümlede String yok (ADR-0057).
-- **DERS** Uygulama ve widget App Group'a ayrı süreçte yazar: tek kuyruk anahtarında birinin onayı ötekinin basışını siler → eyleme bir anahtar (OPH-430)
+- **DERS** App Group'a iki süreç yazar, oku-yaz atomik değil: eyleme bir anahtar (OPH-430); önce profil sonra görünüm silinir, çekici yazınca bakar (OPH-462/483).
 - **DERS** WidgetKit'te canlı saat yok → dakikalık girdiler, ufuk bayttan (~16.6 MB'ı aşan arşivi chronod atar, widget placeholder'da kalır); timeline şimdi + 4 gece yarısı, başlık tarihi ENTRY'den.
 - **DERS** Snapshot'a yeni alan: native taraf eksiğe toleranslı (Swift opsiyonel, Kotlin `optInt`), JSONSerialization (Codable yeni alanı düşürür); iki platformun yerleşimi de pariteye tabi.
 - **DERS** v6'da her girdi kendi gün görünümünü çizer → üst düzeye yazılan native tamamlama görünmez; `awMarkSnapshotDone` Dart kuralıyla her görünüme, çizim kuyruğu uygular; "+N" = kovanın açık sayısı − çizilen açık satır (`awMoreCount`), 0'da satır yok (tamamlananı saymaz; OPH-451).
