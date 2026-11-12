@@ -310,8 +310,10 @@ class AlarmKitActionPump {
   final AlarmLog? log;
 
   Future<void> _tail = Future<void>.value();
-  final Set<String> _fallbacksApplied = {};
-  final Set<String> _fallbacksArmed = {};
+
+  /// Fallback event id → the tasks its notification rings for.
+  final Map<String, List<String>> _fallbacksApplied = {};
+  final Map<String, List<String>> _fallbacksArmed = {};
 
   /// One pull, serialized behind any pull already running.
   Future<void> pull() {
@@ -330,10 +332,16 @@ class AlarmKitActionPump {
   }
 
   /// After a plan pass: clear the fallbacks that pass planned for, then ack
-  /// their events. A failed clear keeps them armed for the next pass.
-  Future<void> afterPlan() async {
-    if (_fallbacksArmed.isEmpty) return;
-    final ids = [..._fallbacksArmed];
+  /// their events. A failed clear keeps them armed for the next pass, and so
+  /// does a fallback for a task in [uncoveredTaskIds] — the pass could not
+  /// put that task's own delivery on the OS, so the fallback may be all that
+  /// still rings it.
+  Future<void> afterPlan([Set<String> uncoveredTaskIds = const {}]) async {
+    final ids = [
+      for (final MapEntry(key: id, value: members) in _fallbacksArmed.entries)
+        if (!members.any(uncoveredTaskIds.contains)) id,
+    ];
+    if (ids.isEmpty) return;
     try {
       await host.clearFallbacks(ids);
     } on Object catch (error) {
@@ -344,7 +352,7 @@ class AlarmKitActionPump {
       );
       return;
     }
-    _fallbacksArmed.removeAll(ids);
+    ids.forEach(_fallbacksArmed.remove);
     try {
       await host.ackActions(ids);
     } on Object {
@@ -380,8 +388,8 @@ class AlarmKitActionPump {
       if (event.action == 'snooze' &&
           event.scheduleOutcome != null &&
           event.scheduleOutcome != 'ok') {
-        if (!_fallbacksArmed.contains(event.eventId)) {
-          _fallbacksApplied.add(event.eventId);
+        if (!_fallbacksArmed.containsKey(event.eventId)) {
+          _fallbacksApplied[event.eventId] = event.taskIds;
         }
         continue;
       }

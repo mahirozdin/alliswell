@@ -417,7 +417,9 @@ not `[String: String]`.
 Order on the Dart side: pull → per event one transaction (`insertReceiptIfAbsent(eventId)`; false
 ⇒ no-op; model write; outbox) → `ackActions([eventId])` after the commit → `pullFailures` into the
 alarm log (`degraded`, lane `alarmkit`) → after the next plan pass, `clearFallbacks` for applied
-snoozes whose `scheduleOutcome` is not `ok`. Such a snooze is acked only after its `clearFallbacks`:
+snoozes whose `scheduleOutcome` is not `ok` — unless that pass failed to schedule a notification for
+one of the snooze's tasks: then the fallback may be the only delivery left, and it waits for a pass
+that succeeds. Such a snooze is acked only after its `clearFallbacks`:
 until then its queue entry is what remembers the clear, so a process killed in between redelivers
 it (a no-op through its receipt) and the next launch's plan clears the fallback.
 

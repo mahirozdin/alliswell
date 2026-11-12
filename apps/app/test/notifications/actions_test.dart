@@ -515,6 +515,41 @@ void main() {
           reason: 'the redelivery applied nothing twice',
         );
       });
+
+      test('a pass that could not schedule the replacement leaves the '
+          'fallback, and the next one that could clears it', () async {
+        final host = FakeAlarmKitHost()
+          ..scheduleFailure = 'limit_reached'
+          ..queue.add(
+            native(
+              'ev-failed',
+              'snooze',
+              taskIds: [id('T1')],
+              untilMs: until.millisecondsSinceEpoch,
+              scheduleOutcome: 'limitReached',
+            ),
+          );
+        final gateway = FakeNotificationsGateway()
+          ..failScheduleFor = (_) => true;
+        final pump = pumpFor(host);
+        await pump.pull();
+        final scheduler = schedulerFor(host, pump, gateway);
+        await scheduler.start();
+        for (var i = 0; i < 3; i++) {
+          await scheduler.applyOnce(snoozed);
+        }
+        expect(gateway.scheduled, isEmpty);
+        expect(host.fallbacksCleared, isEmpty, reason: 'nothing else rings');
+        expect(host.queue.map((e) => e.eventId), ['ev-failed']);
+
+        gateway.failScheduleFor = null;
+        await scheduler.applyOnce(snoozed);
+        expect(gateway.scheduled, isNotEmpty);
+        expect(host.fallbacksCleared, [
+          ['ev-failed'],
+        ]);
+        expect(host.queue, isEmpty);
+      });
     });
 
     test('a receipted action pokes sync from inside its transaction, and '

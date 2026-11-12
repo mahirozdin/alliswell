@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'alarm_log.dart';
 import 'alarm_overlay.dart'
@@ -93,7 +94,11 @@ class NotificationScheduler {
   /// Runs after a pass has executed both lanes' plans (OPH-427): what the
   /// pass planned is now on the OS, so a native snooze's fallback
   /// notification can go. Not called when the pass gave up half-way.
-  final Future<void> Function()? afterPlan;
+  ///
+  /// Told the tasks the pass could NOT put on the OS (OPH-431): a task with a
+  /// notification whose schedule failed. A fallback standing for one of them
+  /// may be the only thing left to ring it, so it stays.
+  final Future<void> Function(Set<String> uncoveredTaskIds)? afterPlan;
 
   /// The event ids `action_receipts` holds. A native alarm whose event is not
   /// among them is left alone: the model does not know about it yet. Null
@@ -312,6 +317,7 @@ class NotificationScheduler {
           );
         }
       }
+      final uncovered = <String>{};
       for (final id in desiredById.keys.toSet().difference(pending)) {
         final notification = desiredById[id]!;
         try {
@@ -331,6 +337,7 @@ class NotificationScheduler {
             reminderId: notification.reminderId,
           );
         } on Object catch (error) {
+          uncovered.addAll(_taskIdsOf(notification));
           await log?.record(
             event: AlarmLogEvent.degraded,
             lane: AlarmLogLane.notification,
@@ -344,7 +351,7 @@ class NotificationScheduler {
       }
       await _cancelHandledActive(now);
       try {
-        await afterPlan?.call();
+        await afterPlan?.call(uncovered);
       } on Object catch (error) {
         await log?.record(
           event: AlarmLogEvent.degraded,
@@ -661,6 +668,19 @@ class NotificationScheduler {
       );
     }
   }
+}
+
+/// Every task [notification] rings for: a grouped chain lists them in its
+/// payload's `taskIds`, any other names one.
+Iterable<String> _taskIdsOf(PlannedNotification notification) {
+  try {
+    final listed = (jsonDecode(notification.payload) as Map)['taskIds'];
+    if (listed is List) return listed.whereType<String>();
+  } on Object {
+    // Not ours to read; the field below is.
+  }
+  final taskId = notification.taskId;
+  return taskId == null ? const [] : [taskId];
 }
 
 /// What one AlarmKit pass does to the lane (NOTIFICATIONS §2b.3 "Plan pass").
