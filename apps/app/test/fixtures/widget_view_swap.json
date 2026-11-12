@@ -1,0 +1,786 @@
+{
+  "note": "Written by the Dart test (UPDATE_FIXTURES=1); the Swift tests only read it. local is the phone's aw_widget_snapshot, server the GET /widget/snapshot body for the same rows plus one created elsewhere.",
+  "local": {
+    "v": 6,
+    "generatedAt": "2025-11-12T08:00:00.000Z",
+    "locale": "tr",
+    "date": {
+      "weekday": "Çarşamba",
+      "day": "12",
+      "month": "Kasım"
+    },
+    "strings": {
+      "allCaughtUp": "Her şey tamam",
+      "addTask": "Görev ekle",
+      "openToday": "40 açık",
+      "openTodayPattern": "{count} açık",
+      "completeTask": "Tamamla: {title}",
+      "upNext": "Sıradaki",
+      "chooseList": "Bu widget’ta göster",
+      "stale": "Liste güncel değil · Güncellemek için aç"
+    },
+    "clockFormat": "HH:mm",
+    "openToday": 40,
+    "next": {
+      "id": "T40",
+      "title": "T40",
+      "bucket": "today",
+      "label": "Bugün",
+      "time": "18:00"
+    },
+    "buckets": [
+      {
+        "key": "today",
+        "label": "Bugün",
+        "count": 40,
+        "items": [
+          {
+            "id": "T40",
+            "title": "T40",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T39",
+            "title": "T39",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T38",
+            "title": "T38",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T37",
+            "title": "T37",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T36",
+            "title": "T36",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T35",
+            "title": "T35",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T34",
+            "title": "T34",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T33",
+            "title": "T33",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T32",
+            "title": "T32",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T31",
+            "title": "T31",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T30",
+            "title": "T30",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          },
+          {
+            "id": "T29",
+            "title": "T29",
+            "done": false,
+            "priority": "none",
+            "time": "18:00"
+          }
+        ],
+        "more": 28
+      }
+    ],
+    "lists": [
+      {
+        "id": "all",
+        "name": "Tüm görevler"
+      }
+    ],
+    "days": [
+      {
+        "date": "2025-11-12",
+        "header": {
+          "weekday": "Çarşamba",
+          "day": "12",
+          "month": "Kasım"
+        },
+        "openToday": 40,
+        "openTodayLabel": "40 açık",
+        "next": {
+          "id": "T40",
+          "title": "T40",
+          "bucket": "today",
+          "label": "Bugün",
+          "time": "18:00"
+        },
+        "buckets": [
+          {
+            "key": "today",
+            "label": "Bugün",
+            "count": 40,
+            "items": [
+              {
+                "id": "T40",
+                "title": "T40",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T39",
+                "title": "T39",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T38",
+                "title": "T38",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T37",
+                "title": "T37",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T36",
+                "title": "T36",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T35",
+                "title": "T35",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T34",
+                "title": "T34",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T33",
+                "title": "T33",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T32",
+                "title": "T32",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T31",
+                "title": "T31",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T30",
+                "title": "T30",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              },
+              {
+                "id": "T29",
+                "title": "T29",
+                "done": false,
+                "priority": "none",
+                "time": "18:00"
+              }
+            ],
+            "more": 28
+          }
+        ]
+      },
+      {
+        "date": "2025-11-13",
+        "header": {
+          "weekday": "Perşembe",
+          "day": "13",
+          "month": "Kasım"
+        },
+        "openToday": 40,
+        "openTodayLabel": "40 açık",
+        "next": {
+          "id": "T40",
+          "title": "T40",
+          "bucket": "overdue",
+          "label": "Gecikmiş",
+          "time": "12 Kas"
+        },
+        "buckets": [
+          {
+            "key": "overdue",
+            "label": "Gecikmiş",
+            "count": 40,
+            "items": [
+              {
+                "id": "T40",
+                "title": "T40",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T39",
+                "title": "T39",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T38",
+                "title": "T38",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T37",
+                "title": "T37",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T36",
+                "title": "T36",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T35",
+                "title": "T35",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T34",
+                "title": "T34",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T33",
+                "title": "T33",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T32",
+                "title": "T32",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T31",
+                "title": "T31",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T30",
+                "title": "T30",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T29",
+                "title": "T29",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              }
+            ],
+            "more": 28
+          }
+        ]
+      },
+      {
+        "date": "2025-11-14",
+        "header": {
+          "weekday": "Cuma",
+          "day": "14",
+          "month": "Kasım"
+        },
+        "openToday": 40,
+        "openTodayLabel": "40 açık",
+        "next": {
+          "id": "T40",
+          "title": "T40",
+          "bucket": "overdue",
+          "label": "Gecikmiş",
+          "time": "12 Kas"
+        },
+        "buckets": [
+          {
+            "key": "overdue",
+            "label": "Gecikmiş",
+            "count": 40,
+            "items": [
+              {
+                "id": "T40",
+                "title": "T40",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T39",
+                "title": "T39",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T38",
+                "title": "T38",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T37",
+                "title": "T37",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T36",
+                "title": "T36",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T35",
+                "title": "T35",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T34",
+                "title": "T34",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T33",
+                "title": "T33",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T32",
+                "title": "T32",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T31",
+                "title": "T31",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T30",
+                "title": "T30",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              },
+              {
+                "id": "T29",
+                "title": "T29",
+                "done": false,
+                "priority": "none",
+                "time": "12 Kas"
+              }
+            ],
+            "more": 28
+          }
+        ]
+      }
+    ]
+  },
+  "server": {
+    "v": 1,
+    "generatedAt": "2025-11-12T08:00:00.000Z",
+    "tz": "Europe/Istanbul",
+    "days": [
+      {
+        "date": "2025-11-12",
+        "openToday": 41,
+        "next": {
+          "id": "T41",
+          "bucket": "today",
+          "dueAt": "2025-11-12T15:00:00.000Z",
+          "timeStyle": "time"
+        },
+        "buckets": [
+          {
+            "key": "today",
+            "count": 41,
+            "more": 29,
+            "items": [
+              {
+                "id": "T41",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T40",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T39",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T38",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T37",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T36",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T35",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T34",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T33",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T32",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T31",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              },
+              {
+                "id": "T30",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "time"
+              }
+            ]
+          }
+        ],
+        "views": {}
+      },
+      {
+        "date": "2025-11-13",
+        "openToday": 41,
+        "next": {
+          "id": "T41",
+          "bucket": "overdue",
+          "dueAt": "2025-11-12T15:00:00.000Z",
+          "timeStyle": "day"
+        },
+        "buckets": [
+          {
+            "key": "overdue",
+            "count": 41,
+            "more": 29,
+            "items": [
+              {
+                "id": "T41",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T40",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T39",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T38",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T37",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T36",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T35",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T34",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T33",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T32",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T31",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T30",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              }
+            ]
+          }
+        ],
+        "views": {}
+      },
+      {
+        "date": "2025-11-14",
+        "openToday": 41,
+        "next": {
+          "id": "T41",
+          "bucket": "overdue",
+          "dueAt": "2025-11-12T15:00:00.000Z",
+          "timeStyle": "day"
+        },
+        "buckets": [
+          {
+            "key": "overdue",
+            "count": 41,
+            "more": 29,
+            "items": [
+              {
+                "id": "T41",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T40",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T39",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T38",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T37",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T36",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T35",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T34",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T33",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T32",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T31",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              },
+              {
+                "id": "T30",
+                "done": false,
+                "priority": "none",
+                "dueAt": "2025-11-12T15:00:00.000Z",
+                "timeStyle": "day"
+              }
+            ]
+          }
+        ],
+        "views": {}
+      }
+    ]
+  }
+}

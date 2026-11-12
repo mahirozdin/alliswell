@@ -465,7 +465,10 @@ No `locale` and no `list`: the server sends no words, and every project view is 
 - **Order within a bucket:** by instant (a task's `dueAt`, an event's start; an all-day event or
   one already running sits at its day's first minute), finished tasks last, dateless tasks by
   `sortOrder`; a task and an event at the same instant: the event first; any other tie keeps the
-  input order — tasks newest id first, then events by start.
+  input order — tasks newest id first, then events by start. Both sorts are stable (Dart's
+  `List.sort` is not past 32 rows, so the app sorts with the input position as the last key), so
+  the rows both views hold sit in the same order and a swap only shows or hides the rows one view
+  lacks (#50 PR2-03; the shared fixture and `widget_view_swap.json` lock it).
 - **Item fields:** `id`, `done`, `priority` (events `"none"`), `title` (absent when `private=1`;
   Swift draws `strings.privateTitle` / `privateEvent`), `projectColor` (`#RRGGBB`: a task with a
   project takes the project's, absent when that project is unknown; else the task's own, absent

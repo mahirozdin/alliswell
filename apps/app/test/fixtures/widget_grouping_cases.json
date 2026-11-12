@@ -5690,6 +5690,1300 @@
           }
         ]
       }
+    },
+    {
+      "name": "ties past 32 rows keep the newest id first",
+      "now": "2026-11-12T07:00:00.000Z",
+      "tz": "Europe/Istanbul",
+      "scope": {
+        "workspaceIds": [
+          "W1000000000000000000000000"
+        ]
+      },
+      "private": true,
+      "projects": [],
+      "tasks": [
+        {
+          "id": "TIE01000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie01",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE02000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie02",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE03000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie03",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE04000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie04",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE05000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie05",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE06000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie06",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE07000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie07",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE08000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie08",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE09000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie09",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE10000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie10",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE11000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie11",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE12000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie12",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE13000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie13",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE14000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie14",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE15000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie15",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE16000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie16",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE17000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie17",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE18000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie18",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE19000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie19",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE20000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie20",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE21000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie21",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE22000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie22",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE23000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie23",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE24000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie24",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE25000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie25",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE26000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie26",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE27000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie27",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE28000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie28",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE29000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie29",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE30000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie30",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE31000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie31",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE32000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie32",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE33000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie33",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE34000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie34",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE35000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie35",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE36000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie36",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE37000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie37",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE38000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie38",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE39000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie39",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "TIE40000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task tie40",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0,
+          "dueAt": "2026-11-12T12:00:00.000Z"
+        },
+        {
+          "id": "FREE0100000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free01",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0200000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free02",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0300000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free03",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0400000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free04",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0500000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free05",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0600000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free06",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0700000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free07",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0800000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free08",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE0900000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free09",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free10",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1100000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free11",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1200000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free12",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1300000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free13",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1400000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free14",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1500000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free15",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1600000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free16",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1700000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free17",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1800000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free18",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE1900000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free19",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free20",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2100000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free21",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2200000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free22",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2300000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free23",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2400000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free24",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2500000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free25",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2600000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free26",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2700000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free27",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2800000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free28",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE2900000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free29",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free30",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3100000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free31",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3200000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free32",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3300000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free33",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3400000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free34",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3500000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free35",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3600000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free36",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3700000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free37",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3800000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free38",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE3900000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free39",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        },
+        {
+          "id": "FREE4000000000000000000000",
+          "workspaceId": "W1000000000000000000000000",
+          "title": "Task free40",
+          "status": "open",
+          "priority": "none",
+          "sortOrder": 0
+        }
+      ],
+      "events": [],
+      "expected": {
+        "selected": [
+          "TIE40000000000000000000000",
+          "TIE39000000000000000000000",
+          "TIE38000000000000000000000",
+          "TIE37000000000000000000000",
+          "TIE36000000000000000000000",
+          "TIE35000000000000000000000",
+          "TIE34000000000000000000000",
+          "TIE33000000000000000000000",
+          "TIE32000000000000000000000",
+          "TIE31000000000000000000000",
+          "TIE30000000000000000000000",
+          "TIE29000000000000000000000",
+          "TIE28000000000000000000000",
+          "TIE27000000000000000000000",
+          "TIE26000000000000000000000",
+          "TIE25000000000000000000000",
+          "TIE24000000000000000000000",
+          "TIE23000000000000000000000",
+          "TIE22000000000000000000000",
+          "TIE21000000000000000000000",
+          "TIE20000000000000000000000",
+          "TIE19000000000000000000000",
+          "TIE18000000000000000000000",
+          "TIE17000000000000000000000",
+          "TIE16000000000000000000000",
+          "TIE15000000000000000000000",
+          "TIE14000000000000000000000",
+          "TIE13000000000000000000000",
+          "TIE12000000000000000000000",
+          "TIE11000000000000000000000",
+          "TIE10000000000000000000000",
+          "TIE09000000000000000000000",
+          "TIE08000000000000000000000",
+          "TIE07000000000000000000000",
+          "TIE06000000000000000000000",
+          "TIE05000000000000000000000",
+          "TIE04000000000000000000000",
+          "TIE03000000000000000000000",
+          "TIE02000000000000000000000",
+          "TIE01000000000000000000000",
+          "FREE4000000000000000000000",
+          "FREE3900000000000000000000",
+          "FREE3800000000000000000000",
+          "FREE3700000000000000000000",
+          "FREE3600000000000000000000",
+          "FREE3500000000000000000000",
+          "FREE3400000000000000000000",
+          "FREE3300000000000000000000",
+          "FREE3200000000000000000000",
+          "FREE3100000000000000000000",
+          "FREE3000000000000000000000",
+          "FREE2900000000000000000000",
+          "FREE2800000000000000000000",
+          "FREE2700000000000000000000",
+          "FREE2600000000000000000000",
+          "FREE2500000000000000000000",
+          "FREE2400000000000000000000",
+          "FREE2300000000000000000000",
+          "FREE2200000000000000000000",
+          "FREE2100000000000000000000",
+          "FREE2000000000000000000000",
+          "FREE1900000000000000000000",
+          "FREE1800000000000000000000",
+          "FREE1700000000000000000000",
+          "FREE1600000000000000000000",
+          "FREE1500000000000000000000",
+          "FREE1400000000000000000000",
+          "FREE1300000000000000000000",
+          "FREE1200000000000000000000",
+          "FREE1100000000000000000000",
+          "FREE1000000000000000000000",
+          "FREE0900000000000000000000",
+          "FREE0800000000000000000000",
+          "FREE0700000000000000000000",
+          "FREE0600000000000000000000",
+          "FREE0500000000000000000000",
+          "FREE0400000000000000000000",
+          "FREE0300000000000000000000",
+          "FREE0200000000000000000000",
+          "FREE0100000000000000000000"
+        ],
+        "days": [
+          {
+            "date": "2026-11-12",
+            "openToday": 40,
+            "next": {
+              "id": "TIE40000000000000000000000",
+              "bucket": "today",
+              "dueAt": "2026-11-12T12:00:00.000Z",
+              "timeStyle": "time"
+            },
+            "buckets": [
+              {
+                "key": "noDate",
+                "count": 40,
+                "more": 28,
+                "items": [
+                  {
+                    "id": "FREE4000000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3900000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3800000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3700000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3600000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3500000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3400000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3300000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3200000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3100000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3000000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE2900000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  }
+                ]
+              },
+              {
+                "key": "today",
+                "count": 40,
+                "more": 28,
+                "items": [
+                  {
+                    "id": "TIE40000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE39000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE38000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE37000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE36000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE35000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE34000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE33000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE32000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE31000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE30000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  },
+                  {
+                    "id": "TIE29000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "time"
+                  }
+                ]
+              }
+            ],
+            "views": {}
+          },
+          {
+            "date": "2026-11-13",
+            "openToday": 40,
+            "next": {
+              "id": "TIE40000000000000000000000",
+              "bucket": "overdue",
+              "dueAt": "2026-11-12T12:00:00.000Z",
+              "timeStyle": "day"
+            },
+            "buckets": [
+              {
+                "key": "overdue",
+                "count": 40,
+                "more": 28,
+                "items": [
+                  {
+                    "id": "TIE40000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE39000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE38000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE37000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE36000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE35000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE34000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE33000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE32000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE31000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE30000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE29000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  }
+                ]
+              },
+              {
+                "key": "noDate",
+                "count": 40,
+                "more": 28,
+                "items": [
+                  {
+                    "id": "FREE4000000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3900000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3800000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3700000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3600000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3500000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3400000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3300000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3200000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3100000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3000000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE2900000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  }
+                ]
+              }
+            ],
+            "views": {}
+          },
+          {
+            "date": "2026-11-14",
+            "openToday": 40,
+            "next": {
+              "id": "TIE40000000000000000000000",
+              "bucket": "overdue",
+              "dueAt": "2026-11-12T12:00:00.000Z",
+              "timeStyle": "day"
+            },
+            "buckets": [
+              {
+                "key": "overdue",
+                "count": 40,
+                "more": 28,
+                "items": [
+                  {
+                    "id": "TIE40000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE39000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE38000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE37000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE36000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE35000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE34000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE33000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE32000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE31000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE30000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  },
+                  {
+                    "id": "TIE29000000000000000000000",
+                    "done": false,
+                    "priority": "none",
+                    "dueAt": "2026-11-12T12:00:00.000Z",
+                    "timeStyle": "day"
+                  }
+                ]
+              },
+              {
+                "key": "noDate",
+                "count": 40,
+                "more": 28,
+                "items": [
+                  {
+                    "id": "FREE4000000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3900000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3800000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3700000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3600000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3500000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3400000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3300000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3200000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3100000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE3000000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  },
+                  {
+                    "id": "FREE2900000000000000000000",
+                    "done": false,
+                    "priority": "none"
+                  }
+                ]
+              }
+            ],
+            "views": {}
+          }
+        ]
+      }
     }
   ]
 }

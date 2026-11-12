@@ -787,26 +787,62 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertEqual(local.buckets.first?.items.map(\.done), [true, false, false])
   }
 
+  /// `apps/app/test/fixtures/widget_view_swap.json`, written by the Dart test
+  /// from the app's own builders: `local` is the phone's snapshot of 40 tasks
+  /// due at the same minute today, `server` the `GET /widget/snapshot` body for
+  /// the same rows plus one created elsewhere (the server's grouping is held to
+  /// the Dart one by the shared grouping fixture). Resolved from this source
+  /// file, so it works from Xcode and from `xcodebuild test` alike.
+  private func loadViewSwapFixture() throws -> (local: String, server: [String: Any]) {
+    let url = URL(fileURLWithPath: #filePath)
+      .deletingLastPathComponent()  // RunnerTests
+      .deletingLastPathComponent()  // ios
+      .deletingLastPathComponent()  // apps/app
+      .appendingPathComponent("test/fixtures/widget_view_swap.json")
+    let root = try XCTUnwrap(
+      try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+    let local = try XCTUnwrap(root["local"] as? [String: Any])
+    let server = try XCTUnwrap(root["server"] as? [String: Any])
+    let localData = try JSONSerialization.data(withJSONObject: local)
+    return (try XCTUnwrap(String(data: localData, encoding: .utf8)), server)
+  }
+
   /// The rows both views hold are drawn in the same order whichever view
-  /// wins, so a swap at a refresh shows or hides the rows only one view
-  /// holds and moves nothing else around.
+  /// wins, so a swap at a refresh only shows the row the phone lacks and
+  /// moves nothing else (#50, PR2-03). Ties past 32 rows: an unstable sort on
+  /// the phone drew them in another order than the server, and the swap put
+  /// another task under the finger.
   func testRowsInBothViewsKeepTheirOrder() throws {
-    storeSlotServerView()
-    let local = try JSONDecoder().decode(AWSnapshot.self, from: Data(slotLocalJSON.utf8))
+    let fixture = try loadViewSwapFixture()
+    defaults.set(fixture.local, forKey: kAWLocalSnapshotKey)
+    let envelope = AWServerEnvelope(
+      fetchedAtMs: startMs - 60_000, etag: "\"swap\"", query: fetchQuery, body: fixture.server)
+    defaults.set(envelope.json, forKey: kAWServerSnapshotKey)
+    defaults.set(startMs - 60_000, forKey: kAWFetchedAtKey)
+
+    let local = awLoadLocalSnapshot(in: defaults, today: "2025-11-12")
     let server = fetcher().snapshotToDraw(local: local, today: "2025-11-12")
-    XCTAssertEqual(todayIds(server), ["A", "B", "C"])
-    let shared = Set(todayIds(local)).intersection(todayIds(server))
+    let localIds = todayIds(local)
+    let serverIds = todayIds(server)
+    XCTAssertEqual(localIds.count, 12)
+    XCTAssertEqual(serverIds.count, 12)
+    XCTAssertEqual(serverIds.first, "T41", "the row only the server holds, newest first")
     XCTAssertEqual(
-      todayIds(server).filter(shared.contains), todayIds(local).filter(shared.contains))
-    // The same holds with a completion laid over both views.
-    tap("C")
-    let overServer = fetcher().snapshotToDraw(
-      local: awLoadLocalSnapshot(in: defaults, today: "2025-11-12"), today: "2025-11-12")
+      Array(serverIds.dropFirst()), Array(localIds.prefix(11)),
+      "every row both views hold sits in the phone's order")
+
+    // A completion laid over both views moves nothing either.
+    let tapped = localIds[3]
+    tap(tapped)
     let overLocal = awLoadLocalSnapshot(in: defaults, today: "2025-11-12")
-    XCTAssertEqual(todayIds(overServer), ["A", "B", "C"])
-    XCTAssertEqual(todayIds(overLocal), ["B", "C", "D"])
-    XCTAssertEqual(
-      todayIds(overServer).filter(shared.contains), todayIds(overLocal).filter(shared.contains))
+    let overServer = fetcher().snapshotToDraw(local: overLocal, today: "2025-11-12")
+    XCTAssertEqual(todayIds(overLocal), localIds)
+    XCTAssertEqual(todayIds(overServer), serverIds)
+    let done = { (snap: AWSnapshot) in
+      snap.buckets.first { $0.key == "today" }?.items.filter(\.done).map(\.id) ?? []
+    }
+    XCTAssertEqual(done(overLocal), [tapped])
+    XCTAssertEqual(done(overServer), [tapped])
   }
 
   /// A row only the server holds opens the app at its task (PR2-03): its

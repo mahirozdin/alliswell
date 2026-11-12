@@ -102,6 +102,30 @@ void main() {
         WidgetBucket.today,
       ]);
     });
+
+    // #50 (PR2-03): the server's sort is stable, so a tie keeps the input
+    // order (newest id first). Dart's List.sort is not stable past 32 rows:
+    // the phone drew tied rows in another order than the server's view, and
+    // a swap between the two views moved rows under the finger.
+    test('a tie keeps the input order past 32 rows, as the server does', () {
+      final tasks = [
+        for (var i = 40; i >= 1; i--)
+          _task('T${'$i'.padLeft(2, '0')}', dueAt: DateTime(2026, 7, 17, 18)),
+        for (var i = 40; i >= 1; i--) _task('S${'$i'.padLeft(2, '0')}'),
+      ];
+      final groups = groupTasksForWidget(tasks, now: now);
+      expect(groups.map((g) => g.bucket).toList(), [
+        WidgetBucket.noDate,
+        WidgetBucket.today,
+      ]);
+      expect(
+        [for (final g in groups) ...g.tasks.map((t) => t.id)],
+        [
+          ...tasks.skip(40).map((t) => t.id),
+          ...tasks.take(40).map((t) => t.id),
+        ],
+      );
+    });
   });
 
   group('buildWidgetSnapshot (OPH-130)', () {
@@ -535,6 +559,39 @@ void main() {
     );
   });
 
+  group('the view swap fixture (#50, PR2-03)', () {
+    // The phone's snapshot and the server's view of the same rows, from the
+    // app's own builders: the Swift tests (WidgetFetchPolicyTests) draw both
+    // and check that the rows both hold sit in the same order, so a swap at a
+    // refresh only shows the row the phone lacks. The server's port is held
+    // to `buildWidgetServerDays` by the shared grouping fixture.
+    test('the fixture is current, and the shared rows keep their order', () {
+      tzdata.initializeTimeZones();
+      final rendered = _renderViewSwapFixture();
+      final file = File(_viewSwapFixturePath);
+      if (Platform.environment['UPDATE_FIXTURES'] == '1') {
+        file.writeAsStringSync(rendered);
+      }
+      expect(file.existsSync(), isTrue, reason: 'run with UPDATE_FIXTURES=1');
+      expect(file.readAsStringSync(), rendered);
+
+      final fixture = jsonDecode(rendered) as Map<String, dynamic>;
+      List<String> today(Map<String, dynamic> view) => [
+        for (final b in view['buckets'] as List)
+          if ((b as Map)['key'] == 'today')
+            for (final item in b['items'] as List) item['id'] as String,
+      ];
+      final local = today(fixture['local'] as Map<String, dynamic>);
+      final server = today(
+        ((fixture['server'] as Map)['days'] as List).first
+            as Map<String, dynamic>,
+      );
+      expect(local, hasLength(kWidgetRowsPerBucket));
+      expect(server.first, _swapServerOnlyId);
+      expect(server.skip(1), local.take(kWidgetRowsPerBucket - 1));
+    });
+  });
+
   group('the shared grouping fixture (OPH-463, #50)', () {
     test('client grouping matches the shared fixture', () async {
       tzdata.initializeTimeZones();
@@ -598,6 +655,46 @@ void main() {
 // ambiguous, and the machine's zone must not skip one either (Europe/Istanbul
 // and UTC have no DST).
 // ---------------------------------------------------------------------------
+
+const _viewSwapFixturePath = 'test/fixtures/widget_view_swap.json';
+
+/// The row only the server holds: created on another device, newest id.
+const _swapServerOnlyId = 'T41';
+
+/// 40 open tasks due at the same minute today, newest id first (the replica
+/// query's order and the server's): the phone holds them, the server holds
+/// one more. Past 32 rows, so an unstable sort would show itself. "now" is
+/// the Swift tests' clock, 2025-11-12 11:00 in Europe/Istanbul.
+String _renderViewSwapFixture() {
+  final loc = tz.getLocation('Europe/Istanbul');
+  final now = DateTime(2025, 11, 12, 11);
+  Task row(int i) =>
+      _task('T${'$i'.padLeft(2, '0')}', dueAt: DateTime(2025, 11, 12, 18));
+  final phone = [for (var i = 40; i >= 1; i--) row(i)];
+  final server = [row(41), ...phone];
+  AwI18n.instance.setActiveCached(const Locale('tr'));
+  final local = _json(buildWidgetSnapshot(phone, now: now))
+    // The machine's zone would leak in through now.toUtc().
+    ..['generatedAt'] = '2025-11-12T08:00:00.000Z';
+  final days = buildWidgetServerDays(
+    server,
+    now: now,
+    instant: (t) => tz.TZDateTime(
+      loc,
+      t.year,
+      t.month,
+      t.day,
+      t.hour,
+      t.minute,
+      t.second,
+    ).toUtc().toIso8601String(),
+  );
+  return '${const JsonEncoder.withIndent('  ').convert({
+    'note': 'Written by the Dart test (UPDATE_FIXTURES=1); the Swift tests only read it. local is the phone\'s aw_widget_snapshot, server the GET /widget/snapshot body for the same rows plus one created elsewhere.',
+    'local': local,
+    'server': {'v': 1, 'generatedAt': '2025-11-12T08:00:00.000Z', 'tz': 'Europe/Istanbul', 'days': days},
+  })}\n';
+}
 
 const _groupingFixturePath = 'test/fixtures/widget_grouping_cases.json';
 
@@ -952,6 +1049,18 @@ final List<_GroupingCase> _groupingCases = [
       _ft('dateless1'),
       _ft('dateless3'),
       _ft('dateless2'),
+    ],
+  ),
+  // #50 (PR2-03): past 32 rows a tie still keeps the newest id first, on
+  // both sides — the phone's sort is not allowed to differ from the server's.
+  _GroupingCase(
+    'ties past 32 rows keep the newest id first',
+    now: '2026-11-12T10:00',
+    private: true,
+    tasks: [
+      for (var i = 1; i <= 40; i++)
+        _ft('tie${'$i'.padLeft(2, '0')}', due: '2026-11-12T15:00'),
+      for (var i = 1; i <= 40; i++) _ft('free${'$i'.padLeft(2, '0')}'),
     ],
   ),
 ];

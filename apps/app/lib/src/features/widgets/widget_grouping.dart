@@ -153,13 +153,24 @@ List<WidgetGroup> groupTasksForWidget(
     return 0;
   }
 
+  // A tie keeps the input order, as the server's stable sort does (#50,
+  // PR2-03). Dart's List.sort is not stable past 32 rows, so the input
+  // position is the last key: else the phone drew tied rows in another order
+  // than the server's view, and a swap between the two moved rows under the
+  // finger.
+  List<WidgetEntry> stable(List<WidgetEntry> entries) {
+    final indexed = [for (final (i, e) in entries.indexed) (i, e)]
+      ..sort((a, b) {
+        final byRule = chronologically(a.$2, b.$2);
+        return byRule != 0 ? byRule : a.$1.compareTo(b.$1);
+      });
+    return [for (final (_, entry) in indexed) entry];
+  }
+
   return [
     for (final bucket in WidgetBucket.values)
       if (byBucket[bucket]!.isNotEmpty)
-        WidgetGroup(
-          bucket: bucket,
-          entries: byBucket[bucket]!..sort(chronologically),
-        ),
+        WidgetGroup(bucket: bucket, entries: stable(byBucket[bucket]!)),
   ];
 }
 
