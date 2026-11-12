@@ -7,11 +7,27 @@ import 'package:flutter/foundation.dart';
 
 import '../core/api_exception.dart';
 import '../core/fold.dart';
+import '../core/kv/local_kv.dart';
 import '../core/ulid.dart';
 import 'db/database.dart';
 import 'sync_api.dart';
 import 'revocation.dart';
 import 'sync_applier.dart';
+
+/// Where an account switch leaves this install's sync client id
+/// (signin-binds-discarded-client-id, OPH-447): `LocalDataGuard.claimFor`
+/// writes it after the wipe that dropped `sync_states`, and the next engine to
+/// create a state row takes it instead of minting a new one.
+///
+/// The id names the INSTALL to the server — the device registry's row and the
+/// device a session family is bound to on sign-in — and the sign-in already
+/// sent it before the switch was known. A new id here would leave the new
+/// person's session bound to an id nothing lists, so removing the device
+/// elsewhere could never sign it out. A person's own sign-out removes it
+/// (`kUserBoundKvPrefixes`): only the switch carries it over.
+const String kInstallClientIdKey = 'alliswell_install_client_id';
+
+Future<String?> _storedInstallClientId() => localKv.get(kInstallClientIdKey);
 
 /// A push outcome the user may need to know about (OPH-056): the server
 /// refused or LWW-discarded a local write. `discardedFields` carries partial
@@ -67,7 +83,13 @@ class SyncEngine {
     this.debounce = const Duration(milliseconds: 250),
     this.pullInterval,
     this.maxBackoff = const Duration(seconds: 60),
-  }) : _zone = Zone.current;
+    Future<String?> Function()? installClientId,
+  }) : _installClientId = installClientId ?? _storedInstallClientId,
+       _zone = Zone.current;
+
+  /// The id an account switch carried over ([kInstallClientIdKey]), read only
+  /// when the replica holds no state row to take it from.
+  final Future<String?> Function() _installClientId;
 
   /// The zone the engine was made in. Its rounds and timers run here, never
   /// in a caller's: a store pokes [notifyLocalWrite] from inside drift's
@@ -248,12 +270,21 @@ class SyncEngine {
     final any = await (db.select(db.syncStates)..limit(1)).getSingleOrNull();
     final state = SyncStatesCompanion.insert(
       workspaceId: workspaceId,
-      clientId: any?.clientId ?? newUlid(),
+      clientId: any?.clientId ?? await _carriedOverClientId() ?? newUlid(),
     );
     await db.into(db.syncStates).insertOnConflictUpdate(state);
     return (db.select(
       db.syncStates,
     )..where((s) => s.workspaceId.equals(workspaceId))).getSingle();
+  }
+
+  Future<String?> _carriedOverClientId() async {
+    try {
+      final id = await _installClientId();
+      return id == null || id.isEmpty ? null : id;
+    } on Object {
+      return null;
+    }
   }
 
   Future<void> _pushPending() async {

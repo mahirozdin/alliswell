@@ -9,6 +9,7 @@ import '../search/search_recents.dart' show kSearchRecentsKey;
 import 'db/database.dart';
 import 'providers.dart' show kCreatedByRepullPrefix;
 import 'revocation.dart';
+import 'sync_engine.dart' show kInstallClientIdKey;
 
 /// Whose replica this device holds (OPH-355, UI-AUDIT #3).
 ///
@@ -43,6 +44,7 @@ const List<String> kUserBoundKvPrefixes = [
   kCreatedByRepullPrefix,
   kReplicaOwnerKey,
   kSearchRecentsKey,
+  kInstallClientIdKey,
 ];
 
 /// Writes that exist on this device and nowhere else: the outbox, plus what
@@ -120,9 +122,24 @@ class LocalDataGuard {
       await _kv.set(kReplicaOwnerKey, userId);
       return;
     }
+    // This install's client id outlives the switch ([kInstallClientIdKey]):
+    // the sign-in that got here already named the install by it.
+    final installId = await _quietClientId();
     // Owner recorded only once the rows are really gone: a failed wipe is
     // retried by the next sign-in rather than blessed by this one.
-    if (await wipe()) await _kv.set(kReplicaOwnerKey, userId);
+    if (!await wipe()) return;
+    if (installId != null) await _kv.set(kInstallClientIdKey, installId);
+    await _kv.set(kReplicaOwnerKey, userId);
+  }
+
+  Future<String?> _quietClientId() async {
+    try {
+      final db = _database();
+      final row = await (db.select(db.syncStates)..limit(1)).getSingleOrNull();
+      return row?.clientId ?? await _kv.get(kInstallClientIdKey);
+    } on Object {
+      return null;
+    }
   }
 }
 
