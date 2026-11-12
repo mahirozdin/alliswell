@@ -937,7 +937,8 @@
     "groupTitle": "{count} urgent alarms",
     "ringing": {
       "label": "Urgent reminder",
-      "snooze": "Snooze"
+      "snooze": "Snooze",
+      "announce": "{label}: {title}, {time}"
     },
     "banner": {
       "turnOn": "Turn on",
@@ -951,6 +952,7 @@
     "snoozeConfirmed": "Rings again at {time}",
     "snoozeCustom": "Pick a time…",
     "silence": "Silence indefinitely",
+    "silenceHint": "The task stays open, the alarm stays quiet",
     "startSound": "Start the sound",
     "snoozePast": "That time has already passed. Pick a later one.",
     "actionFailed": "Couldn't save. The sound stopped, try again.",

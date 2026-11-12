@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter/foundation.dart' show ValueListenable;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
@@ -12,6 +15,7 @@ import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/notifications/alarm_action_tile.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
@@ -24,6 +28,7 @@ import 'package:alliswell/src/notifications/web_alert_mode.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
+import 'package:alliswell/src/widgets/status_views.dart';
 
 import '../support/fake_notifications.dart';
 import '../support/sync_overrides.dart';
@@ -802,6 +807,346 @@ void main() {
     },
   );
 
+  // ── OPH-466: direction A — one grid, pinned actions, short screens ────────
+
+  const snoozeKeys = [
+    'alarm-snooze-5_min',
+    'alarm-snooze-30_min',
+    'alarm-snooze-1_hour',
+    'alarm-snooze-tomorrow_morning',
+    'alarm-snooze-custom',
+    'alarm-silence',
+  ];
+
+  /// The ring screen alone at [size] logical px, as a phone shows it.
+  Future<void> pumpSized(
+    WidgetTester tester,
+    Size size, {
+    double textScale = 1,
+    List<AlarmInput> alarms = const [],
+  }) async {
+    tester.view.physicalSize = size;
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: MaterialApp(
+          theme: _theme,
+          builder: (context, child) => MediaQuery(
+            data: MediaQuery.of(
+              context,
+            ).copyWith(textScaler: TextScaler.linear(textScale)),
+            child: child!,
+          ),
+          home: Scaffold(
+            body: AlarmRingScreen(
+              alarm: theAlarm(),
+              onHandled: handled.add,
+              alarms: alarms,
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+  }
+
+  Rect rectOf(WidgetTester tester, String key) =>
+      tester.getRect(find.byKey(Key(key)));
+
+  testWidgets('snooze grid cells share one width at 320 and 430 logical px', (
+    tester,
+  ) async {
+    await seed();
+    for (final width in [320.0, 430.0]) {
+      await pumpSized(tester, Size(width, 932));
+
+      final rects = [for (final k in snoozeKeys) rectOf(tester, k)];
+      for (final r in rects) {
+        expect(r.width, moreOrLessEquals(rects.first.width), reason: '$r');
+        expect(r.height, moreOrLessEquals(56), reason: '$r');
+      }
+      // Two columns, three rows, one gap of AwSpace.x2 between columns.
+      final lefts = {for (final r in rects) r.left.roundToDouble()};
+      expect(lefts, hasLength(2), reason: '$width');
+      expect(rects[1].left - rects[0].right, moreOrLessEquals(AwSpace.x2));
+      // The content column: the screen minus 2 × 24.
+      expect(
+        rects[1].right - rects[0].left,
+        moreOrLessEquals(width - 2 * AwSpace.x6),
+      );
+    }
+  });
+
+  testWidgets('acknowledge spans the grid width and sits below it', (
+    tester,
+  ) async {
+    await seed();
+    await pumpSized(tester, const Size(393, 852));
+
+    final grid = [for (final k in snoozeKeys) rectOf(tester, k)];
+    final left = grid.map((r) => r.left).reduce((a, b) => a < b ? a : b);
+    final right = grid.map((r) => r.right).reduce((a, b) => a > b ? a : b);
+    final bottom = grid.map((r) => r.bottom).reduce((a, b) => a > b ? a : b);
+    final ack = rectOf(tester, 'alarm-acknowledge');
+    expect(ack.left, moreOrLessEquals(left));
+    expect(ack.right, moreOrLessEquals(right));
+    expect(ack.top, greaterThan(bottom));
+    expect(ack.height, moreOrLessEquals(56));
+    // Tamamla | Aç: two equal 48 pt halves of the same width, below Onayla.
+    final complete = rectOf(tester, 'alarm-complete');
+    final open = rectOf(tester, 'alarm-open');
+    expect(complete.height, moreOrLessEquals(48));
+    expect(open.height, moreOrLessEquals(48));
+    expect(complete.width, moreOrLessEquals(open.width));
+    expect(complete.top, greaterThan(ack.bottom));
+    expect(complete.left, moreOrLessEquals(left));
+    expect(open.right, moreOrLessEquals(right));
+    // The actions sit at the bottom of the phone, under the content.
+    expect(complete.bottom, greaterThan(852 - 80));
+  });
+
+  testWidgets('no button ever renders disabled while an action runs', (
+    tester,
+  ) async {
+    final write = Completer<void>();
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(),
+        taskStoreProvider.overrideWith(
+          (ref) => _SlowTaskStore(ref.watch(databaseProvider), write.future),
+        ),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    await seed();
+    await pumpSized(tester, const Size(393, 852));
+
+    await tester.tap(find.byKey(const Key('alarm-snooze-30_min')));
+    await tester.pump();
+    // Under 300 ms the tile shows nothing new.
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    await tester.pump(const Duration(milliseconds: 350));
+
+    // Past 300 ms: a spinner in the pressed tile, and only there.
+    expect(find.byType(CircularProgressIndicator), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('alarm-snooze-30_min')),
+        matching: find.byType(CircularProgressIndicator),
+      ),
+      findsOneWidget,
+    );
+    for (final b in ringButtons(tester)) {
+      expect(b.onPressed, isNotNull, reason: '${b.key}');
+    }
+    final tiles = tester.widgetList<AwAlarmActionTile>(
+      find.byType(AwAlarmActionTile),
+    );
+    expect(tiles, isNotEmpty);
+    for (final t in tiles) {
+      expect(t.onPressed, isNotNull, reason: '${t.key}');
+    }
+
+    write.complete();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.byType(CircularProgressIndicator), findsNothing);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('a short screen under 700 pt keeps every action visible', (
+    tester,
+  ) async {
+    await seed();
+    for (final size in [const Size(360, 640), const Size(375, 667)]) {
+      await pumpSized(tester, size);
+
+      for (final k in [
+        ...snoozeKeys,
+        'alarm-acknowledge',
+        'alarm-complete',
+        'alarm-open',
+      ]) {
+        final r = rectOf(tester, k);
+        expect(r.top, greaterThanOrEqualTo(0), reason: '$size $k');
+        expect(r.bottom, lessThanOrEqualTo(size.height), reason: '$size $k');
+      }
+      // A6/A7: badge 64, no "Snooze" section label.
+      expect(tester.getSize(find.byKey(const Key('alarm-badge'))).width, 64);
+      expect(find.byKey(const Key('alarm-snooze-label')), findsNothing);
+    }
+  });
+
+  testWidgets('a tall screen keeps the 96 badge and the section label', (
+    tester,
+  ) async {
+    await seed();
+    await pumpSized(tester, const Size(393, 852));
+    expect(tester.getSize(find.byKey(const Key('alarm-badge'))).width, 96);
+    expect(find.byKey(const Key('alarm-snooze-label')), findsOneWidget);
+  });
+
+  testWidgets('text scale above 1.3 switches the grid to one column', (
+    tester,
+  ) async {
+    await seed();
+    await pumpSized(tester, const Size(393, 852), textScale: 1.3);
+    expect(
+      rectOf(tester, 'alarm-snooze-30_min').left,
+      greaterThan(rectOf(tester, 'alarm-snooze-5_min').right),
+      reason: 'at 1.3 the grid keeps two columns',
+    );
+
+    await pumpSized(tester, const Size(393, 852), textScale: 1.5);
+    final first = rectOf(tester, 'alarm-snooze-5_min');
+    final second = rectOf(tester, 'alarm-snooze-30_min');
+    expect(second.left, moreOrLessEquals(first.left));
+    expect(second.top, greaterThan(first.bottom));
+    expect(first.width, moreOrLessEquals(393 - 2 * AwSpace.x6));
+    // The whole screen scrolls, and Onayla is still reachable at its end.
+    await tester.scrollUntilVisible(
+      find.byKey(const Key('alarm-open')),
+      200,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('alarm-ring')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.byKey(const Key('alarm-acknowledge')), findsOneWidget);
+  });
+
+  testWidgets('a failed write shows the inline error with the sound kept off', (
+    tester,
+  ) async {
+    final log = <String>[];
+    await pumpLayer(
+      tester,
+      feed: [theAlarm()],
+      feedback: _LogFeedback(log),
+      extra: [
+        reminderStoreProvider.overrideWith(
+          (ref) => _RecordingReminderStore(ref.watch(databaseProvider), (w) {
+            log.add('write $w');
+            throw StateError('database is locked');
+          }),
+        ),
+      ],
+    );
+    await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+    await tester.pump();
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+
+    final error = find.byType(AwInlineError);
+    expect(error, findsOneWidget);
+    expect(
+      find.text("Couldn't save. The sound stopped, try again."),
+      findsOneWidget,
+    );
+    // Above the actions: the error, then its retry, then the grid.
+    final errorRect = tester.getRect(error);
+    final retry = rectOf(tester, 'alarm-retry');
+    expect(retry.top, greaterThanOrEqualTo(errorRect.bottom));
+    expect(rectOf(tester, 'alarm-snooze-5_min').top, greaterThan(retry.bottom));
+    expect(rectOf(tester, 'alarm-acknowledge').top, greaterThan(retry.bottom));
+    // The sound stays off: no start after the stop.
+    expect(_squash(log), ['start', 'stop', 'write acknowledge']);
+    // The controller's no-interaction minute (OPH-441) is not this test's.
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+  });
+
+  testWidgets('a snooze into an occupied minute says it rings with another '
+      'alarm', (tester) async {
+    final now = DateTime(2030, 6, 1, 9);
+    final other = AlarmInput(
+      reminderId: id('R9'),
+      taskId: id('T9'),
+      taskTitle: 'Other',
+      remindAt: now.add(const Duration(minutes: 5)).toUtc(),
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+    );
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(),
+        nowProvider.overrideWithValue(() => now),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    await seed();
+    await pumpSized(tester, const Size(430, 932), alarms: [theAlarm(), other]);
+
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('alarm-snooze-5_min')),
+        matching: find.textContaining('with another alarm'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('alarm-snooze-30_min')),
+        matching: find.textContaining('with another alarm'),
+      ),
+      findsNothing,
+    );
+    expect(find.textContaining('with another alarm'), findsOneWidget);
+  });
+
+  testWidgets('Enter acknowledges, 1 snoozes with the first preset, Esc '
+      'does nothing', (tester) async {
+    await seed();
+    await pumpSized(tester, const Size(1280, 800));
+    // First focus is Onayla.
+    final ack = find.byKey(const Key('alarm-acknowledge'));
+    final focused = FocusManager.instance.primaryFocus?.context;
+    expect(focused, isNotNull);
+    expect(
+      find.descendant(
+        of: ack,
+        matching: find.byElementPredicate((e) => e == focused),
+      ),
+      findsOneWidget,
+    );
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(handled, isEmpty);
+
+    await tester.runAsync(() async {
+      await tester.sendKeyEvent(LogicalKeyboardKey.digit1);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    expect(handled, [id('R1')]);
+    final task = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals(id('T1')))).getSingle();
+    expect(task.snoozedUntil, isNotNull);
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  testWidgets('Enter acknowledges', (tester) async {
+    await seed();
+    await pumpSized(tester, const Size(1280, 800));
+    await tester.runAsync(() async {
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pump();
+    expect(handled, [id('R1')]);
+    final row = await (db.select(
+      db.reminders,
+    )..where((r) => r.id.equals(id('R1')))).getSingle();
+    expect(row.status, 'acknowledged');
+  });
+
   testWidgets('E-20: the screen underneath leaves the semantics tree', (
     tester,
   ) async {
@@ -924,6 +1269,21 @@ class _RecordingTaskStore extends TaskStore {
   @override
   Future<void> muteAlarms(String taskId, {String? receiptId}) async =>
       onWrite('mute');
+}
+
+/// A task store whose snooze lands only when the test says so (OPH-466).
+class _SlowTaskStore extends TaskStore {
+  _SlowTaskStore(AwDatabase db, this.landed) : super(db, () {});
+
+  final Future<void> landed;
+
+  @override
+  Future<void> snooze(
+    String taskId, {
+    String? preset,
+    DateTime? until,
+    String? receiptId,
+  }) => landed;
 }
 
 /// A reminder store whose acknowledge is the test's to decide.

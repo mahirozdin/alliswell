@@ -936,7 +936,8 @@
     "groupTitle": "{count} acil alarm",
     "ringing": {
       "label": "Acil hatırlatma",
-      "snooze": "Ertele"
+      "snooze": "Ertele",
+      "announce": "{label}: {title}, {time}"
     },
     "banner": {
       "turnOn": "Aç",
@@ -950,6 +951,7 @@
     "snoozeConfirmed": "{time} tekrar çalacak",
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
+    "silenceHint": "Görev açık kalır, alarm çalmaz",
     "startSound": "Sesi başlat",
     "snoozePast": "O saat geçti. Daha ileri bir saat seç.",
     "actionFailed": "Kaydedilemedi. Ses durdu, tekrar dene.",

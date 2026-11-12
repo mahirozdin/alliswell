@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/semantics.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -12,13 +14,26 @@ import '../features/tasks/data/task_store.dart';
 import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
+import 'alarm_action_tile.dart';
 import 'alarm_log.dart';
 import 'reminder_profile.dart';
 import 'alarm_overlay.dart';
 import 'planner.dart';
 import 'providers.dart';
+import 'urgent_minute.dart';
 import '../theme/typography.dart';
 import '../widgets/status_views.dart';
+import '../widgets/word_safe_text.dart';
+
+/// Under this screen height the ring screen takes its short form (A6/A7):
+/// badge 64, title at most 2 lines, no "Snooze" section label.
+const double kAlarmShortScreenHeight = 700;
+
+/// Past this text scale the snooze grid is one column and the screen scrolls.
+const double kAlarmOneColumnTextScale = 1.3;
+
+/// The ring screen's column: screen − 2 × 24, at most 440 (2 × 216 + 8).
+const double kAlarmRingMaxWidth = 440;
 
 /// The shell's alarm layer: the first ringing occurrence, keyed by
 /// [alarmOccurrenceKey] (#46). Unkeyed, the next alarm inherited the previous
@@ -36,6 +51,8 @@ class AlarmOverlayLayer extends ConsumerWidget {
       key: ValueKey<String>(alarmOccurrenceKey(alarm)),
       alarm: alarm,
       failed: overlay.isFailed(alarm),
+      // The snooze tiles say when a target minute already rings (#47).
+      alarms: ref.watch(alarmFeedProvider).value ?? const [],
       onHandled: (_) =>
           ref.read(alarmOverlayControllerProvider.notifier).handled(alarm),
     );
@@ -55,6 +72,7 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
     required this.onHandled,
     this.missed = false,
     this.failed = false,
+    this.alarms = const [],
   });
 
   final AlarmInput alarm;
@@ -76,6 +94,12 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
   /// sound stays off, the screen says so and offers the same action again.
   final bool failed;
 
+  /// The active alarms the planner sees (the shell's [alarmFeedProvider]):
+  /// a snooze tile whose target minute already holds another task's urgent
+  /// alarm says it rings together with it (#47, owner answer 3). Empty: no
+  /// tile claims company.
+  final List<AlarmInput> alarms;
+
   @override
   ConsumerState<AlarmRingScreen> createState() => _AlarmRingScreenState();
 }
@@ -84,12 +108,18 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 900),
+    duration: const Duration(milliseconds: 1200),
   );
 
   /// A second tap while the first action is on its way is ignored. Never
   /// painted: a disabled button on an alarm reads as "this alarm is stuck".
   bool _busy = false;
+
+  /// The tile the running action came from, and the one showing a spinner
+  /// because that action has run for more than 300 ms (#46: only there).
+  String? _pressedTile;
+  String? _spinning;
+  Timer? _spinTimer;
 
   AlarmOverlayController get _controller =>
       ref.read(alarmOverlayControllerProvider.notifier);
@@ -97,7 +127,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   @override
   void initState() {
     super.initState();
-    if (!widget.missed) _pulse.repeat(reverse: true);
+    if (!widget.missed) _pulse.repeat();
     // The sound is not this screen's: AlarmOverlayController starts and stops
     // it (#46). A missed alarm is reviewed, not answered under pressure, and
     // never makes a sound.
@@ -113,6 +143,31 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
           taskId: widget.alarm.taskId,
           reminderId: widget.alarm.reminderId,
         );
+    // A screen reader hears what rings the moment it opens (DESIGN §11 A2).
+    WidgetsBinding.instance.addPostFrameCallback((_) => _announce());
+  }
+
+  void _announce() {
+    if (!mounted) return;
+    final fireAt = alarmFireAt(widget.alarm).toLocal();
+    final message = 'alarm.ringing.announce'.tr(
+      args: {
+        'label': widget.missed
+            ? 'alarm.missed.label'.tr()
+            : 'alarm.ringing.label'.tr(),
+        'title': widget.alarm.taskTitle,
+        'time': MaterialLocalizations.of(
+          context,
+        ).formatTimeOfDay(TimeOfDay.fromDateTime(fireAt)),
+      },
+    );
+    unawaited(
+      SemanticsService.sendAnnouncement(
+        View.of(context),
+        message,
+        Directionality.of(context),
+      ).catchError((Object _) {}),
+    );
   }
 
   @override
@@ -121,11 +176,13 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     if (alarmOccurrenceKey(oldWidget.alarm) !=
         alarmOccurrenceKey(widget.alarm)) {
       _busy = false;
+      _stopSpinner();
     }
   }
 
   @override
   void dispose() {
+    _spinTimer?.cancel();
     _pulse.dispose();
     super.dispose();
   }
@@ -137,10 +194,18 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       _runAction(AlarmPendingAction(write, onSaved: onSaved));
 
   void _runAction(AlarmPendingAction action) {
+    final tile = _pressedTile;
+    _pressedTile = null;
     if (_busy) return;
     _busy = true;
     final controller = _controller;
     final alarm = widget.alarm;
+    if (tile != null) {
+      _spinTimer?.cancel();
+      _spinTimer = Timer(const Duration(milliseconds: 300), () {
+        if (mounted && _busy) setState(() => _spinning = tile);
+      });
+    }
     controller.silence();
     // iOS 26+: the AlarmKit alert of this occurrence goes quiet too (#46).
     controller.stopAlarmKit(alarm);
@@ -150,8 +215,15 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         // The failed occurrence can come back before a frame ever removed
         // this screen (same key, same State): it is no longer busy then.
         if (!saved && mounted) _busy = false;
+        _stopSpinner();
       }),
     );
+  }
+
+  void _stopSpinner() {
+    _spinTimer?.cancel();
+    _spinTimer = null;
+    if (_spinning != null && mounted) setState(() => _spinning = null);
   }
 
   void _retry() {
@@ -198,6 +270,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     controller.silence();
     controller.stopAlarmKit(widget.alarm);
     void backOut() {
+      // No snooze ran: a later key press must not spin this tile.
+      _pressedTile = null;
       if (wasSounding) controller.startSound();
     }
 
@@ -317,11 +391,254 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       context,
     ).formatTimeOfDay(TimeOfDay.fromDateTime(fireAt));
 
+    // Direction A (#46, DESIGN §11): the screen's three layout switches.
+    final screen = MediaQuery.sizeOf(context);
+    // A6/A7: under 700 pt the 96 badge and the section label do not fit.
+    final short = screen.height < kAlarmShortScreenHeight;
+    // Past 1.3 two tiles no longer fit a row: one column, the screen scrolls.
+    final oneColumn =
+        MediaQuery.textScalerOf(context).scale(14) / 14 >
+        kAlarmOneColumnTextScale;
+    // Desktop and web have no thumb zone: content and actions centre together.
+    final wide = screen.width >= kAwWideBreakpoint;
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+
     // Solid, opaque takeover with a faint urgency wash (DESIGN G1: no glass
     // under text). High-contrast ink stays on the near-surface background.
     final background = Color.alphaBlend(
       tokens.prioUrgent.withValues(alpha: 0.10),
       scheme.surface,
+    );
+
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _badge(
+          size: short ? 64 : 96,
+          color: tokens.prioUrgent,
+          pulse: !widget.missed && !reduceMotion,
+        ),
+        SizedBox(height: short ? AwSpace.x3 : AwSpace.x5),
+        Text(
+          (widget.missed
+                  ? 'alarm.missed.label'.tr()
+                  : 'alarm.ringing.label'.tr())
+              .toUpperCase(),
+          textAlign: TextAlign.center,
+          style: text.labelLarge?.copyWith(
+            color: tokens.prioUrgent,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 1.2,
+          ),
+        ),
+        const SizedBox(height: AwSpace.x1),
+        // A missed alarm says how long ago, in the same line as its time.
+        Text(
+          widget.missed
+              ? 'alarm.missed.ago'.tr(
+                  args: {
+                    'time': time,
+                    'ago': awRelativePast(
+                      alarmFireAt(widget.alarm),
+                      ref.read(alarmClockProvider)(),
+                    ),
+                  },
+                )
+              : time,
+          key: const Key('alarm-time'),
+          textAlign: TextAlign.center,
+          style: awTabular(
+            (widget.missed ? text.titleLarge! : text.displaySmall!).copyWith(
+              color: scheme.onSurface,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        const SizedBox(height: AwSpace.x2),
+        Tooltip(
+          message: widget.alarm.taskTitle,
+          excludeFromSemantics: true,
+          child: AwWordSafeText(
+            widget.alarm.taskTitle,
+            textAlign: TextAlign.center,
+            maxLines: short ? 2 : 3,
+            overflow: TextOverflow.ellipsis,
+            style: text.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+              color: scheme.onSurface,
+            ),
+          ),
+        ),
+        // OPH-316: a silence the settings asked for, declared. Without this
+        // line the screen is indistinguishable from an alarm that failed to
+        // ring — which is the one outcome NOTIFICATIONS §3 forbids. OPH-393:
+        // "you set this" only when the person did; a fresh browser is silent
+        // by default and says that instead (E-20).
+        if (onLockScreen)
+          Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x4),
+            child: Text(
+              'alarm.ringingOnLockScreen'.tr(),
+              key: const Key('alarm-rings-on-lock-screen'),
+              textAlign: TextAlign.center,
+              style: text.bodyMedium?.copyWith(color: scheme.onSurfaceVariant),
+            ),
+          )
+        else if (silent)
+          Padding(
+            padding: const EdgeInsets.only(top: AwSpace.x4),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  silenceChosen
+                      ? 'alarm.silentByChoice'.tr()
+                      : 'alarm.silentByDefault'.tr(),
+                  key: silenceChosen
+                      ? const Key('alarm-silent-declared')
+                      : const Key('alarm-silent-default'),
+                  textAlign: TextAlign.center,
+                  style: text.bodyMedium?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AwSpace.x2),
+                _startSoundTile(oneColumn),
+              ],
+            ),
+          )
+        else if (!widget.missed)
+          // OPH-180: when the platform refused to make noise (a browser's
+          // autoplay policy, no audio device), say so and offer to start it —
+          // never pretend the room is loud.
+          ValueListenableBuilder<bool>(
+            valueListenable: _controller.soundBlocked,
+            builder: (context, blocked, _) => blocked
+                ? Padding(
+                    padding: const EdgeInsets.only(top: AwSpace.x4),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: _startSoundTile(oneColumn),
+                    ),
+                  )
+                : const SizedBox.shrink(),
+          ),
+      ],
+    );
+
+    final now = ref.watch(nowProvider)();
+    // Who else rings in a snooze's target minute (#47): the tile says the
+    // snooze joins that alarm instead of pretending it rings alone.
+    final feed = widget.alarms;
+    final presets = ref.watch(snoozePresetOrderProvider);
+    final tiles = <Widget>[
+      // The user's own order (OPH-179 N4); keys 1–4 follow it.
+      for (final preset in presets)
+        _tile(
+          'alarm-snooze-$preset',
+          label: kSnoozePresetLabels[preset]!.tr(),
+          // The offset AND the instant it lands on: "5 dk" alone made the
+          // user ask what happens next (OPH-177).
+          subline: _subline(
+            TaskStore.snoozeUntilFor(preset, now: now),
+            feed,
+            dateFormat,
+          ),
+          wrap: oneColumn,
+          onPressed: () => _snooze(preset),
+        ),
+      _tile(
+        'alarm-snooze-custom',
+        label: 'alarm.snoozeCustom'.tr(),
+        icon: Icons.schedule,
+        wrap: oneColumn,
+        onPressed: _snoozeCustom,
+      ),
+      // OPH-178: the way out that does NOT require lying about the task
+      // being done.
+      _tile(
+        'alarm-silence',
+        label: 'alarm.silence'.tr(),
+        subline: 'alarm.silenceHint'.tr(),
+        icon: Icons.notifications_off,
+        wrap: oneColumn,
+        onPressed: _silence,
+      ),
+    ];
+
+    final actions = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // #46: the write behind the last action failed. The sound stays off;
+        // the screen says so above the actions and offers the same action
+        // again — no snackbar behind the overlay.
+        if (widget.failed) ...[
+          AwInlineError(
+            message: 'alarm.actionFailed'.tr(),
+            textKey: const Key('alarm-action-failed'),
+          ),
+          const SizedBox(height: AwSpace.x2),
+          AwAlarmActionTile(
+            key: const Key('alarm-retry'),
+            label: 'alarm.retry'.tr(),
+            icon: Icons.refresh,
+            wrap: oneColumn,
+            minHeight: 48,
+            onPressed: _retry,
+          ),
+          const SizedBox(height: AwSpace.x4),
+        ],
+        if (!short) ...[
+          Text(
+            'alarm.ringing.snooze'.tr(),
+            key: const Key('alarm-snooze-label'),
+            style: text.labelMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: AwSpace.x2),
+        ],
+        _grid(tiles, oneColumn: oneColumn),
+        const SizedBox(height: AwSpace.x4),
+        FilledButton.icon(
+          key: const Key('alarm-acknowledge'),
+          // Keyboard: the first focus is the primary answer (Enter, too).
+          autofocus: true,
+          onPressed: _acknowledge,
+          style: FilledButton.styleFrom(
+            backgroundColor: scheme.error,
+            foregroundColor: scheme.onError,
+            minimumSize: const Size.fromHeight(kAwAlarmTileHeight),
+            textStyle: text.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+          ),
+          icon: const Icon(Icons.check),
+          label: Text('notif.action.acknowledge'.tr()),
+        ),
+        const SizedBox(height: AwSpace.x2),
+        Row(
+          children: [
+            Expanded(
+              child: _textAction(
+                'alarm-complete',
+                icon: Icons.check_circle_outline,
+                label: 'notif.action.complete'.tr(),
+                onPressed: _complete,
+              ),
+            ),
+            const SizedBox(width: AwSpace.x2),
+            Expanded(
+              child: _textAction(
+                'alarm-open',
+                icon: Icons.open_in_new,
+                label: 'notif.action.open'.tr(),
+                onPressed: _open,
+              ),
+            ),
+          ],
+        ),
+      ],
     );
 
     return PopScope(
@@ -337,293 +654,219 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         child: Material(
           key: const Key('alarm-ring'),
           color: background,
-          child: SafeArea(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(AwSpace.x6),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 460),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ScaleTransition(
-                        scale: Tween<double>(begin: 0.92, end: 1.08).animate(
-                          CurvedAnimation(
-                            parent: _pulse,
-                            curve: Curves.easeInOut,
-                          ),
+          child: CallbackShortcuts(
+            bindings: _shortcuts(presets),
+            child: SafeArea(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  const padding = EdgeInsets.fromLTRB(
+                    AwSpace.x6,
+                    AwSpace.x6,
+                    AwSpace.x6,
+                    AwSpace.x4,
+                  );
+                  // The column fills the screen so the actions pin to its
+                  // bottom; content taller than that scrolls as one page.
+                  final minHeight = constraints.maxHeight.isFinite
+                      ? (constraints.maxHeight - padding.vertical)
+                            .clamp(0, double.infinity)
+                            .toDouble()
+                      : 0.0;
+                  return SingleChildScrollView(
+                    padding: padding,
+                    child: Center(
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: kAlarmRingMaxWidth,
+                          minHeight: minHeight,
                         ),
-                        child: Container(
-                          width: 108,
-                          height: 108,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: tokens.prioUrgent.withValues(alpha: 0.14),
-                            border: Border.all(
-                              color: tokens.prioUrgent,
-                              width: 2,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.alarm,
-                            size: 52,
-                            color: tokens.prioUrgent,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: AwSpace.x5),
-                      Text(
-                        (widget.missed
-                                ? 'alarm.missed.label'.tr()
-                                : 'alarm.ringing.label'.tr())
-                            .toUpperCase(),
-                        style: text.labelLarge?.copyWith(
-                          color: tokens.prioUrgent,
-                          fontWeight: FontWeight.w800,
-                          letterSpacing: 1.2,
+                        child: Column(
+                          mainAxisAlignment: wide
+                              ? MainAxisAlignment.center
+                              : MainAxisAlignment.spaceBetween,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            content,
+                            SizedBox(height: wide ? AwSpace.x8 : AwSpace.x6),
+                            actions,
+                          ],
                         ),
                       ),
-                      const SizedBox(height: AwSpace.x2),
-                      Text(
-                        widget.alarm.taskTitle,
-                        textAlign: TextAlign.center,
-                        style: text.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: scheme.onSurface,
-                        ),
-                      ),
-                      const SizedBox(height: AwSpace.x2),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.schedule,
-                            size: 18,
-                            color: scheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(width: AwSpace.x1),
-                          Text(
-                            widget.missed
-                                ? 'alarm.missed.ago'.tr(
-                                    args: {
-                                      'time': time,
-                                      'ago': awRelativePast(
-                                        alarmFireAt(widget.alarm),
-                                        ref.read(alarmClockProvider)(),
-                                      ),
-                                    },
-                                  )
-                                : time,
-                            style: awTabular(
-                              text.titleMedium!.copyWith(
-                                color: scheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      // OPH-316: a silence the settings asked for, declared.
-                      // Without this line the screen is indistinguishable from
-                      // an alarm that failed to ring — which is the one outcome
-                      // NOTIFICATIONS §3 forbids. OPH-393: "you set this" only
-                      // when the person did; a fresh browser is silent by
-                      // default and says that instead (E-20).
-                      if (onLockScreen)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AwSpace.x4),
-                          child: Text(
-                            'alarm.ringingOnLockScreen'.tr(),
-                            key: const Key('alarm-rings-on-lock-screen'),
-                            textAlign: TextAlign.center,
-                            style: text.bodyMedium?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
-                          ),
-                        )
-                      else if (silent)
-                        Padding(
-                          padding: const EdgeInsets.only(top: AwSpace.x4),
-                          child: Column(
-                            children: [
-                              Text(
-                                silenceChosen
-                                    ? 'alarm.silentByChoice'.tr()
-                                    : 'alarm.silentByDefault'.tr(),
-                                key: silenceChosen
-                                    ? const Key('alarm-silent-declared')
-                                    : const Key('alarm-silent-default'),
-                                textAlign: TextAlign.center,
-                                style: text.bodyMedium?.copyWith(
-                                  color: scheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: AwSpace.x2),
-                              OutlinedButton.icon(
-                                key: const Key('alarm-start-sound'),
-                                onPressed: () => _controller.startSound(),
-                                icon: const Icon(Icons.volume_up, size: 18),
-                                label: Text('alarm.startSound'.tr()),
-                              ),
-                            ],
-                          ),
-                        )
-                      else if (!widget.missed)
-                        // OPH-180: when the platform refused to make noise (a
-                        // browser's autoplay policy, no audio device), say so and
-                        // offer to start it — never pretend the room is loud.
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _controller.soundBlocked,
-                          builder: (context, blocked, _) => blocked
-                              ? Padding(
-                                  padding: const EdgeInsets.only(
-                                    top: AwSpace.x4,
-                                  ),
-                                  child: OutlinedButton.icon(
-                                    key: const Key('alarm-start-sound'),
-                                    onPressed: () => _controller.startSound(),
-                                    icon: const Icon(Icons.volume_up, size: 18),
-                                    label: Text('alarm.startSound'.tr()),
-                                  ),
-                                )
-                              : const SizedBox.shrink(),
-                        ),
-                      // #46: the write behind the last action failed. The
-                      // sound stays off; the screen says so and offers the
-                      // same action again — no snackbar behind the overlay.
-                      if (widget.failed) ...[
-                        const SizedBox(height: AwSpace.x5),
-                        AwInlineError(
-                          message: 'alarm.actionFailed'.tr(),
-                          textKey: const Key('alarm-action-failed'),
-                        ),
-                        const SizedBox(height: AwSpace.x2),
-                        SizedBox(
-                          width: double.infinity,
-                          child: OutlinedButton.icon(
-                            key: const Key('alarm-retry'),
-                            onPressed: _retry,
-                            style: OutlinedButton.styleFrom(
-                              minimumSize: const Size.fromHeight(48),
-                            ),
-                            icon: const Icon(Icons.refresh, size: 18),
-                            label: Text('alarm.retry'.tr()),
-                          ),
-                        ),
-                      ],
-                      const SizedBox(height: AwSpace.x6),
-                      SizedBox(
-                        width: double.infinity,
-                        child: FilledButton.icon(
-                          key: const Key('alarm-acknowledge'),
-                          onPressed: _acknowledge,
-                          style: FilledButton.styleFrom(
-                            backgroundColor: scheme.error,
-                            foregroundColor: scheme.onError,
-                            padding: const EdgeInsets.symmetric(
-                              vertical: AwSpace.x4,
-                            ),
-                            textStyle: text.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                          icon: const Icon(Icons.notifications_active),
-                          label: Text('notif.action.acknowledge'.tr()),
-                        ),
-                      ),
-                      const SizedBox(height: AwSpace.x5),
-                      Text(
-                        'alarm.ringing.snooze'.tr(),
-                        style: text.labelMedium?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: AwSpace.x2),
-                      Wrap(
-                        alignment: WrapAlignment.center,
-                        spacing: AwSpace.x2,
-                        runSpacing: AwSpace.x2,
-                        children: [
-                          // The user's own order (OPH-179 N4).
-                          for (final preset in ref.watch(
-                            snoozePresetOrderProvider,
-                          ))
-                            OutlinedButton(
-                              key: Key('alarm-snooze-$preset'),
-                              onPressed: () => _snooze(preset),
-                              // The offset AND the instant it lands on: "5 dk"
-                              // alone made the user ask what happens next.
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(kSnoozePresetLabels[preset]!.tr()),
-                                  Text(
-                                    'alarm.snoozeRingsAt'.tr(
-                                      args: {
-                                        'time': awAt(
-                                          awFormatTime(
-                                            TaskStore.snoozeUntilFor(
-                                              preset,
-                                              now: ref.watch(nowProvider)(),
-                                            ),
-                                            format: dateFormat,
-                                          ),
-                                          languageCode: AwI18n
-                                              .instance
-                                              .locale
-                                              .languageCode,
-                                        ),
-                                      },
-                                    ),
-                                    style: text.labelSmall?.copyWith(
-                                      color: scheme.onSurfaceVariant,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          OutlinedButton(
-                            key: const Key('alarm-snooze-custom'),
-                            onPressed: _snoozeCustom,
-                            child: Text('alarm.snoozeCustom'.tr()),
-                          ),
-                          // OPH-178: the way out that does NOT require lying
-                          // about the task being done.
-                          OutlinedButton.icon(
-                            key: const Key('alarm-silence'),
-                            onPressed: _silence,
-                            icon: const Icon(Icons.notifications_off, size: 18),
-                            label: Text('alarm.silence'.tr()),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: AwSpace.x4),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          TextButton.icon(
-                            key: const Key('alarm-complete'),
-                            onPressed: _complete,
-                            icon: const Icon(
-                              Icons.check_circle_outline,
-                              size: 18,
-                            ),
-                            label: Text('notif.action.complete'.tr()),
-                          ),
-                          const SizedBox(width: AwSpace.x2),
-                          TextButton.icon(
-                            key: const Key('alarm-open'),
-                            onPressed: _open,
-                            icon: const Icon(Icons.open_in_new, size: 18),
-                            label: Text('notif.action.open'.tr()),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  /// Enter = Onayla, 1–4 = the first four snooze tiles in the user's order,
+  /// Esc = nothing (DESIGN §11 A2: the alarm is answered, not dismissed).
+  Map<ShortcutActivator, VoidCallback> _shortcuts(List<String> presets) {
+    const digits = [
+      [LogicalKeyboardKey.digit1, LogicalKeyboardKey.numpad1],
+      [LogicalKeyboardKey.digit2, LogicalKeyboardKey.numpad2],
+      [LogicalKeyboardKey.digit3, LogicalKeyboardKey.numpad3],
+      [LogicalKeyboardKey.digit4, LogicalKeyboardKey.numpad4],
+    ];
+    return {
+      const SingleActivator(LogicalKeyboardKey.enter): _acknowledge,
+      const SingleActivator(LogicalKeyboardKey.numpadEnter): _acknowledge,
+      const SingleActivator(LogicalKeyboardKey.escape): () {},
+      for (var i = 0; i < digits.length && i < presets.length; i++)
+        for (final key in digits[i])
+          SingleActivator(key): () => _snooze(presets[i]),
+    };
+  }
+
+  /// "rings at 09:05", or "… · with another alarm" when the target minute
+  /// already holds another task's urgent alarm (OPH-442, owner answer 3).
+  String _subline(DateTime until, List<AlarmInput> feed, String format) {
+    final others = urgentAlarmsInMinute(
+      feed,
+      until,
+      exceptTaskIds: {widget.alarm.taskId},
+    );
+    return snoozeTileSubline(until, joinsGroup: others > 0, format: format);
+  }
+
+  Widget _tile(
+    String key, {
+    required String label,
+    required VoidCallback onPressed,
+    String? subline,
+    IconData? icon,
+    bool wrap = false,
+  }) => AwAlarmActionTile(
+    key: Key(key),
+    label: label,
+    subline: subline,
+    icon: icon,
+    wrap: wrap,
+    busy: _spinning == key,
+    onPressed: () {
+      _pressedTile = key;
+      onPressed();
+    },
+  );
+
+  Widget _startSoundTile(bool wrap) => AwAlarmActionTile(
+    key: const Key('alarm-start-sound'),
+    label: 'alarm.startSound'.tr(),
+    icon: Icons.volume_up,
+    wrap: wrap,
+    minHeight: 48,
+    onPressed: () => _controller.startSound(),
+  );
+
+  /// ONE grid (#46): two equal columns with an [AwSpace.x2] gap, or one
+  /// column past 1.3 text scale. Every cell is the same width.
+  Widget _grid(List<Widget> tiles, {required bool oneColumn}) {
+    if (oneColumn) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < tiles.length; i++) ...[
+            if (i > 0) const SizedBox(height: AwSpace.x2),
+            tiles[i],
+          ],
+        ],
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (var i = 0; i < tiles.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: AwSpace.x2),
+          Row(
+            children: [
+              Expanded(child: tiles[i]),
+              const SizedBox(width: AwSpace.x2),
+              // An odd last tile keeps its column's width.
+              Expanded(
+                child: i + 1 < tiles.length
+                    ? tiles[i + 1]
+                    : const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _textAction(
+    String key, {
+    required IconData icon,
+    required String label,
+    required VoidCallback onPressed,
+  }) => TextButton.icon(
+    key: Key(key),
+    onPressed: onPressed,
+    style: TextButton.styleFrom(
+      foregroundColor: context.awTokens.link,
+      minimumSize: const Size.fromHeight(48),
+    ),
+    icon: Icon(icon, size: 18),
+    label: Text(label),
+  );
+
+  /// The alarm badge (96, 64 on a short screen) with its pulse: a ring
+  /// BEHIND it that grows to 4/3 of the badge and fades from 40 % to nothing
+  /// every 1200 ms (0.8 Hz, far under WCAG 2.3.1's 3 Hz). The badge and the
+  /// text never scale; reduced motion and a missed alarm get no ring.
+  Widget _badge({
+    required double size,
+    required Color color,
+    required bool pulse,
+  }) {
+    final badge = Container(
+      key: const Key('alarm-badge'),
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: color.withValues(alpha: 0.14),
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Icon(Icons.alarm, size: size / 2, color: color),
+    );
+    if (!pulse) return Center(child: badge);
+    return Center(
+      child: SizedBox.square(
+        dimension: size,
+        child: Stack(
+          clipBehavior: Clip.none,
+          alignment: Alignment.center,
+          children: [
+            // Painted outside the badge's box, so the pulse costs no layout.
+            OverflowBox(
+              maxWidth: size * 4 / 3,
+              maxHeight: size * 4 / 3,
+              child: AnimatedBuilder(
+                animation: _pulse,
+                builder: (context, _) {
+                  final t = Curves.easeOut.transform(_pulse.value);
+                  final d = size + size / 3 * t;
+                  return Container(
+                    width: d,
+                    height: d,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: color.withValues(alpha: 0.4 * (1 - t)),
+                        width: 2,
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+            badge,
+          ],
         ),
       ),
     );
