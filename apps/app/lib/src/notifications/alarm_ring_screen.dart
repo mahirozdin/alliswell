@@ -15,7 +15,9 @@ import '../features/tasks/providers.dart';
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
 import 'alarm_action_tile.dart';
+import 'alarm_edge_fade.dart';
 import 'alarm_log.dart';
+import 'alarm_minute_tick.dart';
 import 'reminder_profile.dart';
 import 'alarm_overlay.dart';
 import 'alarm_ring_list.dart';
@@ -35,6 +37,11 @@ const double kAlarmOneColumnTextScale = 1.3;
 
 /// The ring screen's column: screen − 2 × 24, at most 440 (2 × 216 + 8).
 const double kAlarmRingMaxWidth = 440;
+
+/// From this height up the action block is pinned to the bottom and only the
+/// content above it scrolls (W-04); below it (a phone on its side) the whole
+/// screen scrolls as one page.
+const double kAlarmPinnedMinHeight = 560;
 
 /// The shell's alarm layer. One ringing task: the single layout, keyed by
 /// [alarmOccurrenceKey] (#46) — unkeyed, the next alarm inherited the previous
@@ -137,7 +144,7 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
 }
 
 class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AlarmMinuteTick {
   late final AnimationController _pulse = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),
@@ -155,6 +162,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
 
   AlarmOverlayController get _controller =>
       ref.read(alarmOverlayControllerProvider.notifier);
+
+  /// The snooze tiles' clock (W-03): they rebuild when its minute changes.
+  @override
+  DateTime Function() get minuteClock => ref.read(nowProvider);
 
   @override
   void initState() {
@@ -188,9 +199,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
             ? 'alarm.missed.label'.tr()
             : 'alarm.ringing.label'.tr(),
         'title': widget.alarm.taskTitle,
-        'time': MaterialLocalizations.of(
-          context,
-        ).formatTimeOfDay(TimeOfDay.fromDateTime(fireAt)),
+        'time': awFormatTime(fireAt, format: ref.read(dateFormatProvider)),
       },
     );
     unawaited(
@@ -289,23 +298,29 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   void _acknowledge() {
     final store = ref.read(reminderStoreProvider);
     final reminderIds = _occurrenceReminderIds();
-    _run(() async {
-      for (final id in reminderIds) {
-        await store.acknowledge(id);
-      }
-    });
+    _run(
+      () async {
+        for (final id in reminderIds) {
+          await store.acknowledge(id);
+        }
+      },
+      // W-09, spec §1.6: every answer says what happened once it landed.
+      onSaved: _sayLater('alarm.acknowledged'.tr()),
+    );
   }
 
   void _snooze(String preset) {
     // Say what will happen, in the moment it happens (OPH-177, round 9 #6.5:
     // "5 dk sonra ne olacak?" should not be a question the user has to ask).
+    // W-03: the instant written is the one the tile states — the same
+    // function of the same clock, read at the press.
     final until = TaskStore.snoozeUntilFor(
       preset,
       now: ref.read(nowProvider)(),
     );
     final store = ref.read(taskStoreProvider);
     final taskId = widget.alarm.taskId;
-    _run(() => store.snooze(taskId, preset: preset), onSaved: _confirm(until));
+    _run(() => store.snooze(taskId, until: until), onSaved: _confirm(until));
   }
 
   /// Round 9's "Özel ertele" (BLUEPRINT §8.2, unimplemented until now): pick the
@@ -392,7 +407,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   void _complete() {
     final store = ref.read(taskStoreProvider);
     final taskId = widget.alarm.taskId;
-    _run(() => store.complete(taskId));
+    _run(
+      () => store.complete(taskId),
+      onSaved: _sayLater('alarm.completed'.tr()),
+    );
   }
 
   /// Silence this task's alarms for good (OPH-178). The task stays OPEN, and the
@@ -441,9 +459,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         );
     final silenceChosen = silent && ref.watch(alarmSilenceChosenProvider);
     final fireAt = alarmFireAt(widget.alarm).toLocal();
-    final time = MaterialLocalizations.of(
-      context,
-    ).formatTimeOfDay(TimeOfDay.fromDateTime(fireAt));
+    // W-05: the user's time format, as on the tiles and the confirmations.
+    final time = awFormatTime(fireAt, format: dateFormat);
 
     // Direction A (#46, DESIGN §11): the screen's three layout switches.
     final screen = MediaQuery.sizeOf(context);
@@ -734,8 +751,49 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                     AwSpace.x6,
                     AwSpace.x4,
                   );
-                  // The column fills the screen so the actions pin to its
-                  // bottom; content taller than that scrolls as one page.
+                  final gap = SizedBox(height: wide ? AwSpace.x8 : AwSpace.x6);
+                  // W-04: the actions stay pinned and on screen; when the
+                  // content above them (a silent line, "Start sound", a
+                  // retry) does not fit, only the content scrolls, its cut
+                  // edge faded. Past 1.3 text scale, or on a screen too low
+                  // for the pinned block, the whole screen scrolls instead.
+                  final pinned =
+                      !oneColumn &&
+                      constraints.maxHeight.isFinite &&
+                      constraints.maxHeight >= kAlarmPinnedMinHeight;
+                  if (pinned) {
+                    final scrolling = AlarmEdgeFade(
+                      child: SingleChildScrollView(
+                        key: const Key('alarm-ring-content'),
+                        child: content,
+                      ),
+                    );
+                    return Padding(
+                      padding: padding,
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(
+                            maxWidth: kAlarmRingMaxWidth,
+                          ),
+                          child: Column(
+                            // Desktop: content and actions centre together.
+                            mainAxisSize: wide
+                                ? MainAxisSize.min
+                                : MainAxisSize.max,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              if (wide)
+                                Flexible(child: scrolling)
+                              else
+                                Expanded(child: scrolling),
+                              gap,
+                              actions,
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  }
                   final minHeight = constraints.maxHeight.isFinite
                       ? (constraints.maxHeight - padding.vertical)
                             .clamp(0, double.infinity)
@@ -754,11 +812,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                               ? MainAxisAlignment.center
                               : MainAxisAlignment.spaceBetween,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            content,
-                            SizedBox(height: wide ? AwSpace.x8 : AwSpace.x6),
-                            actions,
-                          ],
+                          children: [content, gap, actions],
                         ),
                       ),
                     ),

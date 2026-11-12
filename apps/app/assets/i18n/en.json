@@ -1054,6 +1054,8 @@
     "acknowledgeAll": "Acknowledge all ({count})",
     "snoozedAllConfirmed": "{count} alarms ring again at {time}",
     "acknowledgedAll": "{count} alarms acknowledged",
+    "acknowledged": "Acknowledged",
+    "completed": "Completed",
     "sheet": {
       "other": "More",
       "tomorrowAt": "tomorrow {time}"

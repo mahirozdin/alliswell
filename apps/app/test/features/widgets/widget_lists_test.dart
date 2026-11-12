@@ -239,7 +239,7 @@ void main() {
       );
       expect(json['lists'][0]['name'], 'Tüm görevler');
       expect(json['strings']['upNext'], 'Sıradaki');
-      expect(json['strings']['chooseList'], 'Bu widget\'ta göster');
+      expect(json['strings']['chooseList'], 'Bu widget’ta göster');
       expect(json['next']['label'], 'Gecikmiş');
     });
   });

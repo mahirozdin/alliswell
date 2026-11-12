@@ -12,10 +12,12 @@ import 'package:go_router/go_router.dart';
 import 'package:alliswell/src/core/date_format.dart';
 import 'package:alliswell/src/core/day_boundary.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/core/persisted_prefs.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_action_tile.dart';
+import 'package:alliswell/src/notifications/alarm_edge_fade.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
@@ -418,8 +420,11 @@ void main() {
 
     expect(find.byKey(const Key('alarm-start-sound')), findsOneWidget);
 
-    // A retry that succeeds hides the fallback again.
+    // A retry that succeeds hides the fallback again. W-04: on this 800x600
+    // view the content above the pinned actions scrolls to it.
     sound.refuse = false;
+    await tester.ensureVisible(find.byKey(const Key('alarm-start-sound')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('alarm-start-sound')));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
@@ -461,6 +466,8 @@ void main() {
     // Nothing was played: the whole point of the setting.
     expect(spy.starts, 0);
 
+    await tester.ensureVisible(find.byKey(const Key('alarm-start-sound')));
+    await tester.pump();
     await tester.tap(find.byKey(const Key('alarm-start-sound')));
     await tester.pump();
     // ...and the offer is real. An affordance that does nothing would be the
@@ -846,7 +853,9 @@ void main() {
         'stop',
         'write acknowledge',
       ]);
-      expect(find.byType(SnackBar), findsNothing);
+      // W-09: only the write that landed says so.
+      expect(find.widgetWithText(SnackBar, 'Acknowledged'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
     },
   );
 
@@ -1783,6 +1792,257 @@ void main() {
       expect(rectOf(tester, k), before[k], reason: '$k stays pinned');
     }
     await settle(tester);
+  });
+
+  // ── P2 polish: the single screen (OPH-466) ─────────────────────────────
+
+  // W-03: a label built once said 09:05 while the tap, a minute later,
+  // wrote 09:06. The label follows the minute, and the tap writes the very
+  // instant the label states.
+  testWidgets(
+    'a snooze tile label follows the clock across a minute change and equals '
+    'what the tap writes',
+    (tester) async {
+      var clock = DateTime(2030, 6, 1, 9, 0, 50);
+      container = ProviderContainer(
+        overrides: [
+          ...syncTestOverrides(),
+          nowProvider.overrideWithValue(() => clock),
+        ],
+      );
+      addTearDown(container.dispose);
+      db = container.read(databaseProvider);
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+      await seed();
+      await pumpRing(tester);
+      expect(find.text('09:05’te çalar'), findsOneWidget);
+
+      // The minute changes while the screen sits there: no tap, no rebuild
+      // from anything else — the tile has to notice by itself.
+      clock = DateTime(2030, 6, 1, 9, 1, 5);
+      await tester.pump(const Duration(seconds: 15));
+      expect(find.text('09:06’da çalar'), findsOneWidget);
+      expect(find.text('09:05’te çalar'), findsNothing);
+
+      // Pressed at 09:01:30: the write lands in 09:06, the minute shown.
+      clock = DateTime(2030, 6, 1, 9, 1, 30);
+      await tester.tap(find.byKey(const Key('alarm-snooze-5_min')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      final task = await (db.select(
+        db.tasks,
+      )..where((t) => t.id.equals(id('T1')))).getSingle();
+      final until = task.snoozedUntil!.toLocal();
+      expect((until.hour, until.minute), (9, 6));
+      expect(find.text('09:06’da tekrar çalacak'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 6));
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+
+  testWidgets('the "with another alarm" hint reads the same minute as the '
+      'label', (tester) async {
+    var clock = DateTime(2030, 6, 1, 9, 0, 50);
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(),
+        nowProvider.overrideWithValue(() => clock),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    await seed();
+    // Another task's urgent alarm holds 09:06, not 09:05.
+    final other = AlarmInput(
+      reminderId: id('R9'),
+      taskId: id('T9'),
+      taskTitle: 'Other',
+      remindAt: DateTime(2030, 6, 1, 9, 6, 20),
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+    );
+    await pumpSized(tester, const Size(430, 932), alarms: [other]);
+    final five = find.byKey(const Key('alarm-snooze-5_min'));
+    expect(
+      find.descendant(of: five, matching: find.textContaining('another')),
+      findsNothing,
+    );
+    clock = DateTime(2030, 6, 1, 9, 1, 2);
+    await tester.pump(const Duration(seconds: 12));
+    expect(
+      find.descendant(of: five, matching: find.textContaining('another')),
+      findsOneWidget,
+    );
+    await tester.pumpWidget(const SizedBox());
+  });
+
+  // W-04: the web opens silent, and the sentence plus "Start sound" pushed
+  // Tamamla and Aç under a 640 pt screen. The actions stay pinned; only the
+  // content above them scrolls, and its cut edge fades.
+  for (final chosen in [false, true]) {
+    testWidgets(
+      'at 360x640 with the silent hint every action can be reached by '
+      'scrolling (chosen: $chosen)',
+      (tester) async {
+        tester.view.physicalSize = const Size(360, 640);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        await pumpSilentByChoice(
+          tester,
+          _SpyFeedback(),
+          silent: true,
+          chosen: chosen,
+        );
+        // The longest title the walkthrough used.
+        expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+        for (final k in [
+          ...snoozeKeys,
+          'alarm-acknowledge',
+          'alarm-complete',
+          'alarm-open',
+        ]) {
+          final r = rectOf(tester, k);
+          expect(r.top, greaterThanOrEqualTo(0), reason: k);
+          expect(r.bottom, lessThanOrEqualTo(640), reason: '$k $r');
+        }
+        final content = find.byKey(const Key('alarm-ring-content'));
+        final hint = find.byKey(
+          Key(chosen ? 'alarm-silent-declared' : 'alarm-silent-default'),
+        );
+        expect(hint, findsOneWidget);
+        await tester.scrollUntilVisible(
+          find.byKey(const Key('alarm-start-sound')),
+          60,
+          scrollable: find.descendant(
+            of: content,
+            matching: find.byType(Scrollable),
+          ),
+        );
+        final start = rectOf(tester, 'alarm-start-sound');
+        final viewport = tester.getRect(content);
+        expect(start.bottom, lessThanOrEqualTo(viewport.bottom + 0.5));
+        // Scrolling the content never moves the actions.
+        expect(rectOf(tester, 'alarm-open').bottom, lessThanOrEqualTo(640));
+        expect(tester.takeException(), isNull);
+      },
+    );
+  }
+
+  testWidgets('a content taller than its space fades at its bottom edge, and '
+      'not once it is scrolled to the end', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpSilentByChoice(tester, _SpyFeedback(), silent: true);
+    await tester.pump();
+    final fade = tester.state<AlarmEdgeFadeState>(find.byType(AlarmEdgeFade));
+    final scrollable = find.descendant(
+      of: find.byKey(const Key('alarm-ring-content')),
+      matching: find.byType(Scrollable),
+    );
+    final position = tester.state<ScrollableState>(scrollable).position;
+    expect(position.maxScrollExtent, greaterThan(0));
+    expect(fade.fading, isTrue);
+    position.jumpTo(position.maxScrollExtent);
+    await tester.pump();
+    await tester.pump();
+    expect(fade.fading, isFalse);
+  });
+
+  testWidgets('a tall screen pins the actions and fades nothing', (
+    tester,
+  ) async {
+    await seed();
+    await pumpSized(tester, const Size(430, 932));
+    await tester.pump();
+    final fade = tester.state<AlarmEdgeFadeState>(find.byType(AlarmEdgeFade));
+    expect(fade.fading, isFalse);
+    // Pinned to the bottom: 932 − 16 bottom padding.
+    expect(rectOf(tester, 'alarm-open').bottom, moreOrLessEquals(916));
+  });
+
+  testWidgets('at text scale 2.0 on 360x640 every action is reached by '
+      'scrolling the screen', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    tester.platformDispatcher.textScaleFactorTestValue = 2.0;
+    addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    await pumpSilentByChoice(tester, _SpyFeedback(), silent: true);
+    final page = find
+        .descendant(
+          of: find.byKey(const Key('alarm-ring')),
+          matching: find.byType(Scrollable),
+        )
+        .first;
+    for (final k in [
+      'alarm-start-sound',
+      ...snoozeKeys,
+      'alarm-acknowledge',
+      'alarm-complete',
+      'alarm-open',
+    ]) {
+      await tester.scrollUntilVisible(
+        find.byKey(Key(k)),
+        100,
+        scrollable: page,
+      );
+      final r = rectOf(tester, k);
+      expect(r.top, greaterThanOrEqualTo(0), reason: k);
+      expect(r.bottom, lessThanOrEqualTo(640), reason: '$k $r');
+    }
+    expect(tester.takeException(), isNull);
+  });
+
+  // W-09, spec §1.6: an answer says what it did, as the snooze does.
+  testWidgets('acknowledge and complete confirm with a snackbar', (
+    tester,
+  ) async {
+    await seed();
+    await pumpRing(tester);
+    await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.widgetWithText(SnackBar, 'Acknowledged'), findsOneWidget);
+    await tester.pump(const Duration(seconds: 6));
+
+    await tester.pumpWidget(const SizedBox());
+    await pumpRing(tester);
+    await tester.tap(find.byKey(const Key('alarm-complete')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.widgetWithText(SnackBar, 'Completed'), findsOneWidget);
+    final task = await (db.select(
+      db.tasks,
+    )..where((t) => t.id.equals(id('T1')))).getSingle();
+    expect(task.status, 'completed');
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  // W-05: the header said 05:13 while the tiles said 5:18 AM.
+  testWidgets('the ring header time uses the time format of the tiles', (
+    tester,
+  ) async {
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(),
+        nowProvider.overrideWithValue(() => DateTime(2030, 6, 1, 9)),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    await seed();
+    for (final format in ['iso', 'mdy_12h']) {
+      await container.read(dateFormatProvider.notifier).set(format);
+      await pumpRing(tester);
+      final time = tester.widget<Text>(find.byKey(const Key('alarm-time')));
+      expect(time.data, awFormatTime(at, format: format), reason: format);
+      final tile = awFormatTime(DateTime(2030, 6, 1, 9, 5), format: format);
+      expect(find.textContaining(tile), findsOneWidget, reason: format);
+    }
+    await container.read(dateFormatProvider.notifier).set(kAwSystemDateFormat);
   });
 }
 
