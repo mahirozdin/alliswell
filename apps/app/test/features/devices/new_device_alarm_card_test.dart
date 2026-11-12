@@ -132,6 +132,23 @@ Future<ProviderContainer> _pump(
   return ProviderScope.containerOf(tester.element(find.byWidget(child)));
 }
 
+/// The app goes to the background and comes back, through every state the
+/// engine reports on the way.
+Future<void> _backAndForth(WidgetTester tester) async {
+  for (final state in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(state);
+    await tester.pump();
+  }
+  await tester.pumpAndSettle();
+}
+
 void main() {
   testWidgets('the card shows once, names the ringing device with the right '
       'suffix and turns this device on', (tester) async {
@@ -209,6 +226,48 @@ void main() {
       kv.values.keys.where((k) => k.startsWith(kNewDeviceCardKeyPrefix)),
       isEmpty,
     );
+  });
+
+  testWidgets('a device the server switched off by hand-over shows the card '
+      'once', (tester) async {
+    // ADR-0069: a web tab rang because it was the only device; the first
+    // phone to register takes the alarm over and the server switches the tab
+    // off by itself. The tab must hear it, like a device that joined off.
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+    final kv = _MemoryKv();
+    final api = _FakeApi([_row(_thisId, 'web', 'Chrome · Linux', true)]);
+    await _pump(tester, api, kv);
+    final card = find.byKey(const Key('new-device-alarm-card'));
+    expect(card, findsNothing);
+
+    // The hand-over, on the server.
+    api.rows = [
+      _row(_thisId, 'web', 'Chrome · Linux', false),
+      _row(_phoneId, 'ios', 'iPhone 16', true),
+    ];
+    // The next time the list refreshes (here: back to the foreground).
+    await _backAndForth(tester);
+    expect(card, findsOneWidget);
+    expect(
+      find.text(
+        'Bu cihazda acil alarmlar kapalı. Alarmlar iPhone 16’da çalıyor.',
+      ),
+      findsOneWidget,
+    );
+    // This device's alarm gate already follows the server.
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+
+    await tester.tap(find.byKey(const Key('new-device-card-ok')));
+    await tester.pumpAndSettle();
+    expect(card, findsNothing);
+    expect(api.patches, isEmpty);
+
+    // Once: another refresh, or the next launch, does not bring it back.
+    await _backAndForth(tester);
+    expect(card, findsNothing);
+    await _pump(tester, api, kv);
+    expect(card, findsNothing);
   });
 
   // ── OPH-453: where the card lives ────────────────────────────────────────

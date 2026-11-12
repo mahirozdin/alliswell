@@ -124,6 +124,19 @@ class DevicesScreen extends ConsumerStatefulWidget {
 class _DevicesScreenState extends ConsumerState<DevicesScreen> {
   bool _staleOpen = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Home's card and band hold the list for the whole session (OPH-453), so
+    // opening this screen would only show what Home read at launch (W-10).
+    // A list already held is asked for again; a new one is being fetched.
+    if (ref.exists(devicesProvider)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) ref.read(devicesProvider.notifier).refresh();
+      });
+    }
+  }
+
   /// "Acil alarmlar hiçbir cihazda çalmayacak" — asked before the last
   /// ringing device goes off. A warning, never a block (Q7).
   Future<bool> _confirmLastOff() async {
@@ -618,9 +631,12 @@ class _DeviceCard extends StatelessWidget {
     final label = web
         ? 'settings.devices.ringSwitchWeb'.tr()
         : 'settings.devices.ringSwitch'.tr();
+    // One honest line per state: a tab rings only while it is open, and
+    // whether an off tab gets a notification at all depends on the server's
+    // browser push, so "arrives as a normal notification" is for the others.
     final hints = [
       if (web) 'settings.devices.webHint'.tr(),
-      if (!rings) 'settings.devices.offHint'.tr(),
+      if (!rings && !web) 'settings.devices.offHint'.tr(),
       if (rings && ringingCount >= 2)
         'settings.devices.multiHint'.tr(args: {'count': '$ringingCount'}),
     ];

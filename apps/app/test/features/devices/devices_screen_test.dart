@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/devices/data/device_api.dart';
@@ -97,8 +98,12 @@ class _FakeApi implements DeviceApi {
   final List<(String, String)> names = [];
   final List<String> deleted = [];
 
+  /// How many times the list was asked for.
+  int listCalls = 0;
+
   @override
   Future<List<DeviceInfo>> list() async {
+    listCalls++;
     if (offline) {
       throw DioException(
         requestOptions: RequestOptions(path: '/api/v1/notification-devices'),
@@ -219,6 +224,69 @@ Future<ProviderContainer> _pump(
   return ProviderScope.containerOf(tester.element(find.byWidget(child)));
 }
 
+/// Stands in for Home: its card and band (OPH-453) keep the device list alive
+/// for the whole session, and Settings opens the Devices screen on top.
+class _HomeHoldingTheList extends ConsumerWidget {
+  const _HomeHoldingTheList();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final count = ref.watch(devicesProvider).value?.devices.length;
+    return Scaffold(
+      key: const Key('test-home'),
+      body: TextButton(
+        key: const Key('test-open-devices'),
+        onPressed: () => context.push('/settings/devices'),
+        child: Text('devices: $count'),
+      ),
+    );
+  }
+}
+
+/// The app's way in: a router, so the screen can be opened by its address
+/// (a web reload on /settings/devices) or pushed from Home.
+Future<ProviderContainer> _pumpRouted(
+  WidgetTester tester,
+  _FakeApi api, {
+  String initialLocation = '/settings/devices',
+}) async {
+  tester.view.physicalSize = const Size(800, 2400);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  final router = GoRouter(
+    initialLocation: initialLocation,
+    routes: [
+      GoRoute(
+        path: '/home',
+        builder: (context, state) => const _HomeHoldingTheList(),
+      ),
+      GoRoute(
+        path: '/settings/devices',
+        builder: (context, state) => const DevicesScreen(),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    ProviderScope(
+      overrides: [
+        deviceApiProvider.overrideWithValue(api),
+        currentUserIdProvider.overrideWithValue('user-1'),
+        syncClientIdProvider.overrideWith((ref) => Stream.value(_thisId)),
+        ringsUrgentStoreProvider.overrideWithValue(
+          RingsUrgentStore(kv: _MemoryKv()),
+        ),
+      ],
+      child: MaterialApp.router(
+        theme: buildAwTheme(Brightness.light),
+        routerConfig: router,
+      ),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return ProviderScope.containerOf(tester.element(find.byType(Router<Object>)));
+}
+
 Future<void> _openSheet(WidgetTester tester, String id) async {
   await tester.tap(find.byKey(Key('device-top-$id')));
   await tester.pumpAndSettle();
@@ -230,6 +298,23 @@ Switch _switchOf(WidgetTester tester, String id) =>
 
 double _top(WidgetTester tester, String id) =>
     tester.getTopLeft(find.byKey(Key('device-card-$id'))).dy;
+
+/// The app goes to the background and comes back, through every state the
+/// engine reports on the way.
+Future<void> _backAndForth(WidgetTester tester) async {
+  for (final state in const [
+    AppLifecycleState.inactive,
+    AppLifecycleState.hidden,
+    AppLifecycleState.paused,
+    AppLifecycleState.hidden,
+    AppLifecycleState.inactive,
+    AppLifecycleState.resumed,
+  ]) {
+    tester.binding.handleAppLifecycleStateChanged(state);
+    await tester.pump();
+  }
+  await tester.pumpAndSettle();
+}
 
 void main() {
   testWidgets(
@@ -728,5 +813,130 @@ void main() {
     expect(api.patches, isEmpty);
     expect(find.byKey(const Key('pick-alarm-device-page')), findsNothing);
     expect(_switchOf(tester, _thisId).value, isTrue);
+  });
+
+  // ── Walkthrough polish (W-08, W-10, W-11, W-12) ─────────────────────────
+  testWidgets('opened by its address the Devices screen still has a way '
+      'back, also after the pick page', (tester) async {
+    // A web reload on /settings/devices: the screen is the only page. The
+    // Mac rings, this phone does not.
+    final api = _FakeApi(_rows(macRings: true, thisRings: false));
+    await _pumpRouted(tester, api);
+    final home = find.byKey(const Key('aw-route-home'));
+    expect(home, findsOneWidget);
+
+    // The list changes while the detail sheet sits on top of the screen
+    // (renamed elsewhere, read again on the way back to the foreground).
+    await _openSheet(tester, _macId);
+    api.rows.firstWhere((r) => r['id'] == _macId)['deviceName'] = 'Ofis Mac';
+    await _backAndForth(tester);
+    expect(find.byKey(const Key('device-detail-sheet')), findsOneWidget);
+    Navigator.of(
+      tester.element(find.byKey(const Key('device-detail-sheet'))),
+    ).pop();
+    await tester.pumpAndSettle();
+    expect(find.text('Ofis Mac'), findsOneWidget);
+    expect(home, findsOneWidget);
+
+    // Removing the ringing device changes the list and opens the pick page
+    // on top, which has its own way back; keeping the promoted device there
+    // changes nothing more.
+    await _openSheet(tester, _macId);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('device-remove-confirm')));
+    await tester.pumpAndSettle();
+    final pick = find.byKey(const Key('pick-alarm-device-page'));
+    expect(pick, findsOneWidget);
+    expect(
+      find.descendant(of: pick, matching: find.byType(BackButton)),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key('pick-device-save')));
+    await tester.pumpAndSettle();
+    expect(pick, findsNothing);
+    expect(api.patches, isEmpty);
+
+    // Back on the list: the Home button is still there, and it works.
+    expect(home, findsOneWidget);
+    await tester.tap(home);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('test-home')), findsOneWidget);
+  });
+
+  testWidgets('the pick page leaves the way back in place after it saves a '
+      'change', (tester) async {
+    final api = _FakeApi(_rows(macRings: true, thisRings: false));
+    await _pumpRouted(tester, api);
+    await _openSheet(tester, _macId);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('device-remove-confirm')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick-device-$_webId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick-device-save')));
+    await tester.pumpAndSettle();
+    expect(api.patches, [(_webId, true), (_thisId, false)]);
+    expect(find.byKey(const Key('pick-alarm-device-page')), findsNothing);
+    expect(find.byKey(const Key('aw-route-home')), findsOneWidget);
+  });
+
+  testWidgets('the list reloads on open and on resume', (tester) async {
+    final api = _FakeApi(_rows());
+    await _pumpRouted(tester, api, initialLocation: '/home');
+    // Home holds the list for the whole session.
+    expect(api.listCalls, 1);
+    expect(find.text('devices: 4'), findsOneWidget);
+
+    // Meanwhile the server moved the alarm: this device off, the Mac on.
+    api.rows.firstWhere((r) => r['id'] == _thisId)['ringsUrgent'] = false;
+    api.rows.firstWhere((r) => r['id'] == _macId)['ringsUrgent'] = true;
+
+    // Opening the screen asks the server again instead of showing what Home
+    // read at launch.
+    await tester.tap(find.byKey(const Key('test-open-devices')));
+    await tester.pumpAndSettle();
+    expect(find.byType(DevicesScreen), findsOneWidget);
+    expect(api.listCalls, 2);
+    expect(_switchOf(tester, _thisId).value, isFalse);
+    expect(_switchOf(tester, _macId).value, isTrue);
+
+    // Leaving and opening it again asks again.
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+    expect(find.byType(DevicesScreen), findsNothing);
+    await tester.tap(find.byKey(const Key('test-open-devices')));
+    await tester.pumpAndSettle();
+    expect(api.listCalls, 3);
+
+    // Back from the background: the list is read again while the screen is
+    // open, and a change made elsewhere shows.
+    api.rows.firstWhere((r) => r['id'] == _webId)['ringsUrgent'] = true;
+    await _backAndForth(tester);
+    expect(api.listCalls, 4);
+    expect(_switchOf(tester, _webId).value, isTrue);
+  });
+
+  testWidgets('a web row that is off says only that it rings while the tab '
+      'is open', (tester) async {
+    await _pump(tester, _FakeApi(_rows()));
+    Finder inCard(String id, String text) => find.descendant(
+      of: find.byKey(Key('device-card-$id')),
+      matching: find.text(text),
+    );
+    final webHint = 'settings.devices.webHint'.tr();
+    final offHint = 'settings.devices.offHint'.tr();
+
+    // The web tab is off: one honest line, not a promise of a notification
+    // the server may not be able to send.
+    expect(inCard(_webId, webHint), findsOneWidget);
+    expect(inCard(_webId, offHint), findsNothing);
+    // A device that is off gets the same reminder as a notification.
+    expect(inCard(_macId, offHint), findsOneWidget);
+    expect(inCard(_macId, webHint), findsNothing);
+    // A device that rings needs neither.
+    expect(inCard(_thisId, offHint), findsNothing);
+    expect(inCard(_thisId, webHint), findsNothing);
   });
 }

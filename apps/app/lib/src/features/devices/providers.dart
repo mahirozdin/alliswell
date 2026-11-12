@@ -278,12 +278,7 @@ class DevicesController extends AsyncNotifier<DevicesView> {
   Future<DevicesView> build() async {
     final userId = ref.watch(currentUserIdProvider);
     if (userId == null) return const DevicesView(devices: []);
-    final lifecycle = AppLifecycleListener(
-      onResume: () {
-        // A switch on its way to the server keeps its row as it is.
-        if (state.value?.saving.isEmpty ?? true) ref.invalidateSelf();
-      },
-    );
+    final lifecycle = AppLifecycleListener(onResume: refresh);
     ref.onDispose(lifecycle.dispose);
     final cache = ref.read(_devicesCacheProvider);
     final store = ref.read(ringsUrgentStoreProvider);
@@ -334,6 +329,14 @@ class DevicesController extends AsyncNotifier<DevicesView> {
     final gateChanged = ref.read(_ringsUrgentChangedProvider);
     final here = ringsUrgentHereFromServer(self.ringsUrgent);
     if (await store.writeObserved(here, askedAt: askedAt)) gateChanged();
+  }
+
+  /// Asks the server again, keeping the list on screen meanwhile: on every
+  /// return to the foreground, and when the Devices screen opens while Home
+  /// already holds the list (W-10). A switch on its way to the server keeps
+  /// its row as it is, so nothing is asked then.
+  void refresh() {
+    if (state.value?.saving.isEmpty ?? true) ref.invalidateSelf();
   }
 
   /// Turns urgent ringing on or off for one device.
