@@ -109,6 +109,38 @@ describe('notification device registry (OPH-060)', () => {
     expect(tables.notification_devices).toHaveLength(0);
   });
 
+  it("removing a device revokes its widget token and no other device's (OPH-458)", async () => {
+    // The revocation is one UPDATE whose device and family filters are OR-ed
+    // inside a grouped where: a fake that cannot group either fails the
+    // DELETE or revokes every token of the user.
+    const TABLET = '01DEVICEBBBBBBBBBBBBBBBBBB';
+    await register(DEVICE, { platform: 'ios' });
+    await register(TABLET, { platform: 'ios' });
+    const token = (id, deviceId) => ({
+      id,
+      user_id: owner.user.id,
+      device_id: deviceId,
+      session_family_id: '01FAMILYXXXXXXXXXXXXXXXXXX',
+      token_hash: `hash-${id}`,
+      expires_at: new Date(Date.now() + 86_400_000),
+      revoked_at: null,
+    });
+    tables.widget_tokens.push(
+      token('01WIDGETAAAAAAAAAAAAAAAAAA', DEVICE),
+      token('01WIDGETBBBBBBBBBBBBBBBBBB', TABLET),
+    );
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/notification-devices/${DEVICE}`,
+      headers: owner.headers,
+    });
+    expect(res.statusCode).toBe(204);
+    const byDevice = (id) => tables.widget_tokens.find((r) => r.device_id === id);
+    expect(byDevice(DEVICE).revoked_at).toBeInstanceOf(Date);
+    expect(byDevice(TABLET).revoked_at).toBeNull();
+  });
+
   it('remembers the device locale, and leaves it alone on a heartbeat (OPH-309)', async () => {
     // The visible fallback push picks a fixed string, and the account's locale
     // is not the device's: a phone can be in Turkish while the account is not.

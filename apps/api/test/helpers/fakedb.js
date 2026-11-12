@@ -5,6 +5,8 @@
  *   db(table)
  *     .where(obj) / .where(col, val) / .where(col, op, val)   op: < <= > >= <> like
  *     .whereNull(col) / .whereNot(col, val) / .whereIn(col, vals)
+ *     .where((q) => …)   a grouped clause: inside it where / whereIn / whereNull /
+ *                        whereBetween and their orWhere* forms, AND before OR
  *     .orderBy(col, dir) / .limit(n)
  *     → .first() / .select() / .update(patch) / .delete() / .increment(col, n) / .insert(row)
  *
@@ -163,6 +165,9 @@ export function fakeDb({
     user_totp_recovery_codes: [],
     // OPH-371 — the import ledger (ADR-0052).
     import_ledger: [],
+    // OPH-458 — widget tokens (ADR-0070): every sign-out, session revoke and
+    // device removal revokes them, so without the table each of those is a 500.
+    widget_tokens: [],
   };
   // Extension-owned tables (the EE-002 seam tests, future overlay suites):
   // the fixed list above stays the contract for core code — an unknown-table
@@ -364,6 +369,51 @@ export function fakeDb({
     }
   }
 
+  // A predicate on one row for the leaf clauses both the builder and a grouped
+  // where accept.
+  function clause(condOrCol, opOrVal, maybeVal) {
+    if (typeof condOrCol === 'function') return group(condOrCol);
+    if (typeof condOrCol === 'object') {
+      return (row) => Object.entries(condOrCol).every(([key, val]) => row[key] === val);
+    }
+    if (maybeVal === undefined) return (row) => row[condOrCol] === opOrVal;
+    const op = OPS[opOrVal];
+    if (!op) throw new Error(`fakeDb: unsupported operator "${opOrVal}"`);
+    return (row) => op(row[condOrCol], maybeVal);
+  }
+
+  // SQL BETWEEN: inclusive at both ends; a NULL column never matches.
+  const between =
+    (col, [low, high]) =>
+    (row) =>
+      row[col] !== null && row[col] !== undefined && row[col] >= low && row[col] <= high;
+
+  // `.where((q) => …)` (OPH-458): knex wraps the callback's clauses in
+  // parentheses; inside, an or* clause starts a new OR branch and the rest AND
+  // onto the current one, which is SQL's precedence. An empty group matches
+  // every row, as knex drops an empty bracket. Only the clauses below are
+  // supported: anything else is a TypeError rather than a silent match-all.
+  function group(build) {
+    const branches = [];
+    const add = (predicate, or) => {
+      if (or || branches.length === 0) branches.push([predicate]);
+      else branches[branches.length - 1].push(predicate);
+    };
+    const q = {
+      where: (...args) => (add(clause(...args), false), q),
+      orWhere: (...args) => (add(clause(...args), true), q),
+      whereIn: (col, values) => (add((row) => values.includes(row[col]), false), q),
+      orWhereIn: (col, values) => (add((row) => values.includes(row[col]), true), q),
+      whereNull: (col) => (add((row) => row[col] === null || row[col] === undefined, false), q),
+      orWhereNull: (col) => (add((row) => row[col] === null || row[col] === undefined, true), q),
+      whereBetween: (col, range) => (add(between(col, range), false), q),
+      orWhereBetween: (col, range) => (add(between(col, range), true), q),
+    };
+    build(q);
+    if (branches.length === 0) return () => true;
+    return (row) => branches.some((branch) => branch.every((predicate) => predicate(row)));
+  }
+
   const builder = (name) => {
     const filters = [];
     const orderings = [];
@@ -395,15 +445,7 @@ export function fakeDb({
 
     const api = {
       where(condOrCol, opOrVal, maybeVal) {
-        if (typeof condOrCol === 'object') {
-          filters.push((row) => Object.entries(condOrCol).every(([key, val]) => row[key] === val));
-        } else if (maybeVal === undefined) {
-          filters.push((row) => row[condOrCol] === opOrVal);
-        } else {
-          const op = OPS[opOrVal];
-          if (!op) throw new Error(`fakeDb: unsupported operator "${opOrVal}"`);
-          filters.push((row) => op(row[condOrCol], maybeVal));
-        }
+        filters.push(clause(condOrCol, opOrVal, maybeVal));
         return api;
       },
       whereNull(col) {

@@ -370,7 +370,10 @@ describe('mirror worker end to end (OPH-072/073)', () => {
     const created = await api('POST', `/api/v1/workspaces/${owner.workspace.id}/tasks`, {
       title: 'Bekleyen aynalama',
       calendarMirrorEnabled: true,
-      dueAt: '2030-06-01T12:00:00.000Z',
+      // Inside the sweep's window (30 days back, 365 ahead): the fake used to
+      // ignore the sweep's grouped where, so a date years out passed here
+      // while MySQL would never have backfilled it.
+      dueAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
     });
     await app.mirror.idle();
     expect(primaryEvents()).toHaveLength(0);

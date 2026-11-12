@@ -136,6 +136,39 @@ describe('POST /api/v1/auth/logout (OPH-022)', () => {
     await app.close();
   });
 
+  it('?all=true revokes the widget token its family minted and no other (OPH-458)', async () => {
+    const { app, tables, user, refreshToken: registerToken } = await appWithSession();
+    const login = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: 'mahir@example.com', password: 'correct-horse-battery' },
+    });
+    const loginToken = login.json().tokens.refreshToken;
+    const secret = testConfig.auth.refreshSecret;
+    const familyOf = (t) =>
+      tables.refresh_tokens.find((r) => r.token_hash === hashRefreshToken(t, secret)).family_id;
+    const widget = (id, familyId) => ({
+      id,
+      user_id: user.id,
+      device_id: `device-${id}`,
+      session_family_id: familyId,
+      token_hash: `hash-${id}`,
+      expires_at: new Date(Date.now() + 86_400_000),
+      revoked_at: null,
+    });
+    tables.widget_tokens.push(
+      widget('widget-login', familyOf(loginToken)),
+      widget('widget-register', familyOf(registerToken)),
+    );
+
+    expect((await logout(app, loginToken, true)).statusCode).toBe(204);
+    const byId = (id) => tables.widget_tokens.find((r) => r.id === id);
+    expect(byId('widget-login').revoked_at).toBeInstanceOf(Date);
+    expect(byId('widget-register').revoked_at).toBeNull();
+
+    await app.close();
+  });
+
   it('?all=true revokes the whole family after a rotation chain', async () => {
     const { app, tables, refreshToken: rt1 } = await appWithSession();
     const rt2 = (await refresh(app, rt1)).json().tokens.refreshToken;
