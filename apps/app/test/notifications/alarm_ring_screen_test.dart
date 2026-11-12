@@ -646,6 +646,57 @@ void main() {
     },
   );
 
+  // A snoozed task's reminder and deadline rows land on one instant: one
+  // task, the single layout, and Acknowledge answers both of them — not the
+  // shown row only, leaving its sibling active behind a closed screen.
+  testWidgets('acknowledge answers every row of the task in the occurrence', (
+    tester,
+  ) async {
+    final deadline = AlarmInput(
+      reminderId: id('R1D'),
+      taskId: id('T1'),
+      taskTitle: 'Take pills',
+      remindAt: at,
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+      kind: 'due',
+    );
+    await pumpLayer(tester, feed: [theAlarm(), deadline]);
+    await db
+        .into(db.reminders)
+        .insert(
+          RemindersCompanion.insert(
+            id: id('R1D'),
+            taskId: id('T1'),
+            remindAt: at,
+            kind: const Value('due'),
+            status: const Value('scheduled'),
+            alarmLevel: const Value('urgent'),
+            requiresAcknowledgement: const Value(true),
+          ),
+        );
+    expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+    expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    await tester.pump();
+
+    final rows = await tester.runAsync(
+      () => (db.select(
+        db.reminders,
+      )..orderBy([(r) => OrderingTerm.asc(r.id)])).get(),
+    );
+    expect(
+      {for (final r in rows!) r.id: r.status},
+      {id('R1'): 'acknowledged', id('R1D'): 'acknowledged'},
+    );
+    await tester.pump(const Duration(seconds: 6));
+  });
+
   testWidgets('backing out of the custom pickers brings the sound back', (
     tester,
   ) async {
