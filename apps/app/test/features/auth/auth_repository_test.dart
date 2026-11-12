@@ -143,6 +143,168 @@ void main() {
     await sub.cancel();
   });
 
+  // OPH-447 (#48) — a session family names the device it runs on, so removing
+  // that device elsewhere can sign it out.
+  const deviceId = '01JDEV1CE0000000000000000A';
+
+  test('refresh sends the device id once it is known', () async {
+    String? known;
+    final bodies = <Map<String, dynamic>?>[];
+    final adapter = FakeHttpClientAdapter((options, body) async {
+      bodies.add(body);
+      if (options.path == '/api/v1/auth/login') {
+        return jsonBody(200, sessionJson());
+      }
+      final n = bodies.length;
+      return jsonBody(
+        200,
+        sessionJson(accessToken: 'access-$n', refreshToken: 'refresh-$n'),
+      );
+    });
+    final repo = AuthRepository(
+      api: AuthApi(fakeDio(adapter)),
+      storage: TokenStorage(InMemorySecretStore()),
+      deviceId: () async => known,
+    );
+
+    await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+    // No client id yet (a fresh install before its first sync round).
+    await repo.refreshAccessToken();
+    known = deviceId;
+    await repo.refreshAccessToken();
+
+    expect(bodies[0], {
+      'email': 'mahir@example.com',
+      'password': 'pw-pw-pw-pw',
+    });
+    expect(bodies[1], {'refreshToken': 'refresh-1'});
+    expect(bodies[2], {'refreshToken': 'refresh-2', 'deviceId': deviceId});
+  });
+
+  test('an old server that rejects deviceId still signs in', () async {
+    final paths = <String>[];
+    // A server from before OPH-434: every auth body is
+    // additionalProperties:false, so the unknown field is Fastify's 400.
+    final adapter = FakeHttpClientAdapter((options, body) async {
+      paths.add('${options.path} ${body!.containsKey('deviceId')}');
+      if (body.containsKey('deviceId')) {
+        return jsonBody(400, {
+          'statusCode': 400,
+          'code': 'FST_ERR_VALIDATION',
+          'error': 'Bad Request',
+          'message': 'body must NOT have additional properties',
+        });
+      }
+      return jsonBody(
+        200,
+        options.path == '/api/v1/auth/refresh'
+            ? sessionJson(accessToken: 'access-2', refreshToken: 'refresh-2')
+            : sessionJson(),
+      );
+    });
+    final storage = TokenStorage(InMemorySecretStore());
+    final repo = AuthRepository(
+      api: AuthApi(fakeDio(adapter)),
+      storage: storage,
+      deviceId: () async => deviceId,
+    );
+
+    await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+    expect(repo.session?.user.id, 'user-1');
+    // A refresh is not a sign-out either.
+    expect(await repo.refreshAccessToken(), 'access-2');
+    expect((await storage.read())?.tokens.refreshToken, 'refresh-2');
+
+    expect(paths, [
+      '/api/v1/auth/login true',
+      '/api/v1/auth/login false',
+      '/api/v1/auth/refresh true',
+      '/api/v1/auth/refresh false',
+    ]);
+  });
+
+  test('register and social sign-in name the device too', () async {
+    final bodies = <Map<String, dynamic>?>[];
+    final h = AuthRepository(
+      api: AuthApi(
+        fakeDio(
+          FakeHttpClientAdapter((options, body) async {
+            bodies.add(body);
+            return jsonBody(200, sessionJson());
+          }),
+        ),
+      ),
+      storage: TokenStorage(InMemorySecretStore()),
+      deviceId: () async => deviceId,
+    );
+
+    await h.register(email: 'mahir@example.com', password: 'correct-horse');
+    await h.signInWithProvider(provider: 'google', idToken: 'id-token');
+
+    expect(bodies.map((b) => b?['deviceId']), [deviceId, deviceId]);
+  });
+
+  test('a device id that cannot be read never blocks a sign-in', () async {
+    final bodies = <Map<String, dynamic>?>[];
+    final repo = AuthRepository(
+      api: AuthApi(
+        fakeDio(
+          FakeHttpClientAdapter((options, body) async {
+            bodies.add(body);
+            return jsonBody(200, sessionJson());
+          }),
+        ),
+      ),
+      storage: TokenStorage(InMemorySecretStore()),
+      deviceId: () async => throw StateError('database closed'),
+    );
+
+    await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+
+    expect(repo.session, isNotNull);
+    expect(bodies.single!.containsKey('deviceId'), isFalse);
+  });
+
+  test('only a revoked or reused family reports a revoked session', () async {
+    var revoked = 0;
+    var answer = 'AUTH_INVALID_REFRESH_TOKEN';
+    final repo = AuthRepository(
+      api: AuthApi(
+        fakeDio(
+          FakeHttpClientAdapter((options, body) async {
+            if (options.path == '/api/v1/auth/login') {
+              return jsonBody(200, sessionJson());
+            }
+            if (answer == 'NETWORK_ERROR') {
+              throw DioException.connectionError(
+                requestOptions: options,
+                reason: 'offline',
+              );
+            }
+            return jsonBody(401, {'statusCode': 401, 'code': answer});
+          }),
+        ),
+      ),
+      storage: TokenStorage(InMemorySecretStore()),
+      onSessionRevoked: () => revoked++,
+    );
+
+    for (final code in [
+      'AUTH_INVALID_REFRESH_TOKEN',
+      'AUTH_REFRESH_REUSED',
+      'NETWORK_ERROR',
+      'RATE_LIMITED',
+    ]) {
+      answer = code;
+      await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+      expect(await repo.refreshAccessToken(), isNull);
+    }
+
+    // The other failures still end the session (as before) but say nothing
+    // about this device having been removed: no wipe for them.
+    expect(revoked, 2);
+  });
+
   test('refreshAccessToken without a session is null (no API call)', () async {
     final h = harness((options, body) async => fail('no request expected'));
     expect(await h.repo.refreshAccessToken(), isNull);

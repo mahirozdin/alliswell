@@ -15,6 +15,7 @@ import 'package:alliswell/src/features/devices/device_registry.dart';
 import 'package:alliswell/src/features/devices/providers.dart';
 import 'package:alliswell/src/notifications/device_gate.dart';
 import 'package:alliswell/src/sync/local_data.dart';
+import 'package:alliswell/src/sync/providers.dart';
 
 import '../auth/test_support.dart';
 
@@ -286,9 +287,11 @@ void main() {
 
     // The real session wiring (auth/providers.dart): the hook that runs
     // before a session is exposed is what decides unknown vs legacy.
-    ProviderContainer container() {
+    ProviderContainer container({String? clientId}) {
       final c = ProviderContainer(
         overrides: [
+          // The replica's sync client id, without a platform database.
+          syncClientIdProvider.overrideWith((_) => Stream.value(clientId)),
           secretStoreProvider.overrideWithValue(secrets),
           authApiProvider.overrideWithValue(AuthApi(fakeDio(auth))),
           localDataGuardProvider.overrideWithValue(
@@ -380,6 +383,55 @@ void main() {
         expect(await stateIn(c), RingsUrgentHere.unknown);
       },
     );
+
+    // OPH-447: the family a sign-in starts names this install — the same id
+    // the registry registers under — so "remove" elsewhere can revoke it.
+    group('sign-in names this device', () {
+      Future<Map<String, dynamic>?> signInBody({
+        required String? clientId,
+        String? stored,
+      }) async {
+        if (stored != null) await localKv.set(kRingsUrgentKey, stored);
+        final c = container(clientId: clientId);
+        await c
+            .read(authRepositoryProvider)
+            .login(email: 'mahir@example.com', password: 'pw');
+        return jsonDecode(jsonEncode(auth.requests.last.data))
+            as Map<String, dynamic>?;
+      }
+
+      test(
+        'sign-in passes the sync client id as deviceId when it exists',
+        () async {
+          final body = await signInBody(clientId: _clientId, stored: 'on');
+          expect(body?['deviceId'], _clientId);
+        },
+      );
+
+      test('a server that answered ringsUrgent (off) is asked too', () async {
+        final body = await signInBody(clientId: _clientId, stored: 'off');
+        expect(body?['deviceId'], _clientId);
+      });
+
+      test('no client id yet: no deviceId', () async {
+        final body = await signInBody(clientId: null, stored: 'on');
+        expect(body!.containsKey('deviceId'), isFalse);
+      });
+
+      test(
+        'a server that never answered ringsUrgent (legacy) is not sent it',
+        () async {
+          // Its auth bodies may be additionalProperties:false.
+          final body = await signInBody(clientId: _clientId);
+          expect(body!.containsKey('deviceId'), isFalse);
+          final legacy = await signInBody(
+            clientId: _clientId,
+            stored: 'legacy',
+          );
+          expect(legacy!.containsKey('deviceId'), isFalse);
+        },
+      );
+    });
 
     test('a server without ringsUrgent leaves legacy', () async {
       final kv = _MemoryKv()..values[kRingsUrgentKey] = 'unknown';

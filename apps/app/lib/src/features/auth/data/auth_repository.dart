@@ -12,6 +12,8 @@ class AuthRepository {
     required this._api,
     required this._storage,
     this._onSessionUser,
+    this._deviceId,
+    this._onSessionRevoked,
   });
 
   final AuthApi _api;
@@ -24,6 +26,27 @@ class AuthRepository {
   /// (OPH-355, `LocalDataGuard.claimFor`). Token rotations do not call it.
   final Future<void> Function(String userId, {required bool restored})?
   _onSessionUser;
+
+  /// This install's notification-device id, sent with every sign-in and
+  /// refresh so the server can bind the session family to it (OPH-447, #48).
+  /// `null` — or a read that fails — sends nothing: the field is optional and
+  /// must never cost a sign-in.
+  final Future<String?> Function()? _deviceId;
+
+  /// Runs once the session has been dropped because the server refused the
+  /// refresh token as revoked or reused — the device was removed elsewhere, a
+  /// password changed, or the family was burned (OPH-447). Not awaited: a
+  /// request is waiting on this refresh, and the local sign-out it starts
+  /// (halting that same request's sync round among other things) must not
+  /// wait on it in turn.
+  final void Function()? _onSessionRevoked;
+
+  /// The refresh answers that mean "this session family is gone for good" —
+  /// unlike a network error or a rate limit, which say nothing about it.
+  static const _revokedCodes = {
+    'AUTH_INVALID_REFRESH_TOKEN',
+    'AUTH_REFRESH_REUSED',
+  };
 
   final _sessionChanges = StreamController<AuthSession?>.broadcast();
   AuthSession? _session;
@@ -58,6 +81,7 @@ class AuthRepository {
       email: email,
       password: password,
       displayName: displayName,
+      deviceId: await _readDeviceId(),
     );
     await _setSession(session);
     return session;
@@ -72,6 +96,7 @@ class AuthRepository {
       email: email,
       password: password,
       totpCode: totpCode,
+      deviceId: await _readDeviceId(),
     );
     await _setSession(session);
     return session;
@@ -87,6 +112,7 @@ class AuthRepository {
       provider: provider,
       idToken: idToken,
       totpCode: totpCode,
+      deviceId: await _readDeviceId(),
     );
     await _setSession(session);
     return session;
@@ -107,13 +133,30 @@ class AuthRepository {
   Future<String?> _doRefresh() async {
     final current = _session;
     if (current == null) return null;
+    final deviceId = await _readDeviceId();
     try {
-      final next = await _api.refresh(current.tokens.refreshToken);
+      final next = await _api.refresh(
+        current.tokens.refreshToken,
+        deviceId: deviceId,
+      );
       await _setSession(next);
       return next.tokens.accessToken;
-    } on AuthException {
+    } on AuthException catch (e) {
       // Invalid/reused/expired token: this session is dead — force sign-out.
       await _clearSession();
+      // Revoked, not merely unreachable: what this person left here goes the
+      // way an explicit sign-out takes it (OPH-447).
+      if (_revokedCodes.contains(e.code)) _onSessionRevoked?.call();
+      return null;
+    }
+  }
+
+  Future<String?> _readDeviceId() async {
+    final read = _deviceId;
+    if (read == null) return null;
+    try {
+      return await read();
+    } on Object {
       return null;
     }
   }
