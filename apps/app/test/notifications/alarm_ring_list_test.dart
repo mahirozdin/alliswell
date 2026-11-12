@@ -9,6 +9,7 @@ import 'package:alliswell/src/notifications/alarm_ring_list.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
+import '../support/created_tickers.dart';
 import '../support/sync_overrides.dart';
 
 String id(String p) => p.padRight(26, '0');
@@ -36,10 +37,18 @@ void main() {
     List<AlarmInput> rows, {
     List<AlarmInput> alarms = const [],
     Size size = const Size(430, 932),
+    bool reduceMotion = false,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+    if (reduceMotion) {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+    }
     final container = ProviderContainer(
       overrides: [
         ...syncTestOverrides(),
@@ -259,5 +268,24 @@ void main() {
     expect(expected, orderedEquals([...expected]..sort()), reason: '$order');
     semantics.dispose();
     await tester.pumpWidget(const SizedBox());
+  });
+
+  // ── S0 (CI on Flutter 3.44): dispose() constructs nothing ────────────────
+
+  testWidgets('a list that never pulsed disposes without creating a '
+      'controller', (tester) async {
+    // Reduced motion: the header badge never pulses, so a lazily built pulse
+    // controller would first be constructed inside dispose(), on a
+    // deactivated element — Flutter 3.44 throws there and the minute timer
+    // stays pending.
+    await pumpList(tester, [row('1', now), row('2', now)], reduceMotion: true);
+    expect(find.byType(AlarmRingList), findsOneWidget);
+
+    final created = await tickersCreatedDuring(
+      () => tester.pumpWidget(const SizedBox()),
+    );
+
+    expect(created, isEmpty);
+    expect(tester.takeException(), isNull);
   });
 }

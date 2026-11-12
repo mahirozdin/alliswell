@@ -909,11 +909,18 @@ class _RowExit extends StatefulWidget {
 
 class _RowExitState extends State<_RowExit>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _exit = AnimationController(
-    vsync: this,
-    duration: kAlarmRowExit,
-    value: widget.leaving ? 0 : 1,
-  )..addStatusListener(_status);
+  // Built in initState, never lazily, so dispose() constructs nothing.
+  late final AnimationController _exit;
+
+  @override
+  void initState() {
+    super.initState();
+    _exit = AnimationController(
+      vsync: this,
+      duration: kAlarmRowExit,
+      value: widget.leaving ? 0 : 1,
+    )..addStatusListener(_status);
+  }
 
   void _status(AnimationStatus status) {
     // In the frame that ends the exit, so the row is gone in the same frame.
@@ -970,14 +977,18 @@ class _PulseBadge extends StatefulWidget {
 
 class _PulseBadgeState extends State<_PulseBadge>
     with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  );
+  // Built in initState, never lazily: with reduced motion the badge never
+  // pulses, and a lazy controller would first be constructed inside
+  // dispose() on a deactivated element (throws on Flutter 3.44).
+  late final AnimationController _pulse;
 
   @override
   void initState() {
     super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     if (widget.pulse) _pulse.repeat();
   }
 
