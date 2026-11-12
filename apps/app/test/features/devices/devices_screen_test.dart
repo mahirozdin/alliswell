@@ -401,11 +401,28 @@ void main() {
     expect(find.byKey(const Key('device-saving-$_macId')), findsNothing);
     expect(_switchOf(tester, _macId).value, isTrue);
     expect(kv.values[kRingsUrgentKey], gateBefore);
-    // Two ringing devices: the hint says what that means.
-    expect(
-      find.text('settings.devices.multiHint'.tr(args: {'count': '2'})),
-      findsNWidgets(2),
+    // Two ringing devices: what that means is said once, under the intro
+    // (X-06) — not as a long second line under every ringing row.
+    final multi = find.text(
+      'settings.devices.multiHint'.tr(args: {'count': '2'}),
     );
+    expect(multi, findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('devices-intro')),
+        matching: multi,
+      ),
+      findsOneWidget,
+    );
+    for (final id in [_thisId, _macId]) {
+      expect(
+        find.descendant(
+          of: find.byKey(Key('device-switch-row-$id')),
+          matching: multi,
+        ),
+        findsNothing,
+      );
+    }
 
     // This device off: the server is told AND the alarm gate here follows.
     await tester.tap(find.byKey(const Key('device-switch-$_thisId')));

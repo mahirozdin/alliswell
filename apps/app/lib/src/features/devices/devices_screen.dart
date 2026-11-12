@@ -284,7 +284,6 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       device: device,
       isThis: device.id == thisId,
       showSwitch: supports,
-      ringingCount: ringingCount,
       saving: view.saving.contains(device.id),
       onChanged: view.offline || view.saving.contains(device.id)
           ? null
@@ -297,7 +296,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       padding: awListPadding(context, top: AwSpace.x2),
       children: [
         if (view.offline) const _OfflineLine(),
-        _IntroCard(supported: supports),
+        _IntroCard(supported: supports, ringingCount: ringingCount),
         if (arranged.thisDevice case final self?) ...[
           _SectionLabel('settings.devices.sectionThis'.tr()),
           card(self),
@@ -424,14 +423,20 @@ class _OfflineLine extends StatelessWidget {
 }
 
 /// What the switches do — or, on a server that has none, why there are none.
+/// With two or more devices ringing, what that means is said here once
+/// (X-06), not under every ringing row.
 class _IntroCard extends StatelessWidget {
-  const _IntroCard({required this.supported});
+  const _IntroCard({required this.supported, required this.ringingCount});
 
   final bool supported;
+  final int ringingCount;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final textStyle = Theme.of(
+      context,
+    ).textTheme.bodyMedium?.copyWith(color: scheme.onSurface);
     return Padding(
       padding: kAwListRowPadding,
       child: Card(
@@ -444,13 +449,26 @@ class _IntroCard extends StatelessWidget {
               Icon(Icons.info_outline, size: 20, color: scheme.primary),
               const SizedBox(width: AwSpace.x3),
               Expanded(
-                child: Text(
-                  supported
-                      ? 'settings.devices.intro'.tr()
-                      : 'settings.devices.unsupported'.tr(),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.copyWith(color: scheme.onSurface),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      supported
+                          ? 'settings.devices.intro'.tr()
+                          : 'settings.devices.unsupported'.tr(),
+                      style: textStyle,
+                    ),
+                    if (supported && ringingCount >= 2) ...[
+                      const SizedBox(height: AwSpace.x2),
+                      Text(
+                        'settings.devices.multiHint'.tr(
+                          args: {'count': '$ringingCount'},
+                        ),
+                        key: const Key('devices-multi-note'),
+                        style: textStyle,
+                      ),
+                    ],
+                  ],
                 ),
               ),
             ],
@@ -518,7 +536,6 @@ class _DeviceCard extends StatelessWidget {
     required this.device,
     required this.isThis,
     required this.showSwitch,
-    required this.ringingCount,
     required this.saving,
     required this.onChanged,
     required this.onOpen,
@@ -527,7 +544,6 @@ class _DeviceCard extends StatelessWidget {
   final DeviceInfo device;
   final bool isThis;
   final bool showSwitch;
-  final int ringingCount;
   final bool saving;
   final ValueChanged<bool>? onChanged;
 
@@ -639,14 +655,13 @@ class _DeviceCard extends StatelessWidget {
     final label = web
         ? 'settings.devices.ringSwitchWeb'.tr()
         : 'settings.devices.ringSwitch'.tr();
-    // One honest line per state: a tab rings only while it is open, and
+    // One short line at most: a tab rings only while it is open, and
     // whether an off tab gets a notification at all depends on the server's
     // browser push, so "arrives as a normal notification" is for the others.
+    // Several ringing devices are explained once, under the intro (X-06).
     final hints = [
       if (web) 'settings.devices.webHint'.tr(),
       if (!rings && !web) 'settings.devices.offHint'.tr(),
-      if (rings && ringingCount >= 2)
-        'settings.devices.multiHint'.tr(args: {'count': '$ringingCount'}),
     ];
     final switchRow = MergeSemantics(
       child: InkWell(
