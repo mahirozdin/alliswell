@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
+import '../core/date_input.dart';
 import '../core/persisted_prefs.dart';
 import '../core/server_url.dart' show prettyServerUrl;
 import '../features/ai/ui/ai_settings_card.dart';
@@ -627,7 +628,7 @@ class SettingsGeneralScreen extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
-                  final picked = await showTimePicker(
+                  final picked = await awShowTimePicker(
                     context: context,
                     initialTime: current,
                   );

@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/date_format.dart';
+import '../core/date_input.dart';
 import '../core/day_boundary.dart';
 import '../core/persisted_prefs.dart';
 import '../core/tr_locative.dart';
@@ -305,7 +306,7 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
     );
     if (!mounted) return;
     if (date == null) return backOut();
-    final time = await showTimePicker(
+    final time = await awShowTimePicker(
       context: context,
       initialTime: TimeOfDay.fromDateTime(suggested),
     );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/error_messages.dart';
+import '../../../core/date_input.dart';
 import '../../../core/format.dart';
 import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
@@ -146,7 +147,7 @@ class _QuietHours extends ConsumerWidget {
         hour: (current ?? (start ? 22 * 60 : 7 * 60)) ~/ 60,
         minute: (current ?? 0) % 60,
       );
-      final picked = await showTimePicker(
+      final picked = await awShowTimePicker(
         context: context,
         initialTime: initial,
       );
