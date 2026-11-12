@@ -126,7 +126,7 @@ struct AWWidgetFetcher {
   }
 
   var profile: AWWidgetFetchProfile? {
-    AWWidgetFetchProfile.decode(defaults.string(forKey: kAWFetchProfileKey))
+    AWWidgetFetchProfile.decode(awStoredString(defaults, kAWFetchProfileKey))
   }
 
   /// One fetch, when the contract allows one (steps 2–4). Never throws: every
@@ -135,8 +135,8 @@ struct AWWidgetFetcher {
   func refresh() async -> AWWidgetFetchOutcome {
     let start = now()
     let profile = self.profile
-    let hasLocal = defaults.string(forKey: kAWLocalSnapshotKey) != nil
-    let tokenState = defaults.string(forKey: kAWTokenStateKey)
+    let hasLocal = awStoredString(defaults, kAWLocalSnapshotKey) != nil
+    let tokenState = awStoredString(defaults, kAWTokenStateKey)
     let lastSuccess = defaults.object(forKey: kAWFetchedAtKey) as? Int
     let backoffUntil = defaults.object(forKey: kAWBackoffUntilKey) as? Int
     // Everything but the token first: the Keychain is read only for a turn
@@ -157,7 +157,7 @@ struct AWWidgetFetcher {
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Accept")
     // An envelope fetched with another query is not used, not even here.
-    let stored = AWServerEnvelope(json: defaults.string(forKey: kAWServerSnapshotKey))
+    let stored = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
     let usable = stored.flatMap { $0.query == query && !$0.etag.isEmpty ? $0 : nil }
     if let usable { request.setValue(usable.etag, forHTTPHeaderField: "If-None-Match") }
 
@@ -267,10 +267,10 @@ struct AWWidgetFetcher {
   /// read it (queued completions already applied).
   func choice(local: AWSnapshot, today: String) -> AWSnapshotChoice {
     let profile = self.profile
-    let hasLocal = defaults.string(forKey: kAWLocalSnapshotKey) != nil
+    let hasLocal = awStoredString(defaults, kAWLocalSnapshotKey) != nil
     return awPickSnapshot(
       local: hasLocal ? local : nil, localWrittenAtMs: profile?.localWrittenAtMs,
-      server: AWServerEnvelope(json: defaults.string(forKey: kAWServerSnapshotKey)),
+      server: AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey)),
       query: profile.map { awSnapshotQuery(profile: $0, timeZone: timeZone) },
       pendingCompletionTaskIds: awQueuedCompletionTaskIds(in: defaults),
       pendingOutbox: profile?.pendingOutbox ?? 0, today: today)
@@ -308,7 +308,7 @@ func awWidgetSnapshotURL(baseUrl: String, query: String) -> URL? {
 /// between would put the tapped row back. `.empty` when there is none.
 func awLoadLocalSnapshot(in defaults: UserDefaults, today: String) -> AWSnapshot {
   guard
-    let raw = defaults.string(forKey: kAWLocalSnapshotKey),
+    let raw = awStoredString(defaults, kAWLocalSnapshotKey),
     var data = raw.data(using: .utf8)
   else { return .empty }
   let queued = awQueuedCompletionTaskIds(in: defaults)

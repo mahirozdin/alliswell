@@ -44,6 +44,7 @@
 		A5CB0451000000000000A001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
 		A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A003 /* WidgetCompletionTests.swift */; };
 		A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */; };
+		A5CB0451000000000000A006 /* WidgetSignedOutTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A007 /* WidgetSignedOutTests.swift */; };
 		A5CBB5F0300AD02700CE60FF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */; };
 		A5CBB5F2300AD02700CE60FF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */; };
 		A5CBB601300AD02800CE60FF /* AllisWellWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -165,6 +166,7 @@
 		A5BED92C30082BDB00593EDC /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
 		A5CB0451000000000000A003 /* WidgetCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetCompletionTests.swift; sourceTree = "<group>"; };
 		A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetMoreCountTests.swift; sourceTree = "<group>"; };
+		A5CB0451000000000000A007 /* WidgetSignedOutTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetSignedOutTests.swift; sourceTree = "<group>"; };
 		A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AllisWellWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -276,6 +278,7 @@
 				6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */,
 				A5CB0451000000000000A003 /* WidgetCompletionTests.swift */,
 				A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */,
+				A5CB0451000000000000A007 /* WidgetSignedOutTests.swift */,
 				C5BCF14C5F534AC75BC4C97D /* WidgetFetchPolicyTests.swift */,
 			);
 			path = RunnerTests;
@@ -716,6 +719,7 @@
 				AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */,
 				A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */,
 				A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */,
+				A5CB0451000000000000A006 /* WidgetSignedOutTests.swift in Sources */,
 				71973A096BA887149AF865D5 /* WidgetFetchPolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

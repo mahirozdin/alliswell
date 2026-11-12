@@ -32,6 +32,15 @@ let kAWFetchFailuresKey = "aw_widget_fetch_failures"
 /// UTC ms; no fetch before it.
 let kAWBackoffUntilKey = "aw_widget_backoff_until_ms"
 
+/// A key's text, nil when it is missing or empty. The app removes a key by
+/// writing the empty string — `home_widget` 0.9.3 aborts the iOS app on a
+/// null (#50, PR2-01) — so an empty value is no value (WIDGETS.md §3.2).
+/// The stamps are read with `as? Int`, which an empty string already fails.
+func awStoredString(_ defaults: UserDefaults, _ key: String) -> String? {
+  guard let text = defaults.string(forKey: key), !text.isEmpty else { return nil }
+  return text
+}
+
 // MARK: - Timing
 
 /// No new fetch within this long of the last success: the N widget instances
