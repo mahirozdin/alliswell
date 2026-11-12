@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
-import 'package:flutter/widgets.dart' show Locale;
+import 'package:flutter/widgets.dart' show AppLifecycleState, Locale;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
@@ -82,6 +82,7 @@ class _SlowPrivacy extends WidgetPrivacy {
 }
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
   final now = DateTime(2026, 11, 12, 10);
   final tasks = [
     _task('today', dueAt: DateTime(2026, 11, 12, 14)),
@@ -210,6 +211,66 @@ void main() {
       );
       expect(android.keys, contains(kWidgetSnapshotKey));
       expect(android.keys, isNot(contains(kWidgetFetchProfileKey)));
+    });
+    test('going to the background keeps the outbox count sync left, not the '
+        'one the last publish saw', () async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      final host = _KeyedHost();
+      final outbox = StreamController<int>();
+      addTearDown(outbox.close);
+      final container = ProviderContainer(
+        overrides: [
+          openTasksProvider.overrideWith((ref) => Stream.value(tasks)),
+          projectsByIdProvider.overrideWithValue(const {}),
+          widgetHostProvider.overrideWithValue(host),
+          widgetPrivateProvider.overrideWith(
+            () => _SlowPrivacy(Completer<void>()..complete()),
+          ),
+          taskScopeProvider.overrideWith(
+            (ref) async => TaskScope.workspace(ws),
+          ),
+          widgetFetchBaseUrlProvider.overrideWith(
+            (ref) async => 'https://api.example.com',
+          ),
+          widgetPendingOutboxProvider.overrideWith((ref) => outbox.stream),
+        ],
+      );
+      addTearDown(container.dispose);
+      container.listen(widgetSyncProvider, (_, _) {});
+      container.listen(taskScopeProvider, (_, _) {});
+      container.listen(widgetFetchBaseUrlProvider, (_, _) {});
+      container.listen(widgetPendingOutboxProvider, (_, _) {});
+
+      // One unsent note edit when the snapshot is published.
+      outbox.add(1);
+      await container.read(openTasksProvider.future);
+      await container.read(widgetPrivateProvider.future);
+      await container.read(taskScopeProvider.future);
+      await container.read(widgetFetchBaseUrlProvider.future);
+      await pumpEventQueue();
+      expect(host.last(kWidgetFetchProfileKey)!['pendingOutbox'], 1);
+
+      // Sync sends it: the profile alone is rewritten, no task changed.
+      outbox.add(0);
+      await pumpEventQueue();
+      expect(host.last(kWidgetFetchProfileKey)!['pendingOutbox'], 0);
+
+      // The way out republishes the same rows; the count must stay 0, or
+      // the extension keeps preferring the local snapshot over the server.
+      int snapshots() => host.keys.where((k) => k == kWidgetSnapshotKey).length;
+      final before = snapshots();
+      for (final state in const [
+        AppLifecycleState.inactive,
+        AppLifecycleState.hidden,
+        AppLifecycleState.paused,
+      ]) {
+        binding.handleAppLifecycleStateChanged(state);
+      }
+      await pumpEventQueue();
+      expect(snapshots(), before + 1, reason: 'the background write');
+      expect(host.last(kWidgetFetchProfileKey)!['pendingOutbox'], 0);
+      binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
     });
   });
 

@@ -352,16 +352,16 @@ final widgetSyncProvider = Provider<void>((ref) {
     final baseUrl = ref.watch(widgetFetchBaseUrlProvider).value;
     if (scope != null && baseUrl != null) {
       // Listened, not watched: a new count rewrites the profile alone, not
-      // the whole snapshot.
+      // the whole snapshot. The bridge holds the live count from here on, so
+      // the source carries none: a count captured in it would be put back by
+      // every later publish of this build — the write on the way out would
+      // restore a count sync has since drained, and the extension would keep
+      // preferring the local snapshot over the server's answer.
       ref.listen<AsyncValue<int>>(widgetPendingOutboxProvider, (_, next) {
         final count = next.value;
         if (count != null) unawaited(bridge.updatePendingOutbox(count));
       }, fireImmediately: true);
-      fetch = WidgetFetchSource(
-        baseUrl: baseUrl,
-        scope: scope,
-        pendingOutbox: ref.read(widgetPendingOutboxProvider).value,
-      );
+      fetch = WidgetFetchSource(baseUrl: baseUrl, scope: scope);
     }
   }
   Future<void> publish() => bridge.publish(
