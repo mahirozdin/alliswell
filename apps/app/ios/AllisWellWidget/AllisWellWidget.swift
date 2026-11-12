@@ -681,7 +681,9 @@ struct AWTaskRowView: View {
       // (the row opens the task), which is why this is gated rather than
       // replaced. Generous hit target: the stock Reminders widget's loudest
       // complaint is completing the wrong thing by accident (DESIGN W4).
-      if #available(iOS 17.0, macOS 14.0, *), !row.done {
+      // OPH-462: a task only the server's view holds draws the plain circle —
+      // the app has no copy to complete — and its tap opens the app.
+      if #available(iOS 17.0, macOS 14.0, *), row.canCompleteInPlace {
         Button(intent: AWWidgetCompleteIntent(taskId: row.id)) {
           Image(systemName: "circle")
             .foregroundStyle(Color.secondary)

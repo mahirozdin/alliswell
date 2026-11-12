@@ -505,6 +505,50 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
   }
 
+  /// A task the phone does not hold yet (created elsewhere while the app was
+  /// swiped away) is drawn from the server's view, but its circle cannot
+  /// complete it in place: the app applies a queued completion to its own
+  /// copy, and it has none, so the press would be lost. A task the app's
+  /// snapshot holds keeps the circle; an event never had one.
+  func testOnlyTasksThePhoneHoldsCanBeCompletedFromTheServerView() throws {
+    let both = """
+      {"v":6,"generatedAt":"2025-11-12T07:50:00.000Z","locale":"tr",
+       "date":{"weekday":"Çarşamba","day":"12","month":"Kasım"},
+       "strings":{"openTodayPattern":"{count} açık"},
+       "buckets":[{"key":"today","label":"Bugün","count":1,
+         "items":[{"id":"B","title":"local B","done":false,"priority":"none"}]}],
+       "days":[{"date":"2025-11-13","buckets":[{"key":"today","label":"Bugün","count":1,
+         "items":[{"id":"C","title":"local C","done":false,"priority":"none"}]}]}]}
+      """
+    let local = try JSONDecoder().decode(AWSnapshot.self, from: Data(both.utf8))
+    let envelope = AWServerEnvelope(
+      fetchedAtMs: startMs, etag: "\"abc\"", query: "q", body: serverBody())
+    let view = try XCTUnwrap(
+      awServerView(envelope, pendingCompletionTaskIds: [], today: nil))
+    let profile = try XCTUnwrap(
+      AWWidgetFetchProfile.decode(profileJSON(localWrittenAtMs: startMs - 600_000)))
+    let snap = awSnapshotFromServer(
+      view, local: local, profile: profile,
+      timeZone: TimeZone(identifier: zone)!)
+
+    let rows = snap.buckets.flatMap(\.items)
+    let byId = Dictionary(rows.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+    XCTAssertEqual(byId["A"]?.serverOnly, true, "A is only on the server")
+    XCTAssertFalse(byId["A"]?.canCompleteInPlace ?? true)
+    XCTAssertNotEqual(byId["B"]?.serverOnly, true, "the phone holds B")
+    XCTAssertTrue(byId["B"]?.canCompleteInPlace ?? false)
+    XCTAssertTrue(byId["C"]?.canCompleteInPlace ?? false, "C is in a later day of the phone's")
+    XCTAssertFalse(byId["E"]?.canCompleteInPlace ?? true, "an event is never completed")
+    // Every place the row is drawn says the same: a project's view, a later day.
+    XCTAssertEqual(snap.views?["p1"]?.buckets.first?.items.first?.serverOnly, true)
+    XCTAssertEqual(snap.days?[1].buckets?.first?.items.first?.id, "C")
+    XCTAssertTrue(snap.days?[1].buckets?.first?.items.first?.canCompleteInPlace ?? false)
+
+    // The app's own snapshot never carries the mark: every open task row of
+    // it completes in place, as before.
+    XCTAssertTrue(local.buckets.first?.items.first?.canCompleteInPlace ?? false)
+  }
+
   /// The app completes L and writes its snapshot and an unsent outbox entry
   /// while the request is out: the choice keeps the app's snapshot, and the
   /// one it draws is the new one, with L done — not the one read before the

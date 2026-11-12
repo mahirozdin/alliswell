@@ -76,9 +76,19 @@ struct AWTaskRow: Codable, Identifiable {
   // after v1 — a v4 row has neither and decodes as the task it is.
   let kind: String?
   let day: String?
+  /// True for a row of the server's view that the app's own snapshot does not
+  /// hold (OPH-462): a task created elsewhere while the app was swiped away.
+  /// The app has no copy of it to apply a completion to, so its circle does
+  /// not complete in place; the row opens the app instead. Swift sets it when
+  /// it spells the server's view; the app never writes it.
+  var serverOnly: Bool? = nil
 
   /// `kWidgetKindEvent` in widget_snapshot.dart.
   var isEvent: Bool { kind == "event" }
+
+  /// Whether the row's circle completes the task from the widget: an open
+  /// task the app holds.
+  var canCompleteInPlace: Bool { !done && !isEvent && serverOnly != true }
 
   /// Where an event row's tap goes: Home with its day selected. Nil for a
   /// task, or for a day that is not `yyyy-MM-dd` (a URL is input).
@@ -127,6 +137,24 @@ struct AWDayView: Codable {
   let next: AWNextTask?
   let buckets: [AWBucket]?
   let views: [String: AWListView]?
+}
+
+extension AWSnapshot {
+  /// Every row id the snapshot draws anywhere: the top level, the project
+  /// views and every day with its own project views.
+  var rowIds: Set<String> {
+    var ids = Set<String>()
+    func add(_ buckets: [AWBucket]?) {
+      for bucket in buckets ?? [] { for row in bucket.items { ids.insert(row.id) } }
+    }
+    add(buckets)
+    for view in (views ?? [:]).values { add(view.buckets) }
+    for day in days ?? [] {
+      add(day.buckets)
+      for view in (day.views ?? [:]).values { add(view.buckets) }
+    }
+    return ids
+  }
 }
 
 /// The id of the whole list — `kWidgetListAll` in widget_grouping.dart.

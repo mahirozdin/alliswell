@@ -331,7 +331,7 @@ func awSnapshotFromServer(
   let words = AWServerWords(
     profile: profile, localStrings: local.strings ?? [:],
     locale: Locale(identifier: profile.locale ?? local.locale), timeZone: zone,
-    localBuckets: local.buckets)
+    localBuckets: local.buckets, localRowIds: local.rowIds)
 
   let days = view.days.map { words.day($0) }
   guard let day0 = days.first else { return local }
@@ -366,11 +366,14 @@ private struct AWServerWords {
   let openTodayPattern: String?
   /// The app's own label for a bucket key, for a profile without the word.
   let localLabels: [String: String]
+  /// Every row the app's snapshot holds; a task outside it is `serverOnly`.
+  let localRowIds: Set<String>
 
   init(
     profile: AWWidgetFetchProfile, localStrings: [String: String], locale: Locale,
-    timeZone: TimeZone, localBuckets: [AWBucket]
+    timeZone: TimeZone, localBuckets: [AWBucket], localRowIds: Set<String>
   ) {
+    self.localRowIds = localRowIds
     strings = profile.strings ?? [:]
     patterns = profile.patterns
     openTodayPattern = localStrings["openTodayPattern"]
@@ -505,7 +508,8 @@ private struct AWServerWords {
       time: label(
         style: item.timeStyle, dueAt: item.dueAt, endAt: item.endAt, eventDay: item.day,
         allDay: item.allDay == true, viewDate: viewDate),
-      projectColor: item.projectColor, kind: item.kind, day: item.day)
+      projectColor: item.projectColor, kind: item.kind, day: item.day,
+      serverOnly: event || localRowIds.contains(item.id) ? nil : true)
   }
 
   func bucket(_ bucket: AWServerBucket, viewDate: Date?) -> AWBucket {
