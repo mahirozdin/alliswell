@@ -20,6 +20,7 @@ import 'features/ee/admin/ui/admin_packages_screen.dart';
 import 'features/ee/admin/ui/admin_shell.dart';
 import 'features/ee/admin/ui/admin_teams_screen.dart';
 import 'features/ee/admin/ui/admin_usage_screen.dart';
+import 'features/devices/devices_screen.dart';
 import 'features/ee/ui/assignments_moved_screen.dart';
 import 'features/ee/ui/join_screen.dart';
 import 'features/ee/ui/team_address_views.dart';
@@ -902,6 +903,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/settings/notifications',
         builder: (context, state) =>
             _contentPage(const SettingsNotificationsScreen()),
+      ),
+      // OPH-448 (#48): which devices ring urgent alarms.
+      GoRoute(
+        path: '/settings/devices',
+        builder: (context, state) => _contentPage(const DevicesScreen()),
       ),
       GoRoute(
         path: '/settings/integrations',

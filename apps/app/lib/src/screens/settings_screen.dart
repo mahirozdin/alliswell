@@ -14,6 +14,7 @@ import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/sign_out.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
+import '../features/devices/devices_screen.dart' show DevicesSettingsRow;
 import '../features/integrations/ui/caldav_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/workspaces/workspaces.dart';
@@ -544,6 +545,15 @@ class SettingsAccountScreen extends ConsumerWidget {
               // it signs the user out (tokens belong to the server that
               // issued them).
               const ServerUrlTile(),
+              // OPH-448: the devices signed in to this account. Their home is
+              // Notifications & alarms; this is only a door to it.
+              ListTile(
+                key: const Key('settings-account-devices'),
+                leading: const Icon(Icons.devices_outlined),
+                title: Text('settings.devices.title'.tr()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/devices'),
+              ),
             ],
           ),
         ),
@@ -771,6 +781,9 @@ class SettingsNotificationsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/settings/reminders'),
             ),
+            // OPH-448 (#48): which of the person's devices ring urgent
+            // alarms — a server setting, one switch per device.
+            const DevicesSettingsRow(),
             // OPH-176 (DESIGN §11 A6): what this device DID about alarms.
             // Round 9 was argued from memory; it won't be again.
             ListTile(

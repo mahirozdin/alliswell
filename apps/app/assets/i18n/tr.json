@@ -287,7 +287,33 @@
       "privateSub": "Ana ekran ve kilit ekranı widget'larında görev başlıklarını gizle — başlıklar uygulamadan hiç çıkmaz"
     },
     "teamNotificationPrefs": "Ekip bildirimleri",
-    "teamNotificationPrefsSub": "Başkalarının yaptıkları sana hangi kanaldan ulaşsın: uygulama, e-posta, telefon"
+    "teamNotificationPrefsSub": "Başkalarının yaptıkları sana hangi kanaldan ulaşsın: uygulama, e-posta, telefon",
+    "devices": {
+      "title": "Cihazlar",
+      "sub": "Acil alarmların hangi cihazlarda çaldığı",
+      "subtitleOne": "Acil alarmlar: {device}",
+      "subtitleMany": "Acil alarmlar {count} cihazda",
+      "subtitleNone": "Acil alarm çalan cihaz yok",
+      "intro": "Acil alarmlar yalnız seçtiğin cihazlarda çalar. Diğer cihazlarına aynı hatırlatma normal bildirim olarak gelir.",
+      "thisDevice": "Bu cihaz",
+      "sectionThis": "Bu cihaz",
+      "sectionOther": "Diğer cihazlar",
+      "ringSwitch": "Acil alarmları bu cihazda çaldır",
+      "ringSwitchWeb": "Acil alarmları bu sekmede çaldır",
+      "offHint": "Burada normal bildirim olarak gelir.",
+      "webHint": "Yalnız sekme açıkken çalar.",
+      "activeNow": "Şu an etkin",
+      "lastSeen": "{ago} görüldü",
+      "multiHint": "{count} cihazda çalar. Android’de ve açık uygulamada birinde onaylayınca diğerlerinde de susar; iPhone’da uygulama kapalıyken susmayabilir.",
+      "offline": "Çevrimdışısın. Cihaz ayarları bağlanınca değişebilir.",
+      "unsupported": "Sunucun bu ayarı henüz desteklemiyor. Acil alarmlar bütün cihazlarda çalar.",
+      "single": "Başka cihazda giriş yaptığında burada görünür.",
+      "stale": "Uzun süredir görülmeyen ({count})",
+      "saveFailed": "Kaydedilemedi. Tekrar dene.",
+      "unknownBrowser": "Tarayıcı",
+      "announceOn": "{device} acil alarmlar açık",
+      "announceOff": "{device} acil alarmlar kapalı"
+    }
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",

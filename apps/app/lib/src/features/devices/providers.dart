@@ -1,15 +1,18 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api_exception.dart';
 import '../../core/app_version.dart';
 import '../../core/firebase/push_messaging.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/device_gate.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
+import '../workspaces/workspaces.dart' show currentUserIdProvider;
 import 'data/device_api.dart';
 import 'device_registry.dart';
 
@@ -156,3 +159,191 @@ final deviceRegistrationProvider = Provider<void>((ref) {
   );
   ref.onDispose(lifecycle.dispose);
 });
+
+/// What Settings ▸ Devices shows (#48, OPH-448): the person's devices as the
+/// server listed them, whether that list is the last one seen rather than a
+/// fresh one ([offline]), and which rows have a switch change in flight.
+@immutable
+class DevicesView {
+  const DevicesView({
+    required this.devices,
+    this.offline = false,
+    this.saving = const {},
+  });
+
+  final List<DeviceInfo> devices;
+
+  /// The server could not be reached; [devices] is the last list this session
+  /// saw. Ring switches are a server setting and are not queued, so they are
+  /// inactive until it answers again.
+  final bool offline;
+
+  /// Device ids whose ring switch is waiting for the server.
+  final Set<String> saving;
+
+  /// Whether the server knows `ringsUrgent` at all — an older one sends no
+  /// such field, and then every device rings as before #48.
+  bool get supportsRingsUrgent =>
+      devices.isNotEmpty && devices.every((d) => d.ringsUrgent != null);
+
+  List<DeviceInfo> get ringing => [
+    for (final device in devices)
+      if (device.ringsUrgent == true) device,
+  ];
+
+  DeviceInfo? byId(String id) {
+    for (final device in devices) {
+      if (device.id == id) return device;
+    }
+    return null;
+  }
+
+  DevicesView _with(DeviceInfo device, {required bool saving}) => DevicesView(
+    devices: [for (final d in devices) d.id == device.id ? device : d],
+    offline: offline,
+    saving: {
+      for (final id in this.saving)
+        if (id != device.id) id,
+      if (saving) device.id,
+    },
+  );
+}
+
+/// The last list this session saw, per person, for [DevicesView.offline].
+/// Memory only: device names are not worth a copy on disk that sign-out would
+/// then have to remember to remove.
+class _DevicesCache {
+  String? userId;
+  List<DeviceInfo>? devices;
+}
+
+final _devicesCacheProvider = Provider<_DevicesCache>((_) => _DevicesCache());
+
+/// Re-reads [ringsUrgentHereProvider]; kept alive so a save that lands after
+/// the Devices screen closed still reaches the alarm gate.
+final _ringsUrgentChangedProvider = Provider<void Function()>(
+  (ref) =>
+      () => ref.invalidate(ringsUrgentHereProvider),
+);
+
+/// The person's devices (`GET /api/v1/notification-devices`), loaded each
+/// time a screen that shows them opens.
+///
+/// No automatic retry: the screen offers its own, and an offline answer comes
+/// back at once from the last list instead of after a backoff.
+final devicesProvider =
+    AsyncNotifierProvider.autoDispose<DevicesController, DevicesView>(
+      DevicesController.new,
+      retry: (_, _) => null,
+    );
+
+class DevicesController extends AsyncNotifier<DevicesView> {
+  @override
+  Future<DevicesView> build() async {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const DevicesView(devices: []);
+    final cache = ref.read(_devicesCacheProvider);
+    try {
+      final devices = await ref.read(deviceApiProvider).list();
+      cache
+        ..userId = userId
+        ..devices = devices;
+      return DevicesView(devices: devices);
+    } on Object catch (error) {
+      final cached = cache.userId == userId ? cache.devices : null;
+      if (cached != null && _unreachable(error)) {
+        return DevicesView(devices: cached, offline: true);
+      }
+      if (error is DioException) throw asApiException(error);
+      rethrow;
+    }
+  }
+
+  /// Turns urgent ringing on or off for one device.
+  ///
+  /// Optimistic: the row shows [ringsUrgent] at once and is marked saving. On
+  /// a failure it goes back to what it was and this returns null, so the
+  /// screen can say so. When the row is THIS device, the server's answer is
+  /// also cached for the alarm gate (OPH-446) — only the answer, never the
+  /// optimistic guess.
+  Future<DevicePatchResult?> setRingsUrgent(
+    String deviceId,
+    bool ringsUrgent,
+  ) async {
+    final current = state.value;
+    if (current == null || current.offline) return null;
+    if (current.saving.contains(deviceId)) return null;
+    final before = current.byId(deviceId);
+    if (before == null) return null;
+
+    final api = ref.read(deviceApiProvider);
+    final store = ref.read(ringsUrgentStoreProvider);
+    final thisId = ref.read(syncClientIdProvider).value;
+    final cache = ref.read(_devicesCacheProvider);
+    final gateChanged = ref.read(_ringsUrgentChangedProvider);
+    state = AsyncData(
+      current._with(_withRings(before, ringsUrgent), saving: true),
+    );
+
+    final DevicePatchResult result;
+    try {
+      result = await api.patch(deviceId, ringsUrgent: ringsUrgent);
+    } on Object {
+      if (ref.mounted) _settle(before);
+      return null;
+    }
+    final after = _merged(before, result.device, ringsUrgent);
+    if (deviceId == thisId) {
+      await store.write(ringsUrgentHereFromServer(after.ringsUrgent));
+      // Through a provider that outlives this screen: the gate must hear
+      // about it even when the person has already left.
+      gateChanged();
+    }
+    final cached = cache.devices;
+    if (cached != null) {
+      cache.devices = [for (final d in cached) d.id == deviceId ? after : d];
+    }
+    if (ref.mounted) _settle(after);
+    return result;
+  }
+
+  void _settle(DeviceInfo device) {
+    final latest = state.value;
+    if (latest == null) return;
+    state = AsyncData(latest._with(device, saving: false));
+  }
+
+  static bool _unreachable(Object error) => switch (error) {
+    DioException() => error.response == null,
+    ApiException(code: 'NETWORK_ERROR') => true,
+    _ => false,
+  };
+
+  static DeviceInfo _withRings(DeviceInfo device, bool? ringsUrgent) =>
+      DeviceInfo(
+        id: device.id,
+        platform: device.platform,
+        name: device.name,
+        appVersion: device.appVersion,
+        lastSeenAt: device.lastSeenAt,
+        createdAt: device.createdAt,
+        ringsUrgent: ringsUrgent,
+        ringsUrgentSource: device.ringsUrgentSource,
+        hasSession: device.hasSession,
+      );
+
+  /// The PATCH answer, minus what only GET says (`hasSession`) and with the
+  /// requested value when the answer leaves the flag out.
+  static DeviceInfo _merged(DeviceInfo before, DeviceInfo fresh, bool asked) =>
+      DeviceInfo(
+        id: before.id,
+        platform: fresh.platform.isEmpty ? before.platform : fresh.platform,
+        name: fresh.name ?? before.name,
+        appVersion: fresh.appVersion ?? before.appVersion,
+        lastSeenAt: fresh.lastSeenAt ?? before.lastSeenAt,
+        createdAt: fresh.createdAt ?? before.createdAt,
+        ringsUrgent: fresh.ringsUrgent ?? asked,
+        ringsUrgentSource: fresh.ringsUrgentSource ?? before.ringsUrgentSource,
+        hasSession: before.hasSession,
+      );
+}

@@ -288,7 +288,33 @@
       "privateSub": "Hide task titles on your home-screen and lock-screen widgets — they never leave the app"
     },
     "teamNotificationPrefs": "Team notifications",
-    "teamNotificationPrefsSub": "How other people's actions reach you: in the app, by e-mail, on the phone"
+    "teamNotificationPrefsSub": "How other people's actions reach you: in the app, by e-mail, on the phone",
+    "devices": {
+      "title": "Devices",
+      "sub": "Where urgent alarms ring",
+      "subtitleOne": "Urgent alarms: {device}",
+      "subtitleMany": "Urgent alarms on {count} devices",
+      "subtitleNone": "No device rings urgent alarms",
+      "intro": "Urgent alarms ring only on the devices you choose. Your other devices get the same reminder as a normal notification.",
+      "thisDevice": "This device",
+      "sectionThis": "This device",
+      "sectionOther": "Other devices",
+      "ringSwitch": "Ring urgent alarms on this device",
+      "ringSwitchWeb": "Ring urgent alarms in this tab",
+      "offHint": "Arrives here as a normal notification.",
+      "webHint": "Rings only while the tab is open.",
+      "activeNow": "Active now",
+      "lastSeen": "Seen {ago}",
+      "multiHint": "Rings on {count} devices. On Android and in an open app, confirming on one silences the others; on iPhone it may keep ringing while the app is closed.",
+      "offline": "You're offline. Device settings can change once you're connected.",
+      "unsupported": "Your server doesn't support this setting yet. Urgent alarms ring on every device.",
+      "single": "When you sign in on another device, it shows up here.",
+      "stale": "Not seen for a long time ({count})",
+      "saveFailed": "Couldn't save. Try again.",
+      "unknownBrowser": "Browser",
+      "announceOn": "Urgent alarms on for {device}",
+      "announceOff": "Urgent alarms off for {device}"
+    }
   },
   "shell": {
     "fabNewTask": "New task with options",
