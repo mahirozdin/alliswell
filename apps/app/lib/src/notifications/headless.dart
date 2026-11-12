@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart'
-    show TargetPlatform, defaultTargetPlatform, kIsWeb;
+    show TargetPlatform, defaultTargetPlatform, kIsWeb, visibleForTesting;
 
 import '../core/app_liveness.dart';
 import '../core/kv/local_kv.dart';
@@ -9,6 +9,7 @@ import '../features/auth/data/auth_repository.dart';
 import '../features/auth/data/models.dart';
 import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/token_storage.dart';
+import '../features/auth/data/secret_store.dart';
 import '../features/auth/data/secure_secret_store.dart';
 import '../features/auth/data/auth_interceptor.dart';
 import '../features/devices/device_registry.dart';
@@ -18,12 +19,14 @@ import '../features/widgets/widget_host.dart';
 import '../i18n/i18n.dart';
 import '../sync/db/connection.dart';
 import '../sync/db/database.dart';
+import '../sync/local_data.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_engine.dart';
 import 'alarm_sound.dart';
 import 'device_gate.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
+import 'os_alarms.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
 import 'reminder_store.dart';
@@ -67,11 +70,21 @@ import 'scheduler.dart';
 ///    sync and nothing to schedule.
 /// 5. `syncNow()`, not `start()`: `start` installs a pull timer this process
 ///    will never live to fire.
+/// 6. A refresh refused as revoked (OPH-447: the device was removed on
+///    another device) ends the turn the way the foreground ends such a
+///    session ([endRevokedSessionHeadless]) instead of re-arming alarms from
+///    the rows of a session that no longer exists. Nobody else will: the next
+///    launch restores no session, so its revocation cleanup never runs.
+///
+/// [secretStore] and [httpAdapter] are test seams; production reads the
+/// platform store and talks to the network.
 Future<void> runHeadlessRefresh({
   AwDatabase Function()? openDatabase,
   AppLiveness? liveness,
   NotificationsGateway Function()? openGateway,
   WidgetHost? widgetHost,
+  @visibleForTesting SecretStore? secretStore,
+  @visibleForTesting HttpClientAdapter? httpAdapter,
 }) async {
   // The app is in front of the user and already doing this, continuously
   // (OPH-318). WAL makes the overlap survivable; not overlapping is cheaper.
@@ -93,9 +106,19 @@ Future<void> runHeadlessRefresh({
       final baseUrl =
           await localKv.get(kServerUrlPrefKey) ?? compiledApiBaseUrl;
 
+      Dio client() {
+        final dio = Dio(BaseOptions(baseUrl: baseUrl));
+        if (httpAdapter != null) dio.httpClientAdapter = httpAdapter;
+        return dio;
+      }
+
+      String? revokedUserId;
       final repository = AuthRepository(
-        api: AuthApi(Dio(BaseOptions(baseUrl: baseUrl))),
-        storage: TokenStorage(defaultSecretStore()),
+        api: AuthApi(client()),
+        storage: TokenStorage(secretStore ?? defaultSecretStore()),
+        // Only noted here: the cleanup runs below, once the sync round that
+        // heard the refusal is over (a request is still waiting on it).
+        onSessionRevoked: (userId) async => revokedUserId = userId,
       );
       // A Keychain that cannot be read is not an error here, it is an answer:
       // iOS stores the session under `kSecAttrAccessibleWhenUnlocked`, so a
@@ -116,7 +139,7 @@ Future<void> runHeadlessRefresh({
         return;
       }
 
-      final dio = Dio(BaseOptions(baseUrl: baseUrl));
+      final dio = client();
       dio.interceptors.add(
         AuthInterceptor(
           getAccessToken: () => repository.accessToken,
@@ -126,6 +149,8 @@ Future<void> runHeadlessRefresh({
 
       final api = SyncApi(dio);
       for (final workspaceId in synced) {
+        // The session is gone; the next workspace has nobody to sync as.
+        if (revokedUserId != null) break;
         final engine = SyncEngine(db: db, api: api, workspaceId: workspaceId);
         try {
           await engine.syncNow();
@@ -140,11 +165,13 @@ Future<void> runHeadlessRefresh({
         }
       }
 
-      await rearmAlarmsFromReplica(
-        db,
-        scope: scope,
-        gateway: openGateway?.call() ?? LocalNotificationsGateway(),
-      );
+      final gateway = openGateway?.call() ?? LocalNotificationsGateway();
+      final revoked = revokedUserId;
+      if (revoked != null) {
+        await endRevokedSessionHeadless(db, userId: revoked, gateway: gateway);
+        return;
+      }
+      await rearmAlarmsFromReplica(db, scope: scope, gateway: gateway);
     } finally {
       // OPH-334: every path past this point — no session (a locked iPhone reads
       // no Keychain), offline, a server that said no — ends by redrawing the
@@ -164,6 +191,38 @@ Future<void> runHeadlessRefresh({
     // writer the WAL work (OPH-318) was about.
     await db.close();
   }
+}
+
+/// What a background turn does when its refresh was refused as revoked
+/// (OPH-447, headless-revocation-bypasses-cleanup): the same as the
+/// foreground's revoked sign-out, minus what a wake isolate cannot reach.
+///
+/// Every alarm of this install leaves the OS, the one on screen included
+/// ([dropEveryOsAlarm]; no AlarmKit here, the turn is Android's). The replica
+/// is wiped only when nothing in it is unsent (OPH-355: a person who is not
+/// asked loses nothing; the same person's next sign-in adopts it) and only
+/// while it is still recorded as [userId]'s or nobody's. The push token is
+/// not forgotten from here: the server dropped the device row with the
+/// family, so nothing is sent to it.
+Future<void> endRevokedSessionHeadless(
+  AwDatabase db, {
+  required String userId,
+  required NotificationsGateway gateway,
+  LocalKv? kv,
+}) async {
+  final store = kv ?? localKv;
+  if (kv == null) await reloadSharedPreferences();
+  var nothingUnsent = false;
+  try {
+    nothingUnsent = await unsentChangeCount(db) == 0;
+  } on Object {
+    // A count that cannot be read is unsent work.
+  }
+  final owner = await store.get(kReplicaOwnerKey);
+  if (nothingUnsent && (owner == null || owner == userId)) {
+    await LocalDataGuard(database: () => db, kv: store).wipe();
+  }
+  await dropEveryOsAlarm(gateway: gateway);
 }
 
 /// The alarm half of a headless turn: read the replica, put it through this
