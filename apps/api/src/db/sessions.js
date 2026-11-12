@@ -171,6 +171,25 @@ export async function devicesWithSession(db, userId, deviceIds, { at = new Date(
 }
 
 /**
+ * Was somebody signed in on this device and is nobody any more? True when at
+ * least one family of this user is bound to the device and none of them is
+ * live (OPH-435): the device was removed or its session ended. A device no
+ * family names (an older client) is never "signed out" by this test.
+ *
+ * `PUT /notification-devices/:id` asks it before it creates a row, so a
+ * removed device cannot register itself again with the access token it still
+ * holds for a few minutes and keep receiving pushes after the sign-out.
+ */
+export async function deviceSignedOut(db, userId, deviceId, { at = new Date() } = {}) {
+  const bound = await db('refresh_tokens')
+    .where({ user_id: userId, device_id: deviceId })
+    .first('id');
+  if (!bound) return false;
+  const live = await devicesWithSession(db, userId, [deviceId], { at });
+  return !live.has(deviceId);
+}
+
+/**
  * Signs one device out (OPH-435): every family bound to it is revoked, every
  * row of it at once, the same single UPDATE `revokeOtherSessions` uses. The
  * caller removes the device row itself. Call inside a transaction holding
@@ -188,7 +207,8 @@ export function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() })
  * Closes one session. Scoped by user as well as family so that knowing a
  * family id — which the owner's own screen shows them — can never end
  * somebody else's session. Also the reuse response: a rotated token coming
- * back burns its whole family. The device bound to the family goes with it.
+ * back burns its whole family. The device bound to the family goes with it,
+ * also when the family was already revoked.
  *
  * `db` may be an open transaction (it is used as is) or the pool.
  *
@@ -201,7 +221,11 @@ export function revokeSession(db, { userId, familyId, at = new Date() }) {
       .where({ user_id: userId, family_id: familyId })
       .whereNull('revoked_at')
       .update({ revoked_at: at });
-    if (revoked > 0) await dropDevicesOfFamilies(trx, userId, [familyId], { at });
+    // Even when nothing was left to revoke: a family revoked earlier (a
+    // removed device, say) may have had its device registered again while
+    // its access token still worked, and this — a refused refresh of that
+    // family — is the last moment the server hears from it.
+    await dropDevicesOfFamilies(trx, userId, [familyId], { at });
     return revoked;
   });
 }

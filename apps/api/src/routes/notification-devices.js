@@ -1,6 +1,11 @@
 import { toIso } from '../lib/serialize.js';
 import { coded } from '../lib/errors.js';
-import { deviceLabel, devicesWithSession, revokeDeviceSessions } from '../db/sessions.js';
+import {
+  deviceLabel,
+  deviceSignedOut,
+  devicesWithSession,
+  revokeDeviceSessions,
+} from '../db/sessions.js';
 import { transactionWithRetry } from '../db/tx.js';
 import {
   RINGS_URGENT_SOURCES,
@@ -42,7 +47,9 @@ import {
  * refresh family bound to the device (`refresh_tokens.device_id`, OPH-434) in
  * the transaction that removes the row; the reverse holds too — a session
  * that ends takes its bound device with it (`db/sessions.js`). `GET` says per
- * device whether a live session is still bound to it (`hasSession`).
+ * device whether a live session is still bound to it (`hasSession`). A
+ * removed device cannot `PUT` its row back while its access token lasts: a
+ * device whose bound sessions have all ended gets 401 `AUTH_SESSION_REVOKED`.
  */
 
 const PLATFORMS = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
@@ -193,6 +200,7 @@ export default async function notificationDeviceRoutes(app) {
           200: deviceSchema,
           201: deviceSchema,
           400: errorResponseSchema,
+          401: errorResponseSchema,
         },
       },
     },
@@ -260,6 +268,17 @@ export default async function notificationDeviceRoutes(app) {
             // Lost a race to our own first registration: a heartbeat now.
             await trx('notification_devices').where({ id: deviceId }).update(values);
             return 200;
+          }
+          // A device removed from the account (or whose session ended) is
+          // signed out: the access token it still holds must not recreate
+          // its row, or its pushes would outlive the sign-out (OPH-435). The
+          // 401 sends the client to /auth/refresh, which is refused, and the
+          // client then signs itself out.
+          if (await deviceSignedOut(trx, userId, deviceId)) {
+            throw coded(
+              app.httpErrors.unauthorized('This device was signed out'),
+              'AUTH_SESSION_REVOKED',
+            );
           }
           const flags = await decideForNewRow(trx, userId, deviceId, body.platform);
           if (current) {
@@ -396,7 +415,10 @@ export default async function notificationDeviceRoutes(app) {
   //
   // The limit: an access token is a stateless JWT, so the removed device keeps
   // the one it holds until it expires (at most AUTH_ACCESS_TTL_SEC, 15 minutes
-  // by default). Its next refresh is refused and the client signs out then.
+  // by default). It cannot register its row again with it (PUT answers 401
+  // AUTH_SESSION_REVOKED); its next refresh is refused and the client signs
+  // out then, and a refused refresh of a revoked family removes any row of
+  // its device that is still there.
   //
   // Closed to API keys: signing a device out is session management, which a
   // delegated machine credential never reaches (ADR-0032).

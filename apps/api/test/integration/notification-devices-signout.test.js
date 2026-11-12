@@ -155,6 +155,71 @@ describe.runIf(enabled)('integration: device removal signs the device out (OPH-4
     expect(after.statusCode).toBe(401);
   });
 
+  it('a removed device cannot register itself again with the access token it still holds', async () => {
+    const mine = newId();
+    const phone = newId();
+    const me = await account(mine);
+    await put(me, mine, 'ios');
+    const other = await signIn(me, phone);
+    await put(other, phone, 'web');
+
+    expect((await remove(me, phone)).statusCode).toBe(204);
+
+    // Its access JWT is still valid for a few minutes; its foreground
+    // heartbeat must not bring the row (and its push endpoint) back.
+    const again = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${phone}`,
+      headers: other.headers,
+      payload: { platform: 'web' },
+    });
+    expect(again.statusCode).toBe(401);
+    expect(again.json().code).toBe('AUTH_SESSION_REVOKED');
+    expect(await deviceRow(phone)).toBeUndefined();
+
+    // Signing in again on that install binds a new family: it registers.
+    const back = await signIn(me, phone);
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${phone}`,
+      headers: back.headers,
+      payload: { platform: 'web' },
+    });
+    expect(res.statusCode).toBe(201);
+  });
+
+  it('a refused refresh of a revoked family removes a row its device left behind', async () => {
+    const mine = newId();
+    const phone = newId();
+    const me = await account(mine);
+    await put(me, mine, 'ios');
+    const other = await signIn(me, phone);
+    await put(other, phone);
+    expect((await remove(me, phone)).statusCode).toBe(204);
+    // A row for that install exists again without any live session behind it
+    // (written before this release refused such a heartbeat).
+    await app.db('notification_devices').insert({
+      id: phone,
+      user_id: me.id,
+      platform: 'android',
+      push_provider: 'fcm',
+      push_token: `fcm-${phone}`,
+      rings_urgent: false,
+      rings_urgent_source: 'auto',
+      last_seen_at: new Date(),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    const res = await refresh(other.refreshToken);
+    expect(res.statusCode).toBe(401);
+    expect(res.json().code).toBe('AUTH_REFRESH_REUSED');
+    expect(await deviceRow(phone)).toBeUndefined();
+    // The caller's own device and session are untouched.
+    expect(await deviceRow(mine)).toBeDefined();
+    expect((await refresh(me.refreshToken)).statusCode).toBe(200);
+  });
+
   it('deleting another device leaves the caller own session alive', async () => {
     const mine = newId();
     const laptop = newId();

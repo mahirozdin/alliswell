@@ -2165,6 +2165,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' 
 | `200` | Success. |
 | `201` | Created. |
 | `400` | A field is malformed or missing. The body names a `code`. |
+| `401` | No credential, or one that is expired, revoked or unknown. |
 
 **Example response** (`200`)
 
