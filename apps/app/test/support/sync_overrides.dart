@@ -46,6 +46,11 @@ List<Override> syncTestOverrides({
   /// reads as an unrelated widget-build assertion.
   NotificationsGateway? notificationsGateway,
 
+  /// An AlarmKit bridge the test can inspect (#46). Default: unsupported, so
+  /// urgent alarms stay on the notification lane. A parameter for the same
+  /// reason as [notificationsGateway].
+  AlarmKitHost? alarmKitHost,
+
   /// The AI chat transport (OPH-221). Default: null, so the bubble treats
   /// streaming as unavailable unless a test injects a scripted client.
   AiStreamClient? aiStreamClient,
@@ -96,7 +101,9 @@ List<Override> syncTestOverrides({
   ),
   // No platform channels: AlarmKit (OPH-141) reports unsupported, so the
   // scheduler keeps urgent alarms on the (fake) notification lane.
-  alarmKitHostProvider.overrideWithValue(const UnsupportedAlarmKitHost()),
+  alarmKitHostProvider.overrideWithValue(
+    alarmKitHost ?? const UnsupportedAlarmKitHost(),
+  ),
   // The first-run onboarding tour must never auto-start over a widget test
   // (OPH-111) — it would cover the UI the test is driving. Tests that assert
   // the tour opt back in with `tourAutoStart: true`.

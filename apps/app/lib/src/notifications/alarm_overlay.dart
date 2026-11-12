@@ -8,6 +8,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/tasks/providers.dart';
 import 'alarm_sound.dart';
 import '../core/persisted_prefs.dart';
+import 'alarm_log.dart';
+import 'alarmkit.dart';
+import 'alarmkit_identity.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
 import 'providers.dart';
@@ -188,14 +191,20 @@ class AlarmOverlayState {
   const AlarmOverlayState({
     this.ringing = const [],
     this.silentHere = false,
+    this.ringsOnLockScreen = false,
     this.failed = const {},
   });
 
   /// One element in this wave; the minute's whole group later (ADR-0068).
   final List<AlarmInput> ringing;
 
-  /// The alarm shows here without the in-app sound (a browser set to Silent).
+  /// The alarm shows here without the in-app sound: a browser set to
+  /// Silent, or [ringsOnLockScreen].
   final bool silentHere;
+
+  /// The shown occurrence already rings as an AlarmKit alert (iOS 26+, #46):
+  /// the system owns the sound, so the app adds none of its own.
+  final bool ringsOnLockScreen;
 
   /// Occurrences shown again because the write behind an action failed.
   final Set<String> failed;
@@ -259,6 +268,9 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     // Only the timer here: build re-runs on every feed emission, and stopping
     // the sound in onDispose would cut it on each of them.
     ref.onDispose(() => _timer?.cancel());
+    // A pass that scheduled, or an action that stopped, an AlarmKit alarm
+    // changes who owns the sound of what is showing.
+    ref.watch(alarmKitViewProvider);
     if (!ref.watch(alarmOverlayAutoShowProvider)) {
       return AlarmOverlayState(silentHere: ref.read(alarmOpensSilentProvider));
     }
@@ -306,7 +318,12 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
 
     final key = alarmOccurrenceKey(shown);
     final failed = _failures.containsKey(key);
-    if (_announced.add(key) && !failed && !silentHere && !_sounding) {
+    // iOS 26+: the system alert already rings this occurrence; a second,
+    // in-app sound on top of it is the #46 screenshot.
+    final onLockScreen = _covering(shown).isNotEmpty;
+    if (onLockScreen && _sounding) _stopSound();
+    final quiet = silentHere || onLockScreen;
+    if (_announced.add(key) && !failed && !quiet && !_sounding) {
       // A newly shown occurrence. A re-shown failed one stays quiet: its
       // sound comes back only through the no-interaction rule, never here.
       _sound().start();
@@ -314,7 +331,8 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     }
     return AlarmOverlayState(
       ringing: [shown],
-      silentHere: silentHere,
+      silentHere: quiet,
+      ringsOnLockScreen: onLockScreen,
       failed: failed ? {key} : const {},
     );
   }
@@ -329,6 +347,63 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// Stop the in-app sound now, synchronously — the first thing every ring
   /// screen action does, before any await.
   void silence() => _stopSound();
+
+  List<AlarmKitScheduled> _covering(AlarmInput alarm) =>
+      alarmKitCovering(ref.read(alarmKitViewProvider), alarm);
+
+  /// Whether [alarm]'s occurrence rings as an AlarmKit alert right now.
+  bool ringsOnLockScreen(AlarmInput alarm) => _covering(alarm).isNotEmpty;
+
+  /// Stop the AlarmKit alert of [alarm]'s occurrence (#46, iOS 26+) — every
+  /// ring screen action calls it right after [silence], so answering in the
+  /// app answers the system alert too. Fire-and-forget: the dismissal never
+  /// waits for the bridge, and a failed stop is only logged. Nothing to stop
+  /// (no AlarmKit here, or the occurrence is not on it) is a no-op.
+  void stopAlarmKit(AlarmInput alarm) {
+    final covering = _covering(alarm);
+    if (covering.isEmpty) return;
+    final host = ref.read(alarmKitHostProvider);
+    AlarmLog? log;
+    try {
+      log = ref.read(alarmLogProvider);
+    } on Object {
+      // No database on this surface: the stop still goes out.
+    }
+    final view = ref.read(alarmKitViewProvider.notifier);
+    for (final row in covering) {
+      view.remove(row.id);
+      unawaited(_stopAlarmKit(host, log, row, alarm));
+    }
+  }
+
+  Future<void> _stopAlarmKit(
+    AlarmKitHost host,
+    AlarmLog? log,
+    AlarmKitScheduled row,
+    AlarmInput alarm,
+  ) async {
+    String? error;
+    try {
+      final result = await host.stop(row.id);
+      error = result.error;
+    } on Object catch (e) {
+      error = '$e';
+    }
+    if (error == null) return;
+    try {
+      await log?.record(
+        event: AlarmLogEvent.degraded,
+        lane: AlarmLogLane.alarmkit,
+        urgent: true,
+        fireAt: alarmFireAt(alarm),
+        taskId: alarm.taskId,
+        reminderId: alarm.reminderId,
+        detail: 'in-app stop of alarm ${row.id} failed: $error',
+      );
+    } on Object {
+      // A diagnostic never fails an action.
+    }
+  }
 
   /// Start the in-app sound on request: the screen's "Sesi başlat", and a
   /// custom snooze whose pickers were cancelled.
@@ -368,6 +443,24 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// The action "Tekrar dene" repeats for [alarm], if its write failed.
   AlarmPendingAction? failedAction(AlarmInput alarm) =>
       _failures[alarmOccurrenceKey(alarm)];
+}
+
+/// The AlarmKit records in [view] that ring [alarm]'s occurrence (#46): a
+/// scheduled or alerting alarm whose members hold the task and whose instant
+/// is the occurrence's, floored to the second as the bridge stores it.
+List<AlarmKitScheduled> alarmKitCovering(
+  List<AlarmKitScheduled> view,
+  AlarmInput alarm,
+) {
+  final fireAtMs = alarmKitFireAtMs(alarmFireAt(alarm));
+  return [
+    for (final row in view)
+      if ((row.state == AlarmKitAlarmState.scheduled ||
+              row.state == AlarmKitAlarmState.alerting) &&
+          row.fireAtMs == fireAtMs &&
+          row.members.contains(alarm.taskId))
+        row,
+  ];
 }
 
 final alarmOverlayControllerProvider =

@@ -142,6 +142,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     final controller = _controller;
     final alarm = widget.alarm;
     controller.silence();
+    // iOS 26+: the AlarmKit alert of this occurrence goes quiet too (#46).
+    controller.stopAlarmKit(alarm);
     widget.onHandled(alarm.reminderId);
     unawaited(
       controller.commit(alarm, action).then((saved) {
@@ -189,8 +191,12 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     // The person is dealing with it: quiet now, before the pickers open. If
     // they back out, the alarm is still unanswered and its sound comes back.
     final controller = _controller;
-    final wasSounding = controller.sounding;
+    // An occurrence the AlarmKit alert rings counts as sounding: that alert
+    // stops now, so backing out has to ring it here instead (#46).
+    final wasSounding =
+        controller.sounding || controller.ringsOnLockScreen(widget.alarm);
     controller.silence();
+    controller.stopAlarmKit(widget.alarm);
     void backOut() {
       if (wasSounding) controller.startSound();
     }
@@ -281,6 +287,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     final router = GoRouter.of(context);
     final taskId = widget.alarm.taskId;
     _controller.silence();
+    _controller.stopAlarmKit(widget.alarm);
     widget.onHandled(widget.alarm.reminderId);
     router.push('/tasks/$taskId');
   }
@@ -297,6 +304,13 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     final silent =
         !widget.missed &&
         ref.watch(alarmOverlayControllerProvider.select((s) => s.silentHere));
+    // #46, iOS 26+: the system alert is the sound. Said in one line, with no
+    // "start the sound" that would ring it twice.
+    final onLockScreen =
+        silent &&
+        ref.watch(
+          alarmOverlayControllerProvider.select((s) => s.ringsOnLockScreen),
+        );
     final silenceChosen = silent && ref.watch(alarmSilenceChosenProvider);
     final fireAt = alarmFireAt(widget.alarm).toLocal();
     final time = MaterialLocalizations.of(
@@ -414,7 +428,19 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
                       // NOTIFICATIONS §3 forbids. OPH-393: "you set this" only
                       // when the person did; a fresh browser is silent by
                       // default and says that instead (E-20).
-                      if (silent)
+                      if (onLockScreen)
+                        Padding(
+                          padding: const EdgeInsets.only(top: AwSpace.x4),
+                          child: Text(
+                            'alarm.ringingOnLockScreen'.tr(),
+                            key: const Key('alarm-rings-on-lock-screen'),
+                            textAlign: TextAlign.center,
+                            style: text.bodyMedium?.copyWith(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                        )
+                      else if (silent)
                         Padding(
                           padding: const EdgeInsets.only(top: AwSpace.x4),
                           child: Column(

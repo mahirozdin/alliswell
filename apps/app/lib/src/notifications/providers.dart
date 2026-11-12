@@ -20,6 +20,7 @@ import 'web/push_host.dart';
 import 'alarm_log.dart';
 import 'alarm_sound.dart';
 import 'alarmkit.dart';
+import 'alarmkit_identity.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
 import 'reminder_profile.dart';
@@ -105,6 +106,124 @@ Future<void> _publishSubscription(
 final alarmKitHostProvider = Provider<AlarmKitHost>(
   (_) => MethodChannelAlarmKitHost(),
 );
+
+/// What the scheduler last knew the OS holds on the AlarmKit lane (#46, iOS
+/// 26+): its last `scheduledAlarms()` read, kept current by every schedule,
+/// cancel and stop it made since. The ring overlay asks it whether an
+/// occurrence already rings as a system alert (then the app stays quiet) and
+/// which alarm an in-app action has to stop. Empty wherever AlarmKit is not
+/// in use — Android, web, desktop, iOS < 26, permission off — so those keep
+/// today's in-app sound.
+class AlarmKitView extends Notifier<List<AlarmKitScheduled>> {
+  AlarmKitView([this._initial = const []]);
+
+  final List<AlarmKitScheduled> _initial;
+
+  @override
+  List<AlarmKitScheduled> build() => _initial;
+
+  void replace(List<AlarmKitScheduled> rows) => state = List.unmodifiable(rows);
+
+  /// An in-app action stopped [id]: it no longer covers anything.
+  void remove(int id) {
+    if (state.any((r) => r.id == id)) {
+      state = List.unmodifiable(state.where((r) => r.id != id));
+    }
+  }
+}
+
+final alarmKitViewProvider =
+    NotifierProvider<AlarmKitView, List<AlarmKitScheduled>>(AlarmKitView.new);
+
+/// The scheduler's AlarmKit host, watched: every answer that tells what the
+/// OS holds is folded into one list and handed to [onView] — the
+/// [alarmKitViewProvider] feed. Everything else passes straight through.
+class AlarmKitViewHost implements AlarmKitHost {
+  AlarmKitViewHost(this._inner, {required this.onView});
+
+  final AlarmKitHost _inner;
+  final void Function(List<AlarmKitScheduled> rows) onView;
+  final Map<int, AlarmKitScheduled> _rows = {};
+
+  void _emit() => onView(List.unmodifiable(_rows.values));
+
+  /// No lane, no view: an alarm the OS will not ring covers nothing.
+  bool _lane(bool open) {
+    if (!open && _rows.isNotEmpty) {
+      _rows.clear();
+      _emit();
+    }
+    return open;
+  }
+
+  @override
+  Future<bool> isSupported() async => _lane(await _inner.isSupported());
+
+  @override
+  Future<bool> requestAuthorization() async =>
+      _lane(await _inner.requestAuthorization());
+
+  @override
+  Future<bool> isAuthorized() async => _lane(await _inner.isAuthorized());
+
+  @override
+  Future<List<AlarmKitScheduled>> scheduledAlarms() async {
+    final rows = await _inner.scheduledAlarms();
+    _rows
+      ..clear()
+      ..addEntries(rows.map((r) => MapEntry(r.id, r)));
+    _emit();
+    return rows;
+  }
+
+  @override
+  Future<Set<int>> scheduledIds() => _inner.scheduledIds();
+
+  @override
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async {
+    final result = await _inner.schedule(alarm);
+    if (result.ok) {
+      _rows[alarm.id] = AlarmKitScheduled(
+        id: alarm.id,
+        fp: alarm.fp,
+        members: alarm.members,
+        fireAtMs: alarmKitFireAtMs(alarm.fireAt),
+      );
+      _emit();
+    }
+    return result;
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    await _inner.cancel(id);
+    if (_rows.remove(id) != null) _emit();
+  }
+
+  @override
+  Future<AlarmKitStopResult> stop(int id) async {
+    final result = await _inner.stop(id);
+    if (result.error == null && _rows.remove(id) != null) _emit();
+    return result;
+  }
+
+  @override
+  Future<List<AlarmKitActionEvent>> pullPendingActions() =>
+      _inner.pullPendingActions();
+
+  @override
+  Future<void> ackActions(List<String> eventIds) => _inner.ackActions(eventIds);
+
+  @override
+  Future<void> clearFallbacks(List<String> eventIds) =>
+      _inner.clearFallbacks(eventIds);
+
+  @override
+  Future<List<AlarmKitFailure>> pullFailures() => _inner.pullFailures();
+
+  @override
+  Stream<void> get actionsPending => _inner.actionsPending;
+}
 
 /// The user's re-alert chain (OPH-179, DESIGN §18). Device-local, like every
 /// other delivery preference: each device schedules its own notifications, so
@@ -335,9 +454,23 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
   );
 
   final ask = ref.read(alarmPermissionAskProvider.notifier);
+  // The ring overlay reads what this scheduler saw and changed on the
+  // AlarmKit lane (#46). A microtask, for the same reason as the permission
+  // ask below; a container already gone has nobody left to tell.
+  final observedAlarmKit = AlarmKitViewHost(
+    alarmKit,
+    onView: (rows) => scheduleMicrotask(() {
+      try {
+        ref.read(alarmKitViewProvider.notifier).replace(rows);
+      } on Object {
+        // Signed out or torn down.
+      }
+    }),
+  );
+
   final scheduler = NotificationScheduler(
     gateway: gateway,
-    alarmKit: alarmKit,
+    alarmKit: observedAlarmKit,
     // A microtask, because `start()` below runs inside this provider's build
     // and Riverpod refuses a write to another provider from there. The order
     // of begin/end is kept: microtasks run first-in, first-out.

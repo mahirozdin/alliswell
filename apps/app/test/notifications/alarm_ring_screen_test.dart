@@ -15,6 +15,8 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
+import 'package:alliswell/src/notifications/alarmkit.dart';
+import 'package:alliswell/src/notifications/alarmkit_identity.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/notifications/reminder_store.dart';
@@ -23,6 +25,7 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
+import '../support/fake_notifications.dart';
 import '../support/sync_overrides.dart';
 
 const wsId = '01WSAAAAAAAAAAAAAAAAAAAAAA';
@@ -149,6 +152,7 @@ void main() {
     WidgetTester tester, {
     required List<AlarmInput> feed,
     AlarmFeedback? feedback,
+    AlarmKitHost? alarmKitHost,
     List<Override> extra = const [],
     bool second = false,
   }) async {
@@ -159,6 +163,7 @@ void main() {
         ...syncTestOverrides(
           alarmOverlayAutoShow: true,
           alarmFeedback: feedback,
+          alarmKitHost: alarmKitHost,
         ),
         alarmFeedProvider.overrideWith((ref) => Stream.value(feed)),
         alarmClockProvider.overrideWithValue(
@@ -700,6 +705,100 @@ void main() {
         'write acknowledge',
       ]);
       expect(find.byType(SnackBar), findsNothing);
+    },
+  );
+
+  // ── #46 iOS 26+ leg / OPH-428 ─────────────────────────────────────────────
+
+  testWidgets(
+    'AlarmKit-covered alarm opens the screen without starting in-app sound',
+    (tester) async {
+      final log = <String>[];
+      final host = FakeAlarmKitHost();
+      await pumpLayer(
+        tester,
+        feed: [theAlarm()],
+        feedback: _LogFeedback(log),
+        alarmKitHost: host,
+        extra: [
+          alarmKitViewProvider.overrideWith(
+            () => AlarmKitView([
+              AlarmKitScheduled(
+                id: 31,
+                members: [id('T1')],
+                fireAtMs: alarmKitFireAtMs(at),
+              ),
+            ]),
+          ),
+        ],
+      );
+
+      expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+      expect(log, isEmpty, reason: 'the AlarmKit alert is the sound');
+      // One line says where the sound is; no "start the sound" to double it,
+      // and no claim that somebody chose silence.
+      expect(
+        find.byKey(const Key('alarm-rings-on-lock-screen')),
+        findsOneWidget,
+      );
+      expect(
+        find.text('The alarm is ringing on the lock screen too.'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('alarm-start-sound')), findsNothing);
+      expect(find.byKey(const Key('alarm-silent-declared')), findsNothing);
+      expect(find.byKey(const Key('alarm-silent-default')), findsNothing);
+
+      // "Aç" is an action too: it silences the system alert as well.
+      await tester.ensureVisible(find.byKey(const Key('alarm-open')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('alarm-open')));
+      expect(host.stopped, [31]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(const Key('alarm-ring')), findsNothing);
+      expect(log.where((e) => e == 'start'), isEmpty);
+    },
+  );
+
+  testWidgets(
+    'backing out of the custom pickers of a covered alarm rings in the app',
+    (tester) async {
+      final log = <String>[];
+      final host = FakeAlarmKitHost();
+      await pumpLayer(
+        tester,
+        feed: [theAlarm()],
+        feedback: _LogFeedback(log),
+        alarmKitHost: host,
+        extra: [
+          alarmKitViewProvider.overrideWith(
+            () => AlarmKitView([
+              AlarmKitScheduled(
+                id: 31,
+                state: AlarmKitAlarmState.alerting,
+                members: [id('T1')],
+                fireAtMs: alarmKitFireAtMs(at),
+              ),
+            ]),
+          ),
+        ],
+      );
+      expect(log, isEmpty);
+      await tester.ensureVisible(find.byKey(const Key('alarm-snooze-custom')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('alarm-snooze-custom')));
+      // The person is dealing with it: the system alert stops at the tap.
+      expect(host.stopped, [31]);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.text('Cancel'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      // Still unanswered, and the system alert is gone: the app rings it.
+      expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+      expect(_squash(log).last, 'start');
+      expect(find.byKey(const Key('alarm-rings-on-lock-screen')), findsNothing);
     },
   );
 

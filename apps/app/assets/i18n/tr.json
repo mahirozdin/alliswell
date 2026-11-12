@@ -989,7 +989,8 @@
       "cardMore": "+{n} tane daha"
     },
     "silentByChoice": "Bilerek sessiz: bu tarayıcıyı Sessiz olarak ayarladın.",
-    "silentByDefault": "Bu tarayıcıda alarmlar varsayılan olarak sessiz. Sesi Ayarlar'dan açabilirsin."
+    "silentByDefault": "Bu tarayıcıda alarmlar varsayılan olarak sessiz. Sesi Ayarlar'dan açabilirsin.",
+    "ringingOnLockScreen": "Alarm kilit ekranında da çalıyor."
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

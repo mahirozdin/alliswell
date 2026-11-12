@@ -8,7 +8,12 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
+import 'package:alliswell/src/features/tasks/data/task_store.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
+import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
+import 'package:alliswell/src/notifications/alarmkit.dart';
+import 'package:alliswell/src/notifications/alarmkit_identity.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/providers.dart';
@@ -18,6 +23,7 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
+import '../support/fake_notifications.dart';
 import '../support/sync_overrides.dart';
 
 const wsId = '01WSAAAAAAAAAAAAAAAAAAAAAA';
@@ -282,6 +288,70 @@ void main() {
     );
   });
 
+  // ── #46 iOS 26+ leg / OPH-428: the view the overlay reads ────────────────
+  group('AlarmKitViewHost (the scheduler\'s AlarmKit lane, watched)', () {
+    AlarmKitAlarm akAlarm(String taskId, DateTime at) => AlarmKitAlarm(
+      id: alarmKitOccurrenceId([taskId], alarmKitFireAtMs(at)),
+      members: [taskId],
+      fp: 1,
+      title: 't',
+      body: 'b',
+      fireAt: at,
+      taskId: taskId,
+      reminderId: 'R-$taskId',
+    );
+
+    test(
+      'follows what the scheduler read, scheduled, cancelled and stopped',
+      () async {
+        final inner = FakeAlarmKitHost();
+        final views = <List<AlarmKitScheduled>>[];
+        final host = AlarmKitViewHost(inner, onView: views.add);
+        final a = akAlarm('T1', now);
+        final b = akAlarm('T2', now.add(const Duration(minutes: 5)));
+        inner.foreign[9] = const AlarmKitScheduled(id: 9, members: ['T9']);
+
+        await host.scheduledAlarms();
+        expect(views.last.map((r) => r.id), [9]);
+
+        await host.schedule(a);
+        await host.schedule(b);
+        final row = views.last.firstWhere((r) => r.id == a.id);
+        expect(row.members, ['T1']);
+        expect(row.fireAtMs, alarmKitFireAtMs(now));
+        expect(
+          alarmKitCovering(
+            views.last,
+            AlarmInput(
+              reminderId: 'R-T1',
+              taskId: 'T1',
+              taskTitle: 't',
+              remindAt: now,
+              status: 'scheduled',
+              urgent: true,
+              requiresAcknowledgement: true,
+            ),
+          ).single.id,
+          a.id,
+        );
+
+        await host.cancel(b.id);
+        await host.stop(9);
+        expect(views.last.map((r) => r.id), [a.id]);
+
+        // A refused schedule is not on the OS, so it covers nothing.
+        inner.scheduleFailure = 'limit_reached';
+        await host.schedule(akAlarm('T3', now));
+        expect(views.last.map((r) => r.id), [a.id]);
+
+        // The permission went away: nothing rings as a system alert any more.
+        inner.authorized = false;
+        expect(await host.isAuthorized(), isFalse);
+        expect(views.last, isEmpty);
+      },
+    );
+  });
+
   // ── #46 / OPH-423: occurrences, and one owner for the sound ───────────────
   group('AlarmOverlayController (#46)', () {
     late List<String> log;
@@ -289,7 +359,10 @@ void main() {
     late StreamController<List<AlarmInput>> feed;
     late ProviderContainer container;
 
-    ProviderContainer boot({List<Override> extra = const []}) {
+    ProviderContainer boot({
+      List<Override> extra = const [],
+      AlarmKitHost? alarmKitHost,
+    }) {
       log = [];
       clock = now;
       feed = StreamController<List<AlarmInput>>();
@@ -298,6 +371,7 @@ void main() {
           ...syncTestOverrides(
             alarmOverlayAutoShow: true,
             alarmFeedback: _LogFeedback(log),
+            alarmKitHost: alarmKitHost,
           ),
           alarmFeedProvider.overrideWith((ref) => feed.stream),
           alarmClockProvider.overrideWithValue(() => clock),
@@ -435,6 +509,235 @@ void main() {
       expect(controller().failedAction(due), isNull);
     });
 
+    // ── #46 iOS 26+ leg / OPH-428: the AlarmKit alert and the ring screen ──
+
+    /// The AlarmKit record that rings [a]'s occurrence, as the scheduler last
+    /// saw it.
+    AlarmKitScheduled covering(
+      AlarmInput a, {
+      int id = 4242,
+      AlarmKitAlarmState state = AlarmKitAlarmState.alerting,
+      Duration shift = Duration.zero,
+    }) => AlarmKitScheduled(
+      id: id,
+      state: state,
+      members: [a.taskId],
+      fireAtMs: alarmKitFireAtMs(alarmFireAt(a).add(shift)),
+    );
+
+    Future<void> pumpOverlay(WidgetTester tester) async {
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: ThemeData(extensions: const [AwTokens.light]),
+            home: const Scaffold(body: AlarmOverlayLayer()),
+          ),
+        ),
+      );
+      await tester.pump();
+    }
+
+    List<Override> quietStores() => [
+      taskStoreProvider.overrideWith(
+        (ref) => _NoopTaskStore(ref.watch(databaseProvider)),
+      ),
+      reminderStoreProvider.overrideWith(
+        (ref) => _NoopReminderStore(ref.watch(databaseProvider)),
+      ),
+    ];
+
+    testWidgets(
+      'an in-app snooze stops the alerting AlarmKit alarm of that occurrence',
+      (tester) async {
+        final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+        final host = FakeAlarmKitHost();
+        boot(
+          alarmKitHost: host,
+          extra: [
+            ...quietStores(),
+            alarmKitViewProvider.overrideWith(
+              () => AlarmKitView([covering(due)]),
+            ),
+          ],
+        );
+        feed.add([due]);
+        await pumpOverlay(tester);
+
+        // The system alert is the sound: the screen shows, the app is quiet.
+        expect(overlay().ringing.single.reminderId, 'R1');
+        expect(overlay().silentHere, isTrue);
+        expect(overlay().ringsOnLockScreen, isTrue);
+        expect(log, isEmpty);
+
+        await tester.ensureVisible(find.byKey(const Key('alarm-snooze-5_min')));
+        await tester.pump();
+        await tester.tap(find.byKey(const Key('alarm-snooze-5_min')));
+        // Stopped inside the tap, with the dismissal — not after the write.
+        expect(host.stopped, [4242]);
+        expect(overlay().ringing, isEmpty);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.byKey(const Key('alarm-ring')), findsNothing);
+        expect(host.stopped, [4242], reason: 'stopped once');
+        expect(log.where((e) => e == 'start'), isEmpty);
+        expect(container.read(alarmKitViewProvider), isEmpty);
+      },
+    );
+
+    testWidgets('every in-app action stops the covering AlarmKit alarm', (
+      tester,
+    ) async {
+      const actions = [
+        'alarm-snooze-30_min',
+        'alarm-snooze-1_hour',
+        'alarm-snooze-tomorrow_morning',
+        'alarm-silence',
+        'alarm-acknowledge',
+        'alarm-complete',
+      ];
+      for (final action in actions) {
+        final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+        final host = FakeAlarmKitHost();
+        await tester.pumpWidget(const SizedBox());
+        boot(
+          alarmKitHost: host,
+          extra: [
+            ...quietStores(),
+            alarmKitViewProvider.overrideWith(
+              () => AlarmKitView([covering(due)]),
+            ),
+          ],
+        );
+        feed.add([due]);
+        await pumpOverlay(tester);
+        await tester.ensureVisible(find.byKey(Key(action)));
+        await tester.pump();
+        await tester.tap(find.byKey(Key(action)));
+        expect(host.stopped, [4242], reason: action);
+        expect(overlay().ringing, isEmpty, reason: action);
+        await tester.pump();
+        expect(log.where((e) => e == 'start'), isEmpty, reason: action);
+        // The snackbars and button feedback of the action run out.
+        await tester.pump(const Duration(seconds: 6));
+      }
+    });
+
+    testWidgets(
+      'a failed AlarmKit stop is logged and never keeps the screen open',
+      (tester) async {
+        final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+        final host = _ThrowingStopHost();
+        boot(
+          alarmKitHost: host,
+          extra: [
+            ...quietStores(),
+            alarmKitViewProvider.overrideWith(
+              () => AlarmKitView([covering(due)]),
+            ),
+          ],
+        );
+        feed.add([due]);
+        await pumpOverlay(tester);
+
+        await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+        expect(overlay().ringing, isEmpty);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(find.byKey(const Key('alarm-ring')), findsNothing);
+        expect(log.where((e) => e == 'start'), isEmpty);
+        expect(controller().sounding, isFalse);
+
+        final rows = await tester.runAsync(
+          () => container.read(alarmLogProvider).recent(),
+        );
+        final degraded = rows!.where(
+          (r) =>
+              r.event == AlarmLogEvent.degraded &&
+              r.lane == AlarmLogLane.alarmkit,
+        );
+        expect(degraded, hasLength(1));
+        expect(degraded.single.detail, contains('stop'));
+      },
+    );
+
+    testWidgets('without AlarmKit the in-app sound path is unchanged', (
+      tester,
+    ) async {
+      final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+      final host = FakeAlarmKitHost(supported: false, authorized: false);
+      boot(
+        alarmKitHost: host,
+        extra: [
+          ...quietStores(),
+          // A record for the same task at ANOTHER instant covers nothing.
+          alarmKitViewProvider.overrideWith(
+            () => AlarmKitView([
+              covering(due, shift: const Duration(minutes: 5)),
+            ]),
+          ),
+        ],
+      );
+      feed.add([due]);
+      await pumpOverlay(tester);
+
+      expect(overlay().silentHere, isFalse);
+      expect(overlay().ringsOnLockScreen, isFalse);
+      expect(log, ['start']);
+      expect(find.byKey(const Key('alarm-rings-on-lock-screen')), findsNothing);
+
+      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await tester.pump();
+      expect(_squash(log), ['start', 'stop']);
+      expect(host.stopped, isEmpty);
+      expect(overlay().ringing, isEmpty);
+      await tester.pump(const Duration(seconds: 6));
+    });
+
+    testWidgets(
+      'a stopped grouped alarm leaves its other member ringing in the app',
+      (tester) async {
+        final first = alarm(
+          rid: 'R1',
+          remindAt: now.subtract(const Duration(minutes: 1)),
+        );
+        final second = alarm(
+          rid: 'R2',
+          remindAt: now.subtract(const Duration(minutes: 1)),
+        );
+        final host = FakeAlarmKitHost();
+        boot(
+          alarmKitHost: host,
+          extra: [
+            ...quietStores(),
+            alarmKitViewProvider.overrideWith(
+              () => AlarmKitView([
+                AlarmKitScheduled(
+                  id: 7,
+                  state: AlarmKitAlarmState.alerting,
+                  members: [first.taskId, second.taskId],
+                  fireAtMs: alarmKitFireAtMs(alarmFireAt(first)),
+                ),
+              ]),
+            ),
+          ],
+        );
+        feed.add([first, second]);
+        await pumpOverlay(tester);
+        expect(log, isEmpty);
+
+        await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+        await tester.pump();
+        await tester.pump();
+        // The system alert is gone, so the next member is not left silent.
+        expect(host.stopped, [7]);
+        expect(find.text('Task R2'), findsOneWidget);
+        expect(overlay().ringsOnLockScreen, isFalse);
+        expect(_squash(log), ['start']);
+        await tester.pump(const Duration(seconds: 6));
+      },
+    );
+
     test(
       'a silent-here device shows the alarm without starting the sound',
       () async {
@@ -481,4 +784,30 @@ class _NoopReminderStore extends ReminderStore {
 
   @override
   Future<void> acknowledge(String reminderId, {String? receiptId}) async {}
+}
+
+/// Snoozes, completes and mutes nothing: this file is about the sound.
+class _NoopTaskStore extends TaskStore {
+  _NoopTaskStore(AwDatabase db) : super(db, () {});
+
+  @override
+  Future<void> snooze(
+    String taskId, {
+    String? preset,
+    DateTime? until,
+    String? receiptId,
+  }) async {}
+
+  @override
+  Future<void> complete(String taskId, {String? receiptId}) async {}
+
+  @override
+  Future<void> muteAlarms(String taskId, {String? receiptId}) async {}
+}
+
+/// An AlarmKit bridge whose `stop` throws the way a dead channel does.
+class _ThrowingStopHost extends FakeAlarmKitHost {
+  @override
+  Future<AlarmKitStopResult> stop(int id) async =>
+      throw StateError('channel gone');
 }

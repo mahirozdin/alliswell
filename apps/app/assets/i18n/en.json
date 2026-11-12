@@ -990,7 +990,8 @@
       "cardMore": "+{n} more"
     },
     "silentByChoice": "Silent on purpose: you set this browser to Silent.",
-    "silentByDefault": "Alarms in this browser are silent by default. You can turn sound on in Settings."
+    "silentByDefault": "Alarms in this browser are silent by default. You can turn sound on in Settings.",
+    "ringingOnLockScreen": "The alarm is ringing on the lock screen too."
   },
   "alarmLog": {
     "title": "Alarm log",
