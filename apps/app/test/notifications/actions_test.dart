@@ -608,6 +608,49 @@ void main() {
       },
     );
 
+    test(
+      'a merged urgent chain acknowledges exactly the reminders it lists (OPH-440)',
+      () async {
+        // One chain for a whole minute (planNotifications): its payload lists
+        // every task and reminder it rings for, ids only.
+        await addUrgent('T2', 'R2', DateTime.utc(2030, 6, 1, 9, 0, 30));
+        await db
+            .into(db.reminders)
+            .insert(
+              RemindersCompanion.insert(
+                id: id('R5'),
+                taskId: id('T2'),
+                remindAt: DateTime.utc(2030, 6, 1, 10),
+                alarmLevel: const Value('urgent'),
+                requiresAcknowledgement: const Value(true),
+              ),
+            );
+        final handled = await handleNotificationEvent(
+          NotificationEvent(
+            actionId: kActionAcknowledge,
+            payload: jsonEncode({
+              'taskId': id('T1'),
+              'taskIds': [id('T1'), id('T2')],
+              'reminderIds': [id('R1'), id('R2')],
+              'chainIndex': 0,
+            }),
+          ),
+          tasks: tasks,
+          reminders: reminders,
+          navigate: (_) => fail('a button never navigates'),
+        );
+        expect(handled, isTrue);
+        final byId = {
+          for (final r in await db.select(db.reminders).get()) r.id: r.status,
+        };
+        expect(byId, {
+          id('R1'): 'acknowledged',
+          id('R2'): 'acknowledged',
+          id('R5'): 'scheduled', // another minute: its own alarm
+        });
+      },
+    );
+
     // OPH-439 (#47): a group action is one receipt, one batch write and one
     // outbox mutation per task.
     test(

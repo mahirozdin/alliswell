@@ -911,6 +911,7 @@
     "privateBody": "Bir hatırlatıcın var",
     "urgentFirst": "Acil hatırlatıcı — onay bekliyor",
     "urgentRepeat": "Hâlâ onay bekliyor ({count}. hatırlatma)",
+    "urgentMany": "{count} acil alarm — onay bekliyor",
     "dueNow": "Görev saati geldi — onay bekliyor",
     "afterSnooze": "Erteleme {count}. tur — hâlâ onay bekliyor",
     "reminder": "Hatırlatıcı",
@@ -932,6 +933,7 @@
     }
   },
   "alarm": {
+    "groupTitle": "{count} acil alarm",
     "ringing": {
       "label": "Acil hatırlatma",
       "snooze": "Ertele"

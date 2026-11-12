@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/alarmkit_identity.dart';
+import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/reminder_profile.dart';
 import 'package:alliswell/src/notifications/reminder_store.dart';
@@ -323,5 +326,214 @@ void main() {
         alarmKitOccurrenceId([taskId], at.millisecondsSinceEpoch - 750),
       );
     });
+  });
+
+  group('one alarm per UTC minute (OPH-440, #47)', () {
+    final nine = DateTime.utc(2026, 7, 16, 9);
+    AlarmInput urgent(
+      String task, {
+      String? reminder,
+      DateTime? at,
+      String kind = 'remind',
+      String title = 'Görev',
+    }) => AlarmInput(
+      reminderId: reminder ?? 'REM-$task',
+      taskId: task,
+      taskTitle: '$title $task',
+      kind: kind,
+      remindAt: at ?? nine,
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+    );
+    Map<String, Object?> payloadOf(PlannedNotification n) =>
+        (jsonDecode(n.payload) as Map).cast<String, Object?>();
+
+    test(
+      'urgent alarms sharing a minute become one AlarmKit alarm with every task id',
+      () {
+        final inputs = [
+          urgent('TASK3', at: nine.add(const Duration(seconds: 40))),
+          urgent(
+            'TASK1',
+            at: nine.add(const Duration(seconds: 12, milliseconds: 500)),
+          ),
+          urgent('TASK2', at: nine.add(const Duration(seconds: 59))),
+          // Another minute: its own alarm, exactly as before grouping.
+          urgent('TASK4', at: nine.add(const Duration(minutes: 1))),
+        ];
+        final out = planAlarmKitAlarms(
+          alarms: inputs,
+          now: now,
+          privacyMode: false,
+        );
+        expect(out, hasLength(2));
+        final group = out.first;
+        expect(group.members, ['TASK1', 'TASK2', 'TASK3']);
+        final fireAtMs = nine
+            .add(const Duration(seconds: 12))
+            .millisecondsSinceEpoch;
+        expect(group.toArgs()['fireAtMs'], fireAtMs);
+        expect(group.id, alarmKitOccurrenceId(group.members, fireAtMs));
+        expect(group.title, '3 urgent alarms');
+        for (final t in ['TASK1', 'TASK2', 'TASK3']) {
+          expect(group.body, isNot(contains(t)));
+        }
+        expect(group.taskId, 'TASK1');
+        expect(group.reminderIds.toSet(), {
+          'REM-TASK1',
+          'REM-TASK2',
+          'REM-TASK3',
+        });
+
+        // A lone alarm keeps its OPH-424 id and its own title.
+        final lone = out.last;
+        expect(lone.members, ['TASK4']);
+        expect(
+          lone.id,
+          alarmKitOccurrenceId([
+            'TASK4',
+          ], nine.add(const Duration(minutes: 1)).millisecondsSinceEpoch),
+        );
+        expect(lone.title, 'Görev TASK4');
+        expect(
+          lone.id,
+          planAlarmKitAlarms(
+            alarms: [inputs.last],
+            now: now,
+            privacyMode: false,
+          ).single.id,
+        );
+
+        // Privacy mode names nothing, not even the count's tasks.
+        final private = planAlarmKitAlarms(
+          alarms: inputs,
+          now: now,
+          privacyMode: true,
+        ).first;
+        expect(private.title, 'AllisWell');
+        expect(private.id, group.id);
+      },
+    );
+
+    test('urgent alarms sharing a minute become one notification chain', () {
+      final inputs = [
+        urgent('TASK2', at: nine.add(const Duration(seconds: 30))),
+        urgent('TASK1'),
+        urgent('TASK3', at: nine.add(const Duration(seconds: 59))),
+      ];
+      final lone = urgent('TASK4', at: nine.add(const Duration(hours: 1)));
+      final normal = AlarmInput(
+        reminderId: 'REM-N',
+        taskId: 'TASK5',
+        taskTitle: 'Süt al',
+        remindAt: nine,
+        status: 'scheduled',
+        urgent: false,
+        requiresAcknowledgement: false,
+      );
+      final plan = planNotifications(
+        alarms: [...inputs, lone, normal],
+        now: now,
+        privacyMode: false,
+      );
+      final slots = ReminderProfile.factory.offsets.length;
+      final group = plan
+          .where(
+            (n) =>
+                n.urgent &&
+                n.fireAt.isBefore(nine.add(const Duration(hours: 1))),
+          )
+          .toList();
+      expect(group, hasLength(slots), reason: 'one chain, not three');
+      expect(group.map((n) => n.fireAt), [
+        for (final o in ReminderProfile.factory.offsets) nine.add(o),
+      ]);
+      for (final (i, n) in group.indexed) {
+        final p = payloadOf(n);
+        expect(p['taskIds'], ['TASK1', 'TASK2', 'TASK3']);
+        expect((p['reminderIds'] as List).toSet(), {
+          'REM-TASK1',
+          'REM-TASK2',
+          'REM-TASK3',
+        });
+        expect(p['taskId'], 'TASK1');
+        expect(p['chainIndex'], i);
+        // IDs only: nothing a task says rides in the payload.
+        expect(n.payload, isNot(contains('Görev')));
+        expect(n.title, contains('3 urgent alarms'));
+        expect(n.body, isNot(contains('Görev')));
+      }
+      expect(group.first.body, contains('3 urgent alarms'));
+      expect(group.map((n) => n.id).toSet(), hasLength(slots));
+
+      // The normal reminder in the same minute keeps its own notification.
+      expect(plan.where((n) => !n.urgent).single.title, 'Süt al');
+      // A lone urgent alarm keeps today's ids and payload (no churn).
+      final alone = planNotifications(
+        alarms: [lone],
+        now: now,
+        privacyMode: false,
+      );
+      final loneSlots = plan
+          .where((n) => n.urgent && !n.fireAt.isBefore(lone.remindAt))
+          .toList();
+      expect(loneSlots.map((n) => n.id), alone.map((n) => n.id));
+      expect(payloadOf(alone.first).keys, {
+        'taskId',
+        'reminderId',
+        'chainIndex',
+      });
+    });
+
+    test(
+      'a task appearing twice in a minute (remind and due) is one member',
+      () {
+        final remind = urgent('TASK1', reminder: 'REM-R');
+        final due = urgent(
+          'TASK1',
+          reminder: 'REM-D',
+          kind: 'due',
+          at: nine.add(const Duration(seconds: 30)),
+        );
+        final kit = planAlarmKitAlarms(
+          alarms: [remind, due],
+          now: now,
+          privacyMode: false,
+        );
+        expect(kit, hasLength(1));
+        expect(kit.single.members, ['TASK1']);
+        expect(
+          kit.single.title,
+          'Görev TASK1',
+          reason: 'one member, its title',
+        );
+        expect(kit.single.reminderIds.toSet(), {'REM-R', 'REM-D'});
+        expect(
+          kit.single.id,
+          alarmKitOccurrenceId(['TASK1'], nine.millisecondsSinceEpoch),
+        );
+
+        // With a second task it is a group of two, not three.
+        final withOther = planAlarmKitAlarms(
+          alarms: [remind, due, urgent('TASK2')],
+          now: now,
+          privacyMode: false,
+        ).single;
+        expect(withOther.members, ['TASK1', 'TASK2']);
+        expect(withOther.title, '2 urgent alarms');
+
+        final chain = planNotifications(
+          alarms: [remind, due],
+          now: now,
+          privacyMode: false,
+        );
+        expect(chain, hasLength(ReminderProfile.factory.offsets.length));
+        expect(chain.first.title, contains('Görev TASK1'));
+        final p = payloadOf(chain.first);
+        expect(p['taskId'], 'TASK1');
+        expect((p['reminderIds'] as List).toSet(), {'REM-R', 'REM-D'});
+      },
+    );
   });
 }

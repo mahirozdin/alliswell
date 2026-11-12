@@ -932,6 +932,97 @@ void main() {
       expect(alarmKit.cancelled, isEmpty);
     });
 
+    test(
+      'an alerting group alarm stays while one member is still current',
+      () async {
+        final noon = DateTime.utc(2026, 7, 15, 12);
+        clock = DateTime.utc(2026, 7, 15, 11, 50);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([
+          urgent(at: noon),
+          urgent(
+            taskId: 'TASK2',
+            reminderId: 'REM2',
+            at: noon.add(const Duration(seconds: 20)),
+          ),
+        ]);
+        await pump();
+        final ringing = alarmKit.scheduled.keys.single;
+        expect(alarmKit.scheduled[ringing]!.members, ['TASK1', 'TASK2']);
+
+        // It rings; another device acknowledges TASK1 only. TASK2 still
+        // rings in this minute, so the group alarm is still its alarm.
+        clock = DateTime.utc(2026, 7, 15, 12, 1);
+        alarmKit.alerting.add(ringing);
+        alarms.add([
+          urgent(
+            taskId: 'TASK2',
+            reminderId: 'REM2',
+            at: noon.add(const Duration(seconds: 20)),
+            status: 'delivered',
+          ),
+        ]);
+        await pump();
+
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.scheduled.keys, [ringing]);
+        expect(gateway.scheduled, isEmpty, reason: 'one lane, one ring');
+
+        // Once TASK2 is answered too, the group alarm is superseded.
+        alarms.add(const []);
+        await pump();
+        expect(alarmKit.stopped, [ringing]);
+        expect(alarmKit.cancelled, isEmpty);
+      },
+    );
+
+    test(
+      "a member snoozed into an occupied minute joins that minute's alarm",
+      () async {
+        final noon = DateTime.utc(2026, 7, 15, 12);
+        final five = noon.add(const Duration(minutes: 5));
+        clock = DateTime.utc(2026, 7, 15, 11, 50);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([
+          urgent(at: noon),
+          urgent(taskId: 'TASK2', reminderId: 'REM2', at: five),
+        ]);
+        await pump();
+        expect(alarmKit.scheduled, hasLength(2));
+        final lone = alarmKit.scheduled.values
+            .firstWhere((a) => a.members.single == 'TASK2')
+            .id;
+
+        // TASK1 rings at 12:00 and is snoozed in the app to 12:05:17 — the
+        // minute TASK2 already rings in. Dart writes the target unchanged.
+        clock = DateTime.utc(2026, 7, 15, 12, 0, 17);
+        alarms.add([
+          urgent(
+            at: noon,
+            status: 'snoozed',
+            snoozedUntil: five.add(const Duration(seconds: 17)),
+            snoozeRound: 1,
+          ),
+          urgent(taskId: 'TASK2', reminderId: 'REM2', at: five),
+        ]);
+        await pump();
+
+        final at1205 = alarmKit.scheduled.values
+            .where((a) => a.fireAt.isAfter(noon))
+            .toList();
+        expect(at1205, hasLength(1), reason: 'one alarm in the 12:05 minute');
+        expect(at1205.single.members, ['TASK1', 'TASK2']);
+        expect(at1205.single.fireAt, five, reason: 'the earliest member');
+        expect(alarmKit.cancelled, contains(lone));
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
     test('every pass drains the pulled actions before it plans', () async {
       // The drain lands a snooze in the lane's ledger; the plan that follows
       // must see it, so the drain has to come first.

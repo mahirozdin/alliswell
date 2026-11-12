@@ -103,8 +103,15 @@ Future<bool> handleNotificationEvent(
     return true;
   }
   if (action == kActionAcknowledge) {
+    final listedReminders = payload['reminderIds'];
     if (reminderId != null && reminderId.isNotEmpty) {
       await reminders.acknowledge(reminderId);
+    } else if (listedReminders is List) {
+      // A merged urgent chain (OPH-440) names the reminders of its minute:
+      // exactly those rang, synthetic ones included.
+      for (final id in {...listedReminders.whereType<String>()}) {
+        if (id.isNotEmpty) await reminders.acknowledge(id);
+      }
     } else if (listed is List) {
       // A fallback names no reminder: every member's urgent reminder that is
       // due by the tap is the one that rang.
