@@ -71,13 +71,36 @@ export function widgetDayKey(day) {
   return new Date(day * DAY_MS).toISOString().slice(0, 10);
 }
 
-/** The instant a local day begins in `tz` (its 00:00), in UTC ms. */
+/**
+ * The instant a local day begins in `tz` (its first instant), in UTC ms.
+ *
+ * Usually its 00:00. Where a DST gap skips midnight (America/Santiago in
+ * September, for one) 00:00 does not exist and `zonedWallTimeToUtc` resolves
+ * it with the new offset, an instant that is still the previous day locally.
+ * The day then begins at the transition itself — the old offset applied to
+ * 00:00 — which is the first instant whose local date is `day`.
+ */
 export function startOfLocalDay(day, tz) {
   const date = new Date(day * DAY_MS);
-  return zonedWallTimeToUtc(
-    { year: date.getUTCFullYear(), month: date.getUTCMonth() + 1, day: date.getUTCDate() },
-    tz,
-  ).getTime();
+  const wall = {
+    year: date.getUTCFullYear(),
+    month: date.getUTCMonth() + 1,
+    day: date.getUTCDate(),
+  };
+  const resolved = zonedWallTimeToUtc(wall, tz).getTime();
+  if (localDayOf(resolved, tz) >= day) return resolved;
+  // `resolved` sits before the gap, on the old offset: shift by how far its
+  // wall clock is behind midnight to land on the transition.
+  const behind = wallClockParts(new Date(resolved), tz);
+  const behindAsUtc = Date.UTC(
+    behind.year,
+    behind.month - 1,
+    behind.day,
+    behind.hour,
+    behind.minute,
+    behind.second,
+  );
+  return resolved + (day * DAY_MS - behindAsUtc);
 }
 
 /**

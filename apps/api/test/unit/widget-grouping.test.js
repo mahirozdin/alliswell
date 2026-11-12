@@ -10,6 +10,7 @@ import {
   taskIsOverdueOn,
   taskPlanDay,
   localDayOf,
+  startOfLocalDay,
   widgetDayKey,
 } from '../../src/lib/widget-grouping.js';
 
@@ -157,5 +158,38 @@ describe('widget grouping semantics beyond the fixture', () => {
     expect(scopeShowsEvents(scope)).toBe(false);
     expect(scopeShowsEvents({ workspaceIds: ['W1'] })).toBe(true);
     expect(scopeShowsEvents({ workspaceIds: ['W1', 'W2'] })).toBe(false);
+  });
+  it('a day whose midnight a DST gap skips begins at the gap, not on the day before', () => {
+    // Santiago springs forward at 00:00 on 6 September 2026 (-04 to -03):
+    // that day's first minute is 01:00 local, 04:00 UTC. Taking the instant
+    // the non-existent 00:00 resolves to (03:00 UTC = 23:00 on the 5th)
+    // labelled the 5th's buckets with the 6th's date.
+    const santiago = 'America/Santiago';
+    const before = new Date('2026-09-05T16:00:00.000Z'); // 12:00 on the 5th
+    const sixth = localDayOf(before, santiago) + 1;
+    expect(widgetDayKey(sixth)).toBe('2026-09-06');
+    const start = startOfLocalDay(sixth, santiago);
+    expect(new Date(start).toISOString()).toBe('2026-09-06T04:00:00.000Z');
+    expect(localDayOf(start, santiago)).toBe(sixth);
+    expect(localDayOf(start - 1, santiago)).toBe(sixth - 1);
+
+    const days = buildWidgetServerDays([task('D1', { dueAt: '2026-09-05T16:00:00.000Z' })], {
+      now: before,
+      tz: santiago,
+    });
+    expect(days.map((d) => [d.date, d.buckets.map((b) => b.key)])).toEqual([
+      ['2026-09-05', ['today']],
+      ['2026-09-06', ['overdue']],
+      ['2026-09-07', ['overdue']],
+    ]);
+
+    // The day before still starts at its own midnight, and so does a day
+    // whose gap is not at midnight (New York springs forward at 02:00).
+    expect(new Date(startOfLocalDay(sixth - 1, santiago)).toISOString()).toBe(
+      '2026-09-05T04:00:00.000Z',
+    );
+    const ny = 'America/New_York';
+    const march8 = localDayOf(new Date('2026-03-08T12:00:00.000Z'), ny);
+    expect(new Date(startOfLocalDay(march8, ny)).toISOString()).toBe('2026-03-08T05:00:00.000Z');
   });
 });
