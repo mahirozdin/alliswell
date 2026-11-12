@@ -365,6 +365,50 @@ describe('task, project and alarm-stop wakes', () => {
     );
   });
 
+  it('a transient push failure retries the alarm stop until it is sent', async () => {
+    // FCM answers 503 once, then delivers.
+    let calls = 0;
+    app.pushTransport.send = async (devices, payload) => {
+      calls += 1;
+      sent.push({ deviceIds: devices.map((d) => d.id).sort(), payload });
+      return devices.map((d) =>
+        calls === 1
+          ? { deviceId: d.id, outcome: 'failed', retryable: true, reason: 'HTTP 503' }
+          : { deviceId: d.id, outcome: 'sent' },
+      );
+    };
+    await change('task', '01HZTASKAAAAAAAAAAAAAAAAAA');
+    await settle();
+    sent.length = 0;
+    // The task's hint spent the minute; the stop's first try is the one that fails.
+    calls = 0;
+    reminder({ status: 'acknowledged' });
+    await change('reminder');
+    await settle();
+
+    expect(sent).toEqual([
+      { deviceIds: [RINGING], payload: { v: 1, type: 'wake' } },
+      { deviceIds: [RINGING], payload: { v: 1, type: 'wake' } },
+    ]);
+  });
+
+  it('a permanent push failure does not retry the alarm stop', async () => {
+    app.pushTransport.send = async (devices, payload) => {
+      sent.push({ deviceIds: devices.map((d) => d.id).sort(), payload });
+      return devices.map((d) => ({
+        deviceId: d.id,
+        outcome: 'failed',
+        retryable: false,
+        reason: 'HTTP 400',
+      }));
+    };
+    reminder({ status: 'acknowledged' });
+    await change('reminder');
+    await settle();
+
+    expect(sent.filter((s) => s.deviceIds.join() === RINGING)).toHaveLength(1);
+  });
+
   it('a normal reminder acknowledgement stays behind the minute gate', async () => {
     await change('task', '01HZTASKAAAAAAAAAAAAAAAAAA');
     await settle();

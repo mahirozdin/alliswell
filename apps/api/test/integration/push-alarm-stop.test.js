@@ -27,6 +27,8 @@ describe.runIf(enabled)(
     let seq = 0;
     /** @type {Array<{ deviceIds: string[], payload: object }>} */
     let sent = [];
+    // How many of the next sends FCM answers with a transient 503.
+    let failNext = 0;
 
     beforeAll(async () => {
       app = await buildApp({
@@ -38,6 +40,15 @@ describe.runIf(enabled)(
         providers: ['fcm', 'webpush'],
         async send(devices, payload) {
           sent.push({ deviceIds: devices.map((d) => d.id).sort(), payload });
+          if (failNext > 0) {
+            failNext -= 1;
+            return devices.map((d) => ({
+              deviceId: d.id,
+              outcome: 'failed',
+              retryable: true,
+              reason: 'HTTP 503',
+            }));
+          }
           return devices.map((d) => ({ deviceId: d.id, outcome: 'sent' }));
         },
       };
@@ -212,6 +223,22 @@ describe.runIf(enabled)(
       expect(row.status).toBe('completed');
       // One more stop for the new revision, to the same phone, nothing else.
       expect(await stopSends(2)).toEqual([
+        { deviceIds: [ringing], payload: { v: 1, type: 'wake' } },
+        { deviceIds: [ringing], payload: { v: 1, type: 'wake' } },
+      ]);
+    });
+
+    it('a transient FCM failure is retried until the stop is sent', async () => {
+      const me = await account();
+      const ringing = await device(me, 'android', true);
+      const { reminderId } = await ringingTask(me, [ringing]);
+
+      failNext = 1;
+      await acknowledge(me, reminderId);
+
+      const sends = await stopSends(2);
+      expect(failNext).toBe(0);
+      expect(sends).toEqual([
         { deviceIds: [ringing], payload: { v: 1, type: 'wake' } },
         { deviceIds: [ringing], payload: { v: 1, type: 'wake' } },
       ]);

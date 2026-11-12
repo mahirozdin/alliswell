@@ -314,12 +314,19 @@ export async function sendWakeHint(app, { workspaceId }) {
  * The acknowledging device is not excluded: the sync event does not carry
  * the client that wrote it, and one extra wake on a phone that is already
  * silent costs less than threading a client id through every write path.
+ *
+ * Unlike the hint, a stop is not followed by another one a minute later: if
+ * it is lost, a phone keeps ringing until something else makes it sync. So a
+ * failure the provider calls transient (a 5xx, 429, a network error) throws,
+ * and the job runner tries again with its backoff. The retry wakes every
+ * ringing phone once more, which costs a phone that already heard one extra
+ * sync; a permanent failure or a dead token is not retried.
  */
 export async function sendAlarmStopWake(app, { workspaceId }) {
-  return wakeAndroid(app, workspaceId, { ringsUrgentOnly: true });
+  return wakeAndroid(app, workspaceId, { ringsUrgentOnly: true, retryTransient: true });
 }
 
-async function wakeAndroid(app, workspaceId, { ringsUrgentOnly }) {
+async function wakeAndroid(app, workspaceId, { ringsUrgentOnly, retryTransient = false }) {
   if (!app.pushTransport || !app.pushTransport.providers.includes('fcm')) return 0;
 
   const members = await app
@@ -341,5 +348,11 @@ async function wakeAndroid(app, workspaceId, { ringsUrgentOnly }) {
   if (devices.length === 0) return 0;
 
   const results = await app.pushTransport.send(devices, buildWakePayload());
+  const transient = results.filter((r) => r.outcome === 'failed' && r.retryable);
+  if (retryTransient && transient.length > 0) {
+    throw new Error(
+      `alarm stop wake failed for ${transient.length} device(s): ${transient[0].reason ?? 'unknown'}`,
+    );
+  }
   return results.filter((r) => r.outcome === 'sent').length;
 }
