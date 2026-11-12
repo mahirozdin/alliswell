@@ -236,6 +236,17 @@ struct AWWidgetFetcher {
     return .failed
   }
 
+  /// One turn's drawn snapshot: the fetch when `fetch` (and the contract)
+  /// allow it, then the choice over the app's snapshot read AFTER it. The
+  /// app may write its snapshot and its outbox count while the request is
+  /// out; the choice reads the new count, so it must draw the new snapshot
+  /// too, or a change still waiting to sync comes back undone.
+  func drawnSnapshot(fetch: Bool, today: () -> String) async -> AWSnapshot {
+    if fetch { await refresh() }
+    let day = today()
+    return snapshotToDraw(local: awLoadLocalSnapshot(in: defaults, today: day), today: day)
+  }
+
   /// The choice (step 5, K-11) for `local`, the app's snapshot as the widget
   /// read it (queued completions already applied).
   func choice(local: AWSnapshot, today: String) -> AWSnapshotChoice {
@@ -272,6 +283,27 @@ func awWidgetSnapshotURL(baseUrl: String, query: String) -> URL? {
     url.host != nil
   else { return nil }
   return url
+}
+
+/// The app's snapshot as it stands in `defaults` now, with every completion
+/// from the circle the app has not pulled yet applied to it (OPH-451,
+/// IOS-08): the app rewrites the snapshot from its own data, which still has
+/// the task open until it pulls the queue, so without this a rewrite in
+/// between would put the tapped row back. `.empty` when there is none.
+func awLoadLocalSnapshot(in defaults: UserDefaults, today: String) -> AWSnapshot {
+  guard
+    let raw = defaults.string(forKey: kAWLocalSnapshotKey),
+    var data = raw.data(using: .utf8)
+  else { return .empty }
+  let queued = awQueuedCompletionTaskIds(in: defaults)
+  if !queued.isEmpty,
+    var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+    awApplyPendingCompletions(&json, taskIds: queued, today: today),
+    let out = try? JSONSerialization.data(withJSONObject: json)
+  {
+    data = out
+  }
+  return (try? JSONDecoder().decode(AWSnapshot.self, from: data)) ?? .empty
 }
 
 /// The task ids of every completion from the widget's circle still queued

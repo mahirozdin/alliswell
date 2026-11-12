@@ -505,6 +505,33 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
   }
 
+  /// The app completes L and writes its snapshot and an unsent outbox entry
+  /// while the request is out: the choice keeps the app's snapshot, and the
+  /// one it draws is the new one, with L done — not the one read before the
+  /// request, with L open again.
+  func testTheAppSnapshotIsReadAfterTheRequest() async throws {
+    let body = try JSONSerialization.data(withJSONObject: serverBody())
+    let completed = localJSON.replacingOccurrences(of: #""done":false"#, with: #""done":true"#)
+    XCTAssertNotEqual(completed, localJSON)
+    let pending = profileJSON(localWrittenAtMs: startMs + 500, outbox: 1)
+    let defaults = self.defaults!
+    AWStubProtocol.handler = { request in
+      defaults.set(completed, forKey: kAWLocalSnapshotKey)
+      defaults.set(pending, forKey: kAWFetchProfileKey)
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+        headerFields: ["ETag": "\"abc\""])!
+      return (response, body)
+    }
+    clock = start.addingTimeInterval(1)
+
+    let snap = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    let row = try XCTUnwrap(snap.buckets.first?.items.first)
+    XCTAssertEqual(row.id, "L")
+    XCTAssertTrue(row.done, "the snapshot the app wrote during the request")
+  }
+
   // MARK: - A profile that changed during the request
 
   /// "Private widget" turned on while a request made without it was still

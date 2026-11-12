@@ -499,7 +499,7 @@ token).
    fetchedAtMs` → local; else the server's days. Both clocks are the device's, which is why the
    envelope's `fetchedAtMs` and not the server's `generatedAt` is compared. Queued completions are
    overlaid as done on whichever wins (`awMarkSnapshotDone`'s rules). A self-fetch never undoes a
-   local change.
+   local change. `aw_widget_snapshot` is read after the request, not before it.
 6. Reload `.after(min(clock horizon, now + 30 min + 0–300 s))`; the midnight entry at 00:01 + 0–300 s.
 
 ## 4. Interactivity — quick-add & quick-complete

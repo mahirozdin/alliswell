@@ -70,24 +70,10 @@ private let kAWEntryBytesPerRow = 6_100
 
 /// Reads the latest snapshot from the shared App Group container, with every
 /// completion from the circle the app has not pulled yet applied to it
-/// (OPH-451, IOS-08): the app rewrites the snapshot from its own data, which
-/// still has the task open until it pulls the queue, so without this a rewrite
-/// in between would put the tapped row back.
+/// (awLoadLocalSnapshot, ios/Shared/AWWidgetFetcher.swift).
 func loadAWSnapshot() -> AWSnapshot {
-  guard
-    let defaults = UserDefaults(suiteName: kAppGroupId),
-    let raw = defaults.string(forKey: kSnapshotKey),
-    var data = raw.data(using: .utf8)
-  else { return .empty }
-  let queued = awQueuedCompletionTaskIds(in: defaults)
-  if !queued.isEmpty,
-    var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-    awApplyPendingCompletions(&json, taskIds: queued, today: awToday()),
-    let out = try? JSONSerialization.data(withJSONObject: json)
-  {
-    data = out
-  }
-  return (try? JSONDecoder().decode(AWSnapshot.self, from: data)) ?? .empty
+  guard let defaults = UserDefaults(suiteName: kAppGroupId) else { return .empty }
+  return awLoadLocalSnapshot(in: defaults, today: awToday())
 }
 
 /// What a timeline turn draws (#50, OPH-462; WIDGETS.md §3.2 "The
@@ -95,16 +81,17 @@ func loadAWSnapshot() -> AWSnapshot {
 /// nothing changed on the phone that has not synced — the server's newer days
 /// in the app's words. With `fetch`, the turn first makes its one request when
 /// the contract allows it (8 s at most; any failure keeps the App Group
-/// snapshot). iOS only: the macOS widget's self-fetch is a later candidate.
+/// snapshot). The app's snapshot is read after the request, never before it:
+/// the app may complete a task and write both while the request is out.
+/// iOS only: the macOS widget's self-fetch is a later candidate.
 func loadAWDrawnSnapshot(fetch: Bool) async -> AWSnapshot {
-  let local = loadAWSnapshot()
   #if os(iOS)
-    guard let fetcher = AWWidgetFetcher.live() else { return local }
-    if fetch { await fetcher.refresh() }
+    guard let fetcher = AWWidgetFetcher.live() else { return loadAWSnapshot() }
+    let snapshot = await fetcher.drawnSnapshot(fetch: fetch, today: awToday)
     fetcher.session.finishTasksAndInvalidate()
-    return fetcher.snapshotToDraw(local: local, today: awToday())
+    return snapshot
   #else
-    return local
+    return loadAWSnapshot()
   #endif
 }
 
