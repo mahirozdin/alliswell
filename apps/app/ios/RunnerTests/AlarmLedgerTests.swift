@@ -157,6 +157,7 @@ final class AlarmLedgerTests: XCTestCase {
     XCTAssertEqual(wire["origin"] as? String, "widget")
     XCTAssertNil(wire["untilMs"])
     XCTAssertNil(wire["alarmId"])
+    XCTAssertNil(wire[AWAlarmActionQueue.queuedAtKey], "store-only, never on the channel")
 
     // Ack removes exactly what it names; unknown ids are ignored.
     AWAlarmActionQueue.ack(eventIds: [first, "nope"], in: defaults)
@@ -175,6 +176,82 @@ final class AlarmLedgerTests: XCTestCase {
           pressedAt: now.addingTimeInterval(Double(i)), in: defaults, notify: false))
     }
     XCTAssertEqual(AWAlarmActionQueue.pending(in: defaults).map(\.eventId), Array(ids.suffix(32)))
+  }
+
+  /// `UserDefaults` that lets "another process" write between this
+  /// process's first touch of the store and the rest of its operation: the
+  /// app and the widget extension each have their own lock, so nothing
+  /// in-process orders them.
+  private final class RacingDefaults: UserDefaults {
+    var race: (() -> Void)?
+
+    private func runRace() {
+      guard let race else { return }
+      self.race = nil
+      race()
+    }
+
+    override func object(forKey defaultName: String) -> Any? {
+      let value = super.object(forKey: defaultName)
+      runRace()
+      return value
+    }
+
+    override func dictionaryRepresentation() -> [String: Any] {
+      let value = super.dictionaryRepresentation()
+      runRace()
+      return value
+    }
+
+    override func set(_ value: Any?, forKey defaultName: String) {
+      runRace()
+      super.set(value, forKey: defaultName)
+    }
+
+    override func removeObject(forKey defaultName: String) {
+      runRace()
+      super.removeObject(forKey: defaultName)
+    }
+  }
+
+  /// The widget extension's complete press, written from its own process
+  /// (its own store handle; no lock of this process is held around it).
+  private func widgetEnqueue(_ taskId: String, at: Date) -> String {
+    AWAlarmActionQueue.enqueue(
+      action: "complete", taskIds: [taskId], origin: "widget", pressedAt: at, in: defaults,
+      notify: false)
+  }
+
+  /// OPH-430: retained until acked. With [A] queued, the app's ack(A) and
+  /// the widget's enqueue(B) interleave; B must survive the ack.
+  func testAckNeverDropsAnEntryAnotherProcessQueuedMeanwhile() throws {
+    let now = Date(timeIntervalSince1970: 1_784_116_800)
+    let a = AWAlarmActionQueue.enqueue(
+      action: "acknowledge", taskIds: ["t1"], origin: "alarmkit", pressedAt: now,
+      in: defaults, notify: false)
+    let app = try XCTUnwrap(RacingDefaults(suiteName: suiteName))
+    var b = ""
+    app.race = { b = self.widgetEnqueue("t9", at: now.addingTimeInterval(1)) }
+
+    AWAlarmActionQueue.ack(eventIds: [a], in: app)
+
+    XCTAssertFalse(b.isEmpty, "the widget wrote during the ack")
+    XCTAssertEqual(AWAlarmActionQueue.pending(in: defaults).map(\.eventId), [b])
+  }
+
+  /// Two presses at once, one per process: both are queued.
+  func testEnqueueNeverDropsAnEntryAnotherProcessQueuedMeanwhile() throws {
+    let now = Date(timeIntervalSince1970: 1_784_116_800)
+    let app = try XCTUnwrap(RacingDefaults(suiteName: suiteName))
+    var b = ""
+    app.race = { b = self.widgetEnqueue("t9", at: now.addingTimeInterval(1)) }
+
+    let a = AWAlarmActionQueue.enqueue(
+      action: "acknowledge", taskIds: ["t1"], origin: "alarmkit", pressedAt: now, in: app,
+      notify: false)
+
+    XCTAssertFalse(b.isEmpty, "the widget wrote during the enqueue")
+    XCTAssertEqual(AWAlarmActionQueue.pending(in: defaults).map(\.eventId), [a, b])
   }
 
   func testV1QueueEntriesAreConvertedOnRead() {
@@ -200,9 +277,14 @@ final class AlarmLedgerTests: XCTestCase {
     let later = AWAlarmActionQueue.pending(in: defaults, now: readAt.addingTimeInterval(3600))
     XCTAssertEqual(later.map(\.eventId), first.map(\.eventId))
     XCTAssertEqual(later.map(\.pressedAtMs), first.map(\.pressedAtMs))
-    let raw = defaults.array(forKey: AWAlarmActionQueue.defaultsKey) as? [[String: Any]]
-    XCTAssertEqual(raw?.compactMap { $0["eventId"] as? String }, first.map(\.eventId))
-    XCTAssertNil(raw?.first?["actionId"])
+    // Moved to one key per event, as v2; the old list is gone.
+    XCTAssertNil(defaults.object(forKey: AWAlarmActionQueue.defaultsKey))
+    for event in first {
+      let stored = defaults.dictionary(
+        forKey: AWAlarmActionQueue.entryKey(eventId: event.eventId))
+      XCTAssertEqual(stored?["eventId"] as? String, event.eventId)
+      XCTAssertNil(stored?["actionId"])
+    }
 
     // A mixed queue keeps its order: v1 first (queued earlier), then a v2 press.
     let v2 = AWAlarmActionQueue.enqueue(

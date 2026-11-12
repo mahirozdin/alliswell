@@ -140,17 +140,35 @@ struct AWAlarmActionEvent: Equatable {
 /// read: a process that dies between the read and the commit gets the same
 /// event again, and the receipt makes the second apply a no-op.
 ///
+/// **One key per event** (`<entryKeyPrefix><eventId>`). The app and the
+/// widget extension are separate processes, so no lock orders them, and a
+/// shared list rewritten by read-modify-write let the app's ack (computed
+/// from a read taken before the widget appended) delete the widget's fresh,
+/// never-pulled press. Here every write sets or removes exactly one event's
+/// own key: an enqueue never rewrites another entry, and an ack removes only
+/// what it names. The list key a build before this one wrote is moved to
+/// per-event keys on the first read.
+///
 /// Foundation only: the macOS widget compiles this file for the queue.
 enum AWAlarmActionQueue {
   static let appGroupId = "group.com.alliswell.alliswell"
+  /// The list an earlier build wrote (v1 entries, early v2 entries). Nothing
+  /// writes it any more; `pending` moves what it holds to per-event keys.
   static let defaultsKey = "aw_alarm_pending_actions"
+  /// The prefix of each event's own key.
+  static let entryKeyPrefix = "aw_alarm_pending_actions."
   static let capacity = 32
+  /// A store-only field of an entry, never part of the event: when it was
+  /// queued (wall-clock seconds), the order of a `pressedAtMs` tie.
+  static let queuedAtKey = "queuedAt"
 
   /// Posted in-process after an enqueue so a live bridge tells Dart to pull
   /// instead of waiting for the next foreground.
   static let didEnqueue = Notification.Name("AWAlarmActionQueueDidEnqueue")
 
-  private static let lock = NSLock()
+  /// Only for moving the legacy list in this process; per-event keys need
+  /// no lock.
+  private static let legacyLock = NSLock()
 
   static var sharedDefaults: UserDefaults? { UserDefaults(suiteName: appGroupId) }
 
@@ -159,9 +177,11 @@ enum AWAlarmActionQueue {
     Int64((date.timeIntervalSince1970 * 1000).rounded())
   }
 
+  static func entryKey(eventId: String) -> String { entryKeyPrefix + eventId }
+
   /// Appends a v2 event and returns its `eventId`. [taskIds] are
-  /// de-duplicated in order. The oldest entry goes only when the queue holds
-  /// [capacity] already (a year of presses must not replay on a launch).
+  /// de-duplicated in order. The oldest entries go only when the queue holds
+  /// more than [capacity] (a year of presses must not replay on a launch).
   @discardableResult
   static func enqueue(
     action: String, taskIds: [String], origin: String, untilMs: Int64? = nil,
@@ -177,78 +197,85 @@ enum AWAlarmActionQueue {
       pressedAtMs: epochMs(pressedAt), origin: origin, alarmId: alarmId, newId: newId,
       scheduleOutcome: scheduleOutcome, stopOutcome: stopOutcome)
     guard let defaults else { return eventId }
-    lock.lock()
-    var queued = defaults.array(forKey: defaultsKey) ?? []
-    queued.append(event.dictionary)
-    if queued.count > capacity { queued.removeFirst(queued.count - capacity) }
-    defaults.set(queued, forKey: defaultsKey)
-    lock.unlock()
+    store(event, queuedAt: Date().timeIntervalSince1970, in: defaults)
+    let all = stored(in: defaults)
+    if all.count > capacity {
+      for entry in all.prefix(all.count - capacity) { defaults.removeObject(forKey: entry.key) }
+    }
     if notify { NotificationCenter.default.post(name: didEnqueue, object: nil) }
     return eventId
   }
 
   /// Everything queued, sorted by `pressedAtMs` (queue order on a tie), and
-  /// **not removed**. A v1 entry is rewritten as v2 in the store on this first
-  /// read, so its `eventId` stays the same on every later read. An entry that
-  /// is neither v1 nor v2 is dropped.
+  /// **not removed**. The legacy list is moved to per-event keys on this
+  /// read: a v1 entry is rewritten as v2 then, so its `eventId` stays the
+  /// same on every later read. An entry that is neither v1 nor v2 is dropped.
   static func pending(
     in defaults: UserDefaults? = sharedDefaults, now: Date = Date()
   ) -> [AWAlarmActionEvent] {
     guard let defaults else { return [] }
-    lock.lock()
-    defer { lock.unlock() }
-    let raw = defaults.array(forKey: defaultsKey) ?? []
-    var events: [AWAlarmActionEvent] = []
-    var rewritten = false
-    for item in raw {
-      guard let d = item as? [String: Any] else {
-        rewritten = true
+    moveLegacyList(in: defaults, now: now)
+    return stored(in: defaults).map(\.event)
+  }
+
+  /// Removes the entries named by [eventIds] — each its own key, nothing
+  /// else; unknown ids are ignored.
+  static func ack(eventIds: [String], in defaults: UserDefaults? = sharedDefaults) {
+    guard let defaults else { return }
+    for id in Set(eventIds) { defaults.removeObject(forKey: entryKey(eventId: id)) }
+  }
+
+  private struct Stored {
+    let key: String
+    let event: AWAlarmActionEvent
+    let queuedAt: Double
+  }
+
+  private static func store(_ event: AWAlarmActionEvent, queuedAt: Double, in defaults: UserDefaults) {
+    var entry = event.dictionary
+    entry[queuedAtKey] = NSNumber(value: queuedAt)
+    defaults.set(entry, forKey: entryKey(eventId: event.eventId))
+  }
+
+  /// Every per-event entry, oldest first; a malformed one is removed.
+  private static func stored(in defaults: UserDefaults) -> [Stored] {
+    var out: [Stored] = []
+    for (key, value) in defaults.dictionaryRepresentation() where key.hasPrefix(entryKeyPrefix) {
+      guard
+        let d = value as? [String: Any],
+        let event = AWAlarmActionEvent(dictionary: d),
+        key == entryKey(eventId: event.eventId)
+      else {
+        defaults.removeObject(forKey: key)
         continue
       }
-      if let event = AWAlarmActionEvent(dictionary: d) {
-        events.append(event)
-      } else if let event = AWAlarmActionEvent(v1: d, now: now) {
-        events.append(event)
-        rewritten = true
-      } else {
-        rewritten = true
-      }
+      out.append(
+        Stored(key: key, event: event, queuedAt: (d[queuedAtKey] as? NSNumber)?.doubleValue ?? 0))
     }
-    if rewritten { save(events, to: defaults) }
-    return events.enumerated()
-      .sorted { a, b in
-        a.element.pressedAtMs != b.element.pressedAtMs
-          ? a.element.pressedAtMs < b.element.pressedAtMs : a.offset < b.offset
+    return out.sorted { a, b in
+      if a.event.pressedAtMs != b.event.pressedAtMs {
+        return a.event.pressedAtMs < b.event.pressedAtMs
       }
-      .map(\.element)
-  }
-
-  /// Removes the entries named by [eventIds]; unknown ids are ignored.
-  static func ack(eventIds: [String], in defaults: UserDefaults? = sharedDefaults) {
-    guard let defaults, !eventIds.isEmpty else { return }
-    let acked = Set(eventIds)
-    lock.lock()
-    defer { lock.unlock() }
-    let raw = defaults.array(forKey: defaultsKey) ?? []
-    let kept = raw.filter { item in
-      guard let id = (item as? [String: Any])?["eventId"] as? String else { return true }
-      return !acked.contains(id)
-    }
-    if kept.count != raw.count {
-      if kept.isEmpty {
-        defaults.removeObject(forKey: defaultsKey)
-      } else {
-        defaults.set(kept, forKey: defaultsKey)
-      }
+      if a.queuedAt != b.queuedAt { return a.queuedAt < b.queuedAt }
+      return a.event.eventId < b.event.eventId
     }
   }
 
-  private static func save(_ events: [AWAlarmActionEvent], to defaults: UserDefaults) {
-    if events.isEmpty {
-      defaults.removeObject(forKey: defaultsKey)
-    } else {
-      defaults.set(events.map(\.dictionary), forKey: defaultsKey)
+  /// Moves the legacy list to per-event keys, in its order (queued before
+  /// anything keyed: `queuedAt` = its index), then removes the list.
+  private static func moveLegacyList(in defaults: UserDefaults, now: Date) {
+    legacyLock.lock()
+    defer { legacyLock.unlock() }
+    guard let raw = defaults.array(forKey: defaultsKey) else { return }
+    for (index, item) in raw.enumerated() {
+      guard let d = item as? [String: Any] else { continue }
+      let event = AWAlarmActionEvent(dictionary: d) ?? AWAlarmActionEvent(v1: d, now: now)
+      guard let event, defaults.object(forKey: entryKey(eventId: event.eventId)) == nil else {
+        continue
+      }
+      store(event, queuedAt: Double(index), in: defaults)
     }
+    defaults.removeObject(forKey: defaultsKey)
   }
 }
 

@@ -41,6 +41,9 @@ class MainFlutterWindow: NSWindow {
 final class AWMacWidgetBridge {
   private static let appGroupId = "group.com.alliswell.alliswell"
   private static let actionsKey = "aw_alarm_pending_actions"
+  /// `AWAlarmActionQueue.entryKeyPrefix`: the widget queues each tap under
+  /// its own key (`<prefix><eventId>`), never by rewriting a shared list.
+  private static let entryKeyPrefix = "aw_alarm_pending_actions."
 
   private let widget: FlutterMethodChannel
   private let alarms: FlutterMethodChannel
@@ -106,14 +109,28 @@ final class AWMacWidgetBridge {
   /// entries (`{eventId, action, taskIds, …}`); an older build's v1 entries
   /// (`{actionId, taskId, reminderId}`) may still be queued. Both become the
   /// same `onAlarmAction {actionId, payload}` the one Dart handler knows.
+  ///
+  /// The widget queues each tap under its own key; each key is taken on its
+  /// own, so a tap queued while this drains is left for the next drain
+  /// instead of being removed unread. The old list key is still read once.
   private func drain() {
-    guard
-      let defaults,
-      let queued = defaults.array(forKey: Self.actionsKey),
-      !queued.isEmpty
-    else { return }
-    defaults.removeObject(forKey: Self.actionsKey)
-    for case let entry as [String: Any] in queued {
+    guard let defaults else { return }
+    var queued: [[String: Any]] = []
+    if let legacy = defaults.array(forKey: Self.actionsKey) {
+      defaults.removeObject(forKey: Self.actionsKey)
+      queued += legacy.compactMap { $0 as? [String: Any] }
+    }
+    func pressedAtMs(_ value: Any) -> Int64 {
+      ((value as? [String: Any])?["pressedAtMs"] as? NSNumber)?.int64Value ?? 0
+    }
+    let keyed = defaults.dictionaryRepresentation()
+      .filter { $0.key.hasPrefix(Self.entryKeyPrefix) }
+      .sorted { pressedAtMs($0.value) < pressedAtMs($1.value) }
+    for (key, value) in keyed {
+      defaults.removeObject(forKey: key)
+      if let entry = value as? [String: Any] { queued.append(entry) }
+    }
+    for entry in queued {
       for (actionId, taskId) in Self.legacyActions(entry) {
         let payload = ["taskId": taskId, "reminderId": entry["reminderId"] as? String ?? ""]
         guard
