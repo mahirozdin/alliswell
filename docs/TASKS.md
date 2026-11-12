@@ -58,17 +58,6 @@ Kritik yol: auth. Found: phase-end review, `apps/app/lib/src/features/auth/data/
 - **Test first:** `apps/app/test/features/auth/auth_repository_test.dart` — held `SecretStore.delete`;
   two delayed `onSessionUser` hooks. **Verify:** `npm run verify:task -- <those tests>` + auth K1.
 
-### OPH-469 — Widget completion also drops the task from future day views
-
-swift · #50. Found: phase-end review, `apps/app/ios/Shared/AWSnapshotModel.swift` (`awMarkSnapshotDone`).
-
-- [ ] Completing from the widget stamps `done` in every day but leaves the task's overdue row in
-      later days and leaves `openToday` / `next` unchanged → tomorrow shows it crossed out under
-      Overdue, still counted, possibly "Up next". ADR-0010's revision: a task done today is not
-      tomorrow's dimmed row. Remove it from days after today; recount `openToday`, re-pick `next`.
-- **Test first:** RunnerTests snapshot-model case (today + tomorrow's overdue row). **Verify:** Mac —
-  `xcodebuild test -only-testing:RunnerTests` and `flutter build ios --simulator --debug`.
-
 ### OPH-470 — Ring screen interaction restarts the 60-second quiet minute
 
 Kritik yol: push-notifications. Found: phase-end review, `apps/app/lib/src/notifications/alarm_overlay.dart`
@@ -251,6 +240,62 @@ Kritik yol: push-notifications. W4 · wire · #50.
       not confirmed; candidates WidgetKit push and macOS self-fetch; delete the OPH-457…465 blocks.
 - **Verify:** `npm run check:notify-matrix && npm run check:openapi && npm run check:apidocs && npm
   run check:postman && npm run check:docs && npm run check:no-ee && npm run check:push-payload`.
+
+---
+
+## Epic 36 follow-up 2 — walkthrough leftovers (minor)
+
+Minor findings of the web and iOS simulator walkthroughs (2026-11-12) that the two polish rounds
+left open, each with the reason. None blocks an alarm: every surface can still be silenced and
+saved. Each: failing test first where a test can see it, K1, `Changelog:` and `Device:` lines.
+
+### OPH-473 — Turkish date and time pickers speak in "sen"
+
+Found: web walkthrough (W-17), pre-existing. Left open: framework strings, not alarm work.
+
+- [ ] Material's Turkish pickers say "Tarih seçin", "Saat seçin", "Saat girin" while the app says
+      "sen". Pass our own `helpText` / field labels from i18n keys through `awShowTimePicker` and
+      the date-picker call sites (`core/date_input.dart`, repeat dialog, ring "Saat seç").
+- **Test first:** widget test in Turkish: the pickers show the informal labels. **Verify:**
+  `npm run verify:task -- <that test>` + `check:i18n`.
+
+### OPH-474 — Web: Noto Color Emoji and Noto Sans Symbols 2 answer 404
+
+Found: web walkthroughs 1 and 2 (W-17). Left open: needs a release web build to measure.
+
+- [ ] The console shows 404 for both families under `fonts/noto/`, then "Could not find a set of
+      Noto fonts…"; such a glyph draws as a box. Check that `tool/mirror_noto_fallback.dart` fills
+      both into the release build, and fix the mirror list or the build step that skips it.
+- **Verify:** `web_fonts_offline_test.dart` + a release web build with no 404 in the console.
+
+### OPH-475 — The iOS AlarmKit banner covers the in-app ring header
+
+Found: iOS simulator walkthrough (IOS-02). Left open: the app cannot hide the system alert; the
+fix is a layout choice that needs a device to measure.
+
+- [ ] With the app in front, AlarmKit's own banner (Ertele/Durdur) sits over the ring screen's
+      header ("3 ACİL HATIRLATMA · 11:42"). Either surface closes both, so nothing sticks; keep the
+      header readable while the system alert shows (top inset or header below the banner area).
+- **Verify:** golden of the ring screen with the inset · iPhone or simulator, foreground alarm.
+
+### OPH-476 — A freshly installed iPhone lists `hasSession: false`
+
+Found: iOS simulator walkthrough (IOS-05). Left open: auth critical path, not polish.
+
+- [ ] After a clean install and sign-in the server's device row had `hasSession: false`, so
+      removing that iPhone elsewhere may not sign it out (ADR-0069). Measure whether the first
+      sign-in's refresh family is bound before the device row exists; bind it on registration or
+      on the next refresh. (The raw "Dart/3.13 (dart:io)" name is already shown as "iPhone".)
+- **Test first:** integration — sign in, register, list: `hasSession: true`. **Verify:** auth K1.
+
+### OPH-477 — The device detail sheet's close control does not close it
+
+Found: iOS simulator walkthrough (IOS-06). Left open: minor, outside the rounds' scope; the
+dimmed area above still closes it.
+
+- [ ] On iOS the element exposed as "Kapat" did nothing; tapping the dimmed area above the sheet
+      closed it. The close control closes the sheet.
+- **Test first:** widget test — tap the close control, the sheet is gone. **Verify:** K1.
 
 ---
 

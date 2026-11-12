@@ -5,6 +5,18 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## İkinci cila turu: zil ekranı, cihaz devri, izin şeridi, widget (2026-11-12, #46–#50)
+
+Hepsi **NOT RUN**: işler birim/widget testleriyle, widget işi Mac'te iOS 27.2 simülatöründe XCTest ile kapandı.
+
+- OPH-466 — **web 360×640, sessiz satırla; iPhone VoiceOver** (NOT RUN): tek zil ekranında sessiz cümle ve "Sesi başlat" tam görünüyor, sığmayınca bütün sayfa kayıyor; VoiceOver ekranı sırayla okuyor, her erteleme karosu tek düğme ("5 dakika ertele, 09:05’te çalar").
+- OPH-443 — **web liste modu, iki dakikaya yayılan alarmlar; iPhone VoiceOver** (NOT RUN): başlık yalnız sayıyı söylüyor, her kart kendi saatini; satırın erteleme sayfasında başka alarmın dakikası "başka alarmla birlikte" diyor; VoiceOver listeyi sırayla okuyor.
+- OPH-446 — **web sekmesi açık + telefon kaydı** (NOT RUN): bir dakika içinde sekme kartı gösteriyor ve sonraki acil alarm zil ekranını açmıyor.
+- OPH-449 — **Ana Sayfa, acil alarm çalmayan telefon, açık ve koyu** (NOT RUN): kartın kenar boşlukları diğer uyarılarla aynı; "Tamam" metin düğmesi, sonra dolu "Bu cihazda da çal" (D7/D8).
+- OPH-448 — **Ayarlar ▸ Cihazlar, iki çalan cihaz, 360 ve 430 genişlik, açık ve koyu** (NOT RUN): çoklu cihaz notu bir kez, girişin altında; her satırda en çok bir kısa not.
+- OPH-428 — **iPhone/simülatör** (NOT RUN): alarm iznini reddet, uygulamayı aç, Ayarlar'dan izin ver, geri dön: şerit kayboluyor, sonraki acil alarm AlarmKit alarmı.
+- OPH-451 — **iPhone widget'ları** (NOT RUN): widget dairesine dokun: satır hemen tamamlanmış, BUGÜN sayısı düşüyor; orta boy widget yalnız tam satır çiziyor; VoiceOver "Tamamla: <başlık>" diyor; widget galerisinin açıklaması Türkçe.
+
 ## Web turu cilası: zil ekranları, Cihazlar, saat seçici (2026-11-12, #46–#48)
 
 Hepsi **NOT RUN**: işler birim/widget testleriyle kapandı; web turunun ikinci geçişinde ve telefonda bakılır.

@@ -71,6 +71,22 @@ This file holds the unreleased changes and the latest release; at each release t
   page reload, shows the current list each time you open it, and a switched-off browser tab shows
   one hint. Switching off the last ringing device offers "Vazgeç" and marks "Yine de kapat" as
   destructive.
+- **Alarms keep up when they move between devices, and read well**
+  ([#46](https://github.com/mahirozdin/alliswell/issues/46)–[#49](https://github.com/mahirozdin/alliswell/issues/49)).
+  An open app or browser tab stops ringing urgent alarms within about a minute after they move to
+  another device, and Home shows where they ring now; that card lines up with the other notices,
+  with "Ring here too" as its main button, and Settings › Devices explains once, under its intro,
+  what ringing on several devices means. Back from the system Settings app, the "alarm permission
+  is off" notice and the Settings alarm row update at once, and urgent alarms move to the system
+  alarm without a relaunch. The alarm screen fits small browser windows without hiding "Start
+  sound", and screen readers read it in order, one button per snooze option. When alarms from
+  different minutes ring together the list no longer shows one misleading time, and a row's snooze
+  options say when they would ring with another alarm.
+- **Completing a task from the iPhone widget shows at once**
+  ([#50](https://github.com/mahirozdin/alliswell/issues/50)). The row, the counts and the lock
+  screen's next task update right away, and a day's count is its open tasks. The medium widget
+  draws only whole rows, the circle is read aloud with the task's name, and the widget gallery text
+  is in the phone's language.
 - **Typing a time in the time picker keeps the hour you typed.** In a 24-hour language such as
   Turkish, 05:25 no longer saves as 17:25, and 13:00 to 23:59 can be typed.
 
