@@ -107,35 +107,12 @@ final class AlarmKitBridge {
 
   // MARK: - Deterministic id <-> UUID mapping
 
-  /// Namespace bytes that mark a UUID as ours, so a foreign alarm (or a stale
-  /// one from another app writing into the same store) is never decoded as an
-  /// app id.
-  private static let namespace: [UInt8] = [0xA1, 0x15, 0x00, 0x00, 0xA1, 0x15, 0x00, 0x00]
+  /// The app id as an AlarmKit `UUID`, and back (`AWAlarmUUID`, shared with
+  /// the native snooze): a fixed namespace + the id big-endian, so `cancel`
+  /// and `stop` target the exact alarm without a stored table.
+  private func uuid(for id: Int) -> UUID { AWAlarmUUID.uuid(for: id) }
 
-  /// A stable UUID for an app id: fixed 8-byte namespace + the id big-endian.
-  /// Lets `cancel` target the exact AlarmKit alarm without a stored table.
-  private func uuid(for id: Int) -> UUID {
-    var bytes = [UInt8](repeating: 0, count: 16)
-    for i in 0..<8 { bytes[i] = Self.namespace[i] }
-    let value = UInt64(bitPattern: Int64(id))
-    for i in 0..<8 { bytes[8 + i] = UInt8((value >> (UInt64(56 - i * 8))) & 0xff) }
-    return UUID(
-      uuid: (
-        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
-        bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13],
-        bytes[14], bytes[15]
-      ))
-  }
-
-  /// The inverse, or nil when the UUID was not minted by [uuid(for:)].
-  private func appId(from id: UUID) -> Int? {
-    let bytes = withUnsafeBytes(of: id.uuid) { Array($0) }
-    guard bytes.count == 16 else { return nil }
-    for i in 0..<8 where bytes[i] != Self.namespace[i] { return nil }
-    var value: UInt64 = 0
-    for i in 0..<8 { value = (value << 8) | UInt64(bytes[8 + i]) }
-    return Int(Int64(bitPattern: value))
-  }
+  private func appId(from id: UUID) -> Int? { AWAlarmUUID.appId(from: id) }
 
   // MARK: - Button presses
 
@@ -310,8 +287,9 @@ final class AlarmKitBridge {
   }
 
   /// Silences a ringing alarm: `AlarmManager.stop`, and `cancel` when stop
-  /// throws (an alarm that is not alerting cannot be stopped). The ledger
-  /// record goes either way. `{stopped, cancelled, error}`.
+  /// throws (an alarm that is not alerting cannot be stopped) — the same
+  /// order the native snooze uses (`AWSnoozeCore.silence`). The ledger record
+  /// goes either way. `{stopped, cancelled, error}`.
   private func stop(_ args: [String: Any], _ result: @escaping FlutterResult) {
     guard let id = args["id"] as? Int else {
       result(FlutterError(code: "bad_args", message: "stop needs id", details: nil))
@@ -319,24 +297,12 @@ final class AlarmKitBridge {
     }
     #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *) {
-        var stopped = false
-        var cancelled = false
-        var error: String?
-        do {
-          try AlarmManager.shared.stop(id: uuid(for: id))
-          stopped = true
-        } catch let stopError {
-          error = "\(stopError)"
-          do {
-            try AlarmManager.shared.cancel(id: uuid(for: id))
-            cancelled = true
-          } catch let cancelError {
-            error = "stop: \(stopError); cancel: \(cancelError)"
-          }
-        }
+        let outcome = AWSnoozeCore.silence(id: id, ops: AWAlarmKitOps())
         AWAlarmLedger.shared?.remove(id: id)
-        let errorValue: Any = error ?? NSNull()
-        result(["stopped": stopped, "cancelled": cancelled, "error": errorValue])
+        let errorValue: Any = outcome.error ?? NSNull()
+        result([
+          "stopped": outcome.stopped, "cancelled": outcome.cancelled, "error": errorValue,
+        ])
         return
       }
     #endif
@@ -371,7 +337,6 @@ final class AlarmKitBridge {
       // alone is what an older Dart sends.
       let legacyTaskId = args["taskId"] as? String ?? ""
       let members = AWAlarmIntentArgs.taskIds(args["members"] as? [String], legacy: legacyTaskId)
-      let taskId = members.first ?? legacyTaskId
       // Pre-localized by Dart: the app knows the user's language, this file does
       // not (and a hard-coded "Onayla" was the round-9 bug in miniature).
       let stopLabel = args["stopLabel"] as? String ?? "OK"
@@ -386,45 +351,23 @@ final class AlarmKitBridge {
           title: title, body: body, soundName: soundName, stopLabel: stopLabel,
           snoozeLabel: snoozeLabel, snoozePreset: snoozePreset)
       let flooredMs = AWAlarmIdentity.floorToSecond(ms: Int64(fireAtMs))
-      let fireDate = Date(timeIntervalSince1970: Double(flooredMs) / 1000.0)
+      // The same alert, sound and intents a native snooze builds
+      // (`AWAlarmKitOps`), so a snoozed alarm is the one it replaces, moved.
+      let spec = AWAlarmSpec(
+        id: id, fireAtMs: flooredMs, members: members, title: title, body: body,
+        soundName: soundName, stopLabel: stopLabel, snoozeLabel: snoozeLabel,
+        snoozePreset: snoozePreset, reminderId: reminderId)
 
       Task {
         do {
-          let alert = alertPresentation(
-            title: title, stopLabel: stopLabel, snoozeLabel: snoozeLabel)
-          let attributes = AlarmAttributes<AWAlarmMetadata>(
-            presentation: AlarmPresentation(alert: alert),
-            metadata: AWAlarmMetadata(
-              awId: id, taskId: taskId, reminderId: reminderId, body: body),
-            tintColor: .accentColor)
-
-          var stopIntent: (any LiveActivityIntent)?
-          var secondaryIntent: (any LiveActivityIntent)?
-          if #available(iOS 17.0, *) {
-            stopIntent = AWAlarmStopIntent(
-              taskIds: members, alarmId: id, fireAtMs: flooredMs, reminderId: reminderId)
-            if !snoozePreset.isEmpty {
-              secondaryIntent = AWAlarmSnoozeIntent(
-                taskIds: members, alarmId: id, fireAtMs: flooredMs, title: title, body: body,
-                soundName: soundName ?? "", stopLabel: stopLabel, snoozeLabel: snoozeLabel,
-                preset: snoozePreset, reminderId: reminderId)
-            }
-          }
-
-          let configuration = AlarmManager.AlarmConfiguration(
-            schedule: .fixed(fireDate),
-            attributes: attributes,
-            stopIntent: stopIntent,
-            secondaryIntent: secondaryIntent,
-            sound: soundName.map { AlertConfiguration.AlertSound.named($0) } ?? .default)
-          _ = try await AlarmManager.shared.schedule(id: uuid(for: id), configuration: configuration)
+          try await AWAlarmKitOps().schedule(spec)
           // One record per id: a re-schedule under the same id (new `fp`)
           // replaces the old record.
           AWAlarmLedger.shared?.write(
             AWAlarmLedgerRecord(
               id: id, fp: fp, members: members, fireAtMs: flooredMs, origin: "dart"))
           result(nil)
-        } catch AlarmManager.AlarmError.maximumLimitReached {
+        } catch AWAlarmOpsError.maximumLimitReached {
           // The per-app ceiling is undocumented, so this is the only honest way
           // to learn it. Dart writes it to the alarm log and leaves the alarm on
           // the notification lane rather than pretending it is covered.
@@ -435,38 +378,6 @@ final class AlarmKitBridge {
           result(FlutterError(code: "schedule_failed", message: "\(error)", details: nil))
         }
       }
-    }
-
-    /// iOS 26.1 retired `stopButton` (the system draws its own); 26.0 still
-    /// requires it. Both initializers exist in the SDK — pick by OS so a 26.0
-    /// device is not left without an alert.
-    @available(iOS 26.0, *)
-    private func alertPresentation(
-      title: String, stopLabel: String, snoozeLabel: String
-    ) -> AlarmPresentation.Alert {
-      let snoozeButton = AlarmButton(
-        text: LocalizedStringResource(stringLiteral: snoozeLabel),
-        textColor: .white,
-        systemImageName: "clock")
-      if #available(iOS 26.1, *) {
-        return AlarmPresentation.Alert(
-          title: LocalizedStringResource(stringLiteral: title),
-          secondaryButton: snoozeButton,
-          // `.custom` — not `.countdown` — on purpose (see ADR-0015 §9): the
-          // Dart planner owns WHEN an alarm exists. A native countdown would
-          // re-ring an alarm the planner also re-schedules (two alerts), and the
-          // snooze would stay invisible to the task row and to every other
-          // device.
-          secondaryButtonBehavior: .custom)
-      }
-      return AlarmPresentation.Alert(
-        title: LocalizedStringResource(stringLiteral: title),
-        stopButton: AlarmButton(
-          text: LocalizedStringResource(stringLiteral: stopLabel),
-          textColor: .white,
-          systemImageName: "checkmark"),
-        secondaryButton: snoozeButton,
-        secondaryButtonBehavior: .custom)
     }
   #endif
 }

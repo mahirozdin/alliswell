@@ -273,6 +273,7 @@ enum AWAlarmIntentArgs {
 // iOS only: these are `LiveActivityIntent`s — AlarmKit's alert is a Live
 // Activity, and neither exists on macOS. The macOS widget (OPH-335) compiles
 // this file for the QUEUE above, which its complete intent writes into.
+// iOS 26: AlarmKit is the only thing that ever runs them.
 //
 // Every v2 parameter is optional: an alarm scheduled by an older build carries
 // only `taskId` / `reminderId` (and `preset`), and a missing non-optional
@@ -281,12 +282,13 @@ enum AWAlarmIntentArgs {
   /// "Onayla" on the AlarmKit alert. Acknowledges every member's active urgent
   /// reminder at the instant that rang (and so on every other device, through
   /// sync). AlarmKit stops the alert itself; the ledger forgets the alarm.
-  @available(iOS 17.0, *)
+  @available(iOS 26.0, *)
   struct AWAlarmStopIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Acknowledge alarm"
     static var description = IntentDescription("Acknowledges an AllisWell alarm.")
     static var isDiscoverable: Bool = false
     static var openAppWhenRun: Bool = false
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "Tasks") var taskIds: [String]?
     @Parameter(title: "Alarm") var alarmId: Int?
@@ -305,24 +307,30 @@ enum AWAlarmIntentArgs {
     }
 
     func perform() async throws -> some IntentResult {
-      AWAlarmActionQueue.enqueue(
-        action: "acknowledge", taskIds: AWAlarmIntentArgs.taskIds(taskIds, legacy: taskId),
-        origin: "alarmkit", occurrenceFireAtMs: fireAtMs.map(Int64.init), alarmId: alarmId)
-      if let alarmId { AWAlarmLedger.shared?.remove(id: alarmId) }
+      AWSnoozeCore.acknowledge(
+        taskIds: AWAlarmIntentArgs.taskIds(taskIds, legacy: taskId), alarmId: alarmId,
+        fireAtMs: fireAtMs.map(Int64.init), ledger: AWAlarmLedger.shared,
+        queue: AWAlarmActionQueue.sharedDefaults)
       return .result()
     }
   }
 
-  /// "Ertele" on the AlarmKit alert (`.custom` behaviour, ADR-0015 §9). It
-  /// carries the whole presentation so a snooze can re-create the alarm
-  /// natively; today it parks the press with its `preset`, and Dart computes
-  /// the target from `pressedAtMs` exactly as for a converted v1 entry.
-  @available(iOS 17.0, *)
+  /// "Ertele" on the AlarmKit alert (`.custom` behaviour, ADR-0015 §9).
+  /// With `.custom` the system only runs this intent — nothing silences the
+  /// alert unless it does. It carries the whole presentation, so the snooze
+  /// happens natively and completely, app running or not
+  /// (`AWSnoozeCore.run`): the target is computed at the press, the new alarm
+  /// is scheduled, the ringing one is ALWAYS stopped, a failed schedule leaves
+  /// a fallback notification, and the press is parked for Dart with its
+  /// `untilMs`. It never throws: a throwing intent leaves the alarm ringing.
+  @available(iOS 26.0, *)
   struct AWAlarmSnoozeIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Snooze alarm"
     static var description = IntentDescription("Snoozes an AllisWell alarm.")
     static var isDiscoverable: Bool = false
     static var openAppWhenRun: Bool = false
+    static var supportedModes: IntentModes = .background
+    static var authenticationPolicy: IntentAuthenticationPolicy = .alwaysAllowed
 
     @Parameter(title: "Tasks") var taskIds: [String]?
     @Parameter(title: "Alarm") var alarmId: Int?
@@ -358,10 +366,16 @@ enum AWAlarmIntentArgs {
     }
 
     func perform() async throws -> some IntentResult {
-      AWAlarmActionQueue.enqueue(
-        action: "snooze", taskIds: AWAlarmIntentArgs.taskIds(taskIds, legacy: taskId),
-        origin: "alarmkit", preset: preset, occurrenceFireAtMs: fireAtMs.map(Int64.init),
-        alarmId: alarmId)
+      #if canImport(AlarmKit)
+        let request = AWSnoozeRequest(
+          taskIds: taskIds, legacyTaskId: taskId, alarmId: alarmId,
+          fireAtMs: fireAtMs.map(Int64.init), title: alarmTitle, body: body,
+          soundName: soundName, stopLabel: stopLabel, snoozeLabel: snoozeLabel, preset: preset,
+          reminderId: reminderId)
+        await AWSnoozeCore.run(
+          request, ops: AWAlarmKitOps(), ledger: AWAlarmLedger.shared,
+          queue: AWAlarmActionQueue.sharedDefaults, failures: AWAlarmFailures.sharedDefaults)
+      #endif
       return .result()
     }
   }

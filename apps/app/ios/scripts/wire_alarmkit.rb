@@ -62,12 +62,21 @@ ledger_ref = file_ref(shared_group, 'AWAlarmLedger.swift')
 add_source(runner, ledger_ref, 'Shared/AWAlarmLedger.swift')
 add_source(widget, ledger_ref, 'Shared/AWAlarmLedger.swift')
 
+# OPH-431 — the native snooze (NOTIFICATIONS.md 2b.3 "Native snooze"): the pure
+# core, the snooze target and the AlarmKit ops. The snooze intent in
+# AWAlarmShared.swift runs it, and the widget extension compiles that intent.
+snooze_ref = file_ref(shared_group, 'AWSnoozeCore.swift')
+add_source(runner, snooze_ref, 'Shared/AWSnoozeCore.swift')
+add_source(widget, snooze_ref, 'Shared/AWSnoozeCore.swift')
+
 # XCTest sources go into the one existing RunnerTests target (hosted in
 # Runner.app, `@testable import Runner`); never a second test target.
 tests_group = project.main_group['RunnerTests']
 raise 'RunnerTests group not found' unless tests_group
 
-%w[AlarmIdentityTests.swift AlarmLedgerTests.swift].each do |name|
+%w[
+  AlarmIdentityTests.swift AlarmLedgerTests.swift SnoozeCoreTests.swift SnoozeTargetTests.swift
+].each do |name|
   add_source(tests, file_ref(tests_group, name), "RunnerTests/#{name}")
 end
 
