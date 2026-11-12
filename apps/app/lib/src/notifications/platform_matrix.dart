@@ -68,14 +68,23 @@ class NotificationPlatform {
 /// Kept beside [gatewayKindFor] rather than in the doc-gate script, because a
 /// table that lives in `scripts/` is a table nobody reads while changing the
 /// behaviour it describes.
+///
+/// The urgent-alarm device gate (ADR-0068) is not a column: it is the user's
+/// per-device choice, not a platform capability, and it applies on every row.
+/// A device whose answer is off or unknown shows an urgent alarm as a normal
+/// notification and never opens the ring screen; the in-app screen stays the
+/// floor for the devices that ring.
 const kNotificationMatrix = <NotificationPlatform>[
   NotificationPlatform(
     id: 'android',
     gateway: NotificationGatewayKind.local,
     localSchedule: true,
     alarmKit: false,
-    // A silent data message wakes the app to sync (OPH-322), and a visible
-    // push arrives when the device's own schedule is stale (OPH-320).
+    // A silent data message wakes the app to sync (OPH-322) — after a
+    // reminder, task or project change (OPH-436) — and a visible push arrives
+    // when the device's own schedule is stale (OPH-320). An urgent alarm
+    // acknowledged or snoozed elsewhere sends a wake that bypasses the minute
+    // gate, and the woken turn cancels the notification ringing now (OPH-445).
     serverPush: 'fcm',
     inAppScreen: true,
   ),
@@ -83,9 +92,12 @@ const kNotificationMatrix = <NotificationPlatform>[
     id: 'ios',
     gateway: NotificationGatewayKind.local,
     localSchedule: true,
+    // Urgent alarms in one UTC minute ring as one AlarmKit alarm, and its
+    // native snooze moves the whole group (OPH-440, OPH-450).
     alarmKit: true,
     // Visible only: no data message, because there is no background mode and
-    // a locked wake cannot read the session (ADR-0038 §8).
+    // a locked wake cannot read the session (ADR-0038 §8). A remote stop
+    // therefore reaches iOS only when the app next runs.
     serverPush: 'fcm',
     inAppScreen: true,
   ),
