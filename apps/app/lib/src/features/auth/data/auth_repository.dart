@@ -60,10 +60,11 @@ class AuthRepository {
   /// wait for the next sign-in — only what would go on showing the account
   /// with no session behind it (the home-screen widget, #50).
   ///
-  /// [restore] awaits it before it returns. After a refusal it is tracked as
-  /// a revocation's cleanup is, so the next session waits for it, and it is
-  /// left out while a sign-in is under way: that session takes the widget
-  /// over and must not find it cleared after it published.
+  /// [restore] awaits it before it returns. Either way it is tracked as a
+  /// revocation's cleanup is, so the next session waits for it. While a
+  /// sign-in is under way it is held back: that session takes the widget over
+  /// and must not find it cleared after it published. When that sign-in fails
+  /// it runs as it would have ([_releaseDeferredRevocation]).
   final Future<void> Function(String userId)? _onSessionExpired;
 
   /// The cleanup [_onSessionRevoked] started and has not finished, if any.
@@ -76,6 +77,17 @@ class AuthRepository {
   /// by that sign-in before it exposes its session, or — when it fails — as
   /// soon as no sign-in is left ([_releaseDeferredRevocation]).
   String? _deferredRevocation;
+
+  /// The user of a session the server refused as expired while a sign-in was
+  /// under way. Dropped when that sign-in's session takes over; cleaned up
+  /// when it fails and no sign-in is left ([_releaseDeferredRevocation]).
+  String? _deferredExpiry;
+
+  /// Counts every change of [_session]. [restore] reads the storage and runs
+  /// its hooks across several awaits, and the start stops waiting for it
+  /// after a few seconds: a sign-in or sign-out that finished meanwhile owns
+  /// the session, and the restore must not write over it.
+  int _sessionEpoch = 0;
 
   /// The refresh answers that mean "this session family was revoked" —
   /// unlike a network error or a rate limit, which say nothing about it.
@@ -99,22 +111,31 @@ class AuthRepository {
   /// Loads the persisted session on app start (OPH-025). Expired refresh
   /// tokens are dropped eagerly; a near-expiry one settles on first API call.
   Future<AuthSession?> restore() async {
+    final epoch = _sessionEpoch;
     var stored = await _storage.read();
     if (stored != null &&
         stored.tokens.refreshTokenExpiresAt.isBefore(DateTime.now())) {
       await _storage.clear();
       final expiredUserId = stored.user.id;
       stored = null;
-      try {
-        await _onSessionExpired?.call(expiredUserId);
-      } on Object {
-        // Best effort: the start is never blocked by it.
+      final expired = _onSessionExpired;
+      if (expired != null) {
+        // Tracked, not only awaited: the start stops waiting for this after
+        // a few seconds and shows the sign-in screen, and a sign-in started
+        // there must wait for the cleanup too, or the cleanup would clear
+        // the widget its session already published. Best effort, like every
+        // tracked cleanup: the start is never failed by it.
+        _trackRevocation(Future<void>.sync(() => expired(expiredUserId)));
+        await _settleRevocation();
       }
     }
     if (stored != null) {
       await _settleRevocation();
       await _onSessionUser?.call(stored.user.id, restored: true);
     }
+    // A sign-in or sign-out that finished while this was waiting owns the
+    // session now: what the storage held at the start is not put over it.
+    if (epoch != _sessionEpoch) return _session;
     _session = stored;
     return stored;
   }
@@ -240,9 +261,16 @@ class AuthRepository {
             );
           }
         }
-      } else if (expired != null && _signIns == 0) {
+      } else if (expired != null) {
         // Expired or unknown, not revoked: only the widget's copy goes.
-        _trackRevocation(cleared.then((_) => expired(current.user.id)));
+        if (_signIns > 0) {
+          // A sign-in is under way: its session takes the widget over and
+          // must not find it cleared after it published. Should it fail,
+          // the cleanup runs once no sign-in is left.
+          _deferredExpiry = current.user.id;
+        } else {
+          _trackRevocation(cleared.then((_) => expired(current.user.id)));
+        }
       }
       await cleared;
       return null;
@@ -296,11 +324,20 @@ class AuthRepository {
   }
 
   /// The last sign-in ended without taking over a deferred revocation — it
-  /// failed — so the revoked session's cleanup runs as it would have.
+  /// failed — so the revoked session's cleanup runs as it would have. The
+  /// same for an expiry cleanup held back for that sign-in; one that
+  /// succeeded owns the widget now and the held-back cleanup is dropped.
   void _releaseDeferredRevocation() {
+    if (_signIns > 0) return;
+    final expiredUserId = _deferredExpiry;
+    final expired = _onSessionExpired;
+    _deferredExpiry = null;
+    if (expiredUserId != null && expired != null && _session == null) {
+      _trackRevocation(Future<void>.sync(() => expired(expiredUserId)));
+    }
     final userId = _deferredRevocation;
     final cleanup = _onSessionRevoked;
-    if (_signIns > 0 || userId == null || cleanup == null) return;
+    if (userId == null || cleanup == null) return;
     _deferredRevocation = null;
     // A session that is current now was never the revoked one.
     if (_session != null) return;
@@ -350,12 +387,14 @@ class AuthRepository {
       await _runDeferredRevocation();
     }
     _session = session;
+    _sessionEpoch++;
     await _storage.save(session);
     _sessionChanges.add(session);
   }
 
   Future<void> _clearSession() async {
     _session = null;
+    _sessionEpoch++;
     await _storage.clear();
     _sessionChanges.add(null);
   }
