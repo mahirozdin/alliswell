@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { newId } from '../../src/lib/ids.js';
+import { hashRefreshToken } from '../../src/lib/tokens.js';
 
 // Needs real MySQL + Redis with migrations applied.
 const enabled = process.env.INTEGRATION === '1';
@@ -378,6 +379,119 @@ describe.runIf(enabled)('integration: urgent-alarm device rule (OPH-433)', () =>
     expect(blank.json()).toMatchObject({ deviceName: 'iPhone' });
     const cleared = await patch(user, phone, { deviceName: null });
     expect(cleared.json()).toMatchObject({ deviceName: 'iPhone' });
+  });
+
+  /** The device ids a user's session family is bound to, across all its rows. */
+  const boundTo = async (familyId) =>
+    [
+      ...new Set(
+        (await app.db('refresh_tokens').where({ family_id: familyId }).select('device_id')).map(
+          (r) => r.device_id,
+        ),
+      ),
+    ].sort();
+
+  const login = async (email, extra = {}) => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email, password: 'integration-pw-433', ...extra },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    const family = await app
+      .db('refresh_tokens')
+      .where({
+        token_hash: hashRefreshToken(body.tokens.refreshToken, app.config.auth.refreshSecret),
+      })
+      .first('family_id');
+    return {
+      id: body.user.id,
+      family: family.family_id,
+      refreshToken: body.tokens.refreshToken,
+      headers: { authorization: `Bearer ${body.tokens.accessToken}` },
+    };
+  };
+
+  it('registration binds the caller unbound live family to the device it registers', async () => {
+    await account();
+    const session = await login(`${prefix}-${seq}@example.com`);
+    const device = newId();
+    expect(await boundTo(session.family)).toEqual([null]);
+    expect((await put(session, device, 'ios')).statusCode).toBe(201);
+    expect(await boundTo(session.family)).toEqual([device]);
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/notification-devices',
+      headers: session.headers,
+    });
+    expect(listed.json().items.find((d) => d.id === device).hasSession).toBe(true);
+  });
+
+  it('registration never rebinds a family bound to another device', async () => {
+    await account();
+    const email = `${prefix}-${seq}@example.com`;
+    const phone = newId();
+    const laptop = newId();
+    const session = await login(email, { deviceId: phone });
+    expect((await put(session, phone, 'ios')).statusCode).toBe(201);
+    expect(await boundTo(session.family)).toEqual([phone]);
+
+    // The same session registers another install's id (a broken or hostile
+    // client): the row is written, the family keeps its device.
+    expect((await put(session, laptop, 'macos')).statusCode).toBe(201);
+    expect((await put(session, laptop, 'macos')).statusCode).toBe(200);
+    expect(await boundTo(session.family)).toEqual([phone]);
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/v1/notification-devices',
+      headers: session.headers,
+    });
+    const has = Object.fromEntries(listed.json().items.map((d) => [d.id, d.hasSession]));
+    expect(has).toEqual({ [phone]: true, [laptop]: false });
+
+    // A family bound at registration is never moved by a later one either.
+    const fresh = await login(email);
+    expect((await put(fresh, laptop, 'macos')).statusCode).toBe(200);
+    expect(await boundTo(fresh.family)).toEqual([laptop]);
+    expect((await put(fresh, phone, 'ios')).statusCode).toBe(200);
+    expect(await boundTo(fresh.family)).toEqual([laptop]);
+    expect(await boundTo(session.family)).toEqual([phone]);
+
+    // A session that has ended binds nothing with the access token it holds.
+    const ended = await login(email);
+    const out = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/logout',
+      payload: { refreshToken: ended.refreshToken },
+    });
+    expect(out.statusCode).toBe(204);
+    const tablet = newId();
+    expect((await put(ended, tablet, 'ios')).statusCode).toBe(201);
+    expect(await boundTo(ended.family)).toEqual([null]);
+  });
+
+  it('an access token without sid binds nothing', async () => {
+    const user = await account();
+    const email = `${prefix}-${seq}@example.com`;
+    const session = await login(email);
+    // An access token signed before tokens named their session (or by any
+    // path that names none): the user is known, the session is not.
+    const nameless = {
+      headers: {
+        authorization: `Bearer ${app.signAccessToken({ id: user.id, email })}`,
+      },
+    };
+    const device = newId();
+    expect((await put(nameless, device, 'ios')).statusCode).toBe(201);
+    expect((await put(nameless, device, 'ios')).statusCode).toBe(200);
+    const bound = await app
+      .db('refresh_tokens')
+      .where({ user_id: user.id })
+      .whereNotNull('device_id')
+      .select('id');
+    expect(bound).toEqual([]);
+    expect(await boundTo(session.family)).toEqual([null]);
   });
 
   it('PATCH only touches the caller own device', async () => {

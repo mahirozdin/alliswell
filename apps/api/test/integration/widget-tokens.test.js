@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { newId } from '../../src/lib/ids.js';
+import { hashRefreshToken } from '../../src/lib/tokens.js';
 
 // Needs real MySQL + Redis with migrations applied.
 const enabled = process.env.INTEGRATION === '1';
@@ -148,6 +149,102 @@ describe.runIf(enabled)('integration: widget tokens (OPH-458)', () => {
     const res = await probe(minted.token);
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ userId: me.id, deviceId: me.deviceId });
+  });
+
+  it('a first sign-in can mint a widget token right after registering its device', async () => {
+    // PR2-06: the app names its device on a sign-in only once it knows the
+    // server takes `deviceId`, so a fresh sign-in starts an unbound family.
+    // Its own registration binds it, and the mint that follows succeeds at
+    // once instead of after the first refresh 15 minutes later.
+    const me = await account();
+    const phone = newId();
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: me.email, password: PASSWORD },
+    });
+    expect(res.statusCode).toBe(200);
+    const fresh = {
+      id: me.id,
+      deviceId: phone,
+      refreshToken: res.json().tokens.refreshToken,
+      headers: bearer(res.json().tokens.accessToken),
+    };
+    const familyOf = async (session) =>
+      (
+        await app
+          .db('refresh_tokens')
+          .where({
+            token_hash: hashRefreshToken(session.refreshToken, app.config.auth.refreshSecret),
+          })
+          .first('family_id')
+      ).family_id;
+    const family = await familyOf(fresh);
+
+    await put(fresh, phone);
+    const minted = await mint(fresh);
+    expect(minted.deviceId).toBe(phone);
+    const row = await app.db('widget_tokens').where({ device_id: phone }).first();
+    expect(row.session_family_id).toBe(family);
+    const rows = await app.db('refresh_tokens').where({ family_id: family }).select('device_id');
+    expect(rows.map((r) => r.device_id)).toEqual(rows.map(() => phone));
+    expect((await probe(minted.token)).statusCode).toBe(200);
+
+    // A rotation keeps the binding, and the widget keeps working.
+    const rotated = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: fresh.refreshToken },
+    });
+    expect(rotated.statusCode).toBe(200);
+    expect((await probe(minted.token)).statusCode).toBe(200);
+
+    // The same holds when the install's device row is already there (a
+    // heartbeat, not an insert): a row left by an earlier sign-in on it.
+    const tablet = newId();
+    await app.db('notification_devices').insert({
+      id: tablet,
+      user_id: me.id,
+      platform: 'ios',
+      rings_urgent: false,
+      rings_urgent_source: 'auto',
+      last_seen_at: new Date(),
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+    const again = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: me.email, password: PASSWORD },
+    });
+    const second = {
+      id: me.id,
+      deviceId: tablet,
+      headers: bearer(again.json().tokens.accessToken),
+    };
+    const beat = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${tablet}`,
+      headers: second.headers,
+      payload: { platform: 'ios' },
+    });
+    expect(beat.statusCode).toBe(200);
+    expect((await mintRaw(second)).statusCode).toBe(201);
+
+    // Removing the device now signs that session out, as for any bound one.
+    const removed = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/notification-devices/${phone}`,
+      headers: me.headers,
+    });
+    expect(removed.statusCode).toBe(204);
+    await expectDead(minted.token);
+    const refused = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: rotated.json().tokens.refreshToken },
+    });
+    expect(refused.statusCode).toBe(401);
   });
 
   it('a widget token reads only the snapshot and is refused everywhere else', async () => {

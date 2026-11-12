@@ -202,8 +202,8 @@ describe.runIf(enabled)('integration: device removal signs the device out (OPH-4
     await new Promise((resolve) => setTimeout(resolve, 1100));
 
     // The install signs in again with a client that never sends the optional
-    // deviceId: its family is live but bound to nothing, and refreshing it
-    // never binds it either. Its registration must still go through.
+    // deviceId: its family is live but bound to nothing until this
+    // registration binds it (OPH-458). The registration must go through.
     const back = await signIn(me);
     const res = await app.inject({
       method: 'PUT',
@@ -295,7 +295,15 @@ describe.runIf(enabled)('integration: device removal signs the device out (OPH-4
   it('a device with no bound family is removed and nothing is revoked', async () => {
     const me = await account(); // an older client: no deviceId on sign-in
     const legacy = newId();
-    await put(me, legacy, 'web');
+    // Registered by an access token that names no session (one signed before
+    // tokens carried `sid`): since OPH-458 a session's own registration binds
+    // it, so only such a row is left bound to nobody.
+    const nameless = {
+      headers: {
+        authorization: `Bearer ${app.signAccessToken({ id: me.id, email: me.email })}`,
+      },
+    };
+    await put(nameless, legacy, 'web');
     const before = await app
       .db('refresh_tokens')
       .where({ user_id: me.id })

@@ -404,7 +404,10 @@ AUTH_APIKEY_FORBIDDEN` (an API key), `404 DEVICE_NOT_FOUND` (not this user's dev
 caller's own session is not live and bound to it yet; register, retry at the next foreground).
 The token is tied to the caller's session family — the access token's `sid` claim — which must be
 live and bound to the device (`refresh_tokens.device_id`, set by a sign-in or refresh that names
-the device), so a revoked session cannot mint in the minutes its access token still verifies. A
+the device, or by the session's own `PUT /notification-devices/:id`, which binds a live family
+that names no device yet and never moves one bound elsewhere), so a revoked session cannot mint
+in the minutes its access token still verifies. Dart mints only after that `PUT` has answered, so
+a fresh sign-in's first mint is a `201`. A
 `404` without that code is an older server: no token, no retry
 until the next app start. Life 90 days; Dart re-mints in the foreground when fewer than 30 remain
 or `aw_widget_token_state` is `invalid`, and after every sign-in (not a restore): a sign-in is a

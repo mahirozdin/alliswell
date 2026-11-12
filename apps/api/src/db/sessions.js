@@ -212,6 +212,49 @@ export async function deviceSignedOut(db, userId, deviceId, { at = new Date(), i
 }
 
 /**
+ * ── A SESSION THAT REGISTERS ITS DEVICE IS BOUND TO IT (OPH-458, PR2-06) ──
+ *
+ * `PUT /notification-devices/:id` is called by the session that runs on that
+ * device, and its access token names its family (`sid`). A fresh sign-in
+ * names no device — the app sends `deviceId` only once it knows the server
+ * takes it — so without this the family stayed unbound until its first
+ * refresh, 15 minutes later, and the widget token, which only a family bound
+ * to the device may mint, was refused in between.
+ *
+ * Binds `familyId` to `deviceId` when the family is the caller's, is live and
+ * names no other device. Never rebinds: a family that names another device
+ * keeps it. Rows of the family still without a device (a rotation that read
+ * the family before it was bound) take this one, so the family names one
+ * device on every row. An access token without `sid` (`familyId` null) binds
+ * nothing. Removing the device then revokes the family (OPH-435) — the
+ * remote sign-out, now from the first registration on.
+ *
+ * `db` may be an open transaction (it is used as is) or the pool.
+ *
+ * @returns {Promise<boolean>} whether a row was bound now
+ */
+export function bindSessionToDevice(db, { userId, familyId, deviceId, at = new Date() }) {
+  if (!familyId) return Promise.resolve(false);
+  return inTransaction(db, async (trx) => {
+    const rows = await trx('refresh_tokens')
+      .where({ user_id: userId, family_id: familyId })
+      .forUpdate()
+      .select('device_id', 'revoked_at', 'rotated_at', 'expires_at');
+    const live = rows.some(
+      (row) => !row.revoked_at && !row.rotated_at && new Date(row.expires_at) > at,
+    );
+    if (!live) return false;
+    if (rows.some((row) => row.device_id && row.device_id !== deviceId)) return false;
+    if (rows.every((row) => row.device_id)) return false;
+    await trx('refresh_tokens')
+      .where({ user_id: userId, family_id: familyId })
+      .whereNull('device_id')
+      .update({ device_id: deviceId });
+    return true;
+  });
+}
+
+/**
  * Signs one device out (OPH-435): every family bound to it is revoked, every
  * row of it at once, the same single UPDATE `revokeOtherSessions` uses, and
  * the device's widget token with them (OPH-458). The caller removes the

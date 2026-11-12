@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' show DatabaseConnection;
 import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show TargetPlatform;
@@ -124,6 +126,58 @@ void main() {
       await lifecycle.ensure('C2');
       expect(store.token, 'aww_4');
       expect(keys.values[kWidgetTokenStateKey], 'valid');
+    },
+  );
+
+  test(
+    'the mint follows the registration response, which binds the session',
+    () async {
+      // PR2-06: the server binds a fresh sign-in's session to its device when
+      // that session registers it, so the mint must be sent only after the
+      // PUT has answered — never beside it.
+      final events = <String>[];
+      final answer = Completer<void>();
+      final registry = DeviceRegistry(
+        api: _GatedDeviceApi(events, answer.future),
+        readClientId: () async => 'C1',
+        describe: () => const DeviceDescriptor(
+          platform: 'ios',
+          appVersion: '1',
+          locale: 'en',
+        ),
+      );
+      final store = MemoryWidgetTokenStore(events);
+      final lifecycle = WidgetTokenLifecycle(
+        api: FakeWidgetTokenApi((deviceId) async {
+          events.add('mint:$deviceId');
+          return WidgetTokenMint(
+            token: 'aww_1',
+            deviceId: deviceId,
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 90)),
+          );
+        }),
+        store: store,
+        groupKeys: MemoryGroupKeys(events),
+        enabled: true,
+        register: () => registry.sync(signedIn: true),
+      );
+
+      final ensured = lifecycle.ensure('C1');
+      await pumpEventQueue();
+      // The PUT is on the wire: nothing is minted yet.
+      expect(events, ['server.register:C1']);
+      expect(store.token, isNull);
+
+      answer.complete();
+      await ensured;
+      expect(events, [
+        'server.register:C1',
+        'server.answered:C1',
+        'mint:C1',
+        'token.write',
+        'set:$kWidgetTokenStateKey=valid',
+      ]);
+      expect(store.token, 'aww_1');
     },
   );
 
@@ -492,4 +546,18 @@ class RecordingDeviceApi implements DeviceApi {
   @override
   Future<PushKeyLookup> lookupPushKey() async =>
       const PushKeyLookup.notConfigured();
+}
+
+/// A device registry API whose `PUT` answers only when [answer] completes.
+class _GatedDeviceApi extends RecordingDeviceApi {
+  _GatedDeviceApi(super.events, this.answer);
+  final Future<void> answer;
+
+  @override
+  Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) async {
+    events.add('server.register:$deviceId');
+    await answer;
+    events.add('server.answered:$deviceId');
+    return null;
+  }
 }
