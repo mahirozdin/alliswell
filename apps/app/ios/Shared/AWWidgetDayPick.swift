@@ -101,10 +101,23 @@ extension AWSnapshot {
 
 // MARK: - Rows that fit (OPH-451, IOS-09)
 
-/// Greedily trims buckets so the drawn rows fit the size's row budget. The
-/// "+N" of a bucket is every row it does not draw: the ones trimmed here plus
-/// the ones the app already left out (`more`). Not `count - drawn`: a bucket
-/// counts its open rows only, and today's finished rows are drawn too.
+/// The "+N" under a bucket's drawn rows (Z-02): its open rows that are not
+/// drawn. `count` is the bucket's open rows (Home's header rule, OPH-394), so
+/// this is `count` less the open rows in `drawn`; nil — no line — when every
+/// open row is shown. Today's finished rows, drawn dimmed or trimmed, are in
+/// neither number. Read from `count`, not the app's `more` plus the rows
+/// trimmed here: `more` once counted trimmed finished rows too (the widget
+/// drew "+13" for eight hidden tasks), and a circle tapped here lowers
+/// `count` and marks its drawn row done in the same write
+/// (awMarkSnapshotDone), so N keeps following the rule after it. The app's
+/// `more` says the same of the rows it keeps (widget_core_test.dart pins it).
+func awMoreCount(count: Int, drawn: [AWTaskRow]) -> Int? {
+  let hidden = count - drawn.filter { !$0.done }.count
+  return hidden > 0 ? hidden : nil
+}
+
+/// Greedily trims buckets so the drawn rows fit the size's row budget; each
+/// bucket's "+N" is awMoreCount of the rows it draws.
 func awDistribute(_ buckets: [AWBucket], budget: Int) -> [AWBucket] {
   var remaining = budget
   var out: [AWBucket] = []
@@ -112,11 +125,10 @@ func awDistribute(_ buckets: [AWBucket], budget: Int) -> [AWBucket] {
     if remaining <= 0 { break }
     let take = min(b.items.count, remaining)
     let trimmed = Array(b.items.prefix(take))
-    let extra = (b.more ?? 0) + (b.items.count - take)
     out.append(
       AWBucket(
         key: b.key, label: b.label, count: b.count, items: trimmed,
-        more: extra > 0 ? extra : nil))
+        more: awMoreCount(count: b.count, drawn: trimmed)))
     remaining -= take
   }
   return out

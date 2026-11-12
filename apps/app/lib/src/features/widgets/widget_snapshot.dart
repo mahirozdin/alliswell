@@ -130,9 +130,11 @@ class WidgetBucketData {
   final int count;
   final List<WidgetTaskRow> items;
 
-  /// How many rows were trimmed ("+N more"): every entry past the drawn ones,
-  /// a finished one included. Not `count - items.length` since OPH-451:
-  /// [count] leaves today's finished rows out (Home's header rule).
+  /// How many open rows were trimmed ("+N more"): the entries past [items]
+  /// that are still owed — [count] less the open rows in [items]. A finished
+  /// row past the cap is not in it (OPH-451, Z-02): [count] leaves today's
+  /// finished rows out (Home's header rule), and so does the "+N". The iOS
+  /// widget applies the same rule to the rows it draws (`awMoreCount`).
   final int more;
 
   Map<String, dynamic> toJson() => {
@@ -486,6 +488,10 @@ List<WidgetListChoice> widgetListChoices(Iterable<Project> projects) => [
       ),
 ];
 
+/// A row a bucket still owes: an event, or a task not yet finished.
+bool _isOpen(WidgetEntry entry) =>
+    !(entry is WidgetTaskEntry && entry.task.isCompleted);
+
 /// One list's buckets, open count and next task. The whole list and every
 /// project view come out of this one function, so they cannot drift apart.
 ({List<WidgetBucketData> buckets, int openToday, WidgetNextTask? next})
@@ -508,10 +514,8 @@ _listData(
         label: 'widget.bucket.${group.bucket.name}'.tr(),
         // OPH-451 (#50, IOS-10): what is still owed, Home's rule (OPH-394) —
         // today's finished row stays drawn at the bottom but is not counted.
-        // `more` below still counts every trimmed row, done ones included.
-        count: group.entries
-            .where((e) => !(e is WidgetTaskEntry && e.task.isCompleted))
-            .length,
+        // Nor is it in `more` below (Z-02).
+        count: group.entries.where(_isOpen).length,
         items: [
           for (final entry in group.entries.take(rowsPerBucket))
             switch (entry) {
@@ -533,9 +537,7 @@ _listData(
               ),
             },
         ],
-        more: group.entries.length > rowsPerBucket
-            ? group.entries.length - rowsPerBucket
-            : 0,
+        more: group.entries.skip(rowsPerBucket).where(_isOpen).length,
       ),
   ];
 

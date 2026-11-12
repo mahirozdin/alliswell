@@ -48,6 +48,7 @@
 		ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */; };
 		A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A003 /* WidgetCompletionTests.swift */; };
+		A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
@@ -134,6 +135,7 @@
 		6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWSnapshotModel.swift; sourceTree = "<group>"; };
 		6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDayPickTests.swift; sourceTree = "<group>"; };
 		A5CB0451000000000000A003 /* WidgetCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetCompletionTests.swift; sourceTree = "<group>"; };
+		A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetMoreCountTests.swift; sourceTree = "<group>"; };
 		7403D73B437A53572909BD99 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -263,6 +265,7 @@
 				14BB1652DA44CD8FA16E513F /* SnoozeTargetTests.swift */,
 				6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */,
 				A5CB0451000000000000A003 /* WidgetCompletionTests.swift */,
+				A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -701,6 +704,7 @@
 				8177D49B49DC1DF1A0DCA22A /* SnoozeTargetTests.swift in Sources */,
 				AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */,
 				A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */,
+				A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

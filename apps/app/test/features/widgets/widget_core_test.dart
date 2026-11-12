@@ -145,9 +145,10 @@ void main() {
 
     // OPH-451 (#50, IOS-10): a bucket's number is what is still owed, by
     // Home's own rule (OPH-394): today's finished row stays visible at the
-    // bottom, but it is not counted. The "+N" is still every trimmed row.
-    test('a bucket counts its open rows only; +N still counts every '
-        'trimmed row', () {
+    // bottom, but it is not counted. Z-02: nor is it in the "+N" — `more` is
+    // the open rows trimmed, so a finished row past the cap adds nothing.
+    test('a bucket counts its open rows only; +N counts the open rows '
+        'trimmed', () {
       final snap = buildWidgetSnapshot(
         [
           for (var i = 0; i < 3; i++)
@@ -165,8 +166,109 @@ void main() {
       final today = snap.buckets.single;
       expect(today.count, 3);
       expect(today.items.map((r) => r.id), ['t0', 't1']);
-      expect(today.more, 2);
+      expect(today.more, 1);
       expect(snap.openToday, 3);
+    });
+
+    // OPH-451 (#50, Z-02): the native "+N" is the bucket's count less the open
+    // rows it draws (AWWidgetDayPick.swift, awMoreCount). `more` must say the
+    // same of the rows the app keeps — the open ones past the cap — in every
+    // view the snapshot carries, or Android's +N (which draws every kept row)
+    // and iOS's disagree. The walkthrough's "BUGÜN 11" had five finished rows
+    // in it and drew "+13" for eight hidden tasks.
+    test('more is the open rows trimmed: count less the open rows kept, in '
+        'every view', () {
+      final snap = buildWidgetSnapshot(
+        [
+          for (var i = 0; i < 11; i++)
+            _task('t$i', dueAt: DateTime(2026, 7, 17, 9), projectId: 'p1'),
+          for (var i = 0; i < 5; i++)
+            _task(
+              'done$i',
+              dueAt: DateTime(2026, 7, 17, 8),
+              projectId: 'p1',
+              status: 'completed',
+              completedAt: DateTime(2026, 7, 17, 9, 30),
+            ),
+          _task('later', dueAt: DateTime(2026, 7, 20, 9)),
+        ],
+        now: now,
+        projects: [_project('p1')],
+      );
+      final today = snap.buckets.firstWhere((b) => b.key == 'today');
+      expect(today.count, 11);
+      expect(today.items, hasLength(kWidgetRowsPerBucket));
+      expect(today.items.where((r) => !r.done), hasLength(11));
+      expect(today.more, 0, reason: 'every open row is kept');
+      expect(today.toJson().containsKey('more'), isFalse);
+
+      final json = _json(snap);
+      final levels = <Map<String, dynamic>>[
+        json,
+        for (final day in json['days'] as List) day as Map<String, dynamic>,
+      ];
+      final views = [
+        for (final level in levels) ...[
+          level,
+          for (final view in ((level['views'] as Map?) ?? {}).values)
+            view as Map<String, dynamic>,
+        ],
+      ];
+      expect(views.length, greaterThan(3));
+      for (final view in views) {
+        for (final bucket in view['buckets'] as List) {
+          final b = bucket as Map<String, dynamic>;
+          final openKept = (b['items'] as List)
+              .where((r) => (r as Map)['done'] != true)
+              .length;
+          expect(
+            (b['more'] as int?) ?? 0,
+            (b['count'] as int) - openKept,
+            reason: '${b['key']} in ${view['date'] ?? 'a view'}',
+          );
+        }
+      }
+    });
+
+    test('more past the cap counts open rows only', () {
+      final snap = buildWidgetSnapshot(
+        [
+          for (var i = 0; i < 5; i++)
+            _task('t$i', dueAt: DateTime(2026, 7, 17, 9)),
+          for (var i = 0; i < 3; i++)
+            _task(
+              'done$i',
+              dueAt: DateTime(2026, 7, 17, 8),
+              status: 'completed',
+              completedAt: DateTime(2026, 7, 17, 9, 30),
+            ),
+        ],
+        now: now,
+        rowsPerBucket: 3,
+      );
+      final today = snap.buckets.single;
+      expect(today.count, 5);
+      expect(today.items.map((r) => r.id), ['t0', 't1', 't2']);
+      expect(today.more, 2);
+
+      final allShown = buildWidgetSnapshot(
+        [
+          for (var i = 0; i < 3; i++)
+            _task('t$i', dueAt: DateTime(2026, 7, 17, 9)),
+          for (var i = 0; i < 5; i++)
+            _task(
+              'done$i',
+              dueAt: DateTime(2026, 7, 17, 8),
+              status: 'completed',
+              completedAt: DateTime(2026, 7, 17, 9, 30),
+            ),
+        ],
+        now: now,
+        rowsPerBucket: 3,
+      ).buckets.single;
+      expect(allShown.count, 3);
+      expect(allShown.more, 0);
+      expect(allShown.toJson().containsKey('more'), isFalse);
     });
 
     // OPH-451 (#50): the words a native completion needs — the open count's

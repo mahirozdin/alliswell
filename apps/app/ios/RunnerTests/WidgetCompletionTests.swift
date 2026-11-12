@@ -283,9 +283,13 @@ final class WidgetCompletionTests: XCTestCase {
     // Rows the app trimmed already stay in the +N.
     let trimmed = AWBucket(key: "today", label: "Bugün", count: 20, items: rows, more: 12)
     XCTAssertEqual(awDistribute([trimmed], budget: 3).first?.more, 17)
-    // A finished row drawn at the bottom is not in the count, but is in +N.
-    let withDone = AWBucket(key: "today", label: "Bugün", count: 1, items: Array(rows.prefix(2)), more: nil)
-    XCTAssertEqual(awDistribute([withDone], budget: 1).first?.more, 1)
+    // A finished row is not in the count, and not in +N either (Z-02): the
+    // one open row is drawn, so there is no line.
+    let finished = AWTaskRow(
+      id: "done", title: "done", done: true, priority: "none", time: nil,
+      projectColor: nil, kind: nil, day: nil)
+    let withDone = AWBucket(key: "today", label: "Bugün", count: 1, items: [rows[0], finished], more: nil)
+    XCTAssertNil(awDistribute([withDone], budget: 1).first?.more)
 
     // No height (a size with a measured budget): the budget alone.
     XCTAssertEqual(
