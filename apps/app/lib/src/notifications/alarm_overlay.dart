@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert' show jsonEncode;
 
 import 'package:flutter/foundation.dart'
     show ValueListenable, ValueNotifier, debugPrint;
@@ -826,6 +827,7 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
       for (final a in rows) alarmFireAt(a).millisecondsSinceEpoch ~/ 60000,
     };
     final until = action.until;
+    final oneMinute = minutes.length == 1;
     return NotificationEvent(
       eventId: newUlid(),
       actionId: action.actionId,
@@ -833,11 +835,19 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
       untilMs: until == null
           ? null
           : until.millisecondsSinceEpoch ~/ 1000 * 1000,
-      // One minute names the occurrence; rows from several minutes leave it
-      // out, and every member's urgent reminder due by the press is the one
-      // that rang.
-      occurrenceFireAtMs: minutes.length == 1
+      // One minute names the occurrence. Rows from several minutes name no
+      // one occurrence, and "due by the press" would miss a member listed
+      // before its own second (a minute rings from its first member): an
+      // acknowledge names exactly the reminders it hid instead.
+      occurrenceFireAtMs: oneMinute
           ? alarmFireAt(rows.first).millisecondsSinceEpoch
+          : null,
+      payload: !oneMinute && action.actionId == kActionAcknowledge
+          ? jsonEncode({
+              'reminderIds': <String>{
+                for (final a in rows) a.reminderId,
+              }.toList(),
+            })
           : null,
       pressedAtMs: _now().toUtc().millisecondsSinceEpoch,
       origin: 'inapp',

@@ -1389,6 +1389,70 @@ void main() {
       expect(after, hasLength(2));
     });
 
+    // A list spanning two minutes names no one occurrence: "Tümünü onayla"
+    // still acknowledges every row it hid, the member whose own second is
+    // after the press included (ADR-0068 decision 2).
+    test('acknowledge all over two minutes acknowledges every shown row, '
+        'one due after the press included', () async {
+      boot(recordEvents: false);
+      final db = container.read(databaseProvider);
+      final r0 = alarm(
+        rid: 'R0',
+        remindAt: now.subtract(const Duration(seconds: 60)),
+      );
+      final r1 = alarm(
+        rid: 'R1',
+        remindAt: now.add(const Duration(seconds: 11)),
+      );
+      final r2 = alarm(
+        rid: 'R2',
+        remindAt: now.add(const Duration(seconds: 32)),
+      );
+      for (final a in [r0, r1, r2]) {
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: a.taskId,
+                workspaceId: wsId,
+                title: a.taskTitle,
+                status: const Value('open'),
+                isUrgent: const Value(true),
+              ),
+            );
+        await db
+            .into(db.reminders)
+            .insert(
+              RemindersCompanion.insert(
+                id: a.reminderId,
+                taskId: a.taskId,
+                remindAt: a.remindAt,
+                alarmLevel: const Value('urgent'),
+                requiresAcknowledgement: const Value(true),
+              ),
+            );
+      }
+      // 12:00:14: the 11:59 alarm is still unanswered, and 12:00 rings from
+      // its :11 member, so the :32 one is listed before its own second.
+      clock = now.add(const Duration(seconds: 14));
+      feed.add([r0, r1, r2]);
+      await pumpEventQueue();
+      expect(overlay().ringing.map((a) => a.reminderId), ['R0', 'R1', 'R2']);
+
+      expect(await controller().acknowledgeAll(), isTrue);
+      expect(overlay().ringing, isEmpty);
+      final statuses = {
+        for (final r in await db.select(db.reminders).get()) r.id: r.status,
+      };
+      expect(statuses, {
+        'R0': 'acknowledged',
+        'R1': 'acknowledged',
+        'R2': 'acknowledged',
+      });
+      final receipts = await db.select(db.actionReceipts).get();
+      expect(receipts, hasLength(1));
+    });
+
     testWidgets('a failed group write brings every row back, silently', (
       tester,
     ) async {

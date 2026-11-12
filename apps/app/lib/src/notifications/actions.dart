@@ -208,8 +208,17 @@ Future<bool> _applyOnce(
         }
       case kActionAcknowledge:
         final occurrence = event.occurrenceFireAtMs;
+        final listedReminders = payload['reminderIds'];
         if (reminderId is String && reminderId.isNotEmpty) {
           await reminders.acknowledge(reminderId, receiptId: eventId);
+        } else if (listedReminders is List) {
+          // An in-app list spanning several minutes names the rows it hid:
+          // exactly those rang, one listed before its own second included.
+          for (final id in {...listedReminders.whereType<String>()}) {
+            if (id.isNotEmpty) {
+              await reminders.acknowledge(id, receiptId: eventId);
+            }
+          }
         } else if (occurrence != null) {
           await reminders.acknowledgeBatch(
             members,

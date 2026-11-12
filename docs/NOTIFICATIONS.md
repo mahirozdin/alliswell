@@ -406,7 +406,7 @@ not `[String: String]`.
 | `taskIds` | [String] | the members it applies to, de-duplicated |
 | `untilMs` | int? | snooze target, floored to the second. Dart writes a native (`origin: alarmkit`) value **unchanged** |
 | `preset` | String? | only on an entry converted from v1 (no `untilMs`): Dart computes the target from `pressedAtMs` |
-| `occurrenceFireAtMs` | int? | the instant of the occurrence that rang; `acknowledge` acknowledges each member's active urgent reminder at that instant (same UTC minute for a group) |
+| `occurrenceFireAtMs` | int? | the instant of the occurrence that rang; `acknowledge` acknowledges each member's active urgent reminder at that instant (same UTC minute for a group). An in-app list spanning several minutes sends none and names its rows in `payload.reminderIds` instead; exactly those are acknowledged |
 | `pressedAtMs` | int | press time, UTC ms; the apply order |
 | `origin` | `alarmkit` · `widget` (native) · `inapp` · `notification` (Dart only) | source; `alarmkit` → alarm-log lane `alarmkit` |
 | `alarmId` | int? | the AlarmKit id that rang |
