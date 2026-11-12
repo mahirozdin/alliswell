@@ -104,3 +104,29 @@ Constraints found in the code:
   up to `AUTH_ACCESS_TTL_SEC`, and alarms it already scheduled may ring once until it next runs.
 - **Follow-ups (candidates):** a Notification Service Extension spike for remote stop on iPhone;
   excluding the acknowledging client from the alarm-stop wake.
+
+## Note — 2026-11-12, as shipped (OPH-432…436, OPH-445…449, OPH-452, OPH-453)
+
+The decision stands; the auth work kept it, so no new ADR. What the code fixed in detail:
+
+- **#6, session binding.** The app sends `deviceId` only after this server has answered
+  `ringsUrgent`; an older server's 400 is retried once without it, so sign-in never fails on it. A
+  bound family keeps its device whatever a later refresh names. `DELETE` by an API key is 403
+  (session management, ADR-0032). `GET` adds `hasSession`, and the app warns when a removed device
+  had none. The reverse cleanup keeps a device row that another live family is still bound to, and
+  never touches rows bound to no family (older clients).
+- **#6, access-token limit.** Revoking the family stops the next refresh, not the current access
+  token: the removed device keeps working for up to `AUTH_ACCESS_TTL_SEC` (15 minutes by default).
+  How an open web tab's socket behaves after that is a device check.
+- **#6, the wipe.** Only a revoked family (`AUTH_REFRESH_REUSED`) ends in the remote sign-out wipe.
+  A refresh token that merely expired signs out and keeps the replica. With unsent or refused
+  changes the revoked path still signs out, halts sync and drops the OS alarms, but keeps the
+  replica for the same person's next sign-in (OPH-355's "never a silent loss").
+- **#5, the gate.** The headless Android turn reads the same stored answer (no key = `legacy`) and
+  the stored chain profile and sounds, so its urgent ids equal the foreground's. Home shows the
+  one-time card when this device is off and another rings. The alarm band says "No device rings
+  urgent alarms" when the server knows the flag and none rings.
+- **#7, the stop wake.** It fires for an urgent reminder snoozed, or acknowledged, completed or
+  cancelled with its last ring in [now − 45 min, now + 1 min], to the members' Android devices with
+  `rings_urgent = 1`. The acknowledging device is not excluded yet (the sync event carries no
+  client id) — a candidate task.

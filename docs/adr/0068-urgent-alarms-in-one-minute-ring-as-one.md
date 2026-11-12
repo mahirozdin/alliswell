@@ -85,3 +85,21 @@ What the platform and the product say:
   replaces and is a device check, not a rule.
 - **Follow-up:** none required. A server-side minute rule would need a new ADR that answers
   Context 2 first.
+
+## Note — 2026-11-12, as shipped (OPH-439…444, OPH-450, OPH-454)
+
+The decision stands as written; checked against the code that shipped in Epic 36:
+
+- Groups are keyed by `floor(ms / 60000)`. A minute with one task keeps its earlier id, title and
+  body, so the update caused no churn (decision 1).
+- The merged notification chain carries `taskId` (the first), `taskIds`, `reminderIds` and
+  `chainIndex` — ids only. Its acknowledge button acknowledges exactly the listed `reminderIds`.
+  The buttons of the fallback notification left by a failed native group snooze act on every
+  member (decision 2).
+- The native +1 minute shift reads only the ledger records other than the snoozed alarm, floors the
+  target to the second and stops after 30 tries; a group snooze or stop parks one event carrying
+  every member (decision 6).
+- An action pulled outside a plan pass (on resume or on `onActionsPending`) commits before the
+  replica list re-emits. Until it does, the next pass treats that event as having no receipt, so
+  the natively snoozed group alarm is not cancelled in between. The rule is in NOTIFICATIONS §2b.3
+  "Plan pass" (OPH-454).

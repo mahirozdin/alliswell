@@ -9,16 +9,16 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-12 — Epic 36 (#46–#49, #50 gün görünümleri; PR-1) ve Epic 37 (#50 widget self-fetch; PR-2) açıldı: ADR-0068/0069, ADR-0015 ve ADR-0010 revizyonları, NOTIFICATIONS §2b.3.
+**Last updated:** 2026-11-12 — Epic 36 (PR-1, #46–#50 gün görünümleri) kapandı; sırada Epic 37 (PR-2).
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36–37 açıldı (2026-11-12, issue #46–#50, sahip planı onayladı): alarm her eylemde susar, aynı dakikadaki acil alarmlar tek alarm, acil alarm seçilen cihazda çalar, widget gün görünümleri (PR-1); widget kendi verisini çeker (PR-2). |
-| Current epic             | **Epic 36 — alarmlar ve widget gün görünümleri** (`/faz E36`; ADR-0068, ADR-0069), sonra Epic 37 (PR-2) |
-| ➡️ **Next task**         | **OPH-421** — Replica schema v40: local `action_receipts` table (Epic 36, W1) |
-| Last completed           | Epic 35 cila 4 T-G1 (OPH-392, 397, 400, 402, 404, 405, 407, 409) — ayrıntı CHANGELOG ve `git log`'da. |
+| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36 (PR-1) tamam, birleştirme bekliyor; sonra Epic 37 (PR-2). |
+| Current epic             | **Epic 37 — widget kendi verisini çeker** (#50, PR-2; `/faz E37`) |
+| ➡️ **Next task**         | **OPH-457** — ADRs and contract first: widget token, shared Keychain group, self-fetch contract |
+| Last completed           | Epic 36 (OPH-421…456, 466, 467; ADR-0068/0069) — ayrıntı CHANGELOG ve `git log`'da. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -94,6 +94,9 @@
     LICENSE, PRIVACY, mağaza satıcı adı); farklıysa hepsi birlikte değişir. PRIVACY.md "Self-hosting"
     bölümü işletmeciyi "APILLON BİLGİ TEKNOLOJİLERİ" diye anıyor; hangisi doğru?
 
+21. **#48 backfill** — "ilk eklenen cihaz" son 14 günde görülenlerden seçiliyor (önce web dışı) ki
+    eski kurulum alarmı yutmasın: varsayım (ADR-0069 #4), teyit et; değişecekse yayından önce.
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
@@ -104,9 +107,10 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
   ızgara, altta tam genişlik Onayla; çoklu alarmda liste + Tümünü ertele/onayla); aynı dakikadaki acil
   alarmlar **gruplanır, engellenmez** — tek alarm olarak çalar, form yalnız bilgi satırı gösterir,
   sunucu/REST/MCP reddetmez ve kaydırmaz (ADR-0068); güncellemeden sonra hesabın **ilk eklenen cihazı**
-  acil çalar, diğerleri kapalı ve Ayarlar ▸ Cihazlar'dan açılır (ADR-0069; 14 günlük görülme koruması
-  varsayım, teyit bekliyor); **web sekmesi** alarm cihazı olabilir, çalan başka cihaz varken kapalı
-  başlar; widget **kendi verisini çeker**, WidgetKit push ve iOS arka plan senkronu ertelendi.
+  acil çalar, diğerleri kapalı ve Ayarlar ▸ Cihazlar'dan açılır (ADR-0069; 14 gün koruması bekleyen
+  21'de); **web sekmesi** alarm cihazı olabilir, çalan başka cihaz varken kapalı başlar; widget **kendi verisini çeker**, WidgetKit push ve iOS arka plan senkronu ertelendi;
+  **S-49:** iPhone'da native erteleme anında susar; görev ve diğer cihazlar onu uygulama o iPhone'da
+  açılınca öğrenir — kabul edilen sınır (ADR-0015 rev. 7).
 - **Tasarım ve UX turu (2026-11-07, Epic 35):** telefon alt barı **B+** (eşit 5 yuva, hepsi etiketli,
   sağda mikrofon + "+"; Hızlı Erişim balonu telefonda varsayılan kapalı — ADR-0062); **acil alarm
   varsayılanı açık kalır** (DESIGN §26 C1 teyit); landing H1 **alarm**, alt başlık self-host +

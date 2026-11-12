@@ -159,3 +159,11 @@ Dart.
 Not in this revision: a widget that stays current while the app is swiped away (self-fetch with
 its own widget token) has its own ADRs; iOS background refresh and silent push stay off
 (ADR-0038 §8).
+
+**Note — 2026-11-12, as shipped (Epic 36).** Point 4's "registered only after the App Group is
+set" shipped as **Android only**: iOS widget taps go through the app's own App Intent and App
+Group queue and never use `home_widget`'s callback, which answered `-7` on iOS. The stale state
+hides the counter and the next task and shows a refresh glyph on the circular lock-screen widget.
+The lock-screen timeline now carries the next midnights too, so `next` moves to the new day even
+when the 00:01 reload is deferred. The snapshot cap is 384 KiB, from a measured 282 KB worst case
+(300 tasks, 20 projects).

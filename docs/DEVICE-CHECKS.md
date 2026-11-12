@@ -5,6 +5,31 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Alarmlar ve widget gün görünümleri (2026-11-12, Epic 36, #46–#50)
+
+Hepsi **NOT RUN**: işler birim/widget testleriyle ve Mac'te iOS 27.2 simülatöründe XCTest ile kapandı;
+fiziksel iPhone (iOS 26+) ve Android turu sahiple yapılır (kilit ekranı adımı). Bir satır gözlenince silinir.
+
+- OPH-423 D-46a — **iPhone + Android, uygulama önde** (NOT RUN): aynı dakikada iki acil alarm; her düğme sesi 1 sn içinde kesip ekranı kapatıyor, ikinci alarmın ekranı tam dokunulabilir.
+- OPH-466/467 D-46c — **zil ekranı 320/393/430 pt, 360×640 ve 375×667, açık ve koyu, AX5** (NOT RUN): ızgara hizalı, her eylem görünür, etiketler okunur, basılı geri bildirim görünür, "Acil hatırlatma" etiketi okunuyor.
+- OPH-422 — **Türkçe arayüz** (NOT RUN): erteleme karoları "09:05’te çalar", onay "09:30’da tekrar çalacak" ekiyle.
+- OPH-428 — **iPhone iOS 26/27, uygulama önde, AlarmKit çalarken** (NOT RUN): tek ses; ekran alarmın kilit ekranında da çaldığını söylüyor; uygulamada 5 dk sistem uyarısını da susturuyor.
+- OPH-426 D3 — **iPhone** (NOT RUN): native ertelenen alarm preset sonunda bir kez çalıyor; o çalarken uygulamayı aç: üzerine bir şey yapılana dek çalmaya devam ediyor, ikinci alarm doğmuyor.
+- OPH-427/431 #49 D1/D4 — **iPhone, uygulama öldürülmüş / arka planda / önde × kilitli / açık** (NOT RUN): uyarıdaki Ertele sesi anında kesip uyarıyı kapatıyor, preset sonunda tek çalma; arka arkaya iki erteleme tek alarm bırakıyor; uygulama açılınca görev basış anına göre "Ertelendi · HH:MM", alarm günlüğünde tek alarmkit satırı; Mac'te erteleme ancak iPhone'da uygulama açıldıktan sonra görünüyor (S-49, beklenen); yeniden başlatıp ilk kilit açılmadan önce Ertele'nin ne yaptığını kaydet; Durdur (düğme ve donanım tuşu) hâlâ durduruyor ve onayı uygulamaya ulaşıyor.
+- OPH-430 — **iPhone iOS 26+, uygulama kapalı; iPhone + Mac widget'ı** (NOT RUN): uyarıdaki Onayla bir sonraki açılışta bir kez uygulanıyor ve görevde görünüyor; widget'taki tamamla dairesi iOS ve macOS'ta hâlâ tamamlıyor.
+- OPH-440 — **iPhone iOS 26 + Android** (NOT RUN): 09:00'da üç acil alarm (biri başka cihazda oluşturulmuş): iPhone'da tek ses ve tek "3 acil alarm" uyarısı, Android'de tek tam ekran bildirim; uygulamayı zorla kapatınca uyarının kendi düğmeleri çalışıyor.
+- OPH-443 D-47a — **telefon, uygulama önde, açık ve koyu, 360×640** (NOT RUN): 09:00'da üç acil alarm tek ekran, tek ses; "Tümünü ertele 5 dk" üçünü 09:05'e taşıyor, 09:05'te tek uyarı çalıyor.
+- OPH-444 D-47b — **telefon, açık ve koyu** (NOT RUN): 09:00'a ikinci acil görev: bilgi satırı ve "Saati değiştir" çıkıyor, kaydetmek çalışıyor.
+- OPH-450 — **iPhone, uygulama öldürülmüş** (NOT RUN): 09:00'da üç acil alarm, 09:05'te başka görevin acil alarmı; uyarıda Ertele (5 dk) üçünü 09:06'ya taşıyor ve orada tek uyarı çalıyor.
+- OPH-433/452 D-48a — **iPhone + Android + web, tek hesap** (NOT RUN): önce web sonra iPhone girişi: 09:00'da yalnız iPhone çalıyor; Android (uygulama açık ve kaydırılıp kapatılmış) ve web normal bildirim gösteriyor; Ayarlar ▸ Cihazlar'dan Android açılınca uygulamayı yeniden başlatmadan sonraki alarmı çalıyor.
+- OPH-436/445 D-48c/D2 — **iki Android (A, B)** (NOT RUN): B çalarken A'da onayla: B'nin sesi ve tam ekran alarmı uyandırma + eşitleme süresinde kesiliyor; Doze'da bir kez daha (`adb shell dumpsys deviceidle force-idle`); bir kez de alarm oluşturulmadan önce uygulama açılmış (uyandırma önceden koşmuş) B ile.
+- OPH-435/447/449 D-48d — **iPhone + Android (+ web sekmesi)** (NOT RUN): iPhone'da Cihazlar'dan Android'i kaldır: 15 dk içinde Android giriş ekranında, listeleri boş, o hesabın hiçbir alarmı çalmıyor; açık web sekmesinin soketinin token süresi bitince ne yaptığını kaydet. Android'den çalan iPhone'u kaldır: seçim sayfası Android'i seçili getiriyor, iPhone sonraki yenilemede çıkış yapıyor, kurulmuş AlarmKit alarmları açılana dek çalabilir.
+- OPH-432/453 D-48e — **mevcut kurulumun yerinde güncellenmesi, iki cihaz** (NOT RUN): hesabın ilk eklenen ve yakın zamanda görülen cihazı çalmaya devam ediyor; diğeri kartı bir kez gösteriyor, "Bu cihazda da çal" onu açıyor; son çalan cihaz kapatılınca alarm bandında "Acil alarm çalan cihaz yok" çıkıyor, bir cihaz yeniden çalınca kayboluyor.
+- OPH-448 — **iPhone, Android ve web, açık ve koyu, 2.0× metin** (NOT RUN): Cihazlar ekranında okunur adlar, "Bu cihaz" rozeti, ≥ 48 pt anahtar satırları, web satırında sekme notu; Android'den geçiş iPhone'u kapatıp Android'i açıyor.
+- OPH-436 D-50a — **Android, uygulama arka planda** (NOT RUN): web'de eklenen görev birkaç dakika içinde widget'ta.
+- OPH-451 #50 D10 — **iPhone widget'ları, uygulama açılmadan** (NOT RUN): 23:58 → 00:02 (ya da saati ileri al): Bugün listesi, sayaç ve kilit ekranının "sıradaki"si yeni günü gösteriyor; üç gün sonra eski liste değil "Liste güncel değil" satırı; gece yarısından sonra widget dairesine dokunmak hâlâ dolduruyor.
+- OPH-438 #50 D11 — **iPhone + Android** (NOT RUN): uygulamayı arka plana gönder: iOS widget'ı en yeni listeyi gösteriyor, konsolda home_widget -7 yok; Android'de widget'taki tamamla hâlâ çalışıyor.
+
 ## Kontrol listesi öğesini yeniden adlandırma (2026-11-08)
 
 - OPH-420 — **telefon + web, açık ve koyu** (NOT RUN): Türkçe arayüzde hızlı eklemede "Bu ayda bir toplantı" ve "daily toplantısı" tam başlıkla tekrarsız ekleniyor (tarih seçici açılıyor); "her pazar yürüyüş" eklenince alttaki "Eklendi" mesajı "Tekrar: …" diyor.

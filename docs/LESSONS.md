@@ -4,7 +4,6 @@
 > **KARAR** bağlayıcıdır (değiştirmek sahibe sorulur) · **DERS** sessizce tekrar edebilecek bir
 > tuzaktır (belirti → neden → ne yap) · **NOT** koddan çıkmayan kalıcı bir gerçektir.
 > Yeni madde 1–2 satır; aynı sınıftan bir madde varsa yenisini ekleme, onu güncelle. Bütçe: `check:docs`.
-> Kaynak: 2026-09-26 temizliği — tam bağlam `git show 85b6c1b:docs/STATE.md` ve `…:docs/TASKS.md`.
 
 ## ci-release — CI adımları, sürüm etiketi, imajlar
 - **KARAR** MinIO CI ve compose'da `cgr.dev/chainguard/minio:latest`'ten (herkese açık imaj kalmadı, Docker Hub/quay 401; ücretsiz katman yalnız latest, eski root birimi için `user: '0:0'`); yedek `bitnamilegacy/minio`.
@@ -206,7 +205,7 @@
 - **DERS** WidgetKit'te canlı saat yok → dakikalık girdiler, ufuk bayttan (~16.6 MB arşivi aşınca chronod hepsini atar, widget placeholder'da kalır); timeline şimdi + 4 gece yarısı, başlık tarihi ENTRY'den.
 - **DERS** Snapshot'a yeni alan: native taraf eksiğe toleranslı (Swift opsiyonel, Kotlin `optInt`), JSONSerialization (Codable yeni alanı düşürür); iki platformun yerleşimi de pariteye tabi.
 - **DERS** Oturum `kSecAttrAccessibleWhenUnlocked` → kilitli iPhone'da başsız yol Keychain'i null okuyup "çıkış yapılmış" sanar → oturum yoksa sessiz çıkış, widget'ı replikadan yine çiz.
-- **DERS** AlarmKit: `Alarm`'da attributes yok (id↔UUID eşlemesi), `.stopped` yok (düğmeler `LiveActivityIntent`), erteleme `.custom` (`.countdown` alarmı ikiler); `NSSupportsLiveActivities` iki Info.plist'te.
+- **DERS** AlarmKit: `Alarm`'da attributes yok (id↔UUID eşlemesi), `.stopped` yok (düğmeler `LiveActivityIntent`), erteleme `.custom` (`.countdown` ikiler) ama uyarıyı susturmaz → `perform()` hep `stop` (atarsa `cancel`); çalan alarma `cancel` değil `stop` (#49); `NSSupportsLiveActivities` iki Info.plist'te.
 - **DERS** Focus `.active`'i gömer → hatırlatıcı `timeSensitive`; izinsiz iOS onu sessizce `.active`'e düşürür, plugin ayarı vermez → native sonda; `critical` yalnız `isCriticalEnabled`'da; kategori ~4 eylem gösterir.
 - **NOT** iOS ve macOS aynı takımla imzalanır: `WWRZ5CG3DW` (eski `QB8VR32GWN` hiçbir yerde kalmamalı). Xcode bağlantıları `ios/scripts/wire_*.rb`'de (idempotent).
 

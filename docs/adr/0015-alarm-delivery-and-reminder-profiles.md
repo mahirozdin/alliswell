@@ -257,3 +257,10 @@ the channel contract both runtimes implement is [NOTIFICATIONS.md](../NOTIFICATI
    side next runs on that iPhone (there is no iOS background sync — ADR-0038 §8 is unchanged).
    Until then another device that rings urgent alarms may ring at the old time; the one-ringing-
    device default (ADR-0069) makes that rare.
+
+**Note — 2026-11-12, as shipped (Epic 36).** Points 1–7 shipped as written. NOTIFICATIONS §2b.3
+gained three rules while the lanes built it: a notification tap stays receipt-less (the plugin hands
+over no delivery timestamp); a ringing native snooze whose event has no receipt yet is kept until
+the stale window ends; and an event pulled outside a plan pass counts as unapplied until the replica
+re-emits. The Android headless turn now reads the stored reminder profile and sounds, so its urgent
+chain matches the foreground's (ADR-0069 note).
