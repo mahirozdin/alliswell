@@ -134,6 +134,24 @@ class WidgetBridge {
     _lastQuery = null;
   }
 
+  /// Sign-out, or a session the server refused (#50, PR2-02): the widget
+  /// drew this person's tasks, and nothing else would ever write over them —
+  /// the live publish ends with the session. So the profile's inputs are
+  /// forgotten ([forgetFetch]), the snapshot is written empty — no row, no
+  /// list, no event, only the day and the app's words — and the widget is
+  /// asked to redraw. The fetch keys are the token lifecycle's to remove,
+  /// before this.
+  Future<void> showSignedOut() async {
+    forgetFetch();
+    if (!_configured) {
+      await _host.configure();
+      _configured = true;
+    }
+    final empty = buildWidgetSnapshot(const [], now: _clock());
+    await _host.save(kWidgetSnapshotKey, jsonEncode(empty.toJson()));
+    await _host.requestUpdate();
+  }
+
   Future<void> _writeProfile() async {
     final fetch = _fetch, pending = _pendingOutbox, at = _localWrittenAt;
     if (fetch == null || pending == null || at == null) return;

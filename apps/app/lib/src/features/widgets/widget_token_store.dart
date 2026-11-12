@@ -90,7 +90,9 @@ class HomeWidgetGroupKeys implements WidgetGroupKeys {
   Future<String?> read(String key) async {
     await _configure();
     final value = await HomeWidget.getWidgetData<Object>(key);
-    return value?.toString();
+    // A removed key holds the empty string (PR2-01): no value.
+    final text = value?.toString();
+    return text == null || text == kWidgetRemovedValue ? null : text;
   }
 
   @override
@@ -99,11 +101,12 @@ class HomeWidgetGroupKeys implements WidgetGroupKeys {
     await HomeWidget.saveWidgetData<String>(key, value);
   }
 
-  /// `home_widget` removes the key when it is saved as null.
+  /// Written as [kWidgetRemovedValue], never as null: `home_widget` 0.9.3
+  /// aborts the iOS app on a null (PR2-01).
   @override
   Future<void> remove(String key) async {
     await _configure();
-    await HomeWidget.saveWidgetData<String>(key, null);
+    await HomeWidget.saveWidgetData<String>(key, kWidgetRemovedValue);
   }
 }
 
@@ -356,7 +359,9 @@ class WidgetTokenLifecycle {
   /// Sign-out or an account switch (WIDGETS §3.2): the caller has already
   /// deleted this device on the server, which revokes the token. Then every
   /// self-fetch key goes except the snapshot, then the Keychain item. Each
-  /// step is best effort; a sign-out is never blocked by it.
+  /// step is best effort; a sign-out is never blocked by it. The snapshot is
+  /// the caller's next step ([WidgetBridge.showSignedOut]), on every widget
+  /// platform.
   Future<void> signOut() async {
     if (!enabled) return;
     _generation++;

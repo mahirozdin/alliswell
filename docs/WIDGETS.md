@@ -347,8 +347,16 @@ mint route is never called.
 | `aw_widget_fetch_failures` | Int | Swift | failures in a row; 0 after a success |
 | `aw_widget_backoff_until_ms` | Int, UTC ms | Swift | no fetch before it |
 
-On sign-out or an account switch Dart deletes the device on the server first (that revokes the
-token, ADR-0070), then removes every key above except `aw_widget_snapshot`, then the Keychain item.
+**Removing a key** means writing the empty string, never a null: `home_widget` 0.9.3 hands a
+Dart null to iOS as `NSNull` and `NSUserDefaults` aborts the app on it (#50, PR2-01). Every
+reader — Dart and Swift — treats an empty or missing value as absent.
+
+On sign-out, an account switch, or a session the server refused, Dart deletes the device on the
+server first where it still can (that revokes the token, ADR-0070), then removes every key above
+except `aw_widget_snapshot`, then the Keychain item, then writes `aw_widget_snapshot` empty (no
+row, no project, no event: the signed-out state) and asks for a reload — on every widget platform,
+since nothing else would write over the person's rows. With the profile gone the extension never
+fetches and draws that empty snapshot.
 A change of scope or of "Private widget" removes `aw_widget_server_snapshot` right after the new
 profile is written — in that order, so a late answer for the old profile is refused or taken back
 (step 4 below).
@@ -485,7 +493,7 @@ token).
 #### The extension's turn (Swift)
 
 1. Load `aw_widget_snapshot` first; with none, keep today's behaviour and do not fetch.
-2. Fetch only when all hold: a profile that decodes (with `private`); `aw_widget_token_state` is
+2. Fetch only when all hold: a profile that decodes (with `private`; an empty one is absent); `aw_widget_token_state` is
    not `invalid`; the Keychain item reads; now ≥ `aw_widget_backoff_until_ms`; now −
    `aw_widget_fetched_at_ms` ≥ 2 minutes.
 3. One request: `URLSession(configuration: .ephemeral)`, `timeoutIntervalForRequest` 6 s,

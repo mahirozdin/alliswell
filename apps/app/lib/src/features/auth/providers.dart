@@ -17,6 +17,8 @@ import '../../notifications/web/alert_cache.dart';
 import '../../sync/local_data.dart';
 import '../../sync/providers.dart';
 import '../devices/providers.dart';
+import '../widgets/widget_bridge.dart'
+    show widgetBridgeProvider, widgetsSupportedPlatform;
 import '../widgets/widget_token_store.dart' show widgetTokenLifecycleProvider;
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
@@ -169,7 +171,24 @@ Future<void> _endRevokedSession(
       await _nothingUnsent(ref)) {
     await ref.read(localDataGuardProvider).wipe();
   }
+  // A kept replica is no reason to keep drawing it: signed out, the widget
+  // shows nothing of the person (#50, PR2-02).
+  await _showWidgetSignedOut(ref);
   await _dropOsAlarms(ref);
+}
+
+/// The home-screen widget, once the session is gone (#50, PR2-02): the
+/// empty snapshot, then a redraw — on every platform with a widget, after
+/// the token lifecycle removed the fetch keys (iOS). Nothing else would ever
+/// write over the person's rows: the live publish ended with the session.
+/// Best effort; a sign-out is never blocked by it.
+Future<void> _showWidgetSignedOut(Ref ref) async {
+  if (!widgetsSupportedPlatform) return;
+  try {
+    await ref.read(widgetBridgeProvider).showSignedOut();
+  } on Object {
+    // A missing plugin or a full container: the widget keeps what it had.
+  }
 }
 
 Future<bool> _nothingUnsent(Ref ref) async {
@@ -300,6 +319,7 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // on the server; only now does the local copy go (WIDGETS §3.2).
     await ref.read(widgetTokenLifecycleProvider).signOut();
     await ref.read(localDataGuardProvider).wipe();
+    await _showWidgetSignedOut(ref);
   }
 }
 

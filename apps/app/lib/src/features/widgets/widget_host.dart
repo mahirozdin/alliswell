@@ -15,6 +15,13 @@ const String kWidgetSnapshotKey = 'aw_widget_snapshot';
 /// app only ever removes.
 const String kWidgetFetchProfileKey = 'aw_widget_fetch_profile';
 const String kWidgetServerSnapshotKey = 'aw_widget_server_snapshot';
+
+/// What a removed App Group key holds (#50, PR2-01; WIDGETS §3.2). The app
+/// never saves a null: `home_widget` 0.9.3 hands it to iOS as `NSNull`, and
+/// `NSUserDefaults` aborts the app on it — a sign-out, a refused session and
+/// a "Private widget" change crashed there and left the keys behind. Every
+/// reader, Dart and Swift, treats the empty string as no value at all.
+const String kWidgetRemovedValue = '';
 const String kWidgetIosName = 'AllisWellWidget';
 const String kWidgetAndroidProvider = 'TasksWidgetProvider';
 
@@ -48,10 +55,10 @@ class HomeWidgetHost implements WidgetHost, WidgetKeyRemover {
   Future<void> save(String key, String value) =>
       HomeWidget.saveWidgetData<String>(key, value);
 
-  /// `home_widget` removes the key when it is saved as null.
+  /// Written as [kWidgetRemovedValue], never as null (PR2-01).
   @override
   Future<void> remove(String key) =>
-      HomeWidget.saveWidgetData<String>(key, null);
+      HomeWidget.saveWidgetData<String>(key, kWidgetRemovedValue);
 
   @override
   Future<void> requestUpdate() => HomeWidget.updateWidget(
