@@ -294,8 +294,11 @@ NotificationEvent notificationEventForAlarmKit(AlarmKitActionEvent event) =>
 /// `aw.fallback.<eventId>` notification behind. It is cleared after the
 /// first plan pass that STARTED after the event was applied — that plan rings
 /// the snoozed alarm itself, so clearing earlier could leave nothing ringing
-/// and clearing never would ring twice. [beforePlan] is the scheduler's
-/// `drainActions` seam and [afterPlan] its post-plan hook.
+/// and clearing never would ring twice. Such an event is acked only once its
+/// fallback is cleared: until then the native queue entry is what remembers
+/// the clear, so a process killed in between redelivers it (a no-op through
+/// its receipt) and the next launch clears it. [beforePlan] is the
+/// scheduler's `drainActions` seam and [afterPlan] its post-plan hook.
 class AlarmKitActionPump {
   AlarmKitActionPump({required this.host, required this.apply, this.log});
 
@@ -307,8 +310,8 @@ class AlarmKitActionPump {
   final AlarmLog? log;
 
   Future<void> _tail = Future<void>.value();
-  final List<String> _fallbacksApplied = [];
-  final List<String> _fallbacksArmed = [];
+  final Set<String> _fallbacksApplied = {};
+  final Set<String> _fallbacksArmed = {};
 
   /// One pull, serialized behind any pull already running.
   Future<void> pull() {
@@ -326,11 +329,11 @@ class AlarmKitActionPump {
     await pull();
   }
 
-  /// After a plan pass: clear the fallbacks that pass planned for.
+  /// After a plan pass: clear the fallbacks that pass planned for, then ack
+  /// their events. A failed clear keeps them armed for the next pass.
   Future<void> afterPlan() async {
     if (_fallbacksArmed.isEmpty) return;
     final ids = [..._fallbacksArmed];
-    _fallbacksArmed.clear();
     try {
       await host.clearFallbacks(ids);
     } on Object catch (error) {
@@ -339,6 +342,14 @@ class AlarmKitActionPump {
         lane: AlarmLogLane.alarmkit,
         detail: 'clearFallbacks failed: $error',
       );
+      return;
+    }
+    _fallbacksArmed.removeAll(ids);
+    try {
+      await host.ackActions(ids);
+    } on Object {
+      // Still queued: the next pull redelivers it, and clearing twice is
+      // harmless.
     }
   }
 
@@ -365,11 +376,14 @@ class AlarmKitActionPump {
         break; // stays queued; later presses wait behind it
       }
       // A redelivery too: its first apply may have died before the plan,
-      // and clearing twice is harmless.
+      // and clearing twice is harmless. Acked by [afterPlan], after the clear.
       if (event.action == 'snooze' &&
           event.scheduleOutcome != null &&
           event.scheduleOutcome != 'ok') {
-        _fallbacksApplied.add(event.eventId);
+        if (!_fallbacksArmed.contains(event.eventId)) {
+          _fallbacksApplied.add(event.eventId);
+        }
+        continue;
       }
       try {
         await host.ackActions([event.eventId]);

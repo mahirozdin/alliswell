@@ -391,7 +391,9 @@ void main() {
           ]);
         final pump = pumpFor(host);
         await pump.pull();
-        expect(host.acked.expand((e) => e), ['ev-failed', 'ev-ok']);
+        // The failed one stays queued until its fallback is cleared: the
+        // entry is what remembers the clear across a restart.
+        expect(host.acked.expand((e) => e), ['ev-ok']);
         expect(host.fallbacksCleared, isEmpty, reason: 'no plan yet');
 
         final input = [
@@ -429,6 +431,7 @@ void main() {
           host.calls.indexOf('schedule'),
           lessThan(host.calls.indexOf('clearFallbacks')),
         );
+        expect(host.acked.last, ['ev-failed'], reason: 'acked after the clear');
 
         // An event the plan's own drain applies waits for the NEXT plan: the
         // pass that drained it planned from a model without it.
@@ -447,6 +450,72 @@ void main() {
         expect(host.fallbacksCleared.last, ['ev-late']);
       },
     );
+
+    group('a failed native snooze keeps its fallback until a plan replaced '
+        'it (OPH-431)', () {
+      final until = DateTime.utc(2030, 6, 1, 9, 5);
+      final snoozed = [
+        AlarmInput(
+          reminderId: id('R1'),
+          taskId: id('T1'),
+          taskTitle: 'Acil iş',
+          remindAt: nineAm,
+          status: 'snoozed',
+          snoozedUntil: until,
+          urgent: true,
+          requiresAcknowledgement: true,
+        ),
+      ];
+
+      NotificationScheduler schedulerFor(
+        FakeAlarmKitHost host,
+        AlarmKitActionPump pump,
+        FakeNotificationsGateway gateway,
+      ) {
+        final scheduler = NotificationScheduler(
+          gateway: gateway,
+          alarms: const Stream<List<AlarmInput>>.empty(),
+          privacyMode: false,
+          alarmKit: host,
+          drainActions: pump.beforePlan,
+          afterPlan: pump.afterPlan,
+          clock: () => DateTime.utc(2030, 6, 1, 9, 1),
+        );
+        addTearDown(scheduler.dispose);
+        return scheduler;
+      }
+
+      test('a process killed before the plan still clears it on the next '
+          'launch', () async {
+        final host = FakeAlarmKitHost()
+          ..queue.add(
+            native(
+              'ev-failed',
+              'snooze',
+              untilMs: until.millisecondsSinceEpoch,
+              scheduleOutcome: 'limitReached',
+            ),
+          );
+        // Applied and committed, then the process dies before any plan.
+        await pumpFor(host).pull();
+        expect(host.fallbacksCleared, isEmpty);
+
+        // The next launch: a fresh pump, the native queue as it was left.
+        final pump = pumpFor(host);
+        final scheduler = schedulerFor(host, pump, FakeNotificationsGateway());
+        await scheduler.start();
+        await scheduler.applyOnce(snoozed);
+        await scheduler.applyOnce(snoozed);
+
+        expect(host.fallbacksCleared.expand((e) => e), contains('ev-failed'));
+        expect(host.queue, isEmpty, reason: 'acked once the fallback went');
+        expect(
+          (await db.select(db.reminders).getSingle()).snoozeCount,
+          1,
+          reason: 'the redelivery applied nothing twice',
+        );
+      });
+    });
 
     test('a receipted action pokes sync from inside its transaction, and '
         'the round still pushes it and the next write', () async {

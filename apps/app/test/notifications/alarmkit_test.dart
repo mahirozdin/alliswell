@@ -366,9 +366,11 @@ void main() {
         ),
       );
       addTearDown(db.close);
+      // Snoozes AlarmKit scheduled itself: one that left a fallback is
+      // acked only after the plan that clears it (OPH-431).
       native.queue
-        ..add(snoozeEntry('ev-1', 1000))
-        ..add(snoozeEntry('ev-2', 2000));
+        ..add({...snoozeEntry('ev-1', 1000), 'scheduleOutcome': 'ok'})
+        ..add({...snoozeEntry('ev-2', 2000), 'scheduleOutcome': 'ok'});
       final host = MethodChannelAlarmKitHost(channel: channel);
 
       final gate = Completer<void>();
