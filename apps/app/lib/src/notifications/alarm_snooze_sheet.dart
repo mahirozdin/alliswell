@@ -50,11 +50,15 @@ const double kAlarmSheetMaxWidth = 560;
 /// [onChoose] runs INSIDE the tap, before the sheet starts to close, so the
 /// action silences in the same gesture (#46). Returns whether anything was
 /// chosen.
+///
+/// [now] is a clock, read at the press: a preset counts from the moment it
+/// is chosen, not from when the sheet opened — "5 min" picked six minutes
+/// later must not land in the past and ring again at once.
 Future<bool> showAlarmSnoozeSheet(
   BuildContext context, {
   required AlarmInput alarm,
   required List<String> presets,
-  required DateTime now,
+  required DateTime Function() now,
   required String dateFormat,
   required void Function(AlarmSheetChoice choice) onChoose,
 }) async {
@@ -103,12 +107,12 @@ class _AlarmSnoozeSheet extends StatelessWidget {
 
   final AlarmInput alarm;
   final List<String> presets;
-  final DateTime now;
+  final DateTime Function() now;
   final String dateFormat;
   final void Function(AlarmSheetChoice choice) onChoose;
 
   /// "09:05", or "tomorrow 09:00" when the preset lands on another day.
-  String _lands(DateTime until) {
+  String _lands(DateTime until, DateTime now) {
     final time = awFormatTime(until, format: dateFormat);
     final today = DateTime(now.year, now.month, now.day);
     final day = DateTime(until.year, until.month, until.day);
@@ -124,6 +128,7 @@ class _AlarmSnoozeSheet extends StatelessWidget {
         (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
         alarm.remindAt;
     final time = awFormatTime(fireAt.toLocal(), format: dateFormat);
+    final shownAt = now();
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(AwSpace.x4, 0, AwSpace.x4, AwSpace.x4),
       child: Column(
@@ -150,9 +155,13 @@ class _AlarmSnoozeSheet extends StatelessWidget {
               key: Key('alarm-sheet-snooze-$preset'),
               icon: Icons.schedule,
               label: kSnoozePresetLabels[preset]!.tr(),
-              trailing: _lands(TaskStore.snoozeUntilFor(preset, now: now)),
+              trailing: _lands(
+                TaskStore.snoozeUntilFor(preset, now: shownAt),
+                shownAt,
+              ),
+              // Counted from the press, never from the opening.
               onTap: () => onChoose(
-                AlarmSheetSnooze(TaskStore.snoozeUntilFor(preset, now: now)),
+                AlarmSheetSnooze(TaskStore.snoozeUntilFor(preset, now: now())),
               ),
             ),
             const SizedBox(height: AwSpace.x2),

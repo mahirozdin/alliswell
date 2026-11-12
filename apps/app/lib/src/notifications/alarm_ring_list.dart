@@ -257,7 +257,7 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
       context,
       alarm: row,
       presets: ref.read(snoozePresetOrderProvider),
-      now: ref.read(nowProvider)(),
+      now: ref.read(nowProvider),
       dateFormat: ref.read(dateFormatProvider),
       onChoose: (choice) => switch (choice) {
         AlarmSheetSnooze(:final until) => _snoozeRow(row, until),

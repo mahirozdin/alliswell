@@ -1503,6 +1503,36 @@ void main() {
     },
   );
 
+  testWidgets('a row sheet preset counts from the press, not from opening', (
+    tester,
+  ) async {
+    var clock = listNow;
+    final events = <NotificationEvent>[];
+    await pumpLayer(
+      tester,
+      feed: [theAlarm(), secondAlarm(), thirdAlarm()],
+      extra: [
+        nowProvider.overrideWithValue(() => clock),
+        alarmActionApplierProvider.overrideWithValue((event) async {
+          events.add(event);
+          return true;
+        }),
+      ],
+    );
+    await tester.tap(find.byKey(Key('alarm-row-snooze-${id('T2')}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    // The sheet opened at 09:00; "5 min" is pressed at 09:06.
+    clock = listNow.add(const Duration(minutes: 6));
+    await tester.tap(find.byKey(const Key('alarm-sheet-snooze-5_min')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(events.single.taskIds, [id('T2')]);
+    expect(events.single.untilMs, ms(const Duration(minutes: 11)));
+    await settle(tester);
+  });
+
   testWidgets('the row sheet completes or opens its own row', (tester) async {
     final events = await pumpList(tester);
     await tester.tap(find.byKey(Key('alarm-row-snooze-${id('T1')}')));
