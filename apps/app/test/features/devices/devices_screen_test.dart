@@ -138,10 +138,7 @@ class _FakeApi implements DeviceApi {
   }
 
   @override
-  Future<DeviceInfo?> register(
-    String deviceId,
-    DeviceDescriptor device,
-  ) async {
+  Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) async {
     final answer = registerRings;
     await registerGate?.future;
     return DeviceInfo.fromJson({
@@ -377,8 +374,11 @@ void main() {
     final registry = DeviceRegistry(
       api: api,
       readClientId: () async => _thisId,
-      describe: () =>
-          const DeviceDescriptor(platform: 'ios', appVersion: '1', locale: 'en'),
+      describe: () => const DeviceDescriptor(
+        platform: 'ios',
+        appVersion: '1',
+        locale: 'en',
+      ),
       ringsUrgent: container.read(ringsUrgentStoreProvider),
       onRingsUrgentChanged: () => container.invalidate(ringsUrgentHereProvider),
     );

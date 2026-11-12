@@ -476,44 +476,47 @@ void main() {
     // A heartbeat answers with what the server held when it got there. One
     // asked before this device's switch changed must not put the old value
     // back over the newer one (late-heartbeat-overwrites-switch).
-    test('a heartbeat asked before a switch change never overwrites it', () async {
-      final kv = _MemoryKv()..values[kRingsUrgentKey] = 'on';
-      final store = RingsUrgentStore(kv: kv);
-      var changes = 0;
-      final api = _RecordingApi()
-        ..ringsUrgent = true
-        ..registerGate = Completer<void>();
-      final registry = _registryFor(
-        api,
-        ringsUrgent: store,
-        onRingsUrgentChanged: () => changes++,
-      );
-      final heartbeat = registry.sync(signedIn: true);
-      await pumpEventQueue();
+    test(
+      'a heartbeat asked before a switch change never overwrites it',
+      () async {
+        final kv = _MemoryKv()..values[kRingsUrgentKey] = 'on';
+        final store = RingsUrgentStore(kv: kv);
+        var changes = 0;
+        final api = _RecordingApi()
+          ..ringsUrgent = true
+          ..registerGate = Completer<void>();
+        final registry = _registryFor(
+          api,
+          ringsUrgent: store,
+          onRingsUrgentChanged: () => changes++,
+        );
+        final heartbeat = registry.sync(signedIn: true);
+        await pumpEventQueue();
 
-      // The person switches this device off; the PATCH answer is cached.
-      await store.write(RingsUrgentHere.off);
-      api.registerGate!.complete();
-      await heartbeat;
-      expect(await store.read(), RingsUrgentHere.off);
-      expect(changes, 0);
+        // The person switches this device off; the PATCH answer is cached.
+        await store.write(RingsUrgentHere.off);
+        api.registerGate!.complete();
+        await heartbeat;
+        expect(await store.read(), RingsUrgentHere.off);
+        expect(changes, 0);
 
-      // Answered while the PATCH is still on the wire: also too old.
-      api.registerGate = Completer<void>();
-      final during = registry.sync(signedIn: true);
-      await pumpEventQueue();
-      store.changeStarted();
-      api.registerGate!.complete();
-      await during;
-      expect(await store.read(), RingsUrgentHere.off);
-      expect(changes, 0);
+        // Answered while the PATCH is still on the wire: also too old.
+        api.registerGate = Completer<void>();
+        final during = registry.sync(signedIn: true);
+        await pumpEventQueue();
+        store.changeStarted();
+        api.registerGate!.complete();
+        await during;
+        expect(await store.read(), RingsUrgentHere.off);
+        expect(changes, 0);
 
-      // A heartbeat asked after the change is believed again.
-      api.registerGate = null;
-      await registry.sync(signedIn: true);
-      expect(await store.read(), RingsUrgentHere.on);
-      expect(changes, 1);
-    });
+        // A heartbeat asked after the change is believed again.
+        api.registerGate = null;
+        await registry.sync(signedIn: true);
+        expect(await store.read(), RingsUrgentHere.on);
+        expect(changes, 1);
+      },
+    );
   });
 
   group('the device list and patch calls (OPH-446)', () {

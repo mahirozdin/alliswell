@@ -212,18 +212,21 @@ void main() {
     expect(states.map((s) => s.clientId), [install]);
   });
 
-  test('a sign-out does not hand this install\'s id to whoever is next', () async {
-    const install = '01HZINSTALLAAAAAAAAAAAAAAA';
-    final c = container();
-    await login(c, 'saha3');
-    await db
-        .into(db.syncStates)
-        .insertOnConflictUpdate(
-          SyncStatesCompanion.insert(workspaceId: ws, clientId: install),
-        );
-    await c.read(authControllerProvider.notifier).logout();
-    expect(await localKv.get(kInstallClientIdKey), isNull);
-  });
+  test(
+    'a sign-out does not hand this install\'s id to whoever is next',
+    () async {
+      const install = '01HZINSTALLAAAAAAAAAAAAAAA';
+      final c = container();
+      await login(c, 'saha3');
+      await db
+          .into(db.syncStates)
+          .insertOnConflictUpdate(
+            SyncStatesCompanion.insert(workspaceId: ws, clientId: install),
+          );
+      await c.read(authControllerProvider.notifier).logout();
+      expect(await localKv.get(kInstallClientIdKey), isNull);
+    },
+  );
 
   test('the same person signing back in keeps their replica', () async {
     final c = container();
