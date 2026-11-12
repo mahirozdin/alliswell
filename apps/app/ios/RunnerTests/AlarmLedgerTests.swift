@@ -93,6 +93,34 @@ final class AlarmLedgerTests: XCTestCase {
     XCTAssertEqual(ledger.records().map(\.id), [5])
   }
 
+  /// A native record published ahead of its alarm (`pendingUntilMs`)
+  /// survives a prune while its lease runs and the OS does not list it yet;
+  /// a lease that ran out (a process killed mid-schedule) is pruned.
+  func testPruneKeepsARecordPublishedAheadOfItsAlarmUntilItsLeaseRunsOut() {
+    let ledger = AWAlarmLedger(defaults: defaults)
+    let now = Date(timeIntervalSince1970: 1_784_116_800)
+    let nowMs: Int64 = 1_784_116_800_000
+    let pending = AWAlarmLedgerRecord(
+      id: 9, fp: 1, members: ["t1"], fireAtMs: nowMs + 300_000, origin: "native",
+      eventId: "E-9", pendingUntilMs: nowMs + 60_000)
+    ledger.write(pending)
+    ledger.write(record(id: 1))
+
+    // The OS lists neither: the dart record goes, the pending one stays in
+    // the store but is not answered (the OS does not hold it yet).
+    XCTAssertEqual(ledger.records(present: [], now: now), [])
+    XCTAssertEqual(ledger.records(), [pending])
+    // The OS lists it: answered, lease and all.
+    XCTAssertEqual(ledger.records(present: [9], now: now), [pending])
+    // Round trip through the store keeps the lease.
+    let raw = defaults.array(forKey: AWAlarmLedger.key) as? [[String: Any]]
+    XCTAssertEqual((raw?.first?["pendingUntilMs"] as? NSNumber)?.int64Value, nowMs + 60_000)
+
+    // The lease ran out and the OS never listed it: pruned.
+    XCTAssertEqual(ledger.records(present: [], now: now.addingTimeInterval(60)), [])
+    XCTAssertEqual(ledger.records(), [])
+  }
+
   // MARK: - Action queue v2
 
   func testQueueKeepsEntriesUntilAcked() {

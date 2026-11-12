@@ -22,9 +22,17 @@ struct AWAlarmLedgerRecord: Equatable {
   let origin: String
   /// The snooze event that scheduled a `native` record.
   let eventId: String?
+  /// Set while the record is published AHEAD of its alarm: a native snooze
+  /// writes its record before `AlarmManager.schedule` (the daemon can list
+  /// the new alarm before that call returns, and an OS alarm with no record
+  /// looks like a stray to the Dart plan). Until this UTC ms instant the
+  /// prune keeps the record although the OS does not list the alarm yet;
+  /// nil once the schedule is confirmed.
+  let pendingUntilMs: Int64?
 
   init(
-    id: Int, fp: Int, members: [String], fireAtMs: Int64, origin: String, eventId: String? = nil
+    id: Int, fp: Int, members: [String], fireAtMs: Int64, origin: String,
+    eventId: String? = nil, pendingUntilMs: Int64? = nil
   ) {
     self.id = id
     self.fp = fp
@@ -32,6 +40,14 @@ struct AWAlarmLedgerRecord: Equatable {
     self.fireAtMs = fireAtMs
     self.origin = origin
     self.eventId = eventId
+    self.pendingUntilMs = pendingUntilMs
+  }
+
+  /// This record with the pending lease set to [untilMs] (nil = confirmed).
+  func pending(until untilMs: Int64?) -> AWAlarmLedgerRecord {
+    AWAlarmLedgerRecord(
+      id: id, fp: fp, members: members, fireAtMs: fireAtMs, origin: origin, eventId: eventId,
+      pendingUntilMs: untilMs)
   }
 
   init?(dictionary d: [String: Any]) {
@@ -45,7 +61,8 @@ struct AWAlarmLedgerRecord: Equatable {
       members: d["members"] as? [String] ?? [],
       fireAtMs: fireAtMs,
       origin: d["origin"] as? String ?? "dart",
-      eventId: d["eventId"] as? String)
+      eventId: d["eventId"] as? String,
+      pendingUntilMs: (d["pendingUntilMs"] as? NSNumber)?.int64Value)
   }
 
   /// Plist values only (App Group `UserDefaults`); no `eventId` key when nil.
@@ -58,6 +75,7 @@ struct AWAlarmLedgerRecord: Equatable {
       "origin": origin,
     ]
     if let eventId { d["eventId"] = eventId }
+    if let pendingUntilMs { d["pendingUntilMs"] = NSNumber(value: pendingUntilMs) }
     return d
   }
 }
@@ -92,15 +110,22 @@ struct AWAlarmLedger {
   }
 
   /// The records whose alarm the daemon still holds ([present] = the app ids
-  /// of `AlarmManager.shared.alarms`); the rest are removed from the store.
-  /// Call it only with a list the OS actually returned: an empty set prunes all.
-  func records(present: Set<Int>) -> [AWAlarmLedgerRecord] {
+  /// of `AlarmManager.shared.alarms`); the rest are removed from the store —
+  /// except a record published ahead of its alarm whose lease
+  /// (`pendingUntilMs`) has not run out at [now]: it is kept in the store
+  /// (its schedule is still in flight) but not returned, since the OS does
+  /// not list it. Call it only with a list the OS actually returned: an empty
+  /// set prunes every record that is not pending.
+  func records(present: Set<Int>, now: Date = Date()) -> [AWAlarmLedgerRecord] {
     Self.lock.lock()
     defer { Self.lock.unlock() }
+    let nowMs = AWAlarmActionQueue.epochMs(now)
     let all = load()
-    let kept = all.filter { present.contains($0.id) }
-    if kept.count != all.count { save(kept) }
-    return kept
+    let stored = all.filter { r in
+      present.contains(r.id) || (r.pendingUntilMs.map { nowMs < $0 } ?? false)
+    }
+    if stored.count != all.count { save(stored) }
+    return stored.filter { present.contains($0.id) }
   }
 
   /// Writes [record], replacing any record with its id.

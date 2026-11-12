@@ -303,6 +303,11 @@ struct AWSilenceOutcome: Equatable {
 
 enum AWSnoozeCore {
   static let legacyMessage = "legacy-intent"
+  /// How long a native record published ahead of its alarm survives a prune
+  /// while the OS does not list the alarm yet (`pendingUntilMs`). A schedule
+  /// takes milliseconds; a process killed mid-schedule leaves a lease that
+  /// simply runs out.
+  static let publishLeaseMs: Int64 = 60_000
   /// The fallback's title when a legacy intent carries no presentation.
   static let legacyTitle = "AllisWell"
 
@@ -371,20 +376,30 @@ enum AWSnoozeCore {
         body: request.body, soundName: request.soundName, stopLabel: request.stopLabel,
         snoozeLabel: request.snoozeLabel, snoozePreset: request.preset,
         reminderId: request.reminderId)
+      // The record is published BEFORE the schedule: the daemon can list the
+      // new alarm while `schedule` is still being awaited, and a Dart plan
+      // reading `scheduledAlarms` then would find an OS alarm with no record
+      // — a stray it cancels. The lease keeps the record through a prune
+      // that runs before the OS lists the alarm; a success confirms it, a
+      // failure takes it back (restoring whatever held that id before).
+      let record = AWAlarmLedgerRecord(
+        id: newId, fp: fp, members: members, fireAtMs: untilMs, origin: "native",
+        eventId: eventId)
+      let before = ledger?.record(id: newId)
+      ledger?.write(
+        record.pending(until: AWAlarmActionQueue.epochMs(now) + publishLeaseMs))
       do {
         try await ops.schedule(spec)
         scheduleOutcome = "ok"
-        // Written at once, before anything can make Dart read the OS list:
-        // an OS alarm with no record would look like a stray to the plan.
-        ledger?.write(
-          AWAlarmLedgerRecord(
-            id: newId, fp: fp, members: members, fireAtMs: untilMs, origin: "native",
-            eventId: eventId))
+        ledger?.write(record)
       } catch AWAlarmOpsError.maximumLimitReached {
         scheduleOutcome = "limitReached"
         fail("schedule", "maximumLimitReached", "maximumLimitReached")
       } catch {
         fail("schedule", "other", "\(error)")
+      }
+      if scheduleOutcome != "ok" {
+        if let before { ledger?.write(before) } else { ledger?.remove(id: newId) }
       }
     }
 

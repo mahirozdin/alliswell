@@ -22,9 +22,13 @@ final class SnoozeCoreTests: XCTestCase {
     var calls: [String] = []
     var scheduled: [AWAlarmSpec] = []
     var fallbacks: [AWFallbackRequest] = []
+    /// Runs inside `schedule`, while the caller is still awaiting it: what
+    /// another reader of the ledger (the bridge's `scheduledAlarms`) sees then.
+    var whileScheduling: ((AWAlarmSpec) -> Void)?
 
     func schedule(_ spec: AWAlarmSpec) async throws {
       calls.append("schedule:\(spec.id)")
+      whileScheduling?(spec)
       if let scheduleError { throw scheduleError }
       scheduled.append(spec)
     }
@@ -305,6 +309,65 @@ final class SnoozeCoreTests: XCTestCase {
     XCTAssertEqual(fallback?.userInfo["payload"] as? String, fallback?.payloadJSON)
     XCTAssertEqual(fallback?.userInfo["title"] as? String, "Pay rent")
     XCTAssertEqual((fallback?.userInfo["presentAlert"] as? NSNumber)?.boolValue, true)
+  }
+
+  /// AlarmKit can hold the new alarm before `schedule` returns. A foreground
+  /// plan that reads `scheduledAlarms` in that window must already find the
+  /// native record: an OS alarm with no record reads `members: []`,
+  /// `origin: dart`, and the plan cancels it as a stray — the snoozed alarm
+  /// would then never ring, and no fallback would stand in for it.
+  func testNativeRecordIsPublishedBeforeTheOSCanListTheNewAlarm() async {
+    let ops = FakeOps()
+    final class Seen {
+      var beforeListed: [AWAlarmLedgerRecord]?
+      var record: AWAlarmLedgerRecord?
+    }
+    let seen = Seen()
+    let ledger = self.ledger!
+    let now = self.now
+    ops.whileScheduling = { spec in
+      // A plan whose read lands before the daemon lists the new alarm: the
+      // prune must not take the record away (it answers nothing for it).
+      seen.beforeListed = ledger.records(present: [], now: now)
+      // The bridge's read at the moment the daemon lists the new alarm.
+      seen.record = ledger.records(present: [spec.id], now: now).first { $0.id == spec.id }
+    }
+
+    let result = await run(ops, request(alarmId: ringingId))
+
+    let newId = AWAlarmIdentity.occurrenceId(members: ["t1", "t2"], fireAtMs: expectedUntilMs)
+    XCTAssertEqual(result.newId, newId)
+    XCTAssertEqual(seen.beforeListed, [])
+    XCTAssertEqual(seen.record?.id, newId)
+    XCTAssertEqual(seen.record?.origin, "native")
+    XCTAssertEqual(seen.record?.eventId, "E-1")
+    XCTAssertEqual(seen.record?.members, ["t1", "t2"])
+    XCTAssertEqual(seen.record?.fireAtMs, expectedUntilMs)
+    // Confirmed once the schedule returned: no lease left on it.
+    XCTAssertEqual(
+      ledger.record(id: newId),
+      AWAlarmLedgerRecord(
+        id: newId, fp: seen.record?.fp ?? -1, members: ["t1", "t2"], fireAtMs: expectedUntilMs,
+        origin: "native", eventId: "E-1"))
+    XCTAssertNil(ledger.record(id: newId)?.pendingUntilMs)
+  }
+
+  /// A schedule that fails takes its published record back, so a minute it
+  /// never got does not stay held (#47) and no stray record outlives it.
+  func testFailedScheduleTakesThePublishedRecordBack() async {
+    let ops = FakeOps()
+    ops.scheduleError = AWAlarmOpsError.maximumLimitReached
+    final class Seen { var record: AWAlarmLedgerRecord? }
+    let seen = Seen()
+    let ledger = self.ledger!
+    ops.whileScheduling = { spec in seen.record = ledger.record(id: spec.id) }
+
+    let result = await run(ops, request(alarmId: ringingId))
+
+    XCTAssertEqual(result.scheduleOutcome, "limitReached")
+    XCTAssertEqual(seen.record?.origin, "native", "published while scheduling")
+    XCTAssertTrue(ledger.records().isEmpty)
+    XCTAssertTrue(result.fallbackAdded)
   }
 
   func testLegacyIntentWithoutAlarmIdStopsAlertingAlarms() async {

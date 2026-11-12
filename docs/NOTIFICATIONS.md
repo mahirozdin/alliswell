@@ -427,7 +427,7 @@ it (a no-op through its receipt) and the next launch's plan clears the fallback.
 
 | Key | Value | Rules |
 | --- | --- | --- |
-| `aw.alarmkit.ledger` | array of `{id: int, fp: int, members: [String], fireAtMs: int, origin: "dart"·"native", eventId: String?}` | one record per `id`; written by `schedule` (`dart`) and by a successful native snooze (`native` + `eventId`); removed by `cancel`, `stop` and the stop intent |
+| `aw.alarmkit.ledger` | array of `{id: int, fp: int, members: [String], fireAtMs: int, origin: "dart"·"native", eventId: String?}` | one record per `id`; written by `schedule` (`dart`) and by a successful native snooze (`native` + `eventId`; published ahead of its alarm with `pendingUntilMs`, which keeps it through a prune until that instant while the OS does not list the alarm yet); removed by `cancel`, `stop` and the stop intent |
 | `aw.alarmkit.failures` | array of `{eventId, atMs, stage: schedule·stop·cancel·fallback, code: maximumLimitReached·other, message}` | ring of the last 50 |
 | `aw_alarm_pending_actions` | array of v2 events | kept until `ackActions`; cap 32 (oldest dropped only when full). A v1 entry `{actionId: "acknowledge"·"complete"·"snooze:<preset>", taskId, reminderId}` is rewritten as v2 on first read (new `eventId`, `pressedAtMs` = read time, `taskIds: [taskId]`, `preset` for a snooze) so its `eventId` is stable |
 
@@ -464,8 +464,11 @@ notifications with (confirm against the plugin version in `pubspec.lock`) and `p
 receipt-less handler applies a button to every id in `taskIds` (one snooze target for the group;
 `acknowledge` = each member's urgent reminder due by the tap), and a plain tap opens the first.
 (7) Each failing stage → `aw.alarmkit.failures`. (8) Enqueue the `snooze` event (`untilMs = T`,
-`occurrenceFireAtMs = fireAtMs`, `alarmId`, `newId`, both outcomes); write a `native` ledger record
-only when (4) succeeded. A group snooze or stop is one event for every member.
+`occurrenceFireAtMs = fireAtMs`, `alarmId`, `newId`, both outcomes). The `native` ledger record is
+published **before** the schedule in (4), with `pendingUntilMs = now + 60 s` — the daemon can list
+the new alarm while `schedule` is still awaited, and a plan reading it with no record would cancel
+it as a stray; it is confirmed (lease cleared) when (4) succeeds and taken back when (4) fails. A
+group snooze or stop is one event for every member.
 
 **Plan pass (Dart):** pull and apply first; then for each `scheduledAlarms` row — `alerting` and
 some member still due at that minute (and inside the stale window) → untouched; `alerting`,
