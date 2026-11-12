@@ -387,8 +387,7 @@ func awShouldFetch(
   if let until = backoffUntilMs, until > nowMs, until <= nowMs + Int(kAWBackoffCap * 1000) {
     return false
   }
-  let quietMs = Int(kAWCompletionQuietInterval * 1000)
-  if let completed = completedAtMs, completed <= nowMs + quietMs, nowMs - completed < quietMs {
+  if awCompletionHoldsTheView(now: now, pendingCompletion: false, completedAtMs: completedAtMs) {
     return false
   }
   if hasServerView, let last = lastSuccessAtMs, last <= nowMs,
@@ -397,6 +396,20 @@ func awShouldFetch(
     return false
   }
   return true
+}
+
+/// Whether a completion from the circle holds the drawn view where it is: one
+/// is queued for the app, or the circle was pressed within the last 90 s
+/// (#50, PR2-03). No turn fetches then, and an answer to a request that was
+/// already out when the circle was pressed is not stored either — it would
+/// move the rows under the finger (the tap moved C down a slot and put B
+/// where C was). A stamp later than any honest one could be is ignored.
+func awCompletionHoldsTheView(now: Date, pendingCompletion: Bool, completedAtMs: Int?) -> Bool {
+  if pendingCompletion { return true }
+  let nowMs = awMs(now)
+  let quietMs = Int(kAWCompletionQuietInterval * 1000)
+  guard let completed = completedAtMs, completed <= nowMs + quietMs else { return false }
+  return nowMs - completed < quietMs
 }
 
 /// Whether a turn's fetch changed the stored server view, so the other

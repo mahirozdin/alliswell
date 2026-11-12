@@ -787,6 +787,106 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertEqual(local.buckets.first?.items.map(\.done), [true, false, false])
   }
 
+  /// The circle's intent, as the stub's handler can run it while a request is
+  /// out (another thread, so no `self`).
+  private static func press(_ taskId: String, in defaults: UserDefaults, at date: Date) {
+    _ = AWAlarmActionQueue.enqueue(
+      action: "complete", taskIds: [taskId], origin: "widget", pressedAt: date,
+      in: defaults, notify: false)
+    awStampWidgetCompletion(in: defaults, at: date)
+  }
+
+  /// A request already out when the circle is pressed. The app's view
+  /// [B, C, D] is drawn, C is completed in the second slot while a turn's
+  /// request is on its way, and the answer [A, B, C] arrives after the tap.
+  /// It is not stored: drawing it would move C to the third slot and put B
+  /// under the finger, and the next tap there would complete B.
+  func testAnAnswerThatArrivesAfterATapIsDiscarded() async throws {
+    defaults.set(slotLocalJSON, forKey: kAWLocalSnapshotKey)
+    let before = await fetcher().drawnSnapshot(fetch: false, today: { "2025-11-12" })
+    XCTAssertEqual(todayIds(before), ["B", "C", "D"])
+
+    let body = try JSONSerialization.data(withJSONObject: slotServerBody())
+    let defaults = self.defaults!
+    let pressedAt = start.addingTimeInterval(1)
+    AWStubProtocol.handler = { request in
+      Self.press("C", in: defaults, at: pressedAt)
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+        headerFields: ["ETag": "\"s2\""])!
+      return (response, body)
+    }
+    clock = start.addingTimeInterval(2)
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertNil(defaults.object(forKey: kAWFetchedAtKey), "not a success")
+    XCTAssertNil(defaults.object(forKey: kAWBackoffUntilKey), "not a failure")
+
+    let after = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    XCTAssertEqual(todayIds(after), ["B", "C", "D"], "no row moved under the finger")
+    XCTAssertEqual(after.buckets.first?.items.map(\.done), [false, true, false])
+  }
+
+  /// The same race on a 304: the stored view lost to the app's newer write,
+  /// and a stamp moved on after the tap would make it win and swap the rows.
+  func testANotModifiedThatArrivesAfterATapIsDiscarded() async throws {
+    defaults.set(slotLocalJSON, forKey: kAWLocalSnapshotKey)
+    let fetchedAt = startMs - 2_000_000  // before the app's write, outside the interval
+    let envelope = AWServerEnvelope(
+      fetchedAtMs: fetchedAt, etag: "\"s1\"", query: fetchQuery, body: slotServerBody())
+    defaults.set(envelope.json, forKey: kAWServerSnapshotKey)
+    defaults.set(fetchedAt, forKey: kAWFetchedAtKey)
+    let before = await fetcher().drawnSnapshot(fetch: false, today: { "2025-11-12" })
+    XCTAssertEqual(todayIds(before), ["B", "C", "D"])
+
+    let defaults = self.defaults!
+    let pressedAt = start.addingTimeInterval(1)
+    AWStubProtocol.handler = { request in
+      Self.press("C", in: defaults, at: pressedAt)
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: 304, httpVersion: "HTTP/1.1",
+        headerFields: ["ETag": "\"s1\""])!
+      return (response, Data())
+    }
+    clock = start.addingTimeInterval(2)
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertEqual(int(kAWFetchedAtKey), fetchedAt, "the stamp did not move")
+    XCTAssertEqual(AWServerEnvelope(json: defaults.string(forKey: kAWServerSnapshotKey))?.fetchedAtMs, fetchedAt)
+
+    let after = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(todayIds(after), ["B", "C", "D"])
+    XCTAssertEqual(after.buckets.first?.items.map(\.done), [false, true, false])
+  }
+
+  /// A tap that lands between the fetcher's last look and its write: the
+  /// second look catches it and takes the write back, leaving the view that
+  /// was there before.
+  func testAnAnswerStoredJustAfterATapIsTakenBack() async throws {
+    defaults.set(slotLocalJSON, forKey: kAWLocalSnapshotKey)
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: slotServerBody()),
+      headers: ["ETag": "\"s2\""])
+    let hooked = self.hooked
+    let pressedAt = start.addingTimeInterval(1)
+    hooked.beforeServerWrite = { Self.press("C", in: hooked, at: pressedAt) }
+    clock = start.addingTimeInterval(2)
+
+    let outcome = await fetcher().refresh()
+    XCTAssertNil(hooked.beforeServerWrite, "the write went through the hook")
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertNil(defaults.object(forKey: kAWFetchedAtKey))
+
+    let after = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(todayIds(after), ["B", "C", "D"])
+    XCTAssertEqual(after.buckets.first?.items.map(\.done), [false, true, false])
+  }
+
   /// `apps/app/test/fixtures/widget_view_swap.json`, written by the Dart test
   /// from the app's own builders: `local` is the phone's snapshot of 40 tasks
   /// due at the same minute today, `server` the `GET /widget/snapshot` body for

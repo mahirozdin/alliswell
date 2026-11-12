@@ -519,7 +519,11 @@ token).
    fetch. An answer whose profile is no
    longer current (`baseUrl` or query changed while it was out, e.g. "Private widget" turned on)
    writes nothing — no envelope, no stamp, no failure. The profile is read again after the
-   envelope is written too: changed by then, the write is removed and counts as nothing.
+   envelope is written too: changed by then, the write is removed and counts as nothing. The same
+   holds for an answer (`200` or `304`) to a request that was out when the circle was pressed (a
+   completion queued, or one within 90 s): it writes nothing, and a press that lands just as the
+   envelope is written puts back the envelope stored before it, so the rows drawn at the press
+   stay in their slots.
 5. **Choose** (decision K-11): no usable envelope → local; `pendingOutbox > 0` → local;
    `localWrittenAtMs ≥ fetchedAtMs` → local; else the server's days. A widget completion still
    queued does not pick the view: with no fetch while it is queued (step 2), the view drawn before

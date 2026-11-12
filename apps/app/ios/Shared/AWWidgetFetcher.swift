@@ -181,6 +181,10 @@ struct AWWidgetFetcher {
     // asked with the old profile is not this profile's, and writing it back
     // would put titles into the App Group again (WIDGETS.md §9).
     guard isCurrent(profile, query: query) else { return .discarded }
+    // The circle was pressed while the request was out: the view drawn at the
+    // press stays drawn (#50). Neither a success nor a failure, so once the
+    // completion has synced and 90 s have passed the next turn asks again.
+    guard !completionHoldsTheView() else { return .discarded }
 
     // The device's clock when the answer came: what the choice compares with
     // the app's own write (K-11), never the server's `generatedAt`.
@@ -223,13 +227,30 @@ struct AWWidgetFetcher {
   /// by now means the write is the old profile's: it is taken back (unless
   /// something newer already replaced it) and false is returned. Either the
   /// app's removal or this one catches every order (WIDGETS.md §9).
+  ///
+  /// A press of the circle can land in the same gap (#50): then the write is
+  /// taken back to the view stored before it, so the rows drawn at the press
+  /// stay where they were.
   private func store(_ json: String, for profile: AWWidgetFetchProfile, query: String) -> Bool {
+    let previous = defaults.string(forKey: kAWServerSnapshotKey)
     defaults.set(json, forKey: kAWServerSnapshotKey)
-    if isCurrent(profile, query: query) { return true }
+    let current = isCurrent(profile, query: query)
+    if current && !completionHoldsTheView() { return true }
     if defaults.string(forKey: kAWServerSnapshotKey) == json {
-      defaults.removeObject(forKey: kAWServerSnapshotKey)
+      if current, let previous {
+        defaults.set(previous, forKey: kAWServerSnapshotKey)
+      } else {
+        defaults.removeObject(forKey: kAWServerSnapshotKey)
+      }
     }
     return false
+  }
+
+  /// `awCompletionHoldsTheView` over what the App Group holds now.
+  private func completionHoldsTheView() -> Bool {
+    awCompletionHoldsTheView(
+      now: now(), pendingCompletion: !awQueuedCompletionTaskIds(in: defaults).isEmpty,
+      completedAtMs: defaults.object(forKey: kAWCompletedAtKey) as? Int)
   }
 
   /// Whether the stored profile still asks what `profile` asked, of the same
