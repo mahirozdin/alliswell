@@ -697,6 +697,38 @@ void main() {
     await tester.pump(const Duration(seconds: 6));
   });
 
+  testWidgets('cancelling the custom time dialog snoozes nothing', (
+    tester,
+  ) async {
+    final log = <String>[];
+    void write(String what) => log.add('write $what');
+    await pumpLayer(
+      tester,
+      feed: [theAlarm()],
+      feedback: _LogFeedback(log),
+      extra: [
+        taskStoreProvider.overrideWith(
+          (ref) => _RecordingTaskStore(ref.watch(databaseProvider), write),
+        ),
+      ],
+    );
+    await tester.ensureVisible(find.byKey(const Key('alarm-snooze-custom')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('alarm-snooze-custom')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(log.where((e) => e.startsWith('write')), isEmpty);
+    expect(log, ['start', 'stop', 'start']);
+    expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+  });
+
   testWidgets('backing out of the custom pickers brings the sound back', (
     tester,
   ) async {
@@ -1502,6 +1534,36 @@ void main() {
       await settle(tester);
     },
   );
+
+  testWidgets('cancelling the bulk time picker snoozes nothing', (
+    tester,
+  ) async {
+    final log = <String>[];
+    final events = await pumpList(tester, log: log);
+    await tester.ensureVisible(
+      find.byKey(const Key('alarm-all-snooze-custom')),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('alarm-all-snooze-custom')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    // Today's date accepted, then the time dialog cancelled.
+    await tester.tap(find.text('OK'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.text('Cancel'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(events, isEmpty);
+    expect(
+      container.read(alarmOverlayControllerProvider).ringing,
+      hasLength(3),
+    );
+    // A back-out: the list rings again.
+    expect(_squash(log), ['start', 'stop', 'start']);
+    await settle(tester);
+  });
 
   testWidgets('a row sheet preset counts from the press, not from opening', (
     tester,

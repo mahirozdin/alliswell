@@ -342,12 +342,14 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       initialTime: TimeOfDay.fromDateTime(suggested),
     );
     if (!mounted) return;
+    // Cancelling the time is backing out too: no snooze to a guessed minute.
+    if (time == null) return backOut();
     final until = DateTime(
       date.year,
       date.month,
       date.day,
-      time?.hour ?? suggested.hour,
-      time?.minute ?? suggested.minute,
+      time.hour,
+      time.minute,
     );
     // A past snooze is not a snooze — but saying nothing is worse than
     // refusing (OPH-177: a snooze must always state what will happen).
