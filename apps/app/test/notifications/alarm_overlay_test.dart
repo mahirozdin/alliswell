@@ -10,11 +10,13 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/features/tasks/providers.dart';
+import 'package:alliswell/src/notifications/actions.dart';
 import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/alarmkit_identity.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
+import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/notifications/reminder_store.dart';
@@ -461,6 +463,12 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
 
         expect(find.text('Task R2'), findsOneWidget);
+        // #47 / decisions §3.1: the first action silences the whole list;
+        // the next member shows without a second start…
+        expect(_squash(log), ['start', 'stop']);
+        expect(controller().sounding, isFalse);
+        // …and its sound comes back after a minute nobody touched it.
+        await tester.pump(kAlarmResumeAfter);
         expect(_squash(log), ['start', 'stop', 'start']);
         expect(controller().sounding, isTrue);
       },
@@ -729,11 +737,17 @@ void main() {
         await tester.tap(find.byKey(const Key('alarm-acknowledge')));
         await tester.pump();
         await tester.pump();
-        // The system alert is gone, so the next member is not left silent.
         expect(host.stopped, [7]);
         expect(find.text('Task R2'), findsOneWidget);
         expect(overlay().ringsOnLockScreen, isFalse);
+        // #47: the action silenced the list; the system alert is gone, so a
+        // minute without interaction brings the in-app sound back — never
+        // the AlarmKit alert.
+        expect(log, isEmpty);
+        await tester.pump(kAlarmResumeAfter);
         expect(_squash(log), ['start']);
+        expect(host.stopped, [7]);
+        expect(host.scheduled, isEmpty);
         await tester.pump(const Duration(seconds: 6));
       },
     );
@@ -751,6 +765,328 @@ void main() {
         expect(log, ['start']);
       },
     );
+  });
+
+  // ── #47 / OPH-441: every alarm ringing in the minute, one screen ─────────
+  group('AlarmOverlayController ring list (#47)', () {
+    late List<String> log;
+    late DateTime clock;
+    late StreamController<List<AlarmInput>> feed;
+    late ProviderContainer container;
+    late List<NotificationEvent> events;
+
+    ProviderContainer boot({
+      List<Override> extra = const [],
+      AlarmKitHost? alarmKitHost,
+      bool recordEvents = true,
+    }) {
+      log = [];
+      events = [];
+      clock = now;
+      feed = StreamController<List<AlarmInput>>();
+      container = ProviderContainer(
+        overrides: [
+          ...syncTestOverrides(
+            alarmOverlayAutoShow: true,
+            alarmFeedback: _LogFeedback(log),
+            alarmKitHost: alarmKitHost,
+          ),
+          alarmFeedProvider.overrideWith((ref) => feed.stream),
+          alarmClockProvider.overrideWithValue(() => clock),
+          if (recordEvents)
+            alarmActionApplierProvider.overrideWithValue((event) async {
+              events.add(event);
+              return true;
+            }),
+          ...extra,
+        ],
+      );
+      addTearDown(() async {
+        container.dispose();
+        await feed.close();
+      });
+      container.listen(alarmOverlayControllerProvider, (_, _) {});
+      return container;
+    }
+
+    // A feed emission reaches the controller through Riverpod's scheduler,
+    // a zero timer of its own.
+    Future<void> settle(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1));
+    }
+
+    AlarmOverlayState overlay() =>
+        container.read(alarmOverlayControllerProvider);
+    AlarmOverlayController controller() =>
+        container.read(alarmOverlayControllerProvider.notifier);
+
+    // 11:59:00Z, 11:59:20Z and 11:59:40Z: one UTC minute. R2 is older data
+    // (a snooze that landed in this minute), R3 came from another device.
+    List<AlarmInput> minute() => [
+      alarm(rid: 'R1', remindAt: now.subtract(const Duration(seconds: 60))),
+      alarm(
+        rid: 'R2',
+        remindAt: now.subtract(const Duration(hours: 2)),
+        status: 'snoozed',
+        snoozedUntil: now.subtract(const Duration(seconds: 40)),
+      ),
+      alarm(rid: 'R3', remindAt: now.subtract(const Duration(seconds: 20))),
+    ];
+
+    test(
+      'three urgent alarms in one minute ring as one screen listing all three',
+      () async {
+        boot();
+        feed.add(minute().reversed.toList());
+        await pumpEventQueue();
+
+        // Earliest first, every one of them, one sound for the list.
+        expect(overlay().ringing.map((a) => a.reminderId), ['R1', 'R2', 'R3']);
+        expect(log, ['start']);
+        expect(controller().sounding, isTrue);
+
+        // The pure rule the controller uses agrees.
+        expect(ringingAlarms(minute(), now).map((a) => a.reminderId), [
+          'R1',
+          'R2',
+          'R3',
+        ]);
+        expect(ringingAlarm(minute(), now)?.reminderId, 'R1');
+      },
+    );
+
+    testWidgets(
+      'the first row action silences once and the screen stays for the rest',
+      (tester) async {
+        final rows = minute();
+        final host = FakeAlarmKitHost();
+        boot(
+          alarmKitHost: host,
+          extra: [
+            alarmKitViewProvider.overrideWith(
+              () => AlarmKitView([
+                AlarmKitScheduled(
+                  id: 7,
+                  state: AlarmKitAlarmState.alerting,
+                  members: [for (final r in rows) r.taskId],
+                  fireAtMs: alarmKitFireAtMs(alarmFireAt(rows.first)),
+                ),
+              ]),
+            ),
+          ],
+        );
+        feed.add(rows);
+        await settle(tester);
+        // R1's occurrence rings on the system alert: the app adds no sound.
+        expect(overlay().ringing, hasLength(3));
+        expect(overlay().ringsOnLockScreen, isTrue);
+        expect(log, isEmpty);
+
+        final saved = controller().actOnRow('T-R1', AlarmRowAction.acknowledge);
+        // Inside the call: the alert is stopped and the row is gone.
+        expect(host.stopped, [7]);
+        expect(overlay().ringing.map((a) => a.reminderId), ['R2', 'R3']);
+        expect(await saved, isTrue);
+
+        await tester.pump();
+        expect(overlay().ringsOnLockScreen, isFalse);
+        expect(overlay().silentHere, isFalse);
+        expect(controller().sounding, isFalse);
+        expect(log.where((e) => e == 'start'), isEmpty);
+
+        // The second row: no second stop, no sound, the last row stays.
+        await controller().actOnRow(
+          'T-R2',
+          AlarmRowAction.snooze(now.add(const Duration(minutes: 5))),
+        );
+        expect(host.stopped, [7]);
+        expect(overlay().ringing.single.reminderId, 'R3');
+        expect(log.where((e) => e == 'start'), isEmpty);
+
+        // Each row action is its own in-app event for that row only.
+        expect(events, hasLength(2));
+        expect(events[0].actionId, kActionAcknowledge);
+        expect(events[0].taskIds, ['T-R1']);
+        expect(events[0].origin, 'inapp');
+        expect(events[0].lane, AlarmLogLane.inapp);
+        expect(events[0].eventId, isNotNull);
+        expect(
+          events[0].occurrenceFireAtMs,
+          alarmFireAt(rows.first).millisecondsSinceEpoch,
+        );
+        expect(events[1].actionId, 'snooze');
+        expect(events[1].taskIds, ['T-R2']);
+        expect(
+          events[1].untilMs,
+          now.add(const Duration(minutes: 5)).millisecondsSinceEpoch,
+        );
+        expect(events[1].eventId, isNot(events[0].eventId));
+
+        // The last row answered: the screen closes, nothing is pending.
+        await controller().actOnRow('T-R3', AlarmRowAction.complete);
+        expect(overlay().ringing, isEmpty);
+        expect(events.last.actionId, kActionComplete);
+        await tester.pump(kAlarmResumeAfter * 2);
+        expect(log.where((e) => e == 'start'), isEmpty);
+      },
+    );
+
+    testWidgets(
+      'sound resumes after 60 s without interaction while rows remain',
+      (tester) async {
+        boot();
+        feed.add(minute());
+        await settle(tester);
+        expect(log, ['start']);
+
+        await controller().actOnRow('T-R1', AlarmRowAction.acknowledge);
+        expect(_squash(log), ['start', 'stop']);
+
+        // Any interaction restarts the minute.
+        await tester.pump(const Duration(seconds: 50));
+        controller().interacted();
+        await tester.pump(const Duration(seconds: 50));
+        expect(_squash(log), ['start', 'stop']);
+
+        await tester.pump(const Duration(seconds: 10));
+        expect(_squash(log), ['start', 'stop', 'start']);
+        expect(controller().sounding, isTrue);
+        expect(overlay().ringing, hasLength(2));
+
+        // Never two in-app sounds at once: another minute changes nothing,
+        // and a manual start on a playing bed is a no-op.
+        await tester.pump(kAlarmResumeAfter * 2);
+        controller().startSound();
+        expect(log.where((e) => e == 'start'), hasLength(2));
+
+        await controller().acknowledgeAll();
+        expect(overlay().ringing, isEmpty);
+        expect(controller().sounding, isFalse);
+      },
+    );
+
+    testWidgets(
+      'an alarm arriving while the screen is open joins the list without a '
+      'second sound',
+      (tester) async {
+        boot();
+        final first = alarm(
+          rid: 'R1',
+          remindAt: now.subtract(const Duration(seconds: 10)),
+        );
+        final later = alarm(
+          rid: 'R2',
+          remindAt: now.add(const Duration(seconds: 30)),
+        );
+        feed.add([first, later]);
+        await settle(tester);
+        expect(overlay().ringing.single.reminderId, 'R1');
+        expect(log, ['start']);
+
+        // The timer wheel brings R2 due while R1's screen is open.
+        clock = now.add(const Duration(seconds: 30));
+        await tester.pump(const Duration(seconds: 30));
+        expect(overlay().ringing.map((a) => a.reminderId), ['R1', 'R2']);
+        expect(log, ['start']);
+
+        // A synced alarm in the same minute arrives through the feed.
+        final synced = alarm(
+          rid: 'R3',
+          remindAt: now.add(const Duration(seconds: 20)),
+        );
+        feed.add([first, later, synced]);
+        await settle(tester);
+        expect(overlay().ringing.map((a) => a.reminderId), ['R1', 'R3', 'R2']);
+        expect(log, ['start']);
+        expect(controller().sounding, isTrue);
+
+        // Silenced by an action, the open screen stays quiet when one more
+        // alarm joins: only the untouched minute brings the sound back.
+        await controller().actOnRow('T-R1', AlarmRowAction.acknowledge);
+        expect(_squash(log), ['start', 'stop']);
+        final late = alarm(
+          rid: 'R4',
+          remindAt: now.add(const Duration(seconds: 25)),
+        );
+        feed.add([first, later, synced, late]);
+        await settle(tester);
+        expect(overlay().ringing.map((a) => a.reminderId), ['R3', 'R4', 'R2']);
+        expect(_squash(log), ['start', 'stop']);
+        await tester.pump(kAlarmResumeAfter);
+        expect(_squash(log), ['start', 'stop', 'start']);
+      },
+    );
+
+    test('snooze all is one batch event', () async {
+      final batches = <(List<String>, DateTime, String?)>[];
+      boot(
+        recordEvents: false,
+        extra: [
+          taskStoreProvider.overrideWith(
+            (ref) => _BatchTaskStore(ref.watch(databaseProvider), batches),
+          ),
+        ],
+      );
+      feed.add(minute());
+      await pumpEventQueue();
+      expect(overlay().ringing, hasLength(3));
+
+      final until = now.add(const Duration(minutes: 5));
+      final saved = controller().snoozeAll(until);
+      // Silenced and dismissed before the write lands.
+      expect(overlay().ringing, isEmpty);
+      expect(controller().sounding, isFalse);
+      expect(await saved, isTrue);
+
+      // One snoozeBatch for the three members, under one receipt.
+      expect(batches, hasLength(1));
+      expect(batches.single.$1, ['T-R1', 'T-R2', 'T-R3']);
+      expect(batches.single.$2, until);
+      final db = container.read(databaseProvider);
+      final receipts = await db.select(db.actionReceipts).get();
+      expect(receipts, hasLength(1));
+      expect(receipts.single.eventId, batches.single.$3);
+      expect(receipts.single.action, 'snooze');
+
+      // "Tümünü onayla" on a fresh list: one more receipt, one more event.
+      feed.add([
+        alarm(rid: 'R4', remindAt: now.subtract(const Duration(seconds: 5))),
+        alarm(rid: 'R5', remindAt: now.subtract(const Duration(seconds: 5))),
+      ]);
+      await pumpEventQueue();
+      expect(overlay().ringing, hasLength(2));
+      expect(await controller().acknowledgeAll(), isTrue);
+      expect(overlay().ringing, isEmpty);
+      final after = await db.select(db.actionReceipts).get();
+      expect(after.map((r) => r.action), contains(kActionAcknowledge));
+      expect(after, hasLength(2));
+    });
+
+    testWidgets('a failed group write brings every row back, silently', (
+      tester,
+    ) async {
+      boot(
+        recordEvents: false,
+        extra: [
+          alarmActionApplierProvider.overrideWithValue(
+            (_) async => throw StateError('database is locked'),
+          ),
+        ],
+      );
+      feed.add(minute());
+      await settle(tester);
+      expect(await controller().acknowledgeAll(), isFalse);
+      expect(overlay().ringing, hasLength(3));
+      expect(overlay().ringing.every(overlay().isFailed), isTrue);
+      expect(controller().failedAction(overlay().ringing.first), isNotNull);
+      expect(_squash(log), ['start', 'stop']);
+      // Only the untouched minute brings its sound back.
+      await tester.pump(kAlarmResumeAfter - const Duration(seconds: 1));
+      expect(_squash(log), ['start', 'stop']);
+      await tester.pump(const Duration(seconds: 1));
+      expect(_squash(log), ['start', 'stop', 'start']);
+    });
   });
 }
 
@@ -803,6 +1139,23 @@ class _NoopTaskStore extends TaskStore {
 
   @override
   Future<void> muteAlarms(String taskId, {String? receiptId}) async {}
+}
+
+/// Records every group snooze, then writes it for real (#47).
+class _BatchTaskStore extends TaskStore {
+  _BatchTaskStore(AwDatabase db, this.batches) : super(db, () {});
+
+  final List<(List<String>, DateTime, String?)> batches;
+
+  @override
+  Future<void> snoozeBatch(
+    List<String> taskIds, {
+    required DateTime until,
+    String? receiptId,
+  }) async {
+    batches.add((taskIds, until, receiptId));
+    await super.snoozeBatch(taskIds, until: until, receiptId: receiptId);
+  }
 }
 
 /// An AlarmKit bridge whose `stop` throws the way a dead channel does.

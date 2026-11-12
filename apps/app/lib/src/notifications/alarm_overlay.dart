@@ -5,12 +5,16 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/ulid.dart';
 import '../features/tasks/providers.dart';
+import '../sync/providers.dart';
+import 'actions.dart';
 import 'alarm_sound.dart';
 import '../core/persisted_prefs.dart';
 import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'alarmkit_identity.dart';
+import 'gateway.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
 import 'providers.dart';
@@ -77,32 +81,45 @@ final alarmStaleWindowProvider = Provider<Duration>((ref) {
   return alarmStaleWindowFor(ref.watch(reminderProfileProvider));
 });
 
-/// The URGENT alarm that should be ringing at [now] (earliest fire first), or
-/// null. Only urgent alarms take over the screen (BLUEPRINT §8.2); normal
-/// reminders stay in the OS tray. Pure — the DoD's "fake clock" is just [now].
+/// Every URGENT alarm ringing at [now], earliest fire first (#47): the ring
+/// screen lists all of them — the minute's group, older data that landed in
+/// it, an alarm synced from another device — under one sound. Only urgent
+/// alarms take over the screen (BLUEPRINT §8.2); normal reminders stay in the
+/// OS tray. Pure — the DoD's "fake clock" is just [now].
 ///
 /// [staleAfter] bounds it from below; see [alarmStaleWindowFor].
-AlarmInput? ringingAlarm(
+List<AlarmInput> ringingAlarms(
   List<AlarmInput> alarms,
   DateTime now, {
   Duration staleAfter = _kMinStaleWindow,
 }) {
-  AlarmInput? best;
-  DateTime? bestAt;
   final floor = now.subtract(staleAfter);
-  for (final a in alarms) {
-    if (!a.urgent) continue;
-    final at = alarmFireAt(a);
-    if (at.isAfter(now)) continue;
-    // Too long ago to be "ringing". It is not forgotten — see [missedAlarms].
-    if (at.isBefore(floor)) continue;
-    if (best == null || at.isBefore(bestAt!)) {
-      best = a;
-      bestAt = at;
-    }
-  }
-  return best;
+  final ringing = [
+    for (final a in alarms)
+      // Too long ago to be "ringing" is not forgotten — see [missedAlarms].
+      if (a.urgent &&
+          !alarmFireAt(a).isAfter(now) &&
+          !alarmFireAt(a).isBefore(floor))
+        a,
+  ];
+  ringing.sort(_byFireAt);
+  return ringing;
 }
+
+/// Earliest fire first; ties in a fixed order so the list never reshuffles.
+int _byFireAt(AlarmInput a, AlarmInput b) {
+  final at = alarmFireAt(a).compareTo(alarmFireAt(b));
+  if (at != 0) return at;
+  final task = a.taskId.compareTo(b.taskId);
+  return task != 0 ? task : a.reminderId.compareTo(b.reminderId);
+}
+
+/// The earliest of [ringingAlarms], or null.
+AlarmInput? ringingAlarm(
+  List<AlarmInput> alarms,
+  DateTime now, {
+  Duration staleAfter = _kMinStaleWindow,
+}) => ringingAlarms(alarms, now, staleAfter: staleAfter).firstOrNull;
 
 /// How far back a missed alarm is still worth a card.
 ///
@@ -195,7 +212,8 @@ class AlarmOverlayState {
     this.failed = const {},
   });
 
-  /// One element in this wave; the minute's whole group later (ADR-0068).
+  /// Every urgent alarm ringing now, earliest first (#47, ADR-0068); the
+  /// ring screen shows one, or the list when there are several.
   final List<AlarmInput> ringing;
 
   /// The alarm shows here without the in-app sound: a browser set to
@@ -212,6 +230,51 @@ class AlarmOverlayState {
   bool isFailed(AlarmInput a) => failed.contains(alarmOccurrenceKey(a));
 }
 
+/// How long the ring screen may sit silent with rows left before its sound
+/// comes back (#47, decisions §3.1, DESIGN §11 A3 insistence): the first
+/// action silences the list, a minute without interaction resumes it.
+const Duration kAlarmResumeAfter = Duration(seconds: 60);
+
+/// One ring-screen action on a row or on the whole list (#47).
+class AlarmRowAction {
+  const AlarmRowAction._(this.actionId) : until = null;
+
+  /// Snooze to [until], written unchanged (floored to the second).
+  const AlarmRowAction.snooze(DateTime this.until) : actionId = 'snooze';
+
+  static const acknowledge = AlarmRowAction._(kActionAcknowledge);
+  static const complete = AlarmRowAction._(kActionComplete);
+  static const mute = AlarmRowAction._(kActionMute);
+
+  /// The [NotificationEvent.actionId]: `snooze`, `acknowledge`, `complete`
+  /// or `mute`.
+  final String actionId;
+  final DateTime? until;
+}
+
+/// Applies one in-app action event (#47): [handleNotificationEvent] with the
+/// event's receipt (OPH-427/439), so a group action is one transaction with
+/// one outbox mutation per member. A seam, so tests can record the events.
+final alarmActionApplierProvider =
+    Provider<Future<bool> Function(NotificationEvent)>((ref) {
+      return (event) {
+        AlarmLog? log;
+        try {
+          log = ref.read(alarmLogProvider);
+        } on Object {
+          // No log on this surface: the action still applies.
+        }
+        return handleNotificationEvent(
+          event,
+          tasks: ref.read(taskStoreProvider),
+          reminders: ref.read(reminderStoreProvider),
+          navigate: (_) {},
+          log: log,
+          db: ref.read(databaseProvider),
+        );
+      };
+    });
+
 /// Drives the foreground ring overlay (OPH-143). Watches the alarm feed plus a
 /// foreground timer wheel (NOTIFICATIONS.md §3) so an urgent alarm that comes
 /// due WHILE the app is open rings without waiting for a DB emission. The OS
@@ -224,8 +287,20 @@ class AlarmOverlayState {
 /// stopped the sound the new one had just started on the shared player. Now
 /// the sound follows the occurrences: a newly shown one starts it, an empty
 /// overlay and every [silence] / [handled] stop it.
+///
+/// Several alarms ring as ONE list (#47): one sound for the whole list, an
+/// alarm arriving while the screen is open joins it without a second start,
+/// the first action silences it, and [kAlarmResumeAfter] without interaction
+/// while rows remain brings the in-app sound back (never the AlarmKit alert).
 class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   Timer? _timer;
+
+  /// The no-interaction rule's clock; reset by every interaction.
+  Timer? _resumeTimer;
+
+  /// Whether the last evaluation showed the screen: only opening it starts
+  /// the sound, rows joining an open screen never do.
+  bool _open = false;
 
   /// Occurrences the user just acted on: hide immediately and don't re-ring
   /// before the write lands (and, for an offline synthetic acknowledge that
@@ -265,22 +340,33 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
 
   @override
   AlarmOverlayState build() {
-    // Only the timer here: build re-runs on every feed emission, and stopping
-    // the sound in onDispose would cut it on each of them.
-    ref.onDispose(() => _timer?.cancel());
-    // A pass that scheduled, or an action that stopped, an AlarmKit alarm
-    // changes who owns the sound of what is showing.
-    ref.watch(alarmKitViewProvider);
+    // Disposed for good, or rebuilt because the gate changed: the timers go
+    // with it. The feed and the AlarmKit view are LISTENED to, not watched,
+    // so their emissions re-evaluate without a rebuild — a rebuild would
+    // cancel the no-interaction minute (#47) on every emission.
+    ref.onDispose(() {
+      _timer?.cancel();
+      _resumeTimer?.cancel();
+      _resumeTimer = null;
+    });
     if (!ref.watch(alarmOverlayAutoShowProvider)) {
       return AlarmOverlayState(silentHere: ref.read(alarmOpensSilentProvider));
     }
-    return _evaluate(ref.watch(alarmFeedProvider).value ?? const []);
+    // A pass that scheduled, or an action that stopped, an AlarmKit alarm
+    // changes who owns the sound of what is showing.
+    ref.listen(alarmKitViewProvider, (_, _) => state = _evaluate(_feed()));
+    ref.listen(
+      alarmFeedProvider,
+      (_, next) => state = _evaluate(next.value ?? const []),
+    );
+    return _evaluate(_feed());
   }
 
-  AlarmOverlayState _evaluate(List<AlarmInput> alarms) {
+  AlarmOverlayState _evaluate(List<AlarmInput> alarms, {bool resume = false}) {
     _timer?.cancel();
     final silentHere = ref.read(alarmOpensSilentProvider);
     if (!ref.read(alarmOverlayAutoShowProvider)) {
+      _close();
       return AlarmOverlayState(silentHere: silentHere);
     }
     // Drop keys whose occurrence has left the feed: a snoozed alarm is a new
@@ -294,50 +380,95 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     final live = alarms
         .where((a) => !_handled.contains(alarmOccurrenceKey(a)))
         .toList();
-    final shown =
-        ringingAlarm(
-          live,
-          now,
-          staleAfter: ref.read(alarmStaleWindowProvider),
-        ) ??
-        // A failed write brings its alarm back even when it was opened from
-        // the missed card, outside the ring window: say it, never lose it.
-        live
-            .where((a) => _failures.containsKey(alarmOccurrenceKey(a)))
-            .firstOrNull;
+    final ringing = ringingAlarms(
+      live,
+      now,
+      staleAfter: ref.read(alarmStaleWindowProvider),
+    );
+    final shownKeys = {for (final a in ringing) alarmOccurrenceKey(a)};
+    // A failed write brings its alarm back even when it was opened from the
+    // missed card, outside the ring window: say it, never lose it.
+    final rows = [
+      ...ringing,
+      for (final a in live)
+        if (_failures.containsKey(alarmOccurrenceKey(a)) &&
+            !shownKeys.contains(alarmOccurrenceKey(a)))
+          a,
+    ]..sort(_byFireAt);
 
-    if (shown == null) {
+    // The wheel keeps turning while the screen is open: an alarm coming due
+    // then joins the list.
+    final next = nextUrgentFireAfter(live, now);
+    if (next != null) {
+      final wait = next.difference(now);
+      _timer = Timer(wait.isNegative ? Duration.zero : wait, _tick);
+    }
+
+    if (rows.isEmpty) {
       if (_sounding) _stopSound();
-      final next = nextUrgentFireAfter(live, now);
-      if (next != null) {
-        final wait = next.difference(now);
-        _timer = Timer(wait.isNegative ? Duration.zero : wait, _tick);
-      }
+      _close();
       return AlarmOverlayState(silentHere: silentHere);
     }
 
-    final key = alarmOccurrenceKey(shown);
-    final failed = _failures.containsKey(key);
-    // iOS 26+: the system alert already rings this occurrence; a second,
+    final failed = {
+      for (final a in rows)
+        if (_failures.containsKey(alarmOccurrenceKey(a))) alarmOccurrenceKey(a),
+    };
+    // iOS 26+: the system alert already rings (part of) the list; a second,
     // in-app sound on top of it is the #46 screenshot.
-    final onLockScreen = _covering(shown).isNotEmpty;
+    final onLockScreen = rows.any((a) => _covering(a).isNotEmpty);
     if (onLockScreen && _sounding) _stopSound();
     final quiet = silentHere || onLockScreen;
-    if (_announced.add(key) && !failed && !quiet && !_sounding) {
-      // A newly shown occurrence. A re-shown failed one stays quiet: its
-      // sound comes back only through the no-interaction rule, never here.
+    final opening = !_open;
+    _open = true;
+    var fresh = false;
+    for (final a in rows) {
+      final key = alarmOccurrenceKey(a);
+      if (_announced.add(key) && !failed.contains(key)) fresh = true;
+    }
+    if (!quiet && !_sounding && (resume || (opening && fresh))) {
+      // The screen opens on a new alarm, or a minute passed untouched. A
+      // re-shown failed one, and a row joining an open screen, stay quiet:
+      // their sound comes back only through the no-interaction rule.
       _sound().start();
       _sounding = true;
     }
+    if (quiet || _sounding) {
+      _resumeTimer?.cancel();
+      _resumeTimer = null;
+    } else {
+      _resumeTimer ??= Timer(kAlarmResumeAfter, _resume);
+    }
     return AlarmOverlayState(
-      ringing: [shown],
+      ringing: rows,
       silentHere: quiet,
       ringsOnLockScreen: onLockScreen,
-      failed: failed ? {key} : const {},
+      failed: failed,
     );
   }
 
   void _tick() => state = _evaluate(_feed());
+
+  void _resume() {
+    _resumeTimer = null;
+    state = _evaluate(_feed(), resume: true);
+  }
+
+  void _close() {
+    _open = false;
+    _resumeTimer?.cancel();
+    _resumeTimer = null;
+  }
+
+  /// The person touched the ring screen (a row, a sheet, a scroll): the
+  /// no-interaction minute starts again.
+  void interacted() {
+    _resumeTimer?.cancel();
+    _resumeTimer = null;
+    if (_open && !_sounding) {
+      _resumeTimer = Timer(kAlarmResumeAfter, _resume);
+    }
+  }
 
   void _stopSound() {
     _feedback?.stop();
@@ -345,8 +476,12 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   }
 
   /// Stop the in-app sound now, synchronously — the first thing every ring
-  /// screen action does, before any await.
-  void silence() => _stopSound();
+  /// screen action does, before any await. An interaction: if rows remain,
+  /// the sound comes back after [kAlarmResumeAfter] untouched.
+  void silence() {
+    _stopSound();
+    interacted();
+  }
 
   List<AlarmKitScheduled> _covering(AlarmInput alarm) =>
       alarmKitCovering(ref.read(alarmKitViewProvider), alarm);
@@ -408,6 +543,11 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// Start the in-app sound on request: the screen's "Sesi başlat", and a
   /// custom snooze whose pickers were cancelled.
   void startSound() {
+    // Never two in-app sounds at once: a playing bed is not started again
+    // (a refused one is — that is what "Sesi başlat" is for).
+    if (_sounding && !_sound().soundBlocked.value) return;
+    _resumeTimer?.cancel();
+    _resumeTimer = null;
     _sound().start();
     _sounding = true;
   }
@@ -425,19 +565,106 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// Await [action]'s write after the screen closed. True when it landed; on
   /// a throw the occurrence comes back with the error and stays silent
   /// (decision K-01: say it, the alarm comes back) — no snackbar.
-  Future<bool> commit(AlarmInput alarm, AlarmPendingAction action) async {
+  Future<bool> commit(AlarmInput alarm, AlarmPendingAction action) =>
+      _commitAll([alarm], action);
+
+  Future<bool> _commitAll(
+    List<AlarmInput> alarms,
+    AlarmPendingAction action,
+  ) async {
     try {
       await action.write();
     } on Object catch (e) {
       debugPrint('alarm action failed: $e');
-      final key = alarmOccurrenceKey(alarm);
-      _handled.remove(key);
-      _failures[key] = action;
+      for (final alarm in alarms) {
+        final key = alarmOccurrenceKey(alarm);
+        _handled.remove(key);
+        _failures[key] = action;
+      }
       state = _evaluate(_feed());
       return false;
     }
     action.onSaved?.call();
     return true;
+  }
+
+  /// One row's action (#47): [taskId]'s ringing occurrences. Silences the
+  /// list, stops the AlarmKit alert covering the row, drops the row at once
+  /// and applies ONE in-app event; the rest of the list stays. True when
+  /// the write landed; a failed one brings the row back with its error.
+  Future<bool> actOnRow(
+    String taskId,
+    AlarmRowAction action, {
+    void Function()? onSaved,
+  }) => _act(
+    [
+      for (final a in state.ringing)
+        if (a.taskId == taskId) a,
+    ],
+    action,
+    onSaved: onSaved,
+  );
+
+  /// "Tümünü ertele": every row to [until], one event, one batch (#47).
+  Future<bool> snoozeAll(DateTime until, {void Function()? onSaved}) =>
+      _act(state.ringing, AlarmRowAction.snooze(until), onSaved: onSaved);
+
+  /// "Tümünü onayla": every row, one event (#47).
+  Future<bool> acknowledgeAll({void Function()? onSaved}) =>
+      _act(state.ringing, AlarmRowAction.acknowledge, onSaved: onSaved);
+
+  Future<bool> _act(
+    List<AlarmInput> rows,
+    AlarmRowAction action, {
+    void Function()? onSaved,
+  }) {
+    if (rows.isEmpty) return Future.value(false);
+    // Silence → stop the system alert → dismiss, all before any await (#46).
+    silence();
+    for (final a in rows) {
+      stopAlarmKit(a);
+    }
+    for (final a in rows) {
+      final key = alarmOccurrenceKey(a);
+      _handled.add(key);
+      _failures.remove(key);
+    }
+    state = _evaluate(_feed());
+    final event = _eventFor(rows, action);
+    final apply = ref.read(alarmActionApplierProvider);
+    // A retry re-sends the SAME event: a failed transaction rolled its
+    // receipt back, and one that did land is a no-op the second time.
+    return _commitAll(
+      rows,
+      AlarmPendingAction(() => apply(event), onSaved: onSaved),
+    );
+  }
+
+  /// The in-app event for [rows] (NOTIFICATIONS §2b.3): origin `inapp`, a
+  /// fresh id, the members de-duplicated in list order.
+  NotificationEvent _eventFor(List<AlarmInput> rows, AlarmRowAction action) {
+    final members = <String>{for (final a in rows) a.taskId}.toList();
+    final minutes = {
+      for (final a in rows) alarmFireAt(a).millisecondsSinceEpoch ~/ 60000,
+    };
+    final until = action.until;
+    return NotificationEvent(
+      eventId: newUlid(),
+      actionId: action.actionId,
+      taskIds: members,
+      untilMs: until == null
+          ? null
+          : until.millisecondsSinceEpoch ~/ 1000 * 1000,
+      // One minute names the occurrence; rows from several minutes leave it
+      // out, and every member's urgent reminder due by the press is the one
+      // that rang.
+      occurrenceFireAtMs: minutes.length == 1
+          ? alarmFireAt(rows.first).millisecondsSinceEpoch
+          : null,
+      pressedAtMs: _now().toUtc().millisecondsSinceEpoch,
+      origin: 'inapp',
+      lane: AlarmLogLane.inapp,
+    );
   }
 
   /// The action "Tekrar dene" repeats for [alarm], if its write failed.
