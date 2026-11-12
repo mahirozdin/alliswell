@@ -158,7 +158,7 @@ when each field arrived and why:
                    "priority": "high", "time": "11:30", "projectColor": "#2563EB" },
                  { "id": "evt…", "title": "Standup", "done": false, "priority": "none",
                    "time": "09:00–09:15", "kind": "event", "day": "2026-07-17" } ], // v5
-      "more": 2 }                           // "+N" — count minus the rows carried (12 max)
+      "more": 2 }                           // "+N" — entries past the rows carried (12 max)
     // … noDate, today, thisWeek, thisMonth; empty buckets are omitted …
   ],
   "lists": [ … ],                           // v4 — what a widget can be set to
@@ -274,8 +274,17 @@ widget showed yesterday's Today under today's date until the app ran.
   (`ios/Shared/AWWidgetDayPick.swift`) returns the entry's local day, `.stale` for a day the
   snapshot does not hold, or `.topLevel` for a v5 snapshot. Stale: the header keeps the entry's
   date, the list becomes `strings.stale`, the counter and `next` are hidden (the circular
-  lock-screen widget shows a refresh glyph). The done stamp of an in-widget completion reaches
-  every day view and its project views.
+  lock-screen widget shows a refresh glyph).
+- **A completion from the circle (OPH-451)** is written into the stored snapshot by
+  `awMarkSnapshotDone` (`ios/Shared/AWSnapshotModel.swift`), everywhere the task is drawn and by
+  the rules Dart wrote it with: a done row in today's views, gone from a later day's, one fewer
+  in its bucket's `count` and (overdue/today) in `openToday`, whose words are re-spelled from
+  `strings.openTodayPattern` ("{count} açık"); a `next` naming the task moves to the next open
+  row in Dart's order. The timeline also reads through the completions still queued for the app,
+  so a Dart rewrite before the app pulls the queue cannot put the row back. The circle's spoken
+  label is `strings.completeTask` ("Tamamla: {title}").
+- **A bucket's `count` is its open rows (OPH-451)** — Home's header rule (OPH-394): today's
+  finished row is drawn at the bottom but not counted. `more` still counts every trimmed entry.
 - **Size:** `kWidgetSnapshotMaxBytes` = 384 KiB, from a measured 282 425 bytes (300 tasks, 20
   projects, long Turkish titles), locked by a test. The iOS archive budget counts one day's rows.
 
@@ -390,7 +399,7 @@ As built (`awRowBudget` in Swift; Android's list scrolls at every size):
 
 | Size | Date header | List | Actions |
 | --- | --- | --- | --- |
-| **4×2 medium** | none — the rows need the height | 4 rows with bucket labels + counts (3 when the widget is set to a project: its name takes a line) | "+" in a narrow trailing column; per-row complete |
+| **4×2 medium** | none — the rows need the height | up to 4 rows with bucket labels + counts (3 when the widget is set to a project: its name takes a line), only as many as fit whole in the card's height (`awFitBuckets`, OPH-451; about 3 on a 6.3" iPhone); the rest go to "+N" | "+" in a narrow trailing column; per-row complete |
 | **4×4 large** | full: day number · weekday · month, the clock, today's open count, "+" | ~10 rows (11 compact) with labels + counts + "+N" | "+" closes the header; per-row complete |
 | **extraLarge (iPad/Mac) · tall Android** | full | ~18 rows (19 compact); Android scrolls | same |
 | **Lock screen (iOS)** | — | rectangle: the next task · circle: today's open count | tap opens the task / the app |

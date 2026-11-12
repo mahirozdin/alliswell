@@ -1191,6 +1191,7 @@
     "allCaughtUp": "Her şey tamam",
     "addTask": "Görev ekle",
     "openToday": "{count} açık",
+    "completeTask": "Tamamla: {title}",
     "upNext": "Sıradaki",
     "chooseList": "Bu widget’ta göster",
     "list": {

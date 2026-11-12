@@ -143,6 +143,50 @@ void main() {
       expect(today.toJson()['more'], 2);
     });
 
+    // OPH-451 (#50, IOS-10): a bucket's number is what is still owed, by
+    // Home's own rule (OPH-394): today's finished row stays visible at the
+    // bottom, but it is not counted. The "+N" is still every trimmed row.
+    test('a bucket counts its open rows only; +N still counts every '
+        'trimmed row', () {
+      final snap = buildWidgetSnapshot(
+        [
+          for (var i = 0; i < 3; i++)
+            _task('t$i', dueAt: DateTime(2026, 7, 17, 9)),
+          _task(
+            'done',
+            dueAt: DateTime(2026, 7, 17, 8),
+            status: 'completed',
+            completedAt: DateTime(2026, 7, 17, 9, 30),
+          ),
+        ],
+        now: now,
+        rowsPerBucket: 2,
+      );
+      final today = snap.buckets.single;
+      expect(today.count, 3);
+      expect(today.items.map((r) => r.id), ['t0', 't1']);
+      expect(today.more, 2);
+      expect(snap.openToday, 3);
+    });
+
+    // OPH-451 (#50): the words a native completion needs — the open count's
+    // phrase with its number still to fill, and the circle's spoken label
+    // with the title still to fill. The native side owns no translations.
+    test('strings carry the open-count pattern and the circle\'s label', () {
+      final snap = buildWidgetSnapshot([
+        _task('today', dueAt: DateTime(2026, 7, 17, 11, 30)),
+      ], now: now);
+      expect(snap.strings['openTodayPattern'], '{count} open');
+      expect(snap.strings['completeTask'], 'Complete: {title}');
+
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      final tr = buildWidgetSnapshot([
+        _task('t', dueAt: DateTime(2026, 7, 17, 11, 30)),
+      ], now: now);
+      expect(tr.strings['openTodayPattern'], '{count} açık');
+      expect(tr.strings['completeTask'], 'Tamamla: {title}');
+    });
+
     test('carries the project color and a done flag', () {
       final snap = buildWidgetSnapshot(
         [_task('t', dueAt: DateTime(2026, 7, 17, 9), projectId: 'P1')],

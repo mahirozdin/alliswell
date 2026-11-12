@@ -9,3 +9,12 @@
 "Adds a task to AllisWell. Dates and times in the text are understood." = "Adds a task to AllisWell. Dates and times in the text are understood.";
 "Opens AllisWell on today." = "Opens AllisWell on today.";
 "Add ${text} to AllisWell" = "Add ${text} to AllisWell";
+
+/* OPH-451 (IOS-07): the home-screen widget's gallery words and its own
+   intents. The widget extension bundles this file too. */
+"AllisWell" = "AllisWell";
+"Your tasks at a glance — overdue, today and beyond." = "Your tasks at a glance — overdue, today and beyond.";
+"Complete task" = "Complete task";
+"Marks an AllisWell task done." = "Marks an AllisWell task done.";
+"List" = "List";
+"Choose which list this widget shows." = "Choose which list this widget shows.";

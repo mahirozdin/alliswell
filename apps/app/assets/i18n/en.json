@@ -1192,6 +1192,7 @@
     "allCaughtUp": "All caught up",
     "addTask": "Add task",
     "openToday": "{count} open",
+    "completeTask": "Complete: {title}",
     "upNext": "Up next",
     "chooseList": "Show in this widget",
     "list": {

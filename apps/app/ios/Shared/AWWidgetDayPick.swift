@@ -98,3 +98,71 @@ extension AWSnapshot {
       views: nil, density: density, days: nil)
   }
 }
+
+// MARK: - Rows that fit (OPH-451, IOS-09)
+
+/// Greedily trims buckets so the drawn rows fit the size's row budget. The
+/// "+N" of a bucket is every row it does not draw: the ones trimmed here plus
+/// the ones the app already left out (`more`). Not `count - drawn`: a bucket
+/// counts its open rows only, and today's finished rows are drawn too.
+func awDistribute(_ buckets: [AWBucket], budget: Int) -> [AWBucket] {
+  var remaining = budget
+  var out: [AWBucket] = []
+  for b in buckets {
+    if remaining <= 0 { break }
+    let take = min(b.items.count, remaining)
+    let trimmed = Array(b.items.prefix(take))
+    let extra = (b.more ?? 0) + (b.items.count - take)
+    out.append(
+      AWBucket(
+        key: b.key, label: b.label, count: b.count, items: trimmed,
+        more: extra > 0 ? extra : nil))
+    remaining -= take
+  }
+  return out
+}
+
+/// The heights the list is laid out with, in points — what
+/// `AllisWellWidgetEntryView` draws: a 28 pt row (the circle's frame), a
+/// bucket label or "+N" line, the gap between a bucket's lines and the gap
+/// between the list's parts (the list title, each bucket).
+struct AWListMetrics {
+  var row: Double = 28
+  var line: Double = 14
+  var title: Double = 16
+  var rowGap: Double = 4
+  var partGap: Double = 8
+
+  static func standard(compact: Bool) -> AWListMetrics {
+    AWListMetrics(rowGap: compact ? 1 : 4, partGap: compact ? 4 : 8)
+  }
+}
+
+/// How tall `buckets` draw, with the list's title line when `titled`.
+func awListHeight(_ buckets: [AWBucket], titled: Bool, metrics m: AWListMetrics) -> Double {
+  var parts: [Double] = titled ? [m.title] : []
+  for b in buckets {
+    var lines = [m.line] + Array(repeating: m.row, count: b.items.count)
+    if let more = b.more, more > 0 { lines.append(m.line) }
+    parts.append(lines.reduce(0, +) + m.rowGap * Double(lines.count - 1))
+  }
+  guard !parts.isEmpty else { return 0 }
+  return parts.reduce(0, +) + m.partGap * Double(parts.count - 1)
+}
+
+/// The rows a list of `height` points draws: at most `budget`, and only as
+/// many as fit WHOLE — a row cut by the widget's edge reads as a glitch, and
+/// the "+N" says what was left out. Nil `height` is the budget alone.
+func awFitBuckets(
+  _ buckets: [AWBucket], budget: Int, height: Double?, titled: Bool, metrics: AWListMetrics
+) -> [AWBucket] {
+  guard let height else { return awDistribute(buckets, budget: budget) }
+  var rows = max(budget, 0)
+  while rows > 1 {
+    let fitted = awDistribute(buckets, budget: rows)
+    if awListHeight(fitted, titled: titled, metrics: metrics) <= height { return fitted }
+    rows -= 1
+  }
+  // One row is the floor: a list that says nothing is worse than a tight one.
+  return awDistribute(buckets, budget: min(rows, budget))
+}

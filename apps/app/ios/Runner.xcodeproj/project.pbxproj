@@ -35,6 +35,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		9BFE3BFAD237B825A5585911 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
+		A5CB0451000000000000A001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
 		A0C22B17E2CAB08B98FC56D2 /* SnoozeCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100165B4F549534A7D17108A /* SnoozeCoreTests.swift */; };
 		A27462FC05C6C20A744A7DA9 /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		A54B30D1301EDC60003E181C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A54B30CF301EDC60003E181C /* GoogleService-Info.plist */; };
@@ -46,6 +47,7 @@
 		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
 		ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */; };
+		A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A003 /* WidgetCompletionTests.swift */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
@@ -131,6 +133,7 @@
 		5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWWidgetDayPick.swift; sourceTree = "<group>"; };
 		6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWSnapshotModel.swift; sourceTree = "<group>"; };
 		6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDayPickTests.swift; sourceTree = "<group>"; };
+		A5CB0451000000000000A003 /* WidgetCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetCompletionTests.swift; sourceTree = "<group>"; };
 		7403D73B437A53572909BD99 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -259,6 +262,7 @@
 				100165B4F549534A7D17108A /* SnoozeCoreTests.swift */,
 				14BB1652DA44CD8FA16E513F /* SnoozeTargetTests.swift */,
 				6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */,
+				A5CB0451000000000000A003 /* WidgetCompletionTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -545,6 +549,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A567B04B3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */,
+				A5CB0451000000000000A001 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -695,6 +700,7 @@
 				A0C22B17E2CAB08B98FC56D2 /* SnoozeCoreTests.swift in Sources */,
 				8177D49B49DC1DF1A0DCA22A /* SnoozeTargetTests.swift in Sources */,
 				AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */,
+				A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -155,61 +155,212 @@ extension AWSnapshot {
   }
 }
 
-// MARK: - The done stamp (round 15, OPH-233)
+// MARK: - The done stamp (round 15, OPH-233; OPH-451)
 
-/// Flips `done` on every row with `taskId` INSIDE the stored snapshot JSON, so
-/// the tapped circle fills on the very next timeline render — the honest
-/// optimistic echo of the queued completion. Works on the JSONSerialization
-/// tree, not the Codable model: a decode→encode round trip would silently DROP
-/// any field this build does not know yet (the OPH-187 versioning stance).
+/// Records a completion from the widget's circle INSIDE the stored snapshot
+/// JSON, so the very next timeline render shows it — the honest optimistic
+/// echo of the queued completion. Works on the JSONSerialization tree, not the
+/// Codable model: a decode→encode round trip would silently DROP any field this
+/// build does not know yet (the OPH-187 versioning stance).
 ///
 /// The row sits in the top level, in its project's view (OPH-336) and, since
 /// v6, in every day view and that day's project views (OPH-451) — the entries
-/// draw from the days, so a stamp on the top level alone would never show.
-/// Returns whether anything changed.
+/// draw from the days, so every place is written. In each one, by the rules
+/// the app wrote it with (widget_snapshot.dart, DESIGN §8 W9, §20 C5):
+/// - the row turns done, as the app draws today's finished work; in a LATER
+///   day's view it leaves, because the app keeps a finished task only on the
+///   day it was finished (`keepCompletedSince`);
+/// - its bucket's number drops by one (a bucket counts open rows only);
+/// - the open count drops by one when the row was overdue or today, and its
+///   words are re-spelled from `strings.openTodayPattern` (the app's phrase);
+/// - the lock screen's `next`, when it is this task, moves on to the first
+///   open task the app ordered after it.
+///
+/// Idempotent: a row already done changes nothing, so a completion applied
+/// again (a queued one on every read, `awApplyPendingCompletions`) never counts
+/// twice. `today` is the completion's local day, `yyyy-MM-dd`; nil treats
+/// every day as today. Returns whether anything changed.
 @discardableResult
-func awMarkSnapshotDone(_ json: inout [String: Any], taskId: String) -> Bool {
+func awMarkSnapshotDone(_ json: inout [String: Any], taskId: String, today: String? = nil) -> Bool {
   var changed = false
-  awMarkViewDone(&json, taskId: taskId, changed: &changed)
+  var strings = json["strings"] as? [String: Any]
+  let pattern = strings?["openTodayPattern"] as? String
+
+  // The top level: its count's words live in `strings.openToday`.
+  var topLabel = strings?["openToday"] as? String
+  awCompleteInLevel(
+    &json, taskId: taskId, leaves: false, label: &topLabel, pattern: pattern,
+    changed: &changed)
+  if strings != nil {
+    strings?["openToday"] = topLabel
+    json["strings"] = strings
+  }
+
   if var days = json["days"] as? [[String: Any]] {
     for index in days.indices {
-      awMarkViewDone(&days[index], taskId: taskId, changed: &changed)
+      let date = days[index]["date"] as? String
+      let later = today != nil && date != nil && date! > today!
+      awCompleteInLevelWithOwnLabel(
+        &days[index], taskId: taskId, leaves: later, pattern: pattern, changed: &changed)
     }
     json["days"] = days
   }
   return changed
 }
 
-/// One level of the snapshot (the top level or a day): its buckets and every
-/// project view under it.
-private func awMarkViewDone(_ view: inout [String: Any], taskId: String, changed: inout Bool) {
-  if let buckets = view["buckets"] as? [[String: Any]] {
-    view["buckets"] = awMarkDone(buckets, taskId: taskId, changed: &changed)
+/// Applies every completion still queued for the app (`AWAlarmActionQueue`)
+/// to a snapshot just read. The app rewrites the snapshot from its own data
+/// whenever that changes, and until it has pulled the queue its data still
+/// has the task open — so a rewrite between the tap and the pull would put the
+/// row back. Reading through the queue keeps it done until the app knows.
+@discardableResult
+func awApplyPendingCompletions(
+  _ json: inout [String: Any], taskIds: [String], today: String?
+) -> Bool {
+  var changed = false
+  for taskId in taskIds where awMarkSnapshotDone(&json, taskId: taskId, today: today) {
+    changed = true
   }
-  if var views = view["views"] as? [String: Any] {
+  return changed
+}
+
+/// The spoken label of a row's complete circle: the app's words with the
+/// row's title (OPH-451, IOS-11) — never the symbol's name.
+func awCompleteLabel(title: String, strings: [String: String]?) -> String {
+  let pattern = strings?["completeTask"] ?? ""
+  if pattern.contains("{title}") {
+    return pattern.replacingOccurrences(of: "{title}", with: title)
+  }
+  // A snapshot from an app without the phrase: the title still names the row.
+  return title
+}
+
+/// The open count's words for `new`, from the app's phrase; for a snapshot
+/// without it, the old words with their number replaced; nil when neither
+/// works (the header then shows the bare number, `awOpenTodayLabel`).
+func awRespellOpenCount(_ label: String?, from old: Int, to new: Int, pattern: String?)
+  -> String?
+{
+  if let pattern, pattern.contains("{count}") {
+    return pattern.replacingOccurrences(of: "{count}", with: String(new))
+  }
+  guard let label, let range = label.range(of: String(old)) else { return nil }
+  return label.replacingCharacters(in: range, with: String(new))
+}
+
+/// A day view or a project view: its count's words are its own
+/// `openTodayLabel`.
+private func awCompleteInLevelWithOwnLabel(
+  _ level: inout [String: Any], taskId: String, leaves: Bool, pattern: String?,
+  changed: inout Bool
+) {
+  var label = level["openTodayLabel"] as? String
+  let before = level["openToday"] as? Int
+  awCompleteInLevel(
+    &level, taskId: taskId, leaves: leaves, label: &label, pattern: pattern, changed: &changed)
+  if before != level["openToday"] as? Int { level["openTodayLabel"] = label }
+}
+
+/// The buckets that count toward the open count (W9) — `WidgetBucket.overdue`
+/// and `.today` in Dart.
+private let kAWCountedBuckets: Set<String> = ["overdue", "today"]
+
+/// The order the app picks `next` in (`nextTaskForWidget`): dated work first,
+/// the dateless last.
+private let kAWNextOrder = ["overdue", "today", "thisWeek", "thisMonth", "noDate"]
+
+/// One level of the snapshot (the top level or a day) and every project view
+/// under it.
+private func awCompleteInLevel(
+  _ level: inout [String: Any], taskId: String, leaves: Bool, label: inout String?,
+  pattern: String?, changed: inout Bool
+) {
+  awCompleteInView(
+    &level, taskId: taskId, leaves: leaves, label: &label, pattern: pattern, changed: &changed)
+  if var views = level["views"] as? [String: Any] {
     for (key, value) in views {
-      guard
-        var project = value as? [String: Any],
-        let buckets = project["buckets"] as? [[String: Any]]
-      else { continue }
-      project["buckets"] = awMarkDone(buckets, taskId: taskId, changed: &changed)
+      guard var project = value as? [String: Any] else { continue }
+      awCompleteInLevelWithOwnLabel(
+        &project, taskId: taskId, leaves: leaves, pattern: pattern, changed: &changed)
       views[key] = project
     }
-    view["views"] = views
+    level["views"] = views
   }
 }
 
-private func awMarkDone(
-  _ buckets: [[String: Any]], taskId: String, changed: inout Bool
-) -> [[String: Any]] {
-  var buckets = buckets
-  for bucketIndex in buckets.indices {
-    guard var items = buckets[bucketIndex]["items"] as? [[String: Any]] else { continue }
-    for itemIndex in items.indices where items[itemIndex]["id"] as? String == taskId {
-      items[itemIndex]["done"] = true
+/// One list: its buckets, its open count and its `next`.
+private func awCompleteInView(
+  _ view: inout [String: Any], taskId: String, leaves: Bool, label: inout String?,
+  pattern: String?, changed: inout Bool
+) {
+  var counted = false
+  if var buckets = view["buckets"] as? [[String: Any]] {
+    var emptied: [Int] = []
+    for b in buckets.indices {
+      guard var items = buckets[b]["items"] as? [[String: Any]] else { continue }
+      guard
+        let i = items.firstIndex(where: {
+          $0["id"] as? String == taskId && $0["kind"] as? String != "event"
+        }),
+        items[i]["done"] as? Bool != true
+      else { continue }
+      if leaves {
+        items.remove(at: i)
+      } else {
+        items[i]["done"] = true
+      }
+      buckets[b]["items"] = items
+      if let count = buckets[b]["count"] as? Int, count > 0 { buckets[b]["count"] = count - 1 }
+      if leaves, items.isEmpty, (buckets[b]["more"] as? Int ?? 0) <= 0 { emptied.append(b) }
+      if let key = buckets[b]["key"] as? String, kAWCountedBuckets.contains(key) {
+        counted = true
+      }
       changed = true
     }
-    buckets[bucketIndex]["items"] = items
+    for b in emptied.reversed() { buckets.remove(at: b) }
+    view["buckets"] = buckets
   }
-  return buckets
+
+  if counted, let open = view["openToday"] as? Int, open > 0 {
+    view["openToday"] = open - 1
+    label = awRespellOpenCount(label, from: open, to: open - 1, pattern: pattern)
+  }
+
+  if let next = view["next"] as? [String: Any], next["id"] as? String == taskId {
+    if let moved = awNextOpen(in: view["buckets"] as? [[String: Any]] ?? [], after: taskId) {
+      view["next"] = moved
+    } else {
+      view.removeValue(forKey: "next")
+    }
+    changed = true
+  }
+}
+
+/// The first open task row in the app's `next` order, skipping `taskId`, as a
+/// `next` object. Exact over the drawn rows: the app sinks finished rows to
+/// the bottom of their bucket and trims from the bottom, so a bucket whose
+/// drawn rows hold no open task hides none either.
+private func awNextOpen(in buckets: [[String: Any]], after taskId: String) -> [String: Any]? {
+  let keyed = buckets.compactMap { b -> (String, [String: Any])? in
+    guard let key = b["key"] as? String else { return nil }
+    return (key, b)
+  }
+  let ordered =
+    kAWNextOrder.flatMap { key in keyed.filter { $0.0 == key } }
+    + keyed.filter { !kAWNextOrder.contains($0.0) }
+  for (key, bucket) in ordered {
+    for row in bucket["items"] as? [[String: Any]] ?? [] {
+      guard
+        let id = row["id"] as? String, id != taskId,
+        row["kind"] as? String != "event", row["done"] as? Bool != true
+      else { continue }
+      var next: [String: Any] = [
+        "id": id, "title": row["title"] as? String ?? "", "bucket": key,
+        "label": bucket["label"] as? String ?? "",
+      ]
+      if let time = row["time"] as? String { next["time"] = time }
+      return next
+    }
+  }
+  return nil
 }

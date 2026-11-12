@@ -130,7 +130,9 @@ class WidgetBucketData {
   final int count;
   final List<WidgetTaskRow> items;
 
-  /// `count - items.length` — how many rows were trimmed ("+N more").
+  /// How many rows were trimmed ("+N more"): every entry past the drawn ones,
+  /// a finished one included. Not `count - items.length` since OPH-451:
+  /// [count] leaves today's finished rows out (Home's header rule).
   final int more;
 
   Map<String, dynamic> toJson() => {
@@ -504,7 +506,12 @@ _listData(
       WidgetBucketData(
         key: group.bucket.name,
         label: 'widget.bucket.${group.bucket.name}'.tr(),
-        count: group.entries.length,
+        // OPH-451 (#50, IOS-10): what is still owed, Home's rule (OPH-394) —
+        // today's finished row stays drawn at the bottom but is not counted.
+        // `more` below still counts every trimmed row, done ones included.
+        count: group.entries
+            .where((e) => !(e is WidgetTaskEntry && e.task.isCompleted))
+            .length,
         items: [
           for (final entry in group.entries.take(rowsPerBucket))
             switch (entry) {
@@ -647,6 +654,12 @@ WidgetSnapshot buildWidgetSnapshot(
       // Pre-localized like every other widget word — the native side owns no
       // translations (W-rule).
       'openToday': day0.openTodayLabel,
+      // OPH-451 (#50): the same phrase with `{count}` unfilled, so a
+      // completion from the widget's circle can say the new number in the
+      // app's words before the app runs again.
+      'openTodayPattern': 'widget.openToday'.tr(),
+      // OPH-451 (#50, IOS-11): the circle's spoken label, `{title}` unfilled.
+      'completeTask': 'widget.completeTask'.tr(),
       // OPH-336: the lock screen's heading, and the Android configure
       // screen's title — native words, the app's translations.
       'upNext': 'widget.upNext'.tr(),

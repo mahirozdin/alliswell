@@ -68,23 +68,42 @@ private let kAWEntryBytesPerRow = 6_100
 // the day choice in ios/Shared/AWWidgetDayPick.swift: both are compiled into
 // Runner too, so RunnerTests can test them.
 
-/// Reads the latest snapshot from the shared App Group container.
+/// Reads the latest snapshot from the shared App Group container, with every
+/// completion from the circle the app has not pulled yet applied to it
+/// (OPH-451, IOS-08): the app rewrites the snapshot from its own data, which
+/// still has the task open until it pulls the queue, so without this a rewrite
+/// in between would put the tapped row back.
 func loadAWSnapshot() -> AWSnapshot {
   guard
     let defaults = UserDefaults(suiteName: kAppGroupId),
     let raw = defaults.string(forKey: kSnapshotKey),
-    let data = raw.data(using: .utf8),
-    let snapshot = try? JSONDecoder().decode(AWSnapshot.self, from: data)
+    var data = raw.data(using: .utf8)
   else { return .empty }
-  return snapshot
+  let queued = AWAlarmActionQueue.pending(in: defaults)
+    .filter { $0.action == "complete" }
+    .flatMap(\.taskIds)
+  if !queued.isEmpty,
+    var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+    awApplyPendingCompletions(&json, taskIds: queued, today: awToday()),
+    let out = try? JSONSerialization.data(withJSONObject: json)
+  {
+    data = out
+  }
+  return (try? JSONDecoder().decode(AWSnapshot.self, from: data)) ?? .empty
 }
 
-/// Round 15 (OPH-233): flips `done` on one row INSIDE the stored snapshot so
+/// Today's local day as the snapshot spells it: a completion leaves the
+/// later days' views and stays a done row in today's.
+private func awToday() -> String {
+  awDayKey(for: Date(), calendar: .current)
+}
+
+/// Round 15 (OPH-233): records the completion INSIDE the stored snapshot so
 /// the tapped circle fills on the very next timeline render — the honest
 /// optimistic echo of the queued completion. `awMarkSnapshotDone` mutates the
 /// JSONSerialization tree, not the Codable model, so fields this widget build
-/// does not know yet survive (the OPH-187 versioning stance), and stamps every
-/// day view too (v6, OPH-451).
+/// does not know yet survive (the OPH-187 versioning stance); since OPH-451 it
+/// writes every day view, the counts and the lock screen's next too.
 func markAWSnapshotDone(taskId: String) {
   guard
     let defaults = UserDefaults(suiteName: kAppGroupId),
@@ -92,7 +111,7 @@ func markAWSnapshotDone(taskId: String) {
     let data = raw.data(using: .utf8),
     var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
   else { return }
-  guard awMarkSnapshotDone(&json, taskId: taskId) else { return }
+  guard awMarkSnapshotDone(&json, taskId: taskId, today: awToday()) else { return }
   if let out = try? JSONSerialization.data(withJSONObject: json),
     let text = String(data: out, encoding: .utf8)
   {
@@ -271,7 +290,7 @@ func awTimeline(snapshot: AWSnapshot, listId: String?, family: WidgetFamily)
   // the full horizon could touch is the one that has to fit.
   func rows(_ c: AWEntryContent) -> Int {
     guard !c.stale else { return 0 }
-    return distribute(
+    return awDistribute(
       c.snapshot.buckets,
       budget: awRowBudget(family, titled: c.list != nil, compact: c.snapshot.isCompact))
       .reduce(0) { $0 + $1.items.count }
@@ -609,6 +628,8 @@ struct AWTaskRowView: View {
   /// OPH-337: a smaller type size. The circle's frame does NOT shrink with it —
   /// its hit target is W4's, and density is not a reason to miss it.
   var compact = false
+  /// OPH-451 (IOS-11): the snapshot's words, for the circle's spoken label.
+  var strings: [String: String]? = nil
   var body: some View {
     if row.isEvent {
       AWEventRowView(row: row, compact: compact)
@@ -634,6 +655,8 @@ struct AWTaskRowView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // OPH-451 (IOS-11): VoiceOver read the symbol's name ("Circle").
+        .accessibilityLabel(awCompleteLabel(title: row.title, strings: strings))
       } else {
         Image(systemName: row.done ? "largecircle.fill.circle" : "circle")
           .foregroundStyle(row.done ? Color.green : Color.secondary)
@@ -695,6 +718,7 @@ struct AWEventRowView: View {
 struct AWBucketView: View {
   let bucket: AWBucket
   var compact = false
+  var strings: [String: String]? = nil
   var body: some View {
     // OPH-337: compact takes its rows from the gap between them.
     VStack(alignment: .leading, spacing: compact ? 1 : 4) {
@@ -706,7 +730,7 @@ struct AWBucketView: View {
           .font(.caption2).foregroundStyle(.secondary)
         Spacer()
       }
-      ForEach(bucket.items) { AWTaskRowView(row: $0, compact: compact) }
+      ForEach(bucket.items) { AWTaskRowView(row: $0, compact: compact, strings: strings) }
       if let more = bucket.more, more > 0 {
         Text("+\(more)").font(.caption2).foregroundStyle(.secondary)
       }
@@ -717,6 +741,32 @@ struct AWBucketView: View {
 struct AllisWellWidgetEntryView: View {
   @Environment(\.widgetFamily) var family
   var entry: AWEntry
+  /// OPH-451 (IOS-09): the heights the medium list is fitted with, scaled
+  /// with the reader's text size — a bucket label or "+N" line, and a row's
+  /// text (a row is never shorter than its 28 pt circle).
+  @ScaledMetric(relativeTo: .caption2) private var lineHeight: CGFloat = 14
+  @ScaledMetric(relativeTo: .footnote) private var rowTextHeight: CGFloat = 18
+
+  /// OPH-451 (IOS-09): medium's inner inset is sideways only. The system's own
+  /// content margin already insets the card; 12 pt more top and bottom left a
+  /// 163 pt card about 107 pt for rows, and the fourth row was drawn half
+  /// outside it.
+  private var verticalPadding: CGFloat { family == .systemMedium ? 0 : 14 }
+  private var horizontalPadding: CGFloat { family == .systemMedium ? 12 : 14 }
+
+  /// The buckets this entry draws. Medium has no header to give way, so its
+  /// rows are fitted to the height it has (only whole rows, IOS-09); the
+  /// larger sizes keep their measured budgets.
+  private func shownBuckets(_ snap: AWSnapshot, height: CGFloat) -> [AWBucket] {
+    let budget = awRowBudget(family, titled: entry.list != nil, compact: snap.isCompact)
+    guard family == .systemMedium else { return awDistribute(snap.buckets, budget: budget) }
+    var metrics = AWListMetrics.standard(compact: snap.isCompact)
+    metrics.line = Double(lineHeight)
+    metrics.row = max(28, Double(rowTextHeight))
+    return awFitBuckets(
+      snap.buckets, budget: budget, height: Double(height - 2 * verticalPadding),
+      titled: entry.list != nil, metrics: metrics)
+  }
 
   var body: some View {
     let snap = entry.snapshot
@@ -768,22 +818,19 @@ struct AllisWellWidgetEntryView: View {
               .frame(maxWidth: .infinity, alignment: .center)
             Spacer()
           } else {
-            ForEach(
-              distribute(
-                snap.buckets,
-                budget: awRowBudget(
-                  family, titled: entry.list != nil, compact: snap.isCompact))
-            ) {
-              AWBucketView(bucket: $0, compact: snap.isCompact)
+            ForEach(shownBuckets(snap, height: geo.size.height)) {
+              AWBucketView(bucket: $0, compact: snap.isCompact, strings: snap.strings)
             }
           }
-          Spacer(minLength: 0)
+          // OPH-451: no trailing Spacer — the frame below already pins the
+          // list to the top, and the spacer's gap cost medium a whole row.
         }
         if family == .systemMedium {
           AWAddLink(label: addLabel)
         }
       }
-      .padding(family == .systemMedium ? 12 : 14)
+      .padding(.horizontal, horizontalPadding)
+      .padding(.vertical, verticalPadding)
       .frame(width: geo.size.width, height: geo.size.height, alignment: .top)
     }
     .widgetURL(URL(string: "alliswell://open"))
@@ -824,23 +871,8 @@ func awIsAccessory(_ family: WidgetFamily) -> Bool {
   #endif
 }
 
-/// Greedily trims buckets so the visible rows fit the size's budget.
-private func distribute(_ buckets: [AWBucket], budget: Int) -> [AWBucket] {
-  var remaining = budget
-  var out: [AWBucket] = []
-  for b in buckets {
-    if remaining <= 0 { break }
-    let take = min(b.items.count, remaining)
-    let trimmed = Array(b.items.prefix(take))
-    let extra = b.count - trimmed.count
-    out.append(
-      AWBucket(
-        key: b.key, label: b.label, count: b.count, items: trimmed,
-        more: extra > 0 ? extra : nil))
-    remaining -= take
-  }
-  return out
-}
+// `awDistribute` and the medium fit live in ios/Shared/AWWidgetDayPick.swift
+// (OPH-451), compiled into Runner too so RunnerTests can drive them.
 
 /// OPH-336: the name of the project a widget is set to, above its rows, in
 /// the project's own color.
