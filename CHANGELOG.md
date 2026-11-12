@@ -9,16 +9,6 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ### Added
 
-- **Choose which devices ring urgent alarms**
-  ([#48](https://github.com/mahirozdin/alliswell/issues/48)). Settings › Devices lists every device
-  signed in to your account, with its name, platform and when it was last seen, and a switch for
-  urgent alarms. A new device starts off when another device already rings; the others show the
-  alarm as a normal notification. After this update your account's first-added device rings, and
-  any other device shows a one-time card with "Ring here too". You can rename a device, or remove
-  it, which signs it out and removes its local data the next time it reaches the server (changes it
-  has not sent yet are kept for your next sign-in there). Home warns when
-  no device rings urgent alarms. On Android, acknowledging or snoozing an alarm on another device
-  also stops the one ringing on the phone. A ringing iPhone can only be silenced on the iPhone.
 - **The iPhone widget keeps itself current while the app is swiped away**
   ([#50](https://github.com/mahirozdin/alliswell/issues/50)). The widget asks your server for the
   latest list itself, with a read-only key that opens nothing but the widget's view, so a change
@@ -31,6 +21,21 @@ This file holds the unreleased changes and the latest release; at each release t
   at once without moving the other rows, a task added on another device opens in the app when
   tapped, and two widgets on one screen show the same list. Each day's list stays right across a
   daylight-saving change that skips midnight.
+
+## [1.20.0] — 2026-11-12
+
+### Added
+
+- **Choose which devices ring urgent alarms**
+  ([#48](https://github.com/mahirozdin/alliswell/issues/48)). Settings › Devices lists every device
+  signed in to your account, with its name, platform and when it was last seen, and a switch for
+  urgent alarms. A new device starts off when another device already rings; the others show the
+  alarm as a normal notification. After this update your account's first-added device rings, and
+  any other device shows a one-time card with "Ring here too". You can rename a device, or remove
+  it, which signs it out and removes its local data the next time it reaches the server (changes it
+  has not sent yet are kept for your next sign-in there). Home warns when
+  no device rings urgent alarms. On Android, acknowledging or snoozing an alarm on another device
+  also stops the one ringing on the phone. A ringing iPhone can only be silenced on the iPhone.
 
 ### Fixed
 
@@ -68,7 +73,8 @@ This file holds the unreleased changes and the latest release; at each release t
   lock-screen next task change at midnight without opening the app, and after three days without
   the app the widget says the list is out of date instead of showing an old one. Widgets show the
   newest list as soon as you leave the app, and Android widgets refresh after a change made on
-  another device.
+  another device. Keeping the iPhone widget current while the app is swiped away comes with the
+  next update.
 - **The alarm screens and Settings › Devices are finished off**
   ([#46](https://github.com/mahirozdin/alliswell/issues/46)–[#48](https://github.com/mahirozdin/alliswell/issues/48)).
   Answering several alarms at once no longer stops later changes from syncing until a reload, and
@@ -109,13 +115,3 @@ This file holds the unreleased changes and the latest release; at each release t
   made offline is no longer lost when the page is reloaded.
 - **A slow or briefly failing server no longer signs you out.** The app keeps your session and
   syncs again once the server answers.
-
-## [1.19.2] — 2026-11-09
-
-### Fixed
-
-- **Text in a note can be selected and copied in Reading mode and in the split view's preview**
-  ([#43](https://github.com/mahirozdin/alliswell/issues/43)). Drag with the mouse or long-press
-  on a touch screen, then copy. Select-all copies the whole note, also the part below the screen.
-  The copy keeps the note's shape: paragraphs stay apart, list items and table rows stay on their
-  own lines. Links, checkboxes, images and the outline work as before (markdown_forge 0.1.1).
