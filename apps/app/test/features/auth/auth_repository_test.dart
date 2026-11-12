@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:dio/dio.dart';
 
@@ -291,7 +293,7 @@ void main() {
         ),
       ),
       storage: TokenStorage(InMemorySecretStore()),
-      onSessionRevoked: () => revoked++,
+      onSessionRevoked: (_) async => revoked++,
     );
 
     for (final code in [
@@ -308,6 +310,140 @@ void main() {
     // The other failures still end the session (as before) but say nothing
     // about this device having been removed: no wipe for them.
     expect(revoked, 1);
+  });
+
+  // revocation-cleanup-crosses-sessions: the cleanup a revoked family starts
+  // (wipe the replica, drop the alarms) is for THAT session. A sign-in that
+  // lands around it must neither be cleaned up as the revoked one nor start
+  // before that cleanup finished with what the revoked session left.
+  group('a revoked refresh and a sign-in around it', () {
+    Map<String, dynamic> secondUser() => {
+      ...sessionJson(accessToken: 'access-b', refreshToken: 'refresh-b'),
+      'user': {'id': 'user-2', 'email': 'b@example.com', 'displayName': 'B'},
+    };
+
+    test('a sign-in that lands while the refresh is on the wire keeps its '
+        'session and is never cleaned up', () async {
+      final refreshAnswer = Completer<void>();
+      final revoked = <String>[];
+      var logins = 0;
+      final storage = TokenStorage(InMemorySecretStore());
+      final repo = AuthRepository(
+        api: AuthApi(
+          fakeDio(
+            FakeHttpClientAdapter((options, body) async {
+              if (options.path == '/api/v1/auth/login') {
+                return jsonBody(200, logins++ == 0 ? sessionJson() : secondUser());
+              }
+              await refreshAnswer.future;
+              return jsonBody(401, {
+                'statusCode': 401,
+                'code': 'AUTH_REFRESH_REUSED',
+              });
+            }),
+          ),
+        ),
+        storage: storage,
+        onSessionRevoked: (userId) async => revoked.add(userId),
+      );
+      await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+
+      final refreshing = repo.refreshAccessToken();
+      await pumpEventQueue();
+      await repo.login(email: 'b@example.com', password: 'pw-pw-pw-pw');
+      refreshAnswer.complete();
+
+      expect(await refreshing, isNull);
+      await pumpEventQueue();
+      expect(repo.session?.user.id, 'user-2');
+      expect((await storage.read())?.user.id, 'user-2');
+      expect(revoked, isEmpty);
+    });
+
+    test('a sign-in after the refusal starts only once the revoked session\'s '
+        'cleanup finished, and the cleanup names the revoked person', () async {
+      final cleanupDone = Completer<void>();
+      final order = <String>[];
+      final repo = AuthRepository(
+        api: AuthApi(
+          fakeDio(
+            FakeHttpClientAdapter((options, body) async {
+              if (options.path == '/api/v1/auth/login') {
+                return jsonBody(
+                  200,
+                  order.isEmpty ? sessionJson() : secondUser(),
+                );
+              }
+              return jsonBody(401, {
+                'statusCode': 401,
+                'code': 'AUTH_REFRESH_REUSED',
+              });
+            }),
+          ),
+        ),
+        storage: TokenStorage(InMemorySecretStore()),
+        onSessionUser: (userId, {required restored}) async =>
+            order.add('session $userId'),
+        onSessionRevoked: (userId) async {
+          order.add('cleanup $userId started');
+          await cleanupDone.future;
+          order.add('cleanup $userId done');
+        },
+      );
+      await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+      expect(await repo.refreshAccessToken(), isNull);
+      await pumpEventQueue();
+
+      final signIn = repo.login(email: 'b@example.com', password: 'pw-pw-pw-pw');
+      await pumpEventQueue();
+      expect(order, ['session user-1', 'cleanup user-1 started']);
+      expect(repo.session, isNull);
+
+      cleanupDone.complete();
+      await signIn;
+      expect(order, [
+        'session user-1',
+        'cleanup user-1 started',
+        'cleanup user-1 done',
+        'session user-2',
+      ]);
+      expect(repo.session?.user.id, 'user-2');
+    });
+
+    test('a refresh answered after a sign-out never brings the session back',
+        () async {
+      final refreshAnswer = Completer<void>();
+      final storage = TokenStorage(InMemorySecretStore());
+      final repo = AuthRepository(
+        api: AuthApi(
+          fakeDio(
+            FakeHttpClientAdapter((options, body) async {
+              if (options.path == '/api/v1/auth/login') {
+                return jsonBody(200, sessionJson());
+              }
+              if (options.path == '/api/v1/auth/logout') {
+                return jsonBody(204, {});
+              }
+              await refreshAnswer.future;
+              return jsonBody(
+                200,
+                sessionJson(accessToken: 'access-2', refreshToken: 'refresh-2'),
+              );
+            }),
+          ),
+        ),
+        storage: storage,
+      );
+      await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+      final refreshing = repo.refreshAccessToken();
+      await pumpEventQueue();
+      await repo.logout();
+      refreshAnswer.complete();
+
+      expect(await refreshing, isNull);
+      expect(repo.session, isNull);
+      expect(await storage.read(), isNull);
+    });
   });
 
   test('refreshAccessToken without a session is null (no API call)', () async {

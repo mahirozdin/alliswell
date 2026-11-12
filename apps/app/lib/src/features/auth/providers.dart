@@ -71,7 +71,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
       ref.invalidate(ringsUrgentHereProvider);
     },
     deviceId: () => _deviceIdForAuth(ref),
-    onSessionRevoked: () => unawaited(_endRevokedSession(ref)),
+    onSessionRevoked: (userId) => _endRevokedSession(ref, userId),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -120,14 +120,20 @@ Future<String?> _deviceIdForAuth(Ref ref) async {
 /// adopts it and the outbox goes out (`LocalDataGuard.claimFor`); anybody
 /// else signing in wipes it first. A count that cannot be read is treated as
 /// unsent work.
-Future<void> _endRevokedSession(Ref ref) async {
+///
+/// For [userId]'s session only (revocation-cleanup-crosses-sessions): the
+/// repository holds the next session's start until this returns, and the
+/// replica is wiped only while it is still recorded as [userId]'s (or as
+/// nobody's).
+Future<void> _endRevokedSession(Ref ref, String userId) async {
   try {
     await ref.read(pushMessagingProvider).forgetToken();
   } on Object {
     // Best effort, as on a sign-out.
   }
   await _haltSyncEngines(ref);
-  if (await _nothingUnsent(ref)) {
+  final owner = await localKv.get(kReplicaOwnerKey);
+  if ((owner == null || owner == userId) && await _nothingUnsent(ref)) {
     await ref.read(localDataGuardProvider).wipe();
   }
   await _dropOsAlarms(ref);

@@ -35,11 +35,16 @@ class AuthRepository {
 
   /// Runs once the session has been dropped because the server refused the
   /// refresh token as revoked — the device was removed elsewhere, a password
-  /// changed, or the family was burned (OPH-447). Not awaited: a
-  /// request is waiting on this refresh, and the local sign-out it starts
-  /// (halting that same request's sync round among other things) must not
-  /// wait on it in turn.
-  final void Function()? _onSessionRevoked;
+  /// changed, or the family was burned (OPH-447) — with the revoked session's
+  /// user id. Not awaited by the refresh: a request is waiting on it, and the
+  /// local sign-out this starts (halting that same request's sync round among
+  /// other things) must not wait on it in turn. The next session to start
+  /// waits for it instead ([_settleRevocation]), so the cleanup only ever
+  /// touches what the revoked session left.
+  final Future<void> Function(String userId)? _onSessionRevoked;
+
+  /// The cleanup [_onSessionRevoked] started and has not finished, if any.
+  Future<void>? _revocationCleanup;
 
   /// The refresh answers that mean "this session family was revoked" —
   /// unlike a network error or a rate limit, which say nothing about it.
@@ -70,6 +75,7 @@ class AuthRepository {
       stored = null;
     }
     if (stored != null) {
+      await _settleRevocation();
       await _onSessionUser?.call(stored.user.id, restored: true);
     }
     _session = stored;
@@ -143,16 +149,50 @@ class AuthRepository {
         current.tokens.refreshToken,
         deviceId: deviceId,
       );
+      // A sign-in or sign-out that landed while this was on the wire owns
+      // the session now: the rotation of the one it replaced must not bring
+      // that one back.
+      if (!identical(_session, current)) return null;
       await _setSession(next);
       return next.tokens.accessToken;
     } on AuthException catch (e) {
+      // The refusal is about [current]. A session that replaced it meanwhile
+      // is not this refusal's to end, nor its leftovers this cleanup's
+      // (revocation-cleanup-crosses-sessions).
+      if (!identical(_session, current)) return null;
       // Invalid/reused/expired token: this session is dead — force sign-out.
-      await _clearSession();
+      // Cleared synchronously up to its first await, and the cleanup is
+      // registered before anything else can run: a sign-in that starts now
+      // finds it and waits for it.
+      final cleared = _clearSession();
       // Revoked, not merely unreachable: what this person left here goes the
       // way an explicit sign-out takes it (OPH-447).
-      if (_revokedCodes.contains(e.code)) _onSessionRevoked?.call();
+      final cleanup = _onSessionRevoked;
+      if (cleanup != null && _revokedCodes.contains(e.code)) {
+        _trackRevocation(cleared.then((_) => cleanup(current.user.id)));
+      }
+      await cleared;
       return null;
     }
+  }
+
+  void _trackRevocation(Future<void> cleanup) {
+    late final Future<void> tracked;
+    tracked = cleanup
+        .catchError((Object _) {
+          // Best effort, like a sign-out's own steps; never a reason to keep
+          // the next session waiting forever.
+        })
+        .whenComplete(() {
+          if (identical(_revocationCleanup, tracked)) _revocationCleanup = null;
+        });
+    _revocationCleanup = tracked;
+  }
+
+  /// Waits for a revoked session's cleanup before another session starts.
+  Future<void> _settleRevocation() async {
+    final pending = _revocationCleanup;
+    if (pending != null) await pending;
   }
 
   Future<String?> _readDeviceId() async {
@@ -185,6 +225,7 @@ class AuthRepository {
 
   Future<void> _setSession(AuthSession session) async {
     if (_session?.user.id != session.user.id) {
+      await _settleRevocation();
       await _onSessionUser?.call(session.user.id, restored: false);
     }
     _session = session;
