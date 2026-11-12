@@ -58,6 +58,19 @@ This file holds the unreleased changes and the latest release; at each release t
   newest list as soon as you leave the app, and Android widgets refresh after a change made on
   another device. Keeping the iPhone widget current while the app is swiped away comes with the
   next update.
+- **The alarm screens and Settings › Devices are finished off**
+  ([#46](https://github.com/mahirozdin/alliswell/issues/46)–[#48](https://github.com/mahirozdin/alliswell/issues/48)).
+  Answering several alarms at once no longer stops later changes from syncing until a reload, and
+  urgent alarms due in the same minute open as one list at the first one's second; an alarm the
+  app shows late says how late it is. Snooze times stay right as the minute changes, every time
+  follows your 12/24-hour setting, Acknowledge and Complete confirm, and small phones keep
+  Acknowledge, Complete and Open on screen. The list of ringing alarms is laid out like the single
+  alarm screen and fades where more alarms lie below. Devices always has a way back, even after a
+  page reload, shows the current list each time you open it, and a switched-off browser tab shows
+  one hint. Switching off the last ringing device offers "Vazgeç" and marks "Yine de kapat" as
+  destructive.
+- **Typing a time in the time picker keeps the hour you typed.** In a 24-hour language such as
+  Turkish, 05:25 no longer saves as 17:25, and 13:00 to 23:59 can be typed.
 
 ## [1.19.2] — 2026-11-09
 

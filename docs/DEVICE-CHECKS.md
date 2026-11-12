@@ -5,6 +5,17 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Web turu cilası: zil ekranları, Cihazlar, saat seçici (2026-11-12, #46–#48)
+
+Hepsi **NOT RUN**: işler birim/widget testleriyle kapandı; web turunun ikinci geçişinde ve telefonda bakılır.
+
+- OPH-427 — **web release derlemesi** (NOT RUN): 2+ alarmlı listede bir eylem yap, sonra yeni acil alarm ekle: zamanında çalıyor, düzenlemeler yenilemeden eşitleniyor.
+- OPH-441 — **web** (NOT RUN): hh:mm:11 ve hh:mm:32'de iki acil alarm :11'de tek liste açıyor; alarmdan 3 dk sonra açılan uygulama "· 3 dk önce" diyor.
+- OPH-466 — **web 360×640 ve 430×932, açık ve koyu; 2.0× metin** (NOT RUN): tek zil ekranında sessiz satır + "Sesi başlat" varken Onayla, Tamamla ve Aç ekranda; dakika değişince erteleme karoları güncelleniyor; saat kullanıcının 12/24 biçiminde; Onayla/Tamamla "Onaylandı"/"Tamamlandı" diyor.
+- OPH-443 — **web 360×640, 430×932 ve 1280×800, açık ve koyu** (NOT RUN): üç alarmlı listede başlık sayı + saat, kenar 24 pt, geniş ekranda ortada; satırın erteleme sayfası dakika değişince güncelleniyor; kesik kartta solma.
+- OPH-448/449 — **web, açık ve koyu** (NOT RUN): `/settings/devices`'ı yenile, çalan cihazı kaldır, seç, kaydet: geri düğmesi duruyor; başka cihaz kaydolduktan sonra Cihazlar'ı yeniden aç: liste güncel; kapalı web satırında tek not; son çalan cihazı kapatma ve kaldırma diyaloglarında "Vazgeç", "Yine de kapat" kırmızı.
+- OPH-471 — **web (+ telefon, sistem 24 saat kapalı)** (NOT RUN): yeni görevde Son tarih metin girişiyle 05:25 ve 17:05 yazılan saatle kaydoluyor; Ayarlar varsayılan görev saati ve özel erteleme de öyle.
+
 ## Alarmlar ve widget gün görünümleri (2026-11-12, Epic 36, #46–#50)
 
 Hepsi **NOT RUN**: işler birim/widget testleriyle ve Mac'te iOS 27.2 simülatöründe XCTest ile kapandı;
