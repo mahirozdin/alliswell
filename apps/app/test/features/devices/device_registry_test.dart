@@ -2,11 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/firebase/push_messaging.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/auth/data/models.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
 import 'package:alliswell/src/features/auth/data/token_storage.dart';
@@ -51,8 +54,17 @@ class _RecordingApi implements DeviceApi {
     });
   }
 
+  /// What GET answers with, how often it was asked, and whether it fails.
+  List<DeviceInfo> listed = const [];
+  int listCalls = 0;
+  bool failList = false;
+
   @override
-  Future<List<DeviceInfo>> list() async => const [];
+  Future<List<DeviceInfo>> list() async {
+    listCalls++;
+    if (failList) throw StateError('offline');
+    return listed;
+  }
 
   @override
   Future<DevicePatchResult> patch(
@@ -111,7 +123,114 @@ class _MemoryKv implements LocalKv {
       values.removeWhere((key, _) => test(key));
 }
 
+/// A session that is there from the start and can be ended by the test.
+class _Session extends AuthController {
+  @override
+  Future<AuthSession?> build() async => fakeSession();
+
+  void end() => state = const AsyncData(null);
+}
+
+List<DeviceInfo> _listedAs(bool rings) => [
+  DeviceInfo.fromJson({
+    'id': _clientId,
+    'platform': 'web',
+    'ringsUrgent': rings,
+  }),
+];
+
 void main() {
+  // X-02 (OPH-446): an open web tab kept ringing for minutes after the server
+  // handed its alarms to a phone, because it re-read its answer only on a
+  // resume or when Settings ▸ Devices opened.
+  testWidgets('a foreground app re-reads its ring answer every minute and '
+      'stops when paused or signed out', (tester) async {
+    final kv = _MemoryKv()..values[kRingsUrgentKey] = 'on';
+    final api = _RecordingApi()
+      ..ringsUrgent = true
+      ..listed = _listedAs(true);
+    final c = ProviderContainer(
+      overrides: [
+        authControllerProvider.overrideWith(_Session.new),
+        syncClientIdProvider.overrideWith((_) => Stream.value(_clientId)),
+        deviceApiProvider.overrideWithValue(api),
+        deviceDescriptorProvider.overrideWithValue(_descriptor),
+        pushMessagingProvider.overrideWithValue(AwPushMessaging(isWeb: true)),
+        ringsUrgentStoreProvider.overrideWithValue(RingsUrgentStore(kv: kv)),
+      ],
+    );
+    c.listen(ringsUrgentHereProvider, (_, _) {});
+    c.listen(deviceRegistrationProvider, (_, _) {});
+    c.listen(syncClientIdProvider, (_, _) {});
+    await c.read(authControllerProvider.future);
+    await c.read(syncClientIdProvider.future);
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(api.registeredIds, [_clientId]);
+    expect(api.listCalls, 0);
+
+    // Every minute in the foreground, one GET — not before.
+    await tester.pump(const Duration(seconds: 59));
+    expect(api.listCalls, 0);
+    await tester.pump(const Duration(seconds: 1));
+    expect(api.listCalls, 1);
+    expect(kv.values[kRingsUrgentKey], 'on');
+
+    // The server hands the alarm over: the next minute brings it here, and
+    // the alarm gate follows without a resume.
+    api.listed = _listedAs(false);
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 2);
+    expect(kv.values[kRingsUrgentKey], 'off');
+    expect(await c.read(ringsUrgentHereProvider.future), RingsUrgentHere.off);
+
+    // Hidden or paused: nothing is asked, however long.
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+      await tester.pump();
+    }
+    await tester.pump(const Duration(minutes: 5));
+    expect(api.listCalls, 2);
+
+    // Back in front: the minute starts again (the resume also heartbeats).
+    for (final state in const [
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+      await tester.pump();
+    }
+    expect(api.registeredIds, hasLength(2));
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 3);
+
+    // Offline: a failed round is followed by a skipped one, not a request
+    // every minute; the cached answer stays.
+    api.failList = true;
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 4);
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 4);
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 5);
+    expect(kv.values[kRingsUrgentKey], 'off');
+
+    // Signed out: the timer goes with the session.
+    api.failList = false;
+    (c.read(authControllerProvider.notifier) as _Session).end();
+    await tester.pump();
+    expect(c.read(deviceRegistryProvider).refreshingInForeground, isFalse);
+    await tester.pump(const Duration(minutes: 10));
+    expect(api.listCalls, 5);
+    c.dispose();
+  });
+
   group('the device registry calls the route', () {
     test('registers under the sync client id, with what it is', () async {
       final api = _RecordingApi();

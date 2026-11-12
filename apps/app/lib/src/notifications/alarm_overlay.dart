@@ -7,6 +7,8 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/ulid.dart';
+import '../features/devices/device_registry.dart'
+    show kRingAnswerCheckCap, kRingAnswerMaxAge;
 import '../features/devices/providers.dart';
 import '../features/tasks/providers.dart';
 import '../sync/providers.dart';
@@ -383,6 +385,14 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// action was handled elsewhere (OPH-445).
   Set<String> _shown = const {};
 
+  /// Occurrences whose ring waited for this device's answer once (X-02):
+  /// they open on whatever that check left, and are never held again.
+  final Set<String> _checkedBeforeOpen = {};
+
+  /// Occurrences held while the just-in-time check is on the wire.
+  final Set<String> _awaitingCheck = {};
+  bool _checking = false;
+
   AlarmFeedback? _feedback;
   bool _sounding = false;
 
@@ -464,6 +474,7 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     _announced.retainWhere(present.contains);
     _late.retainWhere(present.contains);
     _failures.removeWhere((key, _) => !present.contains(key));
+    _checkedBeforeOpen.retainWhere(present.contains);
     final minutes = {for (final a in alarms) alarmMinuteOf(a)};
     _ringingMinutes.retainWhere(minutes.contains);
 
@@ -484,6 +495,12 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     final ringing = everyRinging
         .where((a) => !_handled.contains(alarmOccurrenceKey(a)))
         .toList();
+    // X-02 (OPH-446): the screen is about to open on an answer more than a
+    // minute old — the server may have handed the alarm to another device
+    // since. It stays shut while that is asked; the check re-decides.
+    if (!_open && _holdForAnswer(ringing)) {
+      return AlarmOverlayState(silentHere: silentHere);
+    }
     final shownKeys = {for (final a in ringing) alarmOccurrenceKey(a)};
     // A row that left the screen while nobody here acted on it was handled on
     // another device: its Android notification would keep looping (#48).
@@ -566,6 +583,56 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   }
 
   void _tick() => state = _evaluate(_feed());
+
+  /// Whether [ringing] waits for a fresh answer before the screen opens: a
+  /// new occurrence, on a device whose stored answer says it rings and was
+  /// given more than [kRingAnswerMaxAge] ago. No answer in this process yet
+  /// does not wait — the launch heartbeat is the one asking then.
+  bool _holdForAnswer(List<AlarmInput> ringing) {
+    final keys = {
+      for (final a in ringing)
+        if (!_announced.contains(alarmOccurrenceKey(a)) &&
+            !_checkedBeforeOpen.contains(alarmOccurrenceKey(a)))
+          alarmOccurrenceKey(a),
+    };
+    if (keys.isEmpty) return false;
+    if (_checking) {
+      _awaitingCheck.addAll(keys);
+      return true;
+    }
+    final here = ringsUrgentHereNow(ref.read(ringsUrgentHereProvider));
+    if (here != RingsUrgentHere.on) return false;
+    if (!ref
+        .read(ringsUrgentStoreProvider)
+        .answerOlderThan(kRingAnswerMaxAge)) {
+      return false;
+    }
+    _checking = true;
+    _awaitingCheck.addAll(keys);
+    unawaited(_checkThenRing());
+    return true;
+  }
+
+  /// Asks the server once, never longer than [kRingAnswerCheckCap]: an
+  /// answer that says this device is off keeps the screen shut; a timeout or
+  /// an error rings on the cached answer — a ring is late by 1.5 s at most
+  /// and never lost to the network.
+  Future<void> _checkThenRing() async {
+    try {
+      await () async {
+        await ref.read(deviceRegistryProvider).refreshRingAnswer();
+        // The gate re-reads the store when the answer changed.
+        await ref.read(ringsUrgentHereProvider.future);
+      }().timeout(kRingAnswerCheckCap);
+    } on Object {
+      // The cached answer stands.
+    }
+    _checking = false;
+    if (!ref.mounted) return;
+    _checkedBeforeOpen.addAll(_awaitingCheck);
+    _awaitingCheck.clear();
+    state = _evaluate(_feed());
+  }
 
   /// Cancels the shown OS notifications whose alarm no longer rings — the
   /// scheduler's decision ([activeToCancel]), without waiting for its next

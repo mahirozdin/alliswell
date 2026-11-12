@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/devices/data/device_api.dart';
 import 'package:alliswell/src/features/devices/device_registry.dart';
 import 'package:alliswell/src/features/devices/providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
@@ -531,6 +532,109 @@ void main() {
         await tester.pump(const Duration(minutes: 2));
       },
     );
+
+    // X-02 (OPH-446): a web tab rang 2.5 minutes after the server handed
+    // its alarms to a phone. Before the screen opens, an answer more than a
+    // minute old is asked for again — but a ring never waits longer than
+    // 1.5 s for it, and a network error never loses it.
+    testWidgets('a stale answer is refreshed before the ring screen opens, '
+        'with a 1.5 s cap and a fallback to the cached answer', (tester) async {
+      const thisId = '01HZTHISDEVICEAAAAAAAAAAAA';
+      final kv = _MemoryKv();
+      var answerClock = now;
+      final store = RingsUrgentStore(kv: kv, clock: () => answerClock);
+      // The server said "on" — and then a minute and more went by.
+      await store.write(RingsUrgentHere.on);
+      void ageAnswer() =>
+          answerClock = answerClock.add(const Duration(seconds: 61));
+      ageAnswer();
+      final api = _ListApi(thisId);
+      boot(
+        extra: [
+          ringsUrgentStoreProvider.overrideWithValue(store),
+          deviceRegistryProvider.overrideWith(
+            (ref) => DeviceRegistry(
+              api: api,
+              readClientId: () async => thisId,
+              describe: () => null,
+              ringsUrgent: store,
+              onRingsUrgentChanged: () =>
+                  ref.invalidate(ringsUrgentHereProvider),
+            ),
+          ),
+        ],
+      );
+      await container.read(ringsUrgentHereProvider.future);
+      int starts() => log.where((e) => e == 'start').length;
+
+      // 1. The server does not answer: the screen stays shut while it is
+      //    asked, and opens on the cached "on" at 1.5 s — not later.
+      api.hang = Completer<void>();
+      final first = alarm(
+        rid: 'R1',
+        remindAt: now.subtract(const Duration(minutes: 1)),
+      );
+      feed.add([first]);
+      await tester.pump();
+      expect(api.listCalls, 1);
+      expect(overlay().ringing, isEmpty);
+      expect(starts(), 0);
+      await tester.pump(const Duration(milliseconds: 1400));
+      expect(overlay().ringing, isEmpty);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(overlay().ringing.single.reminderId, 'R1');
+      expect(starts(), 1);
+      // Its late answer says "on": the open screen stays as it is.
+      api.hang!.complete();
+      api.hang = null;
+      await tester.pump();
+      expect(overlay().ringing.single.reminderId, 'R1');
+      feed.add(const []);
+      await tester.pump();
+
+      // 2. A network error: the alarm rings at once on the cached answer.
+      ageAnswer();
+      api.fail = true;
+      feed.add([
+        alarm(rid: 'R2', remindAt: now.subtract(const Duration(minutes: 2))),
+      ]);
+      await tester.pump();
+      expect(api.listCalls, 2);
+      expect(overlay().ringing.single.reminderId, 'R2');
+      expect(starts(), 2);
+      feed.add(const []);
+      await tester.pump();
+
+      // 3. The server moved the alarm away: the screen never opens, and the
+      //    gate here follows.
+      ageAnswer();
+      api
+        ..fail = false
+        ..rings = false;
+      feed.add([
+        alarm(rid: 'R3', remindAt: now.subtract(const Duration(minutes: 3))),
+      ]);
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      expect(api.listCalls, 3);
+      expect(overlay().ringing, isEmpty);
+      expect(starts(), 2);
+      expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+
+      // 4. A fresh answer is not asked again: the next alarm opens at once.
+      api.rings = true;
+      await store.write(RingsUrgentHere.on);
+      container.invalidate(ringsUrgentHereProvider);
+      await container.read(ringsUrgentHereProvider.future);
+      feed.add([
+        alarm(rid: 'R4', remindAt: now.subtract(const Duration(minutes: 4))),
+      ]);
+      await tester.pump();
+      expect(api.listCalls, 3);
+      expect(overlay().ringing.single.reminderId, 'R4');
+      feed.add(const []);
+      await tester.pump(const Duration(minutes: 2));
+    });
 
     testWidgets(
       'swapping the ringing alarm never stops the sound it just started',
@@ -1488,6 +1592,50 @@ List<String> _squash(List<String> log) => [
 ];
 
 /// Records the order of start/stop calls (#46).
+/// GET /notification-devices for the just-in-time check (X-02): one row,
+/// this device, with what the server says about it now.
+class _ListApi implements DeviceApi {
+  _ListApi(this.thisId);
+
+  final String thisId;
+  bool rings = true;
+  bool fail = false;
+  Completer<void>? hang;
+  int listCalls = 0;
+
+  @override
+  Future<List<DeviceInfo>> list() async {
+    listCalls++;
+    final gate = hang;
+    if (gate != null) await gate.future;
+    if (fail) throw StateError('offline');
+    return [
+      DeviceInfo.fromJson({
+        'id': thisId,
+        'platform': 'web',
+        'ringsUrgent': rings,
+      }),
+    ];
+  }
+
+  @override
+  Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) =>
+      throw UnimplementedError();
+
+  @override
+  Future<void> unregister(String deviceId) => throw UnimplementedError();
+
+  @override
+  Future<DevicePatchResult> patch(
+    String deviceId, {
+    bool? ringsUrgent,
+    String? deviceName,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<PushKeyLookup> lookupPushKey() => throw UnimplementedError();
+}
+
 class _MemoryKv implements LocalKv {
   final Map<String, String> values = {};
 

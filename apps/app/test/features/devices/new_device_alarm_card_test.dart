@@ -51,8 +51,12 @@ class _FakeApi implements DeviceApi {
   final List<(String, bool?)> patches = [];
   bool unreachable = false;
 
+  /// How many times GET was asked.
+  int lists = 0;
+
   @override
   Future<List<DeviceInfo>> list() async {
+    lists++;
     if (unreachable) {
       throw DioException(
         requestOptions: RequestOptions(path: '/notification-devices'),
@@ -340,6 +344,40 @@ void main() {
       await pumpHome(tester, api, kv);
       expect(find.byKey(const Key('home-quick-add')), findsOneWidget);
       expect(card, findsNothing);
+    });
+
+    // X-02 (OPH-446): the hand-over reached an open tab only when Settings ▸
+    // Devices was opened. The minute refresh brings the card up by itself.
+    testWidgets('an open app shows the card after the server moved the alarm, '
+        'without opening Settings', (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('en'));
+      final kv = _MemoryKv();
+      final api = _FakeApi([_row(_thisId, 'web', 'Chrome · Linux', true)]);
+      await pumpHome(tester, api, kv);
+      expect(find.byKey(const Key('home-quick-add')), findsOneWidget);
+      expect(card, findsNothing);
+      final listsBefore = api.lists;
+
+      // The hand-over, on the server; the app stays open and in front.
+      api.rows = [
+        _row(_thisId, 'web', 'Chrome · Linux', false),
+        _row(_phoneId, 'ios', 'iPhone 16', true),
+      ];
+      await tester.pump(const Duration(seconds: 30));
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+      await tester.pump(const Duration(seconds: 31));
+      await tester.pumpAndSettle();
+      expect(card, findsOneWidget);
+      expect(
+        find.text(
+          'Urgent alarms are off on this device. Alarms ring on iPhone 16.',
+        ),
+        findsOneWidget,
+      );
+      // The alarm gate here already follows: urgent alarms stop ringing.
+      expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+      expect(api.lists, greaterThan(listsBefore));
     });
 
     testWidgets('never on the ringing device, never offline', (tester) async {

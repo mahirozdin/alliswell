@@ -133,7 +133,15 @@ final deviceRegistryProvider = Provider<DeviceRegistry>(
     readClientId: () => ref.read(syncClientIdProvider.future),
     describe: () => ref.read(deviceDescriptorProvider),
     ringsUrgent: ref.watch(ringsUrgentStoreProvider),
-    onRingsUrgentChanged: () => ref.invalidate(ringsUrgentHereProvider),
+    onRingsUrgentChanged: () {
+      ref.invalidate(ringsUrgentHereProvider);
+      // The list Home's card and band read says the same thing now (X-02):
+      // a hand-over learned by a heartbeat or the minute refresh brings the
+      // card up without opening Settings.
+      if (ref.exists(devicesProvider)) {
+        ref.read(devicesProvider.notifier).refresh();
+      }
+    },
   ),
 );
 
@@ -158,10 +166,28 @@ final deviceRegistrationProvider = Provider<void>((ref) {
   final registry = ref.watch(deviceRegistryProvider);
   unawaited(registry.sync(signedIn: true));
 
+  // X-02 (OPH-446): while the app is in front, this device's ring answer is
+  // re-read every minute, so a hand-over done elsewhere stops the alarms here
+  // without a resume. A hidden tab or a paused app asks nothing; a signed-out
+  // one has no provider and no timer.
+  final foreground = switch (WidgetsBinding.instance.lifecycleState) {
+    null || AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+    _ => false,
+  };
+  if (foreground) registry.startForegroundRefresh();
   final lifecycle = AppLifecycleListener(
-    onResume: () => unawaited(registry.sync(signedIn: true)),
+    onResume: () {
+      unawaited(registry.sync(signedIn: true));
+      registry.startForegroundRefresh();
+    },
+    onShow: registry.startForegroundRefresh,
+    onHide: registry.stopForegroundRefresh,
+    onPause: registry.stopForegroundRefresh,
   );
-  ref.onDispose(lifecycle.dispose);
+  ref.onDispose(() {
+    lifecycle.dispose();
+    registry.stopForegroundRefresh();
+  });
 });
 
 /// What Settings ▸ Devices shows (#48, OPH-448): the person's devices as the
