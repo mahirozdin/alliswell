@@ -229,13 +229,30 @@ final class AlarmKitBridge {
   /// no record reads `members: []`, `fp: 0`, `origin: "dart"` and the instant
   /// of its fixed schedule. Records the OS no longer holds are pruned — but
   /// only when the OS list was actually read: a throwing `alarms` prunes
-  /// nothing.
+  /// nothing. The list is read under the ledger lock
+  /// (`AWAlarmLedger.records(listedBy:)`), so a native snooze confirming its
+  /// record meanwhile is never pruned against a list older than its alarm.
   private func scheduledAlarms() -> [[String: Any]] {
     #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *) {
-        guard let alarms = try? AlarmManager.shared.alarms else { return [] }
-        let ours = alarms.compactMap { alarm in appId(from: alarm.id).map { (alarm, $0) } }
-        let records = AWAlarmLedger.shared?.records(present: Set(ours.map { $0.1 })) ?? []
+        var ours: [(Alarm, Int)] = []
+        func list() throws -> Set<Int> {
+          ours = try AlarmManager.shared.alarms.compactMap { alarm in
+            appId(from: alarm.id).map { (alarm, $0) }
+          }
+          return Set(ours.map { $0.1 })
+        }
+        let records: [AWAlarmLedgerRecord]
+        do {
+          if let ledger = AWAlarmLedger.shared {
+            records = try ledger.records(listedBy: list)
+          } else {
+            _ = try list()
+            records = []
+          }
+        } catch {
+          return []
+        }
         let byId = Dictionary(records.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
         return ours.map { alarm, id in
           let record = byId[id]

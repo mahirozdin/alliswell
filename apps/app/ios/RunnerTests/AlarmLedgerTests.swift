@@ -121,6 +121,46 @@ final class AlarmLedgerTests: XCTestCase {
     XCTAssertEqual(ledger.records(), [])
   }
 
+  /// The bridge's `scheduledAlarms` reads the OS list and prunes against it.
+  /// A native snooze that confirms its record (lease cleared) after that list
+  /// was read — the list does not hold the new alarm yet — must not lose the
+  /// record to the prune: the next plan would then find the new alarm with
+  /// no record (`origin: dart`, no members) and cancel it as a stray, and no
+  /// fallback stands in for a snooze that scheduled fine. So the OS list is
+  /// read under the ledger lock, and the confirmation waits for the prune.
+  func testPruneReadsTheOSListUnderTheLedgerLockSoALaterConfirmationSurvives() {
+    let ledger = AWAlarmLedger(defaults: defaults)
+    let now = Date(timeIntervalSince1970: 1_784_116_800)
+    let confirmed = record(id: 9, origin: "native", eventId: "E-9")
+    let written = expectation(description: "the snooze confirmed its record")
+
+    let answered = ledger.records(now: now) { () -> Set<Int> in
+      // The OS list as read before the snooze's schedule returned: no 9.
+      // Meanwhile the snooze's schedule returns and it confirms its record.
+      DispatchQueue.global().async {
+        ledger.write(confirmed)
+        written.fulfill()
+      }
+      Thread.sleep(forTimeInterval: 0.3)
+      return []
+    }
+    wait(for: [written], timeout: 5)
+
+    XCTAssertEqual(answered, [], "the list read did not hold 9, so 9 is not answered")
+    XCTAssertEqual(ledger.records(), [confirmed], "the confirmed record survives the prune")
+    // The next read, with the alarm listed, answers it.
+    XCTAssertEqual(ledger.records(present: [9], now: now), [confirmed])
+  }
+
+  /// A list read that throws prunes nothing and rethrows.
+  func testAListReadThatThrowsPrunesNothing() {
+    let ledger = AWAlarmLedger(defaults: defaults)
+    ledger.write(record(id: 1))
+    struct Boom: Error {}
+    XCTAssertThrowsError(try ledger.records { () throws -> Set<Int> in throw Boom() })
+    XCTAssertEqual(ledger.records().map(\.id), [1])
+  }
+
   // MARK: - Action queue v2
 
   func testQueueKeepsEntriesUntilAcked() {

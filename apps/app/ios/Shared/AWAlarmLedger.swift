@@ -117,8 +117,23 @@ struct AWAlarmLedger {
   /// not list it. Call it only with a list the OS actually returned: an empty
   /// set prunes every record that is not pending.
   func records(present: Set<Int>, now: Date = Date()) -> [AWAlarmLedgerRecord] {
+    records(now: now) { present }
+  }
+
+  /// [records(present:now:)] with the OS list read by [list] UNDER the
+  /// ledger lock — what the bridge's `scheduledAlarms` uses. A list read
+  /// outside the lock can be older than a record written before the prune:
+  /// a native snooze that confirms its record (lease cleared) after the list
+  /// was read, its alarm not in that list, would lose the record, and the
+  /// next plan would cancel the new alarm as a stray. Under the lock that
+  /// write waits for the prune. A throwing [list] prunes nothing. [list] must
+  /// not touch the ledger (the lock is not recursive).
+  func records(
+    now: Date = Date(), listedBy list: () throws -> Set<Int>
+  ) rethrows -> [AWAlarmLedgerRecord] {
     Self.lock.lock()
     defer { Self.lock.unlock() }
+    let present = try list()
     let nowMs = AWAlarmActionQueue.epochMs(now)
     let all = load()
     let stored = all.filter { r in
