@@ -1155,6 +1155,54 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
   }
 
+  /// A tap takes the write back to the view stored before it, and the app
+  /// turns Private widget on in that very gap: its new profile and its
+  /// removal of the old view land just before the put-back. The view put
+  /// back is the old profile's, with its titles; the fetcher looks at the
+  /// profile once more and removes it (WIDGETS.md §9).
+  func testAViewPutBackAfterATapIsRemovedWhenTheProfileChangedMeanwhile() async throws {
+    defaults.set(
+      profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: false),
+      forKey: kAWFetchProfileKey)
+    var titled = serverBody()
+    var days = titled["days"] as! [[String: Any]]
+    var buckets = days[0]["buckets"] as! [[String: Any]]
+    var items = buckets[0]["items"] as! [[String: Any]]
+    items[0]["title"] = "secret title"
+    buckets[0]["items"] = items
+    days[0]["buckets"] = buckets
+    titled["days"] = days
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: titled),
+      headers: ["ETag": "\"abc\""])
+    _ = await fetcher().refresh()
+    let stored = try XCTUnwrap(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertTrue(stored.contains("secret title"))
+
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: serverBody()),
+      headers: ["ETag": "\"def\""])
+    let turnedPrivate = profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: true)
+    let hooked = self.hooked
+    let pressedAt = start.addingTimeInterval(kAWFetchMinInterval + 1)
+    // The first write is the new answer, and the tap lands just before it.
+    // The second is the put-back, and the app's two writes land before it.
+    hooked.beforeServerWrite = {
+      Self.press("B", in: hooked, at: pressedAt)
+      hooked.beforeServerWrite = {
+        hooked.set(turnedPrivate, forKey: kAWFetchProfileKey)
+        hooked.removeObject(forKey: kAWServerSnapshotKey)
+      }
+    }
+    clock = start.addingTimeInterval(kAWFetchMinInterval + 2)
+    let outcome = await fetcher().refresh()
+    XCTAssertNil(hooked.beforeServerWrite, "both writes went through their hooks")
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertNil(
+      defaults.string(forKey: kAWServerSnapshotKey),
+      "no titled view is left once Private widget is on")
+  }
+
   // MARK: - 401
 
   func testUnauthorizedMarksTheTokenInvalidAndStops() async throws {

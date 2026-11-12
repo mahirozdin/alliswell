@@ -274,7 +274,8 @@ struct AWWidgetFetcher {
   ///
   /// A press of the circle can land in the same gap (#50): then the write is
   /// taken back to the view stored before it, so the rows drawn at the press
-  /// stay where they were.
+  /// stay where they were. The profile is looked at again after that write
+  /// too: a view put back just after the profile changed is removed.
   private func store(_ json: String, for profile: AWWidgetFetchProfile, query: String) -> Bool {
     let previous = defaults.string(forKey: kAWServerSnapshotKey)
     defaults.set(json, forKey: kAWServerSnapshotKey)
@@ -283,6 +284,15 @@ struct AWWidgetFetcher {
     if defaults.string(forKey: kAWServerSnapshotKey) == json {
       if current, let previous {
         defaults.set(previous, forKey: kAWServerSnapshotKey)
+        // The same gap once more: the app can write a new profile and remove
+        // the old view between the look above and this write. The view put
+        // back is then the old profile's too (its titles, after Private
+        // widget was turned on), and the app's removal has already run.
+        if !isCurrent(profile, query: query),
+          defaults.string(forKey: kAWServerSnapshotKey) == previous
+        {
+          defaults.removeObject(forKey: kAWServerSnapshotKey)
+        }
       } else {
         defaults.removeObject(forKey: kAWServerSnapshotKey)
       }
