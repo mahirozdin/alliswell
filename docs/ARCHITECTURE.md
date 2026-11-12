@@ -369,7 +369,10 @@ replica or a text file's presigned GET and keeps only decoded text (OPH-377, ADR
   widget can't read the drift replica (separate sandbox). A pure `groupTasksForWidget` projects
   the buckets; quick-add/complete run App Intents (iOS 17+) / Glance actions → a
   `@pragma('vm:entry-point')` Dart callback → the local-first `TaskStore` (syncs). Freshness =
-  foreground `updateWidget` pushes (budget-exempt) + a sparse midnight-rollover timeline. Widget
+  foreground `updateWidget` pushes (budget-exempt) + a sparse midnight-rollover timeline; on
+  iOS the extension also fetches `GET /widget/snapshot` itself with a read-only widget token from
+  the shared Keychain group, so a swiped-away app's widget stays current (ADR-0070/0071,
+  WIDGETS §3.2). Widget
   extensions are committed Xcode/Gradle targets (pbxproj + entitlements) — a deliberate deviation
   from the "no pbxproj" plugin model, since a plugin package can't vend an app-extension target.
 - **Voice capture (ADR-0057):** Siri / Shortcuts / Spotlight run `AppIntent`s compiled into the

@@ -19,6 +19,14 @@ This file holds the unreleased changes and the latest release; at each release t
   has not sent yet are kept for your next sign-in there). Home warns when
   no device rings urgent alarms. On Android, acknowledging or snoozing an alarm on another device
   also stops the one ringing on the phone. A ringing iPhone can only be silenced on the iPhone.
+- **The iPhone widget keeps itself current while the app is swiped away**
+  ([#50](https://github.com/mahirozdin/alliswell/issues/50)). The widget asks your server for the
+  latest list itself, with a read-only key that opens nothing but the widget's view, so a change
+  made on another device shows within one of iOS's widget refreshes, typically 15 to 60 minutes.
+  iOS sets that timing, so there is no minute guarantee. A change made on the phone that has not
+  synced yet is never undone, offline or before the first unlock the widget keeps its last list,
+  and with Private widget on no task title leaves the server. Signing out or removing the phone
+  turns the key off.
 
 ### Fixed
 
@@ -56,8 +64,7 @@ This file holds the unreleased changes and the latest release; at each release t
   lock-screen next task change at midnight without opening the app, and after three days without
   the app the widget says the list is out of date instead of showing an old one. Widgets show the
   newest list as soon as you leave the app, and Android widgets refresh after a change made on
-  another device. Keeping the iPhone widget current while the app is swiped away comes with the
-  next update.
+  another device.
 - **The alarm screens and Settings › Devices are finished off**
   ([#46](https://github.com/mahirozdin/alliswell/issues/46)–[#48](https://github.com/mahirozdin/alliswell/issues/48)).
   Answering several alarms at once no longer stops later changes from syncing until a reload, and
