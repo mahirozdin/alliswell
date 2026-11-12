@@ -358,9 +358,11 @@ except `aw_widget_snapshot` and `aw_widget_completed_at_ms` (a time, nothing abo
 row, no project, no event: the signed-out state) and asks for a reload — on every widget platform,
 since nothing else would write over the person's rows. With the profile gone the extension never
 fetches and draws that empty snapshot.
-A change of scope or of "Private widget" removes `aw_widget_server_snapshot` right after the new
-profile is written — in that order, so a late answer for the old profile is refused or taken back
-(step 4 below).
+A change of scope, server address or "Private widget" applies at once, also while Settings covers
+the app's shell (#50, PR2-04), and in this order: the new profile, then `aw_widget_server_snapshot`
+removed (it may hold the titles just hidden; a late answer for the old profile is refused or taken
+back, step 4 below), then `aw_widget_snapshot` in the new mode, then the reload. A new language or
+date format rewrites the snapshot and the profile at once too, the stored answer kept.
 
 **Fetch profile** (`v: 1`). Dart writes it in the same publish as `aw_widget_snapshot` and again
 after every sync push round (so `pendingOutbox` stays current), and only once "Private widget" has

@@ -12,6 +12,7 @@ import '../../core/day_boundary.dart';
 import '../../core/kv/local_kv.dart';
 import '../../core/persisted_prefs.dart';
 import '../../core/server_url.dart';
+import '../../i18n/i18n.dart';
 import '../../sync/db/database.dart';
 import '../../sync/providers.dart' show databaseProvider;
 import '../calendar/data/external_event.dart';
@@ -76,6 +77,12 @@ class WidgetBridge {
   /// snapshot, in the same publish — the caller passes it only once "Private
   /// widget" has been READ, which [hideTitles] then is. With the outbox count
   /// not known yet the profile waits for [updatePendingOutbox].
+  ///
+  /// A profile that asks the server something new — another scope or
+  /// address, or "Private widget" turned (PR2-04) — goes first instead: the
+  /// profile, the extension's stored answer removed, then the snapshot, then
+  /// the reload. The stored answer may hold the titles just hidden, and from
+  /// the new profile's write on the extension refuses it.
   Future<void> publish(
     List<Task> tasks, {
     List<ExternalEvent> events = const [],
@@ -101,14 +108,23 @@ class WidgetBridge {
       hideTitles: hideTitles,
       compact: compact,
     );
-    await _host.save(kWidgetSnapshotKey, jsonEncode(snapshot.toJson()));
-    if (fetch != null) {
+    final json = jsonEncode(snapshot.toJson());
+    if (fetch == null) {
+      await _host.save(kWidgetSnapshotKey, json);
+    } else {
       _fetch = fetch;
       _hideTitles = hideTitles;
       _dateFormat = dateFormat;
       _pendingOutbox = fetch.pendingOutbox ?? _pendingOutbox;
       _localWrittenAt = _clock();
-      await _writeProfile();
+      final profile = _profile();
+      if (profile != null && _asksAnew(profile)) {
+        await _writeProfile();
+        await _host.save(kWidgetSnapshotKey, json);
+      } else {
+        await _host.save(kWidgetSnapshotKey, json);
+        await _writeProfile();
+      }
     }
     await _host.requestUpdate();
   }
@@ -152,10 +168,11 @@ class WidgetBridge {
     await _host.requestUpdate();
   }
 
-  Future<void> _writeProfile() async {
+  /// The profile the inputs held now make; null while one is missing.
+  Map<String, Object?>? _profile() {
     final fetch = _fetch, pending = _pendingOutbox, at = _localWrittenAt;
-    if (fetch == null || pending == null || at == null) return;
-    final profile = buildWidgetFetchProfile(
+    if (fetch == null || pending == null || at == null) return null;
+    return buildWidgetFetchProfile(
       baseUrl: fetch.baseUrl,
       scope: fetch.scope,
       hideTitles: _hideTitles,
@@ -163,15 +180,25 @@ class WidgetBridge {
       pendingOutbox: pending,
       localWrittenAt: at,
     );
+  }
+
+  /// What a profile asks the server: the part the extension's stored answer
+  /// must match.
+  static String _queryOf(Map<String, Object?> profile) =>
+      jsonEncode([profile['baseUrl'], profile['scope'], profile['private']]);
+
+  /// Whether [profile] asks something the last written one did not.
+  bool _asksAnew(Map<String, Object?> profile) =>
+      _lastQuery != null && _lastQuery != _queryOf(profile);
+
+  Future<void> _writeProfile() async {
+    final profile = _profile();
+    if (profile == null) return;
     // WIDGETS §3.2: a change of scope or of "Private widget" removes the
     // extension's copy of the old answer when the profile is rewritten. (The
     // extension also refuses a copy whose query differs from the profile's.)
-    final query = jsonEncode([
-      profile['baseUrl'],
-      profile['scope'],
-      profile['private'],
-    ]);
-    final changed = _lastQuery != null && _lastQuery != query;
+    final changed = _asksAnew(profile);
+    final query = _queryOf(profile);
     _lastQuery = query;
     // The new profile first, then the removal: the extension stores an answer
     // only while the profile it asked with is still the stored one and looks
@@ -341,11 +368,23 @@ final widgetPendingOutboxProvider = StreamProvider<int>(
   ).watchSingle().map((row) => row.read<int>('n')),
 );
 
+/// Holds [widgetSyncProvider] from a widget's build, live while a page covers
+/// that widget (#50, PR2-04).
+///
+/// Not `ref.watch`: Riverpod pauses a widget's watched providers while it is
+/// covered (TickerMode off), and Settings is a page pushed over the shell. A
+/// paused sync never saw "Private widget" turn — the titles stayed until the
+/// next launch, and the write on the way out put the old mode back. Neither
+/// did a new date format or language. A `listen` is never paused.
+void keepWidgetSyncLive(WidgetRef ref) =>
+    ref.listen<void>(widgetSyncProvider, (_, _) {});
+
 /// Keeps the home-screen widget in lock-step with tasks (OPH-130): republishes
-/// the snapshot on every open-task or project change. Watch it where the app is
-/// alive (HomeShell). While the app is foreground these pushes are budget-exempt
-/// (WIDGETS.md §6), so the widget stays current for free — and the move to the
-/// background writes it once more (OPH-438).
+/// the snapshot on every open-task or project change. Hold it where the app is
+/// alive (HomeShell), through [keepWidgetSyncLive] — not a `watch`. While the
+/// app is foreground these pushes are budget-exempt (WIDGETS.md §6), so the
+/// widget stays current for free — and the move to the background writes it
+/// once more (OPH-438).
 final widgetSyncProvider = Provider<void>((ref) {
   if (!widgetsSupportedPlatform) return;
   final tasks = ref.watch(openTasksProvider).value;
@@ -404,6 +443,12 @@ final widgetSyncProvider = Provider<void>((ref) {
   );
   // Fire-and-forget: a widget push must never block the UI.
   unawaited(publish());
+  // The snapshot's words and the profile's locale, patterns and strings are
+  // the app's language, read at publish time — no provider carries it. A new
+  // language republishes at once, as a new date format does (PR2-04).
+  void onLanguage() => unawaited(publish());
+  AwI18n.instance.addListener(onLanguage);
+  ref.onDispose(() => AwI18n.instance.removeListener(onLanguage));
   // OPH-438 (#50): the last fresh write happens on the way out. A reload
   // asked for while the app is in front is outside WidgetKit's budget; once
   // the app is in the background the widget moves only when the OS grants it

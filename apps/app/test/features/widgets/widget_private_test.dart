@@ -11,6 +11,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/core/persisted_prefs.dart';
+import 'package:alliswell/src/features/calendar/providers.dart';
 import 'package:alliswell/src/features/projects/data/project.dart';
 import 'package:alliswell/src/features/projects/providers.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
@@ -24,6 +25,7 @@ import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import 'ios_widget_swift.dart';
+import 'widget_app_group_fake.dart';
 
 import '../../support/fake_widget_host.dart';
 
@@ -249,6 +251,173 @@ void main() {
     });
   });
 
+  // #50, PR2-04: in the running app the switch changed nothing in the App
+  // Group, in either direction, until the next launch. Settings is a page
+  // pushed over the shell, and a covered screen's watched providers are
+  // paused (Riverpod 3 pauses a widget's `watch` while TickerMode is off) —
+  // so the widget sync, watched by the shell, never saw the new value, and
+  // the move to the background wrote the old one again.
+  group('the switch takes effect at once, with Settings over the shell', () {
+    const ws = '01WSAAAAAAAAAAAAAAAAAAAAAA';
+    late FakeHomeWidgetChannel plugin;
+
+    setUp(() => plugin = FakeHomeWidgetChannel()..install());
+    tearDown(() => plugin.uninstall());
+
+    /// A titled answer the extension stored for the profile before the
+    /// switch.
+    void storeTitledEnvelope() =>
+        plugin.values[kWidgetServerSnapshotKey] = jsonEncode({
+          'fetchedAtMs': 1,
+          'etag': 'e1',
+          'query': 'private=0',
+          'body': {'title': '$secret from the server'},
+        });
+
+    Map<String, dynamic> stored(String key) =>
+        jsonDecode(plugin.values[key]! as String) as Map<String, dynamic>;
+
+    /// The app as it runs: the shell keeps the widget sync, and Settings ›
+    /// General is pushed over it.
+    Future<void> pumpShellUnderSettings(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1000, 1800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final navigator = GlobalKey<NavigatorState>();
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [
+            openTasksProvider.overrideWith((ref) => Stream.value(tasks)),
+            projectsByIdProvider.overrideWithValue(const {}),
+            externalEventsProvider.overrideWith(
+              (ref) => Stream.value(const []),
+            ),
+            taskScopeProvider.overrideWith(
+              (ref) async => TaskScope.workspace(ws),
+            ),
+            widgetFetchBaseUrlProvider.overrideWith(
+              (ref) async => 'https://api.example.com',
+            ),
+            widgetPendingOutboxProvider.overrideWith((ref) => Stream.value(0)),
+          ],
+          child: MaterialApp(
+            navigatorKey: navigator,
+            theme: buildAwTheme(Brightness.light),
+            home: const _Shell(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      unawaited(
+        navigator.currentState!.push(
+          MaterialPageRoute<void>(
+            builder: (_) => const SettingsGeneralScreen(),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    Future<void> toggle(WidgetTester tester) async {
+      await tester.tap(find.byKey(const Key('settings-widget-private')));
+      await tester.pumpAndSettle();
+    }
+
+    testWidgets(
+      'turning private on rewrites the profile, removes the server envelope '
+      'and republishes at once',
+      (tester) async {
+        await pumpShellUnderSettings(tester);
+        expect(stored(kWidgetFetchProfileKey)['private'], isFalse);
+        expect(plugin.values[kWidgetSnapshotKey], contains(secret));
+        storeTitledEnvelope();
+        plugin.log.clear();
+
+        await toggle(tester);
+
+        // In this order: the new profile (the extension refuses an answer
+        // for another query from then on), the stored answer gone, the
+        // snapshot title-free, and only then a redraw — the widget is never
+        // asked to draw before every title is gone.
+        expect(plugin.log.take(4), [
+          kWidgetFetchProfileKey,
+          kWidgetServerSnapshotKey,
+          kWidgetSnapshotKey,
+          'update',
+        ]);
+        expect(stored(kWidgetFetchProfileKey)['private'], isTrue);
+        expect(plugin.isAbsent(kWidgetServerSnapshotKey), isTrue);
+        for (final value in plugin.values.values) {
+          expect(value, isNot(contains(secret)));
+        }
+
+        // The write on the way out keeps the new mode: no title comes back
+        // when the app leaves the screen, nor when it returns.
+        plugin.log.clear();
+        for (final state in [
+          AppLifecycleState.inactive,
+          AppLifecycleState.hidden,
+          AppLifecycleState.paused,
+          AppLifecycleState.hidden,
+          AppLifecycleState.inactive,
+          AppLifecycleState.resumed,
+        ]) {
+          tester.binding.handleAppLifecycleStateChanged(state);
+          await tester.pumpAndSettle();
+        }
+        expect(plugin.log, contains(kWidgetSnapshotKey));
+        for (final value in plugin.values.values) {
+          expect(value, isNot(contains(secret)));
+        }
+
+        // Off again: the titles are back at once, and the private answer the
+        // extension stored is dropped too — it would draw placeholders.
+        plugin.values[kWidgetServerSnapshotKey] = '{"query":"private=1"}';
+        await toggle(tester);
+        expect(stored(kWidgetFetchProfileKey)['private'], isFalse);
+        expect(plugin.isAbsent(kWidgetServerSnapshotKey), isTrue);
+        expect(plugin.values[kWidgetSnapshotKey], contains(secret));
+        expect(plugin.log.last, 'update');
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
+
+    testWidgets('a new language or date format republishes at once too', (
+      tester,
+    ) async {
+      await pumpShellUnderSettings(tester);
+      final container = ProviderScope.containerOf(
+        tester.element(find.byType(SettingsGeneralScreen)),
+      );
+      expect(stored(kWidgetFetchProfileKey)['locale'], 'en');
+
+      plugin.log.clear();
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      await tester.pumpAndSettle();
+      expect(stored(kWidgetFetchProfileKey)['locale'], 'tr');
+      expect(plugin.log, containsAllInOrder([kWidgetSnapshotKey, 'update']));
+      // A language is not a new query: the server's answer stays.
+      expect(plugin.log, isNot(contains(kWidgetServerSnapshotKey)));
+
+      await container.read(dateFormatProvider.notifier).set('dmy_dot');
+      await tester.pumpAndSettle();
+      expect(
+        stored(kWidgetFetchProfileKey)['patterns'],
+        containsPair('relativeDays', false),
+      );
+    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    test('the shell keeps the widget sync live, not watched', () {
+      final shell = File('lib/src/screens/home_shell.dart').readAsStringSync();
+      expect(shell.contains('keepWidgetSyncLive(ref);'), isTrue);
+      expect(
+        shell.contains('ref.watch(widgetSyncProvider)'),
+        isFalse,
+        reason: 'a watch is paused while a page covers the shell',
+      );
+    });
+  });
+
   group('Settings › General', () {
     Future<void> pumpGeneral(
       WidgetTester tester, {
@@ -328,6 +497,18 @@ void main() {
       expect(kotlin, contains('dp(if (compact) 0 else 2)'));
     });
   });
+}
+
+/// The shell as the app keeps it: it holds the widget sync while pages are
+/// pushed over it.
+class _Shell extends ConsumerWidget {
+  const _Shell();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    keepWidgetSyncLive(ref);
+    return const Scaffold(body: SizedBox.expand());
+  }
 }
 
 /// A privacy setting that answers only when the test says so.

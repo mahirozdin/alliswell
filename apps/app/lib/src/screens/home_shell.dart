@@ -469,8 +469,10 @@ class HomeShell extends ConsumerWidget {
     // (self-disables off Apple platforms and until access + a calendar exist).
     ref.watch(appleMirrorProvider);
     // OPH-130: republish the home-screen widget snapshot on task/project change
-    // (self-disables off iOS/Android/macOS).
-    ref.watch(widgetSyncProvider);
+    // (self-disables off iOS/Android/macOS). Listened, not watched (PR2-04): a
+    // watch is paused while Settings covers the shell, and the widget missed
+    // the settings changed there.
+    keepWidgetSyncLive(ref);
     // #50: the widget's own token, minted and renewed in the foreground
     // (iOS only; a no-op elsewhere).
     ref.watch(widgetTokenSyncProvider);
