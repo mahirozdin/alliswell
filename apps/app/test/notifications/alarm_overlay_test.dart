@@ -780,6 +780,7 @@ void main() {
     ProviderContainer boot({
       List<Override> extra = const [],
       AlarmKitHost? alarmKitHost,
+      NotificationsGateway? gateway,
       bool recordEvents = true,
     }) {
       log = [];
@@ -792,6 +793,7 @@ void main() {
             alarmOverlayAutoShow: true,
             alarmFeedback: _LogFeedback(log),
             alarmKitHost: alarmKitHost,
+            notificationsGateway: gateway,
           ),
           alarmFeedProvider.overrideWith((ref) => feed.stream),
           alarmClockProvider.overrideWithValue(() => clock),
@@ -835,6 +837,51 @@ void main() {
       ),
       alarm(rid: 'R3', remindAt: now.subtract(const Duration(seconds: 20))),
     ];
+
+    // OPH-445 (#48 gap A): the sync closed the screen, but the Android
+    // notification it came from kept looping its sound until cancelled.
+    test(
+      'closing the overlay because the alarm was handled elsewhere cancels its OS notification',
+      () async {
+        final gateway = FakeNotificationsGateway();
+        gateway.active[41] = const ActiveAlarmNotification(
+          id: 41,
+          urgent: true,
+          reminderIds: ['R1'],
+        );
+        gateway.active[42] = const ActiveAlarmNotification(
+          id: 42,
+          urgent: true,
+          reminderIds: ['R3'],
+        );
+        boot(gateway: gateway);
+        final r1 = alarm(
+          rid: 'R1',
+          remindAt: now.subtract(const Duration(seconds: 60)),
+        );
+        final r3 = alarm(
+          rid: 'R3',
+          remindAt: now.subtract(const Duration(seconds: 20)),
+        );
+        feed.add([r1, r3]);
+        await pumpEventQueue();
+        expect(overlay().ringing, hasLength(2));
+        expect(gateway.cancelled, isEmpty);
+
+        // R1 was acknowledged on another device: its row leaves, R3 still
+        // rings and keeps its notification.
+        feed.add([r3]);
+        await pumpEventQueue();
+        expect(gateway.cancelled, [41]);
+
+        // R3 too: the screen closes and the last notification goes with it.
+        feed.add(const []);
+        await pumpEventQueue();
+        expect(overlay().ringing, isEmpty);
+        expect(gateway.cancelled, [41, 42]);
+        expect(gateway.active, isEmpty);
+      },
+    );
 
     test(
       'three urgent alarms in one minute ring as one screen listing all three',

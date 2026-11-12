@@ -267,6 +267,11 @@ class WebNotificationsGateway implements NotificationsGateway {
     _planned.remove(id);
   }
 
+  /// A browser alert is shown by the service worker, not looped by the OS:
+  /// nothing here to take off the screen (OPH-445 is Android only).
+  @override
+  Future<List<ActiveAlarmNotification>> activeNotifications() async => const [];
+
   @override
   Stream<NotificationEvent> get events => _events.stream;
 

@@ -3,6 +3,8 @@
 /// swap in a fake gateway; no platform channels leak into the logic layer.
 library;
 
+import 'dart:convert';
+
 /// One OS notification we want to exist. The [id] is a content hash — any
 /// change to when/what produces a different id, so diffing desired-vs-pending
 /// reduces to set arithmetic on ids (cancel the extras, schedule the missing).
@@ -46,6 +48,64 @@ class PlannedNotification {
   /// of the id seed — changing the sound must reschedule, not silently apply to
   /// the next alarm only.
   final String? soundName;
+}
+
+/// A notification the OS is showing right now (OPH-445, #48 gap A).
+///
+/// An urgent one on Android loops its sound (FLAG_INSISTENT) until it is
+/// cancelled, so an alarm handled on another device has to be taken off the
+/// screen, not only out of the pending queue. [reminderIds] says which
+/// reminders it rings for; empty when the gateway could not tell, and such a
+/// notification is never touched.
+class ActiveAlarmNotification {
+  const ActiveAlarmNotification({
+    required this.id,
+    required this.urgent,
+    this.reminderIds = const [],
+    this.taskIds = const [],
+  });
+
+  /// From a planned payload (`planner.dart`): `{taskId, reminderId}` for one
+  /// task, `{taskIds, reminderIds}` for a grouped minute. Anything else maps to
+  /// no reminder.
+  factory ActiveAlarmNotification.fromPayload({
+    required int id,
+    required bool urgent,
+    String? payload,
+  }) {
+    Object? decoded;
+    try {
+      decoded = payload == null || payload.isEmpty ? null : jsonDecode(payload);
+    } on FormatException {
+      decoded = null;
+    }
+    List<String> ids(String one, String many) {
+      if (decoded is! Map) return const [];
+      final list = decoded[many];
+      if (list is List) {
+        return [
+          for (final v in list)
+            if (v is String) v,
+        ];
+      }
+      final single = decoded[one];
+      return single is String ? [single] : const [];
+    }
+
+    return ActiveAlarmNotification(
+      id: id,
+      urgent: urgent,
+      reminderIds: ids('reminderId', 'reminderIds'),
+      taskIds: ids('taskId', 'taskIds'),
+    );
+  }
+
+  final int id;
+
+  /// Posted on the urgent (alarm) channel.
+  final bool urgent;
+  final List<String> reminderIds;
+  final List<String> taskIds;
 }
 
 /// A user interaction with a delivered notification (tap or action button),
@@ -383,6 +443,11 @@ abstract class NotificationsGateway {
   Future<ScheduledDelivery> schedule(PlannedNotification notification);
 
   Future<void> cancel(int id);
+
+  /// The notifications the OS is showing right now (OPH-445). Android only:
+  /// every other platform returns an empty list, so its behaviour is
+  /// unchanged.
+  Future<List<ActiveAlarmNotification>> activeNotifications();
 
   /// Taps and action-button presses, foreground-routed.
   Stream<NotificationEvent> get events;

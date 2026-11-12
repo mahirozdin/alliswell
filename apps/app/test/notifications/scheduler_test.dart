@@ -106,6 +106,75 @@ void main() {
     expect(gateway.cancelled, isEmpty);
   });
 
+  // OPH-445 (#48 gap A): the set-diff only sees PENDING requests, so an alarm
+  // acknowledged on another device stopped its future slots and kept ringing
+  // the one already on screen (FLAG_INSISTENT loops until cancelled).
+  group('a delivered alarm handled elsewhere (OPH-445)', () {
+    var clock = now;
+
+    NotificationScheduler build() => NotificationScheduler(
+      gateway: gateway,
+      alarms: alarms.stream,
+      privacyMode: false,
+      clock: () => clock,
+    );
+
+    // The first slot of R1's chain, shown by the OS two minutes after [now].
+    Future<int> ringFirstSlot() async {
+      alarms.add([
+        alarm('R1', urgent: true, after: const Duration(minutes: 1)),
+      ]);
+      await pump();
+      final first = gateway.scheduled.values.reduce(
+        (a, b) => a.fireAt.isBefore(b.fireAt) ? a : b,
+      );
+      gateway.deliver(first.id);
+      clock = now.add(const Duration(minutes: 2));
+      return first.id;
+    }
+
+    setUp(() => clock = now);
+
+    test(
+      'a reminder acknowledged elsewhere stops ringing, not only its pending slots',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        final ringingId = await ringFirstSlot();
+
+        // Still ringing: a pass leaves it on screen.
+        alarms.add([
+          alarm('R1', urgent: true, after: const Duration(minutes: 1)),
+        ]);
+        await pump();
+        expect(gateway.active.keys, [ringingId]);
+
+        // The sync brings the acknowledge from the other device.
+        alarms.add(const []);
+        await pump();
+        expect(gateway.scheduled, isEmpty);
+        expect(gateway.active, isEmpty);
+        expect(gateway.cancelled, contains(ringingId));
+      },
+    );
+
+    test(
+      'the headless turn (a fresh scheduler, applyOnce) does it too',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        final ringingId = await ringFirstSlot();
+
+        // A background isolate knows nothing of the app's scheduler.
+        final headless = build();
+        await headless.applyOnce(const []);
+        headless.dispose();
+        expect(gateway.active, isEmpty);
+        expect(gateway.cancelled, contains(ringingId));
+      },
+    );
+  });
+
   group('AlarmKit lane (OPH-141)', () {
     late FakeAlarmKitHost alarmKit;
 

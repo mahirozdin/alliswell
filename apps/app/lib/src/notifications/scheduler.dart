@@ -1,7 +1,8 @@
 import 'dart:async';
 
 import 'alarm_log.dart';
-import 'alarm_overlay.dart' show alarmFireAt, alarmStaleWindowFor;
+import 'alarm_overlay.dart'
+    show alarmFireAt, alarmStaleWindowFor, ringingAlarms;
 import 'alarmkit.dart';
 import 'alarmkit_identity.dart';
 import 'planner.dart';
@@ -329,6 +330,7 @@ class NotificationScheduler {
           );
         }
       }
+      await _cancelHandledActive(now);
       try {
         await afterPlan?.call();
       } on Object catch (error) {
@@ -568,6 +570,42 @@ class NotificationScheduler {
     );
   }
 
+  /// Takes a shown urgent notification off the screen once its alarm no
+  /// longer rings (OPH-445): the set-diff above only sees PENDING requests,
+  /// and Android loops a shown one's sound until it is cancelled. Every pass
+  /// runs it, the headless turn's [applyOnce] included.
+  Future<void> _cancelHandledActive(DateTime now) async {
+    final List<ActiveAlarmNotification> active;
+    try {
+      active = await gateway.activeNotifications();
+    } on Object catch (error) {
+      await log?.record(
+        event: AlarmLogEvent.degraded,
+        lane: AlarmLogLane.notification,
+        detail: 'activeNotifications failed: $error',
+      );
+      return;
+    }
+    for (final id in activeToCancel(active, _latest, now, staleWindow)) {
+      try {
+        await gateway.cancel(id);
+        _announced.remove(id);
+        await log?.record(
+          event: AlarmLogEvent.cancelled,
+          lane: AlarmLogLane.notification,
+          urgent: true,
+          detail: 'id=$id shown, no longer ringing',
+        );
+      } on Object catch (error) {
+        await log?.record(
+          event: AlarmLogEvent.degraded,
+          lane: AlarmLogLane.notification,
+          detail: 'cancel shown id=$id failed: $error',
+        );
+      }
+    }
+  }
+
   static DateTime? _instant(int? ms) =>
       ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
 
@@ -771,3 +809,31 @@ AlarmKitPassPlan planAlarmKitPass({
 }
 
 const _kActive = {'scheduled', 'snoozed', 'delivered'};
+
+/// The shown notifications to take off the screen (OPH-445, #48 gap A): an
+/// urgent one whose reminders no longer ring — acknowledged, snoozed,
+/// completed or deleted on another device, or past [staleWindow] — by the
+/// same decision as [ringingAlarms]. A grouped minute stays while any of its
+/// reminders rings. A notification mapped to no reminder, a normal reminder
+/// (it does not loop) and the rehearsal alarm are never touched.
+///
+/// Idempotent: a cancelled notification is gone from the next [active].
+Set<int> activeToCancel(
+  List<ActiveAlarmNotification> active,
+  List<AlarmInput> alarms,
+  DateTime now,
+  Duration staleWindow,
+) {
+  final ringing = {
+    for (final a in ringingAlarms(alarms, now, staleAfter: staleWindow))
+      a.reminderId,
+  };
+  return {
+    for (final n in active)
+      if (n.urgent &&
+          n.id != kAlarmTestNotificationId &&
+          n.reminderIds.isNotEmpty &&
+          !n.reminderIds.any(ringing.contains))
+        n.id,
+  };
+}

@@ -20,6 +20,26 @@ class FakeNotificationsGateway implements NotificationsGateway {
   final Set<int> vanished = {};
   final _events = StreamController<NotificationEvent>.broadcast(sync: true);
 
+  /// What the OS is showing right now (OPH-445): [deliver] moves a scheduled
+  /// request here, the way Android drops it from pending once it is shown.
+  final Map<int, ActiveAlarmNotification> active = {};
+
+  /// The OS presents [id]: it leaves pending and is on screen, with the
+  /// reminders its payload names (what the real gateway maps it to).
+  void deliver(int id) {
+    final n = scheduled.remove(id)!;
+    active[id] = ActiveAlarmNotification.fromPayload(
+      id: id,
+      urgent: n.urgent,
+      payload: n.payload,
+    );
+  }
+
+  @override
+  Future<List<ActiveAlarmNotification>> activeNotifications() async => [
+    ...active.values,
+  ];
+
   @override
   Future<void> initialize() async {}
 
@@ -79,6 +99,7 @@ class FakeNotificationsGateway implements NotificationsGateway {
   Future<void> cancel(int id) async {
     cancelled.add(id);
     scheduled.remove(id);
+    active.remove(id);
   }
 
   @override

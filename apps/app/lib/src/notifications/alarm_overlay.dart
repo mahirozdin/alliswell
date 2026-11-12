@@ -18,6 +18,7 @@ import 'gateway.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
 import 'providers.dart';
+import 'scheduler.dart' show activeToCancel;
 
 /// Injectable "now" for the ring decision (OPH-143). Production reads the wall
 /// clock; tests pin it — the same seam as `NotificationScheduler(clock:)` and
@@ -315,6 +316,10 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// Occurrences whose write failed, with the action "Tekrar dene" repeats.
   final Map<String, AlarmPendingAction> _failures = {};
 
+  /// The rows the last evaluation showed: one that is gone without a local
+  /// action was handled elsewhere (OPH-445).
+  Set<String> _shown = const {};
+
   AlarmFeedback? _feedback;
   bool _sounding = false;
 
@@ -386,6 +391,15 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
       staleAfter: ref.read(alarmStaleWindowProvider),
     );
     final shownKeys = {for (final a in ringing) alarmOccurrenceKey(a)};
+    // A row that left the screen while nobody here acted on it was handled on
+    // another device: its Android notification would keep looping (#48).
+    final gone = _shown.difference(shownKeys);
+    if (gone.any(
+      (key) => !_handled.contains(key) && !_failures.containsKey(key),
+    )) {
+      unawaited(_cancelShownNotifications(alarms, now));
+    }
+    _shown = shownKeys;
     // A failed write brings its alarm back even when it was opened from the
     // missed card, outside the ring window: say it, never lose it.
     final rows = [
@@ -448,6 +462,27 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   }
 
   void _tick() => state = _evaluate(_feed());
+
+  /// Cancels the shown OS notifications whose alarm no longer rings — the
+  /// scheduler's decision ([activeToCancel]), without waiting for its next
+  /// pass. Android only (every other gateway shows none); never throws.
+  Future<void> _cancelShownNotifications(
+    List<AlarmInput> alarms,
+    DateTime now,
+  ) async {
+    try {
+      final gateway = ref.read(notificationsGatewayProvider);
+      final active = await gateway.activeNotifications();
+      final stale = ref.read(alarmStaleWindowProvider);
+      for (final id in activeToCancel(active, alarms, now, stale)) {
+        await gateway.cancel(id);
+      }
+    } on Object catch (error) {
+      debugPrint(
+        'alarm overlay: cancelling a shown notification failed: $error',
+      );
+    }
+  }
 
   void _resume() {
     _resumeTimer = null;
