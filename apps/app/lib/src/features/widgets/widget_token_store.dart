@@ -217,6 +217,8 @@ bool widgetTokenLifecycleEnabled({
 /// - **renew** in the foreground when fewer than [kWidgetTokenRenewWithin] of
 ///   its days remain, when the extension wrote `invalid` after a 401, when
 ///   the item is gone or was minted for another device id;
+/// - **re-mint** after a sign-in ([sessionStarted]): a token belongs to the
+///   session family that minted it, and a sign-in is a new family;
 /// - **forget** at sign-out ([signOut]), after the caller deleted the device
 ///   on the server (that revokes the token);
 /// - an older server without the route is left alone until the next start.
@@ -327,6 +329,30 @@ class WidgetTokenLifecycle {
     }
   }
 
+  /// A new session began on this install — a sign-in, not a restore. The
+  /// server binds a widget token to the session family that minted it, and
+  /// a sign-in starts a new family, so whatever token this install holds
+  /// belongs to a family that may be gone: one that expired while the phone
+  /// was off ends without a sign-out ([signOut] never ran), and its token
+  /// still looks fresh here. Forgetting the stamp makes the next [ensure]
+  /// mint for the new session; the Keychain item stays until that mint
+  /// replaces it. A mint still on the wire for the old session stores
+  /// nothing. Never throws.
+  Future<void> sessionStarted() async {
+    if (!enabled) return;
+    _generation++;
+    try {
+      await _running;
+    } on Object {
+      // Never throws, but a sign-in must not depend on it.
+    }
+    try {
+      await _kv.remove(kWidgetTokenMetaKey);
+    } on Object {
+      // Best effort: the extension's 401 still marks the token invalid.
+    }
+  }
+
   /// Sign-out or an account switch (WIDGETS §3.2): the caller has already
   /// deleted this device on the server, which revokes the token. Then every
   /// self-fetch key goes except the snapshot, then the Keychain item. Each
@@ -368,17 +394,20 @@ class WidgetTokenLifecycle {
 }
 
 /// The install's one [WidgetTokenLifecycle]. Not rebuilt by the session: it
-/// outlives a sign-out so it can be the one that clears the token.
-final widgetTokenLifecycleProvider = Provider<WidgetTokenLifecycle>(
-  (ref) => WidgetTokenLifecycle(
-    // Read at call time: the client follows the server address.
-    api: _LazyWidgetTokenApi(
-      () => HttpWidgetTokenApi(ref.read(apiClientProvider)),
-    ),
-    register: () => ref.read(deviceRegistryProvider).sync(signedIn: true),
-    forgetProfile: () => ref.read(widgetBridgeProvider).forgetFetch(),
-  ),
-);
+/// outlives a sign-out so it can be the one that clears the token. Typed:
+/// the auth repository's sign-in hook reads it, and it reads the API client
+/// built on that repository.
+final Provider<WidgetTokenLifecycle> widgetTokenLifecycleProvider =
+    Provider<WidgetTokenLifecycle>(
+      (ref) => WidgetTokenLifecycle(
+        // Read at call time: the client follows the server address.
+        api: _LazyWidgetTokenApi(
+          () => HttpWidgetTokenApi(ref.read(apiClientProvider)),
+        ),
+        register: () => ref.read(deviceRegistryProvider).sync(signedIn: true),
+        forgetProfile: () => ref.read(widgetBridgeProvider).forgetFetch(),
+      ),
+    );
 
 class _LazyWidgetTokenApi implements WidgetTokenApi {
   const _LazyWidgetTokenApi(this._api);

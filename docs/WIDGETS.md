@@ -395,7 +395,8 @@ live and bound to the device (`refresh_tokens.device_id`, set by a sign-in or re
 the device), so a revoked session cannot mint in the minutes its access token still verifies. A
 `404` without that code is an older server: no token, no retry
 until the next app start. Life 90 days; Dart re-mints in the foreground when fewer than 30 remain
-or `aw_widget_token_state` is `invalid`.
+or `aw_widget_token_state` is `invalid`, and after every sign-in (not a restore): a sign-in is a
+new family, and the old one may have expired without a sign-out to clear its token.
 
 #### Fetch — `GET /api/v1/widget/snapshot` (Swift ↔ API)
 

@@ -79,6 +79,12 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
             switchedAccount: owner != null && owner != userId,
           );
       ref.invalidate(ringsUrgentHereProvider);
+      // A sign-in is a new session family, and the widget's token is bound
+      // to the one that minted it (#50): mint again for this one. A family
+      // that expired on its own never reached a sign-out to clear it.
+      if (!restored) {
+        await ref.read(widgetTokenLifecycleProvider).sessionStarted();
+      }
     },
     deviceId: () => _deviceIdForAuth(ref),
     onSessionRevoked: (userId, {required replaced}) =>

@@ -7,7 +7,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
+import 'package:alliswell/src/features/auth/data/models.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
+import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/devices/data/device_api.dart';
 import 'package:alliswell/src/features/devices/device_registry.dart';
@@ -230,6 +232,79 @@ void main() {
     // Nothing that was the token reached the event log.
     expect(events.where((e) => e.contains('aww_')), isEmpty);
   });
+
+  test(
+    'signing in again after the session expired mints for the new session',
+    () async {
+      final events = <String>[];
+      var minted = 0;
+      final store = MemoryWidgetTokenStore(events);
+      final keys = MemoryGroupKeys(events);
+      final lifecycle = WidgetTokenLifecycle(
+        api: FakeWidgetTokenApi((deviceId) async {
+          minted++;
+          return WidgetTokenMint(
+            token: 'aww_$minted',
+            deviceId: deviceId,
+            expiresAt: DateTime.now().toUtc().add(const Duration(days: 59)),
+          );
+        }),
+        store: store,
+        groupKeys: keys,
+        enabled: true,
+      );
+      // A token minted under the session that later expired: same device,
+      // 59 days left, the Keychain item still there, never marked invalid.
+      await lifecycle.ensure('C1');
+      expect(store.token, 'aww_1');
+
+      // The stored session ran out while the phone was off: restore drops
+      // it without a sign-out.
+      final secrets = InMemorySecretStore();
+      final expired = sessionJson();
+      (expired['tokens'] as Map<String, dynamic>)['refreshTokenExpiresAt'] =
+          DateTime.now().subtract(const Duration(days: 1)).toIso8601String();
+      await TokenStorage(secrets).save(AuthSession.fromJson(expired));
+      final db = AwDatabase(
+        DatabaseConnection(
+          NativeDatabase.memory(),
+          closeStreamsSynchronously: true,
+        ),
+      );
+      addTearDown(db.close);
+      final container = ProviderContainer(
+        retry: (_, _) => null,
+        overrides: [
+          databaseProvider.overrideWithValue(db),
+          secretStoreProvider.overrideWithValue(secrets),
+          authApiProvider.overrideWithValue(
+            AuthApi(
+              fakeDio(
+                FakeHttpClientAdapter(
+                  (options, _) async => jsonBody(200, sessionJson()),
+                ),
+              ),
+            ),
+          ),
+          widgetTokenLifecycleProvider.overrideWithValue(lifecycle),
+        ],
+      );
+      addTearDown(container.dispose);
+      expect(await container.read(authControllerProvider.future), isNull);
+
+      // The same person signs in: a new session family. The old token is
+      // bound to the expired one, so the next foreground mints again.
+      await container
+          .read(authControllerProvider.notifier)
+          .login(email: 'mahir@example.com', password: 'pw');
+      await lifecycle.ensure('C1');
+      expect(store.token, 'aww_2');
+
+      // A restored session is the same family: nothing minted on a restart.
+      await lifecycle.ensure('C1');
+      expect(store.token, 'aww_2');
+    },
+  );
 
   test('a forgotten fetch profile is not written back by the outbox', () async {
     final host = _KeyedHost();
