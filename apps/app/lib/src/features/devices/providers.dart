@@ -209,6 +209,26 @@ class DevicesView {
   );
 }
 
+/// What removing a device left behind (OPH-449).
+@immutable
+class DeviceRemoval {
+  const DeviceRemoval({
+    required this.removed,
+    required this.devices,
+    required this.needsPick,
+  });
+
+  final DeviceInfo removed;
+
+  /// The list as the server holds it after the removal (its promotion
+  /// included).
+  final List<DeviceInfo> devices;
+
+  /// The removed device was the only one ringing: the person is asked where
+  /// urgent alarms ring now, so they never go quiet unnoticed.
+  final bool needsPick;
+}
+
 /// The last list this session saw, per person, for [DevicesView.offline].
 /// Memory only: device names are not worth a copy on disk that sign-out would
 /// then have to remember to remove.
@@ -307,6 +327,113 @@ class DevicesController extends AsyncNotifier<DevicesView> {
     return result;
   }
 
+  /// Renames one device (`PATCH … {deviceName}`). Returns whether the server
+  /// took it; the row shows the new name only once it did.
+  Future<bool> rename(String deviceId, String name) async {
+    final current = state.value;
+    if (current == null || current.offline) return false;
+    final before = current.byId(deviceId);
+    if (before == null) return false;
+    final api = ref.read(deviceApiProvider);
+    final cache = ref.read(_devicesCacheProvider);
+    final DevicePatchResult result;
+    try {
+      result = await api.patch(deviceId, deviceName: name);
+    } on Object {
+      return false;
+    }
+    final fresh = result.device;
+    final after = _merged(
+      before,
+      DeviceInfo(
+        id: fresh.id,
+        platform: fresh.platform,
+        name: fresh.name ?? name,
+        appVersion: fresh.appVersion,
+        lastSeenAt: fresh.lastSeenAt,
+        createdAt: fresh.createdAt,
+        ringsUrgent: fresh.ringsUrgent,
+        ringsUrgentSource: fresh.ringsUrgentSource,
+      ),
+      before.ringsUrgent,
+    );
+    final cached = cache.devices;
+    if (cached != null) {
+      cache.devices = [for (final d in cached) d.id == deviceId ? after : d];
+    }
+    if (ref.mounted) _settle(after);
+    return true;
+  }
+
+  /// Removes another device: `DELETE /api/v1/notification-devices/:id`,
+  /// which also revokes that device's session (ADR-0069 §6) and, when it was
+  /// the last ringing one, promotes another. The list is read again so the
+  /// promotion shows; this device's alarm gate follows it at once.
+  ///
+  /// Null when the server could not be told; nothing changes then.
+  Future<DeviceRemoval?> remove(String deviceId) async {
+    final current = state.value;
+    if (current == null || current.offline) return null;
+    final before = current.byId(deviceId);
+    if (before == null) return null;
+    final lastRinging =
+        before.ringsUrgent == true && current.ringing.length == 1;
+
+    final api = ref.read(deviceApiProvider);
+    final store = ref.read(ringsUrgentStoreProvider);
+    final thisId = ref.read(syncClientIdProvider).value;
+    final cache = ref.read(_devicesCacheProvider);
+    final gateChanged = ref.read(_ringsUrgentChangedProvider);
+    try {
+      await api.unregister(deviceId);
+    } on Object {
+      return null;
+    }
+    List<DeviceInfo> fresh;
+    try {
+      fresh = await api.list();
+    } on Object {
+      fresh = current.devices;
+    }
+    fresh = [
+      for (final d in fresh)
+        if (d.id != deviceId) d,
+    ];
+    if (cache.devices != null) cache.devices = fresh;
+    if (thisId != null) {
+      final self = fresh.where((d) => d.id == thisId).firstOrNull;
+      final rings = self?.ringsUrgent;
+      if (rings != null && rings != current.byId(thisId)?.ringsUrgent) {
+        await store.write(ringsUrgentHereFromServer(rings));
+        gateChanged();
+      }
+    }
+    if (ref.mounted) state = AsyncData(DevicesView(devices: fresh));
+    return DeviceRemoval(
+      removed: before,
+      devices: fresh,
+      needsPick: lastRinging && fresh.isNotEmpty,
+    );
+  }
+
+  /// Makes [deviceId] the one device that rings (the pick page): it is
+  /// switched on first and every other ringing device off after, so there is
+  /// no moment with none. Returns whether every change was saved.
+  Future<bool> ringOnlyOn(String deviceId) async {
+    final current = state.value;
+    if (current == null) return false;
+    final target = current.byId(deviceId);
+    if (target == null) return false;
+    if (target.ringsUrgent != true) {
+      if (await setRingsUrgent(deviceId, true) == null) return false;
+    }
+    for (final other in current.ringing) {
+      if (other.id == deviceId) continue;
+      if (await setRingsUrgent(other.id, false) == null) return false;
+    }
+    return true;
+  }
+
   void _settle(DeviceInfo device) {
     final latest = state.value;
     if (latest == null) return;
@@ -334,7 +461,7 @@ class DevicesController extends AsyncNotifier<DevicesView> {
 
   /// The PATCH answer, minus what only GET says (`hasSession`) and with the
   /// requested value when the answer leaves the flag out.
-  static DeviceInfo _merged(DeviceInfo before, DeviceInfo fresh, bool asked) =>
+  static DeviceInfo _merged(DeviceInfo before, DeviceInfo fresh, bool? asked) =>
       DeviceInfo(
         id: before.id,
         platform: fresh.platform.isEmpty ? before.platform : fresh.platform,

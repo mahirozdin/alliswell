@@ -313,7 +313,27 @@
       "saveFailed": "Couldn't save. Try again.",
       "unknownBrowser": "Browser",
       "announceOn": "Urgent alarms on for {device}",
-      "announceOff": "Urgent alarms off for {device}"
+      "announceOff": "Urgent alarms off for {device}",
+      "rename": "Name",
+      "detailPlatform": "Platform: {value}",
+      "detailSeen": "Last seen: {value}",
+      "detailAdded": "Added: {value}",
+      "remove": "Remove device",
+      "removeAction": "Remove",
+      "removeConfirm": "Remove {device}?",
+      "removeBody": "It will be signed out on that device.",
+      "removeNoSession": "This device's session couldn't be matched. It leaves the list, but the install may show up again the next time it opens.",
+      "removeFailed": "Couldn't remove. Try again.",
+      "signOutHere": "Sign out on this device",
+      "footer": "Removing a device signs it out.",
+      "footerAlarms": "Alarms already set on a removed device may still ring until it next opens.",
+      "lastOffTitle": "Urgent alarms won't ring on any device",
+      "lastOffBody": "Reminders will arrive only as normal notifications.",
+      "lastOffConfirm": "Turn off anyway",
+      "pickTitle": "Which device should ring urgent alarms?",
+      "pickBody": "You removed the device that rang urgent alarms. They ring on the device you pick; your other devices get a normal notification.",
+      "newDeviceCard": "Urgent alarms are off on this device. Alarms ring on {device}.",
+      "newDeviceTurnOn": "Ring here too"
     }
   },
   "shell": {

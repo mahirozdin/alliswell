@@ -312,7 +312,27 @@
       "saveFailed": "Kaydedilemedi. Tekrar dene.",
       "unknownBrowser": "Tarayıcı",
       "announceOn": "{device} acil alarmlar açık",
-      "announceOff": "{device} acil alarmlar kapalı"
+      "announceOff": "{device} acil alarmlar kapalı",
+      "rename": "Ad",
+      "detailPlatform": "Platform: {value}",
+      "detailSeen": "Son görülme: {value}",
+      "detailAdded": "Eklendi: {value}",
+      "remove": "Cihazı kaldır",
+      "removeAction": "Kaldır",
+      "removeConfirm": "{device} kaldırılsın mı?",
+      "removeBody": "O cihazda oturum kapanır.",
+      "removeNoSession": "Bu cihazın oturumu eşlenemedi. Listeden kalkar ama kurulum bir sonraki açılışında yeniden görünebilir.",
+      "removeFailed": "Kaldırılamadı. Tekrar dene.",
+      "signOutHere": "Bu cihazda çıkış yap",
+      "footer": "Bir cihazı kaldırınca o cihazda oturum kapanır.",
+      "footerAlarms": "Kaldırdığın cihazda zaten kurulmuş alarmlar, cihaz bir sonraki açılışına kadar çalabilir.",
+      "lastOffTitle": "Acil alarmlar hiçbir cihazda çalmayacak",
+      "lastOffBody": "Hatırlatmalar yalnız normal bildirim olarak gelir.",
+      "lastOffConfirm": "Yine de kapat",
+      "pickTitle": "Acil alarmlar hangi cihazda çalsın?",
+      "pickBody": "Acil alarmların çaldığı cihazı kaldırdın. Seçtiğin cihazda çalarlar, diğerlerine normal bildirim olarak gelirler.",
+      "newDeviceCard": "Bu cihazda acil alarmlar kapalı. Alarmlar {device} çalıyor.",
+      "newDeviceTurnOn": "Bu cihazda da çal"
     }
   },
   "shell": {

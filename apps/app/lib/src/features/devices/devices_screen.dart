@@ -13,8 +13,11 @@ import '../../theme/typography.dart';
 import '../../widgets/route_leading.dart';
 import '../../widgets/status_views.dart';
 import '../../widgets/word_safe_text.dart';
+import '../auth/ui/sign_out.dart' show signOutWithConfirm;
 import 'data/device_api.dart';
+import 'device_detail_sheet.dart';
 import 'device_display_name.dart';
+import 'pick_alarm_device_page.dart';
 import 'providers.dart';
 
 /// A device not heard from for longer than this is folded under "Not seen
@@ -108,7 +111,11 @@ class DevicesSettingsRow extends ConsumerWidget {
 /// /api/v1/notification-devices/:id`); a device that does not ring gets the
 /// same reminder as an ordinary notification.
 class DevicesScreen extends ConsumerStatefulWidget {
-  const DevicesScreen({super.key});
+  const DevicesScreen({super.key, this.signOut});
+
+  /// "Sign out on this device" from the detail sheet; the app's own
+  /// sign-out flow ([signOutWithConfirm]) unless a test hands in another.
+  final Future<void> Function(BuildContext context, WidgetRef ref)? signOut;
 
   @override
   ConsumerState<DevicesScreen> createState() => _DevicesScreenState();
@@ -117,12 +124,47 @@ class DevicesScreen extends ConsumerStatefulWidget {
 class _DevicesScreenState extends ConsumerState<DevicesScreen> {
   bool _staleOpen = false;
 
+  /// "Acil alarmlar hiçbir cihazda çalmayacak" — asked before the last
+  /// ringing device goes off. A warning, never a block (Q7).
+  Future<bool> _confirmLastOff() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      useRootNavigator: true,
+      builder: (dialogContext) => AlertDialog(
+        key: const Key('devices-last-off-dialog'),
+        title: Text('settings.devices.lastOffTitle'.tr()),
+        content: Text('settings.devices.lastOffBody'.tr()),
+        actions: [
+          TextButton(
+            key: const Key('devices-last-off-cancel'),
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text('common.cancel'.tr()),
+          ),
+          FilledButton(
+            key: const Key('devices-last-off-confirm'),
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text('settings.devices.lastOffConfirm'.tr()),
+          ),
+        ],
+      ),
+    );
+    return confirmed == true;
+  }
+
   Future<void> _toggle(DeviceInfo device, bool value) async {
     final messenger = ScaffoldMessenger.maybeOf(context);
     final name = deviceDisplayName(device);
-    final result = await ref
-        .read(devicesProvider.notifier)
-        .setRingsUrgent(device.id, value);
+    final controller = ref.read(devicesProvider.notifier);
+    final view = ref.read(devicesProvider).value;
+    // The list foresees it: ask first.
+    final asked =
+        !value &&
+        device.ringsUrgent == true &&
+        view != null &&
+        view.ringing.length == 1;
+    if (asked && !await _confirmLastOff()) return;
+    if (!mounted) return;
+    final result = await controller.setRingsUrgent(device.id, value);
     if (!mounted) return;
     if (result == null) {
       messenger?.showSnackBar(
@@ -130,6 +172,17 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       );
       return;
     }
+    // The server knew better than the list (another device changed in the
+    // meantime): warn now, and "Cancel" puts this one back on.
+    if (!value &&
+        !asked &&
+        result.warnings.contains('NO_URGENT_DEVICE') &&
+        !await _confirmLastOff()) {
+      if (!mounted) return;
+      await controller.setRingsUrgent(device.id, true);
+      return;
+    }
+    if (!mounted) return;
     SemanticsService.sendAnnouncement(
       View.of(context),
       (value ? 'settings.devices.announceOn' : 'settings.devices.announceOff')
@@ -143,6 +196,29 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
           ),
       Directionality.of(context),
     );
+  }
+
+  Future<void> _openDetails(DeviceInfo device, String? thisId) async {
+    final view = ref.read(devicesProvider).value;
+    final outcome = await showDeviceDetailSheet(
+      context,
+      device: device,
+      isThis: device.id == thisId,
+      offline: view?.offline ?? true,
+    );
+    if (!mounted || outcome == null) return;
+    switch (outcome) {
+      case DeviceSheetSignOut():
+        await (widget.signOut ?? signOutWithConfirm)(context, ref);
+      case DeviceSheetRemoved(:final removal):
+        if (!removal.needsPick) return;
+        await Navigator.of(context).push(
+          MaterialPageRoute<bool>(
+            builder: (_) =>
+                PickAlarmDevicePage(devices: removal.devices, thisId: thisId),
+          ),
+        );
+    }
   }
 
   @override
@@ -192,6 +268,7 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
       onChanged: view.offline || view.saving.contains(device.id)
           ? null
           : (value) => _toggle(device, value),
+      onOpen: () => _openDetails(device, thisId),
     );
 
     final hasOthers = arranged.others.isNotEmpty || arranged.stale.isNotEmpty;
@@ -232,7 +309,38 @@ class _DevicesScreenState extends ConsumerState<DevicesScreen> {
           if (_staleOpen)
             for (final device in arranged.stale) card(device),
         ],
+        if (hasOthers) const _Footer(),
       ],
+    );
+  }
+}
+
+/// What removing a device means, under the list (ADR-0069 §6): its session
+/// ends, and alarms it already set may still ring until it next opens.
+class _Footer extends StatelessWidget {
+  const _Footer();
+
+  @override
+  Widget build(BuildContext context) {
+    final style = context.awText.meta.copyWith(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    );
+    return Padding(
+      key: const Key('devices-footer'),
+      padding: const EdgeInsets.fromLTRB(
+        AwSpace.x1,
+        AwSpace.x4,
+        AwSpace.x1,
+        AwSpace.x2,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('settings.devices.footer'.tr(), style: style),
+          const SizedBox(height: AwSpace.x1),
+          Text('settings.devices.footerAlarms'.tr(), style: style),
+        ],
+      ),
     );
   }
 }
@@ -392,6 +500,7 @@ class _DeviceCard extends StatelessWidget {
     required this.ringingCount,
     required this.saving,
     required this.onChanged,
+    required this.onOpen,
   });
 
   final DeviceInfo device;
@@ -400,6 +509,9 @@ class _DeviceCard extends StatelessWidget {
   final int ringingCount;
   final bool saving;
   final ValueChanged<bool>? onChanged;
+
+  /// Opens the detail sheet (rename, remove or sign out).
+  final VoidCallback onOpen;
 
   static IconData _icon(String platform) => switch (platform) {
     'ios' => Icons.phone_iphone,
@@ -440,59 +552,64 @@ class _DeviceCard extends StatelessWidget {
     final top = Semantics(
       container: true,
       excludeSemantics: true,
+      button: true,
+      onTap: onOpen,
       label: [name, if (isThis) thisLabel, platform, seen].join(', '),
-      child: ConstrainedBox(
+      child: InkWell(
         key: Key('device-top-${device.id}'),
-        constraints: const BoxConstraints(minHeight: 56),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AwSpace.x4,
-            vertical: AwSpace.x3,
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: scheme.surfaceContainerHigh,
-                  shape: BoxShape.circle,
+        onTap: onOpen,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 56),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AwSpace.x4,
+              vertical: AwSpace.x3,
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: scheme.surfaceContainerHigh,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    _icon(device.platform),
+                    size: 24,
+                    color: scheme.onSurfaceVariant,
+                  ),
                 ),
-                child: Icon(
-                  _icon(device.platform),
-                  size: 24,
-                  color: scheme.onSurfaceVariant,
-                ),
-              ),
-              const SizedBox(width: AwSpace.x3),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Wrap(
-                      spacing: AwSpace.x2,
-                      runSpacing: AwSpace.x1,
-                      crossAxisAlignment: WrapCrossAlignment.center,
-                      children: [
-                        AwWordSafeText(
-                          name,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: context.awText.rowTitle.copyWith(
-                            color: scheme.onSurface,
+                const SizedBox(width: AwSpace.x3),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Wrap(
+                        spacing: AwSpace.x2,
+                        runSpacing: AwSpace.x1,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        children: [
+                          AwWordSafeText(
+                            name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: context.awText.rowTitle.copyWith(
+                              color: scheme.onSurface,
+                            ),
                           ),
-                        ),
-                        if (isThis) _ThisDeviceBadge(thisLabel),
-                      ],
-                    ),
-                    const SizedBox(height: AwSpace.x1),
-                    Text('$platform · $seen', style: metaStyle),
-                  ],
+                          if (isThis) _ThisDeviceBadge(thisLabel),
+                        ],
+                      ),
+                      const SizedBox(height: AwSpace.x1),
+                      Text('$platform · $seen', style: metaStyle),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: AwSpace.x2),
-              Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
-            ],
+                const SizedBox(width: AwSpace.x2),
+                Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
+              ],
+            ),
           ),
         ),
       ),

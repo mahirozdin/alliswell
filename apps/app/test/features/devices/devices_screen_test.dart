@@ -29,6 +29,7 @@ Map<String, dynamic> _row(
   String? name,
   Duration seenAgo, {
   bool? ringsUrgent,
+  bool hasSession = true,
 }) => {
   'id': id,
   'platform': platform,
@@ -37,7 +38,7 @@ Map<String, dynamic> _row(
   'createdAt': '2026-11-01T08:00:00.000Z',
   'ringsUrgent': ?ringsUrgent,
   if (ringsUrgent != null) 'ringsUrgentSource': 'auto',
-  'hasSession': true,
+  'hasSession': hasSession,
 };
 
 /// Four rows, in the order a server might return them: not the order the
@@ -45,6 +46,8 @@ Map<String, dynamic> _row(
 List<Map<String, dynamic>> _rows({
   bool withFlag = true,
   bool macRings = false,
+  bool thisRings = true,
+  bool webHasSession = true,
 }) => [
   _row(
     _webId,
@@ -53,6 +56,7 @@ List<Map<String, dynamic>> _rows({
         '(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
     const Duration(days: 3),
     ringsUrgent: withFlag ? false : null,
+    hasSession: webHasSession,
   ),
   _row(
     _oldId,
@@ -73,7 +77,7 @@ List<Map<String, dynamic>> _rows({
     'ios',
     'Dart/3.13 (dart:io)',
     const Duration(minutes: 1),
-    ringsUrgent: withFlag ? true : null,
+    ringsUrgent: withFlag ? thisRings : null,
   ),
 ];
 
@@ -85,6 +89,8 @@ class _FakeApi implements DeviceApi {
   bool failPatch = false;
   Completer<void>? patchGate;
   final List<(String, bool?)> patches = [];
+  final List<(String, String)> names = [];
+  final List<String> deleted = [];
 
   @override
   Future<List<DeviceInfo>> list() async {
@@ -103,7 +109,8 @@ class _FakeApi implements DeviceApi {
     bool? ringsUrgent,
     String? deviceName,
   }) async {
-    patches.add((deviceId, ringsUrgent));
+    if (ringsUrgent != null) patches.add((deviceId, ringsUrgent));
+    if (deviceName != null) names.add((deviceId, deviceName));
     await patchGate?.future;
     if (failPatch) {
       throw DioException(
@@ -117,6 +124,7 @@ class _FakeApi implements DeviceApi {
     }
     final row = rows.firstWhere((r) => r['id'] == deviceId);
     if (ringsUrgent != null) row['ringsUrgent'] = ringsUrgent;
+    if (deviceName != null) row['deviceName'] = deviceName;
     final ringing = rows.where((r) => r['ringsUrgent'] == true).length;
     return DevicePatchResult(
       device: DeviceInfo.fromJson({...row, 'ringsUrgentSource': 'user'}),
@@ -128,8 +136,25 @@ class _FakeApi implements DeviceApi {
   Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) =>
       throw UnimplementedError();
 
+  /// The server's DELETE (ADR-0069 §6): revokes the device's session, drops
+  /// the row and, when that was the last ringing one, promotes the most
+  /// recently seen non-web device.
   @override
-  Future<void> unregister(String deviceId) => throw UnimplementedError();
+  Future<void> unregister(String deviceId) async {
+    deleted.add(deviceId);
+    final removed = rows.firstWhere((r) => r['id'] == deviceId);
+    rows = [
+      for (final r in rows)
+        if (r['id'] != deviceId) r,
+    ];
+    if (removed['ringsUrgent'] != true) return;
+    if (rows.any((r) => r['ringsUrgent'] == true)) return;
+    final candidates = [
+      for (final r in rows)
+        if (r['platform'] != 'web') r,
+    ]..sort((a, b) => (b['lastSeenAt'] as String).compareTo(a['lastSeenAt']));
+    if (candidates.isNotEmpty) candidates.first['ringsUrgent'] = true;
+  }
 
   @override
   Future<PushKeyLookup> lookupPushKey() async => const PushKeyLookup.unknown();
@@ -155,9 +180,11 @@ class _MemoryKv implements LocalKv {
 Future<ProviderContainer> _pump(
   WidgetTester tester,
   _FakeApi api, {
-  Widget child = const DevicesScreen(),
+  Widget? child,
   _MemoryKv? kv,
+  Future<void> Function(BuildContext, WidgetRef)? signOut,
 }) async {
+  child ??= DevicesScreen(signOut: signOut);
   tester.view.physicalSize = const Size(800, 2400);
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);
@@ -178,6 +205,12 @@ Future<ProviderContainer> _pump(
   );
   await tester.pumpAndSettle();
   return ProviderScope.containerOf(tester.element(find.byWidget(child)));
+}
+
+Future<void> _openSheet(WidgetTester tester, String id) async {
+  await tester.tap(find.byKey(Key('device-top-$id')));
+  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('device-detail-sheet')), findsOneWidget);
 }
 
 Switch _switchOf(WidgetTester tester, String id) =>
@@ -296,6 +329,9 @@ void main() {
 
     await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
     await tester.pumpAndSettle();
+    // The only ringing device: the warning comes first (OPH-449).
+    await tester.tap(find.byKey(const Key('devices-last-off-confirm')));
+    await tester.pumpAndSettle();
 
     expect(api.patches, [(_thisId, false)]);
     expect(_switchOf(tester, _thisId).value, isTrue);
@@ -387,5 +423,230 @@ void main() {
     container.invalidate(devicesProvider);
     await tester.pumpAndSettle();
     expect(find.text('settings.devices.subtitleNone'.tr()), findsOneWidget);
+  });
+
+  // ── OPH-449: detail sheet, removal = sign out, last-ringing warning ──────
+
+  testWidgets('rename saves through PATCH and an empty name falls back to '
+      'the platform', (tester) async {
+    final api = _FakeApi(_rows());
+    await _pump(tester, api);
+
+    await _openSheet(tester, _thisId);
+    final field = find.byKey(const Key('device-name-field'));
+    // Prefilled with the readable name, never the stored User-Agent.
+    expect(tester.widget<TextField>(field).controller!.text, 'iPhone');
+    expect(find.textContaining('Dart/'), findsNothing);
+    // Read-only facts; the ring switch is not repeated in the sheet.
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('device-detail-sheet')),
+        matching: find.byType(Switch),
+      ),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('device-detail-platform')), findsOneWidget);
+    expect(find.byKey(const Key('device-detail-seen')), findsOneWidget);
+    expect(find.byKey(const Key('device-detail-added')), findsOneWidget);
+
+    // At most 40 characters.
+    await tester.enterText(field, 'x' * 50);
+    expect(tester.widget<TextField>(field).controller!.text.length, 40);
+
+    await tester.enterText(field, '  İş telefonu ');
+    await tester.tap(find.byKey(const Key('device-name-save')));
+    await tester.pumpAndSettle();
+    expect(api.names, [(_thisId, 'İş telefonu')]);
+    expect(find.byKey(const Key('device-detail-sheet')), findsNothing);
+    expect(find.text('İş telefonu'), findsOneWidget);
+
+    // Empty: the platform's own word is saved and shown.
+    await _openSheet(tester, _thisId);
+    await tester.enterText(field, '   ');
+    await tester.tap(find.byKey(const Key('device-name-save')));
+    await tester.pumpAndSettle();
+    expect(api.names.last, (_thisId, 'iPhone'));
+    expect(find.text('iPhone'), findsOneWidget);
+    expect(find.text('İş telefonu'), findsNothing);
+    // Renaming never touches the ring switch.
+    expect(api.patches, isEmpty);
+  });
+
+  testWidgets('removing another device asks first, deletes it and drops the '
+      'row', (tester) async {
+    final api = _FakeApi(_rows(webHasSession: false));
+    var signedOut = 0;
+    await _pump(tester, api, signOut: (_, _) async => signedOut++);
+
+    // The list says what removal means for alarms already set there.
+    expect(find.text('settings.devices.footer'.tr()), findsOneWidget);
+    expect(find.text('settings.devices.footerAlarms'.tr()), findsOneWidget);
+
+    await _openSheet(tester, _macId);
+    expect(find.byKey(const Key('device-sign-out-here')), findsNothing);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    final title = 'settings.devices.removeConfirm'.tr(
+      args: {'device': 'MacBook Air'},
+    );
+    expect(find.text(title), findsOneWidget);
+    expect(find.text('settings.devices.removeBody'.tr()), findsOneWidget);
+
+    // Cancel: nothing is deleted.
+    await tester.tap(find.byKey(const Key('device-remove-cancel')));
+    await tester.pumpAndSettle();
+    expect(api.deleted, isEmpty);
+
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('device-remove-confirm')));
+    await tester.pumpAndSettle();
+    expect(api.deleted, [_macId]);
+    expect(find.byKey(const Key('device-detail-sheet')), findsNothing);
+    expect(find.byKey(const Key('device-card-$_macId')), findsNothing);
+    expect(find.text('MacBook Air'), findsNothing);
+    // Mac did not ring: nothing to pick.
+    expect(find.byKey(const Key('pick-alarm-device-page')), findsNothing);
+    expect(signedOut, 0);
+
+    // A device whose session the server could not match says so honestly.
+    await _openSheet(tester, _webId);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    expect(find.text('settings.devices.removeNoSession'.tr()), findsOneWidget);
+    expect(find.text('settings.devices.removeBody'.tr()), findsNothing);
+  });
+
+  testWidgets('the current device offers sign out, not remote removal', (
+    tester,
+  ) async {
+    final api = _FakeApi(_rows());
+    var signedOut = 0;
+    await _pump(tester, api, signOut: (_, _) async => signedOut++);
+
+    await _openSheet(tester, _thisId);
+    expect(find.byKey(const Key('device-remove')), findsNothing);
+    expect(find.text('settings.devices.remove'.tr()), findsNothing);
+    final signOut = find.byKey(const Key('device-sign-out-here'));
+    expect(signOut, findsOneWidget);
+    expect(find.text('settings.devices.signOutHere'.tr()), findsOneWidget);
+
+    await tester.tap(signOut);
+    await tester.pumpAndSettle();
+    expect(signedOut, 1);
+    expect(api.deleted, isEmpty);
+    expect(find.byKey(const Key('device-detail-sheet')), findsNothing);
+  });
+
+  testWidgets('switching off the last ringing device warns and still allows '
+      'it', (tester) async {
+    final api = _FakeApi(_rows());
+    final kv = _MemoryKv();
+    await _pump(tester, api, kv: kv);
+
+    // This device is the only one ringing: switching it off asks first.
+    await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
+    await tester.pumpAndSettle();
+    expect(find.text('settings.devices.lastOffTitle'.tr()), findsOneWidget);
+    expect(find.text('settings.devices.lastOffBody'.tr()), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('devices-last-off-cancel')));
+    await tester.pumpAndSettle();
+    expect(api.patches, isEmpty);
+    expect(_switchOf(tester, _thisId).value, isTrue);
+
+    // Warned, never blocked.
+    await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('devices-last-off-confirm')));
+    await tester.pumpAndSettle();
+    expect(api.patches, [(_thisId, false)]);
+    expect(_switchOf(tester, _thisId).value, isFalse);
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+    expect(find.text('settings.devices.lastOffTitle'.tr()), findsNothing);
+
+    // With another device still ringing there is nothing to warn about.
+    await tester.tap(find.byKey(const Key('device-switch-$_macId')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
+    await tester.pumpAndSettle();
+    expect(find.text('settings.devices.lastOffTitle'.tr()), findsNothing);
+    expect(api.patches, [(_thisId, false), (_macId, true), (_thisId, true)]);
+  });
+
+  testWidgets('a NO_URGENT_DEVICE answer the list did not foresee still '
+      'warns, and Cancel turns the device back on', (tester) async {
+    // The list is stale: it still shows the Mac ringing, the server knows
+    // it does not.
+    final api = _FakeApi(_rows(macRings: true));
+    await _pump(tester, api);
+    api.rows.firstWhere((r) => r['id'] == _macId)['ringsUrgent'] = false;
+
+    await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
+    await tester.pumpAndSettle();
+    expect(find.text('settings.devices.lastOffTitle'.tr()), findsOneWidget);
+    await tester.tap(find.byKey(const Key('devices-last-off-cancel')));
+    await tester.pumpAndSettle();
+    expect(api.patches, [(_thisId, false), (_thisId, true)]);
+    expect(_switchOf(tester, _thisId).value, isTrue);
+  });
+
+  testWidgets('removing the ringing device opens the pick page with the '
+      'promoted device selected', (tester) async {
+    // The Mac rings, this phone does not.
+    final api = _FakeApi(_rows(macRings: true, thisRings: false));
+    final kv = _MemoryKv();
+    final container = await _pump(tester, api, kv: kv);
+
+    await _openSheet(tester, _macId);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('device-remove-confirm')));
+    await tester.pumpAndSettle();
+    expect(api.deleted, [_macId]);
+
+    // The server promoted this phone (most recently seen, not web); the page
+    // asks, with that answer already selected.
+    expect(find.byKey(const Key('pick-alarm-device-page')), findsOneWidget);
+    expect(find.text('settings.devices.pickTitle'.tr()), findsOneWidget);
+    RadioGroup<String> group() =>
+        tester.widget<RadioGroup<String>>(find.byType(RadioGroup<String>));
+    expect(group().groupValue, _thisId);
+    // The promotion already reached this device's alarm gate.
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.on.name);
+    expect(
+      await container.read(ringsUrgentHereProvider.future),
+      RingsUrgentHere.on,
+    );
+
+    // Choosing another device moves the alarm there, on before off so no
+    // moment has none.
+    await tester.tap(find.byKey(const Key('pick-device-$_webId')));
+    await tester.pumpAndSettle();
+    expect(group().groupValue, _webId);
+    await tester.tap(find.byKey(const Key('pick-device-save')));
+    await tester.pumpAndSettle();
+    expect(api.patches, [(_webId, true), (_thisId, false)]);
+    expect(find.byKey(const Key('pick-alarm-device-page')), findsNothing);
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+    expect(_switchOf(tester, _webId).value, isTrue);
+    expect(_switchOf(tester, _thisId).value, isFalse);
+  });
+
+  testWidgets('confirming the promoted device on the pick page changes '
+      'nothing', (tester) async {
+    final api = _FakeApi(_rows(macRings: true, thisRings: false));
+    await _pump(tester, api);
+
+    await _openSheet(tester, _macId);
+    await tester.tap(find.byKey(const Key('device-remove')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('device-remove-confirm')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('pick-device-save')));
+    await tester.pumpAndSettle();
+    expect(api.patches, isEmpty);
+    expect(find.byKey(const Key('pick-alarm-device-page')), findsNothing);
+    expect(_switchOf(tester, _thisId).value, isTrue);
   });
 }
