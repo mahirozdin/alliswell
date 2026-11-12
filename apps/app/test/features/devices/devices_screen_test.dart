@@ -88,6 +88,11 @@ class _FakeApi implements DeviceApi {
   bool offline = false;
   bool failPatch = false;
   Completer<void>? patchGate;
+
+  /// What a heartbeat (the register PUT) answers for this device, and a gate
+  /// that holds the answer on the wire.
+  bool? registerRings;
+  Completer<void>? registerGate;
   final List<(String, bool?)> patches = [];
   final List<(String, String)> names = [];
   final List<String> deleted = [];
@@ -133,8 +138,18 @@ class _FakeApi implements DeviceApi {
   }
 
   @override
-  Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) =>
-      throw UnimplementedError();
+  Future<DeviceInfo?> register(
+    String deviceId,
+    DeviceDescriptor device,
+  ) async {
+    final answer = registerRings;
+    await registerGate?.future;
+    return DeviceInfo.fromJson({
+      'id': deviceId,
+      'platform': device.platform,
+      'ringsUrgent': ?answer,
+    });
+  }
 
   /// The server's DELETE (ADR-0069 §6): revokes the device's session, drops
   /// the row and, when that was the last ringing one, promotes the most
@@ -320,6 +335,43 @@ void main() {
     );
     expect(_switchOf(tester, _thisId).value, isFalse);
     expect(find.text('settings.devices.offHint'.tr()), findsWidgets);
+  });
+
+  // late-heartbeat-overwrites-switch: a heartbeat that left before this
+  // device was switched off answers with the old value; it must not switch
+  // the gate back on under an off switch.
+  testWidgets('a heartbeat older than this device\'s switch change does not '
+      'undo it', (tester) async {
+    final api = _FakeApi(_rows(macRings: true))
+      ..registerRings = true
+      ..registerGate = Completer<void>();
+    final kv = _MemoryKv();
+    final container = await _pump(tester, api, kv: kv);
+    final registry = DeviceRegistry(
+      api: api,
+      readClientId: () async => _thisId,
+      describe: () =>
+          const DeviceDescriptor(platform: 'ios', appVersion: '1', locale: 'en'),
+      ringsUrgent: container.read(ringsUrgentStoreProvider),
+      onRingsUrgentChanged: () => container.invalidate(ringsUrgentHereProvider),
+    );
+    final heartbeat = registry.sync(signedIn: true);
+    await tester.pump();
+
+    await tester.tap(find.byKey(const Key('device-switch-$_thisId')));
+    await tester.pumpAndSettle();
+    expect(api.patches, [(_thisId, false)]);
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+
+    api.registerGate!.complete();
+    await tester.pumpAndSettle();
+    await heartbeat;
+    expect(kv.values[kRingsUrgentKey], RingsUrgentHere.off.name);
+    expect(
+      await container.read(ringsUrgentHereProvider.future),
+      RingsUrgentHere.off,
+    );
+    expect(_switchOf(tester, _thisId).value, isFalse);
   });
 
   testWidgets('a failed toggle reverts and says so', (tester) async {

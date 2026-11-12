@@ -327,6 +327,8 @@ class DevicesController extends AsyncNotifier<DevicesView> {
     state = AsyncData(
       current._with(_withRings(before, ringsUrgent), saving: true),
     );
+    // A heartbeat or list already on the wire answers with the old value.
+    if (deviceId == thisId) store.changeStarted();
 
     final DevicePatchResult result;
     try {

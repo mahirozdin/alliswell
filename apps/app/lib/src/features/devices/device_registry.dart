@@ -11,11 +11,46 @@ class RingsUrgentStore {
 
   final LocalKv _kv;
 
+  /// Bumped by every local decision about the flag (a switch change, its
+  /// answer, a session hook), never by what a server listing reports.
+  int _generation = 0;
+
+  /// Taken just before asking the server for a listing (a heartbeat, the
+  /// device list), and handed back to [writeObserved] with its answer.
+  int get generation => _generation;
+
   Future<RingsUrgentHere> read() async =>
       ringsUrgentHereFromStored(await _kv.get(kRingsUrgentKey));
 
-  Future<void> write(RingsUrgentHere here) =>
-      _kv.set(kRingsUrgentKey, here.name);
+  /// A decision made here: a PATCH answer or a session hook. It wins over any
+  /// listing asked for before it.
+  Future<void> write(RingsUrgentHere here) {
+    _generation++;
+    return _kv.set(kRingsUrgentKey, here.name);
+  }
+
+  /// A switch change for this device is on its way to the server: whatever a
+  /// listing already on the wire says about it is older than that change.
+  void changeStarted() => _generation++;
+
+  /// What a server listing said about this device, written only when no
+  /// local decision came after it was asked for ([askedAt], a [generation]).
+  /// A heartbeat that left before the person switched this device off
+  /// answers with the old value, and must not switch it back on
+  /// (late-heartbeat-overwrites-switch). Returns whether the stored answer
+  /// changed.
+  Future<bool> writeObserved(
+    RingsUrgentHere here, {
+    required int askedAt,
+  }) async {
+    if (askedAt != _generation) return false;
+    final stored = await read();
+    // Checked again after the read: the set below must follow the check with
+    // no await in between.
+    if (askedAt != _generation || stored == here) return false;
+    await _kv.set(kRingsUrgentKey, here.name);
+    return true;
+  }
 
   /// Called with every session that is about to start, before it is exposed.
   ///
@@ -116,6 +151,7 @@ class DeviceRegistry {
     if (device == null) return;
     final deviceId = await readClientId();
     if (deviceId == null) return;
+    final askedAt = ringsUrgent?.generation;
     final DeviceInfo? row;
     try {
       row = await api.register(deviceId, device);
@@ -127,19 +163,20 @@ class DeviceRegistry {
       // ringsUrgent stays as it was: a failure says nothing about it.
       return;
     }
-    await _cacheRingsUrgent(row);
+    await _cacheRingsUrgent(row, askedAt);
   }
 
   /// The server's answer is the only thing that turns `unknown` into `on`.
   /// An answer without the field (an older server) is `legacy`: it rings as
-  /// it did before #48.
-  Future<void> _cacheRingsUrgent(DeviceInfo? row) async {
+  /// it did before #48. An answer older than a switch change made here since
+  /// it was asked for is dropped ([RingsUrgentStore.writeObserved]).
+  Future<void> _cacheRingsUrgent(DeviceInfo? row, int? askedAt) async {
     final store = ringsUrgent;
-    if (store == null) return;
+    if (store == null || askedAt == null) return;
     final next = ringsUrgentHereFromServer(row?.ringsUrgent);
-    if (await store.read() == next) return;
-    await store.write(next);
-    onRingsUrgentChanged?.call();
+    if (await store.writeObserved(next, askedAt: askedAt)) {
+      onRingsUrgentChanged?.call();
+    }
   }
 
   /// Take this device off the list, before the token that could do it is gone.
