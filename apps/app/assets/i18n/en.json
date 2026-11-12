@@ -986,7 +986,8 @@
       "snooze": "Snooze",
       "announce": "{label}: {title}, {time}",
       "count": "{count} urgent reminders",
-      "announceList": "{count} urgent reminders, {time}"
+      "announceList": "{count} urgent reminders, {time}",
+      "late": "{time} · {ago}"
     },
     "banner": {
       "turnOn": "Turn on",

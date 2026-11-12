@@ -111,6 +111,68 @@ void main() {
   // Tuesday still counted as ringing on Friday: it seized the screen, sounded
   // the bed, and made a device whose alarms had STOPPED working look like they
   // finally had.
+  group('one minute rings as one (ADR-0068, #47)', () {
+    final a = alarm(rid: 'A', remindAt: DateTime.utc(2030, 6, 1, 2, 34, 11));
+    final b = alarm(
+      rid: 'B',
+      remindAt: DateTime.utc(2030, 6, 1, 2, 0),
+      status: 'snoozed',
+      snoozedUntil: DateTime.utc(2030, 6, 1, 2, 34, 32),
+    );
+    final next = alarm(rid: 'C', remindAt: DateTime.utc(2030, 6, 1, 2, 35, 1));
+
+    test('every member rings from the earliest member\'s instant', () {
+      expect(
+        ringingAlarms([b, a, next], DateTime.utc(2030, 6, 1, 2, 34, 10)),
+        isEmpty,
+      );
+      expect(
+        ringingAlarms([
+          b,
+          a,
+          next,
+        ], DateTime.utc(2030, 6, 1, 2, 34, 11)).map((r) => r.reminderId),
+        ['A', 'B'],
+      );
+      // The next minute is its own alarm.
+      expect(
+        ringingAlarms([
+          b,
+          a,
+          next,
+        ], DateTime.utc(2030, 6, 1, 2, 34, 59)).map((r) => r.reminderId),
+        ['A', 'B'],
+      );
+    });
+
+    test('a minute that started ringing keeps a member whose partner left', () {
+      final at = DateTime.utc(2030, 6, 1, 2, 34, 14);
+      expect(ringingAlarms([b], at), isEmpty);
+      expect(
+        ringingAlarms(
+          [b],
+          at,
+          ringingMinutes: {alarmMinuteOf(a)},
+        ).map((r) => r.reminderId),
+        ['B'],
+      );
+    });
+
+    test('each member turns missed at its own instant: ringing and missed '
+        'still split the feed', () {
+      final at = DateTime.utc(2030, 6, 1, 2, 49, 20);
+      expect(
+        ringingAlarms(
+          [a, b],
+          at,
+          ringingMinutes: {alarmMinuteOf(a)},
+        ).map((r) => r.reminderId),
+        ['B'],
+      );
+      expect(missedAlarms([a, b], at).map((r) => r.reminderId), ['A']);
+    });
+  });
+
   group('the staleness window', () {
     test('an alarm that just came due still rings', () {
       final a = alarm(remindAt: now.subtract(const Duration(minutes: 5)));
@@ -1200,6 +1262,87 @@ void main() {
         expect(_squash(log), ['start', 'stop', 'start']);
       },
     );
+
+    // ADR-0068 §1 (#47): urgent alarms of one UTC minute ring
+    // as ONE alarm from the earliest member's instant — the later member does
+    // not wait for its own second, and it stays when the first is answered.
+    testWidgets(
+      'two urgent alarms in one minute ring as one list from the earliest second',
+      (tester) async {
+        boot();
+        clock = DateTime.utc(2030, 6, 1, 2, 34);
+        final a = alarm(
+          rid: 'A',
+          remindAt: DateTime.utc(2030, 6, 1, 2, 34, 11),
+        );
+        final b = alarm(
+          rid: 'B',
+          remindAt: DateTime.utc(2030, 6, 1, 2, 34, 32),
+        );
+        feed.add([a, b]);
+        await settle(tester);
+        expect(overlay().ringing, isEmpty);
+
+        // The wheel wakes at the minute's first instant, and both ring.
+        clock = DateTime.utc(2030, 6, 1, 2, 34, 11);
+        await tester.pump(const Duration(seconds: 11));
+        expect(overlay().ringing.map((r) => r.reminderId), ['A', 'B']);
+        expect(log, ['start']);
+
+        // A answered at :14: B is still the minute's, not a later alarm.
+        clock = DateTime.utc(2030, 6, 1, 2, 34, 14);
+        await controller().actOnRow('T-A', AlarmRowAction.acknowledge);
+        expect(overlay().ringing.map((r) => r.reminderId), ['B']);
+
+        // A's write lands and A leaves the feed: B keeps ringing.
+        feed.add([b]);
+        await settle(tester);
+        expect(overlay().ringing.map((r) => r.reminderId), ['B']);
+
+        // And still at its own second, with no second start.
+        clock = DateTime.utc(2030, 6, 1, 2, 34, 32);
+        await tester.pump(const Duration(seconds: 18));
+        expect(overlay().ringing.map((r) => r.reminderId), ['B']);
+        expect(log.where((e) => e == 'start'), hasLength(1));
+
+        await controller().actOnRow('T-B', AlarmRowAction.acknowledge);
+        expect(overlay().ringing, isEmpty);
+        await tester.pump(kAlarmResumeAfter * 2);
+      },
+    );
+
+    // An alarm the app first shows two minutes or more
+    // after its instant (opened late, the tab woke late) says how late; one
+    // shown on time never does, however long it then rings.
+    testWidgets('an alarm first shown late is marked late, one shown on time '
+        'never is', (tester) async {
+      boot();
+      final onTime = alarm(rid: 'R1', remindAt: now);
+      clock = now;
+      feed.add([onTime]);
+      await settle(tester);
+      expect(overlay().ringing.single.reminderId, 'R1');
+      expect(overlay().isLate(onTime), isFalse);
+      clock = now.add(const Duration(minutes: 5));
+      feed.add([onTime]);
+      await settle(tester);
+      expect(overlay().isLate(onTime), isFalse);
+
+      // 1 min 59 s late is still "now"; 3 min late is late.
+      final barely = alarm(
+        rid: 'R2',
+        remindAt: clock.subtract(const Duration(seconds: 119)),
+      );
+      final late = alarm(
+        rid: 'R3',
+        remindAt: clock.subtract(const Duration(minutes: 3)),
+      );
+      feed.add([onTime, barely, late]);
+      await settle(tester);
+      expect(overlay().ringing, hasLength(3));
+      expect(overlay().isLate(barely), isFalse);
+      expect(overlay().isLate(late), isTrue);
+    });
 
     test('snooze all is one batch event', () async {
       final batches = <(List<String>, DateTime, String?)>[];

@@ -985,7 +985,8 @@
       "snooze": "Ertele",
       "announce": "{label}: {title}, {time}",
       "count": "{count} acil hatırlatma",
-      "announceList": "{count} acil hatırlatma, {time}"
+      "announceList": "{count} acil hatırlatma, {time}",
+      "late": "{time} · {ago}"
     },
     "banner": {
       "turnOn": "Aç",

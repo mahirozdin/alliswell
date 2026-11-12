@@ -349,6 +349,29 @@ void main() {
     Map<String, Object?> payloadOf(PlannedNotification n) =>
         (jsonDecode(n.payload) as Map).cast<String, Object?>();
 
+    // ADR-0068 (#47): a pass in the middle of a minute that already started
+    // ringing at its first member's second plans nothing at a later member's
+    // own second — the chain re-alerts from the minute's first instant.
+    test('a pass inside a ringing minute plans no notification at a later '
+        'member\'s own second', () {
+      final a = urgent('TA', at: nine.add(const Duration(seconds: 11)));
+      final b = urgent('TB', at: nine.add(const Duration(seconds: 32)));
+      final plan = planNotifications(
+        alarms: [a, b],
+        now: nine.add(const Duration(seconds: 20)),
+        privacyMode: false,
+      );
+      expect(plan, isNotEmpty); // the minute's later re-alerts
+      for (final n in plan) {
+        expect(n.fireAt, isNot(b.remindAt));
+        expect(
+          n.fireAt.difference(a.remindAt).inSeconds % 60,
+          0,
+          reason: 'every slot counts from the minute\'s first instant',
+        );
+      }
+    });
+
     test(
       'urgent alarms sharing a minute become one AlarmKit alarm with every task id',
       () {

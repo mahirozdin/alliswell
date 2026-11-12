@@ -67,6 +67,7 @@ class AlarmRingList extends ConsumerStatefulWidget {
     super.key,
     required this.rows,
     this.failed = const {},
+    this.late = const {},
     this.alarms = const [],
   });
 
@@ -75,6 +76,10 @@ class AlarmRingList extends ConsumerStatefulWidget {
 
   /// Occurrence keys whose write failed ([AlarmOverlayState.failed]).
   final Set<String> failed;
+
+  /// Occurrence keys first shown late ([AlarmOverlayState.late]): the
+  /// header's time says how late when its alarm is one of them.
+  final Set<String> late;
 
   /// The planner's active alarms, for "… · with another alarm" (#47).
   final List<AlarmInput> alarms;
@@ -341,7 +346,20 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList> {
     );
     final tasks = alarmRowsByTask(widget.rows);
     final count = tasks.length;
-    final time = tasks.isEmpty ? '' : _clock(alarmFireAt(tasks.first));
+    final clock = tasks.isEmpty ? '' : _clock(alarmFireAt(tasks.first));
+    final time =
+        tasks.isNotEmpty &&
+            widget.late.contains(alarmOccurrenceKey(tasks.first))
+        ? 'alarm.ringing.late'.tr(
+            args: {
+              'time': clock,
+              'ago': awRelativePast(
+                alarmFireAt(tasks.first),
+                ref.read(alarmClockProvider)(),
+              ),
+            },
+          )
+        : clock;
 
     final header = Semantics(
       header: true,

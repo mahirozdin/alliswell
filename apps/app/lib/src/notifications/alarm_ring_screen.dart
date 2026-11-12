@@ -56,6 +56,7 @@ class AlarmOverlayLayer extends ConsumerWidget {
         key: const ValueKey<String>('alarm-ring-list-mode'),
         rows: overlay.ringing,
         failed: overlay.failed,
+        late: overlay.late,
         alarms: alarms,
       );
     } else {
@@ -68,6 +69,7 @@ class AlarmOverlayLayer extends ConsumerWidget {
           key: ValueKey<String>(alarmOccurrenceKey(alarm)),
           alarm: alarm,
           failed: overlay.isFailed(alarm),
+          late: overlay.isLate(alarm),
           // The snooze tiles say when a target minute already rings (#47).
           alarms: alarms,
           onHandled: (_) =>
@@ -97,6 +99,7 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
     required this.onHandled,
     this.missed = false,
     this.failed = false,
+    this.late = false,
     this.alarms = const [],
   });
 
@@ -118,6 +121,10 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
   /// Shown again because the write behind the last action failed (#46): the
   /// sound stays off, the screen says so and offers the same action again.
   final bool failed;
+
+  /// First shown [kAlarmLateAfter] or more after its instant: the
+  /// time line says how late. A [missed] alarm already says how long ago.
+  final bool late;
 
   /// The active alarms the planner sees (the shell's [alarmFeedProvider]):
   /// a snooze tile whose target minute already holds another task's urgent
@@ -483,10 +490,21 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
           ),
         ),
         const SizedBox(height: AwSpace.x1),
-        // A missed alarm says how long ago, in the same line as its time.
+        // A missed alarm says how long ago, in the same line as its time; so
+        // does one first shown late.
         Text(
           widget.missed
               ? 'alarm.missed.ago'.tr(
+                  args: {
+                    'time': time,
+                    'ago': awRelativePast(
+                      alarmFireAt(widget.alarm),
+                      ref.read(alarmClockProvider)(),
+                    ),
+                  },
+                )
+              : widget.late
+              ? 'alarm.ringing.late'.tr(
                   args: {
                     'time': time,
                     'ago': awRelativePast(

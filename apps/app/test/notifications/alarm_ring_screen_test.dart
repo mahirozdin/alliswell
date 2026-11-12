@@ -514,6 +514,56 @@ void main() {
 
   // ── #46 / OPH-423: one sound owner, silence → dismiss → write ─────────────
 
+  // An alarm shown two minutes or more after its instant
+  // says how late, next to its time; one shown on time just shows its time.
+  testWidgets('an alarm shown late says how late next to its time', (
+    tester,
+  ) async {
+    // The layer's clock is `at` + 1 min: R1 is three minutes late.
+    final late = AlarmInput(
+      reminderId: id('R1'),
+      taskId: id('T1'),
+      taskTitle: 'Take pills',
+      remindAt: at.subtract(const Duration(minutes: 2)),
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+    );
+    await pumpLayer(tester, feed: [late]);
+    final time = tester.widget<Text>(find.byKey(const Key('alarm-time')));
+    expect(time.data, endsWith(' · 3 min ago'));
+  });
+
+  testWidgets('an alarm shown on time shows only its time', (tester) async {
+    await pumpLayer(tester, feed: [theAlarm()]);
+    final time = tester.widget<Text>(find.byKey(const Key('alarm-time')));
+    expect(time.data, isNot(contains('ago')));
+  });
+
+  testWidgets('a late list says how late in its header', (tester) async {
+    final late = [
+      for (final a in [theAlarm(), secondAlarm()])
+        AlarmInput(
+          reminderId: a.reminderId,
+          taskId: a.taskId,
+          taskTitle: a.taskTitle,
+          remindAt: a.remindAt.subtract(const Duration(minutes: 4)),
+          status: 'scheduled',
+          urgent: true,
+          requiresAcknowledgement: true,
+        ),
+    ];
+    await pumpLayer(tester, feed: late, second: true);
+    expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
+    final header = tester.widget<Text>(
+      find.descendant(
+        of: find.byKey(const Key('alarm-list-header')),
+        matching: find.byType(Text),
+      ),
+    );
+    expect(header.data, endsWith(' · 5 min ago'));
+  });
+
   testWidgets(
     'acting on the first of two due alarms leaves the second fully actionable',
     (tester) async {

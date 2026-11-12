@@ -84,24 +84,43 @@ final alarmStaleWindowProvider = Provider<Duration>((ref) {
   return alarmStaleWindowFor(ref.watch(reminderProfileProvider));
 });
 
+/// The UTC minute an alarm rings in, `floor(ms / 60000)`: the key urgent
+/// alarms are grouped by (ADR-0068, NOTIFICATIONS §2b.3).
+int alarmMinuteOf(AlarmInput a) =>
+    alarmFireAt(a).toUtc().millisecondsSinceEpoch ~/ 60000;
+
 /// Every URGENT alarm ringing at [now], earliest fire first (#47): the ring
 /// screen lists all of them — the minute's group, older data that landed in
 /// it, an alarm synced from another device — under one sound. Only urgent
 /// alarms take over the screen (BLUEPRINT §8.2); normal reminders stay in the
 /// OS tray. Pure — the DoD's "fake clock" is just [now].
 ///
-/// [staleAfter] bounds it from below; see [alarmStaleWindowFor].
+/// One UTC minute rings as ONE alarm (ADR-0068 §1, #47): every
+/// urgent alarm of a minute rings from its earliest member's instant, the way
+/// the notification chain and the AlarmKit alarm ring it — a member due at
+/// :32 does not wait for its own second once :11 rang. [ringingMinutes] are
+/// minutes already shown ringing: a member stays although the one that
+/// started its minute was answered and left the feed.
+///
+/// [staleAfter] bounds it from below, per alarm, so ringing and
+/// [missedAlarms] still split the feed with no gap; see
+/// [alarmStaleWindowFor].
 List<AlarmInput> ringingAlarms(
   List<AlarmInput> alarms,
   DateTime now, {
   Duration staleAfter = _kMinStaleWindow,
+  Set<int> ringingMinutes = const {},
 }) {
   final floor = now.subtract(staleAfter);
+  final started = <int>{...ringingMinutes};
+  for (final a in alarms) {
+    if (a.urgent && !alarmFireAt(a).isAfter(now)) started.add(alarmMinuteOf(a));
+  }
   final ringing = [
     for (final a in alarms)
       // Too long ago to be "ringing" is not forgotten — see [missedAlarms].
       if (a.urgent &&
-          !alarmFireAt(a).isAfter(now) &&
+          started.contains(alarmMinuteOf(a)) &&
           !alarmFireAt(a).isBefore(floor))
         a,
   ];
@@ -213,6 +232,7 @@ class AlarmOverlayState {
     this.silentHere = false,
     this.ringsOnLockScreen = false,
     this.failed = const {},
+    this.late = const {},
   });
 
   /// Every urgent alarm ringing now, earliest first (#47, ADR-0068); the
@@ -231,12 +251,22 @@ class AlarmOverlayState {
   final Set<String> failed;
 
   bool isFailed(AlarmInput a) => failed.contains(alarmOccurrenceKey(a));
+
+  /// Occurrences first shown [kAlarmLateAfter] or more after their instant.
+  final Set<String> late;
+
+  bool isLate(AlarmInput a) => late.contains(alarmOccurrenceKey(a));
 }
 
 /// How long the ring screen may sit silent with rows left before its sound
 /// comes back (#47, decisions §3.1, DESIGN §11 A3 insistence): the first
 /// action silences the list, a minute without interaction resumes it.
 const Duration kAlarmResumeAfter = Duration(seconds: 60);
+
+/// How late an alarm may first show and still read as "now":
+/// one the app first shows later than this — opened late, a tab the
+/// browser woke late — says how late next to its time ("09:00 · 3 dk önce").
+const Duration kAlarmLateAfter = Duration(minutes: 2);
 
 /// One ring-screen action on a row or on the whole list (#47).
 class AlarmRowAction {
@@ -314,6 +344,13 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// Occurrences that have been shown once — their sound was started then (or
   /// deliberately not). A re-shown occurrence never starts it again.
   final Set<String> _announced = {};
+
+  /// Occurrences first shown [kAlarmLateAfter] or more after their instant.
+  final Set<String> _late = {};
+
+  /// UTC minutes ([alarmMinuteOf]) that have rung here: their members keep
+  /// ringing as one alarm while any of them is in the feed (#47).
+  final Set<int> _ringingMinutes = {};
 
   /// Occurrences whose write failed, with the action "Tekrar dene" repeats.
   final Map<String, AlarmPendingAction> _failures = {};
@@ -401,17 +438,28 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     final present = {for (final a in alarms) alarmOccurrenceKey(a)};
     _handled.retainWhere(present.contains);
     _announced.retainWhere(present.contains);
+    _late.retainWhere(present.contains);
     _failures.removeWhere((key, _) => !present.contains(key));
+    final minutes = {for (final a in alarms) alarmMinuteOf(a)};
+    _ringingMinutes.retainWhere(minutes.contains);
 
     final now = _now();
     final live = alarms
         .where((a) => !_handled.contains(alarmOccurrenceKey(a)))
         .toList();
-    final ringing = ringingAlarms(
-      live,
+    // Decided over the whole feed, then the answered rows are left out: a
+    // minute rings from its first member's instant whether or not that
+    // member was answered here already (#47).
+    final everyRinging = ringingAlarms(
+      alarms,
       now,
       staleAfter: ref.read(alarmStaleWindowProvider),
+      ringingMinutes: _ringingMinutes,
     );
+    _ringingMinutes.addAll(everyRinging.map(alarmMinuteOf));
+    final ringing = everyRinging
+        .where((a) => !_handled.contains(alarmOccurrenceKey(a)))
+        .toList();
     final shownKeys = {for (final a in ringing) alarmOccurrenceKey(a)};
     // A row that left the screen while nobody here acted on it was handled on
     // another device: its Android notification would keep looping (#48).
@@ -433,8 +481,12 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     ]..sort(_byFireAt);
 
     // The wheel keeps turning while the screen is open: an alarm coming due
-    // then joins the list.
-    final next = nextUrgentFireAfter(live, now);
+    // then joins the list. It wakes at a minute's first instant; a member of
+    // a minute already ringing is on the screen.
+    final next = nextUrgentFireAfter([
+      for (final a in live)
+        if (!_ringingMinutes.contains(alarmMinuteOf(a))) a,
+    ], now);
     if (next != null) {
       final wait = next.difference(now);
       _timer = Timer(wait.isNegative ? Duration.zero : wait, _tick);
@@ -460,7 +512,9 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     var fresh = false;
     for (final a in rows) {
       final key = alarmOccurrenceKey(a);
-      if (_announced.add(key) && !failed.contains(key)) fresh = true;
+      if (!_announced.add(key)) continue;
+      if (now.difference(alarmFireAt(a)) >= kAlarmLateAfter) _late.add(key);
+      if (!failed.contains(key)) fresh = true;
     }
     if (!quiet && !_sounding && (resume || (opening && fresh))) {
       // The screen opens on a new alarm, or a minute passed untouched. A
@@ -480,6 +534,10 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
       silentHere: quiet,
       ringsOnLockScreen: onLockScreen,
       failed: failed,
+      late: {
+        for (final a in rows)
+          if (_late.contains(alarmOccurrenceKey(a))) alarmOccurrenceKey(a),
+      },
     );
   }
 
