@@ -401,7 +401,7 @@ not `[String: String]`.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `eventId` | String | unique; native: `UUID().uuidString`; notification lane: `<notificationId>\|<actionId>\|<deliveryTimestamp>`; in-app: a fresh id. Key of `action_receipts` |
+| `eventId` | String | unique; native: `UUID().uuidString`; notification lane: none — `flutter_local_notifications` hands over no delivery timestamp, and it delivers each response once, so a notification tap stays receipt-less (today's path); in-app: a fresh id. Key of `action_receipts` |
 | `action` | `snooze` · `acknowledge` · `complete` | what to apply |
 | `taskIds` | [String] | the members it applies to, de-duplicated |
 | `untilMs` | int? | snooze target, floored to the second. Dart writes a native (`origin: alarmkit`) value **unchanged** |
@@ -453,7 +453,9 @@ with the same presentation and new intents (`alarmId = newId`, `fireAtMs = T`) �
 (6) If (4) failed: one `.timeSensitive` `UNNotificationRequest` `aw.fallback.<eventId>` at `T`,
 category `aw_urgent`, `userInfo` carrying the keys `flutter_local_notifications` marks its own
 notifications with (confirm against the plugin version in `pubspec.lock`) and `payload` =
-`{"taskId": first, "taskIds": [...], "eventId": ...}`, so its buttons reach the same Dart handler.
+`{"taskId": first, "taskIds": [...], "eventId": ...}`, so its buttons reach the same Dart handler; that
+receipt-less handler applies a button to every id in `taskIds` (one snooze target for the group;
+`acknowledge` = each member's urgent reminder due by the tap), and a plain tap opens the first.
 (7) Each failing stage → `aw.alarmkit.failures`. (8) Enqueue the `snooze` event (`untilMs = T`,
 `occurrenceFireAtMs = fireAtMs`, `alarmId`, `newId`, both outcomes); write a `native` ledger record
 only when (4) succeeded. A group snooze or stop is one event for every member.

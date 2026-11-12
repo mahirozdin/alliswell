@@ -61,6 +61,17 @@ Future<bool> handleNotificationEvent(
   final taskId = payload['taskId'] as String?;
   final reminderId = payload['reminderId'] as String?;
   if (taskId == null) return false;
+  // A fallback notification (`aw.fallback.<eventId>`, §2b.3 native snooze
+  // step 6) stands for a whole grouped alarm: its payload lists every member
+  // in `taskIds`, and each button applies to all of them. An ordinary
+  // notification carries only `taskId`.
+  final listed = payload['taskIds'];
+  final members = <String>{
+    if (listed is List)
+      for (final m in listed)
+        if (m is String && m.isNotEmpty) m,
+  }.toList();
+  if (members.isEmpty) members.add(taskId);
 
   final action = event.actionId ?? '';
   // A touched notification is the ONLY delivery proof iOS ever gives us
@@ -71,29 +82,48 @@ Future<bool> handleNotificationEvent(
     slotIndex: payload['chainIndex'] as int?,
     taskId: taskId,
     reminderId: reminderId,
-    detail: action.isEmpty ? null : action,
+    detail: action.isEmpty
+        ? null
+        : (members.length > 1 ? '$action members=${members.length}' : action),
   );
   if (action.isEmpty) {
     navigate('/tasks/$taskId');
     return true;
   }
   if (action == kActionComplete) {
-    await tasks.complete(taskId);
+    for (final m in members) {
+      await tasks.complete(m);
+    }
     return true;
   }
   if (action == kActionMute) {
-    await tasks.muteAlarms(taskId);
+    for (final m in members) {
+      await tasks.muteAlarms(m);
+    }
     return true;
   }
   if (action == kActionAcknowledge) {
-    if (reminderId != null) await reminders.acknowledge(reminderId);
+    if (reminderId != null && reminderId.isNotEmpty) {
+      await reminders.acknowledge(reminderId);
+    } else if (listed is List) {
+      // A fallback names no reminder: every member's urgent reminder that is
+      // due by the tap is the one that rang.
+      final now = DateTime.now().toUtc();
+      for (final m in members) {
+        for (final id in await reminders.urgentReminderIdsAt(m, dueBy: now)) {
+          await reminders.acknowledge(id);
+        }
+      }
+    }
     return true;
   }
   if (action.startsWith(kActionSnoozePrefix)) {
-    await tasks.snooze(
-      taskId,
-      preset: action.substring(kActionSnoozePrefix.length),
-    );
+    final preset = action.substring(kActionSnoozePrefix.length);
+    // One target for the whole group, so its members ring again as one.
+    final until = members.length > 1 ? TaskStore.snoozeUntilFor(preset) : null;
+    for (final m in members) {
+      await tasks.snooze(m, preset: preset, until: until);
+    }
     return true;
   }
   return false;

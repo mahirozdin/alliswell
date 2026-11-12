@@ -530,6 +530,84 @@ void main() {
       },
     );
 
+    // §2b.3 native snooze step 6: a group snooze whose native schedule failed
+    // leaves one `aw.fallback.<eventId>` notification for every member. Its
+    // buttons arrive on the notification lane and reach every member.
+    String fallbackPayload(List<String> members) => jsonEncode({
+      'taskId': members.first,
+      'taskIds': members,
+      'eventId': 'ev-fallback',
+    });
+
+    Future<bool> tapFallback(String action, List<String> members) =>
+        handleNotificationEvent(
+          NotificationEvent(
+            actionId: action,
+            payload: fallbackPayload(members),
+          ),
+          tasks: tasks,
+          reminders: reminders,
+          navigate: (_) => fail('a button never navigates'),
+        );
+
+    test(
+      'a fallback notification button snoozes every member of the group',
+      () async {
+        await addUrgent('T2', 'R2', nineAm.add(const Duration(seconds: 30)));
+        expect(
+          await tapFallback(snoozeActionId('5_min'), [id('T1'), id('T2')]),
+          isTrue,
+        );
+
+        final snoozed = {
+          for (final t in await db.select(db.tasks).get()) t.id: t.snoozedUntil,
+        };
+        expect(snoozed[id('T1')], isNotNull);
+        expect(snoozed[id('T2')], snoozed[id('T1')]); // one target, one ring
+        final outbox = await db.select(db.pendingMutations).get();
+        expect(outbox.map((m) => m.entityId).toList()..sort(), [
+          id('T1'),
+          id('T2'),
+        ]);
+      },
+    );
+
+    test(
+      'a fallback notification button completes every member of the group',
+      () async {
+        await addUrgent('T2', 'R2', nineAm);
+        await tapFallback(kActionComplete, [id('T1'), id('T2'), id('T1')]);
+
+        final statuses = {
+          for (final t in await db.select(db.tasks).get()) t.id: t.status,
+        };
+        expect(statuses, {id('T1'): 'completed', id('T2'): 'completed'});
+        expect(await db.select(db.pendingMutations).get(), hasLength(2));
+      },
+    );
+
+    test(
+      'a fallback notification acknowledge silences every member that is due',
+      () async {
+        final past = DateTime.now().toUtc().subtract(
+          const Duration(minutes: 2),
+        );
+        await addUrgent('T3', 'R3', past);
+        await addUrgent('T4', 'R4', past.add(const Duration(seconds: 20)));
+        await tapFallback(kActionAcknowledge, [id('T3'), id('T4')]);
+
+        final byId = {
+          for (final r in await db.select(db.reminders).get()) r.id: r.status,
+        };
+        expect(byId, {
+          id('R1'): 'scheduled', // not a member, not due
+          id('R3'): 'acknowledged',
+          id('R4'): 'acknowledged',
+        });
+        expect(await db.select(db.actionReceipts).get(), isEmpty);
+      },
+    );
+
     test('a tap without a receipt id still writes as before', () async {
       final applied = await handleNotificationEvent(
         NotificationEvent(
