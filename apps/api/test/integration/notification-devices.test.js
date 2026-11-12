@@ -3,6 +3,7 @@ import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
 import { newId } from '../../src/lib/ids.js';
 import { hashRefreshToken } from '../../src/lib/tokens.js';
+import { rotateRefreshRecord } from '../../src/db/sessions.js';
 
 // Needs real MySQL + Redis with migrations applied.
 const enabled = process.env.INTEGRATION === '1';
@@ -469,6 +470,44 @@ describe.runIf(enabled)('integration: urgent-alarm device rule (OPH-433)', () =>
     const tablet = newId();
     expect((await put(ended, tablet, 'ios')).statusCode).toBe(201);
     expect(await boundTo(ended.family)).toEqual([null]);
+  });
+
+  it('a rotation that read its row before the family was bound keeps the binding', async () => {
+    await account();
+    const email = `${prefix}-${seq}@example.com`;
+    const session = await login(email);
+    const tokenRow = () =>
+      app
+        .db('refresh_tokens')
+        .where({
+          token_hash: hashRefreshToken(session.refreshToken, app.config.auth.refreshSecret),
+        })
+        .first();
+    // The refresh handler read the presented row while the family was unbound...
+    const stale = await tokenRow();
+    expect(stale.device_id).toBeNull();
+    // ...the app registered its device in between, binding the family...
+    const device = newId();
+    expect((await put(session, device, 'ios')).statusCode).toBe(201);
+    expect(await boundTo(session.family)).toEqual([device]);
+    // ...and only then did the rotation run, with the row it read first.
+    const successor = await rotateRefreshRecord(app.db, app.config.auth, {
+      row: stale,
+      ip: '127.0.0.1',
+      deviceName: stale.device_name,
+    });
+    expect(successor).not.toBeNull();
+    expect(await boundTo(session.family)).toEqual([device]);
+
+    // Removing the device from another session signs the rotated family out.
+    const other = await login(email);
+    expect((await remove(other, device)).statusCode).toBe(204);
+    const refreshed = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: successor.token },
+    });
+    expect(refreshed.statusCode).toBe(401);
   });
 
   it('an access token without sid binds nothing', async () => {

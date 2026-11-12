@@ -23,6 +23,7 @@ import {
   listUserSessions,
   revokeOtherSessions,
   revokeSession,
+  rotateRefreshRecord,
   sessionTokens,
 } from '../db/sessions.js';
 import {
@@ -725,34 +726,24 @@ export default async function authRoutes(app) {
       .first('id', 'email', 'display_name');
     if (!user) throw invalidRefreshError(app);
 
-    let refresh;
-    let claimed = 0;
-    await app.db.transaction(async (trx) => {
-      // Atomic claim: under two concurrent refreshes only one UPDATE matches.
-      claimed = await trx('refresh_tokens')
-        .where({ id: row.id })
-        .whereNull('rotated_at')
-        .whereNull('revoked_at')
-        .update({ rotated_at: new Date() });
-      if (claimed === 0) return;
-      refresh = await createRefreshRecord(trx, auth, {
-        userId: user.id,
-        familyId: row.family_id,
-        ip: request.ip,
-        // The family KEEPS the device it was born on. A rotation is the same
-        // session on the same machine, so re-reading the User-Agent buys
-        // nothing — and costs the name outright when a client sends none on
-        // its refresh calls, which is common and is how this line was found.
-        // The fallback covers families that predate this column being written.
-        deviceName: row.device_name ?? deviceLabel(request),
-        // OPH-434 — the device binding travels the same way, and is set once:
-        // a bound family keeps its device whatever this call names (a family
-        // is one install; relabelling it only makes sense with a stolen
-        // token), an unbound one takes the device this refresh names.
-        deviceId: row.device_id ?? request.body.deviceId ?? null,
-      });
+    const refresh = await rotateRefreshRecord(app.db, auth, {
+      row,
+      ip: request.ip,
+      // The family KEEPS the device it was born on. A rotation is the same
+      // session on the same machine, so re-reading the User-Agent buys
+      // nothing — and costs the name outright when a client sends none on
+      // its refresh calls, which is common and is how this line was found.
+      // The fallback covers families that predate this column being written.
+      deviceName: row.device_name ?? deviceLabel(request),
+      // OPH-434 — the device binding travels the same way, and is set once:
+      // a bound family keeps its device whatever this call names (a family
+      // is one install; relabelling it only makes sense with a stolen
+      // token), an unbound one takes the device this refresh names. The
+      // binding is re-read under the claim's lock (OPH-458), not taken from
+      // `row`, which a registration may have bound since it was read.
+      deviceId: request.body.deviceId ?? null,
     });
-    if (claimed === 0) {
+    if (refresh === null) {
       // Lost the race — the token was concurrently rotated, i.e. reused.
       await revokeFamily(app.db, row);
       throw refreshReusedError(app);

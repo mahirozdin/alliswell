@@ -393,6 +393,49 @@ export async function createRefreshRecord(
   return { token, expiresAt, familyId };
 }
 
+/**
+ * One rotation (OPH-022): claims the presented row and inserts its successor in
+ * the same family, in one transaction. `row` is the presented row as the
+ * caller read it, outside this transaction.
+ *
+ * The successor's device is read again here, under the claim's row lock, not
+ * taken from `row` (OPH-458): a registration may have bound the family
+ * (`bindSessionToDevice`) between the caller's read and this claim, and a
+ * successor written from the stale unbound copy would name no device, so
+ * removing that device would leave it alive. A bound family keeps its device
+ * whatever the refresh names; an unbound one takes `deviceId`.
+ *
+ * @returns {Promise<{token: string, expiresAt: Date, familyId: string} | null>}
+ *   the new record, or null when the row was already rotated or revoked (the
+ *   caller lost a race: a reuse)
+ */
+export function rotateRefreshRecord(
+  db,
+  auth,
+  { row, ip, deviceName = null, deviceId = null, at = new Date() },
+) {
+  return inTransaction(db, async (trx) => {
+    // Atomic claim: under two concurrent refreshes only one UPDATE matches.
+    const claimed = await trx('refresh_tokens')
+      .where({ id: row.id })
+      .whereNull('rotated_at')
+      .whereNull('revoked_at')
+      .update({ rotated_at: at });
+    if (claimed === 0) return null;
+    const current = await trx('refresh_tokens')
+      .where({ id: row.id })
+      .forUpdate()
+      .first('device_id');
+    return createRefreshRecord(trx, auth, {
+      userId: row.user_id,
+      familyId: row.family_id,
+      ip,
+      deviceName,
+      deviceId: current?.device_id ?? deviceId ?? null,
+    });
+  });
+}
+
 /** The pair a sign-in or refresh returns; the access token names its family (`sid`). */
 export function sessionTokens(app, user, refresh) {
   return {
