@@ -24,6 +24,7 @@
 		4E2F5686630E1B33A7600A18 /* ShareInboxBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C660482E3BA4887F8A48C65D /* ShareInboxBridge.swift */; };
 		527FC94C523279749E690FF6 /* Pods_AllisWellShare.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */; };
 		606CA4EB1635F2211E171418 /* AllisWellShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 33238BF1A6A73CCD435606A7 /* AllisWellShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		71973A096BA887149AF865D5 /* WidgetFetchPolicyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BCF14C5F534AC75BC4C97D /* WidgetFetchPolicyTests.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		771B0720300A7CD52641BBEA /* AWAlarmShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
@@ -35,26 +36,28 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		9BFE3BFAD237B825A5585911 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
-		A5CB0451000000000000A001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
 		A0C22B17E2CAB08B98FC56D2 /* SnoozeCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100165B4F549534A7D17108A /* SnoozeCoreTests.swift */; };
 		A27462FC05C6C20A744A7DA9 /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		A54B30D1301EDC60003E181C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A54B30CF301EDC60003E181C /* GoogleService-Info.plist */; };
 		A567B04A3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */; };
 		A567B04B3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */; };
+		A5CB0451000000000000A001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
+		A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A003 /* WidgetCompletionTests.swift */; };
+		A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */; };
 		A5CBB5F0300AD02700CE60FF /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */; };
 		A5CBB5F2300AD02700CE60FF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */; };
 		A5CBB601300AD02800CE60FF /* AllisWellWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
 		ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */; };
-		A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A003 /* WidgetCompletionTests.swift */; };
-		A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
+		D19B82EA6B0F29C7546E9014 /* AWWidgetFetchPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFF4C0212EC9CD4AC7669C93 /* AWWidgetFetchPolicy.swift */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
 		DCB1241EC7970CB68479F292 /* ShareNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */; };
 		FB633E0800E6DFC8B6E198FF /* AlarmLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */; };
+		FCE7416C683E24D9C37E0ABB /* AWWidgetFetchPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFF4C0212EC9CD4AC7669C93 /* AWWidgetFetchPolicy.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -134,8 +137,6 @@
 		5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWWidgetDayPick.swift; sourceTree = "<group>"; };
 		6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWSnapshotModel.swift; sourceTree = "<group>"; };
 		6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDayPickTests.swift; sourceTree = "<group>"; };
-		A5CB0451000000000000A003 /* WidgetCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetCompletionTests.swift; sourceTree = "<group>"; };
-		A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetMoreCountTests.swift; sourceTree = "<group>"; };
 		7403D73B437A53572909BD99 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -159,6 +160,8 @@
 		A54B30CF301EDC60003E181C /* GoogleService-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		A5BED92C30082BDB00593EDC /* Runner.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Runner.entitlements; sourceTree = "<group>"; };
+		A5CB0451000000000000A003 /* WidgetCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetCompletionTests.swift; sourceTree = "<group>"; };
+		A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetMoreCountTests.swift; sourceTree = "<group>"; };
 		A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = AllisWellWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A5CBB5EF300AD02700CE60FF /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -167,11 +170,13 @@
 		AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_AllisWellShare.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		B07D10CB9492D82A7326E84F /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmKitBridge.swift; sourceTree = "<group>"; };
+		C5BCF14C5F534AC75BC4C97D /* WidgetFetchPolicyTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetFetchPolicyTests.swift; sourceTree = "<group>"; };
 		C660482E3BA4887F8A48C65D /* ShareInboxBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareInboxBridge.swift; sourceTree = "<group>"; };
 		CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
 		CF832AA94740A264E9ACB64F /* tr */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/AppShortcuts.strings; sourceTree = "<group>"; };
 		DD4116869764FEFFC46ADBD1 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareNotifier.swift; sourceTree = "<group>"; };
+		DFF4C0212EC9CD4AC7669C93 /* AWWidgetFetchPolicy.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWWidgetFetchPolicy.swift; sourceTree = "<group>"; };
 		FB7816051F744D02E916B219 /* tr */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
 		FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmIdentity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -251,6 +256,7 @@
 				18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */,
 				6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */,
 				5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */,
+				DFF4C0212EC9CD4AC7669C93 /* AWWidgetFetchPolicy.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -266,6 +272,7 @@
 				6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */,
 				A5CB0451000000000000A003 /* WidgetCompletionTests.swift */,
 				A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */,
+				C5BCF14C5F534AC75BC4C97D /* WidgetFetchPolicyTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -705,6 +712,7 @@
 				AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */,
 				A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */,
 				A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */,
+				71973A096BA887149AF865D5 /* WidgetFetchPolicyTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -733,6 +741,7 @@
 				34374AD80D89EE170C2C599D /* AWSnoozeCore.swift in Sources */,
 				221336FE2A9B37697ABB9DA6 /* AWSnapshotModel.swift in Sources */,
 				14236ED5CCE6645EE7BDCF18 /* AWWidgetDayPick.swift in Sources */,
+				D19B82EA6B0F29C7546E9014 /* AWWidgetFetchPolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -746,6 +755,7 @@
 				8E0F9B757F8CE84C03B87F9A /* AWSnoozeCore.swift in Sources */,
 				2EB2A92600196B4057BA4B6F /* AWSnapshotModel.swift in Sources */,
 				23159A0B9C0D21FC08609BA9 /* AWWidgetDayPick.swift in Sources */,
+				FCE7416C683E24D9C37E0ABB /* AWWidgetFetchPolicy.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
