@@ -1,7 +1,7 @@
 import { coded } from '../lib/errors.js';
 import { ULID_RE } from '../lib/ids.js';
 import { widgetTokenRateBucket } from '../lib/tokens.js';
-import { liveFamilyOfDevice, mintWidgetToken } from '../db/widget-tokens.js';
+import { mintWidgetToken, sessionRunsOnDevice } from '../db/widget-tokens.js';
 
 /**
  * Widget tokens (OPH-458, issue #50, ADR-0070).
@@ -14,11 +14,16 @@ import { liveFamilyOfDevice, mintWidgetToken } from '../db/widget-tokens.js';
  * key's own revocation meaningless (ADR-0032 §4) — and a widget token is not
  * a session either (`app.authenticate` refuses `aww_`).
  *
- * The device must be one of the caller's `notification_devices` rows with a
- * live session bound to it (`refresh_tokens.device_id`, OPH-434): that session
- * family is the one the token is tied to, so the token dies when the device's
- * session ends. Anything else is 404 DEVICE_NOT_FOUND — the app registers the
- * device and tries again at its next foreground.
+ * The device must be one of the caller's `notification_devices` rows, and
+ * the CALLER's session — the family its access token names (`sid`) — must be
+ * live and bound to that device (`refresh_tokens.device_id`, OPH-434). That
+ * family is the one the token is tied to, so the token dies when the
+ * device's session ends. Checking the caller's own family, not just "some
+ * live session on the device", is what stops a revoked session: its access
+ * token still verifies for up to 15 minutes, and a token it minted for a
+ * device still signed in would outlive that window. Anything else — an
+ * access token without `sid` included — is 404 DEVICE_NOT_FOUND; the app
+ * registers the device and tries again at its next foreground.
  *
  * The secret leaves the server once, in the 201 body; minting again for the
  * device replaces it (the previous token stops working in the same write).
@@ -93,13 +98,14 @@ export default async function widgetTokenRoutes(app) {
     },
     async (request, reply) => {
       const userId = request.user.id;
+      const familyId = request.user.sessionId;
       const { deviceId } = request.body;
       const device = await app
         .db('notification_devices')
         .where({ id: deviceId, user_id: userId })
         .first('id');
-      const familyId = device ? await liveFamilyOfDevice(app.db, userId, deviceId) : null;
-      if (!familyId) {
+      const live = device ? await sessionRunsOnDevice(app.db, userId, familyId, deviceId) : false;
+      if (!live) {
         throw coded(app.httpErrors.notFound('Device not found'), 'DEVICE_NOT_FOUND');
       }
       const { token, expiresAt } = await mintWidgetToken(app.db, app.config.auth.refreshSecret, {

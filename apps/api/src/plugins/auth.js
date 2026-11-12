@@ -13,7 +13,8 @@ const LAST_USED_THROTTLE_MS = 60_000;
 
 /**
  * Registers @fastify/jwt for access tokens and decorates:
- * - `app.signAccessToken({ id, email })` → 15-minute JWT (`sub` = user id)
+ * - `app.signAccessToken({ id, email }, { sessionId })` → 15-minute JWT
+ *   (`sub` = user id, `sid` = the refresh family it was issued with)
  * - `app.authenticate` — onRequest/preHandler guard; sets `request.user = { id, email }`
  * - `app.requireWorkspaceMember(request, workspaceId, { roles })` — authz helper
  * - `app.requirePermission(request, workspaceId, verb)` — the same check plus a
@@ -47,11 +48,22 @@ export default fp(
       // What request.user looks like after jwtVerify. `issuedAt` (the token's
       // whole-second `iat`) lets PUT /notification-devices tell a token minted
       // by a sign-in after a device's removal from one the removed session
-      // still holds (OPH-435).
-      formatUser: (payload) => ({ id: payload.sub, email: payload.email, issuedAt: payload.iat }),
+      // still holds (OPH-435). `sessionId` (the `sid` claim) is the refresh
+      // family the token was issued with, null on a token signed without one:
+      // a route that must know WHICH session is calling (POST /widget-tokens,
+      // OPH-458) checks that family is still live, since the JWT itself keeps
+      // verifying for its 15 minutes after the session is revoked.
+      formatUser: (payload) => ({
+        id: payload.sub,
+        email: payload.email,
+        issuedAt: payload.iat,
+        sessionId: typeof payload.sid === 'string' ? payload.sid : null,
+      }),
     });
 
-    app.decorate('signAccessToken', (user) => app.jwt.sign({ sub: user.id, email: user.email }));
+    app.decorate('signAccessToken', (user, { sessionId } = {}) =>
+      app.jwt.sign({ sub: user.id, email: user.email, ...(sessionId ? { sid: sessionId } : {}) }),
+    );
 
     function keyRejected(message, code) {
       const err = app.httpErrors.unauthorized(message);

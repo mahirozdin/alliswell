@@ -347,12 +347,13 @@ export async function createRefreshRecord(
     // OPH-434 — the notification device this family is bound to, or null.
     device_id: deviceId,
   });
-  return { token, expiresAt };
+  return { token, expiresAt, familyId };
 }
 
+/** The pair a sign-in or refresh returns; the access token names its family (`sid`). */
 export function sessionTokens(app, user, refresh) {
   return {
-    accessToken: app.signAccessToken(user),
+    accessToken: app.signAccessToken(user, { sessionId: refresh.familyId }),
     accessTokenExpiresInSec: app.config.auth.accessTtlSec,
     refreshToken: refresh.token,
     refreshTokenExpiresAt: refresh.expiresAt.toISOString(),

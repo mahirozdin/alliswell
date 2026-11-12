@@ -284,6 +284,54 @@ describe.runIf(enabled)('integration: widget tokens (OPH-458)', () => {
     expect((await probe(mine.token)).statusCode).toBe(200);
   });
 
+  it('a removed session cannot mint a lasting widget token with the access token it still holds', async () => {
+    // Device A (`phone`) is removed while device B (`me`) stays signed in.
+    // A's access JWT verifies for up to 15 more minutes; a token minted with
+    // it for B would outlive that window for as long as B's session lives.
+    const me = await account();
+    const phone = await signIn(me);
+    const removed = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/notification-devices/${phone.deviceId}`,
+      headers: me.headers,
+    });
+    expect(removed.statusCode).toBe(204);
+    // Still a working access token for everything stateless…
+    expect(
+      (await app.inject({ method: 'GET', url: '/api/v1/me', headers: phone.headers })).statusCode,
+    ).toBe(200);
+    // …but no widget token, for any device.
+    for (const deviceId of [me.deviceId, phone.deviceId]) {
+      const res = await mintRaw(phone, deviceId);
+      expect(res.statusCode).toBe(404);
+      expect(res.json().code).toBe('DEVICE_NOT_FOUND');
+    }
+    expect(await app.db('widget_tokens').where({ user_id: me.id })).toEqual([]);
+
+    // A live session mints only for the device it runs on, and an access
+    // token that names no session at all (one signed before sessions were
+    // named in it) mints nothing.
+    const tablet = await signIn(me);
+    const crossed = await mintRaw(tablet, me.deviceId);
+    expect(crossed.statusCode).toBe(404);
+    expect(crossed.json().code).toBe('DEVICE_NOT_FOUND');
+    const nameless = bearer(app.signAccessToken({ id: me.id, email: me.email }));
+    const old = await mintRaw(me, me.deviceId, nameless);
+    expect(old.statusCode).toBe(404);
+    expect(old.json().code).toBe('DEVICE_NOT_FOUND');
+    expect(await app.db('widget_tokens').where({ user_id: me.id })).toEqual([]);
+
+    // The device's own session still mints, tied to its own family.
+    const own = await mint(me);
+    const family = await app
+      .db('refresh_tokens')
+      .where({ user_id: me.id, device_id: me.deviceId })
+      .first('family_id');
+    const row = await app.db('widget_tokens').where({ user_id: me.id }).first();
+    expect(row.session_family_id).toBe(family.family_id);
+    expect((await probe(own.token)).statusCode).toBe(200);
+  });
+
   it('a password change revokes widget tokens', async () => {
     const me = await account();
     const phone = await signIn(me);

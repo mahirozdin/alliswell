@@ -25,20 +25,28 @@ import { hashWidgetToken, newWidgetToken } from '../lib/tokens.js';
 export const WIDGET_TOKEN_TTL_DAYS = 90;
 
 /**
- * The family a device's session runs in: the newest live family bound to
- * this device (`refresh_tokens.device_id`, OPH-434). An access token carries
- * no family claim, so the device binding is how the mint names its session.
- * Null when no live session is bound to the device.
+ * Whether the caller's session — the family its access token names (`sid`)
+ * — is still live AND runs on this device (`refresh_tokens.device_id`,
+ * OPH-434). The mint asks this rather than "does the device have some live
+ * session": an access token keeps verifying for its 15 minutes after its
+ * family is revoked, and a removed device must not use that window to mint
+ * a token tied to another device's session that would outlive it.
  */
-export async function liveFamilyOfDevice(db, userId, deviceId, { at = new Date() } = {}) {
+export async function sessionRunsOnDevice(
+  db,
+  userId,
+  familyId,
+  deviceId,
+  { at = new Date() } = {},
+) {
+  if (!familyId) return false;
   const row = await db('refresh_tokens')
-    .where({ user_id: userId, device_id: deviceId })
+    .where({ user_id: userId, family_id: familyId, device_id: deviceId })
     .whereNull('revoked_at')
     .whereNull('rotated_at')
     .where('expires_at', '>', at)
-    .orderBy('created_at', 'desc')
-    .first('family_id');
-  return row?.family_id ?? null;
+    .first('id');
+  return Boolean(row);
 }
 
 /**
