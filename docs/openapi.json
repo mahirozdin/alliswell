@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AllisWell REST API",
-    "version": "1.20.0",
+    "version": "1.21.0",
     "description": "Tasks, notes, projects, files and reminders — the same surface the AllisWell apps use, open to your own scripts through a personal API key.",
     "license": {
       "name": "See LICENSE",
@@ -21,6 +21,11 @@
         "scheme": "bearer",
         "bearerFormat": "JWT",
         "description": "A 15-minute access token from `POST /api/v1/auth/login`, refreshed with the rotating refresh token. What the apps use."
+      },
+      "widgetToken": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The home-screen widget's read-only token: `Authorization: Bearer aww_…`, minted by a session for one device (ADR-0070). Opens `GET /api/v1/widget/snapshot` alone."
       }
     },
     "schemas": {}
@@ -12096,6 +12101,676 @@
           }
         ],
         "description": "Accepts either a session JWT or a personal API key."
+      }
+    },
+    "/api/v1/widget-tokens": {
+      "post": {
+        "description": "Mints the read-only widget token (`aww_…`) for one of your notification devices. Session only; the token is shown once, opens GET /widget/snapshot alone, lives 90 days, and dies with the device or the session that minted it. Minting again for the device revokes the previous token.\n\nSession JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "deviceId"
+                ],
+                "properties": {
+                  "deviceId": {
+                    "type": "string",
+                    "pattern": "^[0-9A-HJKMNP-TV-Z]{26}$",
+                    "description": "The notification device (its id from PUT /notification-devices)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "token",
+                    "deviceId",
+                    "expiresAt"
+                  ],
+                  "properties": {
+                    "token": {
+                      "type": "string"
+                    },
+                    "deviceId": {
+                      "type": "string"
+                    },
+                    "expiresAt": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Widget"
+        ],
+        "security": [
+          {
+            "sessionJwt": []
+          }
+        ]
+      }
+    },
+    "/api/v1/widget/snapshot": {
+      "get": {
+        "description": "The home-screen widget's per-day views (today and the next days) for the widget token's user, in the client's time zone. Widget token (`aww_…`) only; words-free (bucket keys, instants, time styles); `private=1` (the default) sends no title. `ETag` + `If-None-Match` → 304; `Cache-Control: no-store`.\n\nWidget token only (`aww_…`, from `POST /api/v1/widget-tokens`). A session JWT or an API key is refused with `401 AUTH_WIDGET_TOKEN_INVALID`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "in": "query",
+            "name": "tz",
+            "required": true,
+            "description": "IANA time zone; day boundaries and every local date use it."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9A-HJKMNP-TV-Z]{26}(,[0-9A-HJKMNP-TV-Z]{26}){0,19}$"
+            },
+            "in": "query",
+            "name": "workspaceIds",
+            "required": true,
+            "description": "1–20 comma-separated workspace ids, each one you are a member of."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ],
+              "default": "0"
+            },
+            "in": "query",
+            "name": "mine",
+            "required": false,
+            "description": "1 = only your own work (assigned to you, or yours with nobody assigned)."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "0",
+                "1"
+              ],
+              "default": "1"
+            },
+            "in": "query",
+            "name": "private",
+            "required": false,
+            "description": "1 (default) = no title anywhere in the body."
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 3,
+              "default": 3
+            },
+            "in": "query",
+            "name": "days",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "v",
+                    "generatedAt",
+                    "tz",
+                    "days"
+                  ],
+                  "properties": {
+                    "v": {
+                      "type": "integer",
+                      "enum": [
+                        1
+                      ]
+                    },
+                    "generatedAt": {
+                      "type": "string",
+                      "description": "Server clock; informative only."
+                    },
+                    "tz": {
+                      "type": "string"
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "additionalProperties": false,
+                        "required": [
+                          "date",
+                          "openToday",
+                          "buckets",
+                          "views"
+                        ],
+                        "properties": {
+                          "date": {
+                            "type": "string",
+                            "description": "The local day in tz, yyyy-MM-dd; days[0] is today."
+                          },
+                          "openToday": {
+                            "type": "integer"
+                          },
+                          "next": {
+                            "type": "object",
+                            "additionalProperties": false,
+                            "required": [
+                              "id",
+                              "bucket"
+                            ],
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "Absent with private=1."
+                              },
+                              "bucket": {
+                                "type": "string"
+                              },
+                              "dueAt": {
+                                "type": "string"
+                              },
+                              "timeStyle": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "buckets": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "key",
+                                "count",
+                                "items"
+                              ],
+                              "properties": {
+                                "key": {
+                                  "type": "string",
+                                  "enum": [
+                                    "overdue",
+                                    "noDate",
+                                    "today",
+                                    "thisWeek",
+                                    "thisMonth"
+                                  ]
+                                },
+                                "count": {
+                                  "type": "integer",
+                                  "description": "Open rows in the bucket."
+                                },
+                                "more": {
+                                  "type": "integer",
+                                  "description": "Open entries past the rows carried; absent at 0."
+                                },
+                                "items": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "id",
+                                      "done",
+                                      "priority"
+                                    ],
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "description": "Absent with private=1."
+                                      },
+                                      "done": {
+                                        "type": "boolean"
+                                      },
+                                      "priority": {
+                                        "type": "string",
+                                        "enum": [
+                                          "none",
+                                          "low",
+                                          "medium",
+                                          "high",
+                                          "urgent"
+                                        ]
+                                      },
+                                      "projectColor": {
+                                        "type": "string",
+                                        "description": "#RRGGBB; absent when none."
+                                      },
+                                      "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                          "event"
+                                        ],
+                                        "description": "Absent for a task."
+                                      },
+                                      "day": {
+                                        "type": "string",
+                                        "description": "yyyy-MM-dd, the day an event is filed under."
+                                      },
+                                      "dueAt": {
+                                        "type": "string",
+                                        "description": "A task's due instant, an event's start."
+                                      },
+                                      "endAt": {
+                                        "type": "string",
+                                        "description": "Events only."
+                                      },
+                                      "allDay": {
+                                        "type": "boolean",
+                                        "description": "Events only."
+                                      },
+                                      "timeStyle": {
+                                        "type": "string",
+                                        "enum": [
+                                          "time",
+                                          "day",
+                                          "allDay",
+                                          "range",
+                                          "start",
+                                          "end",
+                                          "dayTime"
+                                        ],
+                                        "description": "How the widget words the time; absent = no label."
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "views": {
+                            "type": "object",
+                            "description": "One per non-archived project of the scope, keyed by project id; tasks only.",
+                            "additionalProperties": {
+                              "type": "object",
+                              "additionalProperties": false,
+                              "required": [
+                                "openToday",
+                                "buckets"
+                              ],
+                              "properties": {
+                                "openToday": {
+                                  "type": "integer"
+                                },
+                                "next": {
+                                  "type": "object",
+                                  "additionalProperties": false,
+                                  "required": [
+                                    "id",
+                                    "bucket"
+                                  ],
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string",
+                                      "description": "Absent with private=1."
+                                    },
+                                    "bucket": {
+                                      "type": "string"
+                                    },
+                                    "dueAt": {
+                                      "type": "string"
+                                    },
+                                    "timeStyle": {
+                                      "type": "string"
+                                    }
+                                  }
+                                },
+                                "buckets": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "additionalProperties": false,
+                                    "required": [
+                                      "key",
+                                      "count",
+                                      "items"
+                                    ],
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "enum": [
+                                          "overdue",
+                                          "noDate",
+                                          "today",
+                                          "thisWeek",
+                                          "thisMonth"
+                                        ]
+                                      },
+                                      "count": {
+                                        "type": "integer",
+                                        "description": "Open rows in the bucket."
+                                      },
+                                      "more": {
+                                        "type": "integer",
+                                        "description": "Open entries past the rows carried; absent at 0."
+                                      },
+                                      "items": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "additionalProperties": false,
+                                          "required": [
+                                            "id",
+                                            "done",
+                                            "priority"
+                                          ],
+                                          "properties": {
+                                            "id": {
+                                              "type": "string"
+                                            },
+                                            "title": {
+                                              "type": "string",
+                                              "description": "Absent with private=1."
+                                            },
+                                            "done": {
+                                              "type": "boolean"
+                                            },
+                                            "priority": {
+                                              "type": "string",
+                                              "enum": [
+                                                "none",
+                                                "low",
+                                                "medium",
+                                                "high",
+                                                "urgent"
+                                              ]
+                                            },
+                                            "projectColor": {
+                                              "type": "string",
+                                              "description": "#RRGGBB; absent when none."
+                                            },
+                                            "kind": {
+                                              "type": "string",
+                                              "enum": [
+                                                "event"
+                                              ],
+                                              "description": "Absent for a task."
+                                            },
+                                            "day": {
+                                              "type": "string",
+                                              "description": "yyyy-MM-dd, the day an event is filed under."
+                                            },
+                                            "dueAt": {
+                                              "type": "string",
+                                              "description": "A task's due instant, an event's start."
+                                            },
+                                            "endAt": {
+                                              "type": "string",
+                                              "description": "Events only."
+                                            },
+                                            "allDay": {
+                                              "type": "boolean",
+                                              "description": "Events only."
+                                            },
+                                            "timeStyle": {
+                                              "type": "string",
+                                              "enum": [
+                                                "time",
+                                                "day",
+                                                "allDay",
+                                                "range",
+                                                "start",
+                                                "end",
+                                                "dayTime"
+                                              ],
+                                              "description": "How the widget words the time; absent = no label."
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "Not modified: If-None-Match named the ETag."
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "statusCode": {
+                      "type": "integer"
+                    },
+                    "code": {
+                      "type": "string"
+                    },
+                    "error": {
+                      "type": "string"
+                    },
+                    "message": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Widget"
+        ],
+        "security": [
+          {
+            "widgetToken": []
+          }
+        ]
       }
     },
     "/api/v1/workspaces/{workspaceId}/ai/chat": {

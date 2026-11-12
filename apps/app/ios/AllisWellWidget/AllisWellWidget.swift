@@ -70,26 +70,33 @@ private let kAWEntryBytesPerRow = 6_100
 
 /// Reads the latest snapshot from the shared App Group container, with every
 /// completion from the circle the app has not pulled yet applied to it
-/// (OPH-451, IOS-08): the app rewrites the snapshot from its own data, which
-/// still has the task open until it pulls the queue, so without this a rewrite
-/// in between would put the tapped row back.
+/// (awLoadLocalSnapshot, ios/Shared/AWWidgetFetcher.swift).
 func loadAWSnapshot() -> AWSnapshot {
-  guard
-    let defaults = UserDefaults(suiteName: kAppGroupId),
-    let raw = defaults.string(forKey: kSnapshotKey),
-    var data = raw.data(using: .utf8)
-  else { return .empty }
-  let queued = AWAlarmActionQueue.pending(in: defaults)
-    .filter { $0.action == "complete" }
-    .flatMap(\.taskIds)
-  if !queued.isEmpty,
-    var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-    awApplyPendingCompletions(&json, taskIds: queued, today: awToday()),
-    let out = try? JSONSerialization.data(withJSONObject: json)
-  {
-    data = out
-  }
-  return (try? JSONDecoder().decode(AWSnapshot.self, from: data)) ?? .empty
+  guard let defaults = UserDefaults(suiteName: kAppGroupId) else { return .empty }
+  return awLoadLocalSnapshot(in: defaults, today: awToday())
+}
+
+/// What a timeline turn draws (#50, OPH-462; WIDGETS.md §3.2 "The
+/// extension's turn"): the app's snapshot, or — with the app swiped away and
+/// nothing changed on the phone that has not synced — the server's newer days
+/// in the app's words. With `fetch`, the turn first makes its one request when
+/// the contract allows it (8 s at most; any failure keeps the App Group
+/// snapshot). The app's snapshot is read after the request, never before it:
+/// the app may complete a task and write both while the request is out.
+/// A turn whose fetch stored a new server view reloads the other widgets,
+/// so two widgets on one screen draw the same view (#50, PR2-09); their
+/// turns fall inside the refresh interval and do not fetch again.
+/// iOS only: the macOS widget's self-fetch is a later candidate.
+func loadAWDrawnSnapshot(fetch: Bool) async -> AWSnapshot {
+  #if os(iOS)
+    guard let fetcher = AWWidgetFetcher.live() else { return loadAWSnapshot() }
+    let turn = await fetcher.turn(fetch: fetch, today: awToday)
+    fetcher.session.finishTasksAndInvalidate()
+    if turn.changed { WidgetCenter.shared.reloadTimelines(ofKind: kWidgetKind) }
+    return turn.snapshot
+  #else
+    return loadAWSnapshot()
+  #endif
 }
 
 /// Today's local day as the snapshot spells it: a completion leaves the
@@ -147,6 +154,9 @@ struct AWWidgetCompleteIntent: AppIntent {
     // Queue entry v2 (NOTIFICATIONS.md §2b.3): kept until Dart acks it.
     AWAlarmActionQueue.enqueue(action: "complete", taskIds: [taskId], origin: "widget")
     markAWSnapshotDone(taskId: taskId)
+    // #50, PR2-03/05: the reload below, and every turn for 90 s, answers at
+    // once from the App Group — no request, no swap of views under the finger.
+    awStampWidgetCompletion(in: UserDefaults(suiteName: kAppGroupId))
     WidgetCenter.shared.reloadTimelines(ofKind: kWidgetKind)
     return .result()
   }
@@ -214,7 +224,16 @@ struct AWProvider: TimelineProvider {
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<AWEntry>) -> Void) {
-    completion(awTimeline(snapshot: loadAWSnapshot(), listId: nil, family: context.family))
+    #if os(iOS)
+      // OPH-462: the completion-based provider wraps the one async fetch.
+      let family = context.family
+      Task {
+        let snapshot = await loadAWDrawnSnapshot(fetch: true)
+        completion(awTimeline(snapshot: snapshot, listId: nil, family: family))
+      }
+    #else
+      completion(awTimeline(snapshot: loadAWSnapshot(), listId: nil, family: context.family))
+    #endif
   }
 }
 
@@ -275,7 +294,18 @@ func awTimeline(snapshot: AWSnapshot, listId: String?, family: WidgetFamily)
   // the new day even if the reload is deferred, OPH-451), and a reload a
   // minute past midnight to pick up whatever the app wrote last.
   if awIsAccessory(family) {
-    let reload = midnights.first ?? start.addingTimeInterval(3600)
+    #if os(iOS)
+      // OPH-462 (#50): the self-fetch needs turns while the app is swiped
+      // away — every 30 min plus a jitter, or 00:01 plus a jitter, whichever
+      // comes first, so devices do not all ask the server at once.
+      let midnightReload =
+        awMidnightReloadDate(after: start, calendar: calendar, jitter: awReloadJitter())
+        ?? start.addingTimeInterval(3600)
+      let reload = awReloadDate(
+        now: start, clockHorizon: midnightReload, jitter: awReloadJitter())
+    #else
+      let reload = midnights.first ?? start.addingTimeInterval(3600)
+    #endif
     return Timeline(
       entries: [entry(at: start, clock: false)] + midnights.map { entry(at: $0, clock: false) },
       policy: .after(reload))
@@ -327,7 +357,16 @@ func awTimeline(snapshot: AWSnapshot, listId: String?, family: WidgetFamily)
   // Reload when the minute entries run out: 1440 / horizon times a day. An
   // empty widget affords the full 240 (6 a day); a ten-row one settles around
   // 115 (13 a day), still under a fifth of the 40–70 floor.
-  return Timeline(entries: entries, policy: .after(clockHorizon))
+  #if os(iOS)
+    // OPH-462 (#50): no later than 30 min plus a jitter, so the self-fetch
+    // gets a turn while the app is swiped away. `.after` is the earliest
+    // date, not a promise: WidgetKit's budget decides (15–60 min typically).
+    return Timeline(
+      entries: entries,
+      policy: .after(awReloadDate(now: start, clockHorizon: clockHorizon, jitter: awReloadJitter())))
+  #else
+    return Timeline(entries: entries, policy: .after(clockHorizon))
+  #endif
 }
 
 // MARK: - Per-widget list (OPH-336)
@@ -403,13 +442,16 @@ struct AWIntentProvider: AppIntentTimelineProvider {
 
   func snapshot(for configuration: AWWidgetConfigIntent, in context: Context) async -> AWEntry {
     AWEntry(
-      date: Date(), from: loadAWSnapshot(), listId: configuration.list?.id, showsClock: true)
+      date: Date(), from: await loadAWDrawnSnapshot(fetch: false),
+      listId: configuration.list?.id, showsClock: true)
   }
 
   func timeline(for configuration: AWWidgetConfigIntent, in context: Context) async
     -> Timeline<AWEntry>
   {
-    awTimeline(snapshot: loadAWSnapshot(), listId: configuration.list?.id, family: context.family)
+    awTimeline(
+      snapshot: await loadAWDrawnSnapshot(fetch: true), listId: configuration.list?.id,
+      family: context.family)
   }
 }
 
@@ -638,7 +680,22 @@ struct AWTaskRowView: View {
     }
   }
 
-  private var taskRow: some View {
+  @ViewBuilder private var taskRow: some View {
+    if #available(iOS 17.0, macOS 14.0, *), row.canCompleteInPlace {
+      rowContent
+        // OPH-188/189: the row opens ITS task, not just the app. Needs the
+        // routing OPH-189 added — before that this URL produced "No route for …".
+        .widgetURL(URL(string: "alliswell://task/\(row.id)"))
+    } else {
+      // #50, PR2-03: a row with no complete button — a task only the server's
+      // view holds, a done one, iOS 16's — opens its task through a Link.
+      // A `widgetURL` here was one of many in the widget, which WidgetKit
+      // leaves undefined: the server-only row's tap opened nothing.
+      Link(destination: row.taskURL) { rowContent }
+    }
+  }
+
+  private var rowContent: some View {
     HStack(spacing: 8) {
       // OPH-188: the circle is a BUTTON on iOS 17+. WidgetKit performs the
       // intent in the background — no app launch — and the press lands in the
@@ -646,7 +703,9 @@ struct AWTaskRowView: View {
       // (the row opens the task), which is why this is gated rather than
       // replaced. Generous hit target: the stock Reminders widget's loudest
       // complaint is completing the wrong thing by accident (DESIGN W4).
-      if #available(iOS 17.0, macOS 14.0, *), !row.done {
+      // OPH-462: a task only the server's view holds draws the plain circle —
+      // the app has no copy to complete — and its tap opens the app.
+      if #available(iOS 17.0, macOS 14.0, *), row.canCompleteInPlace {
         Button(intent: AWWidgetCompleteIntent(taskId: row.id)) {
           Image(systemName: "circle")
             .foregroundStyle(Color.secondary)
@@ -658,9 +717,12 @@ struct AWTaskRowView: View {
         // OPH-451 (IOS-11): VoiceOver read the symbol's name ("Circle").
         .accessibilityLabel(awCompleteLabel(title: row.title, strings: strings))
       } else {
+        // #50, PR2-08: the same 28 pt frame as the button's, so every row's
+        // circle and title start at the same inset.
         Image(systemName: row.done ? "largecircle.fill.circle" : "circle")
           .foregroundStyle(row.done ? Color.green : Color.secondary)
           .imageScale(.medium)
+          .frame(width: 28, height: 28)
       }
       if let flag = priorityColor(row.priority) {
         Circle().fill(flag).frame(width: 6, height: 6)
@@ -677,9 +739,6 @@ struct AWTaskRowView: View {
         Circle().fill(color).frame(width: 8, height: 8)
       }
     }
-    // OPH-188/189: the row opens ITS task, not just the app. Needs the routing
-    // OPH-189 added — before that this URL produced "No route for …".
-    .widgetURL(URL(string: "alliswell://task/\(row.id)"))
   }
 }
 

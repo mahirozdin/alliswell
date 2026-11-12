@@ -130,3 +130,13 @@ The decision stands; the auth work kept it, so no new ADR. What the code fixed i
   cancelled with its last ring in [now − 45 min, now + 1 min], to the members' Android devices with
   `rings_urgent = 1`. The acknowledging device is not excluded yet (the sync event carries no
   client id) — a candidate task.
+
+## Note — 2026-11-12, registration binds the session (OPH-458)
+
+The decision stands. A fresh sign-in names no device (the app sends `deviceId` only once it knows
+the server takes it), so its family used to stay unbound until the first refresh. `PUT
+/notification-devices/:id` now binds the caller's own family (the access token's `sid`) to the
+device in the transaction that writes the row, when that family is live and names no device yet. A
+family bound to another device is never moved; a token without `sid` or an API key binds nothing.
+Removing the device therefore signs that session out from its first registration on, and the
+widget token (ADR-0070) can be minted at once.

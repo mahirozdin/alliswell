@@ -35,6 +35,8 @@ import taskRoutes from './routes/tasks.js';
 import noteRoutes from './routes/notes.js';
 import syncRoutes from './routes/sync.js';
 import notificationDeviceRoutes from './routes/notification-devices.js';
+import widgetTokenRoutes from './routes/widget-tokens.js';
+import widgetSnapshotRoutes from './routes/widget-snapshot.js';
 import pushRoutes from './routes/push.js';
 import reminderRoutes from './routes/reminders.js';
 import googleIntegrationRoutes from './routes/integrations-google.js';
@@ -222,6 +224,10 @@ export async function buildApp({
   await app.register(noteVersionRoutes, { prefix: '/api/v1' });
   await app.register(syncRoutes, { prefix: '/api/v1' });
   await app.register(notificationDeviceRoutes, { prefix: '/api/v1' });
+  // OPH-458: the widget's read-only token (ADR-0070).
+  await app.register(widgetTokenRoutes, { prefix: '/api/v1' });
+  // OPH-460: the widget extension's own read, opened by the widget token alone.
+  await app.register(widgetSnapshotRoutes, { prefix: '/api/v1' });
   await app.register(reminderRoutes, { prefix: '/api/v1' });
   await app.register(googleIntegrationRoutes, { prefix: '/api/v1' });
   // OPH-380: iCloud / any CalDAV server (ADR-0059). Always registered so the

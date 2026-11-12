@@ -20,3 +20,10 @@ String readIosWidgetSwift() => [
   kIosWidgetSwiftFile,
   ...kIosWidgetSharedSwift,
 ].map((path) => File(path).readAsStringSync()).join('\n');
+
+/// [swift] with every run of whitespace made one space and none left just
+/// inside a bracket, so a pin names a call however the formatter wraps it.
+String squashSwift(String swift) => swift
+    .replaceAll(RegExp(r'\s+'), ' ')
+    .replaceAll('( ', '(')
+    .replaceAll(' )', ')');

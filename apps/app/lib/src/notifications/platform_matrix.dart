@@ -98,6 +98,10 @@ const kNotificationMatrix = <NotificationPlatform>[
     // Visible only: no data message, because there is no background mode and
     // a locked wake cannot read the session (ADR-0038 §8). A remote stop
     // therefore reaches iOS only when the app next runs.
+    // Widget: self-fetch with a read-only widget token (ADR-0070, WIDGETS.md
+    // §3.2). Not a push: the extension asks GET /widget/snapshot itself when
+    // WidgetKit reloads it, so a swiped-away app's widget stays current
+    // without a background mode (no WidgetKit push, no BGAppRefresh).
     serverPush: 'fcm',
     inAppScreen: true,
   ),

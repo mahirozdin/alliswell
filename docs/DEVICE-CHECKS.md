@@ -5,6 +5,27 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Widget kendi verisini çekiyor (2026-11-12, Epic 37, #50)
+
+Hepsi **NOT RUN**: işler Vitest, `flutter test` ve Mac'te iOS 27.2 simülatöründe XCTest ile kapandı;
+fiziksel iPhone turu sahiple yapılır. Ayarlar ▸ Geliştirici ▸ WidgetKit Developer Mode **kapalı**
+olmalı, yoksa iOS'un yenileme bütçesi atlanır ve süre ölçümü anlamsızlaşır. #50, D8 geçince ya da
+sahip S-50'yi onaylayınca kapanır (STATE "Kullanıcıdan bekleyen").
+
+- OPH-462 #50 D8/D-W1 — **iPhone, uygulama kaydırılıp kapatılmış, widget ana ekranda** (NOT RUN): Mac'ten görev ekle ve tamamla; widget'ta görünene dek geçen dakikayı kaydet (beklenen: bir WidgetKit yenilemesi, genelde 15–60 dk; ilk günlerde daha sık olabilir).
+- OPH-462/464 #50 D-W2 — **iPhone, yeniden başlatma** (NOT RUN): ilk kilit açılışından sonra D-W1 tekrar: çekim oluyor; yeniden başlatıp kilidi açmadan: çekim yok, son liste görünüyor. Uzantı, uygulamanın yazdığı token'ı okuyor (erişim grubu takım öneki olmadan, servis `flutter_secure_storage_service`, hesap `aw_widget_token`).
+- OPH-460 #50 D-W3 — **iPhone, Gizli widget açık** (NOT RUN): sunucu ya da proxy günlüğünde `GET /widget/snapshot` yanıtında görev ya da etkinlik başlığı yok; widget satırlarında "Gizli görev" yazıyor.
+- OPH-462 #50 D-W4 — **iPhone, uygulama kapalı, gece yarısı** (NOT RUN): 00:01–00:06 arasında Bugün listesi, sayaç ve kilit ekranının "sıradaki"si yeni günün.
+- OPH-462 #50 D-W5 — **iPhone, Türkçe ve İngilizce** (NOT RUN): sunucudan gelen satırlardaki saat ve tarih metni uygulamadakiyle aynı; fark varsa Dart/ICU farkı olarak kaydet.
+- OPH-462 #50 D-W8 — **iPhone, sunucu kapalı ya da uçak modu** (NOT RUN): widget 8 sn içinde son listeyi gösteriyor, çökme yok; bir sonraki deneme geri çekilmeden sonra.
+- OPH-458 #50 D-W9 — **iPhone** (NOT RUN): oturumu kapat ya da Ayarlar ▸ Cihazlar'dan telefonu kaldır: widget sonraki yenilemede 401 alıp çekmeyi bırakıyor, başlık sızmıyor; yeniden girişten sonra uygulama açılınca çekim geri geliyor.
+- OPH-462 #50 — **iPhone, uygulama kapalı** (NOT RUN): başka cihazda görev ekle, widget çeksin: o satıra dokunmak görevi uygulamada açıyor (daire hizası diğer satırlarla aynı); telefonda zaten olan görevin dairesi yerinde tamamlıyor.
+- OPH-462 #50 fix turu — **iPhone, uygulama kaydırılıp kapatılmış** (NOT RUN): bir daireye dokun: satır bir iki saniye içinde tamamlanmış görünüyor (eski ölçüm ~5 sn, bir kez 49 sn), diğer satırlar yerinden kaymıyor, hemen ikinci dokunuş başka görevi tamamlamıyor; ekrandaki iki widget aynı listeyi gösteriyor.
+- OPH-464 #50 fix turu — **iPhone** (NOT RUN): oturumu kapat: çökme yok, widget boş (oturum kapalı) durumu gösteriyor ve istek göndermiyor; Ayarlar'da Gizli widget'ı aç: başlıklar saniyeler içinde gidiyor, kapatınca geri geliyor, uygulama arka plana gidip dönünce de; açıkken uygulamayı yeniden başlat: çökme yok.
+- OPH-458 #50 fix turu — **iPhone, temiz kurulum** (NOT RUN): ilk girişten sonra `POST /widget-tokens` saniyeler içinde 201; başka cihazdaki Ayarlar ▸ Cihazlar bu iPhone'u oturumlu gösteriyor (`hasSession: true`), oradan kaldırınca iPhone çıkış yapıyor.
+- OPH-463 #50 — **iPhone** (NOT RUN): çevrimdışı bir notu düzenle, çevrimiçi olup eşitlensin, uygulamayı kaydırıp kapat: sonraki yenilemede başka cihazdaki değişiklik görünüyor (yerel liste değil sunucunun cevabı).
+- OPH-464 #50 — **iPhone** (NOT RUN): widget token'ı varken oturumun süresi dolsun (ya da oturumu sil), aynı kişiyle yeniden gir, uygulamayı kapat: widget 401'de durmadan çekmeye devam ediyor.
+
 ## Üçüncü cila turu: cevapsız istek, web flush'ı, ekran okuyucu, widget "+N" (2026-11-12, #46–#50)
 
 Hepsi **NOT RUN**: işler birim/widget testleriyle, widget işi Mac'te XCTest ile kapandı.

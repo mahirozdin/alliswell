@@ -26,6 +26,7 @@ import { newId } from '../lib/ids.js';
 import { hashRefreshToken, newRefreshToken } from '../lib/tokens.js';
 import { lockUsers, promoteIfNoneRings } from './notification-devices.js';
 import { transactionWithRetry } from './tx.js';
+import { revokeAllWidgetTokens, revokeWidgetTokens } from './widget-tokens.js';
 
 /** What a client shows about one session. Never the token, never its digest. */
 function serialize(rows, { currentFamilyId = null } = {}) {
@@ -115,7 +116,8 @@ function inTransaction(db, fn) {
  * which session they belong to.
  *
  * Call with the user's row locked (`lockUsers`): removing the ringing device
- * runs the OPH-433 promotion, which must not race a registration.
+ * runs the OPH-433 promotion, which must not race a registration. A removed
+ * device's widget token is revoked with it (OPH-458, ADR-0070).
  *
  * @returns {Promise<string[]>} the ids of the device rows removed
  */
@@ -146,6 +148,7 @@ export async function dropDevicesOfFamilies(trx, userId, familyIds, { at = new D
       rows.map((row) => row.id),
     )
     .delete();
+  await revokeWidgetTokens(trx, { userId, deviceIds: rows.map((row) => row.id), at });
   if (rows.some((row) => Number(row.rings_urgent) === 1)) {
     await promoteIfNoneRings(trx, userId);
   }
@@ -209,17 +212,63 @@ export async function deviceSignedOut(db, userId, deviceId, { at = new Date(), i
 }
 
 /**
+ * ── A SESSION THAT REGISTERS ITS DEVICE IS BOUND TO IT (OPH-458, PR2-06) ──
+ *
+ * `PUT /notification-devices/:id` is called by the session that runs on that
+ * device, and its access token names its family (`sid`). A fresh sign-in
+ * names no device — the app sends `deviceId` only once it knows the server
+ * takes it — so without this the family stayed unbound until its first
+ * refresh, 15 minutes later, and the widget token, which only a family bound
+ * to the device may mint, was refused in between.
+ *
+ * Binds `familyId` to `deviceId` when the family is the caller's, is live and
+ * names no other device. Never rebinds: a family that names another device
+ * keeps it. Rows of the family still without a device (a rotation that read
+ * the family before it was bound) take this one, so the family names one
+ * device on every row. An access token without `sid` (`familyId` null) binds
+ * nothing. Removing the device then revokes the family (OPH-435) — the
+ * remote sign-out, now from the first registration on.
+ *
+ * `db` may be an open transaction (it is used as is) or the pool.
+ *
+ * @returns {Promise<boolean>} whether a row was bound now
+ */
+export function bindSessionToDevice(db, { userId, familyId, deviceId, at = new Date() }) {
+  if (!familyId) return Promise.resolve(false);
+  return inTransaction(db, async (trx) => {
+    const rows = await trx('refresh_tokens')
+      .where({ user_id: userId, family_id: familyId })
+      .forUpdate()
+      .select('device_id', 'revoked_at', 'rotated_at', 'expires_at');
+    const live = rows.some(
+      (row) => !row.revoked_at && !row.rotated_at && new Date(row.expires_at) > at,
+    );
+    if (!live) return false;
+    if (rows.some((row) => row.device_id && row.device_id !== deviceId)) return false;
+    if (rows.every((row) => row.device_id)) return false;
+    await trx('refresh_tokens')
+      .where({ user_id: userId, family_id: familyId })
+      .whereNull('device_id')
+      .update({ device_id: deviceId });
+    return true;
+  });
+}
+
+/**
  * Signs one device out (OPH-435): every family bound to it is revoked, every
- * row of it at once, the same single UPDATE `revokeOtherSessions` uses. The
- * caller removes the device row itself. Call inside a transaction holding
+ * row of it at once, the same single UPDATE `revokeOtherSessions` uses, and
+ * the device's widget token with them (OPH-458). The caller removes the
+ * device row itself. Call inside a transaction holding
  * `lockUsers(trx, [userId])`.
  * @returns {Promise<number>} rows revoked; 0 when no live session was bound
  */
-export function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() }) {
-  return trx('refresh_tokens')
+export async function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() }) {
+  const revoked = await trx('refresh_tokens')
     .where({ user_id: userId, device_id: deviceId })
     .whereNull('revoked_at')
     .update({ revoked_at: at });
+  await revokeWidgetTokens(trx, { userId, deviceIds: [deviceId], at });
+  return revoked;
 }
 
 /**
@@ -227,7 +276,8 @@ export function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() })
  * family id — which the owner's own screen shows them — can never end
  * somebody else's session. Also the reuse response: a rotated token coming
  * back burns its whole family. The device bound to the family goes with it,
- * also when the family was already revoked.
+ * also when the family was already revoked, and so does every widget token
+ * the family minted (OPH-458).
  *
  * `db` may be an open transaction (it is used as is) or the pool.
  *
@@ -245,6 +295,7 @@ export function revokeSession(db, { userId, familyId, at = new Date() }) {
     // its access token still worked, and this — a refused refresh of that
     // family — is the last moment the server hears from it.
     await dropDevicesOfFamilies(trx, userId, [familyId], { at });
+    await revokeWidgetTokens(trx, { userId, familyIds: [familyId], at });
     return revoked;
   });
 }
@@ -253,7 +304,8 @@ export function revokeSession(db, { userId, familyId, at = new Date() }) {
  * Closes every session except one. `keepFamilyId` null closes all of them —
  * which is what an administrator's force-logout means, what a password change
  * does, and what a person who did not name their own session gets. The
- * devices bound to the closed families go with them.
+ * devices bound to the closed families go with them, and so do the widget
+ * tokens those families minted — all of them when nothing is kept (OPH-458).
  *
  * `db` may be an open transaction (it is used as is) or the pool.
  */
@@ -267,6 +319,11 @@ export function revokeOtherSessions(db, { userId, keepFamilyId = null, at = new 
     const families = distinctOf(await open().select('family_id'), 'family_id');
     const revoked = await open().update({ revoked_at: at });
     await dropDevicesOfFamilies(trx, userId, families, { at });
+    if (keepFamilyId) {
+      await revokeWidgetTokens(trx, { userId, familyIds: families, at });
+    } else {
+      await revokeAllWidgetTokens(trx, { userId, at });
+    }
     return revoked;
   });
 }
@@ -333,12 +390,56 @@ export async function createRefreshRecord(
     // OPH-434 — the notification device this family is bound to, or null.
     device_id: deviceId,
   });
-  return { token, expiresAt };
+  return { token, expiresAt, familyId };
 }
 
+/**
+ * One rotation (OPH-022): claims the presented row and inserts its successor in
+ * the same family, in one transaction. `row` is the presented row as the
+ * caller read it, outside this transaction.
+ *
+ * The successor's device is read again here, under the claim's row lock, not
+ * taken from `row` (OPH-458): a registration may have bound the family
+ * (`bindSessionToDevice`) between the caller's read and this claim, and a
+ * successor written from the stale unbound copy would name no device, so
+ * removing that device would leave it alive. A bound family keeps its device
+ * whatever the refresh names; an unbound one takes `deviceId`.
+ *
+ * @returns {Promise<{token: string, expiresAt: Date, familyId: string} | null>}
+ *   the new record, or null when the row was already rotated or revoked (the
+ *   caller lost a race: a reuse)
+ */
+export function rotateRefreshRecord(
+  db,
+  auth,
+  { row, ip, deviceName = null, deviceId = null, at = new Date() },
+) {
+  return inTransaction(db, async (trx) => {
+    // Atomic claim: under two concurrent refreshes only one UPDATE matches.
+    const claimed = await trx('refresh_tokens')
+      .where({ id: row.id })
+      .whereNull('rotated_at')
+      .whereNull('revoked_at')
+      .update({ rotated_at: at });
+    if (claimed === 0) return null;
+    const current = await trx('refresh_tokens')
+      .where({ id: row.id })
+      .forUpdate()
+      .first('device_id');
+    return createRefreshRecord(trx, auth, {
+      userId: row.user_id,
+      familyId: row.family_id,
+      ip,
+      deviceName,
+      deviceId: current?.device_id ?? deviceId ?? null,
+    });
+  });
+}
+
+/** The pair a sign-in or refresh returns; the access token names its family (`sid`). */
 export function sessionTokens(app, user, refresh) {
   return {
-    accessToken: app.signAccessToken(user),
+    accessToken: app.signAccessToken(user, { sessionId: refresh.familyId }),
     accessTokenExpiresInSec: app.config.auth.accessTtlSec,
     refreshToken: refresh.token,
     refreshTokenExpiresAt: refresh.expiresAt.toISOString(),

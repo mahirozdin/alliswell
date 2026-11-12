@@ -9,16 +9,16 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-12 — Epic 36 (PR-1) + üç cila turu kapandı; OPH-468, 470, sonra Epic 37.
+**Last updated:** 2026-11-12 — Epic 37 kapandı.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.20.0 son sürüm (2026-11-12).** Epic 36 (PR-1) tamam; OPH-468, 470, sonra Epic 37 (PR-2). |
-| Current epic             | **Epic 36 follow-up** (OPH-468, 470), sonra **Epic 37** (#50, PR-2; `/faz E37`) |
+| Current phase            | **v1.21.0 son sürüm (2026-11-12).** Epic 36–37 tamam. |
+| Current epic             | **Epic 36 follow-up** (OPH-468…479), sonra Epic 37 follow-up (OPH-483…485) ve follow-up 2 |
 | ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
-| Last completed           | Epic 36 (OPH-421…456, 466, 467) + üç cila turu (OPH-469, 471, 472, 480); ayrıntı CHANGELOG'da. |
+| Last completed           | Widget self-fetch düzeltme turu (OPH-458, 462, 464); ayrıntı CHANGELOG'da. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -96,6 +96,12 @@
 
 21. **#48 backfill** — "ilk eklenen cihaz" son 14 günde görülenlerden seçiliyor (önce web dışı) ki
     eski kurulum alarmı yutmasın: varsayım (ADR-0069 #4), teyit et; değişecekse yayından önce.
+
+22. **S-50 (#50)** — kapalı uygulamada widget WidgetKit yenilemesinde (15–60 dk) güncellenir,
+    dakika garantisi yok. Onayla ya da D8.
+
+23. **OPH-485 (#50)** — widget'tan tamamlama kuyruktayken widget sunucudan çekmez; uygulama açılana
+    dek dokunuştan önceki görünüm kalır. Böyle mi kalsın, yoksa çekip tamamlamayı üstüne mi koysun?
 
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
@@ -193,10 +199,5 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 
 ## How to continue (for agents)
 
-1. Oturum başı `/isler` (`npm run next -- --list`), fazlar `/faz E36 …`
-   ([development/workflow.md](development/workflow.md)); TASKS'ı bütün okuma.
-2. Dokunacağın alanı [LESSONS.md](LESSONS.md)'de grep'le; kritik yolsa `.claude/rules/<alan>.md`;
-   bağlayıcı metin ilgili ADR'lerde.
-3. İş başına `npm run verify:task` + yerel commit; faz sonunda `npm run verify:batch` +
-   `verify:smoke`, yeşilse PR. Bitişte: biten işi TASKS'tan sil, bu dosyanın hücrelerini yerinde
-   güncelle, tek CHANGELOG girdisi, Conventional Commit.
+Okuma sırası, komutlar ve bitiş tanımı [AGENTS.md](../AGENTS.md)'de; faz sözleşmesi
+[development/workflow.md](development/workflow.md).

@@ -34,6 +34,7 @@ import '../features/onboarding/tour_overlay.dart';
 import '../features/projects/ui/project_edit_sheet.dart';
 import '../features/quick_access/ui/quick_access_panel.dart';
 import '../features/widgets/widget_bridge.dart';
+import '../features/widgets/widget_token_store.dart';
 import '../i18n/i18n.dart';
 import '../notifications/alarm_overlay.dart';
 import '../notifications/alarm_ring_screen.dart';
@@ -468,8 +469,13 @@ class HomeShell extends ConsumerWidget {
     // (self-disables off Apple platforms and until access + a calendar exist).
     ref.watch(appleMirrorProvider);
     // OPH-130: republish the home-screen widget snapshot on task/project change
-    // (self-disables off iOS/Android/macOS).
-    ref.watch(widgetSyncProvider);
+    // (self-disables off iOS/Android/macOS). Listened, not watched (PR2-04): a
+    // watch is paused while Settings covers the shell, and the widget missed
+    // the settings changed there.
+    keepWidgetSyncLive(ref);
+    // #50: the widget's own token, minted and renewed in the foreground
+    // (iOS only; a no-op elsewhere).
+    ref.watch(widgetTokenSyncProvider);
     // EE-225's draft courier and "sent" listener live on the app itself
     // (`AllisWellApp`), not here: a page opened by its address has no shell.
     // EE-084 / EE-290: which sections are DRAWN (`shellVisibleSections`).

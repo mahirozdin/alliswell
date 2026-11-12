@@ -72,7 +72,15 @@ add_source(widget, snooze_ref, 'Shared/AWSnoozeCore.swift')
 # OPH-451 — the widget snapshot model and the timeline's day choice (#50, v6).
 # The widget draws them; Runner compiles them too so RunnerTests can test the
 # pure day pick (WidgetDayPickTests). Foundation only.
-%w[AWSnapshotModel.swift AWWidgetDayPick.swift].each do |name|
+# OPH-461 — the self-fetch policy (WIDGETS.md 3.2): when the widget may fetch,
+# its backoff and reload dates, and the local-or-server choice
+# (WidgetFetchPolicyTests). Foundation only.
+# OPH-462 — the self-fetch itself: the Keychain read, the one request and the
+# server's view in the app's words. Runner compiles it so WidgetFetchPolicyTests
+# drives it through a URLProtocol stub. Foundation and Security only.
+%w[
+  AWSnapshotModel.swift AWWidgetDayPick.swift AWWidgetFetchPolicy.swift AWWidgetFetcher.swift
+].each do |name|
   ref = file_ref(shared_group, name)
   add_source(runner, ref, "Shared/#{name}")
   add_source(widget, ref, "Shared/#{name}")
@@ -85,7 +93,8 @@ raise 'RunnerTests group not found' unless tests_group
 
 %w[
   AlarmIdentityTests.swift AlarmLedgerTests.swift SnoozeCoreTests.swift SnoozeTargetTests.swift
-  WidgetDayPickTests.swift
+  WidgetDayPickTests.swift WidgetCompletionTests.swift WidgetMoreCountTests.swift
+  WidgetFetchPolicyTests.swift
 ].each do |name|
   add_source(tests, file_ref(tests_group, name), "RunnerTests/#{name}")
 end

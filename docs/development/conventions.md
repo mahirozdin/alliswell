@@ -31,6 +31,16 @@
   standing exceptions are in LESSONS `sync`. Widget tests that pump the app need
   `test/support/sync_overrides.dart`.
 - Keep widgets small; reusable UI goes to `lib/src/widgets/`.
+- **App tests** (traps moved from LESSONS `flutter-app`):
+  - Riverpod 3 asserts on a doubled override → fakes go in through `syncTestOverrides(...)`'s
+    parameters. A FakeApi that does not echo a push (new entity, null field) lets the pull bring
+    the row back or delete it.
+  - `pumpAndSettle` never returns under an endless animation → `pump(duration)`; a snackbar's
+    timer breaks teardown → end with `pump(6s)`; real async setup runs in `tester.runAsync`.
+  - A screen test that sets up no session provides the session providers the screen reads
+    (`currentWorkspace` + `workspaces` + `currentUserId`; permissions from the extension's test
+    support, "no" while loading), or it waits 4 s. `localKv` keeps its instance → a test that
+    writes it cleans up.
 - **No hardcoded user-facing strings** (Epic 11, ADR-0009): `'some.key'.tr()`, with the key in
   `apps/app/assets/i18n/{en,tr}.json` (English is the base). `npm run check:i18n` enforces it;
   escape hatch `// i18n-ignore`.

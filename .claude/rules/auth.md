@@ -8,6 +8,8 @@ paths:
   - "apps/api/src/db/identities.js"
   - "apps/api/src/db/totp.js"
   - "apps/api/src/lib/{tokens,api-keys,crypto,totp,sign-in-factors,oauth-identity,oauth-cimd}.js"
+  - "apps/api/src/routes/widget*.js"
+  - "apps/api/src/db/widget-tokens.js"
 ---
 # Auth, sessions, keys — critical path
 
@@ -15,10 +17,13 @@ A hole here is a breach, and a session bug locks people out of their data.
 
 - **K1 extra:** `npm run verify:task -- apps/api/test/integration/auth.test.js
   apps/api/test/integration/auth-refresh.test.js apps/api/test/integration/auth-me.test.js
-  apps/api/test/integration/sessions.test.js apps/api/test/integration/mfa.test.js`.
+  apps/api/test/integration/sessions.test.js apps/api/test/integration/mfa.test.js
+  apps/api/test/integration/widget-tokens.test.js`.
 - **Invariants:** I-07 (no secrets in git; OAuth tokens encrypted — BLUEPRINT §15.3). API keys
   `awk_` plain Bearer, shown once, HMAC-SHA256 hash; `/auth/*`, account deletion, `/ai/*` and
-  key management are closed to keys (ADR-0032). Each secret class has its own key
+  key management are closed to keys (ADR-0032). Widget tokens `aww_` (ADR-0070): minted by a
+  session only, opened by `authenticateWidget` for `GET /widget/snapshot` alone, never by
+  `app.authenticate`; dead with their device or minting family. Each secret class has its own key
   (`AUTH_TOTP_KEY`…); a password change ends every session (ADR-0006). Errors carry stable
   `code`s and never leak internals.
 - **Traps (docs/LESSONS.md `security`):**
@@ -30,4 +35,7 @@ A hole here is a breach, and a session bug locks people out of their data.
     `lib/oauth-identity.js` checks Google/Apple ID tokens. Every sign-in door goes through
     `lib/sign-in-factors.js` before it writes (OPH-381).
   - A session is a `refresh_tokens` `family_id`; list/revoke per family.
+  - A fresh sign-in sends no `deviceId`: its family is bound to the device by its first
+    `PUT /notification-devices` (`bindSessionToDevice`, same transaction), only when unbound,
+    live and the caller's own; a family bound to another device never moves (OPH-458).
 - **Detail:** [SECURITY.md](../../SECURITY.md), ADR-0026, ADR-0032, ADR-0047, ADR-0049.

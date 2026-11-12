@@ -117,19 +117,37 @@ void main() {
             'budgeting today alone lets a fuller tomorrow push the archive '
             'past the limit after midnight',
       );
+      // OPH-462: on iOS both providers draw the self-fetched snapshot. The
+      // completion-based one reads the family BEFORE its Task (the context
+      // is not the Task's to keep); the macOS branch draws the App Group
+      // snapshot as before. Whitespace is squashed: a call that wraps over
+      // two lines is the same call.
+      final calls = squashSwift(swift);
       expect(
-        swift,
+        calls,
         contains(
           'awTimeline(snapshot: loadAWSnapshot(), listId: nil, '
           'family: context.family)',
         ),
+        reason: "the macOS widget's iOS 16-style provider",
+      );
+      expect(calls, contains('let family = context.family'));
+      expect(
+        calls,
+        contains('let snapshot = await loadAWDrawnSnapshot(fetch: true)'),
       );
       expect(
-        swift,
+        calls,
+        contains('awTimeline(snapshot: snapshot, listId: nil, family: family)'),
+        reason: "iOS 16's provider, inside the Task that wraps the fetch",
+      );
+      expect(
+        calls,
         contains(
-          'awTimeline(snapshot: loadAWSnapshot(), '
+          'awTimeline(snapshot: await loadAWDrawnSnapshot(fetch: true), '
           'listId: configuration.list?.id, family: context.family)',
         ),
+        reason: 'the iOS 17 / macOS 14 intent provider',
       );
     });
 

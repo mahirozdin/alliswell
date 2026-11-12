@@ -665,6 +665,14 @@ that was issue #16, and this is what stops the next one.
 
 The prose below says what a column cannot:
 
+- **iOS widget**: self-fetch with a read-only widget token (Epic 37, #50;
+  [ADR-0070](adr/0070-widget-token.md), [ADR-0071](adr/0071-shared-keychain-group-after-first-unlock.md),
+  [WIDGETS.md §3.2](WIDGETS.md#32-widget-self-fetch-contract-ios-50)). It is not a
+  push and not a background mode: when WidgetKit reloads the extension, the extension asks
+  `GET /widget/snapshot` itself, so a swiped-away app's widget shows a change made elsewhere
+  within one reload (typically 15–60 min, no minute guarantee). WidgetKit push and iOS
+  background sync stay off (ADR-0038 §8); Android's widget keeps its data-message wake, the
+  macOS widget its foreground writes.
 - **macOS**: same UserNotifications framework as iOS (time-sensitive
   available); flutter_local_notifications supports it. The urgent caf is not
   bundled in the macOS Runner yet — macOS stays on the default sound (a

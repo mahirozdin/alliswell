@@ -1,6 +1,7 @@
 import { toIso } from '../lib/serialize.js';
 import { coded } from '../lib/errors.js';
 import {
+  bindSessionToDevice,
   deviceLabel,
   deviceSignedOut,
   devicesWithSession,
@@ -50,6 +51,13 @@ import {
  * device whether a live session is still bound to it (`hasSession`). A
  * removed device cannot `PUT` its row back while its access token lasts: a
  * device whose bound sessions have all ended gets 401 `AUTH_SESSION_REVOKED`.
+ *
+ * **Registering binds the caller's session (OPH-458, PR2-06).** A `PUT` that
+ * writes the row also binds the caller's own live session family (the access
+ * token's `sid`) to the device when that family names no device yet, so a
+ * fresh sign-in can mint its widget token at once instead of after its first
+ * refresh. A family bound to another device is never moved; a token without
+ * `sid` (or an API key) binds nothing.
  */
 
 const PLATFORMS = ['ios', 'android', 'macos', 'windows', 'linux', 'web'];
@@ -248,12 +256,20 @@ export default async function notificationDeviceRoutes(app) {
       // would then hand the install back with the other account's `ringsUrgent`
       // still set — two automatic ringers for one user. Zero rows means the
       // read is stale, so the locked insert/takeover path decides instead.
+      //
+      // Both paths bind the caller's own session to the device in the
+      // transaction that writes its row (OPH-458): see `bindSessionToDevice`.
+      const bind = (trx) =>
+        bindSessionToDevice(trx, { userId, familyId: request.user.sessionId, deviceId });
       const beat =
         existing && existing.user_id === userId
-          ? await app
-              .db('notification_devices')
-              .where({ id: deviceId, user_id: userId })
-              .update(values)
+          ? await transactionWithRetry(app.db, async (trx) => {
+              const updated = await trx('notification_devices')
+                .where({ id: deviceId, user_id: userId })
+                .update(values);
+              if (updated > 0) await bind(trx);
+              return updated;
+            })
           : 0;
       if (beat === 0) {
         // Insert or takeover: the urgent-device rule runs with the user's row
@@ -267,6 +283,7 @@ export default async function notificationDeviceRoutes(app) {
           if (current && current.user_id === userId) {
             // Lost a race to our own first registration: a heartbeat now.
             await trx('notification_devices').where({ id: deviceId }).update(values);
+            await bind(trx);
             return 200;
           }
           // A device removed from the account (or whose session ended) is
@@ -289,6 +306,7 @@ export default async function notificationDeviceRoutes(app) {
             if (Number(current.rings_urgent) === 1) {
               await promoteIfNoneRings(trx, current.user_id);
             }
+            await bind(trx);
             return 200;
           }
           // A device with no name answers no question, and OPH-284 already
@@ -303,6 +321,7 @@ export default async function notificationDeviceRoutes(app) {
             ...values,
             ...flags,
           });
+          await bind(trx);
           return 201;
         });
       }
@@ -406,7 +425,8 @@ export default async function notificationDeviceRoutes(app) {
   // repeating it (or aiming at a device you no longer own, or one that does
   // not exist) must never fail a sign-out flow, and such a call revokes
   // nothing. On the caller's own row, in one transaction: every refresh family
-  // bound to the device is revoked, the row is removed, and removing the
+  // bound to the device is revoked, and so is its widget token (OPH-458,
+  // inside `revokeDeviceSessions`), the row is removed, and removing the
   // device that rang hands the alarm to the most recently seen remaining one
   // (OPH-433).
   //

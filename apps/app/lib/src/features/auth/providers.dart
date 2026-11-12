@@ -17,6 +17,9 @@ import '../../notifications/web/alert_cache.dart';
 import '../../sync/local_data.dart';
 import '../../sync/providers.dart';
 import '../devices/providers.dart';
+import '../widgets/widget_bridge.dart'
+    show widgetBridgeProvider, widgetsSupportedPlatform;
+import '../widgets/widget_token_store.dart' show widgetTokenLifecycleProvider;
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
 import 'data/auth_repository.dart';
@@ -78,10 +81,17 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
             switchedAccount: owner != null && owner != userId,
           );
       ref.invalidate(ringsUrgentHereProvider);
+      // A sign-in is a new session family, and the widget's token is bound
+      // to the one that minted it (#50): mint again for this one. A family
+      // that expired on its own never reached a sign-out to clear it.
+      if (!restored) {
+        await ref.read(widgetTokenLifecycleProvider).sessionStarted();
+      }
     },
     deviceId: () => _deviceIdForAuth(ref),
     onSessionRevoked: (userId, {required replaced}) =>
         _endRevokedSession(ref, userId, replaced: replaced),
+    onSessionExpired: (_) => _endExpiredSession(ref),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -153,13 +163,45 @@ Future<void> _endRevokedSession(
     // Best effort, as on a sign-out.
   }
   await _haltSyncEngines(ref);
+  // The server dropped the device with the family, and the widget token
+  // with it (#50): the local copy goes too.
+  await ref.read(widgetTokenLifecycleProvider).signOut();
   final owner = await localKv.get(kReplicaOwnerKey);
   if (!replaced &&
       (owner == null || owner == userId) &&
       await _nothingUnsent(ref)) {
     await ref.read(localDataGuardProvider).wipe();
   }
+  // A kept replica is no reason to keep drawing it: signed out, the widget
+  // shows nothing of the person (#50, PR2-02).
+  await _showWidgetSignedOut(ref);
   await _dropOsAlarms(ref);
+}
+
+/// A session that ended on its own (#50): its refresh token ran out while the
+/// app was closed, or the server refused it as expired rather than revoked.
+/// What the person left here stays — the replica and its outbox wait for the
+/// next sign-in (OPH-355) — but the widget does not: with no session nothing
+/// would ever write over the account's rows on it, and its token died with
+/// the family. So its token and fetch keys go, and it draws the signed-out
+/// snapshot, as after a sign-out.
+Future<void> _endExpiredSession(Ref ref) async {
+  await ref.read(widgetTokenLifecycleProvider).signOut();
+  await _showWidgetSignedOut(ref);
+}
+
+/// The home-screen widget, once the session is gone (#50, PR2-02): the
+/// empty snapshot, then a redraw — on every platform with a widget, after
+/// the token lifecycle removed the fetch keys (iOS). Nothing else would ever
+/// write over the person's rows: the live publish ended with the session.
+/// Best effort; a sign-out is never blocked by it.
+Future<void> _showWidgetSignedOut(Ref ref) async {
+  if (!widgetsSupportedPlatform) return;
+  try {
+    await ref.read(widgetBridgeProvider).showSignedOut();
+  } on Object {
+    // A missing plugin or a full container: the widget keeps what it had.
+  }
 }
 
 Future<bool> _nothingUnsent(Ref ref) async {
@@ -286,7 +328,11 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // Every engine stops before the wipe below (see [_haltSyncEngines]).
     await _haltSyncEngines(ref);
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
+    // The widget's token (#50, iOS): the device row deleted above revoked it
+    // on the server; only now does the local copy go (WIDGETS §3.2).
+    await ref.read(widgetTokenLifecycleProvider).signOut();
     await ref.read(localDataGuardProvider).wipe();
+    await _showWidgetSignedOut(ref);
   }
 }
 

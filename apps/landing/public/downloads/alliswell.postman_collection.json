@@ -1,7 +1,7 @@
 {
   "info": {
     "_postman_id": "7096efc4-0000-4000-8000-7096efc40000",
-    "name": "AllisWell REST API v1.20.0",
+    "name": "AllisWell REST API v1.21.0",
     "description": "Generated from the AllisWell OpenAPI spec — see https://alliswell.space/docs/api\n\nSet `apiKey` to a personal key (Settings → API access and management) and `workspaceId` to the workspace it belongs to; `GET /api/v1/me` lists yours. The few endpoints a key may not open are marked and use `sessionJwt` instead.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -33,6 +33,11 @@
     },
     {
       "key": "sessionJwt",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "widgetToken",
       "value": "",
       "type": "string"
     }
@@ -4532,6 +4537,116 @@
                   "language": "json"
                 }
               }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Widget",
+      "item": [
+        {
+          "name": "POST /api/v1/widget-tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/widget-tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "widget-tokens"
+              ]
+            },
+            "description": "Mints the read-only widget token (`aww_…`) for one of your notification devices. Session only; the token is shown once, opens GET /widget/snapshot alone, lives 90 days, and dies with the device or the session that minted it. Minting again for the device revokes the previous token.\n\nSession JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET /api/v1/widget/snapshot",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/widget/snapshot",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "widget",
+                "snapshot"
+              ],
+              "query": [
+                {
+                  "key": "tz",
+                  "value": "",
+                  "description": "IANA time zone; day boundaries and every local date use it. (required)",
+                  "disabled": false
+                },
+                {
+                  "key": "workspaceIds",
+                  "value": "",
+                  "description": "1–20 comma-separated workspace ids, each one you are a member of. (required)",
+                  "disabled": false
+                },
+                {
+                  "key": "mine",
+                  "value": "0",
+                  "description": "1 = only your own work (assigned to you, or yours with nobody assigned).",
+                  "disabled": true
+                },
+                {
+                  "key": "private",
+                  "value": "1",
+                  "description": "1 (default) = no title anywhere in the body.",
+                  "disabled": true
+                },
+                {
+                  "key": "days",
+                  "value": "3",
+                  "description": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "The home-screen widget's per-day views (today and the next days) for the widget token's user, in the client's time zone. Widget token (`aww_…`) only; words-free (bucket keys, instants, time styles); `private=1` (the default) sends no title. `ETag` + `If-None-Match` → 304; `Cache-Control: no-store`.\n\nWidget token only (`aww_…`, from `POST /api/v1/widget-tokens`). A session JWT or an API key is refused with `401 AUTH_WIDGET_TOKEN_INVALID`.",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{widgetToken}}",
+                  "type": "string"
+                }
+              ]
             }
           }
         }

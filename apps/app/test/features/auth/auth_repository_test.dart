@@ -753,6 +753,195 @@ void main() {
     );
   });
 
+  group('an expired session and a sign-in around it', () {
+    Map<String, dynamic> secondUser() => {
+      ...sessionJson(accessToken: 'access-b', refreshToken: 'refresh-b'),
+      'user': {'id': 'user-2', 'email': 'b@example.com', 'displayName': 'B'},
+    };
+
+    // The start gives up on `restore()` after a few seconds and shows the
+    // sign-in screen. A cleanup still running then belongs to the session
+    // that expired: the sign-in waits for it, and the restore that finishes
+    // later leaves the new session alone.
+    test('a sign-in during a slow start-up cleanup waits for it and keeps '
+        'its session', () async {
+      final cleanupGate = Completer<void>();
+      final order = <String>[];
+      final storage = TokenStorage(InMemorySecretStore());
+      await storage.save(
+        fakeSession(
+          refreshExpiresAt: DateTime.now().subtract(const Duration(days: 1)),
+        ),
+      );
+      final repo = AuthRepository(
+        api: AuthApi(
+          fakeDio(
+            FakeHttpClientAdapter((options, body) async {
+              expect(options.path, '/api/v1/auth/login');
+              order.add('login sent');
+              return jsonBody(200, secondUser());
+            }),
+          ),
+        ),
+        storage: storage,
+        onSessionExpired: (userId) async {
+          order.add('cleanup $userId starts');
+          await cleanupGate.future;
+          order.add('cleanup $userId ends');
+        },
+      );
+
+      final restoring = repo.restore();
+      await pumpEventQueue();
+      final signIn = repo.login(
+        email: 'b@example.com',
+        password: 'pw-pw-pw-pw',
+      );
+      await pumpEventQueue();
+      expect(order, ['cleanup user-1 starts']);
+
+      cleanupGate.complete();
+      await signIn;
+      await restoring;
+      await pumpEventQueue();
+      expect(order, [
+        'cleanup user-1 starts',
+        'cleanup user-1 ends',
+        'login sent',
+      ]);
+      expect(repo.session?.user.id, 'user-2');
+      expect(repo.accessToken, 'access-b');
+      expect((await storage.read())?.user.id, 'user-2');
+    });
+
+    test('a restore that finishes after a sign-in does not put the stored '
+        'session back', () async {
+      final hookGate = Completer<void>();
+      final storage = TokenStorage(InMemorySecretStore());
+      await storage.save(fakeSession());
+      final repo = AuthRepository(
+        api: AuthApi(
+          fakeDio(
+            FakeHttpClientAdapter(
+              (options, body) async => jsonBody(200, secondUser()),
+            ),
+          ),
+        ),
+        storage: storage,
+        onSessionUser: (userId, {required restored}) async {
+          if (restored) await hookGate.future;
+        },
+      );
+
+      final restoring = repo.restore();
+      await pumpEventQueue();
+      await repo.login(email: 'b@example.com', password: 'pw-pw-pw-pw');
+      expect(repo.session?.user.id, 'user-2');
+
+      hookGate.complete();
+      expect((await restoring)?.user.id, 'user-2');
+      expect(repo.session?.user.id, 'user-2');
+      expect(repo.accessToken, 'access-b');
+      expect((await storage.read())?.user.id, 'user-2');
+    });
+
+    AuthRepository refusedDuringSignIn({
+      required Completer<void> refreshAnswer,
+      required Completer<void> loginGate,
+      required List<String> expired,
+      required bool signInSucceeds,
+    }) {
+      var logins = 0;
+      return AuthRepository(
+        api: AuthApi(
+          fakeDio(
+            FakeHttpClientAdapter((options, body) async {
+              if (options.path == '/api/v1/auth/login') {
+                if (logins++ == 0) return jsonBody(200, sessionJson());
+                await loginGate.future;
+                if (signInSucceeds) return jsonBody(200, secondUser());
+                return jsonBody(401, {
+                  'statusCode': 401,
+                  'code': 'AUTH_INVALID_CREDENTIALS',
+                });
+              }
+              await refreshAnswer.future;
+              return jsonBody(401, {
+                'statusCode': 401,
+                'code': 'AUTH_INVALID_REFRESH_TOKEN',
+              });
+            }),
+          ),
+        ),
+        storage: TokenStorage(InMemorySecretStore()),
+        onSessionExpired: (userId) async => expired.add(userId),
+      );
+    }
+
+    test('a sign-in that fails runs the expiry cleanup it held back', () async {
+      final refreshAnswer = Completer<void>();
+      final loginGate = Completer<void>();
+      final expired = <String>[];
+      final repo = refusedDuringSignIn(
+        refreshAnswer: refreshAnswer,
+        loginGate: loginGate,
+        expired: expired,
+        signInSucceeds: false,
+      );
+      await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+
+      final refreshing = repo.refreshAccessToken();
+      await pumpEventQueue();
+      final signIn = repo.login(email: 'b@example.com', password: 'wrong-pw');
+      await pumpEventQueue();
+      refreshAnswer.complete();
+      expect(await refreshing, isNull);
+      await pumpEventQueue();
+      expect(expired, isEmpty, reason: 'held back while the sign-in runs');
+
+      loginGate.complete();
+      await expectLater(signIn, throwsA(isA<AuthException>()));
+      await pumpEventQueue();
+      expect(expired, ['user-1']);
+      expect(repo.session, isNull);
+    });
+
+    test('a sign-in that succeeds keeps the widget for its own session: the '
+        'held-back expiry cleanup never runs', () async {
+      final refreshAnswer = Completer<void>();
+      final loginGate = Completer<void>();
+      final expired = <String>[];
+      final repo = refusedDuringSignIn(
+        refreshAnswer: refreshAnswer,
+        loginGate: loginGate,
+        expired: expired,
+        signInSucceeds: true,
+      );
+      await repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+
+      final refreshing = repo.refreshAccessToken();
+      await pumpEventQueue();
+      final signIn = repo.login(
+        email: 'b@example.com',
+        password: 'pw-pw-pw-pw',
+      );
+      await pumpEventQueue();
+      refreshAnswer.complete();
+      expect(await refreshing, isNull);
+
+      loginGate.complete();
+      await signIn;
+      await pumpEventQueue();
+      expect(expired, isEmpty);
+      expect(repo.session?.user.id, 'user-2');
+
+      // Nothing is left to run when a later sign-in fails.
+      await repo.logout();
+      await pumpEventQueue();
+      expect(expired, isEmpty);
+    });
+  });
+
   test('refreshAccessToken without a session is null (no API call)', () async {
     final h = harness((options, body) async => fail('no request expected'));
     expect(await h.repo.refreshAccessToken(), isNull);

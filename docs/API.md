@@ -33,7 +33,7 @@ curl -s "$ALLISWELL_URL/api/v1/me" \
 A key acts as **you**, in **one workspace** — the one it was created in. There
 are no scopes in v1 ([ADR-0032](adr/0032-api-keys.md)).
 
-Five things it can never do, whatever it holds — **26 endpoints in total**,
+Six things it can never do, whatever it holds — **28 endpoints in total**,
 each marked "Session JWT only" in the reference below:
 
 | Refused | Why |
@@ -43,6 +43,7 @@ each marked "Session JWT only" in the reference below:
 | Create or revoke API keys | Otherwise one leaked key becomes permanent: the holder simply issues another |
 | Change your own credentials — password, two-factor, sessions (`/auth/password`, `/auth/mfa/*`, `/auth/sessions*`) | A key is for reaching your data, never for taking the account over. A holder who could rotate your password or close your sessions would own the account, not borrow it |
 | Connect a calendar with a password (`POST /workspaces/{id}/integrations/caldav`) | It stores a long-lived third-party credential and opens a standing channel from this server to another one. A leaked key must be able to do neither. Reading the connection, choosing its calendar and disconnecting it work with a key, as they do for Google |
+| Mint a widget token (`POST /widget-tokens`) | The widget's read-only `aww_` token is tied to a signed-in device and its session ([ADR-0070](adr/0070-widget-token.md)); a key is neither |
 
 Those answer `403 AUTH_APIKEY_FORBIDDEN`. Using a key against a **different**
 workspace answers `403 AUTH_APIKEY_WORKSPACE`.
@@ -351,7 +352,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_124 operations across 89 paths, generated from
+_126 operations across 91 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -377,6 +378,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **Sync** — [`GET /api/v1/sync/pull`](#get-api-v1-sync-pull) · [`POST /api/v1/sync/push`](#post-api-v1-sync-push)
 - **Tags** — [`GET /api/v1/tags/{tagId}`](#get-api-v1-tags-tagid) · [`PATCH /api/v1/tags/{tagId}`](#patch-api-v1-tags-tagid) · [`DELETE /api/v1/tags/{tagId}`](#delete-api-v1-tags-tagid) · [`GET /api/v1/workspaces/{workspaceId}/tags`](#get-api-v1-workspaces-workspaceid-tags) · [`POST /api/v1/workspaces/{workspaceId}/tags`](#post-api-v1-workspaces-workspaceid-tags)
 - **Tasks** — [`GET /api/v1/tasks/{taskId}`](#get-api-v1-tasks-taskid) · [`PATCH /api/v1/tasks/{taskId}`](#patch-api-v1-tasks-taskid) · [`DELETE /api/v1/tasks/{taskId}`](#delete-api-v1-tasks-taskid) · [`POST /api/v1/tasks/{taskId}/checklist`](#post-api-v1-tasks-taskid-checklist) · [`PATCH /api/v1/tasks/{taskId}/checklist/{itemId}`](#patch-api-v1-tasks-taskid-checklist-itemid) · [`DELETE /api/v1/tasks/{taskId}/checklist/{itemId}`](#delete-api-v1-tasks-taskid-checklist-itemid) · [`POST /api/v1/tasks/{taskId}/complete`](#post-api-v1-tasks-taskid-complete) · [`POST /api/v1/tasks/{taskId}/notes`](#post-api-v1-tasks-taskid-notes) · [`POST /api/v1/tasks/{taskId}/reopen`](#post-api-v1-tasks-taskid-reopen) · [`POST /api/v1/tasks/{taskId}/snooze`](#post-api-v1-tasks-taskid-snooze) · [`PUT /api/v1/tasks/{taskId}/tags`](#put-api-v1-tasks-taskid-tags) · [`POST /api/v1/workspaces/{workspaceId}/import/tasks`](#post-api-v1-workspaces-workspaceid-import-tasks) · [`GET /api/v1/workspaces/{workspaceId}/tasks`](#get-api-v1-workspaces-workspaceid-tasks) · [`POST /api/v1/workspaces/{workspaceId}/tasks`](#post-api-v1-workspaces-workspaceid-tasks)
+- **Widget** — [`POST /api/v1/widget-tokens`](#post-api-v1-widget-tokens) · [`GET /api/v1/widget/snapshot`](#get-api-v1-widget-snapshot)
 
 ### AI
 
@@ -6383,6 +6385,108 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/tasks' 
       "isDone": false,
       "sortOrder": 1,
       "revision": 1
+    }
+  ]
+}
+```
+
+
+### Widget
+
+#### <a name="post-api-v1-widget-tokens"></a>`POST /api/v1/widget-tokens`
+
+**Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `deviceId` | string | **yes** | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — The notification device (its id from PUT /notification-devices). |
+
+**Request**
+
+```bash
+curl -X POST 'https://api.alliswell.space/api/v1/widget-tokens' \
+  -H "Authorization: Bearer $ALLISWELL_JWT" \
+  -H 'Content-Type: application/json' \
+  -d '{"deviceId":"01J9Z4K8QK7B2N0M3XG5T6WQ7A"}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `201` | Created. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `401` | No credential, or one that is expired, revoked or unknown. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `404` | Not visible to you. Someone else’s row answers 404, never 403. |
+
+**Example response** (`201`)
+
+```json
+{
+  "token": "string",
+  "deviceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+  "expiresAt": "2026-09-04T14:30:00.000Z"
+}
+```
+
+
+#### <a name="get-api-v1-widget-snapshot"></a>`GET /api/v1/widget/snapshot`
+
+**Auth:** Widget token (`aww_…`) only — a session JWT or an API key is refused with `401 AUTH_WIDGET_TOKEN_INVALID`.
+
+**Query parameters**
+
+| Name | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `tz` | string | yes | length 1–64 |
+| `workspaceIds` | string | yes | pattern `^[0-9A-HJKMNP-TV-Z]{26}(,[0-9A-HJKMNP-TV-Z]{26}){0,19}$` |
+| `mine` | `0` · `1` | no | default `"0"` |
+| `private` | `0` · `1` | no | default `"1"` |
+| `days` | integer | no | 1–3, default `3` |
+
+**Request**
+
+```bash
+curl -X GET 'https://api.alliswell.space/api/v1/widget/snapshot' \
+  -H "Authorization: Bearer $ALLISWELL_WIDGET_TOKEN"
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `304` | Not modified: If-None-Match named the ETag. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `401` | No credential, or one that is expired, revoked or unknown. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `429` | Rate limited. See `retry-after`. |
+
+**Example response** (`200`)
+
+```json
+{
+  "v": 1,
+  "generatedAt": "2026-09-04T14:30:00.000Z",
+  "tz": "string",
+  "days": [
+    {
+      "date": "string",
+      "openToday": 1,
+      "next": {
+        "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+        "title": "Pay the electricity bill",
+        "bucket": "string",
+        "dueAt": "2026-09-04T14:30:00.000Z",
+        "timeStyle": "string"
+      },
+      "buckets": [
+        {}
+      ],
+      "views": {}
     }
   ]
 }

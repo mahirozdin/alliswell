@@ -1,14 +1,21 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:drift/drift.dart' show Value, DatabaseConnection;
+import 'package:drift/native.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:timezone/data/latest_all.dart' as tzdata;
+import 'package:timezone/timezone.dart' as tz;
 
 import 'package:alliswell/src/features/projects/data/project.dart';
 import 'package:alliswell/src/features/tasks/data/task.dart';
+import 'package:alliswell/src/features/tasks/data/task_scope.dart';
 import 'package:alliswell/src/features/widgets/widget_bridge.dart';
 import 'package:alliswell/src/features/widgets/widget_grouping.dart';
 import 'package:alliswell/src/features/widgets/widget_snapshot.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/sync/db/database.dart';
 
 import '../../support/fake_widget_host.dart';
 
@@ -94,6 +101,30 @@ void main() {
         WidgetBucket.overdue,
         WidgetBucket.today,
       ]);
+    });
+
+    // #50 (PR2-03): the server's sort is stable, so a tie keeps the input
+    // order (newest id first). Dart's List.sort is not stable past 32 rows:
+    // the phone drew tied rows in another order than the server's view, and
+    // a swap between the two views moved rows under the finger.
+    test('a tie keeps the input order past 32 rows, as the server does', () {
+      final tasks = [
+        for (var i = 40; i >= 1; i--)
+          _task('T${'$i'.padLeft(2, '0')}', dueAt: DateTime(2026, 7, 17, 18)),
+        for (var i = 40; i >= 1; i--) _task('S${'$i'.padLeft(2, '0')}'),
+      ];
+      final groups = groupTasksForWidget(tasks, now: now);
+      expect(groups.map((g) => g.bucket).toList(), [
+        WidgetBucket.noDate,
+        WidgetBucket.today,
+      ]);
+      expect(
+        [for (final g in groups) ...g.tasks.map((t) => t.id)],
+        [
+          ...tasks.skip(40).map((t) => t.id),
+          ...tasks.take(40).map((t) => t.id),
+        ],
+      );
     });
   });
 
@@ -527,4 +558,678 @@ void main() {
       },
     );
   });
+
+  group('the view swap fixture (#50, PR2-03)', () {
+    // The phone's snapshot and the server's view of the same rows, from the
+    // app's own builders: the Swift tests (WidgetFetchPolicyTests) draw both
+    // and check that the rows both hold sit in the same order, so a swap at a
+    // refresh only shows the row the phone lacks. The server's port is held
+    // to `buildWidgetServerDays` by the shared grouping fixture.
+    test('the fixture is current, and the shared rows keep their order', () {
+      tzdata.initializeTimeZones();
+      final rendered = _renderViewSwapFixture();
+      final file = File(_viewSwapFixturePath);
+      if (Platform.environment['UPDATE_FIXTURES'] == '1') {
+        file.writeAsStringSync(rendered);
+      }
+      expect(file.existsSync(), isTrue, reason: 'run with UPDATE_FIXTURES=1');
+      expect(file.readAsStringSync(), rendered);
+
+      final fixture = jsonDecode(rendered) as Map<String, dynamic>;
+      List<String> today(Map<String, dynamic> view) => [
+        for (final b in view['buckets'] as List)
+          if ((b as Map)['key'] == 'today')
+            for (final item in b['items'] as List) item['id'] as String,
+      ];
+      final local = today(fixture['local'] as Map<String, dynamic>);
+      final server = today(
+        ((fixture['server'] as Map)['days'] as List).first
+            as Map<String, dynamic>,
+      );
+      expect(local, hasLength(kWidgetRowsPerBucket));
+      expect(server.first, _swapServerOnlyId);
+      expect(server.skip(1), local.take(kWidgetRowsPerBucket - 1));
+    });
+  });
+
+  group('the shared grouping fixture (OPH-463, #50)', () {
+    test('client grouping matches the shared fixture', () async {
+      tzdata.initializeTimeZones();
+      final rendered = await _renderGroupingFixture();
+      final file = File(_groupingFixturePath);
+      if (Platform.environment['UPDATE_FIXTURES'] == '1') {
+        file.writeAsStringSync(rendered);
+      }
+      expect(file.existsSync(), isTrue, reason: 'run with UPDATE_FIXTURES=1');
+      // Byte for byte: the file is the one definition the server's grouping
+      // is tested against, so a change here that is not written there (and
+      // ported there) fails.
+      expect(file.readAsStringSync(), rendered);
+    });
+
+    test('the fixture covers what the server must port', () {
+      final cases =
+          ((jsonDecode(File(_groupingFixturePath).readAsStringSync())
+                      as Map)['cases']
+                  as List)
+              .cast<Map<String, dynamic>>();
+      final raw = jsonEncode(cases);
+      for (final key in WidgetBucket.values) {
+        expect(raw, contains('"key":"${key.name}"'), reason: key.name);
+      }
+      for (final style in WidgetTimeStyle.values) {
+        expect(
+          raw,
+          contains('"timeStyle":"${style.name}"'),
+          reason: style.name,
+        );
+      }
+      expect(raw, contains('"more":'));
+      expect({for (final c in cases) c['tz']}.length, greaterThan(1));
+      expect(cases.any((c) => c['private'] == true), isTrue);
+      expect(cases.any((c) => (c['scope'] as Map)['mineFor'] != null), isTrue);
+      for (final c in cases.where((c) => c['private'] == true)) {
+        expect(jsonEncode(c['expected']), isNot(contains('"title"')));
+      }
+    });
+  });
+}
+
+// ---------------------------------------------------------------------------
+// The shared grouping fixture (OPH-463, WIDGETS §3.2).
+//
+// Dart is the fixture's author: `UPDATE_FIXTURES=1 flutter test` writes
+// `test/fixtures/widget_grouping_cases.json`; every other run compares byte
+// for byte, and the API's Vitest only reads it. Each case is the replica's
+// rows (tasks with their assignees, projects, calendar events), a scope, a tz
+// and "now"; `expected.selected` is what the replica query returns for that
+// scope (newest id first — the input order the grouping's ties keep) and
+// `expected.days` is `buildWidgetServerDays` over it, in the words-free shape
+// `GET /widget/snapshot` answers.
+//
+// Times are written here as wall-clock strings in the case's tz and stored in
+// the fixture as UTC instants. The Dart grouping works in the machine's local
+// zone, so the driver hands it each instant's wall-clock in the case's tz as a
+// local DateTime and turns the results back into instants the same way. No
+// case sits on a wall-clock that a DST change of the case's tz makes
+// ambiguous, and the machine's zone must not skip one either (Europe/Istanbul
+// and UTC have no DST).
+// ---------------------------------------------------------------------------
+
+const _viewSwapFixturePath = 'test/fixtures/widget_view_swap.json';
+
+/// The row only the server holds: created on another device, newest id.
+const _swapServerOnlyId = 'T41';
+
+/// 40 open tasks due at the same minute today, newest id first (the replica
+/// query's order and the server's): the phone holds them, the server holds
+/// one more. Past 32 rows, so an unstable sort would show itself. "now" is
+/// the Swift tests' clock, 2025-11-12 11:00 in Europe/Istanbul.
+String _renderViewSwapFixture() {
+  final loc = tz.getLocation('Europe/Istanbul');
+  final now = DateTime(2025, 11, 12, 11);
+  Task row(int i) =>
+      _task('T${'$i'.padLeft(2, '0')}', dueAt: DateTime(2025, 11, 12, 18));
+  final phone = [for (var i = 40; i >= 1; i--) row(i)];
+  final server = [row(41), ...phone];
+  AwI18n.instance.setActiveCached(const Locale('tr'));
+  final local = _json(buildWidgetSnapshot(phone, now: now))
+    // The machine's zone would leak in through now.toUtc().
+    ..['generatedAt'] = '2025-11-12T08:00:00.000Z';
+  final days = buildWidgetServerDays(
+    server,
+    now: now,
+    instant: (t) => tz.TZDateTime(
+      loc,
+      t.year,
+      t.month,
+      t.day,
+      t.hour,
+      t.minute,
+      t.second,
+    ).toUtc().toIso8601String(),
+  );
+  return '${const JsonEncoder.withIndent('  ').convert({
+    'note': 'Written by the Dart test (UPDATE_FIXTURES=1); the Swift tests only read it. local is the phone\'s aw_widget_snapshot, server the GET /widget/snapshot body for the same rows plus one created elsewhere.',
+    'local': local,
+    'server': {'v': 1, 'generatedAt': '2025-11-12T08:00:00.000Z', 'tz': 'Europe/Istanbul', 'days': days},
+  })}\n';
+}
+
+const _groupingFixturePath = 'test/fixtures/widget_grouping_cases.json';
+
+String _fid(String name) => name.toUpperCase().padRight(26, '0');
+
+Map<String, Object?> _ft(
+  String name, {
+  String ws = 'W1',
+  String? due,
+  String? when,
+  String? completed,
+  String status = 'open',
+  String priority = 'none',
+  String? project,
+  String? color,
+  int sort = 0,
+  String? createdBy,
+  List<String> assignees = const [],
+  String? title,
+}) => {
+  'id': _fid(name),
+  'workspaceId': _fid(ws),
+  'title': title ?? 'Task $name',
+  'status': status,
+  'priority': priority,
+  'sortOrder': sort,
+  'dueAt': ?due,
+  'startAt': ?when,
+  'completedAt': ?completed,
+  if (project != null) 'projectId': _fid(project),
+  'colorRgb': ?color,
+  if (createdBy != null) 'createdBy': _fid(createdBy),
+  if (assignees.isNotEmpty) 'assignees': [for (final a in assignees) _fid(a)],
+};
+
+Map<String, Object?> _fp(
+  String name, {
+  String ws = 'W1',
+  String color = '#2563EB',
+  String status = 'active',
+  int sort = 0,
+}) => {
+  'id': _fid(name),
+  'workspaceId': _fid(ws),
+  'name': 'Project $name',
+  'colorRgb': color,
+  'status': status,
+  'sortOrder': sort,
+};
+
+Map<String, Object?> _fe(
+  String name, {
+  String ws = 'W1',
+  required String starts,
+  required String ends,
+  bool allDay = false,
+}) => {
+  'id': _fid(name),
+  'workspaceId': _fid(ws),
+  'summary': 'Event $name',
+  'startsAt': starts,
+  'endsAt': ends,
+  'allDay': allDay,
+};
+
+class _GroupingCase {
+  const _GroupingCase(
+    this.name, {
+    required this.now,
+    this.tz = 'Europe/Istanbul',
+    this.workspaceIds = const ['W1'],
+    this.mineFor,
+    this.private = false,
+    this.projects = const [],
+    this.tasks = const [],
+    this.events = const [],
+  });
+
+  final String name;
+
+  /// Wall-clock in [tz], `yyyy-MM-ddTHH:mm`.
+  final String now;
+  final String tz;
+  final List<String> workspaceIds;
+  final String? mineFor;
+  final bool private;
+  final List<Map<String, Object?>> projects;
+  final List<Map<String, Object?>> tasks;
+  final List<Map<String, Object?>> events;
+}
+
+final List<_GroupingCase> _groupingCases = [
+  _GroupingCase(
+    'buckets, the local day edges and the +6/+7/+30/+31 limits',
+    now: '2026-11-12T10:00',
+    projects: [_fp('P1')],
+    tasks: [
+      _ft('late', due: '2026-11-11T09:00', priority: 'high', project: 'P1'),
+      _ft('lateMidnight', due: '2026-11-11T23:59'),
+      _ft('todayFirstMinute', due: '2026-11-12T00:00', priority: 'low'),
+      _ft('todayPassed', due: '2026-11-12T08:00', project: 'P1'),
+      _ft('todayLastMinute', due: '2026-11-12T23:59', priority: 'medium'),
+      _ft('tomorrow', due: '2026-11-13T00:00'),
+      _ft('plus6', due: '2026-11-18T12:00', project: 'P1'),
+      _ft('plus7', due: '2026-11-19T12:00'),
+      _ft('plus30', due: '2026-12-12T23:00'),
+      _ft('plus31', due: '2026-12-13T00:00'),
+      _ft('ownColor', due: '2026-11-14T09:00', color: '#16A34A'),
+      _ft('somedayA', sort: 2),
+      _ft('somedayB', sort: 1, project: 'P1'),
+    ],
+  ),
+  _GroupingCase(
+    'the local day, not the UTC one, just after midnight',
+    now: '2026-11-13T01:30',
+    tasks: [
+      _ft('lastNight', due: '2026-11-12T23:00'),
+      _ft('justAfter', due: '2026-11-13T00:30'),
+      _ft('thisMorning', due: '2026-11-13T09:00'),
+      _ft('nextMidnight', due: '2026-11-14T00:00'),
+    ],
+  ),
+  _GroupingCase(
+    'New York across the end of daylight saving time',
+    now: '2026-10-31T12:00',
+    tz: 'America/New_York',
+    tasks: [
+      _ft('friday', due: '2026-10-30T20:00'),
+      _ft('tonight', due: '2026-10-31T23:30'),
+      _ft('sundayMorning', due: '2026-11-01T09:00'),
+      _ft('mondayEarly', due: '2026-11-02T00:30'),
+      _ft('plus7', due: '2026-11-07T10:00'),
+    ],
+  ),
+  _GroupingCase(
+    '"when": a past one is today, a future one files the task, the deadline caps it',
+    now: '2026-11-12T10:00',
+    tasks: [
+      _ft('whenPast', when: '2026-11-10T00:00', due: '2026-11-20T17:00'),
+      _ft('whenFuture', when: '2026-11-14T00:00'),
+      _ft('whenAfterDue', when: '2026-11-25T00:00', due: '2026-11-16T12:00'),
+      _ft('whenToday', when: '2026-11-12T00:00', due: '2026-11-12T15:00'),
+      _ft('whenButLate', when: '2026-11-12T00:00', due: '2026-11-10T09:00'),
+      _ft('whenPastNoDue', when: '2026-11-01T00:00'),
+    ],
+  ),
+  _GroupingCase(
+    'finished work: today\'s stays at the bottom, older is gone, a later day drops it',
+    now: '2026-11-12T10:00',
+    tasks: [
+      _ft('openToday', due: '2026-11-12T11:00'),
+      _ft(
+        'doneToday',
+        due: '2026-11-12T08:00',
+        status: 'completed',
+        completed: '2026-11-12T09:00',
+      ),
+      _ft('doneNoDue', status: 'completed', completed: '2026-11-12T09:10'),
+      _ft(
+        'doneYesterday',
+        due: '2026-11-12T12:00',
+        status: 'completed',
+        completed: '2026-11-11T18:00',
+      ),
+      _ft(
+        'doneLateToday',
+        due: '2026-11-11T10:00',
+        status: 'completed',
+        completed: '2026-11-12T09:30',
+      ),
+      _ft('scheduled', due: '2026-11-13T10:00', status: 'scheduled'),
+      _ft('inProgress', due: '2026-11-12T16:00', status: 'in_progress'),
+      _ft('waiting', status: 'waiting'),
+      _ft('inbox', due: '2026-11-12T12:00', status: 'inbox'),
+      _ft('cancelled', due: '2026-11-12T12:00', status: 'cancelled'),
+    ],
+  ),
+  _GroupingCase(
+    'the calendar in a one-workspace scope',
+    now: '2026-11-12T10:00',
+    projects: [_fp('P1')],
+    tasks: [
+      _ft('tiedWithEvent', due: '2026-11-12T15:00', project: 'P1'),
+      _ft('weekTask', due: '2026-11-15T09:00'),
+    ],
+    events: [
+      _fe(
+        'allDayToday',
+        starts: '2026-11-12T00:00',
+        ends: '2026-11-13T00:00',
+        allDay: true,
+      ),
+      _fe('standup', starts: '2026-11-12T09:30', ends: '2026-11-12T10:00'),
+      _fe('tied', starts: '2026-11-12T15:00', ends: '2026-11-12T15:30'),
+      _fe('overnight', starts: '2026-11-12T22:00', ends: '2026-11-13T02:00'),
+      _fe('trip', starts: '2026-11-10T08:00', ends: '2026-11-14T18:00'),
+      _fe('finished', starts: '2026-11-11T09:00', ends: '2026-11-11T10:00'),
+      _fe('review', starts: '2026-11-14T15:00', ends: '2026-11-14T16:00'),
+      _fe(
+        'holiday',
+        starts: '2026-11-16T00:00',
+        ends: '2026-11-17T00:00',
+        allDay: true,
+      ),
+      _fe(
+        'conference',
+        starts: '2026-11-11T00:00',
+        ends: '2026-11-14T00:00',
+        allDay: true,
+      ),
+      _fe('farAway', starts: '2026-12-20T10:00', ends: '2026-12-20T11:00'),
+      _fe(
+        'otherWorkspace',
+        ws: 'W2',
+        starts: '2026-11-12T13:00',
+        ends: '2026-11-12T14:00',
+      ),
+    ],
+  ),
+  _GroupingCase(
+    'mine across two workspaces: my work only, and never the calendar',
+    now: '2026-11-12T10:00',
+    workspaceIds: ['W1', 'W2'],
+    mineFor: 'U1',
+    projects: [
+      _fp('P1'),
+      _fp('P2', ws: 'W2', color: '#DC2626'),
+      _fp('P3', ws: 'W3'),
+    ],
+    tasks: [
+      _ft('onMe', due: '2026-11-12T12:00', createdBy: 'U2', assignees: ['U1']),
+      _ft(
+        'madeByMe',
+        ws: 'W2',
+        due: '2026-11-13T12:00',
+        createdBy: 'U1',
+        project: 'P2',
+      ),
+      _ft(
+        'madeByMeTaken',
+        due: '2026-11-12T13:00',
+        createdBy: 'U1',
+        assignees: ['U2'],
+      ),
+      _ft('colleagues', ws: 'W2', due: '2026-11-12T14:00', createdBy: 'U2'),
+      _ft(
+        'shared',
+        due: '2026-11-12T16:00',
+        createdBy: 'U2',
+        assignees: ['U2', 'U1'],
+        project: 'P1',
+      ),
+      _ft('outOfScope', ws: 'W3', due: '2026-11-12T12:00', assignees: ['U1']),
+    ],
+    events: [
+      _fe('meeting', starts: '2026-11-12T11:00', ends: '2026-11-12T12:00'),
+    ],
+  ),
+  _GroupingCase(
+    'mine in one workspace is a shared workspace: no calendar either',
+    now: '2026-11-12T10:00',
+    mineFor: 'U1',
+    tasks: [
+      _ft('onMe', due: '2026-11-12T12:00', createdBy: 'U2', assignees: ['U1']),
+    ],
+    events: [
+      _fe('meeting', starts: '2026-11-12T11:00', ends: '2026-11-12T12:00'),
+    ],
+  ),
+  _GroupingCase(
+    'private: the same rows and numbers, no title anywhere',
+    now: '2026-11-12T10:00',
+    private: true,
+    projects: [_fp('P1')],
+    tasks: [
+      _ft('late', due: '2026-11-10T09:00', project: 'P1'),
+      _ft('today', due: '2026-11-12T14:00'),
+      _ft('someday'),
+    ],
+    events: [
+      _fe('lunch', starts: '2026-11-12T12:00', ends: '2026-11-12T13:00'),
+    ],
+  ),
+  _GroupingCase(
+    'twelve rows a bucket, the open rest counted as more',
+    now: '2026-11-12T10:00',
+    projects: [_fp('P1')],
+    tasks: [
+      for (var i = 0; i < 15; i++)
+        _ft(
+          'late${i.toString().padLeft(2, '0')}',
+          due:
+              '2026-11-${(i % 9 + 1).toString().padLeft(2, '0')}'
+              'T${(8 + i ~/ 9).toString().padLeft(2, '0')}:00',
+          project: 'P1',
+        ),
+      for (var i = 0; i < 13; i++)
+        _ft(
+          'today${i.toString().padLeft(2, '0')}',
+          due:
+              '2026-11-12T${(10 + i ~/ 2).toString().padLeft(2, '0')}'
+              ':${i.isEven ? '00' : '30'}',
+          project: 'P1',
+        ),
+      _ft(
+        'doneA',
+        due: '2026-11-12T09:00',
+        status: 'completed',
+        completed: '2026-11-12T09:05',
+      ),
+      _ft(
+        'doneB',
+        due: '2026-11-12T09:30',
+        status: 'completed',
+        completed: '2026-11-12T09:35',
+      ),
+    ],
+  ),
+  _GroupingCase(
+    'project views: every live project, an empty one too, never an archived one',
+    now: '2026-11-12T10:00',
+    projects: [
+      _fp('P1', sort: 1),
+      _fp('P2', color: '#7C3AED', sort: 0),
+      _fp('P3', color: '#0891B2', status: 'archived'),
+    ],
+    tasks: [
+      _ft('inP1', due: '2026-11-12T12:00', project: 'P1'),
+      _ft('inArchived', due: '2026-11-12T13:00', project: 'P3'),
+      _ft('noProject', due: '2026-11-13T09:00'),
+      _ft('unknownProject', due: '2026-11-13T10:00', project: 'P9'),
+    ],
+  ),
+  _GroupingCase('nothing at all', now: '2026-11-12T10:00'),
+  _GroupingCase(
+    'the year\'s end',
+    now: '2026-12-30T20:00',
+    tasks: [
+      _ft('lastYear', due: '2026-12-29T09:00'),
+      _ft('newYearsEve', due: '2026-12-31T22:00'),
+      _ft('newYear', due: '2027-01-01T10:00'),
+      _ft('january', due: '2027-01-20T10:00'),
+    ],
+  ),
+  _GroupingCase(
+    'ties keep the newest id first',
+    now: '2026-11-12T10:00',
+    tasks: [
+      _ft('tieA', due: '2026-11-12T15:00'),
+      _ft('tieC', due: '2026-11-12T15:00'),
+      _ft('tieB', due: '2026-11-12T15:00'),
+      _ft('dateless1'),
+      _ft('dateless3'),
+      _ft('dateless2'),
+    ],
+  ),
+  // #50 (PR2-03): past 32 rows a tie still keeps the newest id first, on
+  // both sides — the phone's sort is not allowed to differ from the server's.
+  _GroupingCase(
+    'ties past 32 rows keep the newest id first',
+    now: '2026-11-12T10:00',
+    private: true,
+    tasks: [
+      for (var i = 1; i <= 40; i++)
+        _ft('tie${'$i'.padLeft(2, '0')}', due: '2026-11-12T15:00'),
+      for (var i = 1; i <= 40; i++) _ft('free${'$i'.padLeft(2, '0')}'),
+    ],
+  ),
+];
+
+/// The fixture as it must be on disk.
+Future<String> _renderGroupingFixture() async {
+  final cases = <Map<String, Object?>>[];
+  for (final c in _groupingCases) {
+    final loc = tz.getLocation(c.tz);
+
+    String instantOfWall(String wall) {
+      final w = DateTime.parse(wall);
+      final at = tz.TZDateTime(loc, w.year, w.month, w.day, w.hour, w.minute);
+      return DateTime.fromMillisecondsSinceEpoch(
+        at.millisecondsSinceEpoch,
+        isUtc: true,
+      ).toIso8601String();
+    }
+
+    Map<String, Object?> instants(Map<String, Object?> row) => {
+      for (final MapEntry(:key, :value) in row.entries)
+        key:
+            const {
+              'dueAt',
+              'startAt',
+              'completedAt',
+              'startsAt',
+              'endsAt',
+            }.contains(key)
+            ? instantOfWall(value! as String)
+            : value,
+    };
+
+    final input = <String, Object?>{
+      'name': c.name,
+      'now': instantOfWall(c.now),
+      'tz': c.tz,
+      'scope': {
+        'workspaceIds': [for (final ws in c.workspaceIds) _fid(ws)],
+        if (c.mineFor != null) 'mineFor': _fid(c.mineFor!),
+      },
+      'private': c.private,
+      'projects': c.projects,
+      'tasks': [for (final t in c.tasks) instants(t)],
+      'events': [for (final e in c.events) instants(e)],
+    };
+    cases.add({...input, 'expected': await _groupFixtureCase(input, loc)});
+  }
+  return '${const JsonEncoder.withIndent('  ').convert({'contract': 'docs/WIDGETS.md 3.2 Widget self-fetch contract', 'note': 'Written by the Dart test (UPDATE_FIXTURES=1); every other reader only compares. Instants are UTC; tz is the IANA zone every local day is taken in. expected.selected is what the replica query returns for the scope, newest id first; expected.days is GET /widget/snapshot days for that input.', 'cases': cases})}\n';
+}
+
+/// One case through the app's own path: the rows into a replica, the replica
+/// query `publishWidgetFromReplica` runs, then [buildWidgetServerDays].
+Future<Map<String, Object?>> _groupFixtureCase(
+  Map<String, Object?> input,
+  tz.Location loc,
+) async {
+  /// The instant's wall-clock in the case's tz, as a local DateTime.
+  DateTime wall(Object? iso) {
+    final at = tz.TZDateTime.from(DateTime.parse(iso! as String), loc);
+    return DateTime(at.year, at.month, at.day, at.hour, at.minute, at.second);
+  }
+
+  /// The way back: a local wall-clock read as the case's tz, as UTC ISO.
+  String instant(DateTime w) {
+    final at = tz.TZDateTime(
+      loc,
+      w.year,
+      w.month,
+      w.day,
+      w.hour,
+      w.minute,
+      w.second,
+      w.millisecond,
+    );
+    return DateTime.fromMillisecondsSinceEpoch(
+      at.millisecondsSinceEpoch,
+      isUtc: true,
+    ).toIso8601String();
+  }
+
+  DateTime? maybeWall(Object? iso) => iso == null ? null : wall(iso);
+
+  final db = AwDatabase(
+    DatabaseConnection(
+      NativeDatabase.memory(),
+      closeStreamsSynchronously: true,
+    ),
+  );
+  try {
+    for (final p in (input['projects']! as List).cast<Map<String, Object?>>()) {
+      await db
+          .into(db.projects)
+          .insert(
+            ProjectsCompanion.insert(
+              id: p['id']! as String,
+              workspaceId: p['workspaceId']! as String,
+              name: p['name']! as String,
+              colorRgb: Value(p['colorRgb']! as String),
+              status: Value(p['status']! as String),
+              sortOrder: Value(p['sortOrder']! as int),
+            ),
+          );
+    }
+    for (final t in (input['tasks']! as List).cast<Map<String, Object?>>()) {
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: t['id']! as String,
+              workspaceId: t['workspaceId']! as String,
+              title: t['title']! as String,
+              status: Value(t['status']! as String),
+              priority: Value(t['priority']! as String),
+              sortOrder: Value(t['sortOrder']! as int),
+              dueAt: Value(maybeWall(t['dueAt'])),
+              startAt: Value(maybeWall(t['startAt'])),
+              completedAt: Value(maybeWall(t['completedAt'])),
+              projectId: Value(t['projectId'] as String?),
+              colorRgb: Value(t['colorRgb'] as String?),
+              createdBy: Value(t['createdBy'] as String?),
+            ),
+          );
+      for (final user in (t['assignees'] as List? ?? const []).cast<String>()) {
+        await db
+            .into(db.taskAssignments)
+            .insert(
+              TaskAssignmentsCompanion.insert(
+                id: '${t['id']}:$user',
+                workspaceId: t['workspaceId']! as String,
+                taskId: t['id']! as String,
+                userId: user,
+              ),
+            );
+      }
+    }
+    for (final e in (input['events']! as List).cast<Map<String, Object?>>()) {
+      await db
+          .into(db.externalEvents)
+          .insert(
+            ExternalEventsCompanion.insert(
+              id: e['id']! as String,
+              workspaceId: e['workspaceId']! as String,
+              summary: Value(e['summary'] as String?),
+              startsAt: wall(e['startsAt']),
+              endsAt: wall(e['endsAt']),
+              isAllDay: Value(e['allDay']! as bool),
+            ),
+          );
+    }
+
+    final now = wall(input['now']);
+    final scope = TaskScope.fromJson(input['scope'])!;
+    final replica = await readWidgetReplica(db, scope: scope, now: now);
+    return {
+      'selected': [for (final task in replica.tasks) task.id],
+      'days': buildWidgetServerDays(
+        replica.tasks,
+        events: replica.events,
+        now: now,
+        projectColorById: {
+          for (final project in replica.projects) project.id: project.colorRgb,
+        },
+        projects: replica.projects,
+        hideTitles: input['private']! as bool,
+        instant: instant,
+      ),
+    };
+  } finally {
+    await db.close();
+  }
 }

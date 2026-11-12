@@ -117,6 +117,16 @@ function securityFor(routeOptions, path) {
   const pre = [routeOptions.preHandler ?? []].flat();
   const onReq = [routeOptions.onRequest ?? []].flat();
 
+  // The widget token (ADR-0070) opens one route and nothing else opens it.
+  if (onReq.some((h) => h?.name === 'authenticateWidget')) {
+    return {
+      security: [{ widgetToken: [] }],
+      note:
+        'Widget token only (`aww_…`, from `POST /api/v1/widget-tokens`). A session ' +
+        'JWT or an API key is refused with `401 AUTH_WIDGET_TOKEN_INVALID`.',
+    };
+  }
+
   const authenticated = onReq.some((h) => h?.name === 'authenticate');
   if (!authenticated) return { security: [], note: 'No credentials required.' };
 
@@ -151,6 +161,7 @@ const TAG_RULES = [
   [/quick-links/, 'Quick links'],
   [/reminders/, 'Reminders'],
   [/notification-devices/, 'Devices'],
+  [/widget/, 'Widget'],
   [/import|export/, 'Import & export'],
   [/integrations\/caldav/, 'CalDAV calendar'],
   [/sync/, 'Sync'],
@@ -255,6 +266,14 @@ async function generate() {
                 description:
                   'A 15-minute access token from `POST /api/v1/auth/login`, ' +
                   'refreshed with the rotating refresh token. What the apps use.',
+              },
+              widgetToken: {
+                type: 'http',
+                scheme: 'bearer',
+                description:
+                  'The home-screen widget\'s read-only token: `Authorization: Bearer ' +
+                  'aww_…`, minted by a session for one device (ADR-0070). Opens ' +
+                  '`GET /api/v1/widget/snapshot` alone.',
               },
             },
           },

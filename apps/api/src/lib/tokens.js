@@ -111,3 +111,47 @@ export function hashRecoveryCode(code, secret) {
 export function hashPasswordResetToken(token, secret) {
   return crypto.createHmac('sha256', secret).update(`password-reset:${token}`).digest('hex');
 }
+
+/**
+ * Widget tokens (OPH-458, ADR-0070): the home-screen widget's read-only
+ * credential. The API-key pattern — an opaque random with a load-bearing
+ * prefix, shown once, stored as a keyed digest with its own separator.
+ *
+ * The prefix is what `authenticateWidget` tests before any work, and it is
+ * deliberately not `awk_`: `app.authenticate` therefore hands an `aww_` value
+ * to `jwtVerify`, which refuses it, so no other route can ever take one.
+ */
+export const WIDGET_TOKEN_PREFIX = 'aww_';
+
+/** `aww_` + 32 random bytes (43 base64url chars). Shown to the app ONCE. */
+export function newWidgetToken() {
+  return `${WIDGET_TOKEN_PREFIX}${newOpaqueToken(32)}`;
+}
+
+/**
+ * @param {string} token - the raw `aww_…` value as handed to the app, once
+ * @param {string} secret - config.auth.refreshSecret
+ */
+export function hashWidgetToken(token, secret) {
+  return crypto.createHmac('sha256', secret).update(`widget:${token}`).digest('hex');
+}
+
+/** The raw `aww_…` value from an Authorization header, or null. */
+export function bearerWidgetToken(request) {
+  const header = request.headers?.authorization ?? '';
+  if (!header.startsWith('Bearer ')) return null;
+  const token = header.slice(7).trim();
+  return token.startsWith(WIDGET_TOKEN_PREFIX) ? token : null;
+}
+
+/**
+ * The rate-limit bucket of a widget request (ADR-0070 §3, ADR-0045): the
+ * token, read from the header because the limiter runs before
+ * authentication, and hashed so the secret never becomes a bucket name.
+ * Null without a widget token (the route's limiter then uses the IP).
+ */
+export function widgetTokenRateBucket(request) {
+  const token = bearerWidgetToken(request);
+  if (!token) return null;
+  return `widget:${crypto.createHash('sha256').update(token).digest('hex')}`;
+}
