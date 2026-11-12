@@ -60,8 +60,13 @@ widget_ref = shared.new_reference('AllisWellWidget/AllisWellWidget.swift')
 # The queue the complete intent writes into (AWAlarmActionQueue). Its AlarmKit
 # intents are compiled out on macOS (`#if canImport(AppIntents) && os(iOS)`).
 queue_ref = shared.new_reference('Shared/AWAlarmShared.swift')
+# OPH-451: the snapshot model and the timeline's day choice moved out of
+# AllisWellWidget.swift into ios/Shared (Runner compiles them for RunnerTests);
+# without them the widget source loses its types.
+model_ref = shared.new_reference('Shared/AWSnapshotModel.swift')
+day_pick_ref = shared.new_reference('Shared/AWWidgetDayPick.swift')
 
-ext.add_file_references([bundle_ref, widget_ref, queue_ref])
+ext.add_file_references([bundle_ref, widget_ref, queue_ref, model_ref, day_pick_ref])
 
 ext.build_configurations.each do |config|
   settings = config.build_settings

@@ -10,9 +10,13 @@
 		0485E1C2090A6E227B7107C6 /* AWAlarmLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */; };
 		05FA36610EE25FC86CDBCE88 /* AWAlarmLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */; };
 		0F391A000000000000000001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0F391A000000000000000003 /* InfoPlist.strings */; };
+		14236ED5CCE6645EE7BDCF18 /* AWWidgetDayPick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */; };
 		1C805BE1C3654858412D4CB6 /* AWAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971C36AA734DCD5B31DD3D0E /* AWAppShortcuts.swift */; };
+		221336FE2A9B37697ABB9DA6 /* AWSnapshotModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */; };
+		23159A0B9C0D21FC08609BA9 /* AWWidgetDayPick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */; };
+		2EB2A92600196B4057BA4B6F /* AWSnapshotModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		34374AD80D89EE170C2C599D /* AWSnoozeCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */; };
 		3B1016BC5B030568075708B9 /* AlarmIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E41DF2EA06800FA1261BCFC /* AlarmIdentityTests.swift */; };
@@ -41,6 +45,7 @@
 		A5CBB601300AD02800CE60FF /* AllisWellWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
 		ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
+		AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
@@ -123,6 +128,9 @@
 		540ACEF19CA6AC021848BCF6 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		5CEBC4792193C28E0669686C /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmShared.swift; sourceTree = "<group>"; };
+		5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWWidgetDayPick.swift; sourceTree = "<group>"; };
+		6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWSnapshotModel.swift; sourceTree = "<group>"; };
+		6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDayPickTests.swift; sourceTree = "<group>"; };
 		7403D73B437A53572909BD99 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -236,6 +244,8 @@
 				FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */,
 				2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */,
 				18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */,
+				6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */,
+				5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -248,6 +258,7 @@
 				7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */,
 				100165B4F549534A7D17108A /* SnoozeCoreTests.swift */,
 				14BB1652DA44CD8FA16E513F /* SnoozeTargetTests.swift */,
+				6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -683,6 +694,7 @@
 				FB633E0800E6DFC8B6E198FF /* AlarmLedgerTests.swift in Sources */,
 				A0C22B17E2CAB08B98FC56D2 /* SnoozeCoreTests.swift in Sources */,
 				8177D49B49DC1DF1A0DCA22A /* SnoozeTargetTests.swift in Sources */,
+				AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -709,6 +721,8 @@
 				A27462FC05C6C20A744A7DA9 /* AWAlarmIdentity.swift in Sources */,
 				0485E1C2090A6E227B7107C6 /* AWAlarmLedger.swift in Sources */,
 				34374AD80D89EE170C2C599D /* AWSnoozeCore.swift in Sources */,
+				221336FE2A9B37697ABB9DA6 /* AWSnapshotModel.swift in Sources */,
+				14236ED5CCE6645EE7BDCF18 /* AWWidgetDayPick.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -720,6 +734,8 @@
 				ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */,
 				05FA36610EE25FC86CDBCE88 /* AWAlarmLedger.swift in Sources */,
 				8E0F9B757F8CE84C03B87F9A /* AWSnoozeCore.swift in Sources */,
+				2EB2A92600196B4057BA4B6F /* AWSnapshotModel.swift in Sources */,
+				23159A0B9C0D21FC08609BA9 /* AWWidgetDayPick.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

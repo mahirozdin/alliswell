@@ -62,129 +62,11 @@ private let kAWArchiveBudgetBytes = 8_000_000
 private let kAWEntryBytesBase = 8_000
 private let kAWEntryBytesPerRow = 6_100
 
-// MARK: - Snapshot model (mirrors the Dart JSON)
-
-struct AWSnapshot: Codable {
-  let v: Int
-  let generatedAt: String
-  let locale: String
-  let date: AWDate
-  let strings: [String: String]?
-  // OPH-187: optional ON PURPOSE. During an app update a v1 snapshot and a v2
-  // widget coexist; a non-optional field would fail decoding and blank the
-  // widget entirely rather than hide one badge.
-  let openToday: Int?
-  // OPH-253 (v3): the ICU pattern the header clock is drawn with. Optional for
-  // the same reason `openToday` is — a v2 snapshot from an older app must not
-  // fail decoding and blank the widget; it just gets the locale's own clock.
-  let clockFormat: String?
-  let buckets: [AWBucket]
-  // OPH-336 (v4): the lock screen's row, the lists a widget can be set to, and
-  // each project's own view. Optional like every field after v1 — a v3
-  // snapshot from an older app decodes, and draws the whole list.
-  let next: AWNextTask?
-  let lists: [AWListInfo]?
-  let views: [String: AWListView]?
-  // OPH-337 (v4): "compact" draws tighter rows; absent means normal.
-  let density: String?
-
-  static let empty = AWSnapshot(
-    v: 5, generatedAt: "", locale: "en",
-    date: AWDate(weekday: "", day: "", month: ""), strings: nil, openToday: nil,
-    clockFormat: nil, buckets: [], next: nil, lists: nil, views: nil, density: nil)
-
-  var isCompact: Bool { density == "compact" }
-}
-
-struct AWDate: Codable {
-  let weekday: String
-  let day: String
-  let month: String
-}
-
-struct AWBucket: Codable, Identifiable {
-  let key: String
-  let label: String
-  let count: Int
-  let items: [AWTaskRow]
-  let more: Int?
-  var id: String { key }
-}
-
-struct AWTaskRow: Codable, Identifiable {
-  let id: String
-  let title: String
-  let done: Bool
-  let priority: String
-  let time: String?
-  let projectColor: String?
-  // v5: a calendar event rides in the same list. Optional like every field
-  // after v1 — a v4 row has neither and decodes as the task it is.
-  let kind: String?
-  let day: String?
-
-  /// `kWidgetKindEvent` in widget_snapshot.dart.
-  var isEvent: Bool { kind == "event" }
-
-  /// Where an event row's tap goes: Home with its day selected. Nil for a
-  /// task, or for a day that is not `yyyy-MM-dd` (a URL is input).
-  var dayURL: URL? {
-    guard isEvent, let day = day,
-      day.range(of: #"^\d{4}-\d{2}-\d{2}$"#, options: .regularExpression) != nil
-    else { return nil }
-    return URL(string: "alliswell://day/\(day)")
-  }
-}
-
-/// The lock screen's one row (OPH-336) — `WidgetNextTask` in Dart.
-struct AWNextTask: Codable {
-  let id: String
-  let title: String
-  let bucket: String
-  let label: String
-  let time: String?
-}
-
-/// One entry of the list picker (OPH-336) — `WidgetListChoice` in Dart.
-struct AWListInfo: Codable {
-  let id: String
-  let name: String
-  let color: String?
-}
-
-/// One project's own view (OPH-336) — `WidgetListView` in Dart.
-struct AWListView: Codable {
-  let openToday: Int?
-  let openTodayLabel: String?
-  let next: AWNextTask?
-  let buckets: [AWBucket]
-}
-
-/// The id of the whole list — `kWidgetListAll` in widget_grouping.dart.
-let kAWListAll = "all"
-
-extension AWSnapshot {
-  /// The snapshot as a widget set to `listId` draws it (OPH-336).
-  ///
-  /// The app computed every list's rows, count and next task — the filter is
-  /// Dart's (W9); this only picks one. An id the snapshot does not carry (a
-  /// project deleted or archived since the widget was set up, or another
-  /// workspace's) draws the whole list: an empty "all caught up" for a list
-  /// that no longer exists would be a lie about the person's day.
-  func selecting(_ listId: String?) -> (snapshot: AWSnapshot, list: AWListInfo?) {
-    guard let listId, listId != kAWListAll, let view = views?[listId] else {
-      return (self, nil)
-    }
-    var words = strings ?? [:]
-    // The top level spells the WHOLE list's count; a project speaks its own.
-    words["openToday"] = view.openTodayLabel
-    let picked = AWSnapshot(
-      v: v, generatedAt: generatedAt, locale: locale, date: date, strings: words,
-      openToday: view.openToday, clockFormat: clockFormat, buckets: view.buckets,
-      next: view.next, lists: lists, views: nil, density: density)
-    return (picked, lists?.first { $0.id == listId })
-  }
-}
+// MARK: - Snapshot model
+//
+// AWSnapshot and its parts live in ios/Shared/AWSnapshotModel.swift (OPH-451),
+// the day choice in ios/Shared/AWWidgetDayPick.swift: both are compiled into
+// Runner too, so RunnerTests can test them.
 
 /// Reads the latest snapshot from the shared App Group container.
 func loadAWSnapshot() -> AWSnapshot {
@@ -199,9 +81,10 @@ func loadAWSnapshot() -> AWSnapshot {
 
 /// Round 15 (OPH-233): flips `done` on one row INSIDE the stored snapshot so
 /// the tapped circle fills on the very next timeline render — the honest
-/// optimistic echo of the queued completion. Mutates via JSONSerialization,
-/// not the Codable model: a decode→encode round trip would silently DROP any
-/// field this widget build does not know yet (the OPH-187 versioning stance).
+/// optimistic echo of the queued completion. `awMarkSnapshotDone` mutates the
+/// JSONSerialization tree, not the Codable model, so fields this widget build
+/// does not know yet survive (the OPH-187 versioning stance), and stamps every
+/// day view too (v6, OPH-451).
 func markAWSnapshotDone(taskId: String) {
   guard
     let defaults = UserDefaults(suiteName: kAppGroupId),
@@ -209,44 +92,12 @@ func markAWSnapshotDone(taskId: String) {
     let data = raw.data(using: .utf8),
     var json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
   else { return }
-  var changed = false
-  if let buckets = json["buckets"] as? [[String: Any]] {
-    json["buckets"] = awMarkDone(buckets, taskId: taskId, changed: &changed)
-  }
-  // OPH-336: the task sits in its project's view too. Echo it there as well,
-  // or a widget set to that project keeps drawing an open circle.
-  if var views = json["views"] as? [String: Any] {
-    for (key, value) in views {
-      guard
-        var view = value as? [String: Any],
-        let buckets = view["buckets"] as? [[String: Any]]
-      else { continue }
-      view["buckets"] = awMarkDone(buckets, taskId: taskId, changed: &changed)
-      views[key] = view
-    }
-    json["views"] = views
-  }
-  guard changed else { return }
+  guard awMarkSnapshotDone(&json, taskId: taskId) else { return }
   if let out = try? JSONSerialization.data(withJSONObject: json),
     let text = String(data: out, encoding: .utf8)
   {
     defaults.set(text, forKey: kSnapshotKey)
   }
-}
-
-private func awMarkDone(
-  _ buckets: [[String: Any]], taskId: String, changed: inout Bool
-) -> [[String: Any]] {
-  var buckets = buckets
-  for bucketIndex in buckets.indices {
-    guard var items = buckets[bucketIndex]["items"] as? [[String: Any]] else { continue }
-    for itemIndex in items.indices where items[itemIndex]["id"] as? String == taskId {
-      items[itemIndex]["done"] = true
-      changed = true
-    }
-    buckets[bucketIndex]["items"] = items
-  }
-  return buckets
 }
 
 // MARK: - The widget's own complete intent (round 15, OPH-233)
@@ -286,6 +137,8 @@ struct AWWidgetCompleteIntent: AppIntent {
 
 struct AWEntry: TimelineEntry {
   let date: Date
+  /// What this entry draws: its own day (v6, OPH-451), already narrowed to the
+  /// widget's list — or, for a v5 snapshot, the top level.
   let snapshot: AWSnapshot
 
   /// Whether this entry is one of the minute-granular ones that may draw a
@@ -296,6 +149,38 @@ struct AWEntry: TimelineEntry {
 
   /// The project this widget is set to (OPH-336); nil for the whole list.
   var list: AWListInfo? = nil
+
+  /// OPH-451: the entry's day is past the last one the snapshot holds. The
+  /// list is replaced by `strings.stale`, the counter and next are hidden.
+  var stale = false
+
+  /// OPH-451: `snapshot.date` is the app's header for this entry's own day;
+  /// otherwise the header is derived from the entry's date (awDate(for:)).
+  var ownHeader = false
+
+  init(
+    date: Date, snapshot: AWSnapshot, showsClock: Bool, list: AWListInfo? = nil,
+    stale: Bool = false, ownHeader: Bool = false
+  ) {
+    self.date = date
+    self.snapshot = snapshot
+    self.showsClock = showsClock
+    self.list = list
+    self.stale = stale
+    self.ownHeader = ownHeader
+  }
+
+  /// The entry for `date` of a widget set to `listId`: the day it draws is
+  /// the one the date falls on (awEntryContent).
+  init(
+    date: Date, from snapshot: AWSnapshot, listId: String?, showsClock: Bool,
+    calendar: Calendar = .current
+  ) {
+    let content = awEntryContent(snapshot, listId: listId, at: date, calendar: calendar)
+    self.init(
+      date: date, snapshot: content.snapshot, showsClock: showsClock, list: content.list,
+      stale: content.stale, ownHeader: content.ownHeader)
+  }
 }
 
 /// iOS 16's provider: the whole list, nothing to configure. iOS 17 and macOS
@@ -306,44 +191,94 @@ struct AWProvider: TimelineProvider {
   }
 
   func getSnapshot(in context: Context, completion: @escaping (AWEntry) -> Void) {
-    completion(AWEntry(date: Date(), snapshot: loadAWSnapshot(), showsClock: true))
+    completion(AWEntry(date: Date(), from: loadAWSnapshot(), listId: nil, showsClock: true))
   }
 
   func getTimeline(in context: Context, completion: @escaping (Timeline<AWEntry>) -> Void) {
-    completion(awTimeline(snapshot: loadAWSnapshot(), list: nil, family: context.family))
+    completion(awTimeline(snapshot: loadAWSnapshot(), listId: nil, family: context.family))
   }
 }
 
 /// The timeline every provider builds. OPH-336 lifted it out of `AWProvider`:
 /// two providers must not grow two clocks.
-func awTimeline(snapshot: AWSnapshot, list: AWListInfo?, family: WidgetFamily)
+///
+/// OPH-451 (#50): every entry — the minute entries and the midnight ones —
+/// draws its OWN day from the v6 snapshot: header, counter, lock-screen next
+/// and the selected project's view. So after midnight the widget shows the new
+/// day's Today list without the app running, and once the entries pass the
+/// last day the app wrote, the stale line — never yesterday's list under
+/// today's date. A v5 snapshot (no days) draws its top level, as before.
+func awTimeline(snapshot: AWSnapshot, listId: String?, family: WidgetFamily)
   -> Timeline<AWEntry>
 {
   let calendar = Calendar.current
   let start = Date()
 
+  // Up to 240 minute entries fall on at most two days: resolve each day once.
+  var byDay: [String: AWEntryContent] = [:]
+  func content(at date: Date) -> AWEntryContent {
+    let key = awDayKey(for: date, calendar: calendar)
+    if let hit = byDay[key] { return hit }
+    let made = awEntryContent(snapshot, listId: listId, at: date, calendar: calendar)
+    byDay[key] = made
+    return made
+  }
+  func entry(at date: Date, clock: Bool) -> AWEntry {
+    let c = content(at: date)
+    return AWEntry(
+      date: date, snapshot: c.snapshot, showsClock: clock, list: c.list, stale: c.stale,
+      ownHeader: c.ownHeader)
+  }
+
+  // The next few 00:01s. Round 15 (OPH-232): a single entry + one midnight
+  // reload left the widget frozen for DAYS when the app was not opened. The
+  // timeline carries the next four midnights, and the trailing `.after` keeps
+  // the chain alive beyond them. Since v6 each draws its own day; the fourth
+  // (and the third, for a snapshot written before today) is past the days the
+  // app wrote and draws the stale line. The rows are still the app's honest
+  // snapshot — recomputing them here would move product rules into native code
+  // (DESIGN §8 W1/W9).
+  var midnights: [Date] = []
+  var cursor = start
+  for _ in 0..<4 {
+    guard
+      let midnight = calendar.nextDate(
+        after: cursor,
+        matching: DateComponents(hour: 0, minute: 1),
+        matchingPolicy: .nextTime)
+    else { break }
+    cursor = midnight
+    midnights.append(midnight)
+  }
+
   // OPH-336: the lock screen draws no clock and no date, so it needs none of
-  // the minute entries below — one entry, and a reload a minute past midnight
-  // to pick up whatever the app wrote last.
+  // the minute entries below — one entry, the midnights (so `next` turns to
+  // the new day even if the reload is deferred, OPH-451), and a reload a
+  // minute past midnight to pick up whatever the app wrote last.
   if awIsAccessory(family) {
-    let reload =
-      calendar.nextDate(
-        after: start, matching: DateComponents(hour: 0, minute: 1), matchingPolicy: .nextTime)
-      ?? start.addingTimeInterval(3600)
+    let reload = midnights.first ?? start.addingTimeInterval(3600)
     return Timeline(
-      entries: [AWEntry(date: start, snapshot: snapshot, showsClock: false, list: list)],
+      entries: [entry(at: start, clock: false)] + midnights.map { entry(at: $0, clock: false) },
       policy: .after(reload))
   }
 
-  var entries = [AWEntry(date: start, snapshot: snapshot, showsClock: true, list: list)]
+  var entries = [entry(at: start, clock: true)]
 
   // How many minutes of clock this widget can afford to draw. Bytes, not
   // entries — see kAWArchiveBudgetBytes for the measurement that forced this.
-  let rows = distribute(
-    snapshot.buckets,
-    budget: awRowBudget(family, titled: list != nil, compact: snapshot.isCompact))
-    .reduce(0) { $0 + $1.items.count }
-  let bytesPerEntry = kAWEntryBytesBase + rows * kAWEntryBytesPerRow
+  // OPH-451: an entry carries its own day only, so the cost is that day's rows;
+  // the minute entries can cross one midnight, so the larger of the two days
+  // the full horizon could touch is the one that has to fit.
+  func rows(_ c: AWEntryContent) -> Int {
+    guard !c.stale else { return 0 }
+    return distribute(
+      c.snapshot.buckets,
+      budget: awRowBudget(family, titled: c.list != nil, compact: c.snapshot.isCompact))
+      .reduce(0) { $0 + $1.items.count }
+  }
+  let horizonEnd = start.addingTimeInterval(TimeInterval(kAWClockHorizonMinutes * 60))
+  let maxRows = max(rows(content(at: start)), rows(content(at: horizonEnd)))
+  let bytesPerEntry = kAWEntryBytesBase + maxRows * kAWEntryBytesPerRow
   let affordable = kAWArchiveBudgetBytes / max(bytesPerEntry, 1)
   let horizon = max(15, min(kAWClockHorizonMinutes, affordable))
 
@@ -358,35 +293,16 @@ func awTimeline(snapshot: AWSnapshot, list: AWListInfo?, family: WidgetFamily)
       guard
         let tick = calendar.date(byAdding: .minute, value: minute, to: firstTick)
       else { break }
-      entries.append(AWEntry(date: tick, snapshot: snapshot, showsClock: true, list: list))
+      entries.append(entry(at: tick, clock: true))
     }
   }
   let clockHorizon = entries.last?.date ?? start
 
-  // Round 15 (OPH-232): a single entry + one midnight reload left the widget
-  // frozen for DAYS when the app was not opened — after the first midnight
-  // the reload re-rendered the SAME stale snapshot, still wearing yesterday's
-  // date. The timeline still carries the next few midnights (the date header
-  // renders from the ENTRY's date, so it stays truthful without the app), and
-  // the trailing `.after` keeps the chain alive beyond the horizon. Task
-  // buckets are still the app's honest snapshot — recomputing them here would
-  // move product rules into native code (DESIGN §8 W1/W9), so a long-unopened
-  // app shows an aging list under a correct date, not a native guess.
-  //
   // These entries carry NO clock: they are the fallback for when the reload
   // never comes, and that is precisely when a clock would be lying (C3).
-  var cursor = start
-  for _ in 0..<4 {
-    guard
-      let midnight = calendar.nextDate(
-        after: cursor,
-        matching: DateComponents(hour: 0, minute: 1),
-        matchingPolicy: .nextTime)
-    else { break }
-    cursor = midnight
-    // Skip the ones the minute entries already cover, in order and in full.
-    guard midnight > clockHorizon else { continue }
-    entries.append(AWEntry(date: midnight, snapshot: snapshot, showsClock: false, list: list))
+  // Skip the ones the minute entries already cover, in order and in full.
+  for midnight in midnights where midnight > clockHorizon {
+    entries.append(entry(at: midnight, clock: false))
   }
 
   // Reload when the minute entries run out: 1440 / horizon times a day. An
@@ -467,15 +383,14 @@ struct AWIntentProvider: AppIntentTimelineProvider {
   }
 
   func snapshot(for configuration: AWWidgetConfigIntent, in context: Context) async -> AWEntry {
-    let picked = loadAWSnapshot().selecting(configuration.list?.id)
-    return AWEntry(date: Date(), snapshot: picked.snapshot, showsClock: true, list: picked.list)
+    AWEntry(
+      date: Date(), from: loadAWSnapshot(), listId: configuration.list?.id, showsClock: true)
   }
 
   func timeline(for configuration: AWWidgetConfigIntent, in context: Context) async
     -> Timeline<AWEntry>
   {
-    let picked = loadAWSnapshot().selecting(configuration.list?.id)
-    return awTimeline(snapshot: picked.snapshot, list: picked.list, family: context.family)
+    awTimeline(snapshot: loadAWSnapshot(), listId: configuration.list?.id, family: context.family)
   }
 }
 
@@ -536,6 +451,24 @@ func awClockLabel(for entry: AWEntry, now: Date = Date()) -> String? {
     formatter.timeStyle = .short
   }
   return formatter.string(from: entry.date)
+}
+
+/// The date an entry's header shows. Round 15 (OPH-232): never the snapshot's
+/// own date, which ages — the ENTRY's. Since v6 (OPH-451) that is the app's
+/// header for the entry's own day when the snapshot holds it; otherwise the
+/// OS's words for the entry's date (a v5 snapshot, or a stale day). An empty
+/// snapshot (no locale yet) falls back to the snapshot's own strings.
+func awHeaderDate(for entry: AWEntry) -> AWDate {
+  let snap = entry.snapshot
+  if entry.ownHeader || snap.generatedAt.isEmpty { return snap.date }
+  return awDate(for: entry.date, locale: snap.locale)
+}
+
+/// OPH-451: what a stale entry says in place of the list — the app's words
+/// (`widget.stale`); the English line is only for a snapshot without them.
+func awStaleText(_ snap: AWSnapshot) -> String {
+  if let text = snap.strings?["stale"], !text.isEmpty { return text }
+  return "List is out of date · Open AllisWell to refresh"
 }
 
 /// The header badge's text, or nil when there is nothing to say. The COUNT and
@@ -807,11 +740,8 @@ struct AllisWellWidgetEntryView: View {
       HStack(alignment: .top, spacing: 4) {
         VStack(alignment: .leading, spacing: snap.isCompact ? 4 : 8) {
           if family != .systemMedium {
-            // Round 15: the ENTRY's date, not the snapshot's — see awDate(for:).
             AWDateHeader(
-              date: snap.generatedAt.isEmpty
-                ? snap.date
-                : awDate(for: entry.date, locale: snap.locale),
+              date: awHeaderDate(for: entry),
               clock: awClockLabel(for: entry),
               openToday: awOpenTodayLabel(snap),
               addLabel: addLabel)
@@ -822,7 +752,16 @@ struct AllisWellWidgetEntryView: View {
           if let list = entry.list {
             AWListTitle(list: list)
           }
-          if snap.buckets.isEmpty {
+          if entry.stale {
+            // OPH-451: past the last day the app wrote. The old list is not
+            // drawn under this date; the header above stays true.
+            Spacer()
+            Text(awStaleText(snap))
+              .font(.subheadline).foregroundStyle(.secondary)
+              .multilineTextAlignment(.center)
+              .frame(maxWidth: .infinity, alignment: .center)
+            Spacer()
+          } else if snap.buckets.isEmpty {
             Spacer()
             Text(snap.strings?["allCaughtUp"] ?? "All caught up")
               .font(.subheadline).foregroundStyle(.secondary)
@@ -936,7 +875,12 @@ struct AWListTitle: View {
           .font(.caption.weight(.semibold))
           .lineLimit(1)
           .widgetAccentable()
-        if let next = snap.next {
+        if entry.stale {
+          // OPH-451: no next task from another day under today.
+          Text(awStaleText(snap))
+            .font(.headline)
+            .lineLimit(2)
+        } else if let next = snap.next {
           Text(next.title)
             .font(.headline)
             .lineLimit(1)
@@ -966,7 +910,10 @@ struct AWListTitle: View {
       let count = entry.snapshot.openToday ?? 0
       ZStack {
         AccessoryWidgetBackground()
-        if count > 0 {
+        if entry.stale {
+          // OPH-451: no count from another day; a tick would claim "done".
+          Image(systemName: "arrow.clockwise").font(.title3.weight(.semibold))
+        } else if count > 0 {
           VStack(spacing: 0) {
             Image(systemName: "checklist").font(.caption)
             Text("\(count)")
@@ -982,7 +929,9 @@ struct AWListTitle: View {
       .widgetAccentable()
       .accessibilityElement(children: .ignore)
       .accessibilityLabel(
-        awOpenTodayLabel(entry.snapshot) ?? entry.snapshot.strings?["allCaughtUp"] ?? "")
+        entry.stale
+          ? awStaleText(entry.snapshot)
+          : awOpenTodayLabel(entry.snapshot) ?? entry.snapshot.strings?["allCaughtUp"] ?? "")
       .widgetURL(URL(string: "alliswell://open"))
     }
   }
