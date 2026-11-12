@@ -38,11 +38,20 @@ mixin AlarmMinuteTick<T extends StatefulWidget> on State<T> {
     _armMinute();
   }
 
+  /// Cancels the minute timer and the resume observer; safe to call twice.
+  /// A host's `dispose()` calls it first, before anything that could throw,
+  /// so a failing dispose never leaves the timer pending.
+  void stopMinuteTick() {
+    _minuteTimer?.cancel();
+    _minuteTimer = null;
+    final resume = _resume;
+    _resume = null;
+    if (resume != null) WidgetsBinding.instance.removeObserver(resume);
+  }
+
   @override
   void dispose() {
-    _minuteTimer?.cancel();
-    final resume = _resume;
-    if (resume != null) WidgetsBinding.instance.removeObserver(resume);
+    stopMinuteTick();
     super.dispose();
   }
 }

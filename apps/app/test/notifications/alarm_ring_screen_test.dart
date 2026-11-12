@@ -33,6 +33,7 @@ import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 import 'package:alliswell/src/widgets/status_views.dart';
 
+import '../support/created_tickers.dart';
 import '../support/fake_notifications.dart';
 import '../support/sync_overrides.dart';
 
@@ -223,6 +224,41 @@ void main() {
           matching: find.byWidgetPredicate((w) => w is ButtonStyleButton),
         ),
       );
+
+  // S0 (CI on Flutter 3.44): a missed screen never starts its pulse, so a
+  // lazily built controller was first constructed inside dispose(), on a
+  // deactivated element. 3.44 throws there, dispose() aborts before the
+  // minute tick's timer is cancelled and the test fails on a pending Timer.
+  for (final missed in [true, false]) {
+    final mode = missed ? 'a silent (missed)' : 'a ringing';
+    testWidgets('$mode ring screen creates no animation controller while it '
+        'is disposed', (tester) async {
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: _theme,
+            home: Scaffold(
+              body: AlarmRingScreen(
+                alarm: theAlarm(),
+                onHandled: handled.add,
+                missed: missed,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.byType(AlarmRingScreen), findsOneWidget);
+
+      final created = await tickersCreatedDuring(
+        () => tester.pumpWidget(const SizedBox()),
+      );
+
+      expect(created, isEmpty);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets('renders the task, an acknowledge and snooze presets', (
     tester,

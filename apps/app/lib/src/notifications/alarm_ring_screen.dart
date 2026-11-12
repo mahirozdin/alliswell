@@ -141,10 +141,11 @@ class AlarmRingScreen extends ConsumerStatefulWidget {
 
 class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     with SingleTickerProviderStateMixin, AlarmMinuteTick {
-  late final AnimationController _pulse = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1200),
-  );
+  /// Built in initState, never lazily: a missed screen never starts it, and
+  /// a lazy one would first be constructed inside dispose() on a deactivated
+  /// element, which throws on Flutter 3.44 and leaves the minute timer
+  /// pending.
+  late final AnimationController _pulse;
 
   /// A second tap while the first action is on its way is ignored. Never
   /// painted: a disabled button on an alarm reads as "this alarm is stuck".
@@ -166,6 +167,10 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
   @override
   void initState() {
     super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    );
     if (!widget.missed) _pulse.repeat();
     // The sound is not this screen's: AlarmOverlayController starts and stops
     // it (#46). A missed alarm is reviewed, not answered under pressure, and
@@ -219,6 +224,8 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
 
   @override
   void dispose() {
+    // Timers first: nothing after them may leave one pending.
+    stopMinuteTick();
     _spinTimer?.cancel();
     _pulse.dispose();
     super.dispose();
