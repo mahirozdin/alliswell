@@ -938,7 +938,9 @@
     "ringing": {
       "label": "Urgent reminder",
       "snooze": "Snooze",
-      "announce": "{label}: {title}, {time}"
+      "announce": "{label}: {title}, {time}",
+      "count": "{count} urgent reminders",
+      "announceList": "{count} urgent reminders, {time}"
     },
     "banner": {
       "turnOn": "Turn on",
@@ -996,7 +998,18 @@
     },
     "silentByChoice": "Silent on purpose: you set this browser to Silent.",
     "silentByDefault": "Alarms in this browser are silent by default. You can turn sound on in Settings.",
-    "ringingOnLockScreen": "The alarm is ringing on the lock screen too."
+    "ringingOnLockScreen": "The alarm is ringing on the lock screen too.",
+    "snoozeAll": "Snooze all",
+    "acknowledgeAll": "Acknowledge all ({count})",
+    "snoozedAllConfirmed": "{count} alarms ring again at {time}",
+    "acknowledgedAll": "{count} alarms acknowledged",
+    "sheet": {
+      "other": "More",
+      "tomorrowAt": "tomorrow {time}"
+    },
+    "row": {
+      "failed": "Not saved"
+    }
   },
   "alarmLog": {
     "title": "Alarm log",

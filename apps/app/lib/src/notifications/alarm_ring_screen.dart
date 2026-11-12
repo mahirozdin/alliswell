@@ -18,6 +18,7 @@ import 'alarm_action_tile.dart';
 import 'alarm_log.dart';
 import 'reminder_profile.dart';
 import 'alarm_overlay.dart';
+import 'alarm_ring_list.dart';
 import 'planner.dart';
 import 'providers.dart';
 import 'urgent_minute.dart';
@@ -35,10 +36,12 @@ const double kAlarmOneColumnTextScale = 1.3;
 /// The ring screen's column: screen − 2 × 24, at most 440 (2 × 216 + 8).
 const double kAlarmRingMaxWidth = 440;
 
-/// The shell's alarm layer: the first ringing occurrence, keyed by
-/// [alarmOccurrenceKey] (#46). Unkeyed, the next alarm inherited the previous
-/// screen's State — its pulse, its log entry and a "busy" flag that left every
-/// button dead.
+/// The shell's alarm layer. One ringing task: the single layout, keyed by
+/// [alarmOccurrenceKey] (#46) — unkeyed, the next alarm inherited the previous
+/// screen's State, its pulse, its log entry and a "busy" flag that left every
+/// button dead. Two or more tasks: the list (#47, OPH-443), in place, under
+/// the same one sound; list and single cross-fade in 220 ms (at once with
+/// reduced motion), so the last row left comes back as the full layout.
 class AlarmOverlayLayer extends ConsumerWidget {
   const AlarmOverlayLayer({super.key});
 
@@ -46,15 +49,37 @@ class AlarmOverlayLayer extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final overlay = ref.watch(alarmOverlayControllerProvider);
     if (overlay.ringing.isEmpty) return const SizedBox.shrink();
-    final alarm = overlay.ringing.first;
-    return AlarmRingScreen(
-      key: ValueKey<String>(alarmOccurrenceKey(alarm)),
-      alarm: alarm,
-      failed: overlay.isFailed(alarm),
-      // The snooze tiles say when a target minute already rings (#47).
-      alarms: ref.watch(alarmFeedProvider).value ?? const [],
-      onHandled: (_) =>
-          ref.read(alarmOverlayControllerProvider.notifier).handled(alarm),
+    final alarms = ref.watch(alarmFeedProvider).value ?? const <AlarmInput>[];
+    final Widget child;
+    if (alarmRowsByTask(overlay.ringing).length > 1) {
+      child = AlarmRingList(
+        key: const ValueKey<String>('alarm-ring-list-mode'),
+        rows: overlay.ringing,
+        failed: overlay.failed,
+        alarms: alarms,
+      );
+    } else {
+      final alarm = overlay.ringing.first;
+      // One switcher key for every single occurrence: only list ⇄ single
+      // cross-fades; the occurrence key inside still re-creates the screen.
+      child = KeyedSubtree(
+        key: const ValueKey<String>('alarm-ring-single'),
+        child: AlarmRingScreen(
+          key: ValueKey<String>(alarmOccurrenceKey(alarm)),
+          alarm: alarm,
+          failed: overlay.isFailed(alarm),
+          // The snooze tiles say when a target minute already rings (#47).
+          alarms: alarms,
+          onHandled: (_) =>
+              ref.read(alarmOverlayControllerProvider.notifier).handled(alarm),
+        ),
+      );
+    }
+    return AnimatedSwitcher(
+      duration: MediaQuery.disableAnimationsOf(context)
+          ? Duration.zero
+          : kAlarmRowExit,
+      child: child,
     );
   }
 }
@@ -422,10 +447,11 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         // Text on the wash takes errorOnPage: prioUrgent is a 3:1 flag colour
         // and measured 3.94 / 4.36 here (contrast.py, DESIGN §11 A9).
         Text(
-          (widget.missed
-                  ? 'alarm.missed.label'.tr()
-                  : 'alarm.ringing.label'.tr())
-              .toUpperCase(),
+          alarmUpper(
+            widget.missed
+                ? 'alarm.missed.label'.tr()
+                : 'alarm.ringing.label'.tr(),
+          ),
           key: const Key('alarm-ringing-label'),
           textAlign: TextAlign.center,
           style: text.labelLarge?.copyWith(

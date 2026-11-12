@@ -937,7 +937,9 @@
     "ringing": {
       "label": "Acil hatırlatma",
       "snooze": "Ertele",
-      "announce": "{label}: {title}, {time}"
+      "announce": "{label}: {title}, {time}",
+      "count": "{count} acil hatırlatma",
+      "announceList": "{count} acil hatırlatma, {time}"
     },
     "banner": {
       "turnOn": "Aç",
@@ -995,7 +997,18 @@
     },
     "silentByChoice": "Bilerek sessiz: bu tarayıcıyı Sessiz olarak ayarladın.",
     "silentByDefault": "Bu tarayıcıda alarmlar varsayılan olarak sessiz. Sesi Ayarlar'dan açabilirsin.",
-    "ringingOnLockScreen": "Alarm kilit ekranında da çalıyor."
+    "ringingOnLockScreen": "Alarm kilit ekranında da çalıyor.",
+    "snoozeAll": "Tümünü ertele",
+    "acknowledgeAll": "Tümünü onayla ({count})",
+    "snoozedAllConfirmed": "{count} alarm {time} tekrar çalacak",
+    "acknowledgedAll": "{count} alarm onaylandı",
+    "sheet": {
+      "other": "Diğer",
+      "tomorrowAt": "yarın {time}"
+    },
+    "row": {
+      "failed": "Kaydedilmedi"
+    }
   },
   "alarmLog": {
     "title": "Alarm günlüğü",

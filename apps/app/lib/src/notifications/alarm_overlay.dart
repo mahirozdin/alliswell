@@ -613,6 +613,33 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   Future<bool> acknowledgeAll({void Function()? onSaved}) =>
       _act(state.ringing, AlarmRowAction.acknowledge, onSaved: onSaved);
 
+  /// "Tekrar dene" on the list (#47, OPH-443): every failed row's own action
+  /// again. Rows that failed together share one action and go out again as
+  /// that one event; silenced and dismissed first, like any action. True
+  /// when every write landed.
+  Future<bool> retryFailed() async {
+    final groups = <AlarmPendingAction, List<AlarmInput>>{};
+    for (final a in state.ringing) {
+      final action = _failures[alarmOccurrenceKey(a)];
+      if (action != null) groups.putIfAbsent(action, () => []).add(a);
+    }
+    if (groups.isEmpty) return false;
+    silence();
+    for (final rows in groups.values) {
+      for (final a in rows) {
+        stopAlarmKit(a);
+        final key = alarmOccurrenceKey(a);
+        _handled.add(key);
+        _failures.remove(key);
+      }
+    }
+    state = _evaluate(_feed());
+    final saved = await Future.wait([
+      for (final entry in groups.entries) _commitAll(entry.value, entry.key),
+    ]);
+    return saved.every((s) => s);
+  }
+
   Future<bool> _act(
     List<AlarmInput> rows,
     AlarmRowAction action, {

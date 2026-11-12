@@ -455,12 +455,13 @@ void main() {
         expect(find.text('Task R1'), findsOneWidget);
         expect(log, ['start']);
 
-        await tester.tap(find.byKey(const Key('alarm-acknowledge')));
-        // Several frames: the first screen is torn down after the second one
-        // mounted — the moment its dispose() used to stop the shared player.
+        // Two tasks ring as one list (#47, OPH-443): answer the first row.
+        await tester.tap(find.byKey(const Key('alarm-row-ack-T-R1')));
+        // Several frames: the list is torn down after the single layout
+        // mounted — the moment a dispose() used to stop the shared player.
         await tester.pump();
         await tester.pump();
-        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 300));
 
         expect(find.text('Task R2'), findsOneWidget);
         // #47 / decisions §3.1: the first action silences the whole list;
@@ -734,9 +735,10 @@ void main() {
         await pumpOverlay(tester);
         expect(log, isEmpty);
 
-        await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+        // The list's first row (#47, OPH-443).
+        await tester.tap(find.byKey(const Key('alarm-row-ack-T-R1')));
         await tester.pump();
-        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
         expect(host.stopped, [7]);
         expect(find.text('Task R2'), findsOneWidget);
         expect(overlay().ringsOnLockScreen, isFalse);

@@ -21,6 +21,7 @@ import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/alarm_sound.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/alarmkit_identity.dart';
+import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/notifications/reminder_store.dart';
@@ -517,14 +518,17 @@ void main() {
     'acting on the first of two due alarms leaves the second fully actionable',
     (tester) async {
       await pumpLayer(tester, feed: [theAlarm(), secondAlarm()], second: true);
+      // Two tasks ring: one list (#47, OPH-443), each row its own answer.
+      expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
       expect(find.text('Take pills'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await tester.tap(find.byKey(Key('alarm-row-ack-${id('T1')}')));
       await tester.pump();
-      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
 
-      // The second alarm has its own screen (keyed per occurrence), not the
-      // first one's State with a "busy" flag that disabled every button.
+      // The last row is the single layout, keyed per occurrence, not a list
+      // State with a "busy" flag that disabled every button.
+      expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
       expect(find.text('Call the clinic'), findsOneWidget);
       expect(find.text('Take pills'), findsNothing);
       expect(
@@ -1235,6 +1239,366 @@ void main() {
     expect(find.bySemanticsLabel(RegExp('Take pills')), findsWidgets);
     semantics.dispose();
   });
+
+  // ── OPH-443: list mode (#47) — rows, the row sheet, Tümünü ertele/onayla ──
+
+  AlarmInput thirdAlarm() => AlarmInput(
+    reminderId: id('R3'),
+    taskId: id('T3'),
+    taskTitle: 'Share the meeting notes',
+    remindAt: at.add(const Duration(seconds: 40)),
+    status: 'scheduled',
+    urgent: true,
+    requiresAcknowledgement: true,
+  );
+
+  // Local 09:00: "5 min" lands on 09:05.
+  final listNow = DateTime(2030, 6, 1, 9);
+
+  /// The shell's layer with three ringing tasks; every action's in-app event
+  /// is recorded instead of applied (the OPH-441 seam).
+  Future<List<NotificationEvent>> pumpList(
+    WidgetTester tester, {
+    List<String>? log,
+    List<AlarmInput>? feed,
+    Size? size,
+  }) async {
+    if (size != null) {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+    }
+    final events = <NotificationEvent>[];
+    await pumpLayer(
+      tester,
+      feed: feed ?? [theAlarm(), secondAlarm(), thirdAlarm()],
+      feedback: log == null ? null : _LogFeedback(log),
+      extra: [
+        nowProvider.overrideWithValue(() => listNow),
+        alarmActionApplierProvider.overrideWithValue((event) async {
+          log?.add('write ${event.actionId}');
+          events.add(event);
+          return true;
+        }),
+      ],
+    );
+    return events;
+  }
+
+  int ms(Duration after) => listNow.add(after).millisecondsSinceEpoch;
+
+  /// Snackbars run out, and the controller's no-interaction minute
+  /// (OPH-441) goes with the container: it is not these tests'.
+  Future<void> settle(WidgetTester tester) async {
+    await tester.pump(const Duration(seconds: 6));
+    await tester.pumpWidget(const SizedBox());
+    container.dispose();
+  }
+
+  testWidgets('snooze all emits one batch and silences once', (tester) async {
+    final log = <String>[];
+    final events = await pumpList(tester, log: log);
+    expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
+    expect(find.byKey(const Key('alarm-ring')), findsNothing);
+    expect(find.text('3 URGENT REMINDERS · ${_clock(tester, at)}'), findsOne);
+    // One sound for the whole list.
+    expect(log, ['start']);
+    // The bulk grid: the first three presets and "Pick a time…" — never
+    // "Tomorrow morning" or "Silence indefinitely" for every row at once.
+    for (final p in ['5_min', '30_min', '1_hour', 'custom']) {
+      expect(find.byKey(Key('alarm-all-snooze-$p')), findsOneWidget);
+    }
+    expect(
+      find.byKey(const Key('alarm-all-snooze-tomorrow_morning')),
+      findsNothing,
+    );
+    expect(find.byKey(const Key('alarm-silence')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('alarm-all-snooze-5_min')));
+    // Silenced inside the tap, before the write; the list is gone at once.
+    expect(log.take(2), ['start', 'stop']);
+    expect(container.read(alarmOverlayControllerProvider).ringing, isEmpty);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(log, ['start', 'stop', 'write snooze']);
+    expect(events, hasLength(1));
+    expect(events.single.actionId, 'snooze');
+    expect(events.single.taskIds, [id('T1'), id('T2'), id('T3')]);
+    expect(events.single.untilMs, ms(const Duration(minutes: 5)));
+    expect(events.single.origin, 'inapp');
+    expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+    // Said on the shell's messenger once the batch landed.
+    expect(find.textContaining('3 alarms ring again at'), findsOneWidget);
+    await settle(tester);
+  });
+
+  testWidgets('acknowledge all (3) acknowledges every row in one batch', (
+    tester,
+  ) async {
+    final log = <String>[];
+    final events = await pumpList(tester, log: log);
+    final all = find.byKey(const Key('alarm-acknowledge-all'));
+    expect(
+      find.descendant(of: all, matching: find.text('Acknowledge all (3)')),
+      findsOneWidget,
+    );
+
+    await tester.tap(all);
+    expect(log.take(2), ['start', 'stop']);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(log, ['start', 'stop', 'write acknowledge']);
+    expect(events, hasLength(1));
+    expect(events.single.actionId, 'acknowledge');
+    expect(events.single.taskIds, [id('T1'), id('T2'), id('T3')]);
+    expect(events.single.untilMs, isNull);
+    expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+    expect(find.text('3 alarms acknowledged'), findsOneWidget);
+    await settle(tester);
+  });
+
+  testWidgets(
+    'the row sheet offers presets with times, custom, silence, complete and '
+    'open',
+    (tester) async {
+      final log = <String>[];
+      final events = await pumpList(tester, log: log);
+      final row = Key('alarm-row-snooze-${id('T2')}');
+
+      await tester.tap(find.byKey(row));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      // Opening the sheet is the person dealing with it: quiet.
+      expect(_squash(log), ['start', 'stop']);
+      for (final (preset, after) in [
+        ('5_min', const Duration(minutes: 5)),
+        ('30_min', const Duration(minutes: 30)),
+        ('1_hour', const Duration(hours: 1)),
+      ]) {
+        expect(
+          find.descendant(
+            of: find.byKey(Key('alarm-sheet-snooze-$preset')),
+            matching: find.text(
+              awFormatTime(listNow.add(after), format: kAwSystemDateFormat),
+            ),
+          ),
+          findsOneWidget,
+          reason: preset,
+        );
+      }
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('alarm-sheet-snooze-tomorrow_morning')),
+          matching: find.textContaining('tomorrow'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('alarm-sheet-custom')), findsOneWidget);
+      expect(find.byKey(const Key('alarm-sheet-silence')), findsOneWidget);
+      expect(
+        find.text('The task stays open, the alarm stays quiet'),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('alarm-sheet-complete')), findsOneWidget);
+      expect(find.byKey(const Key('alarm-sheet-open')), findsOneWidget);
+
+      // Closed without a choice: the row is still ringing, sound and all.
+      await tester.tapAt(const Offset(8, 8));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(find.byKey(const Key('alarm-sheet-open')), findsNothing);
+      expect(events, isEmpty);
+      expect(
+        container.read(alarmOverlayControllerProvider).ringing,
+        hasLength(3),
+      );
+      expect(_squash(log), ['start', 'stop', 'start']);
+
+      // A preset in the sheet answers that row only, as one event.
+      await tester.tap(find.byKey(row));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.byKey(const Key('alarm-sheet-snooze-30_min')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(events, hasLength(1));
+      expect(events.single.actionId, 'snooze');
+      expect(events.single.taskIds, [id('T2')]);
+      expect(events.single.untilMs, ms(const Duration(minutes: 30)));
+      expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
+      expect(find.byKey(Key('alarm-row-${id('T2')}')), findsNothing);
+      expect(find.byKey(Key('alarm-row-${id('T1')}')), findsOneWidget);
+      expect(find.byKey(Key('alarm-row-${id('T3')}')), findsOneWidget);
+      expect(find.text('2 URGENT REMINDERS · ${_clock(tester, at)}'), findsOne);
+      expect(find.text('Acknowledge all (2)'), findsOneWidget);
+
+      // Silence, complete and open from the sheet: each answers its row.
+      await tester.tap(find.byKey(Key('alarm-row-snooze-${id('T3')}')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.ensureVisible(find.byKey(const Key('alarm-sheet-silence')));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key('alarm-sheet-silence')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(events.last.actionId, 'mute');
+      expect(events.last.taskIds, [id('T3')]);
+      // One row left: the single layout (OPH-466).
+      expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+      expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+      await settle(tester);
+    },
+  );
+
+  testWidgets('the row sheet completes or opens its own row', (tester) async {
+    final events = await pumpList(tester);
+    await tester.tap(find.byKey(Key('alarm-row-snooze-${id('T1')}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.ensureVisible(find.byKey(const Key('alarm-sheet-complete')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('alarm-sheet-complete')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(events.single.actionId, 'complete');
+    expect(events.single.taskIds, [id('T1')]);
+
+    await tester.tap(find.byKey(Key('alarm-row-snooze-${id('T2')}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    await tester.ensureVisible(find.byKey(const Key('alarm-sheet-open')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('alarm-sheet-open')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    // "Aç" opens the task and acknowledges nothing.
+    expect(events, hasLength(1));
+    expect(find.text('task ${id('T2')}'), findsOneWidget);
+    await settle(tester);
+  });
+
+  testWidgets('a failed bulk write brings every row back flagged; Try again '
+      'repeats the same event', (tester) async {
+    final log = <String>[];
+    final events = <NotificationEvent>[];
+    var failuresLeft = 1;
+    await pumpLayer(
+      tester,
+      feed: [theAlarm(), secondAlarm(), thirdAlarm()],
+      feedback: _LogFeedback(log),
+      extra: [
+        nowProvider.overrideWithValue(() => listNow),
+        alarmActionApplierProvider.overrideWithValue((event) async {
+          events.add(event);
+          if (failuresLeft-- > 0) throw StateError('database is locked');
+          return true;
+        }),
+      ],
+    );
+    await tester.tap(find.byKey(const Key('alarm-acknowledge-all')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Back as the list, every row flagged, the sound still off.
+    expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
+    expect(find.byKey(const Key('alarm-action-failed')), findsOneWidget);
+    expect(container.read(alarmOverlayControllerProvider).failed, hasLength(3));
+    // The rows on screen say which ones did not save.
+    for (final t in ['T1', 'T2']) {
+      expect(find.byKey(Key('alarm-row-failed-${id(t)}')), findsOneWidget);
+    }
+    expect(_squash(log), ['start', 'stop']);
+
+    await tester.tap(find.byKey(const Key('alarm-retry')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(events, hasLength(2));
+    expect(events.last.eventId, events.first.eventId);
+    expect(events.last.taskIds, [id('T1'), id('T2'), id('T3')]);
+    expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+    expect(_squash(log), ['start', 'stop']);
+    await settle(tester);
+  });
+
+  testWidgets('the last remaining row switches back to the single layout', (
+    tester,
+  ) async {
+    final events = await pumpList(tester, feed: [theAlarm(), secondAlarm()]);
+    expect(find.byKey(const Key('alarm-ring-list')), findsOneWidget);
+    expect(find.text('Acknowledge all (2)'), findsOneWidget);
+
+    await tester.tap(find.byKey(Key('alarm-row-ack-${id('T1')}')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(events.single.actionId, 'acknowledge');
+    expect(events.single.taskIds, [id('T1')]);
+    expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+    expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+    expect(find.text('Call the clinic'), findsOneWidget);
+    expect(find.byKey(const Key('alarm-acknowledge')), findsOneWidget);
+    expect(find.byKey(const Key('alarm-snooze-5_min')), findsOneWidget);
+    await settle(tester);
+  });
+
+  testWidgets('list mode fits 360×640 with the bulk actions pinned', (
+    tester,
+  ) async {
+    await pumpList(tester, size: const Size(360, 640));
+    const bulk = [
+      'alarm-all-snooze-5_min',
+      'alarm-all-snooze-30_min',
+      'alarm-all-snooze-1_hour',
+      'alarm-all-snooze-custom',
+      'alarm-acknowledge-all',
+    ];
+    final before = {for (final k in bulk) k: rectOf(tester, k)};
+    for (final k in bulk) {
+      final r = before[k]!;
+      expect(r.top, greaterThanOrEqualTo(0), reason: k);
+      expect(r.bottom, lessThanOrEqualTo(640), reason: k);
+      expect(r.height, greaterThanOrEqualTo(56), reason: k);
+    }
+    // Two equal columns.
+    expect(
+      before['alarm-all-snooze-5_min']!.width,
+      before['alarm-all-snooze-30_min']!.width,
+    );
+    final header = rectOf(tester, 'alarm-list-header');
+    expect(header.top, greaterThanOrEqualTo(0));
+    expect(header.bottom, lessThan(100));
+    // Row pills are 44, the two of a row the same width.
+    final snooze = rectOf(tester, 'alarm-row-snooze-${id('T1')}');
+    final ack = rectOf(tester, 'alarm-row-ack-${id('T1')}');
+    expect(snooze.height, greaterThanOrEqualTo(44));
+    expect(snooze.width, ack.width);
+    expect(tester.takeException(), isNull);
+
+    // The list scrolls under the pinned actions.
+    final rows = find.byKey(const Key('alarm-ring-rows'));
+    final scrollable = tester.state<ScrollableState>(
+      find.descendant(of: rows, matching: find.byType(Scrollable)).first,
+    );
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    final firstTop = rectOf(tester, 'alarm-row-${id('T1')}').top;
+    await tester.drag(rows, const Offset(0, -200));
+    await tester.pump();
+    expect(rectOf(tester, 'alarm-row-${id('T1')}').top, lessThan(firstTop));
+    for (final k in bulk) {
+      expect(rectOf(tester, k), before[k], reason: '$k stays pinned');
+    }
+    await settle(tester);
+  });
+}
+
+/// [when] as the ring screen prints it (MaterialLocalizations, local time).
+String _clock(WidgetTester tester, DateTime when) {
+  final context = tester.element(find.byType(Scaffold).first);
+  return MaterialLocalizations.of(
+    context,
+  ).formatTimeOfDay(TimeOfDay.fromDateTime(when.toLocal()));
 }
 
 /// Refuses to play, the way a browser's autoplay policy does.

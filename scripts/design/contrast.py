@@ -469,12 +469,14 @@ _SCHEME = {
         'outline': '#63789E', 'primary': '#0A5CFF', 'error': '#D70015',
         'onError': '#FFFFFF', 'primaryContainer': '#D6E5FF',
         'onPrimaryContainer': '#0A3FBF',
+        'surfaceContainerLow': '#F6F9FF', 'surfaceContainerHigh': '#E7EEFA',
     },
     'dark': {
         'surface': '#151F3C', 'onSurface': '#EAF0FD', 'onSurfaceVariant': '#AAB6D6',
         'outline': '#7186B5', 'primary': '#3E9BFF', 'error': '#FF5147',
         'onError': '#450603', 'primaryContainer': '#1D4FA6',
         'onPrimaryContainer': '#D9E8FF',
+        'surfaceContainerLow': '#121B36', 'surfaceContainerHigh': '#1F2C51',
     },
 }
 
@@ -516,6 +518,17 @@ RING_PAIRS = [
     ('ring pressed tile label (onSurface)', 'onSurface', 'pressed', 4.5),
     ('ring pressed tile icon / time (onSurfaceVariant)', 'onSurfaceVariant', 'pressed', 4.5),
     ('ring pressed tile edge (outline)', 'outline', 'pressed', 3.0),
+    # List mode (#47, OPH-443): rows are `surface` cards on the wash (title and
+    # time reuse the tile pairs above); their two pills are `surface` with an
+    # `outline` edge; a row whose write failed carries an errorOnPage icon.
+    ('ring row pill edge (outline) on card', 'outline', 'surface', 3.0),
+    ('ring row failed icon (errorOnPage) on card', 'errorOnPage', 'surface', 3.0),
+    # The row's "Ertele" sheet: `surfaceContainerLow` with 56 pt rows on
+    # `surfaceContainerHigh`; labels onSurface, icons / times / hints variant.
+    ('ring sheet title (onSurface) on sheet', 'onSurface', 'surfaceContainerLow', 4.5),
+    ('ring sheet subtitle / "Diğer" (onSurfaceVariant) on sheet', 'onSurfaceVariant', 'surfaceContainerLow', 4.5),
+    ('ring sheet row label (onSurface) on row', 'onSurface', 'surfaceContainerHigh', 4.5),
+    ('ring sheet row time / hint / icon (onSurfaceVariant) on row', 'onSurfaceVariant', 'surfaceContainerHigh', 4.5),
     # Settings ▸ Devices: the "Bu cihaz" badge (#48), listed by name (§7.1).
     ('devices "this device" badge', 'onPrimaryContainer', 'primaryContainer', 4.5),
 ]
