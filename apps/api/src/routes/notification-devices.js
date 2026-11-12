@@ -234,10 +234,20 @@ export default async function notificationDeviceRoutes(app) {
         .first('id', 'user_id');
 
       let status = 200;
-      if (existing && existing.user_id === userId) {
-        // Heartbeat: the common path, no lock, and `rings_urgent` untouched.
-        await app.db('notification_devices').where({ id: deviceId }).update(values);
-      } else {
+      // Heartbeat: the common path, no lock, and `rings_urgent` untouched. It
+      // only writes while the row is still ours: an unlocked read can be
+      // overtaken by another account's takeover, and an update by id alone
+      // would then hand the install back with the other account's `ringsUrgent`
+      // still set — two automatic ringers for one user. Zero rows means the
+      // read is stale, so the locked insert/takeover path decides instead.
+      const beat =
+        existing && existing.user_id === userId
+          ? await app
+              .db('notification_devices')
+              .where({ id: deviceId, user_id: userId })
+              .update(values)
+          : 0;
+      if (beat === 0) {
         // Insert or takeover: the urgent-device rule runs with the user's row
         // locked (and the previous owner's, whose ringing device may leave).
         status = await transactionWithRetry(app.db, async (trx) => {

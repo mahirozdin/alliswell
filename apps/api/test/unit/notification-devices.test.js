@@ -388,4 +388,72 @@ describe('PATCH /notification-devices/:id and ringsUrgent fields (OPH-433)', () 
     });
     expect(byId('01DEVICEBBBBBBBBBBBBBBBBBB').rings_urgent).toBe(false);
   });
+
+  it('a heartbeat whose device was taken over mid-flight does not leave two ringing devices', async () => {
+    const PHONE = DEVICE;
+    const TABLET = '01DEVICEEEEEEEEEEEEEEEEEEE';
+    await register(PHONE, { platform: 'ios' }); // rings for the owner
+    await register(TABLET, { platform: 'android' }); // joins off
+    const other = await registerUser(app, { email: 'other@example.com' });
+
+    // Hold the owner's heartbeat right after it has read who owns PHONE.
+    const realDb = app.db;
+    let reached;
+    let release;
+    const atPause = new Promise((resolve) => (reached = resolve));
+    const resume = new Promise((resolve) => (release = resolve));
+    let armed = true;
+    const holdFirst = (builder) => {
+      const proxy = new Proxy(builder, {
+        get(target, prop) {
+          const value = Reflect.get(target, prop);
+          if (typeof value !== 'function') return value;
+          if (prop === 'first') {
+            return async (...args) => {
+              const result = await value.apply(target, args);
+              reached();
+              await resume;
+              return result;
+            };
+          }
+          return (...args) => {
+            const out = value.apply(target, args);
+            return out === target ? proxy : out;
+          };
+        },
+      });
+      return proxy;
+    };
+    app.db = new Proxy(realDb, {
+      apply(target, thisArg, args) {
+        const builder = Reflect.apply(target, thisArg, args);
+        if (!armed || args[0] !== 'notification_devices') return builder;
+        armed = false;
+        return holdFirst(builder);
+      },
+    });
+    try {
+      const beat = register(PHONE, { platform: 'ios' });
+      await atPause;
+      // Meanwhile another account signs in on PHONE: it rings for them, and
+      // the owner's TABLET is promoted.
+      const takeover = await register(PHONE, { platform: 'ios' }, other.headers);
+      expect(takeover.json()).toMatchObject({ ringsUrgent: true });
+      release();
+      expect((await beat).statusCode).toBe(200);
+    } finally {
+      app.db = realDb;
+    }
+
+    const ringingOf = (userId) =>
+      tables.notification_devices
+        .filter((r) => r.user_id === userId && Number(r.rings_urgent) === 1)
+        .map((r) => r.id);
+    // Whoever owns PHONE in the end, each account has exactly one ringer.
+    expect(ringingOf(owner.user.id)).toHaveLength(1);
+    expect(ringingOf(other.user.id).length).toBeLessThanOrEqual(1);
+    const phone = tables.notification_devices.find((r) => r.id === PHONE);
+    expect(phone.user_id).toBe(owner.user.id);
+    expect(ringingOf(owner.user.id)).toEqual([TABLET]);
+  });
 });
