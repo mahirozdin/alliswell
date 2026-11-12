@@ -280,21 +280,19 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     return () => messenger?.showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Every reminder of this task that rings this occurrence: a snoozed task's
-  /// reminder and deadline rows land on one instant and show as this one
-  /// screen, and [AlarmOverlayController.handled] hides them together — so
-  /// Acknowledge answers all of them, never the shown row alone.
-  List<String> _occurrenceReminderIds() {
-    final key = alarmOccurrenceKey(widget.alarm);
-    return {
-      widget.alarm.reminderId,
-      for (final a in [
-        ...ref.read(alarmOverlayControllerProvider).ringing,
-        ...widget.alarms,
-      ])
-        if (alarmOccurrenceKey(a) == key) a.reminderId,
-    }.toList();
-  }
+  /// Every urgent reminder of this task in this alarm's minute
+  /// ([alarmMinuteMembers], ADR-0068): its reminder and deadline rows ring as
+  /// one member from the minute's first second and show as this one screen,
+  /// and [AlarmOverlayController.handled] hides them together — so
+  /// Acknowledge answers all of them, a row due later in the minute
+  /// included, never the shown row alone.
+  List<String> _occurrenceReminderIds() => {
+    for (final a in alarmMinuteMembers(widget.alarm, [
+      ..._controller.minuteMembers(widget.alarm),
+      ...widget.alarms,
+    ]))
+      a.reminderId,
+  }.toList();
 
   void _acknowledge() {
     final store = ref.read(reminderStoreProvider);

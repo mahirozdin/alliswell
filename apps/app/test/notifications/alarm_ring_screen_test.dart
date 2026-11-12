@@ -163,6 +163,7 @@ void main() {
     AlarmKitHost? alarmKitHost,
     List<Override> extra = const [],
     bool second = false,
+    DateTime? clock,
   }) async {
     await tester.pumpWidget(const SizedBox());
     container.dispose();
@@ -175,7 +176,7 @@ void main() {
         ),
         alarmFeedProvider.overrideWith((ref) => Stream.value(feed)),
         alarmClockProvider.overrideWithValue(
-          () => at.add(const Duration(minutes: 1)),
+          () => clock ?? at.add(const Duration(minutes: 1)),
         ),
         ...extra,
       ],
@@ -738,6 +739,69 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
     });
     await tester.pump();
+
+    final rows = await tester.runAsync(
+      () => (db.select(
+        db.reminders,
+      )..orderBy([(r) => OrderingTerm.asc(r.id)])).get(),
+    );
+    expect(
+      {for (final r in rows!) r.id: r.status},
+      {id('R1'): 'acknowledged', id('R1D'): 'acknowledged'},
+    );
+    await tester.pump(const Duration(seconds: 6));
+  });
+
+  // ADR-0068 decision 1: a task whose remind and due instants share the
+  // minute is one member. The minute rings from :00, so at :14 the :32
+  // deadline is already on this one screen: Acknowledge answers both and
+  // the screen closes, instead of the :32 row taking its place.
+  testWidgets('acknowledge answers the task\'s whole minute and closes at '
+      'once, a row due after the press included', (tester) async {
+    final deadline = AlarmInput(
+      reminderId: id('R1D'),
+      taskId: id('T1'),
+      taskTitle: 'Take pills',
+      remindAt: at.add(const Duration(seconds: 32)),
+      status: 'scheduled',
+      urgent: true,
+      requiresAcknowledgement: true,
+      kind: 'due',
+    );
+    await pumpLayer(
+      tester,
+      feed: [theAlarm(), deadline],
+      clock: at.add(const Duration(seconds: 14)),
+    );
+    await db
+        .into(db.reminders)
+        .insert(
+          RemindersCompanion.insert(
+            id: id('R1D'),
+            taskId: id('T1'),
+            remindAt: at.add(const Duration(seconds: 32)),
+            kind: const Value('due'),
+            status: const Value('scheduled'),
+            alarmLevel: const Value('urgent'),
+            requiresAcknowledgement: const Value(true),
+          ),
+        );
+    expect(
+      container.read(alarmOverlayControllerProvider).ringing,
+      hasLength(2),
+    );
+    expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
+    expect(find.byKey(const Key('alarm-ring-list')), findsNothing);
+
+    await tester.runAsync(() async {
+      await tester.tap(find.byKey(const Key('alarm-acknowledge')));
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+    });
+    // Dismissed in the tap: the :32 row does not replace the screen.
+    expect(container.read(alarmOverlayControllerProvider).ringing, isEmpty);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byKey(const Key('alarm-ring')), findsNothing);
 
     final rows = await tester.runAsync(
       () => (db.select(

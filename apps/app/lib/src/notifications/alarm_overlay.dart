@@ -213,6 +213,29 @@ DateTime? nextUrgentFireAfter(List<AlarmInput> alarms, DateTime now) {
 String alarmOccurrenceKey(AlarmInput a) =>
     '${a.taskId}|${alarmFireAt(a).millisecondsSinceEpoch}';
 
+/// [alarm] and every other urgent row of [alarms] for the same task in the
+/// same UTC minute: what one single-layout ring screen shows as ONE member
+/// (ADR-0068 decision 1 — a task whose remind and due instants share the
+/// minute is one member), so its action answers and dismisses all of them.
+/// Keyed on the minute, not the instant: the minute rings from its earliest
+/// second, so a row due at :32 is on the screen already at :14.
+List<AlarmInput> alarmMinuteMembers(
+  AlarmInput alarm,
+  Iterable<AlarmInput> alarms,
+) {
+  final minute = alarmMinuteOf(alarm);
+  final seen = <String>{'${alarm.reminderId}|${alarmOccurrenceKey(alarm)}'};
+  return [
+    alarm,
+    for (final a in alarms)
+      if (a.urgent &&
+          a.taskId == alarm.taskId &&
+          alarmMinuteOf(a) == minute &&
+          seen.add('${a.reminderId}|${alarmOccurrenceKey(a)}'))
+        a,
+  ];
+}
+
 /// A write the ring screen started that has to be repeatable: "Tekrar dene"
 /// runs the same thing again (#46).
 class AlarmPendingAction {
@@ -704,21 +727,32 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     _sounding = true;
   }
 
-  /// The ring screen calls this the moment the user acts: silence, dismiss;
-  /// the feed confirms a beat later.
+  /// [alarm]'s task in its minute ([alarmMinuteMembers]) over the rows on
+  /// screen and the whole feed: what the single layout answers as one.
+  List<AlarmInput> minuteMembers(AlarmInput alarm) => alarmMinuteMembers(
+    alarm,
+    [...state.ringing, ...?ref.read(alarmFeedProvider).value],
+  );
+
+  /// The ring screen calls this the moment the user acts: silence, dismiss
+  /// [alarm] with its task's other rows of the minute ([minuteMembers]) —
+  /// a sibling due later in the minute never takes the screen's place; the
+  /// feed confirms a beat later.
   void handled(AlarmInput alarm) {
-    final key = alarmOccurrenceKey(alarm);
-    _handled.add(key);
-    _failures.remove(key);
+    for (final a in minuteMembers(alarm)) {
+      final key = alarmOccurrenceKey(a);
+      _handled.add(key);
+      _failures.remove(key);
+    }
     silence();
     state = _evaluate(_feed());
   }
 
   /// Await [action]'s write after the screen closed. True when it landed; on
-  /// a throw the occurrence comes back with the error and stays silent
-  /// (decision K-01: say it, the alarm comes back) — no snackbar.
+  /// a throw [alarm]'s minute ([minuteMembers]) comes back with the error and
+  /// stays silent (decision K-01: say it, the alarm comes back) — no snackbar.
   Future<bool> commit(AlarmInput alarm, AlarmPendingAction action) =>
-      _commitAll([alarm], action);
+      _commitAll(minuteMembers(alarm), action);
 
   Future<bool> _commitAll(
     List<AlarmInput> alarms,
