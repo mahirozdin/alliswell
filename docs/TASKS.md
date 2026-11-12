@@ -266,7 +266,7 @@ Kritik yol: push-notifications. W4 · wire · #50.
 
 ## Epic 36 follow-up 2 — walkthrough leftovers (minor)
 
-Minor findings of the web and iOS simulator walkthroughs (2026-11-12) that the two polish rounds
+Minor findings of the web and iOS simulator walkthroughs (2026-11-12) that the three polish rounds
 left open, each with the reason. None blocks an alarm: every surface can still be silenced and
 saved. Each: failing test first where a test can see it, K1, `Changelog:` and `Device:` lines.
 
@@ -317,6 +317,28 @@ dimmed area above still closes it.
 - [ ] On iOS the element exposed as "Kapat" did nothing; tapping the dimmed area above the sheet
       closed it. The close control closes the sheet.
 - **Test first:** widget test — tap the close control, the sheet is gone. **Verify:** K1.
+
+### OPH-481 — A widget circle tap shows its done row only seconds later
+
+Found: iOS simulator walkthrough 3 (Z-01). Left open: WidgetKit reload timing, needs a device.
+
+- [ ] In the medium widget the circle shows no pressed or done state at first; the done row
+      appears after the second timeline reload, about 5 s after the intent ran (once 49 s). A user
+      may tap again, and a tap on a row already done opens the app. Measure on an iPhone; if the
+      lag holds, draw the queued completion in the first reload after the intent.
+- **Verify:** Mac XCTest on the timeline after an intent · iPhone, tap and time the redraw.
+
+### OPH-482 — Overdue tasks are headed "BUGÜN" in the widget
+
+Found: iOS simulator walkthroughs 1 and 3 (IOS-10, Z-03). Left open: a widget grouping change
+that touches both platforms and the PR-2 grouping fixture.
+
+- [ ] When every row is overdue the app shows "Geciken 7 · Bugün 0", but the widget heads them
+      "BUGÜN" in grey with grey times and no overdue cue. The snapshot has an `overdue` bucket, so
+      find where the medium widget's day view folds it under the "BUGÜN" header; draw overdue
+      rows as the app does ("Geciken", danger cue) on iOS and Android alike.
+- **Test first:** `widget_core_test.dart` (day 0 keeps overdue rows apart) and a Swift layout test
+  for the heading. **Verify:** K1 + Mac XCTest.
 
 ---
 

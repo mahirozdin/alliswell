@@ -81,14 +81,21 @@ This file holds the unreleased changes and the latest release; at each release t
   alarm without a relaunch. The alarm screen fits small browser windows without hiding "Start
   sound", and screen readers read it in order, one button per snooze option. When alarms from
   different minutes ring together the list no longer shows one misleading time, and a row's snooze
-  options say when they would ring with another alarm.
+  options say when they would ring with another alarm. Screen readers name each action in the list
+  of ringing alarms and every option of a row's snooze sheet as a button, Enter and the number keys
+  work again after that sheet closes, and the alarm screen no longer covers its text with a tooltip
+  that repeats a title already shown in full.
 - **Completing a task from the iPhone widget shows at once**
   ([#50](https://github.com/mahirozdin/alliswell/issues/50)). The row, the counts and the lock
   screen's next task update right away, and a day's count is its open tasks. The medium widget
   draws only whole rows, the circle is read aloud with the task's name, and the widget gallery text
-  is in the phone's language.
+  is in the phone's language. The "+N" line under the rows counts only the open tasks the widget
+  does not show, and disappears when every open task is shown.
 - **Typing a time in the time picker keeps the hour you typed.** In a 24-hour language such as
   Turkish, 05:25 no longer saves as 17:25, and 13:00 to 23:59 can be typed.
+- **Sync recovers by itself after a request that never answers.** Sync and the device list run
+  again on their own after a stalled connection, without reloading the app. On the web, an edit
+  made offline is no longer lost when the page is reloaded.
 
 ## [1.19.2] — 2026-11-09
 
