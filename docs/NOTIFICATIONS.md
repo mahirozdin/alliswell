@@ -419,7 +419,8 @@ Order on the Dart side: pull → per event one transaction (`insertReceiptIfAbse
 alarm log (`degraded`, lane `alarmkit`) → after the next plan pass, `clearFallbacks` for applied
 snoozes whose `scheduleOutcome` is not `ok` — unless that pass failed to schedule a notification for
 one of the snooze's tasks: then the fallback may be the only delivery left, and it waits for a pass
-that succeeds. Such a snooze is acked only after its `clearFallbacks`:
+that succeeds. Until then the plan's cancel-the-extras diff skips the fallback's id (the plugin
+lists it, no plan holds it), for every failed snooze a pull has seen, applied or not. Such a snooze is acked only after its `clearFallbacks`:
 until then its queue entry is what remembers the clear, so a process killed in between redelivers
 it (a no-op through its receipt) and the next launch's plan clears the fallback.
 

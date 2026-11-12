@@ -284,6 +284,12 @@ NotificationEvent notificationEventForAlarmKit(AlarmKitActionEvent event) =>
           : jsonEncode({'reminderId': event.reminderId}),
     );
 
+/// The notification id of the fallback a failed native snooze of [eventId]
+/// leaves: FNV-1a over `aw.fallback.<eventId>`, the number the notification
+/// plugin lists that request under (`AWAlarmFallback.notificationId`).
+int alarmKitFallbackNotificationId(String eventId) =>
+    notificationIdFor('aw.fallback.$eventId');
+
 /// The Dart side of the AlarmKit pull model (NOTIFICATIONS §2b.3): pull →
 /// apply each event in press order → ack it only after its transaction
 /// committed → copy native failures into the alarm log. A failed apply stops
@@ -299,6 +305,10 @@ NotificationEvent notificationEventForAlarmKit(AlarmKitActionEvent event) =>
 /// the clear, so a process killed in between redelivers it (a no-op through
 /// its receipt) and the next launch clears it. [beforePlan] is the
 /// scheduler's `drainActions` seam and [afterPlan] its post-plan hook.
+///
+/// The fallback is a notification the plugin lists like any other, under an
+/// id no plan holds; [heldFallbackIds] is the scheduler's `keepPendingIds`
+/// seam, so its diff leaves a fallback alone until [afterPlan] clears it.
 class AlarmKitActionPump {
   AlarmKitActionPump({required this.host, required this.apply, this.log});
 
@@ -314,6 +324,18 @@ class AlarmKitActionPump {
   /// Fallback event id → the tasks its notification rings for.
   final Map<String, List<String>> _fallbacksApplied = {};
   final Map<String, List<String>> _fallbacksArmed = {};
+
+  /// Every failed native snooze a pull has seen whose fallback is not cleared
+  /// yet — applied or not: one whose apply failed stays queued, and its
+  /// fallback is then the only thing that rings it.
+  final Set<String> _fallbacksHeld = {};
+
+  /// The notification ids of the fallbacks still on the OS as far as this
+  /// pump knows ([alarmKitFallbackNotificationId]).
+  Set<int> heldFallbackIds() => {
+    for (final eventId in _fallbacksHeld)
+      alarmKitFallbackNotificationId(eventId),
+  };
 
   /// One pull, serialized behind any pull already running.
   Future<void> pull() {
@@ -353,6 +375,7 @@ class AlarmKitActionPump {
       return;
     }
     ids.forEach(_fallbacksArmed.remove);
+    _fallbacksHeld.removeAll(ids);
     try {
       await host.ackActions(ids);
     } on Object {
@@ -361,12 +384,23 @@ class AlarmKitActionPump {
     }
   }
 
+  /// A native snooze whose own schedule failed left a fallback behind.
+  static bool _leftFallback(AlarmKitActionEvent event) =>
+      event.action == 'snooze' &&
+      event.scheduleOutcome != null &&
+      event.scheduleOutcome != 'ok';
+
   Future<void> _pullOnce() async {
     final List<AlarmKitActionEvent> events;
     try {
       events = await host.pullPendingActions();
     } on Object {
       return; // transient; the next resume or announcement pulls again
+    }
+    // Before any apply: an event that fails to apply breaks the loop, and
+    // the ones behind it still have their fallback on the OS.
+    for (final event in events) {
+      if (_leftFallback(event)) _fallbacksHeld.add(event.eventId);
     }
     for (final event in events) {
       try {
@@ -385,9 +419,7 @@ class AlarmKitActionPump {
       }
       // A redelivery too: its first apply may have died before the plan,
       // and clearing twice is harmless. Acked by [afterPlan], after the clear.
-      if (event.action == 'snooze' &&
-          event.scheduleOutcome != null &&
-          event.scheduleOutcome != 'ok') {
+      if (_leftFallback(event)) {
         if (!_fallbacksArmed.containsKey(event.eventId)) {
           _fallbacksApplied[event.eventId] = event.taskIds;
         }

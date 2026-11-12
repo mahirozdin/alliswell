@@ -479,6 +479,7 @@ void main() {
           alarmKit: host,
           drainActions: pump.beforePlan,
           afterPlan: pump.afterPlan,
+          keepPendingIds: pump.heldFallbackIds,
           clock: () => DateTime.utc(2030, 6, 1, 9, 1),
         );
         addTearDown(scheduler.dispose);
@@ -550,6 +551,57 @@ void main() {
         ]);
         expect(host.queue, isEmpty);
       });
+
+      test('the notification diff does not cancel the fallback the plugin '
+          'lists before a replacement is on the OS', () async {
+        // The fallback is a request the notification plugin lists under its
+        // numeric id, and that id is in no plan: the set-diff used to cancel
+        // it before the pass even tried the replacement.
+        final fallbackId = alarmKitFallbackNotificationId('ev-failed');
+        final host = FakeAlarmKitHost()
+          ..scheduleFailure = 'limit_reached'
+          ..queue.add(
+            native(
+              'ev-failed',
+              'snooze',
+              taskIds: [id('T1')],
+              untilMs: until.millisecondsSinceEpoch,
+              scheduleOutcome: 'limitReached',
+            ),
+          );
+        final gateway = FakeNotificationsGateway()
+          ..scheduled[fallbackId] = PlannedNotification(
+            id: fallbackId,
+            title: 'Acil iş',
+            body: '',
+            fireAt: until,
+            urgent: true,
+            payload: '{"eventId":"ev-failed"}',
+          )
+          ..failScheduleFor = (n) => n.id != fallbackId;
+        final pump = pumpFor(host);
+        final scheduler = schedulerFor(host, pump, gateway);
+        await scheduler.start();
+        for (var i = 0; i < 3; i++) {
+          await scheduler.applyOnce(snoozed);
+        }
+        expect(gateway.cancelled, isNot(contains(fallbackId)));
+        expect(gateway.scheduled.keys, [fallbackId], reason: 'it still rings');
+        expect(host.fallbacksCleared, isEmpty);
+
+        // Once a pass put the replacement on the OS, the fallback goes.
+        gateway.failScheduleFor = null;
+        await scheduler.applyOnce(snoozed);
+        expect(host.fallbacksCleared, [
+          ['ev-failed'],
+        ]);
+        expect(host.queue, isEmpty);
+      });
+    });
+
+    test('the fallback id is the one the native snooze gives its request', () {
+      // AWAlarmFallback.notificationId(eventId: "E-1") on the Swift side.
+      expect(alarmKitFallbackNotificationId('E-1'), 1019953648);
     });
 
     test('a receipted action pokes sync from inside its transaction, and '

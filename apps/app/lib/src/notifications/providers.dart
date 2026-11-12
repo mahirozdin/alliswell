@@ -599,6 +599,7 @@ final notificationSchedulerProvider = Provider.autoDispose<NotificationScheduler
     // fallback notification goes once a later plan rang the alarm itself.
     drainActions: pump.beforePlan,
     afterPlan: pump.afterPlan,
+    keepPendingIds: pump.heldFallbackIds,
     appliedEventIds: () async => {
       for (final r in await db.select(db.actionReceipts).get()) r.eventId,
     },
