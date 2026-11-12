@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/kv/local_kv.dart';
 import '../../core/reachability.dart';
 import '../../core/server_url.dart';
 import '../../notifications/web/alert_cache.dart';
@@ -49,8 +50,21 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final repository = AuthRepository(
     api: ref.watch(authApiProvider),
     storage: ref.watch(tokenStorageProvider),
-    onSessionUser: (userId, {required restored}) =>
-        ref.read(localDataGuardProvider).claimFor(userId, restored: restored),
+    onSessionUser: (userId, {required restored}) async {
+      // Read before the claim records the new owner: a restored session of
+      // somebody else is an account switch for the device gate (OPH-446).
+      final owner = await localKv.get(kReplicaOwnerKey);
+      await ref
+          .read(localDataGuardProvider)
+          .claimFor(userId, restored: restored);
+      await ref
+          .read(ringsUrgentStoreProvider)
+          .onSessionUser(
+            restored: restored,
+            switchedAccount: owner != null && owner != userId,
+          );
+      ref.invalidate(ringsUrgentHereProvider);
+    },
   );
   ref.onDispose(repository.dispose);
   return repository;

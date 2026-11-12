@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/app_version.dart';
 import '../../core/firebase/push_messaging.dart';
 import '../../i18n/i18n.dart';
+import '../../notifications/device_gate.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
 import 'data/device_api.dart';
@@ -103,6 +104,19 @@ final deviceDescriptorProvider = Provider<DeviceDescriptor?>((ref) {
   );
 });
 
+/// This device's cached ringsUrgent (OPH-446) — LocalKv-backed, so a test
+/// can hand it its own store.
+final ringsUrgentStoreProvider = Provider<RingsUrgentStore>(
+  (_) => RingsUrgentStore(),
+);
+
+/// Whether urgent alarms ring on this device (#48). Re-read whenever the
+/// session hook or a register response changes the stored answer; the alarm
+/// paths apply it through `forThisDevice`.
+final ringsUrgentHereProvider = FutureProvider<RingsUrgentHere>(
+  (ref) => ref.watch(ringsUrgentStoreProvider).read(),
+);
+
 /// Deliberately NOT rebuilt by the session: it remembers which id it registered
 /// so sign-out can delete that row, and a rebuild between the two would leave
 /// the row behind.
@@ -111,6 +125,8 @@ final deviceRegistryProvider = Provider<DeviceRegistry>(
     api: ref.watch(deviceApiProvider),
     readClientId: () => ref.read(syncClientIdProvider.future),
     describe: () => ref.read(deviceDescriptorProvider),
+    ringsUrgent: ref.watch(ringsUrgentStoreProvider),
+    onRingsUrgentChanged: () => ref.invalidate(ringsUrgentHereProvider),
   ),
 );
 
