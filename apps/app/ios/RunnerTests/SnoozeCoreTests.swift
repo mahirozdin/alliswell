@@ -324,6 +324,68 @@ final class SnoozeCoreTests: XCTestCase {
       ])
   }
 
+  /// #47 D6 variant: three urgent alarms ring as one group alarm at 12:00 and
+  /// another task's alarm is already at 12:05. The native Ertele (5 dk) is one
+  /// press for the whole group: one new alarm for every member, one minute
+  /// later than the taken 12:05, with the group title kept, and one event.
+  func testGroupSnoozeEnqueuesOneEventWithEveryTaskId() async {
+    let ops = FakeOps()
+    let group = ["t3", "t1", "t2"]
+    ledger.write(
+      AWAlarmLedgerRecord(
+        id: ringingId, fp: 1, members: ["t1", "t2", "t3"], fireAtMs: ringingFireAtMs,
+        origin: "dart"))
+    let otherId = 777
+    let otherFireAtMs: Int64 = 1_784_117_100_000  // 12:05:00, another task
+    ledger.write(
+      AWAlarmLedgerRecord(
+        id: otherId, fp: 2, members: ["other"], fireAtMs: otherFireAtMs, origin: "dart"))
+
+    let groupRequest = AWSnoozeRequest(
+      taskIds: group, alarmId: ringingId, fireAtMs: ringingFireAtMs, title: "3 acil alarm",
+      body: "", soundName: "", stopLabel: "Onayla", snoozeLabel: "Ertele", preset: "5_min")
+    let result = await run(ops, groupRequest, eventId: "G-1")
+
+    // 12:05:30 is taken by the other task: the whole group moves to 12:06:30.
+    let untilMs = expectedUntilMs + 60_000
+    let newId = AWAlarmIdentity.occurrenceId(members: ["t1", "t2", "t3"], fireAtMs: untilMs)
+    XCTAssertEqual(result.untilMs, untilMs)
+    XCTAssertEqual(result.newId, newId)
+    XCTAssertEqual(ops.calls, ["schedule:\(newId)", "stop:\(ringingId)"])
+    XCTAssertEqual(ops.scheduled.count, 1)
+    XCTAssertEqual(ops.scheduled.first?.members, ["t1", "t2", "t3"])
+    XCTAssertEqual(ops.scheduled.first?.title, "3 acil alarm")
+    XCTAssertEqual(ops.scheduled.first?.fireAtMs, untilMs)
+
+    // One event for every member, in the order the alert carried them.
+    XCTAssertEqual(
+      queued,
+      [
+        AWAlarmActionEvent(
+          eventId: "G-1", action: "snooze", taskIds: group, untilMs: untilMs,
+          occurrenceFireAtMs: ringingFireAtMs, pressedAtMs: AWAlarmActionQueue.epochMs(now),
+          origin: "alarmkit", alarmId: ringingId, newId: newId, scheduleOutcome: "ok",
+          stopOutcome: "stopped")
+      ])
+
+    // The other task's alarm is untouched; the group's old record is gone.
+    XCTAssertNotNil(ledger.record(id: otherId))
+    XCTAssertNil(ledger.record(id: ringingId))
+    XCTAssertEqual(ledger.record(id: newId)?.members, ["t1", "t2", "t3"])
+    XCTAssertTrue(failures.isEmpty)
+  }
+
+  func testGroupStopEnqueuesOneAcknowledgeForTheWholeOccurrence() {
+    AWSnoozeCore.acknowledge(
+      taskIds: ["t3", "t1", "t2", "t1"], alarmId: ringingId, fireAtMs: ringingFireAtMs,
+      ledger: ledger, queue: defaults, now: now, eventId: "GA-1", notify: false)
+
+    XCTAssertEqual(queued.count, 1)
+    XCTAssertEqual(queued.first?.taskIds, ["t3", "t1", "t2"])
+    XCTAssertEqual(queued.first?.occurrenceFireAtMs, ringingFireAtMs)
+    XCTAssertEqual(queued.first?.action, "acknowledge")
+  }
+
   func testAlarmUUIDRoundTripsAndRejectsForeignIds() {
     for id in [0, 1, 4_242, Int(Int32.max)] {
       XCTAssertEqual(AWAlarmUUID.appId(from: AWAlarmUUID.uuid(for: id)), id)

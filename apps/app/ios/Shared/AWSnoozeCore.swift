@@ -66,7 +66,7 @@ enum AWSnoozeTarget {
   /// calendar day after the press, also when pressed before 09:00. Nil for an
   /// unknown preset. Not floored: the caller floors to the second.
   ///
-  /// The +1 minute rule for an occupied minute is not applied here.
+  /// The +1 minute rule for an occupied minute is applied by [compute].
   static func base(pressedAt: Date, preset: String, calendar: Calendar) -> Date? {
     switch preset {
     case "5_min": return pressedAt.addingTimeInterval(5 * 60)
@@ -82,6 +82,43 @@ enum AWSnoozeTarget {
       return calendar.date(from: parts)
     default: return nil
     }
+  }
+
+  /// How many times the +1 minute rule may move a target.
+  static let maxShifts = 30
+
+  /// The native snooze target in UTC epoch ms (§2b.3 "Native snooze", steps
+  /// 2–3): [base] floored to the second, then — native only, #47 — moved
+  /// +60 s while [ledger] holds a record OTHER than [snoozedAlarmId] whose
+  /// UTC minute (`floor(fireAtMs / 60000)`) is the target's; at most
+  /// [maxShifts] times, then the last target stays (the Dart plan then
+  /// groups that minute into one alarm). The whole group moves together:
+  /// one press, one target, one new alarm. Seconds are kept. Nil for an
+  /// unknown preset.
+  ///
+  /// Only the ledger is read — no `takenMinutes` table; Dart writes the
+  /// result unchanged and never shifts.
+  static func compute(
+    pressedAt: Date, preset: String, ledger: [AWAlarmLedgerRecord], snoozedAlarmId: Int?,
+    calendar: Calendar
+  ) -> Int64? {
+    guard let target = base(pressedAt: pressedAt, preset: preset, calendar: calendar) else {
+      return nil
+    }
+    var ms = AWAlarmIdentity.fireAtMs(target)
+    let taken = Set(ledger.lazy.filter { $0.id != snoozedAlarmId }.map { minute(of: $0.fireAtMs) })
+    var shifts = 0
+    while shifts < maxShifts, taken.contains(minute(of: ms)) {
+      ms += 60_000
+      shifts += 1
+    }
+    return ms
+  }
+
+  /// The UTC minute of [ms]: `floor(ms / 60000)`, also below the epoch.
+  static func minute(of ms: Int64) -> Int64 {
+    let q = ms / 60_000
+    return (ms % 60_000 < 0) ? q - 1 : q
   }
 }
 
@@ -262,14 +299,19 @@ enum AWSnoozeCore {
         eventId: eventId, stage: stage, code: code, message: message, at: now, in: failures)
     }
 
-    // (2) The target, from the press instant; floored to the second.
-    let target =
-      AWSnoozeTarget.base(pressedAt: now, preset: request.preset, calendar: calendar)
-      ?? AWSnoozeTarget.base(
-        pressedAt: now, preset: AWSnoozeTarget.defaultPreset, calendar: calendar)!
-    let untilMs = AWAlarmIdentity.fireAtMs(target)
+    // (2)+(3) The target, from the press instant, floored to the second and
+    // moved off any minute another alarm of the ledger holds. Read before (5)
+    // forgets the ringing alarm, which never counts anyway.
+    let held = ledger?.records() ?? []
+    let untilMs =
+      AWSnoozeTarget.compute(
+        pressedAt: now, preset: request.preset, ledger: held, snoozedAlarmId: request.alarmId,
+        calendar: calendar)
+      ?? AWSnoozeTarget.compute(
+        pressedAt: now, preset: AWSnoozeTarget.defaultPreset, ledger: held,
+        snoozedAlarmId: request.alarmId, calendar: calendar)!
 
-    // (3) The new occurrence's identity.
+    // The new occurrence's identity: every member of the group, one alarm.
     let members = AWAlarmIdentity.members(request.taskIds)
     let newId = AWAlarmIdentity.occurrenceId(members: members, fireAtMs: untilMs)
     let fp = AWAlarmIdentity.fingerprint(
@@ -347,7 +389,8 @@ enum AWSnoozeCore {
       }
     }
 
-    // (8) Park the press for Dart: it writes `untilMs` unchanged.
+    // (8) Park the press for Dart: ONE event for every member of the group;
+    // Dart writes `untilMs` unchanged.
     AWAlarmActionQueue.enqueue(
       action: "snooze", taskIds: request.taskIds, origin: "alarmkit", untilMs: untilMs,
       occurrenceFireAtMs: request.fireAtMs, alarmId: request.alarmId,

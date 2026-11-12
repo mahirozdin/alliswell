@@ -279,9 +279,10 @@ enum AWAlarmIntentArgs {
 // only `taskId` / `reminderId` (and `preset`), and a missing non-optional
 // parameter would make the system ask for a value no one is there to give.
 #if canImport(AppIntents) && os(iOS)
-  /// "Onayla" on the AlarmKit alert. Acknowledges every member's active urgent
-  /// reminder at the instant that rang (and so on every other device, through
-  /// sync). AlarmKit stops the alert itself; the ledger forgets the alarm.
+  /// "Onayla" on the AlarmKit alert. One `acknowledge` event for the whole
+  /// group: every member's active urgent reminder at the instant that rang
+  /// (`occurrenceFireAtMs`; and so on every other device, through sync).
+  /// AlarmKit stops the alert itself; the ledger forgets the alarm.
   @available(iOS 26.0, *)
   struct AWAlarmStopIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Acknowledge alarm"
@@ -319,10 +320,13 @@ enum AWAlarmIntentArgs {
   /// With `.custom` the system only runs this intent — nothing silences the
   /// alert unless it does. It carries the whole presentation, so the snooze
   /// happens natively and completely, app running or not
-  /// (`AWSnoozeCore.run`): the target is computed at the press, the new alarm
+  /// (`AWSnoozeCore.run`): the target is computed at the press (+1 minute
+  /// while the ledger holds another alarm in that minute, #47), the new alarm
   /// is scheduled, the ringing one is ALWAYS stopped, a failed schedule leaves
   /// a fallback notification, and the press is parked for Dart with its
-  /// `untilMs`. It never throws: a throwing intent leaves the alarm ringing.
+  /// `untilMs`. A group alarm (several `taskIds`, title "3 acil alarm") moves
+  /// as one: one new alarm with the same title and members, one event. It
+  /// never throws: a throwing intent leaves the alarm ringing.
   @available(iOS 26.0, *)
   struct AWAlarmSnoozeIntent: LiveActivityIntent {
     static var title: LocalizedStringResource = "Snooze alarm"
