@@ -6,7 +6,6 @@ import '../../core/tr_locative.dart';
 import '../../i18n/i18n.dart';
 import '../../sync/providers.dart' show syncClientIdProvider;
 import '../../theme/tokens.dart';
-import '../../widgets/status_views.dart';
 import '../workspaces/workspaces.dart' show currentUserIdProvider;
 import 'data/device_api.dart';
 import 'device_display_name.dart';
@@ -50,7 +49,8 @@ DeviceInfo? newDeviceCardRinger(DevicesView view, String thisId) {
 }
 
 /// "Bu cihazda acil alarmlar kapalı. Alarmlar iPhone 16’da çalıyor."
-/// [Bu cihazda da çal] [Tamam] — once per account and install, so a device
+/// [Tamam] [Bu cihazda da çal] — the filled primary action last, as mockup
+/// D7/D8 draws it — once per account and install, so a device
 /// that joined switched off learns where its alarms ring without opening
 /// Settings (#48, OPH-449). Builds nothing when there is nothing to say.
 class NewDeviceAlarmCard extends ConsumerStatefulWidget {
@@ -111,8 +111,10 @@ class _NewDeviceAlarmCardState extends ConsumerState<NewDeviceAlarmCard> {
       deviceDisplayName(ringer),
       languageCode: AwI18n.instance.locale.languageCode,
     );
+    // Home's notices keep a 16 side margin (X-03), like the missed-alarm card
+    // above it.
     return Padding(
-      padding: kAwListRowPadding,
+      padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x2, AwSpace.x4, 0),
       child: Card(
         key: const Key('new-device-alarm-card'),
         child: Padding(
@@ -161,7 +163,8 @@ class _NewDeviceAlarmCardState extends ConsumerState<NewDeviceAlarmCard> {
                   ),
                   SizedBox(
                     height: 48,
-                    child: TextButton(
+                    // The primary action, last (mockup D7/D8).
+                    child: FilledButton(
                       key: const Key('new-device-card-turn-on'),
                       onPressed: _busy ? null : () => _turnOn(key, thisId),
                       child: Text('settings.devices.newDeviceTurnOn'.tr()),

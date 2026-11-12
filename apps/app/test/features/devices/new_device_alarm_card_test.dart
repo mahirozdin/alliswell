@@ -200,6 +200,54 @@ void main() {
     );
   });
 
+  // X-03 (OPH-449): the card ran edge to edge, and its primary action was a
+  // text button like "Tamam". Mockup D7/D8: Home's 16 side margin, "Tamam"
+  // then the filled "Bu cihazda da çal" — the primary action last.
+  testWidgets('the card keeps Home\'s side margin, puts the primary action '
+      'last and names a device that ends in a parenthesis', (tester) async {
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+    await tester.binding.setSurfaceSize(const Size(430, 932));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final kv = _MemoryKv();
+    await _pump(
+      tester,
+      _FakeApi([
+        _row(_thisId, 'web', 'Chrome · Linux', false),
+        _row(_phoneId, 'ios', 'iPhone 15 (test)', true),
+      ]),
+      kv,
+    );
+    final card = find.byKey(const Key('new-device-alarm-card'));
+    expect(tester.getTopLeft(card).dx, 16);
+    expect(tester.getTopRight(card).dx, 430 - 16);
+    expect(
+      find.text(
+        'Bu cihazda acil alarmlar kapalı. Alarmlar iPhone 15 (test)’te '
+        'çalıyor.',
+      ),
+      findsOneWidget,
+    );
+
+    final ok = find.byKey(const Key('new-device-card-ok'));
+    final turnOn = find.byKey(const Key('new-device-card-turn-on'));
+    expect(tester.widget(ok), isA<TextButton>());
+    expect(tester.widget(turnOn), isA<FilledButton>());
+    // After "Tamam": beside it, or — when the label does not fit beside it
+    // (the test font is wide) — on the next line, still at the end.
+    final okAt = tester.getTopLeft(ok);
+    final turnOnAt = tester.getTopLeft(turnOn);
+    expect(
+      turnOnAt.dy > okAt.dy ||
+          (turnOnAt.dy == okAt.dy && okAt.dx < turnOnAt.dx),
+      isTrue,
+    );
+    expect(tester.getTopRight(turnOn).dx, lessThanOrEqualTo(430 - 16));
+    for (final button in [ok, turnOn]) {
+      expect(tester.getSize(button).height, greaterThanOrEqualTo(48));
+    }
+  });
+
   testWidgets('no card when this device rings or nothing else does', (
     tester,
   ) async {
