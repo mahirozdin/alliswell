@@ -8,6 +8,7 @@ import '../theme/typography.dart';
 import 'alarm_minute_tick.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
+import 'urgent_minute.dart';
 
 /// What the person picked in a row's snooze sheet (#47, OPH-443).
 sealed class AlarmSheetChoice {
@@ -62,6 +63,7 @@ Future<bool> showAlarmSnoozeSheet(
   required DateTime Function() now,
   required String dateFormat,
   required void Function(AlarmSheetChoice choice) onChoose,
+  List<AlarmInput> alarms = const [],
 }) async {
   var chosen = false;
   final scheme = Theme.of(context).colorScheme;
@@ -90,6 +92,7 @@ Future<bool> showAlarmSnoozeSheet(
         presets: presets,
         now: now,
         dateFormat: dateFormat,
+        alarms: alarms,
         onChoose: choose,
       );
     },
@@ -104,6 +107,7 @@ class _AlarmSnoozeSheet extends StatefulWidget {
     required this.now,
     required this.dateFormat,
     required this.onChoose,
+    this.alarms = const [],
   });
 
   final AlarmInput alarm;
@@ -111,6 +115,10 @@ class _AlarmSnoozeSheet extends StatefulWidget {
   final DateTime Function() now;
   final String dateFormat;
   final void Function(AlarmSheetChoice choice) onChoose;
+
+  /// The planner's active alarms: a preset whose minute another task's
+  /// urgent alarm already holds says it rings together with it (X-04).
+  final List<AlarmInput> alarms;
 
   @override
   State<_AlarmSnoozeSheet> createState() => _AlarmSnoozeSheetState();
@@ -131,6 +139,16 @@ class _AlarmSnoozeSheetState extends State<_AlarmSnoozeSheet>
     if (day == today) return time;
     return 'alarm.sheet.tomorrowAt'.tr(args: {'time': time});
   }
+
+  /// Another task's urgent alarm already rings in [until]'s minute (owner
+  /// answer 3: the snooze joins that group; the tile says so, so does this).
+  bool _joins(DateTime until) =>
+      urgentAlarmsInMinute(
+        widget.alarms,
+        until,
+        exceptTaskIds: {widget.alarm.taskId},
+      ) >
+      0;
 
   @override
   Widget build(BuildContext context) {
@@ -170,6 +188,9 @@ class _AlarmSnoozeSheetState extends State<_AlarmSnoozeSheet>
               key: Key('alarm-sheet-snooze-$preset'),
               icon: Icons.schedule,
               label: kSnoozePresetLabels[preset]!.tr(),
+              hint: _joins(TaskStore.snoozeUntilFor(preset, now: shownAt))
+                  ? 'alarm.sheet.joinsGroup'.tr()
+                  : null,
               trailing: _lands(
                 TaskStore.snoozeUntilFor(preset, now: shownAt),
                 shownAt,

@@ -1066,7 +1066,8 @@
     "completed": "Completed",
     "sheet": {
       "other": "More",
-      "tomorrowAt": "tomorrow {time}"
+      "tomorrowAt": "tomorrow {time}",
+      "joinsGroup": "with another alarm"
     },
     "row": {
       "failed": "Not saved"

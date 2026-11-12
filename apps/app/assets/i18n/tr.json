@@ -1065,7 +1065,8 @@
     "completed": "Tamamlandı",
     "sheet": {
       "other": "Diğer",
-      "tomorrowAt": "yarın {time}"
+      "tomorrowAt": "yarın {time}",
+      "joinsGroup": "başka alarmla birlikte"
     },
     "row": {
       "failed": "Kaydedilmedi"

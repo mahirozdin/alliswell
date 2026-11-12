@@ -56,6 +56,16 @@ List<AlarmInput> alarmRowsByTask(List<AlarmInput> ringing) {
   ];
 }
 
+/// Whether every row rings in one minute (the planner's UTC minute, ADR-0068):
+/// only then does the list header name a time (X-05). Rows of several
+/// minutes — a list grown while it rang — each show their own time.
+bool alarmRowsShareMinute(List<AlarmInput> rows) =>
+    {
+      for (final a in rows)
+        alarmFireAt(a).toUtc().millisecondsSinceEpoch ~/ 60000,
+    }.length <=
+    1;
+
 /// The ring screen's list mode (#47, OPH-443, mockups A3/A8/A9): two or more
 /// tasks ring in one minute, so ONE screen lists them under one sound. A
 /// header (badge + "3 ACİL HATIRLATMA · 09:00"), the rows scrolling in the
@@ -158,12 +168,15 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
     if (!mounted) return;
     final tasks = alarmRowsByTask(widget.rows);
     if (tasks.isEmpty) return;
-    final message = 'alarm.ringing.announceList'.tr(
-      args: {
-        'count': '${tasks.length}',
-        'time': _clock(alarmFireAt(tasks.first)),
-      },
-    );
+    // X-05: a time only when the rows share it.
+    final message = alarmRowsShareMinute(tasks)
+        ? 'alarm.ringing.announceList'.tr(
+            args: {
+              'count': '${tasks.length}',
+              'time': _clock(alarmFireAt(tasks.first)),
+            },
+          )
+        : 'alarm.ringing.count'.tr(args: {'count': '${tasks.length}'});
     unawaited(
       SemanticsService.sendAnnouncement(
         View.of(context),
@@ -272,6 +285,9 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
       presets: ref.read(snoozePresetOrderProvider),
       now: ref.read(nowProvider),
       dateFormat: ref.read(dateFormatProvider),
+      // X-04: a preset landing in a minute another task's urgent alarm
+      // holds says so, as the single layout's tile does.
+      alarms: widget.alarms,
       onChoose: (choice) => switch (choice) {
         AlarmSheetSnooze(:final until) => _snoozeRow(row, until),
         AlarmSheetCustom() => unawaited(_pickTime(row: row, backOut: backOut)),
@@ -354,6 +370,9 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
     );
     final tasks = alarmRowsByTask(widget.rows);
     final count = tasks.length;
+    // X-05: the header named the oldest row's time for rows of several
+    // minutes; then only the count, each card says its own time.
+    final oneMinute = alarmRowsShareMinute(tasks);
     final clock = tasks.isEmpty ? '' : _clock(alarmFireAt(tasks.first));
     final time =
         tasks.isNotEmpty &&
@@ -375,7 +394,10 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
         letterSpacing: 1.2,
       ),
     );
+    // X-07: a heading node of its own — without `container` it merged into
+    // the screen's node and named the whole list.
     final header = Semantics(
+      container: true,
       header: true,
       child: Row(
         key: const Key('alarm-list-header'),
@@ -398,10 +420,11 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
                     ),
                     style: headerStyle.copyWith(color: tokens.errorOnPage),
                   ),
-                  TextSpan(
-                    text: ' · $time',
-                    style: headerStyle.copyWith(color: scheme.onSurface),
-                  ),
+                  if (oneMinute)
+                    TextSpan(
+                      text: ' · $time',
+                      style: headerStyle.copyWith(color: scheme.onSurface),
+                    ),
                 ],
               ),
               key: const Key('alarm-list-header-text'),
@@ -503,27 +526,34 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
       canPop: false,
       // OPH-393 (E-20): nothing behind the list is in the semantics tree.
       child: BlockSemantics(
-        child: Material(
-          key: const Key('alarm-ring-list'),
-          color: background,
-          child: CallbackShortcuts(
-            bindings: _shortcuts(),
-            child: SafeArea(
-              // W-13: the single layout's 24 pt side margins and its column
-              // (at most 440 wide, centred).
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AwSpace.x6,
-                  AwSpace.x4,
-                  AwSpace.x6,
-                  AwSpace.x4,
-                ),
-                child: Center(
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(
-                      maxWidth: kAlarmRingMaxWidth,
+        // X-07: a group with no name of its own; the header, each card with
+        // its two buttons, the tiles and "Acknowledge all" are nodes of their
+        // own, in reading order (spec §1.8).
+        child: Semantics(
+          container: true,
+          explicitChildNodes: true,
+          child: Material(
+            key: const Key('alarm-ring-list'),
+            color: background,
+            child: CallbackShortcuts(
+              bindings: _shortcuts(),
+              child: SafeArea(
+                // W-13: the single layout's 24 pt side margins and its column
+                // (at most 440 wide, centred).
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(
+                    AwSpace.x6,
+                    AwSpace.x4,
+                    AwSpace.x6,
+                    AwSpace.x4,
+                  ),
+                  child: Center(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        maxWidth: kAlarmRingMaxWidth,
+                      ),
+                      child: body,
                     ),
-                    child: body,
                   ),
                 ),
               ),
@@ -748,6 +778,7 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
         AwAlarmActionTile(
           key: Key('alarm-all-snooze-$preset'),
           label: kSnoozePresetLabels[preset]!.tr(),
+          semanticLabel: kSnoozePresetSpokenLabels[preset]!.tr(),
           subline: () {
             final until = TaskStore.snoozeUntilFor(preset, now: now);
             final others = urgentAlarmsInMinute(
@@ -795,12 +826,16 @@ class _AlarmRingListState extends ConsumerState<AlarmRingList>
           ),
           const SizedBox(height: AwSpace.x3),
         ],
-        Text(
-          'alarm.snoozeAll'.tr(),
-          key: const Key('alarm-snooze-all-label'),
-          style: text.labelMedium?.copyWith(
-            color: scheme.onSurfaceVariant,
-            fontWeight: FontWeight.w600,
+        Semantics(
+          container: true,
+          header: true,
+          child: Text(
+            'alarm.snoozeAll'.tr(),
+            key: const Key('alarm-snooze-all-label'),
+            style: text.labelMedium?.copyWith(
+              color: scheme.onSurfaceVariant,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
         const SizedBox(height: AwSpace.x2),
