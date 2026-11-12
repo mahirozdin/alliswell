@@ -146,7 +146,7 @@ Future<bool> handleNotificationEvent(
 /// and its outbox mutation for every member. A throw anywhere rolls the
 /// receipt back with the write, so the next pull applies the event again.
 /// The alarm-log row is written once, after the commit, under the event's
-/// lane.
+/// lane; so is the one sync poke for the whole event.
 Future<bool> _applyOnce(
   NotificationEvent event, {
   required AwDatabase db,
@@ -239,6 +239,10 @@ Future<bool> _applyOnce(
     }
   });
   if (!applied) return false;
+  // The stores do not poke from inside the receipt transaction (a sync
+  // round born there would run against it once it closed): one poke
+  // now, after the commit, carries every member's mutation.
+  tasks.pokeSync();
   onCommitted?.call(eventId);
 
   await log?.record(

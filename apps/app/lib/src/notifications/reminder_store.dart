@@ -277,7 +277,8 @@ class ReminderStore {
         patch: {'status': 'acknowledged'},
       );
     });
-    _poke();
+    // Receipted: the applier pokes after the caller's transaction (OPH-427).
+    if (receiptId == null) _poke();
   }
 
   /// A grouped stop (OPH-439, NOTIFICATIONS §2b.3): every member's active
@@ -339,7 +340,7 @@ class ReminderStore {
         wrote = true;
       }
     });
-    if (wrote) _poke();
+    if (wrote && receiptId == null) _poke();
   }
 
   /// The active urgent reminders of [taskId] an AlarmKit stop acknowledges

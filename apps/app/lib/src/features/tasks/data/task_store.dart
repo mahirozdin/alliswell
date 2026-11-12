@@ -578,7 +578,9 @@ class TaskStore {
         patch: effective,
       );
     });
-    _poke();
+    // A receipted write is still inside the caller's transaction: the
+    // applier pokes once that one commits (OPH-427).
+    if (receiptId == null) _poke();
   }
 
   /// Set or clear a task's "when" (OPH-372, ADR-0053) — a DAY, stored as its
@@ -719,8 +721,13 @@ class TaskStore {
         wrote = true;
       }
     });
-    if (wrote) _poke();
+    if (wrote && receiptId == null) _poke();
   }
+
+  /// Pokes sync once for writes that were part of a caller's transaction
+  /// (a receipted action, OPH-427) — call it after that transaction
+  /// committed, never inside it.
+  void pokeSync() => _poke();
 
   /// A write made for a pulled action must sit in the transaction that holds
   /// its receipt (NOTIFICATIONS §2b.3); one without it is a caller bug.

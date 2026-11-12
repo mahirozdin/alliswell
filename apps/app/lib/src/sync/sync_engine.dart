@@ -85,19 +85,33 @@ class SyncEngine {
     this.maxBackoff = const Duration(seconds: 60),
     Future<String?> Function()? installClientId,
   }) : _installClientId = installClientId ?? _storedInstallClientId,
-       _zone = Zone.current;
+       _zone = _zoneOutsideTransactions(db);
 
   /// The id an account switch carried over ([kInstallClientIdKey]), read only
   /// when the replica holds no state row to take it from.
   final Future<String?> Function() _installClientId;
 
-  /// The zone the engine was made in. Its rounds and timers run here, never
-  /// in a caller's: a store pokes [notifyLocalWrite] from inside drift's
-  /// transaction zone when its write is part of a caller's transaction (a
-  /// receipted alarm action, OPH-427), and a timer born there would query
-  /// that transaction after it closed — on the remote executor the request
-  /// never answers and the engine stays running for good.
+  /// The zone the engine was made in, with every drift transaction of [db]
+  /// stepped out of. Its rounds and every timer (debounce, retry, periodic
+  /// pull) run here, never in a caller's: a round asked for from inside a
+  /// transaction — a poke from a receipted alarm action (OPH-427), or an
+  /// engine a provider first built during one — would otherwise query that
+  /// transaction after it closed; on the remote executor of a release build
+  /// the request never answers and the engine stays running for good.
+  ///
+  /// Not [Zone.root]: a widget test's fake clock is the zone the engine is
+  /// made in, and a round outside it would never finish under that clock.
   final Zone _zone;
+
+  /// The nearest zone at or above the current one in which [db] resolves to
+  /// itself, i.e. no transaction of it is open there.
+  static Zone _zoneOutsideTransactions(AwDatabase db) {
+    var zone = Zone.current;
+    while (zone.run(() => db.inTransactionZone)) {
+      zone = zone.parent ?? Zone.root;
+    }
+    return zone;
+  }
 
   final AwDatabase db;
   final SyncApi api;
@@ -128,7 +142,9 @@ class SyncEngine {
     _stopped = false;
     await _ensureState();
     if (pullInterval != null) {
-      _pullTimer ??= Timer.periodic(pullInterval!, (_) => syncNow());
+      _pullTimer ??= _zone.run(
+        () => Timer.periodic(pullInterval!, (_) => syncNow()),
+      );
     }
     await syncNow();
   }
@@ -230,9 +246,11 @@ class SyncEngine {
   void _scheduleRetry() {
     if (_stopped) return;
     _retryTimer?.cancel();
-    _retryTimer = Timer(
-      syncBackoffDelay(_consecutiveFailures, cap: maxBackoff),
-      syncNow,
+    _retryTimer = _zone.run(
+      () => Timer(
+        syncBackoffDelay(_consecutiveFailures, cap: maxBackoff),
+        syncNow,
+      ),
     );
   }
 

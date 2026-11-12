@@ -1203,6 +1203,15 @@ class TicketComments extends Table {
 class AwDatabase extends _$AwDatabase {
   AwDatabase(super.e);
 
+  /// Whether code running in the current zone runs inside one of this
+  /// database's transactions: drift then resolves every query to that
+  /// transaction, also after it closed. The sync engine steps out of such a
+  /// zone (OPH-427). drift marks [resolvedEngine]
+  /// internal; this is its one read in the app.
+  bool get inTransactionZone =>
+      // ignore: invalid_use_of_internal_member
+      !identical(resolvedEngine, this);
+
   /// Bump this for every schema change AND add the matching step below.
   /// v1 → v2 (OPH-081): tasks.calendar_mirror_enabled.
   /// v2 → v3 (OPH-083): external_events (the user's own calendar).
