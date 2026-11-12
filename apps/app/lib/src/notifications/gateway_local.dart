@@ -476,6 +476,11 @@ class LocalNotificationsGateway implements NotificationsGateway {
   @override
   Future<void> cancel(int id) => _plugin.cancel(id: id);
 
+  /// The plugin's own: pending requests and presented notifications alike,
+  /// on every platform it runs on.
+  @override
+  Future<void> cancelAll() => _plugin.cancelAll();
+
   /// Android only (OPH-445). The plugin returns no payload for a shown
   /// notification, so the one [schedule] stored maps it to its reminders;
   /// every other platform answers an empty list and stays as it was.

@@ -350,6 +350,24 @@ void main() {
         ),
       );
       alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+      // revocation-leaves-delivered-alarm: one alarm is already presented —
+      // an Android notification looping its sound, an AlarmKit alert on the
+      // screen. Signed out, nothing in the app can silence them any more.
+      await gateway.schedule(
+        PlannedNotification(
+          id: 12,
+          title: 'AllisWell',
+          body: marker,
+          fireAt: DateTime.utc(2026, 11, 12, 9),
+          urgent: true,
+          payload: '{}',
+        ),
+      );
+      gateway.deliver(12);
+      alarmKit.foreign[23] = const AlarmKitScheduled(
+        id: 23,
+        state: AlarmKitAlarmState.alerting,
+      );
     });
 
     final token = await tester.runAsync(
@@ -358,7 +376,7 @@ void main() {
     await tester.runAsync(() async {
       for (var i = 0; i < 50; i++) {
         if (await localKv.get(kReplicaOwnerKey) == null &&
-            alarmKit.cancelled.isNotEmpty) {
+            alarmKit.cancelled.length >= 2) {
           break;
         }
         await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -385,8 +403,11 @@ void main() {
       await tester.runAsync(() => localKv.get(kServerUrlPrefKey)),
       'https://acme.example.com',
     );
-    expect(gateway.cancelled, [11]);
-    expect(alarmKit.cancelled, [22]);
+    expect(gateway.scheduled, isEmpty);
+    expect(gateway.active, isEmpty, reason: 'the presented alarm is dismissed');
+    expect(gateway.cancelled, containsAll([11, 12]));
+    expect(alarmKit.stopped, [23], reason: 'the alerting alarm is silenced');
+    expect(alarmKit.cancelled, containsAll([22, 23]));
   });
 
   // OPH-355's rule holds here too: an unsent change is never lost without the

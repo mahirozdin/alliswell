@@ -444,6 +444,12 @@ abstract class NotificationsGateway {
 
   Future<void> cancel(int id);
 
+  /// Every notification of this app, scheduled AND already shown, gone at
+  /// once — what a revoked session leaves (revocation-leaves-delivered-alarm):
+  /// a presented alarm, an Android one still looping its sound, has no
+  /// pending id and nobody signed in to answer it.
+  Future<void> cancelAll();
+
   /// The notifications the OS is showing right now (OPH-445). Android only:
   /// every other platform returns an empty list, so its behaviour is
   /// unchanged.

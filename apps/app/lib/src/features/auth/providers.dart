@@ -7,7 +7,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/kv/local_kv.dart';
 import '../../core/reachability.dart';
 import '../../core/server_url.dart';
+import '../../notifications/alarmkit.dart' show AlarmKitHost;
 import '../../notifications/device_gate.dart';
+import '../../notifications/gateway.dart' show NotificationsGateway;
+import '../../notifications/os_alarms.dart';
 import '../../notifications/providers.dart';
 import '../../notifications/web/alert_cache.dart';
 import '../../sync/local_data.dart';
@@ -164,27 +167,23 @@ Future<void> _haltSyncEngines(Ref ref) async {
 }
 
 /// Cancels every notification and AlarmKit alarm this install still holds in
-/// the OS. Best effort per lane; never throws. Not on the web, where the
-/// alert cache the wipe clears is the whole schedule.
+/// the OS, the presented ones included ([dropEveryOsAlarm]). Not on the web,
+/// where the alert cache the wipe clears is the whole schedule.
 Future<void> _dropOsAlarms(Ref ref) async {
   if (kIsWeb) return;
+  NotificationsGateway gateway;
+  AlarmKitHost? alarmKit;
   try {
-    final gateway = ref.read(notificationsGatewayProvider);
-    await gateway.initialize();
-    for (final id in await gateway.pendingIds()) {
-      await gateway.cancel(id);
-    }
+    gateway = ref.read(notificationsGatewayProvider);
   } on Object {
-    // No plugin on this platform, or the OS refused: nothing more to do.
+    return;
   }
   try {
-    final alarmKit = ref.read(alarmKitHostProvider);
-    for (final id in await alarmKit.scheduledIds()) {
-      await alarmKit.cancel(id);
-    }
+    alarmKit = ref.read(alarmKitHostProvider);
   } on Object {
-    // AlarmKit is iOS 26+ only; elsewhere the channel is missing.
+    alarmKit = null;
   }
+  await dropEveryOsAlarm(gateway: gateway, alarmKit: alarmKit);
 }
 
 /// Authenticated dio for every feature API (tasks, projects, /me, …):

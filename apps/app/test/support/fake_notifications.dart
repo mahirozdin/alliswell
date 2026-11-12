@@ -102,6 +102,14 @@ class FakeNotificationsGateway implements NotificationsGateway {
     active.remove(id);
   }
 
+  /// Scheduled and shown alike, as the OS does; each id lands in [cancelled].
+  @override
+  Future<void> cancelAll() async {
+    cancelled.addAll({...scheduled.keys, ...active.keys});
+    scheduled.clear();
+    active.clear();
+  }
+
   @override
   Stream<NotificationEvent> get events => _events.stream;
 

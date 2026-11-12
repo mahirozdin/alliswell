@@ -267,6 +267,13 @@ class WebNotificationsGateway implements NotificationsGateway {
     _planned.remove(id);
   }
 
+  /// Nothing is presented by this side (the service worker shows a push and
+  /// the alert cache is cleared with the replica): the planned set empties.
+  @override
+  Future<void> cancelAll() async {
+    _planned.clear();
+  }
+
   /// A browser alert is shown by the service worker, not looped by the OS:
   /// nothing here to take off the screen (OPH-445 is Android only).
   @override
