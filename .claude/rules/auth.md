@@ -35,4 +35,7 @@ A hole here is a breach, and a session bug locks people out of their data.
     `lib/oauth-identity.js` checks Google/Apple ID tokens. Every sign-in door goes through
     `lib/sign-in-factors.js` before it writes (OPH-381).
   - A session is a `refresh_tokens` `family_id`; list/revoke per family.
+  - A fresh sign-in sends no `deviceId`: its family is bound to the device by its first
+    `PUT /notification-devices` (`bindSessionToDevice`, same transaction), only when unbound,
+    live and the caller's own; a family bound to another device never moves (OPH-458).
 - **Detail:** [SECURITY.md](../../SECURITY.md), ADR-0026, ADR-0032, ADR-0047, ADR-0049.

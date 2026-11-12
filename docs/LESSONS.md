@@ -101,17 +101,16 @@
 - **DERS** Hazır olmayan/hatalı async provider "boş" okunur (`.value` null → sahte "yok"/çevrimdışı) → eylemde `await x.future`; sunucu hakkında iddia eden ekran hatayı fırlatır, boş liste göstermez.
 - **DERS** HomeShell `extendBody:true` + cam çubuk: `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → kök navigator'da; iç FAB'ı kabuk gövdesi `viewPadding`'le üste alır (OPH-359); `findsOneWidget` kaçırır → dokun.
 - **DERS** `AppSection.values` ↔ shell dal indeksi ↔ rail/bar hedefleri KONUMSAL kimliktir; hedef listesini filtrelemek yanlış ekranı açar → gizleme `visibleSections` ile, golden'la.
+- **DERS** Riverpod 3 örtülü rotanın (TickerMode kapalı) `ref.watch` ettiği provider'ı duraklatır → Ayarlar açıkken Gizli widget/dil/tarih widget'a ulaşmadı → widget'ı besleyen ayar anında yayınlanır, yan etki `ref.listen` ile canlı (`keepWidgetSyncLive`, OPH-464).
 - **DERS** Ertelenmiş closure (geri al, commit) `WidgetRef` yakalarsa satır dispose olunca iş sessizce koşmaz → store'u mount'luyken çöz; autoDispose family'yi akış ortasında `ref.read`'leme.
 - **DERS** `State.mounted` `dispose()` sırasında hâlâ true → dispose'tan `setState` çöker; Notifier dispose sonrası `state` yazımı da → ayrı `_disposed` bayrağı; await edilen sheet controller'ını State'e ver (OPH-360). Tembel controller `dispose()`'ta ilk kurulursa assert atar, kalanı atlanır → `initState`'te (OPH-443/466).
 - **DERS** Flutter 3.44'te eylemli `SnackBar` süre dolunca kapanmaz → eylemli snackbar yalnız `showAwActionSnackBar` (`persist:false`).
 - **DERS** Web'de dio 204 gövdesi `''` → `as Map` TypeError, temizlik atlanır → `data is Map ? … : {}`.
 - **DERS** Saate bağlı etiket kendiliğinden yenilenmez (askıda timer ateşlemez) → gün listesi gece yarısı+1 sn, zil etiketi dakika başı (`AlarmMinuteTick`) + `resumed`; yazılan an etiketinki, `nowProvider` (OPH-466); `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
-- **DERS** Test: Riverpod 3 çift override'ı assert eder → fake'ler `syncTestOverrides(...)` parametresiyle; FakeApi push'u yansıtmazsa (yeni varlık, null alan) pull geri getirir/siler.
-- **DERS** Test: sonsuz animasyonda `pumpAndSettle` dönmez → `pump(süre)`; snackbar timer'ı teardown'ı patlatır → sonda `pump(6s)`; gerçek async kurulum `tester.runAsync`'te.
+- **NOT** Widget testi tuzakları (çift override, `pumpAndSettle`, oturum provider'ları, `localKv`): [conventions.md](development/conventions.md) "App tests".
 - **DERS** Kare başına çok sürükleme olayı: `build` yereline eklenen delta (`centre + d.delta`) düşer, `DragStartBehavior.start` eşiği yutar → state'e biriktir, `.down`; testte `pump`suz `moveBy`.
 - **DERS** `flutter test --platform chrome` koşamaz (test config i18n'i `dart:io` ile okur); `kIsWeb` VM testinde sabit false → web kararını provider'a taşı, gerçek web davranışını tarayıcıda gör.
 - **KARAR** Kişinin listeleri (Home, Board, alarm, widget, başsız tur) `taskScopeProvider`'dan, içerik ekranları `activeWorkspaceIdProvider`'dan; `workspaces.first` okunmaz; kendi alan `owned`'dan (ADR-0044).
-- **DERS** Test: oturum kurmayan ekran testi okuduğu oturum provider'larını verir (`currentWorkspace`+`workspaces`+`currentUserId`; izin `ee/support/permissions.dart`, yüklenirken hayır), yoksa 4 sn; `localKv` örneği tutar → yazan test siler.
 - **DERS** Adres değişince örtülü ekran provider'ı build'de kurulur → takım geçişi Ana sayfada (ADR-0046); sunucu değişimi eskide çıkar (OPH-390).
 
 ## design-ui — tokenlar, kontrast, yüzeyler
@@ -203,6 +202,8 @@
 - **DERS** Uzantı sürümü `$(FLUTTER_BUILD_NAME/NUMBER)` olmalı (yeni hedef 1.0/1 doğar); yükseltince `flutter clean && pub get && pod install`. App Group dizesi her yerde bayt-bayt aynı: `group.com.alliswell.alliswell`.
 - **DERS** `LiveActivityIntent` DAİMA ana uygulamada koşar → widget sürecinde düz `AppIntent` + App Group kuyruğu; Dart her öne gelişte `drainPendingActions`. Siri niyeti `openAppWhenRun`, cümlede String yok (ADR-0057).
 - **DERS** App Group'a iki süreç yazar, oku-yaz atomik değil: eyleme bir anahtar (OPH-430); önce profil sonra görünüm silinir, çekici yazınca bakar (OPH-462/483).
+- **DERS** `home_widget` 0.9.3 iOS'ta null'u `NSNull` olarak `UserDefaults`'a verir → uygulama çöker (çıkış, Gizli widget) → eklentiye null gönderme; silinen anahtar boş dize (`kWidgetRemovedValue`), okuyan boşu yok sayar (OPH-464).
+- **DERS** Timeline sağlayıcı dokunuştan sonra ağı beklerse çizim gecikir, satırlar parmağın altında kayar → kuyrukta tamamlama varken ya da 90 sn içinde çekme yok, kuyruk dokunuştan önceki görünüme (OPH-462).
 - **DERS** WidgetKit'te canlı saat yok → dakikalık girdiler, ufuk bayttan (~16.6 MB'ı aşan arşivi chronod atar, widget placeholder'da kalır); timeline şimdi + 4 gece yarısı, başlık tarihi ENTRY'den.
 - **DERS** Snapshot'a yeni alan: native taraf eksiğe toleranslı (Swift opsiyonel, Kotlin `optInt`), JSONSerialization (Codable yeni alanı düşürür); iki platformun yerleşimi de pariteye tabi.
 - **DERS** v6'da her girdi kendi gün görünümünü çizer → üst düzeye yazılan native tamamlama görünmez; `awMarkSnapshotDone` Dart kuralıyla her görünüme, çizim kuyruğu uygular; "+N" = kovanın açık sayısı − çizilen açık satır (`awMoreCount`), 0'da satır yok (tamamlananı saymaz; OPH-451).
@@ -253,13 +254,10 @@
 - **KARAR** API anahtarı `awk_` düz Bearer: tek gösterim, HMAC-SHA256 hash, v1 scope'suz (sınır workspace bağı); `/auth/*`, hesap silme, `/ai/*`, anahtar yönetimi anahtara kapalı; anahtar listesi replikaya inmez (ADR-0032).
 - **KARAR** Doğrulanan sır anahtarlı özet, kullandığımız sır şifreli + `last4`; her sır sınıfı kendi anahtarıyla (`AUTH_TOTP_KEY`…); TOTP bağımlılıksız (`node:crypto`); parola değişimi tüm oturumları kapatır (ADR-0006).
 - **KARAR** Web oturumu localStorage'da (`LocalKvSecretStore`) — XSS ödünü self-host v1 için kabul, httpOnly refresh-cookie park (OPH-025); "web token yalnız bellekte" diyen metin bayattır.
-- **DERS** `app.rejectApiKeys` preHandler'dır (authenticate'ten SONRA); `/ai/*` kapısı plugin-seviyesi hook (yeni rota unutamaz); rate limiter kimlikten ÖNCE koşar → `keyGenerator` başlığa bakar.
 - **DERS** Rate limit app seviyesinde → rotayı `config.rateLimit`'le daralt; kova kimlik, IP değil (ADR-0045); kasıtlı 5xx `app.httpErrors.*` ile (gerisi `INTERNAL_ERROR`).
 - **DERS** Kullanıcıya özel akış (AI sohbeti) `user:{userId}` odasına gider; `ws:*` odası onu tüm üyelere yayınlar.
-- **DERS** `routes/oauth.js` `renderPage` title'ı kaçırır, body'yi HAM basar; helmet CSP kapalı → kullanıcı içeriği basan HTML sayfası her enterpolasyonu kaçırır, CSP seçer, payload'lı test.
-- **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP'nin OAuth 2.1 sunucusu, `lib/oauth-identity.js` Google/Apple ID token. Her giriş kapısı yazmadan önce `lib/sign-in-factors.js` (OPH-381).
 - **DERS** Kullanıcı kontrollü dış URL SSRF'tir: yalnız http/https, IP denetimi DNS'ten SONRA ve her yönlendirmede, gövde tavanı; AI `baseUrl`'inde (`aiFetch`) allowlist yok — bilinçli kabul (SECURITY.md).
-- **DERS** `refresh_tokens` her yenilemede satır yazar: "oturum" = `family_id` ailesi, liste/iptal aile başına; yenileme UA göndermeyebilir → cihaz adı yalnız INSERT'te ("kolon var" ≠ "kolon dolu").
+- **DERS** `refresh_tokens` her yenilemede satır yazar: "oturum" = `family_id` ailesi, liste/iptal aile başına; yenileme UA göndermeyebilir → cihaz adı yalnız INSERT'te ("kolon var" ≠ "kolon dolu"); ilk girişte `deviceId` yok → oturum cihazına ilk kaydında bağlanır (`bindSessionToDevice`, OPH-458). Kimlik/OAuth/rate-limit tuzakları `.claude/rules/auth.md`'de.
 - **DERS** Yenileme oturumu yalnız sunucu token'ı reddedince siler; cevapsız/5xx/408/429 → null, oturum kalır (OPH-427).
 
 ## extension-seam — uzantı dikişi (yalnız public yüzey)

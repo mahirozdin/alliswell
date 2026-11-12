@@ -92,7 +92,7 @@ Found: phase-end review (`apps/app/ios/Shared/AWSnapshotModel.swift`, `awNextOpe
 
 ---
 
-## Epic 37 follow-up — phase-end review findings (PR-2)
+## Epic 37 follow-up — PR-2 findings left open
 
 ### OPH-483 — A stale widget fetch's cleanup can delete a newer fetch's server view
 
@@ -106,6 +106,31 @@ needs two overlapping refreshes and heals on the next timeline reload.
       a generation stamp checked under it).
 - **Test first:** XCTest on the Mac with interleaved stores: the current envelope survives.
   **Verify:** K1 + Mac XCTest.
+
+### OPH-484 — A retried refresh whose first answer was lost signs the device out
+
+Kritik yol: auth. Found: iOS simulator walkthrough of the widget self-fetch fix round, once,
+after the API was frozen for the round. Needs a security choice written as an ADR first (I-10).
+
+- [ ] The app sends `POST /auth/refresh`, the server rotates the token but the answer never
+      arrives (timeout, app suspended); the retry sends the old token, the server reads it as
+      reuse (`AUTH_REFRESH_REUSED`), burns the family and the device is signed out. Decide a
+      short reuse leeway (e.g. the token just rotated, same family, within a few seconds, answers
+      with the same successor once) against SECURITY.md's reuse detection; ADR + SECURITY.md.
+- **Test first:** `auth-refresh.test.js` — rotate, replay the old token inside the leeway: 200
+  and the family lives; after it: `AUTH_REFRESH_REUSED`. **Verify:** auth K1.
+
+### OPH-485 — What the widget shows while a widget completion is queued ⏸️ SAHİP
+
+Found: widget self-fetch fix round (#50). Waits on a product decision (STATE "Kullanıcıdan
+bekleyen").
+
+- [ ] While a completion from the circle is queued (or within 90 s of it) the extension does not
+      fetch (WIDGETS §3.2 step 2), so with the app swiped away the widget keeps the view drawn
+      before the tap until the app runs and sends the completion; another device's changes do
+      not show meanwhile. The owner picks:
+      keep it, or fetch anyway and lay the queued completion over the server's view.
+- **Verify:** Mac XCTest on the choice the decision picks · iPhone, app closed.
 
 ---
 
@@ -144,16 +169,6 @@ fix is a layout choice that needs a device to measure.
       header readable while the system alert shows (top inset or header below the banner area).
 - **Verify:** golden of the ring screen with the inset · iPhone or simulator, foreground alarm.
 
-### OPH-476 — A freshly installed iPhone lists `hasSession: false`
-
-Found: iOS simulator walkthrough (IOS-05). Left open: auth critical path, not polish.
-
-- [ ] After a clean install and sign-in the server's device row had `hasSession: false`, so
-      removing that iPhone elsewhere may not sign it out (ADR-0069). Measure whether the first
-      sign-in's refresh family is bound before the device row exists; bind it on registration or
-      on the next refresh. (The raw "Dart/3.13 (dart:io)" name is already shown as "iPhone".)
-- **Test first:** integration — sign in, register, list: `hasSession: true`. **Verify:** auth K1.
-
 ### OPH-477 — The device detail sheet's close control does not close it
 
 Found: iOS simulator walkthrough (IOS-06). Left open: minor, outside the rounds' scope; the
@@ -162,16 +177,6 @@ dimmed area above still closes it.
 - [ ] On iOS the element exposed as "Kapat" did nothing; tapping the dimmed area above the sheet
       closed it. The close control closes the sheet.
 - **Test first:** widget test — tap the close control, the sheet is gone. **Verify:** K1.
-
-### OPH-481 — A widget circle tap shows its done row only seconds later
-
-Found: iOS simulator walkthrough 3 (Z-01). Left open: WidgetKit reload timing, needs a device.
-
-- [ ] In the medium widget the circle shows no pressed or done state at first; the done row
-      appears after the second timeline reload, about 5 s after the intent ran (once 49 s). A user
-      may tap again, and a tap on a row already done opens the app. Measure on an iPhone; if the
-      lag holds, draw the queued completion in the first reload after the intent.
-- **Verify:** Mac XCTest on the timeline after an intent · iPhone, tap and time the redraw.
 
 ### OPH-482 — Overdue tasks are headed "BUGÜN" in the widget
 

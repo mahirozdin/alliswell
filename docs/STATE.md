@@ -16,9 +16,9 @@
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
 | Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36–37 tamam. |
-| Current epic             | **Epic 36 follow-up** (OPH-468…479), sonra follow-up 2 |
+| Current epic             | **Epic 36 follow-up** (OPH-468…479), sonra Epic 37 follow-up (OPH-483…485) ve follow-up 2 |
 | ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
-| Last completed           | Epic 37 (OPH-457…465, widget self-fetch); ayrıntı CHANGELOG'da. |
+| Last completed           | Widget self-fetch düzeltme turu (OPH-458, 462, 464); ayrıntı CHANGELOG'da. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -99,6 +99,9 @@
 
 22. **S-50 (#50)** — kapalı uygulamada widget WidgetKit yenilemesinde (15–60 dk) güncellenir,
     dakika garantisi yok. Onayla ya da D8.
+
+23. **OPH-485 (#50)** — widget'tan tamamlama kuyruktayken widget sunucudan çekmez; uygulama açılana
+    dek dokunuştan önceki görünüm kalır. Böyle mi kalsın, yoksa çekip tamamlamayı üstüne mi koysun?
 
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
@@ -196,10 +199,5 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 
 ## How to continue (for agents)
 
-1. Oturum başı `/isler` (`npm run next -- --list`), fazlar `/faz E36 …`
-   ([development/workflow.md](development/workflow.md)); TASKS'ı bütün okuma.
-2. Dokunacağın alanı [LESSONS.md](LESSONS.md)'de grep'le; kritik yolsa `.claude/rules/<alan>.md`;
-   bağlayıcı metin ilgili ADR'lerde.
-3. İş başına `npm run verify:task` + yerel commit; faz sonunda `npm run verify:batch` +
-   `verify:smoke`, yeşilse PR. Bitişte: biten işi TASKS'tan sil, bu dosyanın hücrelerini yerinde
-   güncelle, tek CHANGELOG girdisi, Conventional Commit.
+Okuma sırası, komutlar ve bitiş tanımı [AGENTS.md](../AGENTS.md)'de; faz sözleşmesi
+[development/workflow.md](development/workflow.md).
