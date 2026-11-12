@@ -17,6 +17,7 @@ import '../../notifications/web/alert_cache.dart';
 import '../../sync/local_data.dart';
 import '../../sync/providers.dart';
 import '../devices/providers.dart';
+import '../widgets/widget_token_store.dart' show widgetTokenLifecycleProvider;
 import 'data/auth_api.dart';
 import 'data/auth_interceptor.dart';
 import 'data/auth_repository.dart';
@@ -153,6 +154,9 @@ Future<void> _endRevokedSession(
     // Best effort, as on a sign-out.
   }
   await _haltSyncEngines(ref);
+  // The server dropped the device with the family, and the widget token
+  // with it (#50): the local copy goes too.
+  await ref.read(widgetTokenLifecycleProvider).signOut();
   final owner = await localKv.get(kReplicaOwnerKey);
   if (!replaced &&
       (owner == null || owner == userId) &&
@@ -286,6 +290,9 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // Every engine stops before the wipe below (see [_haltSyncEngines]).
     await _haltSyncEngines(ref);
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
+    // The widget's token (#50, iOS): the device row deleted above revoked it
+    // on the server; only now does the local copy go (WIDGETS §3.2).
+    await ref.read(widgetTokenLifecycleProvider).signOut();
     await ref.read(localDataGuardProvider).wipe();
   }
 }

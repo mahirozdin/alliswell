@@ -123,6 +123,17 @@ class WidgetBridge {
     await _writeProfile();
   }
 
+  /// Sign-out (#50): the profile's inputs were the person's. Forgotten, so a
+  /// new outbox count cannot write the old scope back after the keys are
+  /// cleared (`WidgetTokenLifecycle.signOut`); the next profile-carrying
+  /// [publish] starts afresh.
+  void forgetFetch() {
+    _fetch = null;
+    _pendingOutbox = null;
+    _localWrittenAt = null;
+    _lastQuery = null;
+  }
+
   Future<void> _writeProfile() async {
     final fetch = _fetch, pending = _pendingOutbox, at = _localWrittenAt;
     if (fetch == null || pending == null || at == null) return;
