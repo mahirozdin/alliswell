@@ -271,6 +271,25 @@ final class WidgetFetchPolicyTests: XCTestCase {
     XCTAssertTrue(fetches(completedAtMs: nowMs + 86_400_000))
   }
 
+  /// #50: no request while another turn's request is out — its claim is
+  /// younger than the claim's TTL — and a claim a killed turn left behind,
+  /// or one from a clock set back, does not block for longer.
+  func testNoFetchWhileAnotherTurnsRequestIsOut() {
+    func fetches(claim: Int?) -> Bool {
+      awShouldFetch(
+        now: now, hasLocalSnapshot: true, profile: profile(), tokenState: "valid",
+        tokenReadable: true, lastSuccessAtMs: nil, backoffUntilMs: nil,
+        hasServerView: false, fetchClaimMs: claim)
+    }
+    XCTAssertGreaterThan(kAWFetchClaimTTL, AWWidgetFetcher.sessionConfiguration().timeoutIntervalForResource)
+    XCTAssertTrue(fetches(claim: nil))
+    XCTAssertFalse(fetches(claim: nowMs))
+    XCTAssertFalse(fetches(claim: nowMs - 14_999))
+    XCTAssertTrue(fetches(claim: nowMs - 15_000))
+    XCTAssertFalse(fetches(claim: nowMs + 1_000))
+    XCTAssertTrue(fetches(claim: nowMs + 86_400_000))
+  }
+
   /// #50, PR2-09: only a 200 that stored another view reloads the other widgets.
   func testOnlyANewViewReloadsTheOtherWidgets() {
     let e1 = envelope(fetchedAtMs: nowMs)
@@ -760,6 +779,38 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertFalse(next.changed)
   }
 
+  /// Two widgets build their timelines at once with the stamp expired: the
+  /// second turn finds the first one's request out and makes none, so there
+  /// is one request per interval however many widgets ask, and no older
+  /// answer can land after a newer one. The first turn's new view reloads it.
+  func testASecondTurnWhileARequestIsOutMakesNone() async throws {
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: serverBody()),
+      headers: ["ETag": "\"abc\""])
+    AWStubProtocol.holdFirst = true
+    let firstFetcher = fetcher()
+    let first = Task { await firstFetcher.turn(fetch: true, today: { "2025-11-12" }) }
+    for _ in 0..<500 where !AWStubProtocol.isHolding {
+      try await Task.sleep(nanoseconds: 10_000_000)
+    }
+    XCTAssertTrue(AWStubProtocol.isHolding, "the first request is out")
+
+    let second = await fetcher().turn(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 1, "no second request while one is out")
+    XCTAssertFalse(second.changed)
+
+    AWStubProtocol.releaseHeld()
+    let firstTurn = await first.value
+    XCTAssertTrue(firstTurn.changed, "the stored view reloads the other widget")
+    XCTAssertEqual(int(kAWFetchedAtKey), startMs)
+    XCTAssertNil(defaults.object(forKey: kAWFetchClaimKey), "the claim ends with the turn")
+
+    // The other widget's reload, and a third widget's turn, draw it without asking.
+    let third = await fetcher().turn(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+    XCTAssertEqual(todayIds(third.snapshot), todayIds(firstTurn.snapshot))
+  }
+
   /// The server's view was drawn ([A, B, C], A only on the server). A tap on
   /// B's circle leaves every row where it was and B done in its own slot:
   /// switching to the app's view ([B, C, D]) moved B up a row, and a second
@@ -1192,17 +1243,49 @@ final class WidgetFetcherTests: XCTestCase {
 final class AWStubProtocol: URLProtocol {
   static var handler: ((URLRequest) throws -> (HTTPURLResponse, Data))?
   static var requests: [URLRequest] = []
+  /// When set, the first request is held unanswered until `releaseHeld()`,
+  /// so a test can run another turn while it is out. Later ones are answered.
+  static var holdFirst = false
+  private static let lock = NSLock()
+  private static var held: (() -> Void)?
+
+  static var isHolding: Bool {
+    lock.lock()
+    defer { lock.unlock() }
+    return held != nil
+  }
 
   static func reset() {
     handler = nil
     requests = []
+    holdFirst = false
+    lock.lock()
+    held = nil
+    lock.unlock()
+  }
+
+  /// Answers the held request.
+  static func releaseHeld() {
+    lock.lock()
+    let answer = held
+    held = nil
+    lock.unlock()
+    answer?()
   }
 
   override class func canInit(with request: URLRequest) -> Bool { true }
   override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
   override func startLoading() {
+    Self.lock.lock()
     Self.requests.append(request)
+    let hold = Self.holdFirst && Self.requests.count == 1
+    if hold { Self.held = { [self] in self.answer() } }
+    Self.lock.unlock()
+    if !hold { answer() }
+  }
+
+  private func answer() {
     do {
       guard let handler = Self.handler else { throw URLError(.notConnectedToInternet) }
       let (response, data) = try handler(request)

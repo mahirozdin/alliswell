@@ -93,6 +93,11 @@ private final class AWNoRedirects: NSObject, URLSessionTaskDelegate {
   }
 }
 
+/// Makes "read the stamps, decide, claim the request" one step for every
+/// turn in this process — WidgetKit builds the timelines of several widgets
+/// at once, on several threads (#50).
+private let awFetchClaimLock = NSLock()
+
 struct AWWidgetFetcher {
   /// The App Group's defaults.
   let defaults: UserDefaults
@@ -133,27 +138,14 @@ struct AWWidgetFetcher {
   /// failure leaves the App Group snapshot to be drawn.
   @discardableResult
   func refresh() async -> AWWidgetFetchOutcome {
-    let start = now()
-    let profile = self.profile
-    let hasLocal = awStoredString(defaults, kAWLocalSnapshotKey) != nil
-    let tokenState = awStoredString(defaults, kAWTokenStateKey)
-    let lastSuccess = defaults.object(forKey: kAWFetchedAtKey) as? Int
-    let backoffUntil = defaults.object(forKey: kAWBackoffUntilKey) as? Int
-    let query = profile.map { awSnapshotQuery(profile: $0, timeZone: timeZone) }
-    // An envelope fetched with another query is not used, not even here.
-    let stored = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
-    let current = stored.flatMap { $0.query == query ? $0 : nil }
-    // Everything but the token first: the Keychain is read only for a turn
-    // that would fetch.
-    guard
-      awShouldFetch(
-        now: start, hasLocalSnapshot: hasLocal, profile: profile, tokenState: tokenState,
-        tokenReadable: true, lastSuccessAtMs: lastSuccess, backoffUntilMs: backoffUntil,
-        hasServerView: current != nil,
-        pendingCompletion: !awQueuedCompletionTaskIds(in: defaults).isEmpty,
-        completedAtMs: defaults.object(forKey: kAWCompletedAtKey) as? Int),
-      let profile, let query, let token = readToken()
-    else { return .skipped }
+    guard let claimed = claim() else { return .skipped }
+    // Released when the turn is done with the answer, after its stamps are
+    // written, so the next turn reads them and does not ask again.
+    defer { release(claimed.claimMs) }
+    let profile = claimed.profile
+    let query = claimed.query
+    let current = claimed.current
+    let token = claimed.token
 
     guard let url = awWidgetSnapshotURL(baseUrl: profile.baseUrl, query: query) else {
       return .skipped
@@ -217,6 +209,58 @@ struct AWWidgetFetcher {
       return .unauthorized
     default:
       return failed()
+    }
+  }
+
+  /// What a turn that may fetch read, and the claim it holds.
+  private struct Claimed {
+    let profile: AWWidgetFetchProfile
+    let query: String
+    /// The stored envelope for this query, if any.
+    let current: AWServerEnvelope?
+    let token: String
+    let claimMs: Int
+  }
+
+  /// Step 2 and the claim, as one step under the process's lock: reads the
+  /// stamps, decides, and when the turn may fetch writes its claim before any
+  /// other turn can read the stamps (#50). Nil = no request this turn.
+  private func claim() -> Claimed? {
+    awFetchClaimLock.lock()
+    defer { awFetchClaimLock.unlock() }
+    let start = now()
+    let profile = self.profile
+    let hasLocal = awStoredString(defaults, kAWLocalSnapshotKey) != nil
+    let tokenState = awStoredString(defaults, kAWTokenStateKey)
+    let lastSuccess = defaults.object(forKey: kAWFetchedAtKey) as? Int
+    let backoffUntil = defaults.object(forKey: kAWBackoffUntilKey) as? Int
+    let query = profile.map { awSnapshotQuery(profile: $0, timeZone: timeZone) }
+    // An envelope fetched with another query is not used, not even here.
+    let stored = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
+    let current = stored.flatMap { $0.query == query ? $0 : nil }
+    // Everything but the token first: the Keychain is read only for a turn
+    // that would fetch.
+    guard
+      awShouldFetch(
+        now: start, hasLocalSnapshot: hasLocal, profile: profile, tokenState: tokenState,
+        tokenReadable: true, lastSuccessAtMs: lastSuccess, backoffUntilMs: backoffUntil,
+        hasServerView: current != nil,
+        pendingCompletion: !awQueuedCompletionTaskIds(in: defaults).isEmpty,
+        completedAtMs: defaults.object(forKey: kAWCompletedAtKey) as? Int,
+        fetchClaimMs: defaults.object(forKey: kAWFetchClaimKey) as? Int),
+      let profile, let query, let token = readToken()
+    else { return nil }
+    let claimMs = awMs(start)
+    defaults.set(claimMs, forKey: kAWFetchClaimKey)
+    return Claimed(profile: profile, query: query, current: current, token: token, claimMs: claimMs)
+  }
+
+  /// Ends this turn's claim, unless a later turn already holds its own.
+  private func release(_ claimMs: Int) {
+    awFetchClaimLock.lock()
+    defer { awFetchClaimLock.unlock() }
+    if defaults.object(forKey: kAWFetchClaimKey) as? Int == claimMs {
+      defaults.removeObject(forKey: kAWFetchClaimKey)
     }
   }
 

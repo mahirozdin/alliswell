@@ -34,6 +34,9 @@ let kAWBackoffUntilKey = "aw_widget_backoff_until_ms"
 /// UTC ms of the last completion from the widget's circle; the extension
 /// stamps it in the intent. No fetch within 90 s of it (#50, PR2-03).
 let kAWCompletedAtKey = "aw_widget_completed_at_ms"
+/// UTC ms when a turn's request went out; removed when it ends. While it is
+/// fresh no other turn makes a request (#50): one request per interval.
+let kAWFetchClaimKey = "aw_widget_fetch_claim_ms"
 
 /// A key's text, nil when it is missing or empty. The app removes a key by
 /// writing the empty string — `home_widget` 0.9.3 aborts the iOS app on a
@@ -56,6 +59,10 @@ let kAWFetchMinInterval: TimeInterval = kAWReloadInterval
 /// long of the last one: the reload after a tap answers at once from the
 /// App Group, and the rows stay where the finger saw them (#50, PR2-03/05).
 let kAWCompletionQuietInterval: TimeInterval = 90
+/// How long a turn's claim on the request holds: longer than any request may
+/// take (8 s, `timeoutIntervalForResource`), so a claim a killed extension
+/// left behind blocks the next turn no longer than this.
+let kAWFetchClaimTTL: TimeInterval = 15
 /// The first backoff; each failure in a row doubles it, up to the cap.
 let kAWBackoffBase: TimeInterval = 300
 let kAWBackoffCap: TimeInterval = 7200
@@ -371,13 +378,17 @@ func awMs(_ date: Date) -> Int {
 /// And, while a server view for this query is stored, not within the refresh
 /// interval of the last success: one request per interval, however many
 /// widgets ask (#50, PR2-09). Without a usable view (none yet, or one the
-/// profile no longer asks for) the turn fetches. A stamp later than any
+/// profile no longer asks for) the turn fetches. Not while another turn's
+/// request is out (`fetchClaimMs`, younger than `kAWFetchClaimTTL`): two
+/// widgets building their timelines at once read the same stale stamp, and
+/// only the claim keeps them to one request (#50). A stamp later than any
 /// honest one could be — the device clock was set back — is ignored rather
 /// than blocking for as long as the clock was moved.
 func awShouldFetch(
   now: Date, hasLocalSnapshot: Bool, profile: AWWidgetFetchProfile?, tokenState: String?,
   tokenReadable: Bool, lastSuccessAtMs: Int?, backoffUntilMs: Int?,
-  hasServerView: Bool = true, pendingCompletion: Bool = false, completedAtMs: Int? = nil
+  hasServerView: Bool = true, pendingCompletion: Bool = false, completedAtMs: Int? = nil,
+  fetchClaimMs: Int? = nil
 ) -> Bool {
   guard
     hasLocalSnapshot, let profile, !profile.scope.workspaceIds.isEmpty,
@@ -388,6 +399,10 @@ func awShouldFetch(
     return false
   }
   if awCompletionHoldsTheView(now: now, pendingCompletion: false, completedAtMs: completedAtMs) {
+    return false
+  }
+  let claimMs = Int(kAWFetchClaimTTL * 1000)
+  if let claim = fetchClaimMs, claim <= nowMs + claimMs, nowMs - claim < claimMs {
     return false
   }
   if hasServerView, let last = lastSuccessAtMs, last <= nowMs,

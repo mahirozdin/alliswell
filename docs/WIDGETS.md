@@ -347,6 +347,7 @@ mint route is never called.
 | `aw_widget_fetch_failures` | Int | Swift | failures in a row; 0 after a success |
 | `aw_widget_backoff_until_ms` | Int, UTC ms | Swift | no fetch before it |
 | `aw_widget_completed_at_ms` | Int, UTC ms | Swift (the circle's intent) | last completion from the circle; no fetch within 90 s of it |
+| `aw_widget_fetch_claim_ms` | Int, UTC ms | Swift | a turn's request is out; no other turn fetches for 15 s of it; removed when the turn ends |
 
 **Removing a key** means writing the empty string, never a null: `home_widget` 0.9.3 hands a
 Dart null to iOS as `NSNull` and `NSUserDefaults` aborts the app on it (#50, PR2-01). Every
@@ -354,7 +355,7 @@ reader — Dart and Swift — treats an empty or missing value as absent.
 
 On sign-out, an account switch, or a session the server refused, Dart deletes the device on the
 server first where it still can (that revokes the token, ADR-0070), then removes every key above
-except `aw_widget_snapshot` and `aw_widget_completed_at_ms` (a time, nothing about a task), then the Keychain item, then writes `aw_widget_snapshot` empty (no
+except `aw_widget_snapshot`, `aw_widget_completed_at_ms` and `aw_widget_fetch_claim_ms` (times, nothing about a task), then the Keychain item, then writes `aw_widget_snapshot` empty (no
 row, no project, no event: the signed-out state) and asks for a reload — on every widget platform,
 since nothing else would write over the person's rows. With the profile gone the extension never
 fetches and draws that empty snapshot.
@@ -507,7 +508,9 @@ token).
    is queued (`aw_alarm_pending_actions`, `complete`) and now − `aw_widget_completed_at_ms` ≥ 90 s,
    so the reload after a tap answers at once from the App Group; and either no envelope for the
    current query is stored or now − `aw_widget_fetched_at_ms` ≥ 30 minutes — one request per
-   reload interval, however many widgets ask (#50, PR2-03/05/09).
+   reload interval, however many widgets ask (#50, PR2-03/05/09); and no other turn's request is
+   out (`aw_widget_fetch_claim_ms` younger than 15 s). The check and the claim are one step under
+   a process-wide lock, since WidgetKit builds several widgets' timelines at once.
 3. One request: `URLSession(configuration: .ephemeral)`, `timeoutIntervalForRequest` 6 s,
    `timeoutIntervalForResource` 8 s, `waitsForConnectivity = false`.
 4. `200` → write the envelope and `aw_widget_fetched_at_ms`, failures 0, remove the backoff.
