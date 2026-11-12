@@ -153,12 +153,19 @@ class WidgetBridge {
       profile['scope'],
       profile['private'],
     ]);
+    final changed = _lastQuery != null && _lastQuery != query;
+    _lastQuery = query;
+    // The new profile first, then the removal: the extension stores an answer
+    // only while the profile it asked with is still the stored one and looks
+    // again after storing it, so an answer for the old profile landing on
+    // either side of the removal is refused or removed. Removed first, one
+    // landing in between would still match the old profile and keep its
+    // titles in the App Group (§9).
+    await _host.save(kWidgetFetchProfileKey, jsonEncode(profile));
     final host = _host;
-    if (_lastQuery != null && _lastQuery != query && host is WidgetKeyRemover) {
+    if (changed && host is WidgetKeyRemover) {
       await (host as WidgetKeyRemover).remove(kWidgetServerSnapshotKey);
     }
-    _lastQuery = query;
-    await _host.save(kWidgetFetchProfileKey, jsonEncode(profile));
   }
 }
 

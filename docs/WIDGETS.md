@@ -349,8 +349,9 @@ mint route is never called.
 
 On sign-out or an account switch Dart deletes the device on the server first (that revokes the
 token, ADR-0070), then removes every key above except `aw_widget_snapshot`, then the Keychain item.
-A change of scope or of "Private widget" removes `aw_widget_server_snapshot` when the profile is
-rewritten.
+A change of scope or of "Private widget" removes `aw_widget_server_snapshot` right after the new
+profile is written — in that order, so a late answer for the old profile is refused or taken back
+(step 4 below).
 
 **Fetch profile** (`v: 1`). Dart writes it in the same publish as `aw_widget_snapshot` and again
 after every sync push round (so `pendingOutbox` stays current), and only once "Private widget" has
@@ -494,7 +495,8 @@ token).
    invalid`. Anything else (400, 403, 429, 5xx, timeout, offline) → failures + 1 and backoff until
    now + min(5 min × 2^n, 2 h), n = the failures before this one. An answer whose profile is no
    longer current (`baseUrl` or query changed while it was out, e.g. "Private widget" turned on)
-   writes nothing — no envelope, no stamp, no failure.
+   writes nothing — no envelope, no stamp, no failure. The profile is read again after the
+   envelope is written too: changed by then, the write is removed and counts as nothing.
 5. **Choose** (decision K-11): no usable envelope → local; `pendingOutbox > 0` → local; a widget
    completion still queued (`aw_alarm_pending_actions`, `complete`) → local; `localWrittenAtMs ≥
    fetchedAtMs` → local; else the server's days. Both clocks are the device's, which is why the

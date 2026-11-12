@@ -40,10 +40,11 @@ Task _task(String id, {DateTime? dueAt}) => Task(
   dueAt: dueAt,
 );
 
-/// Records every write by key, and every removal.
+/// Records every write by key, and every removal, and their order.
 class _KeyedHost implements WidgetHost, WidgetKeyRemover {
   final List<(String, String)> writes = [];
   final List<String> removed = [];
+  final List<String> log = [];
   int updates = 0;
 
   List<String> get keys => [for (final (key, _) in writes) key];
@@ -59,10 +60,16 @@ class _KeyedHost implements WidgetHost, WidgetKeyRemover {
   Future<void> configure() async {}
 
   @override
-  Future<void> save(String key, String value) async => writes.add((key, value));
+  Future<void> save(String key, String value) async {
+    writes.add((key, value));
+    log.add('save $key');
+  }
 
   @override
-  Future<void> remove(String key) async => removed.add(key);
+  Future<void> remove(String key) async {
+    removed.add(key);
+    log.add('remove $key');
+  }
 
   @override
   Future<void> requestUpdate() async => updates++;
@@ -400,6 +407,35 @@ void main() {
 
       await publish(TaskScope.workspace('W2'), hide: true);
       expect(host.removed.length, first + 2);
+    });
+
+    test('the new profile is written before the server copy goes, so a late '
+        'answer for the old one is refused or removed', () async {
+      // The extension stores an answer only while the profile it asked
+      // with is still the stored one, and looks again after storing it.
+      // Removed first, an answer landing between the removal and the
+      // profile write would still match the old profile and stay.
+      final host = _KeyedHost();
+      final bridge = WidgetBridge(host, clock: () => now);
+      Future<void> publish({required bool hide}) => bridge.publish(
+        tasks,
+        now: now,
+        hideTitles: hide,
+        fetch: WidgetFetchSource(
+          baseUrl: 'https://api.example.com',
+          scope: TaskScope.workspace('W1'),
+          pendingOutbox: 0,
+        ),
+      );
+
+      await publish(hide: false);
+      host.log.clear();
+      await publish(hide: true);
+      final saved = host.log.indexOf('save $kWidgetFetchProfileKey');
+      final removed = host.log.indexOf('remove $kWidgetServerSnapshotKey');
+      expect(saved, isNonNegative);
+      expect(removed, greaterThan(saved));
+      expect(host.last(kWidgetFetchProfileKey)?['private'], isTrue);
     });
   });
 

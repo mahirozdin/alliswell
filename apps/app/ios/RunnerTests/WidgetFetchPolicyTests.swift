@@ -310,6 +310,7 @@ final class WidgetFetcherTests: XCTestCase {
   private let zone = "Europe/Istanbul"
   private var suite = ""
   private var defaults: UserDefaults!
+  private var hooked: AWHookedDefaults { defaults as! AWHookedDefaults }
   private var clock = Date()
   private var token: String? = "aww_test"
 
@@ -324,7 +325,7 @@ final class WidgetFetcherTests: XCTestCase {
   override func setUp() {
     super.setUp()
     suite = "aw.fetcher.tests.\(UUID().uuidString)"
-    defaults = UserDefaults(suiteName: suite)
+    defaults = AWHookedDefaults(suiteName: suite)
     clock = start
     token = "aww_test"
     AWStubProtocol.reset()
@@ -646,6 +647,66 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
   }
 
+  /// The app writes the new profile, then removes the server view (Dart's
+  /// order). An answer that passed the check just before the profile write
+  /// and is stored just after it is caught by the second look: the fetcher
+  /// removes what it wrote itself, before the app's removal even comes.
+  func testAnAnswerStoredJustAfterTheProfileChangedIsRemovedAgain() async throws {
+    defaults.set(
+      profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: false),
+      forKey: kAWFetchProfileKey)
+    var titled = serverBody()
+    var days = titled["days"] as! [[String: Any]]
+    var buckets = days[0]["buckets"] as! [[String: Any]]
+    var items = buckets[0]["items"] as! [[String: Any]]
+    items[0]["title"] = "secret title"
+    buckets[0]["items"] = items
+    days[0]["buckets"] = buckets
+    titled["days"] = days
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: titled),
+      headers: ["ETag": "\"abc\""])
+    let turnedPrivate = profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: true)
+    let hooked = self.hooked
+    // Between the fetcher's check and its write: only the profile, the
+    // app's removal has not run yet.
+    hooked.beforeServerWrite = { hooked.set(turnedPrivate, forKey: kAWFetchProfileKey) }
+
+    let outcome = await fetcher().refresh()
+    XCTAssertNil(hooked.beforeServerWrite, "the write went through the hook")
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    XCTAssertNil(defaults.object(forKey: kAWFetchedAtKey))
+    XCTAssertNil(defaults.object(forKey: kAWFetchFailuresKey))
+    XCTAssertNil(defaults.object(forKey: kAWBackoffUntilKey))
+  }
+
+  /// The same on a 304: the old profile's view, written back just after the
+  /// profile changed, is removed again.
+  func testANotModifiedStoredJustAfterTheProfileChangedIsRemovedAgain() async throws {
+    defaults.set(
+      profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: false),
+      forKey: kAWFetchProfileKey)
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: serverBody()),
+      headers: ["ETag": "\"abc\""])
+    _ = await fetcher().refresh()
+    XCTAssertNotNil(defaults.string(forKey: kAWServerSnapshotKey))
+
+    respond(304, headers: ["ETag": "\"abc\""])
+    let turnedPrivate = profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: true)
+    let hooked = self.hooked
+    hooked.beforeServerWrite = {
+      hooked.set(turnedPrivate, forKey: kAWFetchProfileKey)
+      hooked.removeObject(forKey: kAWServerSnapshotKey)
+    }
+    clock = start.addingTimeInterval(180)
+    let outcome = await fetcher().refresh()
+    XCTAssertNil(hooked.beforeServerWrite, "the write went through the hook")
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+  }
+
   // MARK: - 401
 
   func testUnauthorizedMarksTheTokenInvalidAndStops() async throws {
@@ -757,4 +818,19 @@ final class AWStubProtocol: URLProtocol {
   }
 
   override func stopLoading() {}
+}
+
+/// App Group defaults that run `beforeServerWrite` once, just before the next
+/// write of the server view — where another process's write can land between
+/// the fetcher's check and its own write.
+final class AWHookedDefaults: UserDefaults {
+  var beforeServerWrite: (() -> Void)?
+
+  override func set(_ value: Any?, forKey defaultName: String) {
+    if defaultName == kAWServerSnapshotKey, let hook = beforeServerWrite {
+      beforeServerWrite = nil
+      hook()
+    }
+    super.set(value, forKey: defaultName)
+  }
 }

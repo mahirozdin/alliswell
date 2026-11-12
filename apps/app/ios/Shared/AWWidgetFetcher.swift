@@ -193,14 +193,14 @@ struct AWWidgetFetcher {
         awServerView(envelope, pendingCompletionTaskIds: [], today: nil) != nil,
         let json = envelope.json
       else { return failed() }
-      defaults.set(json, forKey: kAWServerSnapshotKey)
+      guard store(json, for: profile, query: query) else { return .discarded }
       succeeded(at: receivedMs)
       return .stored
     case 304:
       if let usable, let json = AWServerEnvelope(
         fetchedAtMs: receivedMs, etag: usable.etag, query: usable.query, body: usable.body
       ).json {
-        defaults.set(json, forKey: kAWServerSnapshotKey)
+        guard store(json, for: profile, query: query) else { return .discarded }
       }
       succeeded(at: receivedMs)
       return .notModified
@@ -210,6 +210,22 @@ struct AWWidgetFetcher {
     default:
       return failed()
     }
+  }
+
+  /// Writes `json` as the server view, then looks at the profile again. The
+  /// app writes its new profile before it removes the old view (WIDGETS.md
+  /// §3.2), and it can land between the check above and this write — in
+  /// another process, nothing makes the two one step. So a profile changed
+  /// by now means the write is the old profile's: it is taken back (unless
+  /// something newer already replaced it) and false is returned. Either the
+  /// app's removal or this one catches every order (WIDGETS.md §9).
+  private func store(_ json: String, for profile: AWWidgetFetchProfile, query: String) -> Bool {
+    defaults.set(json, forKey: kAWServerSnapshotKey)
+    if isCurrent(profile, query: query) { return true }
+    if defaults.string(forKey: kAWServerSnapshotKey) == json {
+      defaults.removeObject(forKey: kAWServerSnapshotKey)
+    }
+    return false
   }
 
   /// Whether the stored profile still asks what `profile` asked, of the same
