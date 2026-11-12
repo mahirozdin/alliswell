@@ -67,7 +67,15 @@ class SyncEngine {
     this.debounce = const Duration(milliseconds: 250),
     this.pullInterval,
     this.maxBackoff = const Duration(seconds: 60),
-  });
+  }) : _zone = Zone.current;
+
+  /// The zone the engine was made in. Its rounds and timers run here, never
+  /// in a caller's: a store pokes [notifyLocalWrite] from inside drift's
+  /// transaction zone when its write is part of a caller's transaction (a
+  /// receipted alarm action, OPH-427), and a timer born there would query
+  /// that transaction after it closed — on the remote executor the request
+  /// never answers and the engine stays running for good.
+  final Zone _zone;
 
   final AwDatabase db;
   final SyncApi api;
@@ -138,7 +146,7 @@ class SyncEngine {
   void notifyLocalWrite() {
     if (_stopped) return;
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(debounce, syncNow);
+    _debounceTimer = _zone.run(() => Timer(debounce, syncNow));
   }
 
   /// Runs one push+pull convergence round. Serialized: a call while a round
@@ -150,7 +158,9 @@ class SyncEngine {
   /// Pull-to-refresh (OPH-171) is the only caller that reads this: a user who
   /// just asked for a refresh must be told when it did not happen (DESIGN §15
   /// R4). Every background caller keeps ignoring it.
-  Future<bool> syncNow() async {
+  Future<bool> syncNow() => _zone.run(_syncRound);
+
+  Future<bool> _syncRound() async {
     // Being torn down (workspace switch / sign-out) is not a failure.
     if (_stopped) return true;
     if (_running) {

@@ -14,8 +14,10 @@ import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/reminder_store.dart';
 import 'package:alliswell/src/notifications/scheduler.dart';
 import 'package:alliswell/src/sync/db/database.dart';
+import 'package:alliswell/src/sync/sync_engine.dart';
 
 import '../support/fake_notifications.dart';
+import '../sync/sync_engine_test.dart' show FakeSyncApi;
 
 const ws = '01WSAAAAAAAAAAAAAAAAAAAAAA';
 String id(String prefix) => prefix.padRight(26, '0');
@@ -445,6 +447,45 @@ void main() {
         expect(host.fallbacksCleared.last, ['ev-late']);
       },
     );
+
+    test('a receipted action pokes sync from inside its transaction, and '
+        'the round still pushes it and the next write', () async {
+      // The stores poke inside the receipt transaction; a debounce timer
+      // born in drift's zone would query the closed transaction and wedge
+      // the engine until a restart.
+      final api = FakeSyncApi();
+      final engine = SyncEngine(
+        db: db,
+        api: api,
+        workspaceId: ws,
+        debounce: const Duration(milliseconds: 1),
+      );
+      addTearDown(engine.dispose);
+      await engine.start();
+      final syncing = TaskStore(db, engine.notifyLocalWrite);
+      final until = DateTime.utc(2030, 6, 1, 9, 5);
+
+      expect(
+        await handleNotificationEvent(
+          notificationEventForAlarmKit(
+            native('ev-sync', 'snooze', untilMs: until.millisecondsSinceEpoch),
+          ),
+          db: db,
+          tasks: syncing,
+          reminders: reminders,
+          navigate: (_) => fail('no navigation'),
+        ),
+        isTrue,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.pushedBatches, hasLength(1));
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+
+      await syncing.complete(id('T1'));
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+      expect(api.pushedBatches, hasLength(2));
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+    });
 
     test('a native stop acknowledges the occurrence it rang for', () async {
       // T1 has a second urgent alarm at 10:00 (its deadline); T2 rang in the
