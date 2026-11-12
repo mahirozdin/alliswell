@@ -188,6 +188,44 @@ describe.runIf(enabled)('integration: device removal signs the device out (OPH-4
     expect(res.statusCode).toBe(201);
   });
 
+  it('a fresh sign-in without a deviceId (an older client) registers a removed device again', async () => {
+    const mine = newId();
+    const phone = newId();
+    const me = await account(mine);
+    await put(me, mine, 'ios');
+    const other = await signIn(me, phone);
+    await put(other, phone, 'web');
+
+    expect((await remove(me, phone)).statusCode).toBe(204);
+    // An access token carries whole-second `iat`: a sign-in in the very
+    // second of the removal cannot be told apart from the removed session.
+    await new Promise((resolve) => setTimeout(resolve, 1100));
+
+    // The install signs in again with a client that never sends the optional
+    // deviceId: its family is live but bound to nothing, and refreshing it
+    // never binds it either. Its registration must still go through.
+    const back = await signIn(me);
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${phone}`,
+      headers: back.headers,
+      payload: { platform: 'web' },
+    });
+    expect(res.statusCode).toBe(201);
+    expect(await deviceRow(phone)).toBeDefined();
+
+    // The removed session's own access token is still refused afterwards.
+    expect((await remove(me, phone)).statusCode).toBe(204);
+    const stale = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${phone}`,
+      headers: other.headers,
+      payload: { platform: 'web' },
+    });
+    expect(stale.statusCode).toBe(401);
+    expect(stale.json().code).toBe('AUTH_SESSION_REVOKED');
+  });
+
   it('a refused refresh of a revoked family removes a row its device left behind', async () => {
     const mine = newId();
     const phone = newId();

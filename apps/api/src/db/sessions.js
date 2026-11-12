@@ -179,14 +179,33 @@ export async function devicesWithSession(db, userId, deviceIds, { at = new Date(
  * `PUT /notification-devices/:id` asks it before it creates a row, so a
  * removed device cannot register itself again with the access token it still
  * holds for a few minutes and keep receiving pushes after the sign-out.
+ *
+ * `issuedAt` is the caller's access-token `iat` (whole seconds). A token
+ * minted after the last bound family ended comes from a sign-in that happened
+ * after it — an older client that never sends the optional `deviceId` signs
+ * in with a live family bound to nothing — so it is not the removed session
+ * and may register the device again. `iat` is floored, so a token minted in
+ * the very second the family ended still counts as the removed one: the test
+ * errs towards refusing, never towards letting a removed session back in.
+ * Without `issuedAt` (an API key) nothing is admitted this way.
  */
-export async function deviceSignedOut(db, userId, deviceId, { at = new Date() } = {}) {
+export async function deviceSignedOut(db, userId, deviceId, { at = new Date(), issuedAt } = {}) {
   const bound = await db('refresh_tokens')
     .where({ user_id: userId, device_id: deviceId })
-    .first('id');
-  if (!bound) return false;
+    .select('revoked_at', 'rotated_at', 'expires_at');
+  if (bound.length === 0) return false;
   const live = await devicesWithSession(db, userId, [deviceId], { at });
-  return !live.has(deviceId);
+  if (live.has(deviceId)) return false;
+  if (!Number.isFinite(issuedAt)) return true;
+  // When the device's last session ended: a revoked row ended at its
+  // revocation, the head of a family nobody revoked at its expiry; a rotated
+  // row's successor carries its family's end.
+  let endedAt = 0;
+  for (const row of bound) {
+    const end = row.revoked_at ?? (row.rotated_at ? null : row.expires_at);
+    if (end) endedAt = Math.max(endedAt, new Date(end).getTime());
+  }
+  return issuedAt * 1000 <= endedAt;
 }
 
 /**

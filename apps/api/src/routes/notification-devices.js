@@ -273,8 +273,9 @@ export default async function notificationDeviceRoutes(app) {
           // signed out: the access token it still holds must not recreate
           // its row, or its pushes would outlive the sign-out (OPH-435). The
           // 401 sends the client to /auth/refresh, which is refused, and the
-          // client then signs itself out.
-          if (await deviceSignedOut(trx, userId, deviceId)) {
+          // client then signs itself out. A token minted by a later sign-in
+          // that bound no device (an older client) is not that session.
+          if (await deviceSignedOut(trx, userId, deviceId, { issuedAt: request.user.issuedAt })) {
             throw coded(
               app.httpErrors.unauthorized('This device was signed out'),
               'AUTH_SESSION_REVOKED',
