@@ -444,10 +444,19 @@ No `locale` and no `list`: the server sends no words, and every project view is 
   day from its first minute and keeps only tasks completed on or after it; `next` and `openToday`
   are task-only; `views` hold every non-archived project of the scope (an empty one as
   `{"openToday": 0, "buckets": []}`), tasks only; events only when `workspaceIds` has one id and
-  `mine=0`.
+  `mine=0`. Each case holds the replica's rows, a scope, `tz` and `now`; `expected.selected` is
+  what the scope selects (status `open`, `scheduled`, `in_progress` or `waiting`, plus tasks
+  completed today and not due before today; `mine` = assigned to the user, or created by them
+  with nobody assigned), and
+  `expected.days` is `buildWidgetServerDays` over it.
+- **Order within a bucket:** by instant (a task's `dueAt`, an event's start; an all-day event or
+  one already running sits at its day's first minute), finished tasks last, dateless tasks by
+  `sortOrder`; a task and an event at the same instant: the event first; any other tie keeps the
+  input order — tasks newest id first, then events by start.
 - **Item fields:** `id`, `done`, `priority` (events `"none"`), `title` (absent when `private=1`;
-  Swift draws `strings.privateTitle` / `privateEvent`), `projectColor` (`#RRGGBB`, the project's
-  else the task's own, absent when none), `kind: "event"` + `day` (`yyyy-MM-dd`) for events,
+  Swift draws `strings.privateTitle` / `privateEvent`), `projectColor` (`#RRGGBB`: a task with a
+  project takes the project's, absent when that project is unknown; else the task's own, absent
+  when none), `kind: "event"` + `day` (`yyyy-MM-dd`) for events,
   `dueAt` (a task's due instant, an event's start; absent for a dateless task), `endAt` and
   `allDay` (events only), `timeStyle` (absent = no label).
 - **`timeStyle` → text** (Swift, profile `patterns` and `locale`, in `tz`): `time` = time(dueAt) ·
@@ -455,7 +464,9 @@ No `locale` and no `list`: the server sends no words, and every project view is 
   time(dueAt) + "–" + time(endAt) · `start` = time(dueAt) · `end` = "–" + time(endAt) · `dayTime`
   = with `relativeDays`, the bare time on the view's date, `today`/`tomorrow`/`yesterday` +
   U+00A0 + time on a neighbouring day, else day + ", " + time; without it, day + ", " + time.
-  day() uses `dayYear` for another year. The header (weekday, day, month) is formatted from `date`;
+  The comma before the time is followed by U+00A0 with `relativeDays`, by a space without it.
+  day() uses `dayYear` for a year other than the view's date's, and "neighbouring" is to the
+  view's date too. The header (weekday, day, month) is formatted from `date`;
   a bucket's label and `next`'s label are `strings["bucket.<key>"]`; a view's open-count words
   come from the snapshot's `strings.openTodayPattern`.
 - **ETag** covers the whole body except `generatedAt`, plus the query: equal ETag, equal days.

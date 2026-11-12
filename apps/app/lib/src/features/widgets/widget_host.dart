@@ -8,6 +8,13 @@ import 'package:home_widget/home_widget.dart';
 /// targets (OPH-131/133/134).
 const String kWidgetAppGroupId = 'group.com.alliswell.alliswell';
 const String kWidgetSnapshotKey = 'aw_widget_snapshot';
+
+/// The widget self-fetch keys the app writes (iOS, #50, WIDGETS §3.2). The
+/// profile is what a fetch needs — absent, the extension never fetches; the
+/// server snapshot is the extension's own copy of the last answer, which the
+/// app only ever removes.
+const String kWidgetFetchProfileKey = 'aw_widget_fetch_profile';
+const String kWidgetServerSnapshotKey = 'aw_widget_server_snapshot';
 const String kWidgetIosName = 'AllisWellWidget';
 const String kWidgetAndroidProvider = 'TasksWidgetProvider';
 
@@ -24,8 +31,14 @@ abstract class WidgetHost {
   Future<void> requestUpdate();
 }
 
+/// A host that can also take a key away (#50). Separate from [WidgetHost] so
+/// a host that only saves — every test fake — stays a host.
+abstract interface class WidgetKeyRemover {
+  Future<void> remove(String key);
+}
+
 /// Production implementation backed by `home_widget`.
-class HomeWidgetHost implements WidgetHost {
+class HomeWidgetHost implements WidgetHost, WidgetKeyRemover {
   const HomeWidgetHost();
 
   @override
@@ -34,6 +47,11 @@ class HomeWidgetHost implements WidgetHost {
   @override
   Future<void> save(String key, String value) =>
       HomeWidget.saveWidgetData<String>(key, value);
+
+  /// `home_widget` removes the key when it is saved as null.
+  @override
+  Future<void> remove(String key) =>
+      HomeWidget.saveWidgetData<String>(key, null);
 
   @override
   Future<void> requestUpdate() => HomeWidget.updateWidget(

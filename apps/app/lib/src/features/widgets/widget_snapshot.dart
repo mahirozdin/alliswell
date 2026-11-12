@@ -2,11 +2,13 @@ import 'package:intl/intl.dart';
 
 import '../../core/date_format.dart';
 import '../../core/deep_link.dart';
+import '../../core/format_region.dart';
 
 import '../../i18n/i18n.dart';
 import '../calendar/data/external_event.dart';
 import '../projects/data/project.dart';
 import '../tasks/data/task.dart';
+import '../tasks/data/task_scope.dart';
 import '../tasks/data/task_when.dart';
 import 'widget_clock.dart';
 import 'widget_grouping.dart';
@@ -363,6 +365,116 @@ class WidgetSnapshot {
   };
 }
 
+/// How a row's time reads, without the words (#50, WIDGETS §3.2). The ONE
+/// rule both labels come from: the app turns a style into text here
+/// ([_styleText]), and the widget extension turns the server's copy of the
+/// same style into text with the profile's patterns. The wire names are the
+/// enum names.
+enum WidgetTimeStyle {
+  /// time(dueAt) — a task due on the view's day, in Today.
+  time,
+
+  /// day(dueAt) — any other dated task; day(`day`) for an all-day event
+  /// outside Today.
+  day,
+
+  /// `strings.allDay` — an all-day event in Today.
+  allDay,
+
+  /// time(dueAt)–time(endAt) — an event that starts and ends on the day.
+  range,
+
+  /// time(dueAt) — an event that starts on the day and runs past it.
+  start,
+
+  /// –time(endAt) — an event that began before the day.
+  end,
+
+  /// The row form of an instant ([awFormatShort] with the time) — a timed
+  /// event outside Today.
+  dayTime,
+}
+
+/// A task row's time style, or null for a dateless task (no label).
+///
+/// OPH-174: the widget speaks the SAME format as the app — a widget and an app
+/// disagreeing about a date, side by side on one screen, is indefensible. A
+/// Today row due on the view's day says its time. One that is on Today
+/// because its "when" came (OPH-372) is due LATER — a bare time would read as
+/// "due at 17:00 today", so it says the due day instead. Overdue / this week
+/// / this month: a short date says more than a bare time.
+WidgetTimeStyle? widgetTaskTimeStyle(
+  Task task,
+  WidgetBucket bucket,
+  DateTime now,
+) {
+  final due = task.dueAt;
+  if (due == null) return null;
+  if (bucket == WidgetBucket.today && awLocalDay(due) == awLocalDay(now)) {
+    return WidgetTimeStyle.time;
+  }
+  return WidgetTimeStyle.day;
+}
+
+/// An event row's time style (v5): all day on today's all-day event; the
+/// range on today's timed one; elsewhere a short date — with the start time
+/// when the event has one. [day] is the day the event is filed under.
+WidgetTimeStyle widgetEventTimeStyle(
+  ExternalEvent event,
+  DateTime day,
+  WidgetBucket bucket,
+) {
+  if (bucket == WidgetBucket.today) {
+    if (event.isAllDay) return WidgetTimeStyle.allDay;
+    final startsToday = awLocalDay(event.startsAt) == day;
+    final endsToday = awLocalDay(event.endsAt) == day;
+    if (startsToday && endsToday) return WidgetTimeStyle.range;
+    // Began before today (a running trip) or runs past midnight: the end is
+    // what the person needs, the start alone when it is still ahead.
+    if (startsToday) return WidgetTimeStyle.start;
+    return WidgetTimeStyle.end;
+  }
+  // Outside today an event is filed under the day it starts, so the start is
+  // the whole answer.
+  return event.isAllDay ? WidgetTimeStyle.day : WidgetTimeStyle.dayTime;
+}
+
+/// [style] in the user's words and format. [at] is the task's due instant or
+/// the event's start, [end] the event's end, [day] an all-day event's day;
+/// [now] is the view's own moment, so a later day's rows say "Tomorrow" from
+/// THAT day, as the widget does when it draws it.
+String _styleText(
+  WidgetTimeStyle style, {
+  required DateTime? at,
+  DateTime? end,
+  DateTime? day,
+  required DateTime now,
+  required String dateFormat,
+  required String localeTag,
+}) {
+  String time(DateTime t) =>
+      awFormatTime(t, format: dateFormat, locale: localeTag);
+  return switch (style) {
+    WidgetTimeStyle.time || WidgetTimeStyle.start => time(at!),
+    WidgetTimeStyle.day => awFormatShort(
+      day ?? at!,
+      format: dateFormat,
+      locale: localeTag,
+      now: now,
+      withTime: false,
+    ),
+    WidgetTimeStyle.allDay => 'widget.allDay'.tr(),
+    WidgetTimeStyle.range => '${time(at!)}–${time(end!)}',
+    WidgetTimeStyle.end => '–${time(end!)}',
+    WidgetTimeStyle.dayTime => awFormatShort(
+      at!,
+      format: dateFormat,
+      locale: localeTag,
+      now: now,
+    ),
+  };
+}
+
 String? _timeLabel(
   Task task,
   WidgetBucket bucket,
@@ -370,22 +482,14 @@ String? _timeLabel(
   String dateFormat,
   DateTime now,
 ) {
-  final due = task.dueAt;
-  if (due == null) return null;
-  // OPH-174: the widget speaks the SAME format as the app — a widget and an app
-  // disagreeing about a date, side by side on one screen, is indefensible.
-  // A Today row due today says its time. One that is on Today because its
-  // "when" came (OPH-372) is due LATER — a bare time would read as "due at
-  // 17:00 today", so it says the due day instead.
-  if (bucket == WidgetBucket.today && awLocalDay(due) == awLocalDay(now)) {
-    return awFormatTime(due, format: dateFormat, locale: localeTag);
-  }
-  // Overdue / this week / this month: a short date says more than a bare time.
-  return awFormatShort(
-    due,
-    format: dateFormat,
-    locale: localeTag,
-    withTime: false,
+  final style = widgetTaskTimeStyle(task, bucket, now);
+  if (style == null) return null;
+  return _styleText(
+    style,
+    at: task.dueAt,
+    now: now,
+    dateFormat: dateFormat,
+    localeTag: localeTag,
   );
 }
 
@@ -394,6 +498,11 @@ String? _timeLabel(
 /// project's color and its circle stay — but nothing the user wrote.
 String _titleOf(Task task, {required bool hideTitles}) =>
     hideTitles ? 'widget.privateTitle'.tr() : task.title;
+
+/// A task row's color: its project's when it has one (null when that project
+/// is unknown here), else its own.
+String? _colorOf(Task task, Map<String, String> projectColorById) =>
+    task.projectId != null ? projectColorById[task.projectId] : task.colorRgb;
 
 WidgetTaskRow _rowFor(
   Task task,
@@ -404,9 +513,7 @@ WidgetTaskRow _rowFor(
   required bool hideTitles,
   required DateTime now,
 }) {
-  final color = task.projectId != null
-      ? projectColorById[task.projectId]
-      : task.colorRgb;
+  final color = _colorOf(task, projectColorById);
   return WidgetTaskRow(
     id: task.id,
     title: _titleOf(task, hideTitles: hideTitles),
@@ -417,42 +524,23 @@ WidgetTaskRow _rowFor(
   );
 }
 
-/// An event row's short label (v5): "All day" on today's all-day event; the
-/// range ("14:00–15:00") on today's timed one; elsewhere a short date — with
-/// the start time when the event has one. Same format preference as a task's.
+/// An event row's short label (v5), from [widgetEventTimeStyle].
 String _eventTimeLabel(
   ExternalEvent event,
   DateTime day,
   WidgetBucket bucket,
   String localeTag,
   String dateFormat,
-) {
-  String time(DateTime t) =>
-      awFormatTime(t, format: dateFormat, locale: localeTag);
-  if (bucket == WidgetBucket.today) {
-    if (event.isAllDay) return 'widget.allDay'.tr();
-    final start = event.startsAt.toLocal();
-    final end = event.endsAt.toLocal();
-    final startsToday = DateTime(start.year, start.month, start.day) == day;
-    final endsToday = DateTime(end.year, end.month, end.day) == day;
-    if (startsToday && endsToday) return '${time(start)}–${time(end)}';
-    // Began before today (a running trip) or runs past midnight: the end is
-    // what the person needs, the start alone when it is still ahead.
-    if (startsToday) return time(start);
-    return '–${time(end)}';
-  }
-  if (event.isAllDay) {
-    return awFormatShort(
-      day,
-      format: dateFormat,
-      locale: localeTag,
-      withTime: false,
-    );
-  }
-  // Outside today an event is filed under the day it starts, so the start is
-  // the whole answer.
-  return awFormatShort(event.startsAt, format: dateFormat, locale: localeTag);
-}
+  DateTime now,
+) => _styleText(
+  widgetEventTimeStyle(event, day, bucket),
+  at: event.startsAt,
+  end: event.endsAt,
+  day: event.isAllDay ? day : null,
+  now: now,
+  dateFormat: dateFormat,
+  localeTag: localeTag,
+);
 
 /// One calendar event as a widget row (v5). Never done, never ranked, no
 /// project color — and under "Private widget" no title either: a meeting's
@@ -463,12 +551,20 @@ WidgetTaskRow _eventRowFor(
   String dateFormat,
   String localeTag, {
   required bool hideTitles,
+  required DateTime now,
 }) => WidgetTaskRow(
   id: entry.event.id,
   title: hideTitles ? 'widget.privateEvent'.tr() : entry.event.title,
   done: false,
   priority: 'none',
-  time: _eventTimeLabel(entry.event, entry.day, bucket, localeTag, dateFormat),
+  time: _eventTimeLabel(
+    entry.event,
+    entry.day,
+    bucket,
+    localeTag,
+    dateFormat,
+    now,
+  ),
   kind: kWidgetKindEvent,
   day: awDayParam(entry.day),
 );
@@ -479,14 +575,17 @@ WidgetTaskRow _eventRowFor(
 /// the Projects screen's (sort order, then creation).
 List<WidgetListChoice> widgetListChoices(Iterable<Project> projects) => [
   WidgetListChoice(id: kWidgetListAll, name: 'widget.list.all'.tr()),
-  for (final project in projects)
-    if (project.status != 'archived')
-      WidgetListChoice(
-        id: project.id,
-        name: project.name,
-        color: project.colorRgb,
-      ),
+  for (final project in _listable(projects))
+    WidgetListChoice(
+      id: project.id,
+      name: project.name,
+      color: project.colorRgb,
+    ),
 ];
+
+/// The projects that get a view: every one a task can be filed under.
+Iterable<Project> _listable(Iterable<Project> projects) =>
+    projects.where((project) => project.status != 'archived');
 
 /// A row a bucket still owes: an event, or a task not yet finished.
 bool _isOpen(WidgetEntry entry) =>
@@ -534,6 +633,7 @@ _listData(
                 dateFormat,
                 localeTag,
                 hideTitles: hideTitles,
+                now: now,
               ),
             },
         ],
@@ -541,19 +641,7 @@ _listData(
       ),
   ];
 
-  // Counted from the SAME grouping the widget draws, so the number and the
-  // rows can never disagree — and counted here, in pure Dart, because the
-  // native layer must never carry product logic (W9).
-  var openToday = 0;
-  for (final group in groups) {
-    if (group.bucket != WidgetBucket.overdue &&
-        group.bucket != WidgetBucket.today) {
-      continue;
-    }
-    for (final task in group.tasks) {
-      if (!task.isCompleted) openToday++;
-    }
-  }
+  final openToday = _openTodayOf(groups);
 
   final picked = nextTaskForWidget(groups);
   final next = picked == null
@@ -617,20 +705,12 @@ WidgetSnapshot buildWidgetSnapshot(
   // v6: one full view per day, every one out of the SAME function — so day 0
   // and the top level cannot drift apart, and tomorrow is grouped by the
   // rules today is (W1/W9 stay in Dart).
-  final today = DateTime(now.year, now.month, now.day);
   final days = [
-    for (var d = 0; d < kWidgetSnapshotDays; d++)
+    for (final at in _dayMoments(now))
       _dayView(
-        tasks,
+        _tasksForDay(tasks, at, now),
         events: events,
-        // Today is "now"; a later day is seen from its first minute, which is
-        // when its WidgetKit entry starts drawing it.
-        now: d == 0 ? now : DateTime(today.year, today.month, today.day + d),
-        // A task finished today is today's dimmed row (OPH-185), not
-        // tomorrow's: a later day keeps only what was finished on it.
-        keepCompletedSince: d == 0
-            ? null
-            : DateTime(today.year, today.month, today.day + d),
+        now: at,
         lists: lists,
         projectColorById: projectColorById,
         rowsPerBucket: rowsPerBucket,
@@ -678,15 +758,52 @@ WidgetSnapshot buildWidgetSnapshot(
   );
 }
 
+/// The moments the snapshot's days are seen from (v6): today is [now]; a
+/// later day is seen from its first minute, which is when its WidgetKit entry
+/// starts drawing it.
+List<DateTime> _dayMoments(DateTime now) => [
+  for (var d = 0; d < kWidgetSnapshotDays; d++)
+    d == 0 ? now : DateTime(now.year, now.month, now.day + d),
+];
+
+/// The tasks a day seen from [at] holds. A task finished today is today's
+/// dimmed row (OPH-185), not tomorrow's: a later day keeps only what was
+/// finished on it. Today keeps every task given — its caller already asked
+/// the store for today's finished work only.
+List<Task> _tasksForDay(List<Task> tasks, DateTime at, DateTime now) {
+  if (identical(at, now)) return tasks;
+  return [
+    for (final task in tasks)
+      if (!task.isCompleted ||
+          (task.completedAt != null && !task.completedAt!.isBefore(at)))
+        task,
+  ];
+}
+
+/// What is on the user that day: overdue + Today, open tasks only (OPH-187,
+/// W9). Counted from the SAME grouping the widget draws, so the number and
+/// the rows can never disagree — and counted here, in pure Dart, because the
+/// native layer must never carry product logic (W9).
+int _openTodayOf(List<WidgetGroup> groups) {
+  var openToday = 0;
+  for (final group in groups) {
+    if (group.bucket != WidgetBucket.overdue &&
+        group.bucket != WidgetBucket.today) {
+      continue;
+    }
+    for (final task in group.tasks) {
+      if (!task.isCompleted) openToday++;
+    }
+  }
+  return openToday;
+}
+
 /// One day's full view (v6): the whole list and every project's view, seen
-/// from [now]. [keepCompletedSince] drops a finished task completed before it
-/// (null keeps every task given — today's caller already asked the store for
-/// today's finished work only).
+/// from [now], over the tasks that day holds ([_tasksForDay]).
 WidgetDayView _dayView(
-  List<Task> tasks, {
+  List<Task> dayTasks, {
   required List<ExternalEvent> events,
   required DateTime now,
-  required DateTime? keepCompletedSince,
   required List<WidgetListChoice> lists,
   required Map<String, String> projectColorById,
   required int rowsPerBucket,
@@ -694,17 +811,6 @@ WidgetDayView _dayView(
   required String localeTag,
   required bool hideTitles,
 }) {
-  final since = keepCompletedSince;
-  final dayTasks = since == null
-      ? tasks
-      : [
-          for (final task in tasks)
-            if (!task.isCompleted ||
-                (task.completedAt != null &&
-                    !task.completedAt!.isBefore(since)))
-              task,
-        ];
-
   final all = _listData(
     dayTasks,
     events: events,
@@ -753,3 +859,214 @@ WidgetDayView _dayView(
 
 String _openLabel(int count) =>
     'widget.openToday'.tr(args: {'count': '$count'});
+
+/// The days of the widget in the server's words-free shape (#50, WIDGETS
+/// §3.2): what `GET /widget/snapshot` answers in `days`, built from the SAME
+/// grouping, counts, caps and time rules as [buildWidgetSnapshot]. Bucket
+/// keys instead of labels, raw instants instead of formatted times, a
+/// [WidgetTimeStyle] name instead of a label.
+///
+/// It is how the app states the rule the server ports: the shared fixture
+/// (`test/fixtures/widget_grouping_cases.json`) is written from this function,
+/// and the API's grouping is tested against that file case by case.
+///
+/// [hideTitles] (default true, fail-closed like the route's `private=1`)
+/// leaves every `title` key out. [instant] writes a moment; by default its
+/// UTC ISO-8601 form.
+List<Map<String, Object?>> buildWidgetServerDays(
+  List<Task> tasks, {
+  List<ExternalEvent> events = const [],
+  required DateTime now,
+  Map<String, String> projectColorById = const {},
+  Iterable<Project> projects = const [],
+  int rowsPerBucket = kWidgetRowsPerBucket,
+  bool hideTitles = true,
+  String Function(DateTime)? instant,
+}) {
+  final at = instant ?? (DateTime t) => t.toUtc().toIso8601String();
+  final listable = _listable(projects).toList();
+
+  Map<String, Object?> list(
+    List<Task> listTasks,
+    List<ExternalEvent> listEvents,
+    DateTime viewNow,
+  ) {
+    final groups = groupTasksForWidget(
+      listTasks,
+      now: viewNow,
+      events: listEvents,
+    );
+
+    Map<String, Object?> item(WidgetEntry entry, WidgetBucket bucket) =>
+        switch (entry) {
+          WidgetTaskEntry(:final task) => {
+            'id': task.id,
+            'done': task.isCompleted,
+            'priority': task.priority,
+            if (!hideTitles) 'title': task.title,
+            'projectColor': ?_colorOf(task, projectColorById),
+            if (task.dueAt case final due?) 'dueAt': at(due),
+            if (widgetTaskTimeStyle(task, bucket, viewNow) case final style?)
+              'timeStyle': style.name,
+          },
+          WidgetEventEntry(:final event, :final day) => {
+            'id': event.id,
+            'done': false,
+            'priority': 'none',
+            if (!hideTitles) 'title': event.title,
+            'kind': kWidgetKindEvent,
+            'day': awDayParam(day),
+            'dueAt': at(event.startsAt),
+            'endAt': at(event.endsAt),
+            'allDay': event.isAllDay,
+            'timeStyle': widgetEventTimeStyle(event, day, bucket).name,
+          },
+        };
+
+    final picked = nextTaskForWidget(groups);
+    return {
+      'openToday': _openTodayOf(groups),
+      if (picked != null)
+        'next': {
+          'id': picked.task.id,
+          if (!hideTitles) 'title': picked.task.title,
+          'bucket': picked.bucket.name,
+          if (picked.task.dueAt case final due?) 'dueAt': at(due),
+          if (widgetTaskTimeStyle(picked.task, picked.bucket, viewNow)
+              case final style?)
+            'timeStyle': style.name,
+        },
+      'buckets': [
+        for (final group in groups)
+          {
+            'key': group.bucket.name,
+            'count': group.entries.where(_isOpen).length,
+            if (group.entries.skip(rowsPerBucket).where(_isOpen).length
+                case final more when more > 0)
+              'more': more,
+            'items': [
+              for (final entry in group.entries.take(rowsPerBucket))
+                item(entry, group.bucket),
+            ],
+          },
+      ],
+    };
+  }
+
+  return [
+    for (final moment in _dayMoments(now))
+      () {
+        final dayTasks = _tasksForDay(tasks, moment, now);
+        return {
+          'date': awDayParam(DateTime(moment.year, moment.month, moment.day)),
+          ...list(dayTasks, events, moment),
+          'views': {
+            for (final project in listable)
+              project.id: list(
+                filterTasksForWidgetList(dayTasks, project.id),
+                const [],
+                moment,
+              ),
+          },
+        };
+      }(),
+  ];
+}
+
+/// The fetch profile's version (WIDGETS §3.2).
+const int kWidgetFetchProfileVersion = 1;
+
+/// The ICU patterns the app's widget rows are written with for [format]
+/// (WIDGETS §3.2 `patterns`): what [awFormatTime] and
+/// `awFormatShort(withTime: false)` use, so the widget extension can say a
+/// server row's time exactly as the app would. The system default: the
+/// region's clock and day order, the year added for another year, and
+/// Today/Tomorrow/Yesterday words ([relativeDays]); a chosen format: its own
+/// time and short patterns, the same with or without a year, no words.
+({String time, String day, String dayYear, bool relativeDays})
+widgetDatePatterns({required String format, String? locale, String? region}) {
+  final spec = awDateFormatSpec(format);
+  final time = awTimePattern(format: format, locale: locale, region: region);
+  if (spec.id != kAwSystemDateFormat) {
+    return (
+      time: time,
+      day: spec.short!,
+      dayYear: spec.short!,
+      relativeDays: false,
+    );
+  }
+  final order = awConventions(
+    language: awLanguageOf(locale),
+    region: region,
+  ).order;
+  // date_format.dart's `_systemDay`, pinned to it by
+  // widget_fetch_profile_test.dart.
+  final (day, dayYear) = switch (order) {
+    AwDateOrder.dmy => ('d MMM', 'd MMM y'),
+    AwDateOrder.mdy => ('MMM d', 'MMM d, y'),
+    AwDateOrder.ymd => ('MMM d', 'y MMM d'),
+  };
+  return (time: time, day: day, dayYear: dayYear, relativeDays: true);
+}
+
+/// [url] as the profile carries it: trimmed, no trailing `/` (the widget
+/// appends `/api/v1/…`).
+String widgetFetchBaseUrl(String url) =>
+    url.trim().replaceFirst(RegExp(r'/+$'), '');
+
+/// The fetch profile (WIDGETS §3.2, `aw_widget_fetch_profile`): everything the
+/// widget extension needs to ask the server for its days and to say them in
+/// the app's words — never a credential (the widget token is its own Keychain
+/// item) and never a title.
+///
+/// [hideTitles] is "Private widget" AS READ: the caller writes a profile only
+/// once the setting has been read (OPH-337's fail-closed rule), because a
+/// profile is what lets the extension fetch at all. [pendingOutbox] is how
+/// many local writes have not reached the server — while it is above zero the
+/// extension keeps the app's snapshot. [localWrittenAt] is when the app's
+/// snapshot was last written, by this device's clock.
+Map<String, Object?> buildWidgetFetchProfile({
+  required String baseUrl,
+  required TaskScope scope,
+  required bool hideTitles,
+  required String dateFormat,
+  required int pendingOutbox,
+  required DateTime localWrittenAt,
+  String? region,
+}) {
+  final tag = AwI18n.instance.locale.toLanguageTag();
+  final language = awLanguageOf(tag);
+  final system = awDateFormatSpec(dateFormat).id == kAwSystemDateFormat;
+  final patterns = widgetDatePatterns(
+    format: dateFormat,
+    locale: tag,
+    region: region,
+  );
+  return {
+    'v': kWidgetFetchProfileVersion,
+    'baseUrl': widgetFetchBaseUrl(baseUrl),
+    'scope': scope.toJson(),
+    'private': hideTitles,
+    // The tag the rows are formatted with: the system default formats in the
+    // app's language, a chosen format in its full tag.
+    'locale': system ? language : tag,
+    'patterns': {
+      'time': patterns.time,
+      'day': patterns.day,
+      'dayYear': patterns.dayYear,
+      'relativeDays': patterns.relativeDays,
+    },
+    'strings': {
+      for (final bucket in WidgetBucket.values)
+        'bucket.${bucket.name}': 'widget.bucket.${bucket.name}'.tr(),
+      'privateTitle': 'widget.privateTitle'.tr(),
+      'privateEvent': 'widget.privateEvent'.tr(),
+      'allDay': 'widget.allDay'.tr(),
+      'today': AwI18n.instance.translateIn(language, 'format.today'),
+      'tomorrow': AwI18n.instance.translateIn(language, 'format.tomorrow'),
+      'yesterday': AwI18n.instance.translateIn(language, 'format.yesterday'),
+    },
+    'pendingOutbox': pendingOutbox,
+    'localWrittenAtMs': localWrittenAt.millisecondsSinceEpoch,
+  };
+}
