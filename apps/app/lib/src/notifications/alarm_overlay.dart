@@ -6,6 +6,7 @@ import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/ulid.dart';
+import '../features/devices/providers.dart';
 import '../features/tasks/providers.dart';
 import '../sync/providers.dart';
 import 'actions.dart';
@@ -14,6 +15,7 @@ import '../core/persisted_prefs.dart';
 import 'alarm_log.dart';
 import 'alarmkit.dart';
 import 'alarmkit_identity.dart';
+import 'device_gate.dart';
 import 'gateway.dart';
 import 'planner.dart';
 import 'reminder_profile.dart';
@@ -340,8 +342,23 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
 
   DateTime _now() => ref.read(alarmClockProvider)();
 
-  List<AlarmInput> _feed() =>
-      ref.read(alarmFeedProvider).value ?? const <AlarmInput>[];
+  /// The alarms the ring decision sees: [alarmFeedProvider] through this
+  /// device's gate (#48, OPH-452). A device that does not ring urgent alarms
+  /// (off, or unknown before the server answered) sees them as ordinary
+  /// reminders, so the screen never opens there; the OS notification still
+  /// comes. Nothing rings until the stored answer is read — never on a guess.
+  ///
+  /// Only the ring decision is gated: the missed-alarm card and the "rings
+  /// together" notes read the feed itself, because they tell the person about
+  /// their urgent alarms wherever those ring.
+  List<AlarmInput> _feed([List<AlarmInput>? alarms]) {
+    final here = ringsUrgentHereNow(ref.read(ringsUrgentHereProvider));
+    if (here == null) return const <AlarmInput>[];
+    return forThisDevice(
+      alarms ?? ref.read(alarmFeedProvider).value ?? const <AlarmInput>[],
+      here,
+    );
+  }
 
   @override
   AlarmOverlayState build() {
@@ -362,7 +379,12 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
     ref.listen(alarmKitViewProvider, (_, _) => state = _evaluate(_feed()));
     ref.listen(
       alarmFeedProvider,
-      (_, next) => state = _evaluate(next.value ?? const []),
+      (_, next) => state = _evaluate(_feed(next.value ?? const [])),
+    );
+    // The switch, or the server's answer, re-decides at once.
+    ref.listen(
+      ringsUrgentHereProvider.select(ringsUrgentHereNow),
+      (_, _) => state = _evaluate(_feed()),
     );
     return _evaluate(_feed());
   }

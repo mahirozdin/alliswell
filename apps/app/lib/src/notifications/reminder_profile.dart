@@ -39,6 +39,10 @@ const List<ReminderProfilePreset> kReminderProfilePresets = [
   ReminderProfilePreset('insistent', [0, 1, 2, 3, 5, 8, 12, 17, 25, 40]),
 ];
 
+/// Where the chain is stored (empty parses to [ReminderProfile.factory]);
+/// read by the settings provider and the headless turn alike (OPH-452).
+const String kReminderProfileKey = 'alliswell_reminder_profile';
+
 /// Minutes after the alarm instant at which the alerts fire, plus whether a
 /// post-snooze ring runs the same chain again.
 class ReminderProfile {

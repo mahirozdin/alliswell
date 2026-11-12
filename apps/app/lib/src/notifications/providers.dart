@@ -21,11 +21,13 @@ import 'alarm_log.dart';
 import 'alarm_sound.dart';
 import 'alarmkit.dart';
 import 'alarmkit_identity.dart';
+import 'device_gate.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
 import 'reminder_profile.dart';
 import 'reminder_store.dart';
 import 'sound_store.dart';
+import 'planner.dart' show AlarmInput;
 import 'platform_matrix.dart';
 import 'web_alert_mode.dart';
 import 'scheduler.dart';
@@ -230,7 +232,7 @@ class AlarmKitViewHost implements AlarmKitHost {
 /// each device owns how insistent they are.
 final reminderProfileRawProvider = NotifierProvider<PersistedChoice, String>(
   // Empty parses to the factory chain, so an upgrade changes nothing.
-  () => PersistedChoice('alliswell_reminder_profile', fallback: ''),
+  () => PersistedChoice(kReminderProfileKey, fallback: ''),
 );
 
 /// The parsed profile — junk resolves to [ReminderProfile.factory].
@@ -254,12 +256,12 @@ final snoozePresetOrderProvider = Provider<List<String>>(
 /// Which sound each lane plays (OPH-181). Device-local: the sound file lives on
 /// THIS device, and the library it can be chosen from is the workspace's.
 final alarmSoundRawProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice('alliswell_alarm_sound', fallback: 'bundled:aw_alarm'),
+  () => PersistedChoice(kAlarmSoundKey, fallback: kAlarmSoundFallback),
 );
 
 /// Ordinary reminders keep the OS sound until the user says otherwise.
 final reminderSoundRawProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice('alliswell_reminder_sound', fallback: 'os'),
+  () => PersistedChoice(kReminderSoundKey, fallback: kReminderSoundFallback),
 );
 
 /// How loud this BROWSER is (OPH-316). Device-local like every other delivery
@@ -409,11 +411,73 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   }
 });
 
+/// The gate's answer as the alarm paths use it: the stored state once read
+/// (kept through a re-read), [RingsUrgentHere.unknown] if it cannot be read —
+/// never ring on a guess — and null while the first read is in flight.
+RingsUrgentHere? ringsUrgentHereNow(AsyncValue<RingsUrgentHere> stored) {
+  if (stored.hasValue) return stored.value;
+  if (stored.hasError) return RingsUrgentHere.unknown;
+  return null;
+}
+
+/// [alarms] through the device gate (OPH-446) as [here] changes: each new
+/// list or new answer emits `forThisDevice(latest list, latest answer)`.
+/// Nothing is emitted before both are known — a plan made on a guess would
+/// cancel and re-schedule the urgent chain on every launch.
+Stream<List<AlarmInput>> gateAlarms(
+  Stream<List<AlarmInput>> alarms,
+  Stream<RingsUrgentHere> here,
+) {
+  late final StreamController<List<AlarmInput>> out;
+  StreamSubscription<List<AlarmInput>>? alarmsSub;
+  StreamSubscription<RingsUrgentHere>? hereSub;
+  List<AlarmInput>? latest;
+  RingsUrgentHere? gate;
+  void emit() {
+    final list = latest;
+    final current = gate;
+    if (list == null || current == null || out.isClosed) return;
+    out.add(forThisDevice(list, current));
+  }
+
+  out = StreamController<List<AlarmInput>>(
+    onListen: () {
+      alarmsSub = alarms.listen((next) {
+        latest = next;
+        emit();
+      }, onError: out.addError);
+      hereSub = here.listen((next) {
+        if (next == gate) return;
+        gate = next;
+        emit();
+      });
+    },
+    onPause: () {
+      alarmsSub?.pause();
+      hereSub?.pause();
+    },
+    onResume: () {
+      alarmsSub?.resume();
+      hereSub?.resume();
+    },
+    onCancel: () async {
+      await hereSub?.cancel();
+      await alarmsSub?.cancel();
+    },
+  );
+  return out.stream;
+}
+
 /// One scheduler per signed-in person: keeps the OS schedule equal to the
 /// replica (OPH-061) and routes notification taps/actions into the stores
 /// (OPH-062/063). Rebuilt when the privacy setting flips (OPH-064) so
 /// content re-renders under the new policy.
-final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
+///
+/// autoDispose (OPH-452): it exists while HomeShell — a session — watches it,
+/// so a signed-out app keeps no scheduler and no listener on the device gate.
+final notificationSchedulerProvider = Provider.autoDispose<NotificationScheduler?>((
+  ref,
+) {
   // The person's own work — the same scope Home shows. In an organisation's
   // workspaces that is not "every task of the selected unit": a colleague's
   // reminder rang on every member's phone that happened to have that unit open.
@@ -421,6 +485,19 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
   // scheduler rebuilt for it would re-plan the whole OS schedule for nothing.
   final scope = ref.watch(taskScopeProvider.select((s) => s.value));
   if (scope == null) return null;
+  // Whether urgent alarms ring on THIS device (#48, OPH-452). Listened, not
+  // watched: a new answer flows into the alarm stream below and re-plans at
+  // once (urgent moves to or from AlarmKit and the chain), without tearing the
+  // scheduler down and asking for permission again.
+  final gate = StreamController<RingsUrgentHere>();
+  ref.onDispose(gate.close);
+  ref.listen<RingsUrgentHere?>(
+    ringsUrgentHereProvider.select(ringsUrgentHereNow),
+    (_, here) {
+      if (here != null && !gate.isClosed) gate.add(here);
+    },
+    fireImmediately: true,
+  );
   final gateway = ref.watch(notificationsGatewayProvider);
   final alarmKit = ref.watch(alarmKitHostProvider);
   final db = ref.watch(databaseProvider);
@@ -481,7 +558,12 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
         // The container is gone (signed out, test torn down): nothing to hide.
       }
     }),
-    alarms: ref.watch(reminderStoreProvider).watchAlarmsIn(scope),
+    // The one gate (OPH-446): off and unknown plan every urgent alarm as an
+    // ordinary notification, on and legacy ring as before.
+    alarms: gateAlarms(
+      ref.watch(reminderStoreProvider).watchAlarmsIn(scope),
+      gate.stream,
+    ),
     privacyMode: ref.watch(notificationPrivacyProvider),
     log: ref.watch(alarmLogProvider),
     profile: ref.watch(reminderProfileProvider),

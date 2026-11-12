@@ -116,7 +116,11 @@ final ringsUrgentStoreProvider = Provider<RingsUrgentStore>(
 /// Whether urgent alarms ring on this device (#48). Re-read whenever the
 /// session hook or a register response changes the stored answer; the alarm
 /// paths apply it through `forThisDevice`.
-final ringsUrgentHereProvider = FutureProvider<RingsUrgentHere>(
+///
+/// autoDispose (OPH-452): it lives only while an alarm path or a screen
+/// listens, so a signed-out app holds no stale answer and the next session
+/// starts from what the store says.
+final ringsUrgentHereProvider = FutureProvider.autoDispose<RingsUrgentHere>(
   (ref) => ref.watch(ringsUrgentStoreProvider).read(),
 );
 

@@ -7,6 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/devices/device_registry.dart';
+import 'package:alliswell/src/features/devices/providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/features/tasks/providers.dart';
@@ -15,6 +18,7 @@ import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/alarmkit_identity.dart';
+import 'package:alliswell/src/notifications/device_gate.dart';
 import 'package:alliswell/src/notifications/alarm_ring_screen.dart';
 import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/planner.dart';
@@ -420,6 +424,49 @@ void main() {
         await tester.pump(const Duration(minutes: 5));
         expect(overlay().ringing.single.reminderId, 'R1');
         expect(_squash(log), ['start', 'stop', 'start']);
+      },
+    );
+
+    testWidgets(
+      'a device that does not ring urgent alarms never opens the ring screen',
+      (tester) async {
+        // OPH-452 (#48): off, and unknown (a fresh sign-in before the server
+        // answered), leave the alarm to the OS as an ordinary notification.
+        final kv = _MemoryKv()..values[kRingsUrgentKey] = 'off';
+        boot(
+          extra: [
+            ringsUrgentStoreProvider.overrideWithValue(
+              RingsUrgentStore(kv: kv),
+            ),
+          ],
+        );
+        final due = alarm(remindAt: now.subtract(const Duration(minutes: 1)));
+        feed.add([due]);
+        await container.read(ringsUrgentHereProvider.future);
+        await tester.pump();
+        expect(overlay().ringing, isEmpty);
+        expect(log, isEmpty);
+
+        kv.values[kRingsUrgentKey] = 'unknown';
+        container.invalidate(ringsUrgentHereProvider);
+        await container.read(ringsUrgentHereProvider.future);
+        await tester.pump();
+        expect(overlay().ringing, isEmpty);
+        expect(log, isEmpty);
+
+        // The person switches this device on: the screen opens without a
+        // restart.
+        kv.values[kRingsUrgentKey] = 'on';
+        container.invalidate(ringsUrgentHereProvider);
+        await container.read(ringsUrgentHereProvider.future);
+        await tester.pump();
+        expect(overlay().ringing.single.reminderId, 'R1');
+        expect(log, contains('start'));
+
+        controller().handled(due);
+        await tester.pump();
+        expect(overlay().ringing, isEmpty);
+        await tester.pump(const Duration(minutes: 2));
       },
     );
 
@@ -1147,6 +1194,23 @@ List<String> _squash(List<String> log) => [
 ];
 
 /// Records the order of start/stop calls (#46).
+class _MemoryKv implements LocalKv {
+  final Map<String, String> values = {};
+
+  @override
+  Future<String?> get(String key) async => values[key];
+
+  @override
+  Future<void> set(String key, String value) async => values[key] = value;
+
+  @override
+  Future<void> remove(String key) async => values.remove(key);
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async =>
+      values.removeWhere((key, _) => test(key));
+}
+
 class _LogFeedback implements AlarmFeedback {
   _LogFeedback(this.log);
 

@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart'
+    show TargetPlatform, defaultTargetPlatform, kIsWeb;
 
 import '../core/app_liveness.dart';
 import '../core/kv/local_kv.dart';
@@ -9,6 +11,7 @@ import '../features/auth/data/auth_api.dart';
 import '../features/auth/data/token_storage.dart';
 import '../features/auth/data/secure_secret_store.dart';
 import '../features/auth/data/auth_interceptor.dart';
+import '../features/devices/device_registry.dart';
 import '../features/tasks/data/task_scope.dart';
 import '../features/widgets/widget_bridge.dart';
 import '../features/widgets/widget_host.dart';
@@ -17,10 +20,14 @@ import '../sync/db/connection.dart';
 import '../sync/db/database.dart';
 import '../sync/sync_api.dart';
 import '../sync/sync_engine.dart';
+import 'alarm_sound.dart';
+import 'device_gate.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
 import 'planner.dart';
+import 'reminder_profile.dart';
 import 'reminder_store.dart';
+import 'sound_store.dart';
 import 'scheduler.dart';
 
 /// One background turn: sync, then re-arm the OS alarms (OPH-321), then redraw
@@ -133,15 +140,11 @@ Future<void> runHeadlessRefresh({
         }
       }
 
-      final alarms = await ReminderStore(db, () {}).readAlarmsIn(scope);
-      final scheduler = NotificationScheduler(
+      await rearmAlarmsFromReplica(
+        db,
+        scope: scope,
         gateway: openGateway?.call() ?? LocalNotificationsGateway(),
-        // Nothing streams here; the set is read once and applied once.
-        alarms: const Stream<List<AlarmInput>>.empty(),
-        privacyMode: await _flag('notification_privacy'),
       );
-      await scheduler.applyOnce(alarms);
-      scheduler.dispose();
     } finally {
       // OPH-334: every path past this point — no session (a locked iPhone reads
       // no Keychain), offline, a server that said no — ends by redrawing the
@@ -163,4 +166,56 @@ Future<void> runHeadlessRefresh({
   }
 }
 
-Future<bool> _flag(String key) async => (await localKv.get(key)) == 'true';
+/// The alarm half of a headless turn: read the replica, put it through this
+/// device's gate, apply it once.
+///
+/// The gate is the foreground's (OPH-452, #48): the same `forThisDevice` over
+/// the same stored answer, read through the same [RingsUrgentStore]. Off and
+/// unknown schedule every urgent alarm as an ordinary notification; on and
+/// legacy (an install from before the answer existed) ring as they always
+/// did. A turn that read the gate any other way would put back, at 3 a.m.,
+/// the urgent chain the app took off this device.
+///
+/// [NotificationScheduler.applyOnce] is a full pass, so the Android
+/// active-notification reconcile (OPH-445) runs here too: an alarm answered on
+/// another device stops ringing on this one after the wake and sync.
+Future<void> rearmAlarmsFromReplica(
+  AwDatabase db, {
+  required TaskScope scope,
+  required NotificationsGateway gateway,
+  LocalKv? kv,
+}) async {
+  final store = kv ?? localKv;
+  final here = await RingsUrgentStore(kv: store).read();
+  final alarms = forThisDevice(
+    await ReminderStore(db, () {}).readAlarmsIn(scope),
+    here,
+  );
+  final scheduler = NotificationScheduler(
+    gateway: gateway,
+    // Nothing streams here; the set is read once and applied once.
+    alarms: const Stream<List<AlarmInput>>.empty(),
+    privacyMode: (await store.get('notification_privacy')) == 'true',
+    // The person's chain and sounds, as the foreground plans them: the sound
+    // name is part of each id, so a turn on the defaults re-planned every
+    // urgent alarm under new ids and the factory chain, with the default
+    // sound, until the app next ran.
+    profile: ReminderProfile.parse(await store.get(kReminderProfileKey)),
+    sounds: AlarmSoundResolver(
+      store: soundStore,
+      isIos: !kIsWeb && defaultTargetPlatform == TargetPlatform.iOS,
+      isAndroid: !kIsWeb && defaultTargetPlatform == TargetPlatform.android,
+    ),
+    alarmSound: AwSoundChoice.parse(
+      await store.get(kAlarmSoundKey) ?? kAlarmSoundFallback,
+    ),
+    reminderSound: AwSoundChoice.parse(
+      await store.get(kReminderSoundKey) ?? kReminderSoundFallback,
+    ),
+  );
+  try {
+    await scheduler.applyOnce(alarms);
+  } finally {
+    scheduler.dispose();
+  }
+}
