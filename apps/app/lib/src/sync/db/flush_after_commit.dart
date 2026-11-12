@@ -1,5 +1,17 @@
 import 'package:drift/drift.dart';
 
+/// Wraps [connection] the way the web replica needs it: [FlushAfterCommit]
+/// around the executor INSIDE the connection (OPH-480).
+///
+/// `DatabaseConnection.interceptWith` wraps `connection.executor`, so that
+/// inner executor is the `parent` the interceptor sees for a top-level
+/// transaction. Rooting the interceptor at the connection itself made the
+/// identity check never match, and the flush never ran on the web.
+DatabaseConnection flushAfterEveryCommit(DatabaseConnection connection) {
+  final inner = connection.executor;
+  return connection.withExecutor(inner.interceptWith(FlushAfterCommit(inner)));
+}
+
 /// Makes a committed transaction durable on the web replica (N2, UI-AUDIT
 /// retest — an offline request draft lost on reload).
 ///
