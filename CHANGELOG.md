@@ -41,6 +41,16 @@ This file holds the unreleased changes and the latest release; at each release t
   each one, or all at once with Snooze all and Acknowledge all. Creating or editing an urgent task
   at a minute that already rings says both will ring together, with a Change time shortcut; saving
   is never blocked. Snoozing the group from the iPhone alert moves all of them together.
+- **Urgent alarms and device removal hold up in the edge cases**
+  ([#46](https://github.com/mahirozdin/alliswell/issues/46)–[#49](https://github.com/mahirozdin/alliswell/issues/49)).
+  Snoozing one alarm of a ringing list counts from your choice, and cancelling "Pick a time"
+  snoozes nothing. Acknowledging a ringing task also answers its deadline alarm. An offline-created
+  alarm keeps ringing on Android when the app syncs, and a replan never rings a grouped minute
+  twice. An alarm handled from the iPhone alert no longer stops later changes from syncing, and a
+  widget completion made at the same moment is kept. Android remote stop retries a brief push
+  failure. A device removed elsewhere also stops an alarm already ringing, and drops its alarms at
+  its next background sync without losing an edit you just made; signing in right after such a
+  removal keeps the new account's alarms and data.
 - **The iPhone widget shows the new day after midnight**
   ([#50](https://github.com/mahirozdin/alliswell/issues/50)). The Today list, the counter and the
   lock-screen next task change at midnight without opening the app, and after three days without

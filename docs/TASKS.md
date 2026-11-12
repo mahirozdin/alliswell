@@ -38,6 +38,50 @@ Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/41
 
 ---
 
+## Epic 36 follow-up — phase-end review findings (PR-1)
+
+Left open by the Epic 36 phase-end review (2026-11-12) and still present in the code; they fix
+shipped PR-1 behaviour, so they come before Epic 37. Each: failing test first, K1, commit body with
+`Changelog:` and `Device:` lines.
+
+### OPH-468 — A revoked session's cleanup finishes before any replacement session is exposed
+
+Kritik yol: auth. Found: phase-end review, `apps/app/lib/src/features/auth/data/auth_repository.dart`
+(`_doRefresh` deferred branch, `_setSession`).
+
+- [ ] Deferred branch: the old session's `_clearSession` (storage delete) is not awaited by the
+      sign-in that takes the cleanup over → a slow delete finishes after B saved and erases B,
+      publishing null (reproduced: stored=null, events `[A,B,null]`).
+- [ ] Overlapping sign-ins B and C during A's refusal: B consumes `_deferredRevocation`, C sees none
+      and exposes its session without awaiting `_revocationCleanup` → A's cleanup halts C's engines
+      and drops C's alarms. Every sign-in waits the running cleanup right before exposure.
+- **Test first:** `apps/app/test/features/auth/auth_repository_test.dart` — held `SecretStore.delete`;
+  two delayed `onSessionUser` hooks. **Verify:** `npm run verify:task -- <those tests>` + auth K1.
+
+### OPH-469 — Widget completion also drops the task from future day views
+
+swift · #50. Found: phase-end review, `apps/app/ios/Shared/AWSnapshotModel.swift` (`awMarkSnapshotDone`).
+
+- [ ] Completing from the widget stamps `done` in every day but leaves the task's overdue row in
+      later days and leaves `openToday` / `next` unchanged → tomorrow shows it crossed out under
+      Overdue, still counted, possibly "Up next". ADR-0010's revision: a task done today is not
+      tomorrow's dimmed row. Remove it from days after today; recount `openToday`, re-pick `next`.
+- **Test first:** RunnerTests snapshot-model case (today + tomorrow's overdue row). **Verify:** Mac —
+  `xcodebuild test -only-testing:RunnerTests` and `flutter build ios --simulator --debug`.
+
+### OPH-470 — Ring screen interaction restarts the 60-second quiet minute
+
+Kritik yol: push-notifications. Found: phase-end review, `apps/app/lib/src/notifications/alarm_overlay.dart`
+(`interacted()`).
+
+- [ ] Only `silence()` calls `interacted()`; scrolling, pointer, keyboard and picker use on the
+      ring screen do not → the sound resumes 60 s after the last action, not after the last touch.
+      Wire a `Listener`/scroll notification and the sheets/pickers to `interacted()`.
+- **Test first:** widget test — acknowledge one row, scroll at 50 s, no sound at 60 s, sound at 110 s.
+  **Verify:** `npm run verify:task -- <that test>` + `check:notify-matrix`.
+
+---
+
 ## Epic 37 — Widget fetches its own data (#50, PR-2)
 
 The swiped-away half of #50: with the app force-quit, iOS runs neither background refresh nor a

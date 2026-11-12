@@ -9,15 +9,15 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-12 — Epic 36 (PR-1, #46–#50 gün görünümleri) kapandı; sırada Epic 37 (PR-2).
+**Last updated:** 2026-11-12 — Epic 36 (PR-1) kapandı; review'dan OPH-468…470, sonra Epic 37 (PR-2).
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36 (PR-1) tamam, birleştirme bekliyor; sonra Epic 37 (PR-2). |
-| Current epic             | **Epic 37 — widget kendi verisini çeker** (#50, PR-2; `/faz E37`) |
-| ➡️ **Next task**         | **OPH-457** — ADRs and contract first: widget token, shared Keychain group, self-fetch contract |
+| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36 (PR-1) tamam; OPH-468…470, sonra Epic 37 (PR-2). |
+| Current epic             | **Epic 36 follow-up** (OPH-468…470), sonra **Epic 37** (#50, PR-2; `/faz E37`) |
+| ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
 | Last completed           | Epic 36 (OPH-421…456, 466, 467; ADR-0068/0069) — ayrıntı CHANGELOG ve `git log`'da. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
