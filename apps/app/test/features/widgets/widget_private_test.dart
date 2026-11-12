@@ -382,30 +382,32 @@ void main() {
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     );
 
-    testWidgets('a new language or date format republishes at once too', (
-      tester,
-    ) async {
-      await pumpShellUnderSettings(tester);
-      final container = ProviderScope.containerOf(
-        tester.element(find.byType(SettingsGeneralScreen)),
-      );
-      expect(stored(kWidgetFetchProfileKey)['locale'], 'en');
+    testWidgets(
+      'a new language or date format republishes at once too',
+      (tester) async {
+        await pumpShellUnderSettings(tester);
+        final container = ProviderScope.containerOf(
+          tester.element(find.byType(SettingsGeneralScreen)),
+        );
+        expect(stored(kWidgetFetchProfileKey)['locale'], 'en');
 
-      plugin.log.clear();
-      AwI18n.instance.setActiveCached(const Locale('tr'));
-      await tester.pumpAndSettle();
-      expect(stored(kWidgetFetchProfileKey)['locale'], 'tr');
-      expect(plugin.log, containsAllInOrder([kWidgetSnapshotKey, 'update']));
-      // A language is not a new query: the server's answer stays.
-      expect(plugin.log, isNot(contains(kWidgetServerSnapshotKey)));
+        plugin.log.clear();
+        AwI18n.instance.setActiveCached(const Locale('tr'));
+        await tester.pumpAndSettle();
+        expect(stored(kWidgetFetchProfileKey)['locale'], 'tr');
+        expect(plugin.log, containsAllInOrder([kWidgetSnapshotKey, 'update']));
+        // A language is not a new query: the server's answer stays.
+        expect(plugin.log, isNot(contains(kWidgetServerSnapshotKey)));
 
-      await container.read(dateFormatProvider.notifier).set('dmy_dot');
-      await tester.pumpAndSettle();
-      expect(
-        stored(kWidgetFetchProfileKey)['patterns'],
-        containsPair('relativeDays', false),
-      );
-    }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+        await container.read(dateFormatProvider.notifier).set('dmy_dot');
+        await tester.pumpAndSettle();
+        expect(
+          stored(kWidgetFetchProfileKey)['patterns'],
+          containsPair('relativeDays', false),
+        );
+      },
+      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    );
 
     test('the shell keeps the widget sync live, not watched', () {
       final shell = File('lib/src/screens/home_shell.dart').readAsStringSync();
