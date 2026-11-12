@@ -158,14 +158,17 @@ void main() {
         phaseStart,
         iosProject.indexOf('};', phaseStart),
       );
+      // The macOS script adds its shared list to a new target AND to one an
+      // older run created (macos/scripts/add_widget_extension_test.rb runs it).
+      final macShared = RegExp(
+        r'SHARED_SOURCES = %w\[([^\]]*)\]',
+      ).firstMatch(macWidgetScript)?.group(1);
+      expect(macShared, isNotNull, reason: 'the macOS shared source list');
+      final macSharedPaths = macShared!.split(RegExp(r'\s+')).toSet();
       for (final path in kIosWidgetSharedSwift) {
         final name = path.split('/').last;
         expect(phase, contains('/* $name in Sources */'), reason: path);
-        expect(
-          macWidgetScript,
-          contains("shared.new_reference('Shared/$name')"),
-          reason: path,
-        );
+        expect(macSharedPaths, contains('Shared/$name'), reason: path);
       }
     });
 

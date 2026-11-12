@@ -9,8 +9,11 @@
 #   cd apps/app/macos && ruby scripts/add_widget_extension.rb
 #   ruby scripts/add_widget_extension.rb path/to/Runner.xcodeproj   # a copy
 #
-# IDEMPOTENT: a second run finds the target and changes nothing — measured,
-# the pbxproj checksum is identical after it.
+# IDEMPOTENT and CONVERGING: a second run finds the target and changes nothing
+# — measured, the pbxproj checksum is identical after it. A target an older
+# version of this script created gets the shared sources it lacks (OPH-451
+# moved the snapshot model out of AllisWellWidget.swift; a pre-OPH-451 target
+# would no longer compile), and nothing else about it is touched.
 #
 # What it does NOT do, on purpose: sign. The extension has its own bundle id
 # (`com.alliswell.alliswell.AllisWellWidget`) and the only Mac profile on the
@@ -33,11 +36,53 @@ TEAM = 'WWRZ5CG3DW'
 # older Mac the widget simply is not offered.
 DEPLOYMENT = '14.0'
 
+# Every file the widget compiles from the iOS tree. The widget itself is the
+# iOS source — one set of views, one grouping. Only the @main bundle differs
+# (the iOS one also carries the AlarmKit Live Activity, which does not exist on
+# a Mac).
+# - AWAlarmShared.swift: the queue the complete intent writes into
+#   (AWAlarmActionQueue). Its AlarmKit intents are compiled out on macOS
+#   (`#if canImport(AppIntents) && os(iOS)`).
+# - OPH-451: the snapshot model and the timeline's day choice moved out of
+#   AllisWellWidget.swift into ios/Shared (Runner compiles them for
+#   RunnerTests); without them the widget source loses its types.
+SHARED_GROUP = 'AllisWellWidgetShared (ios)'
+SHARED_SOURCES = %w[
+  AllisWellWidget/AllisWellWidget.swift
+  Shared/AWAlarmShared.swift
+  Shared/AWSnapshotModel.swift
+  Shared/AWWidgetDayPick.swift
+].freeze
+
 project_path = ARGV[0] || File.expand_path('../Runner.xcodeproj', __dir__)
 project = Xcodeproj::Project.open(project_path)
 
-if project.targets.any? { |t| t.name == TARGET }
-  puts "#{TARGET}: already present in #{project_path} — nothing to do"
+def shared_group(project)
+  project.main_group.groups.find { |g| g.display_name == SHARED_GROUP } ||
+    project.main_group.new_group(SHARED_GROUP, '../ios')
+end
+
+def file_ref(group, path)
+  group.files.find { |f| f.path == path } || group.new_reference(path)
+end
+
+# Adds each of [refs] the target does not compile yet; the number added.
+def add_sources(target, refs)
+  missing = refs.reject { |ref| target.source_build_phase.files.any? { |f| f.file_ref == ref } }
+  target.add_file_references(missing) unless missing.empty?
+  missing.size
+end
+
+existing = project.targets.find { |t| t.name == TARGET }
+if existing
+  shared = shared_group(project)
+  added = add_sources(existing, SHARED_SOURCES.map { |path| file_ref(shared, path) })
+  if added.zero?
+    puts "#{TARGET}: already present in #{project_path} — nothing to do"
+  else
+    project.save
+    puts "#{TARGET}: already present; added #{added} shared source(s) in #{project_path}"
+  end
   exit 0
 end
 
@@ -46,27 +91,14 @@ abort 'Runner target not found' unless runner
 
 ext = project.new_target(:app_extension, TARGET, :osx, DEPLOYMENT, nil, :swift)
 
-# Files. The widget itself is the iOS source — one set of views, one grouping.
-# Only the @main bundle differs (the iOS one also carries the AlarmKit Live
-# Activity, which does not exist on a Mac).
 own = project.main_group.new_group(TARGET, TARGET)
 bundle_ref = own.new_reference('AllisWellWidgetMacBundle.swift')
 own.new_reference('Info.plist')
 own.new_reference("#{TARGET}.entitlements")
 own.new_reference('SETUP.md')
 
-shared = project.main_group.new_group('AllisWellWidgetShared (ios)', '../ios')
-widget_ref = shared.new_reference('AllisWellWidget/AllisWellWidget.swift')
-# The queue the complete intent writes into (AWAlarmActionQueue). Its AlarmKit
-# intents are compiled out on macOS (`#if canImport(AppIntents) && os(iOS)`).
-queue_ref = shared.new_reference('Shared/AWAlarmShared.swift')
-# OPH-451: the snapshot model and the timeline's day choice moved out of
-# AllisWellWidget.swift into ios/Shared (Runner compiles them for RunnerTests);
-# without them the widget source loses its types.
-model_ref = shared.new_reference('Shared/AWSnapshotModel.swift')
-day_pick_ref = shared.new_reference('Shared/AWWidgetDayPick.swift')
-
-ext.add_file_references([bundle_ref, widget_ref, queue_ref, model_ref, day_pick_ref])
+shared = shared_group(project)
+add_sources(ext, [bundle_ref] + SHARED_SOURCES.map { |path| file_ref(shared, path) })
 
 ext.build_configurations.each do |config|
   settings = config.build_settings
