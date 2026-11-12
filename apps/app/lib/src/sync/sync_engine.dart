@@ -172,8 +172,14 @@ class SyncEngine {
     _pullTimer = null;
   }
 
+  /// [stop], and give up a request still out: a disposed engine has nobody
+  /// left to wait on its round ([halt] waits on a stopped one), so neither
+  /// the round nor its deadline timer may outlive it.
   void dispose() {
     stop();
+    for (final abandon in _abandonInFlight.toList()) {
+      abandon();
+    }
     _conflicts.close();
   }
 
@@ -359,13 +365,44 @@ class SyncEngine {
   /// does so the round takes the ordinary backoff path. A late answer to the
   /// abandoned call is dropped: the revision was not advanced, so the next
   /// round asks for the same page again.
-  Future<T> _bounded<T>(Future<T> call) => call.timeout(
-    requestTimeout,
-    onTimeout: () => throw const ApiException(
-      'NETWORK_ERROR',
-      'The AllisWell server did not answer in time',
-    ),
-  );
+  ///
+  /// [dispose] abandons the call at once the same way and cancels its
+  /// deadline, so no timer stays armed behind a disposed engine.
+  Future<T> _bounded<T>(Future<T> call) {
+    final result = Completer<T>();
+    late final Timer deadline;
+    void abandon() {
+      deadline.cancel();
+      _abandonInFlight.remove(abandon);
+      if (!result.isCompleted) {
+        result.completeError(
+          const ApiException(
+            'NETWORK_ERROR',
+            'The AllisWell server did not answer in time',
+          ),
+        );
+      }
+    }
+
+    deadline = Timer(requestTimeout, abandon);
+    _abandonInFlight.add(abandon);
+    call.then(
+      (value) {
+        deadline.cancel();
+        _abandonInFlight.remove(abandon);
+        if (!result.isCompleted) result.complete(value);
+      },
+      onError: (Object error, StackTrace stack) {
+        deadline.cancel();
+        _abandonInFlight.remove(abandon);
+        if (!result.isCompleted) result.completeError(error, stack);
+      },
+    );
+    return result.future;
+  }
+
+  /// One entry per [_bounded] call still out; [dispose] runs them all.
+  final _abandonInFlight = <void Function()>{};
 
   Future<void> _bumpAttempts(List<PendingMutation> rows) async {
     for (final row in rows) {

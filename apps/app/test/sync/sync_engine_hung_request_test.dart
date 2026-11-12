@@ -204,6 +204,29 @@ void main() {
     },
   );
 
+  test('dispose abandons a request in flight: the round unwinds at once and '
+      'no deadline timer outlives the engine', () async {
+    // A disposed engine (a workspace leaving, the session ending, a widget
+    // test's teardown) used to leave its 90 s deadline armed and its round
+    // running until the deadline fired.
+    final api = _HangingApi()..hangNextPull = true;
+    final engine = SyncEngine(
+      db: db,
+      api: api,
+      workspaceId: ws,
+      requestTimeout: const Duration(hours: 1),
+    );
+    var unwound = false;
+    unawaited(engine.start().then((_) => unwound = true));
+    await _until(() => api.pullCalls >= 1, reason: 'a pull on the wire');
+    engine.dispose();
+    await _until(
+      () => unwound,
+      reason: 'the round still waits on a request the disposed engine gave up',
+    );
+    expect(engine.isStopped, isTrue);
+  });
+
   test('without an override the deadline is the app-wide backstop', () {
     final engine = SyncEngine(db: db, api: _HangingApi(), workspaceId: ws);
     addTearDown(engine.dispose);
