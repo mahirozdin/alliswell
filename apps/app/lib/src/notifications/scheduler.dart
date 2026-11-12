@@ -32,6 +32,7 @@ class NotificationScheduler {
     this.refillEvery = const Duration(hours: 6),
     this.onPermissionAsk,
     this.drainActions,
+    this.afterPlan,
     this.appliedEventIds,
     Duration? staleWindow,
     DateTime Function()? clock,
@@ -87,6 +88,11 @@ class NotificationScheduler {
   /// before every AlarmKit plan so a native snooze is in the model before the
   /// plan judges the alarm it left behind. Null is a no-op.
   final Future<void> Function()? drainActions;
+
+  /// Runs after a pass has executed both lanes' plans (OPH-427): what the
+  /// pass planned is now on the OS, so a native snooze's fallback
+  /// notification can go. Not called when the pass gave up half-way.
+  final Future<void> Function()? afterPlan;
 
   /// The event ids `action_receipts` holds. A native alarm whose event is not
   /// among them is left alone: the model does not know about it yet. Null
@@ -322,6 +328,15 @@ class NotificationScheduler {
             detail: 'schedule failed: $error',
           );
         }
+      }
+      try {
+        await afterPlan?.call();
+      } on Object catch (error) {
+        await log?.record(
+          event: AlarmLogEvent.degraded,
+          lane: AlarmLogLane.alarmkit,
+          detail: 'after-plan step failed: $error',
+        );
       }
     } catch (_) {
       // Transient plugin failures self-heal on the next replica change — and

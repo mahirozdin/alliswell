@@ -5,6 +5,7 @@ import '../sync/outbox.dart';
 import '../sync/streams.dart';
 import 'planner.dart';
 import '../features/tasks/data/task_scope.dart';
+import '../features/tasks/data/task_store.dart' show requireActionReceipt;
 
 /// Reminder-id prefix for alarms derived straight from a task row while the
 /// server's reminder is still in flight (see [ReminderStore.watchAlarms]).
@@ -213,7 +214,12 @@ class ReminderStore {
   /// task's active reminder row — by tap time it has usually synced down. If
   /// no row exists yet (fully offline), this no-ops: complete/snooze still
   /// work through the task, and the chain stops at its last slot.
-  Future<void> acknowledge(String reminderId) async {
+  ///
+  /// [receiptId] (OPH-427): the write applies a pulled action whose receipt
+  /// the caller inserted in its own transaction; it runs inside that
+  /// transaction and refuses to run without the receipt. Null behaves as
+  /// before.
+  Future<void> acknowledge(String reminderId, {String? receiptId}) async {
     var id = reminderId;
     final synthetic = parseSyntheticReminderId(reminderId);
     if (synthetic != null) {
@@ -252,6 +258,7 @@ class ReminderStore {
     }
 
     await _db.transaction(() async {
+      await requireActionReceipt(_db, receiptId);
       await (_db.update(
         _db.reminders,
       )..where((r) => r.id.equals(reminder.id))).write(
@@ -271,5 +278,40 @@ class ReminderStore {
       );
     });
     _poke();
+  }
+
+  /// The active urgent reminders of [taskId] an AlarmKit stop acknowledges
+  /// (NOTIFICATIONS §2b.3): those whose effective instant (the snooze target
+  /// of a snoozed row, else `remindAt`) falls in the UTC minute of
+  /// [occurrenceFireAtMs] — a group rings at its earliest member's second.
+  /// Without an occurrence (an entry converted from v1), every one that had
+  /// come due by [dueBy].
+  Future<List<String>> urgentReminderIdsAt(
+    String taskId, {
+    int? occurrenceFireAtMs,
+    required DateTime dueBy,
+  }) async {
+    final rows =
+        await (_db.select(_db.reminders)..where(
+              (r) =>
+                  r.taskId.equals(taskId) &
+                  r.alarmLevel.equals('urgent') &
+                  r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
+            ))
+            .get();
+    final minute = occurrenceFireAtMs == null
+        ? null
+        : occurrenceFireAtMs ~/ 60000;
+    return [
+      for (final r in rows)
+        if (_matches(r, minute, dueBy)) r.id,
+    ];
+  }
+
+  static bool _matches(Reminder r, int? minute, DateTime dueBy) {
+    final at = ((r.status == 'snoozed' ? r.snoozedUntil : null) ?? r.remindAt)
+        .toUtc();
+    if (minute != null) return at.millisecondsSinceEpoch ~/ 60000 == minute;
+    return !at.isAfter(dueBy.toUtc());
   }
 }

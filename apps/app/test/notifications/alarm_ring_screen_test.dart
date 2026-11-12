@@ -811,14 +811,20 @@ class _RecordingTaskStore extends TaskStore {
   final void Function(String what) onWrite;
 
   @override
-  Future<void> snooze(String taskId, {String? preset, DateTime? until}) async =>
-      onWrite('snooze');
+  Future<void> snooze(
+    String taskId, {
+    String? preset,
+    DateTime? until,
+    String? receiptId,
+  }) async => onWrite('snooze');
 
   @override
-  Future<void> complete(String taskId) async => onWrite('complete');
+  Future<void> complete(String taskId, {String? receiptId}) async =>
+      onWrite('complete');
 
   @override
-  Future<void> muteAlarms(String taskId) async => onWrite('mute');
+  Future<void> muteAlarms(String taskId, {String? receiptId}) async =>
+      onWrite('mute');
 }
 
 /// A reminder store whose acknowledge is the test's to decide.
@@ -828,5 +834,6 @@ class _RecordingReminderStore extends ReminderStore {
   final void Function(String what) onWrite;
 
   @override
-  Future<void> acknowledge(String reminderId) async => onWrite('acknowledge');
+  Future<void> acknowledge(String reminderId, {String? receiptId}) async =>
+      onWrite('acknowledge');
 }

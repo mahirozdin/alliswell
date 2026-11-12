@@ -6,9 +6,15 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/tasks/data/task_store.dart';
 import 'package:alliswell/src/notifications/actions.dart';
+import 'package:alliswell/src/notifications/alarm_log.dart';
+import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/gateway.dart';
+import 'package:alliswell/src/notifications/planner.dart';
 import 'package:alliswell/src/notifications/reminder_store.dart';
+import 'package:alliswell/src/notifications/scheduler.dart';
 import 'package:alliswell/src/sync/db/database.dart';
+
+import '../support/fake_notifications.dart';
 
 const ws = '01WSAAAAAAAAAAAAAAAAAAAAAA';
 String id(String prefix) => prefix.padRight(26, '0');
@@ -162,4 +168,432 @@ void main() {
     await handle('unknown_action');
     expect(await db.select(db.pendingMutations).get(), isEmpty);
   });
+
+  // OPH-427 (#49, NOTIFICATIONS §2b.3): a pulled action is applied exactly
+  // once — its receipt commits and rolls back with the model change.
+  group('pulled actions applied exactly once (OPH-427)', () {
+    final nineAm = DateTime.utc(2030, 6, 1, 9);
+
+    Future<void> addUrgent(String task, String reminder, DateTime at) async {
+      await db
+          .into(db.tasks)
+          .insert(
+            TasksCompanion.insert(
+              id: id(task),
+              workspaceId: ws,
+              title: 'Acil $task',
+              status: const Value('open'),
+              isUrgent: const Value(true),
+              remindAt: Value(at),
+            ),
+          );
+      await db
+          .into(db.reminders)
+          .insert(
+            RemindersCompanion.insert(
+              id: id(reminder),
+              taskId: id(task),
+              remindAt: at,
+              alarmLevel: const Value('urgent'),
+              requiresAcknowledgement: const Value(true),
+            ),
+          );
+    }
+
+    AlarmKitActionEvent native(
+      String eventId,
+      String action, {
+      List<String>? taskIds,
+      int? untilMs,
+      String? preset,
+      int? occurrenceFireAtMs,
+      int pressedAtMs = 1_000,
+      String? scheduleOutcome,
+    }) => AlarmKitActionEvent(
+      eventId: eventId,
+      action: action,
+      taskIds: taskIds ?? [id('T1')],
+      pressedAtMs: pressedAtMs,
+      untilMs: untilMs,
+      preset: preset,
+      occurrenceFireAtMs: occurrenceFireAtMs,
+      scheduleOutcome: scheduleOutcome,
+    );
+
+    AlarmKitActionPump pumpFor(
+      AlarmKitHost host, {
+      TaskStore? taskStore,
+      ReminderStore? reminderStore,
+      AlarmLog? log,
+    }) => AlarmKitActionPump(
+      host: host,
+      log: log,
+      apply: (event) => handleNotificationEvent(
+        event,
+        db: db,
+        tasks: taskStore ?? tasks,
+        reminders: reminderStore ?? reminders,
+        log: log,
+        navigate: (_) => fail('a pulled action never navigates'),
+      ),
+    );
+
+    test(
+      'a snooze redelivered after a crash between commit and ack is applied exactly once',
+      () async {
+        await addUrgent('T2', 'R2', nineAm);
+        final until = DateTime.utc(2030, 6, 1, 9, 5);
+        final host = _AckCrashingHost()
+          ..queue.add(
+            native(
+              'ev-1',
+              'snooze',
+              taskIds: [id('T1'), id('T2'), id('T1')],
+              untilMs: until.millisecondsSinceEpoch,
+            ),
+          );
+
+        // The write commits, then the process dies before the ack.
+        await pumpFor(host).pull();
+        expect(host.acked, isEmpty);
+        expect(host.queue, hasLength(1));
+
+        // A new process: fresh stores and pump over the same database; the
+        // native queue hands the same event over again.
+        host.crash = false;
+        final reborn = pumpFor(
+          host,
+          taskStore: TaskStore(db, () {}),
+          reminderStore: ReminderStore(db, () {}),
+        );
+        await reborn.pull();
+        await reborn.pull();
+
+        expect(host.queue, isEmpty);
+        expect(host.acked, [
+          ['ev-1'],
+        ]);
+        final rows = await db.select(db.reminders).get();
+        expect(rows.map((r) => r.snoozeCount), [1, 1]);
+        expect(rows.map((r) => r.snoozedUntil), [until, until]);
+        final outbox = await db.select(db.pendingMutations).get();
+        expect(outbox.map((m) => m.entityId).toList()..sort(), [
+          id('T1'),
+          id('T2'),
+        ]);
+        final receipts = await db.select(db.actionReceipts).get();
+        expect(receipts.map((r) => r.eventId), ['ev-1']);
+      },
+    );
+
+    test(
+      'a receipt written without its model change cannot exist (transaction rollback)',
+      () async {
+        final host = FakeAlarmKitHost()
+          ..queue.add(
+            native(
+              'ev-1',
+              'snooze',
+              untilMs: DateTime.utc(2030, 6, 1, 9, 5).millisecondsSinceEpoch,
+            ),
+          );
+
+        await pumpFor(host, taskStore: _ExplodingTaskStore(db)).pull();
+
+        expect(await db.select(db.actionReceipts).get(), isEmpty);
+        expect((await db.select(db.tasks).getSingle()).snoozedUntil, isNull);
+        expect(await db.select(db.pendingMutations).get(), isEmpty);
+        expect(host.acked, isEmpty, reason: 'nothing committed, nothing acked');
+
+        // Redelivered to a store that works: applied now, exactly once.
+        await pumpFor(host).pull();
+        expect(
+          (await db.select(db.tasks).getSingle()).snoozedUntil,
+          DateTime.utc(2030, 6, 1, 9, 5),
+        );
+        expect(await db.select(db.actionReceipts).get(), hasLength(1));
+        expect(host.acked, [
+          ['ev-1'],
+        ]);
+      },
+    );
+
+    test('an alarmkit snooze event writes its untilMs unchanged', () async {
+      // Pressed at 09:00:07 local-device time; the app opened hours later.
+      // The press-time target stands — never recomputed from the drain.
+      final until = DateTime.utc(2030, 6, 1, 9, 5, 7);
+      final log = AlarmLog(db);
+      final applied = await handleNotificationEvent(
+        notificationEventForAlarmKit(
+          native(
+            'ev-1',
+            'snooze',
+            untilMs: until.millisecondsSinceEpoch,
+            preset: '1_hour',
+            pressedAtMs: DateTime.utc(
+              2030,
+              6,
+              1,
+              9,
+              0,
+              7,
+            ).millisecondsSinceEpoch,
+          ),
+        ),
+        db: db,
+        tasks: tasks,
+        reminders: reminders,
+        log: log,
+        navigate: (_) => fail('no navigation'),
+      );
+      expect(applied, isTrue);
+
+      final task = await db.select(db.tasks).getSingle();
+      expect(task.snoozedUntil, until);
+      final reminder = await db.select(db.reminders).getSingle();
+      expect(reminder.snoozedUntil, until);
+      expect(reminder.snoozeCount, 1);
+      final patch =
+          jsonDecode(
+                (await db.select(db.pendingMutations).getSingle()).patchJson!,
+              )
+              as Map<String, dynamic>;
+      expect(DateTime.parse(patch['snoozedUntil'] as String), until);
+
+      final rows = await db.select(db.alarmEvents).get();
+      expect(rows, hasLength(1));
+      expect(rows.single.event, AlarmLogEvent.action);
+      expect(rows.single.lane, AlarmLogLane.alarmkit);
+    });
+
+    test(
+      'a snooze event with a failed native schedule is applied and its fallback notification is cleared after the plan',
+      () async {
+        final until = DateTime.utc(2030, 6, 1, 9, 5);
+        final host = _OrderRecordingHost()
+          ..queue.addAll([
+            native(
+              'ev-failed',
+              'snooze',
+              untilMs: until.millisecondsSinceEpoch,
+              scheduleOutcome: 'limitReached',
+            ),
+            native(
+              'ev-ok',
+              'snooze',
+              untilMs: until.millisecondsSinceEpoch,
+              pressedAtMs: 2_000,
+              scheduleOutcome: 'ok',
+            ),
+          ]);
+        final pump = pumpFor(host);
+        await pump.pull();
+        expect(host.acked.expand((e) => e), ['ev-failed', 'ev-ok']);
+        expect(host.fallbacksCleared, isEmpty, reason: 'no plan yet');
+
+        final input = [
+          AlarmInput(
+            reminderId: id('R1'),
+            taskId: id('T1'),
+            taskTitle: 'Acil iş',
+            remindAt: nineAm,
+            status: 'snoozed',
+            snoozedUntil: until,
+            urgent: true,
+            requiresAcknowledgement: true,
+          ),
+        ];
+        final scheduler = NotificationScheduler(
+          gateway: FakeNotificationsGateway(),
+          // Passes run only when the test says so.
+          alarms: const Stream<List<AlarmInput>>.empty(),
+          privacyMode: false,
+          alarmKit: host,
+          drainActions: pump.beforePlan,
+          afterPlan: pump.afterPlan,
+          clock: () => DateTime.utc(2030, 6, 1, 9, 1),
+        );
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        await scheduler.applyOnce(input);
+
+        // Only the failed one, and only once the plan had scheduled the
+        // alarm that replaces it.
+        expect(host.fallbacksCleared, [
+          ['ev-failed'],
+        ]);
+        expect(
+          host.calls.indexOf('schedule'),
+          lessThan(host.calls.indexOf('clearFallbacks')),
+        );
+
+        // An event the plan's own drain applies waits for the NEXT plan: the
+        // pass that drained it planned from a model without it.
+        host.queue.add(
+          native(
+            'ev-late',
+            'snooze',
+            untilMs: until.millisecondsSinceEpoch,
+            pressedAtMs: 3_000,
+            scheduleOutcome: 'failed',
+          ),
+        );
+        await scheduler.applyOnce(input);
+        expect(host.fallbacksCleared, hasLength(1));
+        await scheduler.applyOnce(input);
+        expect(host.fallbacksCleared.last, ['ev-late']);
+      },
+    );
+
+    test('a native stop acknowledges the occurrence it rang for', () async {
+      // T1 has a second urgent alarm at 10:00 (its deadline); T2 rang in the
+      // same minute as T1's 09:00 — one grouped occurrence.
+      await db
+          .into(db.reminders)
+          .insert(
+            RemindersCompanion.insert(
+              id: id('R1DUE'),
+              taskId: id('T1'),
+              kind: const Value('due'),
+              remindAt: DateTime.utc(2030, 6, 1, 10),
+              alarmLevel: const Value('urgent'),
+              requiresAcknowledgement: const Value(true),
+            ),
+          );
+      await addUrgent('T2', 'R2', nineAm.add(const Duration(seconds: 30)));
+      final log = AlarmLog(db);
+      final host = FakeAlarmKitHost()
+        ..queue.add(
+          native(
+            'ev-stop',
+            'acknowledge',
+            taskIds: [id('T1'), id('T2')],
+            occurrenceFireAtMs: nineAm.millisecondsSinceEpoch,
+          ),
+        );
+      await pumpFor(host, log: log).pull();
+      host.queue.add(
+        native(
+          'ev-stop',
+          'acknowledge',
+          taskIds: [id('T1'), id('T2')],
+          occurrenceFireAtMs: nineAm.millisecondsSinceEpoch,
+        ),
+      );
+      await pumpFor(host, log: log).pull();
+
+      final byId = {
+        for (final r in await db.select(db.reminders).get()) r.id: r.status,
+      };
+      expect(byId, {
+        id('R1'): 'acknowledged',
+        id('R1DUE'): 'scheduled',
+        id('R2'): 'acknowledged',
+      });
+      final outbox = await db.select(db.pendingMutations).get();
+      expect(outbox.map((m) => m.entityId).toList()..sort(), [
+        id('R1'),
+        id('R2'),
+      ]);
+      final actions = [
+        for (final r in await db.select(db.alarmEvents).get())
+          if (r.event == AlarmLogEvent.action) r,
+      ];
+      expect(actions, hasLength(1));
+      expect(actions.single.lane, AlarmLogLane.alarmkit);
+    });
+
+    test(
+      'a converted v1 snooze:<preset> entry is applied once with the preset target',
+      () async {
+        // Written by the build with the #49 bug: a preset, no untilMs. The
+        // target is the press time plus the preset, not the read time.
+        final pressedAt = DateTime.utc(2030, 6, 1, 9, 0, 12);
+        final entry = native(
+          'ev-v1',
+          'snooze',
+          preset: '30_min',
+          pressedAtMs: pressedAt.millisecondsSinceEpoch,
+        );
+        final host = FakeAlarmKitHost()..queue.add(entry);
+        await pumpFor(host).pull();
+        host.queue.add(entry);
+        await pumpFor(host).pull();
+
+        final expected = pressedAt.add(const Duration(minutes: 30));
+        expect((await db.select(db.tasks).getSingle()).snoozedUntil, expected);
+        final reminder = await db.select(db.reminders).getSingle();
+        expect(reminder.snoozedUntil, expected);
+        expect(reminder.snoozeCount, 1);
+        expect(await db.select(db.pendingMutations).get(), hasLength(1));
+        expect(host.queue, isEmpty);
+      },
+    );
+
+    test('a tap without a receipt id still writes as before', () async {
+      final applied = await handleNotificationEvent(
+        NotificationEvent(
+          actionId: snoozeActionId('5_min'),
+          payload: payload(),
+        ),
+        tasks: tasks,
+        reminders: reminders,
+        navigate: (_) => fail('no navigation'),
+      );
+      expect(applied, isTrue);
+      expect(await db.select(db.actionReceipts).get(), isEmpty);
+      expect((await db.select(db.reminders).getSingle()).snoozeCount, 1);
+    });
+  });
+}
+
+/// Acks crash the way a killed process does: the write is committed, the
+/// native queue never hears about it.
+class _AckCrashingHost extends FakeAlarmKitHost {
+  bool crash = true;
+
+  @override
+  Future<void> ackActions(List<String> eventIds) async {
+    if (crash) throw StateError('process killed');
+    await super.ackActions(eventIds);
+  }
+}
+
+/// Records the order of the host calls a plan pass makes.
+class _OrderRecordingHost extends FakeAlarmKitHost {
+  final List<String> calls = [];
+
+  @override
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) {
+    calls.add('schedule');
+    return super.schedule(alarm);
+  }
+
+  @override
+  Future<void> clearFallbacks(List<String> eventIds) {
+    calls.add('clearFallbacks');
+    return super.clearFallbacks(eventIds);
+  }
+}
+
+/// The model write fails AFTER the store has written: the receipt must roll
+/// back with it.
+class _ExplodingTaskStore extends TaskStore {
+  _ExplodingTaskStore(AwDatabase db) : super(db, () {});
+
+  @override
+  Future<void> snooze(
+    String taskId, {
+    String? preset,
+    DateTime? until,
+    String? receiptId,
+  }) async {
+    await super.snooze(
+      taskId,
+      preset: preset,
+      until: until,
+      receiptId: receiptId,
+    );
+    throw StateError('disk full');
+  }
 }

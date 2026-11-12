@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:drift/native.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/notifications/actions.dart';
 import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/alarmkit.dart';
 import 'package:alliswell/src/notifications/planner.dart';
@@ -352,6 +355,71 @@ void main() {
         await sub.cancel();
       },
     );
+
+    // OPH-427: the ack is the native side's permission to forget an action,
+    // so it may only follow a committed write.
+    test('actions are acked only after their transaction commits', () async {
+      final db = AwDatabase(
+        DatabaseConnection(
+          NativeDatabase.memory(),
+          closeStreamsSynchronously: true,
+        ),
+      );
+      addTearDown(db.close);
+      native.queue
+        ..add(snoozeEntry('ev-1', 1000))
+        ..add(snoozeEntry('ev-2', 2000));
+      final host = MethodChannelAlarmKitHost(channel: channel);
+
+      final gate = Completer<void>();
+      var failNext = true;
+      final pump = AlarmKitActionPump(
+        host: host,
+        apply: (event) async {
+          var inserted = false;
+          await db.transaction(() async {
+            inserted = await db.insertReceiptIfAbsent(
+              eventId: event.eventId!,
+              action: 'snooze',
+              appliedAt: now,
+            );
+            if (event.eventId == 'ev-1') await gate.future;
+            if (event.eventId == 'ev-2' && failNext) {
+              failNext = false;
+              throw StateError('write failed');
+            }
+          });
+          return inserted;
+        },
+      );
+
+      final pulling = pump.pull();
+      await pumpEventQueue();
+      // ev-1's transaction is still open: nothing may be acked yet.
+      expect(native.methods, isNot(contains('ackActions')));
+
+      gate.complete();
+      await pulling;
+      // ev-1 committed → acked; ev-2 rolled back → stays queued, unacked.
+      final acks = [
+        for (final c in native.calls)
+          if (c.method == 'ackActions') (c.arguments as Map)['eventIds'],
+      ];
+      expect(acks, [
+        ['ev-1'],
+      ]);
+      expect(native.queue.map((e) => e['eventId']), ['ev-2']);
+      final receipts = await db.select(db.actionReceipts).get();
+      expect(receipts.map((r) => r.eventId), ['ev-1']);
+
+      // The next pull applies ev-2 and acks it after its commit.
+      await pump.pull();
+      expect(native.queue, isEmpty);
+      expect(
+        (await db.select(db.actionReceipts).get()).map((r) => r.eventId),
+        unorderedEquals(['ev-1', 'ev-2']),
+      );
+    });
 
     test('the unsupported host (Android, web, desktop) stays inert', () async {
       const host = UnsupportedAlarmKitHost();

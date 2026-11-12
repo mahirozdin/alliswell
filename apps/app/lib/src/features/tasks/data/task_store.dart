@@ -35,6 +35,19 @@ DateTime snoozeUntilWallClock(String preset, DateTime nowWall) {
   }
 }
 
+/// Throws unless [receiptId] is null or its `action_receipts` row is visible
+/// to the current transaction (OPH-427). Shared by the stores that apply
+/// pulled actions.
+Future<void> requireActionReceipt(AwDatabase db, String? receiptId) async {
+  if (receiptId == null) return;
+  final row = await (db.select(
+    db.actionReceipts,
+  )..where((r) => r.eventId.equals(receiptId))).getSingleOrNull();
+  if (row == null) {
+    throw StateError('action receipt $receiptId is not in this transaction');
+  }
+}
+
 /// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
 /// (`inbox`) are excluded — they live only in the Inbox until triaged (OPH-107);
 /// terminal statuses (completed/cancelled/archived) never appear here either.
@@ -423,7 +436,17 @@ class TaskStore {
     return id;
   }
 
-  Future<void> update(String taskId, Map<String, dynamic> patch) async {
+  ///
+  /// [receiptId] (OPH-427): the write applies a pulled action whose
+  /// `action_receipts` row the caller inserted in its own transaction; the
+  /// write then runs inside that transaction and refuses to run without the
+  /// receipt, so neither can commit without the other. Null — a UI tap —
+  /// behaves as it always did.
+  Future<void> update(
+    String taskId,
+    Map<String, dynamic> patch, {
+    String? receiptId,
+  }) async {
     final record = await _record(taskId);
     if (record == null) return;
     final effective = {...patch};
@@ -542,6 +565,7 @@ class TaskStore {
     companion = companion.copyWith(updatedAt: Value(DateTime.now().toUtc()));
 
     await _db.transaction(() async {
+      await _requireReceipt(receiptId);
       await (_db.update(
         _db.tasks,
       )..where((t) => t.id.equals(taskId))).write(companion);
@@ -576,8 +600,8 @@ class TaskStore {
     'seriesScope': ?seriesScope,
   });
 
-  Future<void> complete(String taskId) =>
-      update(taskId, {'status': 'completed'});
+  Future<void> complete(String taskId, {String? receiptId}) =>
+      update(taskId, {'status': 'completed'}, receiptId: receiptId);
 
   Future<void> reopen(String taskId) => update(taskId, {'status': 'open'});
 
@@ -598,9 +622,11 @@ class TaskStore {
   /// completing it. Marking a task done to make it shut up would be a lie in the
   /// data; this is a reversible, replicated fact the engine reads
   /// (`alarmInstantsFor` → no alarms → the rows are cancelled everywhere).
-  Future<void> muteAlarms(String taskId) => update(taskId, {
-    'alarmsMutedAt': DateTime.now().toUtc().toIso8601String(),
-  });
+  Future<void> muteAlarms(String taskId, {String? receiptId}) => update(
+    taskId,
+    {'alarmsMutedAt': DateTime.now().toUtc().toIso8601String()},
+    receiptId: receiptId,
+  );
 
   /// Give the alarms back. Whether one still fires depends on its instant —
   /// the caller tells the user when it has already passed.
@@ -610,13 +636,22 @@ class TaskStore {
   /// Offline-first snooze (OPH-062): the task AND its active alarm move
   /// locally in one transaction; the outbox patch replays the same semantics
   /// server-side (sync push snoozedUntil → reminder snooze, same trx).
-  Future<void> snooze(String taskId, {String? preset, DateTime? until}) async {
+  ///
+  /// [until] is written as given (a native AlarmKit snooze fixed it at press
+  /// time); [receiptId] as in [update].
+  Future<void> snooze(
+    String taskId, {
+    String? preset,
+    DateTime? until,
+    String? receiptId,
+  }) async {
     final record = await _record(taskId);
     if (record == null) return;
     if (record.status == 'completed' || record.status == 'cancelled') return;
     final snoozeUntil = (until ?? snoozeUntilFor(preset!)).toUtc();
 
     await _db.transaction(() async {
+      await _requireReceipt(receiptId);
       await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
         TasksCompanion(
           snoozedUntil: Value(snoozeUntil),
@@ -656,6 +691,11 @@ class TaskStore {
     });
     _poke();
   }
+
+  /// A write made for a pulled action must sit in the transaction that holds
+  /// its receipt (NOTIFICATIONS §2b.3); one without it is a caller bug.
+  Future<void> _requireReceipt(String? receiptId) =>
+      requireActionReceipt(_db, receiptId);
 
   /// Replace-set tags, like `PUT /tasks/:id/tags` (synced as an update patch).
   Future<void> setTags(String taskId, List<String> tagIds) async {

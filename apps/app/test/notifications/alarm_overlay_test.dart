@@ -480,5 +480,5 @@ class _NoopReminderStore extends ReminderStore {
   _NoopReminderStore(AwDatabase db) : super(db, () {});
 
   @override
-  Future<void> acknowledge(String reminderId) async {}
+  Future<void> acknowledge(String reminderId, {String? receiptId}) async {}
 }
