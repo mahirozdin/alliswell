@@ -179,13 +179,22 @@ Future<void> runHeadlessRefresh({
 /// [NotificationScheduler.applyOnce] is a full pass, so the Android
 /// active-notification reconcile (OPH-445) runs here too: an alarm answered on
 /// another device stops ringing on this one after the wake and sync.
+///
+/// [refreshKv] runs before anything is read. The Android wake isolate lives as
+/// long as the process, and the legacy SharedPreferences behind [localKv]
+/// keeps the copy that isolate loaded first: without the reload a wake after
+/// the foreground turned this device on (or off) planned from the old gate and
+/// undid it. Defaults to [reloadSharedPreferences] when [kv] is the shared
+/// [localKv]; null when [kv] has no cache to refresh.
 Future<void> rearmAlarmsFromReplica(
   AwDatabase db, {
   required TaskScope scope,
   required NotificationsGateway gateway,
   LocalKv? kv,
+  Future<void> Function()? refreshKv,
 }) async {
   final store = kv ?? localKv;
+  await (refreshKv ?? (kv == null ? reloadSharedPreferences : null))?.call();
   final here = await RingsUrgentStore(kv: store).read();
   final alarms = forThisDevice(
     await ReminderStore(db, () {}).readAlarmsIn(scope),

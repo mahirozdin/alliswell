@@ -421,6 +421,37 @@ void deviceGateTests() {
     },
   );
 
+  test('a reused wake isolate re-reads the gate the foreground changed, '
+      'both ways', () async {
+    await seed();
+    // The Android wake isolate lives as long as the process and keeps the
+    // preferences copy it loaded first.
+    final disk = <String, String>{kRingsUrgentKey: RingsUrgentHere.off.name};
+    final isolate = _IsolateKv(disk);
+    Future<FakeNotificationsGateway> wake() async {
+      final gateway = FakeNotificationsGateway();
+      await rearmAlarmsFromReplica(
+        replica(),
+        scope: TaskScope.workspace(ws),
+        gateway: gateway,
+        kv: isolate,
+        refreshKv: isolate.reload,
+      );
+      return gateway;
+    }
+
+    expect((await wake()).scheduled.values.any((n) => n.urgent), isFalse);
+
+    // The foreground turned this device on; the server's answer is on disk.
+    disk[kRingsUrgentKey] = RingsUrgentHere.on.name;
+    expect((await wake()).scheduled.values.any((n) => n.urgent), isTrue);
+
+    // And off again: the wake must not put the urgent alarms back.
+    disk[kRingsUrgentKey] = RingsUrgentHere.off.name;
+    expect((await wake()).scheduled.values.any((n) => n.urgent), isFalse);
+    expect(isolate.reloads, 3);
+  });
+
   test('headless turn runs the active-notification reconcile', () async {
     await seed();
     // An urgent alarm that rang here and was acknowledged on another device:
@@ -478,6 +509,45 @@ class _MemoryKv implements LocalKv {
   @override
   Future<void> removeWhere(bool Function(String key) test) async =>
       values.removeWhere((key, _) => test(key));
+}
+
+/// One process's preferences seen from the wake isolate: the copy it loaded
+/// first, until a reload reads the file another isolate wrote.
+class _IsolateKv implements LocalKv {
+  _IsolateKv(this._disk);
+
+  final Map<String, String> _disk;
+  Map<String, String>? _cache;
+  var reloads = 0;
+
+  Map<String, String> get _view => _cache ??= Map.of(_disk);
+
+  Future<void> reload() async {
+    reloads++;
+    _cache = Map.of(_disk);
+  }
+
+  @override
+  Future<String?> get(String key) async => _view[key];
+
+  @override
+  Future<void> set(String key, String value) async {
+    _view[key] = value;
+    _disk[key] = value;
+  }
+
+  @override
+  Future<void> remove(String key) async {
+    _view.remove(key);
+    _disk.remove(key);
+  }
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async {
+    for (final key in _view.keys.where(test).toList()) {
+      await remove(key);
+    }
+  }
 }
 
 /// A store that remembers nothing — the ordinary "app is not running" state.
