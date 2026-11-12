@@ -758,17 +758,20 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
 
 /// The AlarmKit records in [view] that ring [alarm]'s occurrence (#46): a
 /// scheduled or alerting alarm whose members hold the task and whose instant
-/// is the occurrence's, floored to the second as the bridge stores it.
+/// falls in the occurrence's UTC minute. One alarm rings the whole minute at
+/// its earliest member's second (ADR-0068, #47), so a member due at 09:00:20
+/// is covered by the alarm stored at 09:00:00.
 List<AlarmKitScheduled> alarmKitCovering(
   List<AlarmKitScheduled> view,
   AlarmInput alarm,
 ) {
-  final fireAtMs = alarmKitFireAtMs(alarmFireAt(alarm));
+  final minute = alarmKitFireAtMs(alarmFireAt(alarm)) ~/ 60000;
   return [
     for (final row in view)
       if ((row.state == AlarmKitAlarmState.scheduled ||
               row.state == AlarmKitAlarmState.alerting) &&
-          row.fireAtMs == fireAtMs &&
+          row.fireAtMs != null &&
+          row.fireAtMs! ~/ 60000 == minute &&
           row.members.contains(alarm.taskId))
         row,
   ];

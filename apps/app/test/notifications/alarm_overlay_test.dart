@@ -1028,6 +1028,50 @@ void main() {
       },
     );
 
+    // A grouped AlarmKit alarm rings at its earliest member's second; a
+    // later member of the same minute is covered by it all the same.
+    testWidgets(
+      'acting first on a later member of the minute stops the grouped alert',
+      (tester) async {
+        final rows = minute();
+        final host = FakeAlarmKitHost();
+        final grouped = AlarmKitScheduled(
+          id: 7,
+          state: AlarmKitAlarmState.alerting,
+          members: [for (final r in rows) r.taskId],
+          fireAtMs: alarmKitFireAtMs(alarmFireAt(rows.first)),
+        );
+        expect(alarmKitCovering([grouped], rows.last).single.id, 7);
+        boot(
+          alarmKitHost: host,
+          extra: [
+            alarmKitViewProvider.overrideWith(() => AlarmKitView([grouped])),
+          ],
+        );
+        feed.add(rows);
+        await settle(tester);
+        expect(overlay().ringsOnLockScreen, isTrue);
+
+        // R3 rang at 11:59:40, the alarm says 11:59:00: same minute.
+        expect(controller().ringsOnLockScreen(rows.last), isTrue);
+        final saved = controller().actOnRow('T-R3', AlarmRowAction.acknowledge);
+        expect(host.stopped, [7]);
+        expect(await saved, isTrue);
+        await tester.pump();
+        expect(overlay().ringsOnLockScreen, isFalse);
+
+        // Another minute is another alarm.
+        expect(
+          alarmKitCovering([
+            grouped,
+          ], alarm(rid: 'R1', remindAt: now.add(const Duration(minutes: 1)))),
+          isEmpty,
+        );
+        await controller().acknowledgeAll();
+        await tester.pump(kAlarmResumeAfter * 2);
+      },
+    );
+
     testWidgets(
       'sound resumes after 60 s without interaction while rows remain',
       (tester) async {
