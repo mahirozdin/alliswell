@@ -274,9 +274,11 @@ void main() {
     expect(rig.host.stopped, [groupAt9]);
     expect(rig.host.cancelled, isEmpty);
     expect(await rig.host.scheduledAlarms(), isEmpty);
-    expect(rig.host.scheduleCalls.map((a) => a.id), [
-      groupAt9,
-    ], reason: 'nothing re-scheduled after the stop');
+    expect(
+      rig.host.scheduleCalls.map((a) => a.id),
+      [groupAt9],
+      reason: 'nothing re-scheduled after the stop',
+    );
     expect(rig.gateway.urgentEverScheduled, isEmpty);
   });
 }
