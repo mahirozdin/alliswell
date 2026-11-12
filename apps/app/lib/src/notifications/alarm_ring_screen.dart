@@ -419,14 +419,17 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
           pulse: !widget.missed && !reduceMotion,
         ),
         SizedBox(height: short ? AwSpace.x3 : AwSpace.x5),
+        // Text on the wash takes errorOnPage: prioUrgent is a 3:1 flag colour
+        // and measured 3.94 / 4.36 here (contrast.py, DESIGN §11 A9).
         Text(
           (widget.missed
                   ? 'alarm.missed.label'.tr()
                   : 'alarm.ringing.label'.tr())
               .toUpperCase(),
+          key: const Key('alarm-ringing-label'),
           textAlign: TextAlign.center,
           style: text.labelLarge?.copyWith(
-            color: tokens.prioUrgent,
+            color: tokens.errorOnPage,
             fontWeight: FontWeight.w800,
             letterSpacing: 1.2,
           ),

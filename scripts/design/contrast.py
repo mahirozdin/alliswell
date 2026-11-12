@@ -451,6 +451,76 @@ PAGE_INKS = [
 ]
 
 
+# ── The ring screen, direction A (#46, OPH-466/467, DESIGN §11 A9) ──
+# Everything on the ring screen sits on its urgency WASH: `prioUrgent` at 10%
+# over `surface`, which is what `alarm_ring_screen.dart` composites. The wash
+# is DERIVED here from the prioUrgent token (and the badge fill, 14% over the
+# wash, from the wash), so a change to that token re-measures the screen.
+# The tiles are opaque `surface` capsules with a 1 px `outline` edge; a
+# pressed tile is `onSurface` at 12% over `surface`.
+#
+# The "ACİL HATIRLATMA" label was `prioUrgent` text on this wash: 3.94:1 (light) and
+# 4.36:1 (dark), under the 4.5 a label needs. prioUrgent is a FLAG colour
+# (>= 3:1 as a mark), so the label takes `errorOnPage`, the error tone tuned
+# for text on a tinted ground; the badge edge and glyph keep prioUrgent (3:1).
+_SCHEME = {
+    'light': {
+        'surface': '#FFFFFF', 'onSurface': '#0F1B2E', 'onSurfaceVariant': '#44536F',
+        'outline': '#63789E', 'primary': '#0A5CFF', 'error': '#D70015',
+        'onError': '#FFFFFF', 'primaryContainer': '#D6E5FF',
+        'onPrimaryContainer': '#0A3FBF',
+    },
+    'dark': {
+        'surface': '#151F3C', 'onSurface': '#EAF0FD', 'onSurfaceVariant': '#AAB6D6',
+        'outline': '#7186B5', 'primary': '#3E9BFF', 'error': '#FF5147',
+        'onError': '#450603', 'primaryContainer': '#1D4FA6',
+        'onPrimaryContainer': '#D9E8FF',
+    },
+}
+
+
+def _blend(fg: str, bg: str, alpha: float) -> str:
+    """`fg` at `alpha` over the opaque `bg` (Color.alphaBlend of withValues)."""
+    f = [int(fg.lstrip('#')[i : i + 2], 16) for i in (0, 2, 4)]
+    b = [int(bg.lstrip('#')[i : i + 2], 16) for i in (0, 2, 4)]
+    return '#' + ''.join(f'{round(alpha * x + (1 - alpha) * y):02X}' for x, y in zip(f, b))
+
+
+def _ring_colour(theme: str, name: str) -> str:
+    scheme = _SCHEME[theme]
+    if name in scheme:
+        return scheme[name]
+    if name == 'wash':
+        return _blend(_token(theme, 'prioUrgent'), scheme['surface'], 0.10)
+    if name == 'badge':
+        return _blend(_token(theme, 'prioUrgent'), _ring_colour(theme, 'wash'), 0.14)
+    if name == 'pressed':
+        return _blend(scheme['onSurface'], scheme['surface'], 0.12)
+    return _token(theme, name)
+
+
+# (name, ink, ground, minimum) — each measured in BOTH themes.
+RING_PAIRS = [
+    ('ring title and time (onSurface) on wash', 'onSurface', 'wash', 4.5),
+    ('ring snooze label / status line (onSurfaceVariant) on wash', 'onSurfaceVariant', 'wash', 4.5),
+    ('ring label "Acil hatırlatma" (errorOnPage) on wash', 'errorOnPage', 'wash', 4.5),
+    ('ring Tamamla / Aç label (link) on wash', 'link', 'wash', 4.5),
+    ('ring tile edge (outline) on wash', 'outline', 'wash', 3.0),
+    ('ring tile focus ring (primary) on wash', 'primary', 'wash', 3.0),
+    ('ring badge edge (prioUrgent) on wash', 'prioUrgent', 'wash', 3.0),
+    ('ring badge glyph (prioUrgent) on badge fill', 'prioUrgent', 'badge', 3.0),
+    ('ring Onayla fill (error) on wash', 'error', 'wash', 3.0),
+    ('ring Onayla label (onError) on error', 'onError', 'error', 4.5),
+    ('ring tile label (onSurface) on tile', 'onSurface', 'surface', 4.5),
+    ('ring tile icon / time (onSurfaceVariant) on tile', 'onSurfaceVariant', 'surface', 4.5),
+    ('ring pressed tile label (onSurface)', 'onSurface', 'pressed', 4.5),
+    ('ring pressed tile icon / time (onSurfaceVariant)', 'onSurfaceVariant', 'pressed', 4.5),
+    ('ring pressed tile edge (outline)', 'outline', 'pressed', 3.0),
+    # Settings ▸ Devices: the "Bu cihaz" badge (#48), listed by name (§7.1).
+    ('devices "this device" badge', 'onPrimaryContainer', 'primaryContainer', 4.5),
+]
+
+
 def main() -> int:
     failures = 0
     for name, fg, bg, need in PAIRS:
@@ -468,6 +538,13 @@ def main() -> int:
             f"{'OK  ' if ok else 'FAIL'} {r:5.2f} (need {need})  {name}: {fg} on the page "
             f'(worst: {ground} {bg})'
         )
+    for name, ink, ground, need in RING_PAIRS:
+        for theme in ('light', 'dark'):
+            fg, bg = _ring_colour(theme, ink), _ring_colour(theme, ground)
+            r = ratio(fg, bg)
+            ok = r >= need
+            failures += 0 if ok else 1
+            print(f"{'OK  ' if ok else 'FAIL'} {r:5.2f} (need {need})  {theme[0].upper()} {name}: {fg} on {bg}")
     print(f'\nFAILURES: {failures}')
     return 1 if failures else 0
 

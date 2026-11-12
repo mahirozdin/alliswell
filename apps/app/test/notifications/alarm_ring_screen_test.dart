@@ -980,6 +980,50 @@ void main() {
     }
   });
 
+  // OPH-467 (DESIGN §11 A9): the "Acil hatırlatma" label is text on the urgency wash.
+  // prioUrgent measured 3.94:1 (light) / 4.36:1 (dark) there, so the label
+  // takes errorOnPage (contrast.py: ring label "Acil hatırlatma"); the badge keeps
+  // prioUrgent, which only needs 3:1 as a mark.
+  for (final dark in [false, true]) {
+    testWidgets(
+      'the ringing label is errorOnPage, the badge prioUrgent (dark: $dark)',
+      (tester) async {
+        await seed();
+        final tokens = dark ? AwTokens.dark : AwTokens.light;
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: container,
+            child: MaterialApp(
+              theme: ThemeData(
+                colorScheme: ColorScheme.fromSeed(
+                  seedColor: const Color(0xFF2563EB),
+                  brightness: dark ? Brightness.dark : Brightness.light,
+                ),
+                extensions: [tokens],
+              ),
+              home: Scaffold(
+                body: AlarmRingScreen(
+                  alarm: theAlarm(),
+                  onHandled: handled.add,
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+        final label = tester.widget<Text>(
+          find.byKey(const Key('alarm-ringing-label')),
+        );
+        expect(label.style?.color, tokens.errorOnPage);
+        final badge = tester.widget<Container>(
+          find.byKey(const Key('alarm-badge')),
+        );
+        final border = (badge.decoration! as BoxDecoration).border! as Border;
+        expect(border.top.color, tokens.prioUrgent);
+      },
+    );
+  }
+
   testWidgets('a tall screen keeps the 96 badge and the section label', (
     tester,
   ) async {
