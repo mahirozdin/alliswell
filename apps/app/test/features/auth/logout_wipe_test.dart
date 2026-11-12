@@ -328,7 +328,7 @@ void main() {
     final alarmKit = FakeAlarmKitHost();
     final (container, db) = await pumpSignedIn(
       tester,
-      refreshRefusedWith: 'AUTH_INVALID_REFRESH_TOKEN',
+      refreshRefusedWith: 'AUTH_REFRESH_REUSED',
       overrides: [
         notificationsGatewayProvider.overrideWithValue(gateway),
         alarmKitHostProvider.overrideWithValue(alarmKit),
@@ -387,6 +387,103 @@ void main() {
     );
     expect(gateway.cancelled, [11]);
     expect(alarmKit.cancelled, [22]);
+  });
+
+  // OPH-355's rule holds here too: an unsent change is never lost without the
+  // person being asked. A revoked family with an outbox signs out and drops
+  // the alarms, but keeps the replica for the same person's next sign-in
+  // (claimFor adopts it; anyone else's sign-in wipes it).
+  testWidgets('a revoked family with unsent changes signs out but keeps them', (
+    tester,
+  ) async {
+    final gateway = FakeNotificationsGateway();
+    final alarmKit = FakeAlarmKitHost();
+    final (container, db) = await pumpSignedIn(
+      tester,
+      refreshRefusedWith: 'AUTH_REFRESH_REUSED',
+      overrides: [
+        notificationsGatewayProvider.overrideWithValue(gateway),
+        alarmKitHostProvider.overrideWithValue(alarmKit),
+      ],
+    );
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: 'T1',
+        operation: 'update',
+        patch: {'title': marker},
+      );
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+    });
+
+    await tester.runAsync(
+      () => container.read(authRepositoryProvider).refreshAccessToken(),
+    );
+    await tester.runAsync(() async {
+      for (var i = 0; i < 50; i++) {
+        if (alarmKit.cancelled.isNotEmpty) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+
+    expect(container.read(authControllerProvider).value, isNull);
+    expect(await tester.runAsync(() => unsentChangeCount(db)), 1);
+    expect((await tester.runAsync(() => counts(db)))!['sync_states'], 1);
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-1',
+    );
+    expect(alarmKit.cancelled, [22]);
+  });
+
+  // An expired refresh token (left unopened past AUTH_REFRESH_TTL_DAYS) is
+  // refused with AUTH_INVALID_REFRESH_TOKEN, the same code as an unknown one:
+  // nothing says the device was removed, so it signs out as before and keeps
+  // its offline edits for the next sign-in.
+  testWidgets('an expired refresh token signs out and wipes nothing', (
+    tester,
+  ) async {
+    final alarmKit = FakeAlarmKitHost();
+    final (container, db) = await pumpSignedIn(
+      tester,
+      refreshRefusedWith: 'AUTH_INVALID_REFRESH_TOKEN',
+      overrides: [alarmKitHostProvider.overrideWithValue(alarmKit)],
+    );
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: 'T1',
+        operation: 'update',
+        patch: {'title': marker},
+      );
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+    });
+
+    final token = await tester.runAsync(
+      () => container.read(authRepositoryProvider).refreshAccessToken(),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(token, isNull);
+    expect(container.read(authControllerProvider).value, isNull);
+    expect(await tester.runAsync(() => unsentChangeCount(db)), 1);
+    expect((await tester.runAsync(() => counts(db)))!['sync_states'], 1);
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-1',
+    );
+    expect(alarmKit.cancelled, isEmpty);
   });
 
   testWidgets('a refresh that only failed to arrive wipes nothing', (

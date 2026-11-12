@@ -113,6 +113,13 @@ Future<String?> _deviceIdForAuth(Ref ref) async {
 ///
 /// The device row needs no delete: the server dropped it with the family,
 /// and the token that could delete it is dead.
+///
+/// Never a silent loss (OPH-355): a sign-out asks before it deletes unsent
+/// changes, and nobody is asked here. So with an outbox (or refused writes
+/// kept for the person) the replica stays: the same person signing in again
+/// adopts it and the outbox goes out (`LocalDataGuard.claimFor`); anybody
+/// else signing in wipes it first. A count that cannot be read is treated as
+/// unsent work.
 Future<void> _endRevokedSession(Ref ref) async {
   try {
     await ref.read(pushMessagingProvider).forgetToken();
@@ -120,8 +127,18 @@ Future<void> _endRevokedSession(Ref ref) async {
     // Best effort, as on a sign-out.
   }
   await _haltSyncEngines(ref);
-  await ref.read(localDataGuardProvider).wipe();
+  if (await _nothingUnsent(ref)) {
+    await ref.read(localDataGuardProvider).wipe();
+  }
   await _dropOsAlarms(ref);
+}
+
+Future<bool> _nothingUnsent(Ref ref) async {
+  try {
+    return await unsentChangeCount(ref.read(databaseProvider)) == 0;
+  } on Object {
+    return false;
+  }
 }
 
 /// Every engine stops and finishes the round it is in, so no pull lands on

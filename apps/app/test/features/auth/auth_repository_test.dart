@@ -265,7 +265,12 @@ void main() {
     expect(bodies.single!.containsKey('deviceId'), isFalse);
   });
 
-  test('only a revoked or reused family reports a revoked session', () async {
+  // The server marks a removed device's family revoked (revoked_at) and
+  // answers its next refresh AUTH_REFRESH_REUSED. AUTH_INVALID_REFRESH_TOKEN
+  // also means a token that merely expired (AUTH_REFRESH_TTL_DAYS) or a server
+  // that forgot it: no proof of removal, so no wipe of unsent work for it.
+  test('only a revoked family reports a revoked session; an expired token '
+      'does not', () async {
     var revoked = 0;
     var answer = 'AUTH_INVALID_REFRESH_TOKEN';
     final repo = AuthRepository(
@@ -302,7 +307,7 @@ void main() {
 
     // The other failures still end the session (as before) but say nothing
     // about this device having been removed: no wipe for them.
-    expect(revoked, 2);
+    expect(revoked, 1);
   });
 
   test('refreshAccessToken without a session is null (no API call)', () async {

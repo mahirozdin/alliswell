@@ -34,19 +34,23 @@ class AuthRepository {
   final Future<String?> Function()? _deviceId;
 
   /// Runs once the session has been dropped because the server refused the
-  /// refresh token as revoked or reused — the device was removed elsewhere, a
-  /// password changed, or the family was burned (OPH-447). Not awaited: a
+  /// refresh token as revoked — the device was removed elsewhere, a password
+  /// changed, or the family was burned (OPH-447). Not awaited: a
   /// request is waiting on this refresh, and the local sign-out it starts
   /// (halting that same request's sync round among other things) must not
   /// wait on it in turn.
   final void Function()? _onSessionRevoked;
 
-  /// The refresh answers that mean "this session family is gone for good" —
+  /// The refresh answers that mean "this session family was revoked" —
   /// unlike a network error or a rate limit, which say nothing about it.
-  static const _revokedCodes = {
-    'AUTH_INVALID_REFRESH_TOKEN',
-    'AUTH_REFRESH_REUSED',
-  };
+  ///
+  /// Only `AUTH_REFRESH_REUSED`: the server never deletes a refresh token, it
+  /// marks a revoked family `revoked_at`, so a removed device, a password
+  /// change or a burned family always answers with it.
+  /// `AUTH_INVALID_REFRESH_TOKEN` is also what a token that merely expired
+  /// gets (and an unknown one), which proves nothing about removal — that
+  /// session ends as before and its offline edits wait for the next sign-in.
+  static const _revokedCodes = {'AUTH_REFRESH_REUSED'};
 
   final _sessionChanges = StreamController<AuthSession?>.broadcast();
   AuthSession? _session;
