@@ -92,6 +92,10 @@ export async function loadEeOverlay(app) {
     // "may this file exist AT ALL, given how much already does". They are
     // different questions and the second one CE does not ask.
     uploadGuards: [],
+    // OPH-460: who a task belongs to, for the widget's `mine` scope. Empty
+    // here IS the plain build: nobody is assigned to anything and no task is
+    // anyone else's work, so `mine` is the user's own tasks.
+    widgetScopeResolvers: [],
   };
   app.decorate('ee', state);
   if (!state.enabled) return;
@@ -446,6 +450,23 @@ function buildSeam(state) {
     },
 
     /**
+     * Widget scope facts (OPH-460, WIDGETS §3.2):
+     * `async (db, { userId, tasks }) => Map<taskId, { assignees, isRequestWork }>`,
+     * `tasks` being `{ id, workspace_id }` rows of the workspaces the user is a
+     * member of. `GET /widget/snapshot?mine=1` keeps a task assigned to the
+     * user, or created by them with nobody assigned and `isRequestWork` false
+     * — the app's own `mine` rule. A task left out of the map has nobody
+     * assigned. A resolver that throws fails the request: the widget keeps
+     * the app's own snapshot rather than draw a list missing the user's work.
+     */
+    registerWidgetScopeResolver(resolver) {
+      if (typeof resolver !== 'function') {
+        throw new Error('registerWidgetScopeResolver: a function is required');
+      }
+      state.widgetScopeResolvers.push(resolver);
+    },
+
+    /**
      * Sync push guard: `async (ctx, mutation) => errorCode | null`.
      *
      * Consulted for every push mutation AFTER the entity, operation and patch
@@ -691,6 +712,36 @@ export async function reminderAudiences(app, db, tasks) {
       const prev = out.get(taskId);
       // Two resolvers narrow together: somebody both of them name.
       out.set(taskId, prev ? new Set([...prev].filter((u) => next.has(u))) : next);
+    }
+  }
+  return out;
+}
+
+/**
+ * The widget's `mine` facts for `tasks` (see `registerWidgetScopeResolver`),
+ * keyed by task id. Empty with no extension — every plain build. Resolvers
+ * merge: a task's assignees are everyone any of them names, and it is a
+ * request's work when any of them says so.
+ *
+ * @param {import('fastify').FastifyInstance} app
+ * @param {import('knex').Knex} db
+ * @param {{ userId: string, tasks: {id: string, workspace_id: string}[] }} ctx
+ * @returns {Promise<Map<string, { assignees: string[], isRequestWork: boolean }>>}
+ */
+export async function widgetScopeFacts(app, db, { userId, tasks }) {
+  const out = new Map();
+  const resolvers = app.ee?.widgetScopeResolvers;
+  if (!resolvers || resolvers.length === 0 || tasks.length === 0) return out;
+  for (const resolver of resolvers) {
+    const answer = await resolver(db, { userId, tasks });
+    if (!(answer instanceof Map)) continue;
+    for (const [taskId, facts] of answer) {
+      const prev = out.get(taskId) ?? { assignees: [], isRequestWork: false };
+      const assignees = Array.isArray(facts?.assignees) ? facts.assignees : [];
+      out.set(taskId, {
+        assignees: [...new Set([...prev.assignees, ...assignees])],
+        isRequestWork: prev.isRequestWork || facts?.isRequestWork === true,
+      });
     }
   }
   return out;

@@ -352,7 +352,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_125 operations across 90 paths, generated from
+_126 operations across 91 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -378,7 +378,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **Sync** — [`GET /api/v1/sync/pull`](#get-api-v1-sync-pull) · [`POST /api/v1/sync/push`](#post-api-v1-sync-push)
 - **Tags** — [`GET /api/v1/tags/{tagId}`](#get-api-v1-tags-tagid) · [`PATCH /api/v1/tags/{tagId}`](#patch-api-v1-tags-tagid) · [`DELETE /api/v1/tags/{tagId}`](#delete-api-v1-tags-tagid) · [`GET /api/v1/workspaces/{workspaceId}/tags`](#get-api-v1-workspaces-workspaceid-tags) · [`POST /api/v1/workspaces/{workspaceId}/tags`](#post-api-v1-workspaces-workspaceid-tags)
 - **Tasks** — [`GET /api/v1/tasks/{taskId}`](#get-api-v1-tasks-taskid) · [`PATCH /api/v1/tasks/{taskId}`](#patch-api-v1-tasks-taskid) · [`DELETE /api/v1/tasks/{taskId}`](#delete-api-v1-tasks-taskid) · [`POST /api/v1/tasks/{taskId}/checklist`](#post-api-v1-tasks-taskid-checklist) · [`PATCH /api/v1/tasks/{taskId}/checklist/{itemId}`](#patch-api-v1-tasks-taskid-checklist-itemid) · [`DELETE /api/v1/tasks/{taskId}/checklist/{itemId}`](#delete-api-v1-tasks-taskid-checklist-itemid) · [`POST /api/v1/tasks/{taskId}/complete`](#post-api-v1-tasks-taskid-complete) · [`POST /api/v1/tasks/{taskId}/notes`](#post-api-v1-tasks-taskid-notes) · [`POST /api/v1/tasks/{taskId}/reopen`](#post-api-v1-tasks-taskid-reopen) · [`POST /api/v1/tasks/{taskId}/snooze`](#post-api-v1-tasks-taskid-snooze) · [`PUT /api/v1/tasks/{taskId}/tags`](#put-api-v1-tasks-taskid-tags) · [`POST /api/v1/workspaces/{workspaceId}/import/tasks`](#post-api-v1-workspaces-workspaceid-import-tasks) · [`GET /api/v1/workspaces/{workspaceId}/tasks`](#get-api-v1-workspaces-workspaceid-tasks) · [`POST /api/v1/workspaces/{workspaceId}/tasks`](#post-api-v1-workspaces-workspaceid-tasks)
-- **Widget** — [`POST /api/v1/widget-tokens`](#post-api-v1-widget-tokens)
+- **Widget** — [`POST /api/v1/widget-tokens`](#post-api-v1-widget-tokens) · [`GET /api/v1/widget/snapshot`](#get-api-v1-widget-snapshot)
 
 ### AI
 
@@ -6429,6 +6429,66 @@ curl -X POST 'https://api.alliswell.space/api/v1/widget-tokens' \
   "token": "string",
   "deviceId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
   "expiresAt": "2026-09-04T14:30:00.000Z"
+}
+```
+
+
+#### <a name="get-api-v1-widget-snapshot"></a>`GET /api/v1/widget/snapshot`
+
+**Auth:** Widget token (`aww_…`) only — a session JWT or an API key is refused with `401 AUTH_WIDGET_TOKEN_INVALID`.
+
+**Query parameters**
+
+| Name | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `tz` | string | yes | length 1–64 |
+| `workspaceIds` | string | yes | pattern `^[0-9A-HJKMNP-TV-Z]{26}(,[0-9A-HJKMNP-TV-Z]{26}){0,19}$` |
+| `mine` | `0` · `1` | no | default `"0"` |
+| `private` | `0` · `1` | no | default `"1"` |
+| `days` | integer | no | 1–3, default `3` |
+
+**Request**
+
+```bash
+curl -X GET 'https://api.alliswell.space/api/v1/widget/snapshot' \
+  -H "Authorization: Bearer $ALLISWELL_WIDGET_TOKEN"
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `304` | Not modified: If-None-Match named the ETag. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `401` | No credential, or one that is expired, revoked or unknown. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
+| `429` | Rate limited. See `retry-after`. |
+
+**Example response** (`200`)
+
+```json
+{
+  "v": 1,
+  "generatedAt": "2026-09-04T14:30:00.000Z",
+  "tz": "string",
+  "days": [
+    {
+      "date": "string",
+      "openToday": 1,
+      "next": {
+        "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+        "title": "Pay the electricity bill",
+        "bucket": "string",
+        "dueAt": "2026-09-04T14:30:00.000Z",
+        "timeStyle": "string"
+      },
+      "buckets": [
+        {}
+      ],
+      "views": {}
+    }
+  ]
 }
 ```
 

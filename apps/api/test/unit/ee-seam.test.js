@@ -6,6 +6,7 @@ import { fullDance, callTool, rpc } from '../helpers/mcpdance.js';
 import { fakeStorage } from '../helpers/fakestorage.js';
 import { loadConfig } from '../../src/config.js';
 import { newId } from '../../src/lib/ids.js';
+import { widgetScopeFacts } from '../../src/lib/ee.js';
 
 /**
  * EE-002 — the enterprise overlay seam. The contract under test: absent
@@ -375,6 +376,26 @@ describe('EE overlay seam (EE-002)', () => {
   it('CE has no reminder audience: the list is empty and core keeps its own', async () => {
     ({ app } = await buildTestApp());
     expect(app.ee.reminderAudiences).toEqual([]);
+  });
+
+  it('CE has no widget scope resolver: nobody is assigned, and resolvers merge', async () => {
+    ({ app } = await buildTestApp());
+    expect(app.ee.widgetScopeResolvers).toEqual([]);
+    const tasks = [{ id: 'T1', workspace_id: 'W1' }];
+    expect(await widgetScopeFacts(app, null, { userId: 'U1', tasks })).toEqual(new Map());
+
+    app.ee.widgetScopeResolvers.push(
+      async () => new Map([['T1', { assignees: ['U1'] }]]),
+      async () => new Map([['T1', { assignees: ['U2', 'U1'], isRequestWork: true }]]),
+    );
+    const facts = await widgetScopeFacts(app, null, { userId: 'U1', tasks });
+    expect(facts.get('T1')).toEqual({ assignees: ['U1', 'U2'], isRequestWork: true });
+
+    // A resolver that throws fails the read rather than drop the user's work.
+    app.ee.widgetScopeResolvers.push(async () => {
+      throw new Error('down');
+    });
+    await expect(widgetScopeFacts(app, null, { userId: 'U1', tasks })).rejects.toThrow('down');
   });
 
   it('lists and calls an overlay MCP tool through the full dance', async () => {

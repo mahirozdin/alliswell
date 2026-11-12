@@ -68,7 +68,8 @@ function curlFor(method, path, operation, bodyExample) {
   // Path placeholders stay visible as :name so it is obvious what to substitute.
   const url = `https://api.alliswell.space${path.replace(/\{(.+?)\}/g, ':$1')}`;
   const usesKey = (operation.security ?? []).some((s) => 'apiKey' in s);
-  const token = usesKey ? '$ALLISWELL_KEY' : '$ALLISWELL_JWT';
+  const usesWidget = (operation.security ?? []).some((s) => 'widgetToken' in s);
+  const token = usesKey ? '$ALLISWELL_KEY' : usesWidget ? '$ALLISWELL_WIDGET_TOKEN' : '$ALLISWELL_JWT';
 
   const lines = [`curl -X ${method.toUpperCase()} '${url}' \\`];
   if ((operation.security ?? []).length > 0) {
@@ -99,7 +100,9 @@ function renderOperation(method, path, operation) {
 
   const auth = (operation.security ?? []).length === 0
     ? 'None — this endpoint is public.'
-    : (operation.security ?? []).some((s) => 'apiKey' in s)
+    : (operation.security ?? []).some((s) => 'widgetToken' in s)
+      ? 'Widget token (`aww_…`) only — a session JWT or an API key is refused with `401 AUTH_WIDGET_TOKEN_INVALID`.'
+      : (operation.security ?? []).some((s) => 'apiKey' in s)
       ? 'Personal API key **or** session JWT.'
       : 'Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.';
   out.push(`**Auth:** ${auth}`, '');

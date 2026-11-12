@@ -101,6 +101,11 @@ function requestFor(method, path, operation) {
   const security = operation.security ?? [];
   if (security.length === 0) {
     request.auth = { type: 'noauth' };
+  } else if (security.some((s) => 'widgetToken' in s)) {
+    request.auth = {
+      type: 'bearer',
+      bearer: [{ key: 'token', value: '{{widgetToken}}', type: 'string' }],
+    };
   } else if (!security.some((s) => 'apiKey' in s)) {
     request.auth = {
       type: 'bearer',
@@ -147,6 +152,7 @@ const collection = {
     { key: 'apiKey', value: '', type: 'string' },
     { key: 'workspaceId', value: '', type: 'string' },
     { key: 'sessionJwt', value: '', type: 'string' },
+    { key: 'widgetToken', value: '', type: 'string' },
   ],
   item: [...folders.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
