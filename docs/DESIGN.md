@@ -645,7 +645,8 @@ its text.
   never clears, is a dead affordance).
 - **A9 — Direction A: one grid, pinned to the thumb (#46, OPH-466/467).** Content on top
   (badge 96 with a pulse ring behind it, the "Acil hatırlatma" label, tabular time, word-safe title); actions
-  pinned to the bottom, top to bottom: the "Ertele" label, **one equal-width 2-column grid of
+  pinned to the bottom only while the content fits above them — otherwise the whole screen scrolls as one
+  page in that order, nothing clipped or overlapped (X-01) — top to bottom: the "Ertele" label, **one equal-width 2-column grid of
   `AwAlarmActionTile`** (56 pt, `surface` fill, 1 px `outline` edge; every preset and "Özel" in
   it, an odd last cell stays empty — never a wider tile), a **full-width "Onayla"** (56 pt,
   `error`/`onError`), then **"Tamamla" | "Aç"** as two 48 pt `link` text buttons. The column is
@@ -657,6 +658,8 @@ its text.
   disabled. **Failed:** an `AwInlineError` and a 48 pt "Tekrar dene" tile above the actions,
   the sound stays off. Ink on the wash is `onSurface`/`onSurfaceVariant`; the label is
   `errorOnPage` (`prioUrgent` text measured 3.94 / 4.36 there — it stays the badge's 3:1 mark).
+  A screen reader gets one node per piece in that order, each tile a button read as "5 dakika
+  ertele, 09:05’te çalar"; "Ertele" is a heading, never the screen's name.
   Every pair is in `contrast.py` ("ring …", both themes). Several alarms at once: list mode,
   OPH-443.
 

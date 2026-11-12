@@ -1939,59 +1939,109 @@ void main() {
     await tester.pumpWidget(const SizedBox());
   });
 
-  // W-04: the web opens silent, and the sentence plus "Start sound" pushed
-  // Tamamla and Aç under a 640 pt screen. The actions stay pinned; only the
-  // content above them scrolls, and its cut edge fades.
-  for (final chosen in [false, true]) {
-    testWidgets(
-      'at 360x640 with the silent hint every action can be reached by '
-      'scrolling (chosen: $chosen)',
-      (tester) async {
+  // X-01 (OPH-466): with the silent hint at 360x640 the pinned actions left
+  // the content a region too small for it — the sentence was cut and "Start
+  // sound" sat under the grid, out of reach. The actions are pinned only
+  // when the content fits above them; otherwise the whole screen scrolls in
+  // its natural order, nothing overlapping, nothing clipped.
+  Finder ringPage() => find
+      .descendant(
+        of: find.byKey(const Key('alarm-ring')),
+        matching: find.byType(Scrollable),
+      )
+      .first;
+
+  /// Every piece of the single screen, in reading order.
+  List<Finder> ringParts({required bool silent, bool chosen = false}) => [
+    find.byKey(const Key('alarm-ringing-label')),
+    find.byKey(const Key('alarm-time')),
+    find.text('Take pills'),
+    if (silent)
+      find.byKey(
+        Key(chosen ? 'alarm-silent-declared' : 'alarm-silent-default'),
+      ),
+    if (silent) find.byKey(const Key('alarm-start-sound')),
+    for (final k in snoozeKeys) find.byKey(Key(k)),
+    find.byKey(const Key('alarm-acknowledge')),
+    find.byKey(const Key('alarm-complete')),
+    find.byKey(const Key('alarm-open')),
+  ];
+
+  void expectNoOverlap(WidgetTester tester, List<Finder> parts, String why) {
+    final rects = [for (final f in parts) tester.getRect(f)];
+    for (var i = 0; i < rects.length; i++) {
+      for (var j = i + 1; j < rects.length; j++) {
+        final o = rects[i].intersect(rects[j]);
+        expect(
+          o.width <= 0.5 || o.height <= 0.5,
+          isTrue,
+          reason: '$why: ${parts[i]} overlaps ${parts[j]}',
+        );
+      }
+    }
+    // Natural order: nothing starts above the piece before it.
+    for (var i = 1; i < rects.length; i++) {
+      expect(
+        rects[i].top,
+        greaterThanOrEqualTo(rects[i - 1].top - 0.5),
+        reason: '$why: ${parts[i]} is above ${parts[i - 1]}',
+      );
+    }
+  }
+
+  for (final silent in [true, false]) {
+    for (final scale in [1.0, 1.3, 2.0]) {
+      testWidgets('at 360x640 with the silent hint the start-sound button and '
+          'every action are visible or reachable and nothing overlaps '
+          '(silent: $silent, text scale $scale)', (tester) async {
         tester.view.physicalSize = const Size(360, 640);
         tester.view.devicePixelRatio = 1;
         addTearDown(tester.view.reset);
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
         await pumpSilentByChoice(
           tester,
           _SpyFeedback(),
-          silent: true,
-          chosen: chosen,
+          silent: silent,
+          chosen: false,
         );
-        // The longest title the walkthrough used.
-        expect(find.byKey(const Key('alarm-ring')), findsOneWidget);
-        for (final k in [
-          ...snoozeKeys,
-          'alarm-acknowledge',
-          'alarm-complete',
-          'alarm-open',
-        ]) {
-          final r = rectOf(tester, k);
-          expect(r.top, greaterThanOrEqualTo(0), reason: k);
-          expect(r.bottom, lessThanOrEqualTo(640), reason: '$k $r');
-        }
-        final content = find.byKey(const Key('alarm-ring-content'));
-        final hint = find.byKey(
-          Key(chosen ? 'alarm-silent-declared' : 'alarm-silent-default'),
-        );
-        expect(hint, findsOneWidget);
-        await tester.scrollUntilVisible(
-          find.byKey(const Key('alarm-start-sound')),
-          60,
-          scrollable: find.descendant(
-            of: content,
+        final parts = ringParts(silent: silent);
+        expectNoOverlap(tester, parts, '360x640 ×$scale');
+        // One page scrolls, or nothing does: no region nested in the screen
+        // that could hide a control under the actions.
+        expect(
+          find.descendant(
+            of: find.byKey(const Key('alarm-ring')),
             matching: find.byType(Scrollable),
           ),
+          findsOneWidget,
         );
-        final start = rectOf(tester, 'alarm-start-sound');
-        final viewport = tester.getRect(content);
-        expect(start.bottom, lessThanOrEqualTo(viewport.bottom + 0.5));
-        // Scrolling the content never moves the actions.
-        expect(rectOf(tester, 'alarm-open').bottom, lessThanOrEqualTo(640));
+        for (final part in parts) {
+          await tester.scrollUntilVisible(part, 80, scrollable: ringPage());
+          await tester.pump();
+          final r = tester.getRect(part);
+          expect(r.top, greaterThanOrEqualTo(0), reason: '$part ×$scale');
+          expect(r.bottom, lessThanOrEqualTo(640), reason: '$part ×$scale $r');
+        }
         expect(tester.takeException(), isNull);
-      },
-    );
+      });
+    }
   }
 
-  testWidgets('a content taller than its space fades at its bottom edge, and '
+  testWidgets('a 360x640 screen without a hint keeps every action on screen '
+      'with nothing to scroll', (tester) async {
+    tester.view.physicalSize = const Size(360, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await pumpSilentByChoice(tester, _SpyFeedback(), silent: false);
+    final position = tester.state<ScrollableState>(ringPage()).position;
+    expect(position.maxScrollExtent, 0);
+    // The actions sit at the bottom: 640 − 16 bottom padding (the 48 pt
+    // text button centred in its row).
+    expect(rectOf(tester, 'alarm-open').bottom, closeTo(624, 4));
+  });
+
+  testWidgets('a screen taller than the window fades at its bottom edge, and '
       'not once it is scrolled to the end', (tester) async {
     tester.view.physicalSize = const Size(360, 640);
     tester.view.devicePixelRatio = 1;
@@ -1999,17 +2049,134 @@ void main() {
     await pumpSilentByChoice(tester, _SpyFeedback(), silent: true);
     await tester.pump();
     final fade = tester.state<AlarmEdgeFadeState>(find.byType(AlarmEdgeFade));
-    final scrollable = find.descendant(
-      of: find.byKey(const Key('alarm-ring-content')),
-      matching: find.byType(Scrollable),
-    );
-    final position = tester.state<ScrollableState>(scrollable).position;
+    final position = tester.state<ScrollableState>(ringPage()).position;
     expect(position.maxScrollExtent, greaterThan(0));
     expect(fade.fading, isTrue);
     position.jumpTo(position.maxScrollExtent);
     await tester.pump();
     await tester.pump();
     expect(fade.fading, isFalse);
+  });
+
+  // X-07 (OPH-466): the whole screen was one group labelled "Snooze" — the
+  // section label had no node of its own and merged into the screen's. A
+  // screen reader reads it in spec 1.8's order: label, time, title, "Snooze",
+  // each tile as its own button, Acknowledge, Complete, Open.
+  testWidgets('each tile is its own button for a screen reader with the time '
+      'in its label', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await seed();
+    await pumpSized(tester, const Size(430, 932));
+
+    for (final (key, spoken) in [
+      ('alarm-snooze-5_min', 'Snooze 5 minutes'),
+      ('alarm-snooze-30_min', 'Snooze 30 minutes'),
+      ('alarm-snooze-1_hour', 'Snooze 1 hour'),
+      ('alarm-snooze-tomorrow_morning', 'Snooze until tomorrow morning'),
+    ]) {
+      final tile = find.bySemanticsLabel(
+        RegExp('^${RegExp.escape(spoken)}, rings at \\S+'),
+      );
+      expect(tile, findsOneWidget, reason: key);
+      expect(
+        tester.getSemantics(tile),
+        isSemantics(isButton: true, hasTapAction: true),
+        reason: key,
+      );
+      // The node is the tile, not a group around the screen.
+      expect(
+        tester.getSemantics(tile).rect.height,
+        lessThanOrEqualTo(kAwAlarmTileHeight + 1),
+      );
+    }
+    expect(
+      tester.getSemantics(
+        find.bySemanticsLabel(
+          'Silence indefinitely, '
+          '${'alarm.silenceHint'.tr()}',
+        ),
+      ),
+      isSemantics(isButton: true, hasTapAction: true),
+    );
+
+    // "Snooze" is a heading of its own, not the screen's name.
+    final section = tester.getSemantics(find.bySemanticsLabel('Snooze'));
+    expect(section, isSemantics(isHeader: true));
+    expect(section.rect.height, lessThan(60));
+    expect(section.childrenCount, 0);
+
+    final order = [
+      for (final node in tester.semantics.simulatedAccessibilityTraversal())
+        if (node.label.isNotEmpty) node.label,
+    ];
+    int at(Pattern p) => order.indexWhere((l) => l.startsWith(p));
+    final expected = [
+      at('URGENT REMINDER'),
+      at(RegExp(r'\d')),
+      at('Take pills'),
+      at('Snooze'),
+      at('Snooze 5 minutes'),
+      at('Snooze 30 minutes'),
+      at('Snooze 1 hour'),
+      at('Snooze until tomorrow'),
+      at('Pick a time'),
+      at('Silence indefinitely'),
+      at('Acknowledge'),
+      at('Complete'),
+      at('Open'),
+    ];
+    expect(expected, everyElement(greaterThanOrEqualTo(0)), reason: '$order');
+    expect(expected, orderedEquals([...expected]..sort()), reason: '$order');
+    // No node reads the title and the actions as one.
+    expect(
+      order.where((l) => l.contains('Take pills') && l.contains('Snooze')),
+      isEmpty,
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('a short screen still names the snooze section for a screen '
+      'reader', (tester) async {
+    final semantics = tester.ensureSemantics();
+    await seed();
+    await pumpSized(tester, const Size(360, 640));
+    expect(find.byKey(const Key('alarm-snooze-label')), findsNothing);
+    final order = [
+      for (final node in tester.semantics.simulatedAccessibilityTraversal())
+        if (node.label.isNotEmpty) node.label,
+    ];
+    final section = order.indexOf('Snooze');
+    expect(section, greaterThan(order.indexOf('Take pills')), reason: '$order');
+    expect(
+      section,
+      lessThan(order.indexWhere((l) => l.startsWith('Snooze 5 minutes'))),
+      reason: '$order',
+    );
+    semantics.dispose();
+  });
+
+  testWidgets('Turkish: the tile reads "5 dakika ertele, 09:05’te çalar"', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    container = ProviderContainer(
+      overrides: [
+        ...syncTestOverrides(),
+        nowProvider.overrideWithValue(() => DateTime(2030, 6, 1, 9, 0, 50)),
+      ],
+    );
+    addTearDown(container.dispose);
+    db = container.read(databaseProvider);
+    AwI18n.instance.setActiveCached(const Locale('tr'));
+    addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+    await seed();
+    await pumpSized(tester, const Size(430, 932));
+    expect(
+      find.bySemanticsLabel('5 dakika ertele, 09:05’te çalar'),
+      findsOneWidget,
+    );
+    semantics.dispose();
+    await tester.pumpWidget(const SizedBox());
   });
 
   testWidgets('a tall screen pins the actions and fades nothing', (

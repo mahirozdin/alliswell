@@ -1001,6 +1001,12 @@
     },
     "snoozeRingsAt": "{time} çalar",
     "snoozeJoinsGroup": "{time} çalar · başka alarmla birlikte",
+    "snoozeSpoken": {
+      "5_min": "5 dakika ertele",
+      "30_min": "30 dakika ertele",
+      "1_hour": "1 saat ertele",
+      "tomorrow_morning": "Yarın sabaha ertele"
+    },
     "sharedMinute": "{time} {count} acil alarm birlikte çalacak",
     "sharedMinuteChange": "Saati değiştir",
     "snoozeConfirmed": "{time} tekrar çalacak",

@@ -24,6 +24,7 @@ class AwAlarmActionTile extends StatefulWidget {
     required this.label,
     required this.onPressed,
     this.subline,
+    this.semanticLabel,
     this.icon,
     this.busy = false,
     this.wrap = false,
@@ -32,6 +33,11 @@ class AwAlarmActionTile extends StatefulWidget {
 
   final String label;
   final String? subline;
+
+  /// What a screen reader says for this tile, in place of [label] (spec
+  /// §1.8: "5 min" is spoken "Snooze 5 minutes"); [subline] follows it.
+  final String? semanticLabel;
+
   final IconData? icon;
 
   /// Runs on tap — the screen silences inside it, so it comes before the
@@ -58,6 +64,14 @@ const double kAwAlarmTileHeight = 56;
 class _AwAlarmActionTileState extends State<AwAlarmActionTile> {
   bool _pressed = false;
   bool _focused = false;
+
+  /// "Snooze 5 minutes, rings at 09:05": the spoken action, then the line
+  /// that says what it will do.
+  String get _spoken {
+    final action = widget.semanticLabel ?? widget.label;
+    final subline = widget.subline;
+    return subline == null ? action : '$action, $subline';
+  }
 
   void _tap() {
     // Silence first (the screen's handler), then the haptic.
@@ -169,23 +183,29 @@ class _AwAlarmActionTileState extends State<AwAlarmActionTile> {
           ),
           child: child,
         ),
+        // X-07: ONE node per tile — a button with a tap and the merged
+        // label "Snooze 5 minutes, rings at 09:05" (spec §1.8). The button
+        // flag sat on a wrapper above the merged InkWell node before, so a
+        // screen reader met two nodes and neither was the whole tile.
         child: Semantics(
+          container: true,
           button: true,
-          child: MergeSemantics(
-            child: InkWell(
-              onTap: _tap,
-              onHighlightChanged: (v) => setState(() => _pressed = v),
-              onFocusChange: (v) => setState(() => _focused = v),
-              customBorder: const StadiumBorder(),
-              splashFactory: NoSplash.splashFactory,
-              // The pressed overlay is the fill above, on a 150 ms clock.
-              overlayColor: WidgetStateProperty.resolveWith(
-                (states) => states.contains(WidgetState.pressed)
-                    ? Colors.transparent
-                    : null,
-              ),
-              child: content,
+          label: _spoken,
+          onTap: _tap,
+          excludeSemantics: true,
+          child: InkWell(
+            onTap: _tap,
+            onHighlightChanged: (v) => setState(() => _pressed = v),
+            onFocusChange: (v) => setState(() => _focused = v),
+            customBorder: const StadiumBorder(),
+            splashFactory: NoSplash.splashFactory,
+            // The pressed overlay is the fill above, on a 150 ms clock.
+            overlayColor: WidgetStateProperty.resolveWith(
+              (states) => states.contains(WidgetState.pressed)
+                  ? Colors.transparent
+                  : null,
             ),
+            child: content,
           ),
         ),
       ),

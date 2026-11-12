@@ -181,3 +181,12 @@ const Map<String, String> kSnoozePresetLabels = {
   '1_hour': 'notif.action.snooze1h',
   'tomorrow_morning': 'notif.action.snoozeTomorrow',
 };
+
+/// What a screen reader says for a snooze preset (spec §1.8): "5 min" reads
+/// as "Snooze 5 minutes", the tile's own subline follows it.
+const Map<String, String> kSnoozePresetSpokenLabels = {
+  '5_min': 'alarm.snoozeSpoken.5_min',
+  '30_min': 'alarm.snoozeSpoken.30_min',
+  '1_hour': 'alarm.snoozeSpoken.1_hour',
+  'tomorrow_morning': 'alarm.snoozeSpoken.tomorrow_morning',
+};

@@ -39,11 +39,6 @@ const double kAlarmOneColumnTextScale = 1.3;
 /// The ring screen's column: screen − 2 × 24, at most 440 (2 × 216 + 8).
 const double kAlarmRingMaxWidth = 440;
 
-/// From this height up the action block is pinned to the bottom and only the
-/// content above it scrolls (W-04); below it (a phone on its side) the whole
-/// screen scrolls as one page.
-const double kAlarmPinnedMinHeight = 560;
-
 /// The shell's alarm layer. One ringing task: the single layout, keyed by
 /// [alarmOccurrenceKey] (#46) — unkeyed, the next alarm inherited the previous
 /// screen's State, its pulse, its log entry and a "busy" flag that left every
@@ -622,6 +617,7 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
         _tile(
           'alarm-snooze-$preset',
           label: kSnoozePresetLabels[preset]!.tr(),
+          semanticLabel: kSnoozePresetSpokenLabels[preset]!.tr(),
           // The offset AND the instant it lands on: "5 dk" alone made the
           // user ask what happens next (OPH-177).
           subline: _subline(
@@ -675,17 +671,31 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
           const SizedBox(height: AwSpace.x4),
         ],
         if (!short) ...[
-          Text(
-            'alarm.ringing.snooze'.tr(),
-            key: const Key('alarm-snooze-label'),
-            style: text.labelMedium?.copyWith(
-              color: scheme.onSurfaceVariant,
-              fontWeight: FontWeight.w600,
+          // X-07: a heading of its own. Without a node it merged into the
+          // screen's, and the whole screen was announced as "Snooze".
+          Semantics(
+            container: true,
+            header: true,
+            child: Text(
+              'alarm.ringing.snooze'.tr(),
+              key: const Key('alarm-snooze-label'),
+              style: text.labelMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           const SizedBox(height: AwSpace.x2),
-        ],
-        _grid(tiles, oneColumn: oneColumn),
+          _grid(tiles, oneColumn: oneColumn),
+        ] else
+          // A6/A7 drop the visible label; a screen reader still enters the
+          // section by its name (spec §1.8 reading order).
+          Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'alarm.ringing.snooze'.tr(),
+            child: _grid(tiles, oneColumn: oneColumn),
+          ),
         const SizedBox(height: AwSpace.x4),
         FilledButton.icon(
           key: const Key('alarm-acknowledge'),
@@ -736,87 +746,65 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
       // underneath — a screen reader could land behind a ringing alarm. This
       // drops everything painted before it, as a route's barrier does.
       child: BlockSemantics(
-        child: Material(
-          key: const Key('alarm-ring'),
-          color: background,
-          child: CallbackShortcuts(
-            bindings: _shortcuts(presets),
-            child: SafeArea(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  const padding = EdgeInsets.fromLTRB(
-                    AwSpace.x6,
-                    AwSpace.x6,
-                    AwSpace.x6,
-                    AwSpace.x4,
-                  );
-                  final gap = SizedBox(height: wide ? AwSpace.x8 : AwSpace.x6);
-                  // W-04: the actions stay pinned and on screen; when the
-                  // content above them (a silent line, "Start sound", a
-                  // retry) does not fit, only the content scrolls, its cut
-                  // edge faded. Past 1.3 text scale, or on a screen too low
-                  // for the pinned block, the whole screen scrolls instead.
-                  final pinned =
-                      !oneColumn &&
-                      constraints.maxHeight.isFinite &&
-                      constraints.maxHeight >= kAlarmPinnedMinHeight;
-                  if (pinned) {
-                    final scrolling = AlarmEdgeFade(
+        // X-07: a group with no name of its own, every piece inside it a
+        // node of its own in reading order (spec §1.8).
+        child: Semantics(
+          container: true,
+          explicitChildNodes: true,
+          child: Material(
+            key: const Key('alarm-ring'),
+            color: background,
+            child: CallbackShortcuts(
+              bindings: _shortcuts(presets),
+              child: SafeArea(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    const padding = EdgeInsets.fromLTRB(
+                      AwSpace.x6,
+                      AwSpace.x6,
+                      AwSpace.x6,
+                      AwSpace.x4,
+                    );
+                    final gap = SizedBox(
+                      height: wide ? AwSpace.x8 : AwSpace.x6,
+                    );
+                    // X-01: ONE page in its natural order — content, grid,
+                    // Onayla, Tamamla/Aç. At least the window tall, the actions
+                    // sit at its bottom (pinned to the thumb) whenever the
+                    // content fits above them; when it does not (a silent
+                    // line and "Start sound" on 360x640, large text) the whole
+                    // page scrolls, its cut edge faded. A content region of
+                    // its own under pinned actions clipped the sentence and
+                    // hid "Start sound" under the grid.
+                    final minHeight = constraints.maxHeight.isFinite
+                        ? (constraints.maxHeight - padding.vertical)
+                              .clamp(0, double.infinity)
+                              .toDouble()
+                        : 0.0;
+                    return AlarmEdgeFade(
                       child: SingleChildScrollView(
-                        key: const Key('alarm-ring-content'),
-                        child: content,
-                      ),
-                    );
-                    return Padding(
-                      padding: padding,
-                      child: Center(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(
-                            maxWidth: kAlarmRingMaxWidth,
-                          ),
-                          child: Column(
-                            // Desktop: content and actions centre together.
-                            mainAxisSize: wide
-                                ? MainAxisSize.min
-                                : MainAxisSize.max,
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              if (wide)
-                                Flexible(child: scrolling)
-                              else
-                                Expanded(child: scrolling),
-                              gap,
-                              actions,
-                            ],
+                        key: const Key('alarm-ring-page'),
+                        padding: padding,
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(
+                              maxWidth: kAlarmRingMaxWidth,
+                              minHeight: minHeight,
+                            ),
+                            child: Column(
+                              // Desktop: content and actions centre together.
+                              mainAxisAlignment: wide
+                                  ? MainAxisAlignment.center
+                                  : MainAxisAlignment.spaceBetween,
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [content, gap, actions],
+                            ),
                           ),
                         ),
                       ),
                     );
-                  }
-                  final minHeight = constraints.maxHeight.isFinite
-                      ? (constraints.maxHeight - padding.vertical)
-                            .clamp(0, double.infinity)
-                            .toDouble()
-                      : 0.0;
-                  return SingleChildScrollView(
-                    padding: padding,
-                    child: Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: kAlarmRingMaxWidth,
-                          minHeight: minHeight,
-                        ),
-                        child: Column(
-                          mainAxisAlignment: wide
-                              ? MainAxisAlignment.center
-                              : MainAxisAlignment.spaceBetween,
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [content, gap, actions],
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                  },
+                ),
               ),
             ),
           ),
@@ -860,12 +848,14 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
     required String label,
     required VoidCallback onPressed,
     String? subline,
+    String? semanticLabel,
     IconData? icon,
     bool wrap = false,
   }) => AwAlarmActionTile(
     key: Key(key),
     label: label,
     subline: subline,
+    semanticLabel: semanticLabel,
     icon: icon,
     wrap: wrap,
     busy: _spinning == key,
