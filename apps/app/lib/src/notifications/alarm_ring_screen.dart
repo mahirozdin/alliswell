@@ -542,18 +542,12 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
           ),
         ),
         const SizedBox(height: AwSpace.x2),
-        Tooltip(
-          message: widget.alarm.taskTitle,
-          excludeFromSemantics: true,
-          child: AwWordSafeText(
-            widget.alarm.taskTitle,
-            textAlign: TextAlign.center,
-            maxLines: short ? 2 : 3,
-            overflow: TextOverflow.ellipsis,
-            style: text.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: scheme.onSurface,
-            ),
+        AlarmRingTitle(
+          widget.alarm.taskTitle,
+          maxLines: short ? 2 : 3,
+          style: text.headlineSmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: scheme.onSurface,
           ),
         ),
         // OPH-316: a silence the settings asked for, declared. Without this
@@ -988,6 +982,69 @@ class _AlarmRingScreenState extends ConsumerState<AlarmRingScreen>
           ],
         ),
       ),
+    );
+  }
+}
+
+/// The ring screen's task title: centred, word-safe, at most [maxLines].
+///
+/// Y-04 (OPH-466): the full title on hover only when the screen actually cuts
+/// it — a title that fits got a tooltip repeating itself over the silent
+/// sentence. The tooltip's text never reaches a screen reader: the title node
+/// already reads it whole, and the hover copy was a second title in the tree.
+class AlarmRingTitle extends StatelessWidget {
+  const AlarmRingTitle(
+    this.title, {
+    super.key,
+    required this.maxLines,
+    this.style,
+  });
+
+  final String title;
+  final int maxLines;
+  final TextStyle? style;
+
+  @override
+  Widget build(BuildContext context) {
+    final text = AwWordSafeText(
+      title,
+      textAlign: TextAlign.center,
+      maxLines: maxLines,
+      overflow: TextOverflow.ellipsis,
+      style: style,
+    );
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (!constraints.maxWidth.isFinite) return text;
+        // The same measure AwWordSafeText draws with.
+        final scaler = awWordSafeScaler(
+          context,
+          title,
+          style: style,
+          scaler: MediaQuery.textScalerOf(context),
+          maxWidth: constraints.maxWidth,
+        );
+        final painter = TextPainter(
+          text: TextSpan(
+            text: title,
+            style: DefaultTextStyle.of(context).style.merge(style),
+          ),
+          textAlign: TextAlign.center,
+          textDirection: Directionality.of(context),
+          textScaler: scaler,
+          maxLines: maxLines,
+          locale: Localizations.maybeLocaleOf(context),
+        )..layout(maxWidth: constraints.maxWidth);
+        final cut = painter.didExceedMaxLines;
+        painter.dispose();
+        if (!cut) return text;
+        return Tooltip(
+          excludeFromSemantics: true,
+          // A widget span, so the hover copy can leave the semantics tree.
+          richMessage: WidgetSpan(child: ExcludeSemantics(child: Text(title))),
+          child: text,
+        );
+      },
     );
   }
 }

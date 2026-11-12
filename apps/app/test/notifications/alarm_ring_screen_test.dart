@@ -2,7 +2,9 @@ import 'dart:async';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
 import 'package:flutter/foundation.dart' show ValueListenable;
+import 'package:flutter/gestures.dart' show PointerDeviceKind;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
@@ -1067,6 +1069,7 @@ void main() {
     Size size, {
     double textScale = 1,
     List<AlarmInput> alarms = const [],
+    AlarmInput? alarm,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -1084,7 +1087,7 @@ void main() {
           ),
           home: Scaffold(
             body: AlarmRingScreen(
-              alarm: theAlarm(),
+              alarm: alarm ?? theAlarm(),
               onHandled: handled.add,
               alarms: alarms,
             ),
@@ -2168,6 +2171,86 @@ void main() {
       order.where((l) => l.contains('Take pills') && l.contains('Snooze')),
       isEmpty,
     );
+    semantics.dispose();
+  });
+
+  // Y-04 (OPH-466): a two-line title got a hover tooltip repeating it — it
+  // covered the silent sentence, and its text was a second copy of the title
+  // in the semantics tree. Only a title the screen actually cuts gets one, and
+  // the tooltip never reaches a screen reader.
+  AlarmInput titled(String title) => AlarmInput(
+    reminderId: id('R1'),
+    taskId: id('T1'),
+    taskTitle: title,
+    remindAt: at,
+    status: 'scheduled',
+    urgent: true,
+    requiresAcknowledgement: true,
+  );
+
+  Future<void> hoverTitle(WidgetTester tester, String title) async {
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(find.text(title)));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 2));
+  }
+
+  int titleNodes(WidgetTester tester, String title) => [
+    for (final node in tester.semantics.simulatedAccessibilityTraversal())
+      if (node.label.contains(title)) node,
+  ].length;
+
+  testWidgets('a two-line title that fits gets no tooltip and is read once', (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+    // Two lines in the test font (each glyph as wide as it is tall).
+    const title = 'Annemi ara ve ilacini sor';
+    await seed();
+    await pumpSized(tester, const Size(430, 932), alarm: titled(title));
+    // Two lines at 430, inside the three the screen allows.
+    final lines = tester
+        .renderObject<RenderParagraph>(find.text(title))
+        .getBoxesForSelection(
+          const TextSelection(baseOffset: 0, extentOffset: title.length),
+        )
+        .map((b) => b.top)
+        .toSet();
+    expect(lines.length, 2);
+    expect(
+      find.ancestor(of: find.text(title), matching: find.byType(Tooltip)),
+      findsNothing,
+    );
+
+    await hoverTitle(tester, title);
+    // Nothing pops over the silent sentence, and the title is read once.
+    expect(find.text(title), findsOneWidget);
+    expect(titleNodes(tester, title), 1);
+    semantics.dispose();
+  });
+
+  testWidgets('a title the screen cuts gets a tooltip a screen reader never '
+      'reads', (tester) async {
+    final semantics = tester.ensureSemantics();
+    final title = List.filled(12, 'KDV beyannamesini gönder').join(' ');
+    await seed();
+    await pumpSized(tester, const Size(430, 932), alarm: titled(title));
+    expect(
+      tester.renderObject<RenderParagraph>(find.text(title)).didExceedMaxLines,
+      isTrue,
+    );
+    expect(
+      find.ancestor(of: find.text(title), matching: find.byType(Tooltip)),
+      findsOneWidget,
+    );
+
+    await hoverTitle(tester, title);
+    // The full title shows on hover…
+    expect(find.text(title), findsNWidgets(2));
+    // …and a screen reader still meets it once: the title node itself.
+    expect(titleNodes(tester, title), 1);
     semantics.dispose();
   });
 
