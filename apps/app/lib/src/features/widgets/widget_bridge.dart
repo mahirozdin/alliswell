@@ -1,6 +1,9 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart'
+    show AppLifecycleListener, AppLifecycleState;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../core/date_format.dart';
@@ -150,7 +153,8 @@ bool get widgetsSupportedPlatform {
 /// Keeps the home-screen widget in lock-step with tasks (OPH-130): republishes
 /// the snapshot on every open-task or project change. Watch it where the app is
 /// alive (HomeShell). While the app is foreground these pushes are budget-exempt
-/// (WIDGETS.md §6), so the widget stays current for free.
+/// (WIDGETS.md §6), so the widget stays current for free — and the move to the
+/// background writes it once more (OPH-438).
 final widgetSyncProvider = Provider<void>((ref) {
   if (!widgetsSupportedPlatform) return;
   final tasks = ref.watch(openTasksProvider).value;
@@ -170,19 +174,42 @@ final widgetSyncProvider = Provider<void>((ref) {
   // v5: the user's calendar rides along, as on Home. Empty until it loads, and
   // always empty in a shared workspace (the provider's own rule).
   final events = ref.watch(externalEventsProvider).value ?? const [];
+  final compact = ref.watch(widgetCompactProvider);
+  final bridge = ref.read(widgetBridgeProvider);
+  Future<void> publish() => bridge.publish(
+    tasks,
+    events: events,
+    now: DateTime.now(),
+    projectColorById: colors,
+    // The map keeps the list's order (sort order, then creation) — the
+    // order the widget's list picker offers them in (OPH-336).
+    projects: projects.values,
+    dateFormat: dateFormat,
+    hideTitles: hideTitles,
+    compact: compact,
+  );
   // Fire-and-forget: a widget push must never block the UI.
-  ref
-      .read(widgetBridgeProvider)
-      .publish(
-        tasks,
-        events: events,
-        now: DateTime.now(),
-        projectColorById: colors,
-        // The map keeps the list's order (sort order, then creation) — the
-        // order the widget's list picker offers them in (OPH-336).
-        projects: projects.values,
-        dateFormat: dateFormat,
-        hideTitles: hideTitles,
-        compact: ref.watch(widgetCompactProvider),
-      );
+  unawaited(publish());
+  // OPH-438 (#50): the last fresh write happens on the way out. A reload
+  // asked for while the app is in front is outside WidgetKit's budget; once
+  // the app is in the background the widget moves only when the OS grants it
+  // one. So leaving the screen writes the same rows once more, under a fresh
+  // `now`, and asks for a reload — the widget is never older than the last
+  // app session. Once per trip: `hidden` and `paused` both arrive.
+  var written = false;
+  final lifecycle = AppLifecycleListener(
+    onStateChange: (state) {
+      switch (state) {
+        case AppLifecycleState.hidden || AppLifecycleState.paused:
+          if (written) return;
+          written = true;
+          unawaited(publish());
+        case AppLifecycleState.resumed:
+          written = false;
+        case AppLifecycleState.inactive || AppLifecycleState.detached:
+          break;
+      }
+    },
+  );
+  ref.onDispose(lifecycle.dispose);
 });

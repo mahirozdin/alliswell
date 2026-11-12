@@ -557,7 +557,7 @@ its text.
   pulsing ring, the `label` and the primary button carry the urgency. Ink stays
   `onSurface`/`onSurfaceVariant` for ≥ 4.5:1. The primary "Onayla" uses the
   Material `error`/`onError` pair (contrast-guaranteed); snooze presets are
-  `OutlinedButton` capsules, secondary actions are `TextButton`s. Radii/spacing
+  `AwAlarmActionTile`s in one grid (A9), secondary actions are `TextButton`s. Radii/spacing
   from tokens; the pulse uses an `AnimationController` (repeat), so ring tests
   drive it with `pump()`, never `pumpAndSettle`.
 - **A2 — It must be answered, not dismissed.** `PopScope(canPop:false)`: system
@@ -643,6 +643,25 @@ its text.
   hours and then stops — beyond that the task is simply overdue, and the task
   list is where overdue lives (§22: the same fact in two places, one of which
   never clears, is a dead affordance).
+- **A9 — Direction A: one grid, pinned to the thumb (#46, OPH-466/467).** Content on top
+  (badge 96 with a pulse ring behind it, the "Acil hatırlatma" label, tabular time, word-safe title); actions
+  pinned to the bottom only while the content fits above them — otherwise the whole screen scrolls as one
+  page in that order, nothing clipped or overlapped (X-01) — top to bottom: the "Ertele" label, **one equal-width 2-column grid of
+  `AwAlarmActionTile`** (56 pt, `surface` fill, 1 px `outline` edge; every preset and "Özel" in
+  it, an odd last cell stays empty — never a wider tile), a **full-width "Onayla"** (56 pt,
+  `error`/`onError`), then **"Tamamla" | "Aç"** as two 48 pt `link` text buttons. The column is
+  screen − 2 × 24, **at most 440** (2 × 216 + 8); desktop and web centre content and actions
+  together. **Under 700 pt** of height the badge drops to 64, the "Ertele" label goes and the
+  title takes 2 lines, so every action stays on screen. **Above 1.3× text** the grid becomes
+  one column and the screen scrolls. **Pressed:** `onSurface` 12% over the tile, scale 0.97, a
+  selection haptic; after 300 ms the pressed tile shows a spinner and no button ever renders
+  disabled. **Failed:** an `AwInlineError` and a 48 pt "Tekrar dene" tile above the actions,
+  the sound stays off. Ink on the wash is `onSurface`/`onSurfaceVariant`; the label is
+  `errorOnPage` (`prioUrgent` text measured 3.94 / 4.36 there — it stays the badge's 3:1 mark).
+  A screen reader gets one node per piece in that order, each tile a button read as "5 dakika
+  ertele, 09:05’te çalar"; "Ertele" is a heading, never the screen's name.
+  Every pair is in `contrast.py` ("ring …", both themes). Several alarms at once: list mode,
+  OPH-443.
 
 ## 15. Pull to refresh (round 9 — OPH-171)
 

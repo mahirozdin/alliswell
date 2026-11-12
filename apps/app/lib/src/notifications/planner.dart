@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import '../i18n/i18n.dart';
 import 'alarmkit.dart';
+import 'alarmkit_identity.dart';
 import 'gateway.dart';
 import 'reminder_profile.dart';
 
@@ -88,6 +89,10 @@ List<PlannedNotification> planNotifications({
   String? reminderSoundName,
 }) {
   final planned = <PlannedNotification>[];
+  // Urgent alarms in one UTC minute ring as ONE chain (ADR-0068, #47): two
+  // chains a few seconds apart are two sounds and two full-screen intents,
+  // and answering one leaves the other ringing.
+  final urgentByMinute = <int, List<AlarmInput>>{};
 
   for (final alarm in alarms) {
     if (!_activeStatuses.contains(alarm.status)) continue;
@@ -95,70 +100,160 @@ List<PlannedNotification> planNotifications({
     // on notifications too would ring twice. Non-urgent reminders stay here, and
     // so does any urgent alarm AlarmKit did not take.
     if (alarmKitReminderIds.contains(alarm.reminderId)) continue;
-    final base =
-        (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
-        alarm.remindAt;
+    if (alarm.urgent) {
+      urgentByMinute
+          .putIfAbsent(_minuteOf(_baseOf(alarm)), () => [])
+          .add(alarm);
+      continue;
+    }
+    _planChain(
+      planned,
+      lead: alarm,
+      now: now,
+      privacyMode: privacyMode,
+      chain: const [Duration.zero],
+      soundName: reminderSoundName,
+    );
+  }
+
+  for (final rows in urgentByMinute.values) {
+    rows.sort(_byInstant);
+    final lead = rows.first;
+    final members = alarmKitMembers(rows.map((a) => a.taskId));
     // The user's chain, with two honest exceptions: an alarm that needs no
     // acknowledgement rings once, and a post-snooze round rings once when the
-    // user asked for that (OPH-179).
-    final repeats =
-        alarm.urgent &&
-        alarm.requiresAcknowledgement &&
-        (alarm.status != 'snoozed' || profile.repeatAfterSnooze);
-    final chain = repeats ? profile.offsets : const [Duration.zero];
-
-    for (final (index, offset) in chain.indexed) {
-      final fireAt = base.add(offset).toUtc();
-      if (!fireAt.isAfter(now)) continue;
-
-      // Privacy mode (OPH-064, BLUEPRINT §8.3): nothing personal on the lock
-      // screen — the tap still deep-links to the task.
-      final title = privacyMode
-          ? 'AllisWell'
-          : (alarm.urgent ? '⏰ ${alarm.taskTitle}' : alarm.taskTitle);
-      final body = privacyMode
-          ? 'notif.privateBody'.tr()
-          : (alarm.urgent
-                ? (index == 0 ? _firstBody(alarm) : _repeatBody(index))
-                : 'notif.reminder'.tr());
-
-      final soundName = alarm.urgent ? alarmSoundName : reminderSoundName;
-      final payload = jsonEncode({
-        'taskId': alarm.taskId,
-        'reminderId': alarm.reminderId,
-        'chainIndex': index,
-      });
-      planned.add(
-        PlannedNotification(
-          id: notificationIdFor(
-            '${alarm.reminderId}|$index|${fireAt.millisecondsSinceEpoch}|$title|$body|${alarm.urgent}|$soundName',
-          ),
-          title: title,
-          body: body,
-          fireAt: fireAt,
-          urgent: alarm.urgent,
-          payload: payload,
-          // Diagnostics only (OPH-176): what the alarm log names this slot.
-          kind: alarm.kind,
-          slotIndex: index,
-          taskId: alarm.taskId,
-          reminderId: alarm.reminderId,
-          soundName: soundName,
-        ),
-      );
-    }
+    // user asked for that (OPH-179). A group re-alerts while any member would.
+    final repeats = rows.any(
+      (a) =>
+          a.requiresAcknowledgement &&
+          (a.status != 'snoozed' || profile.repeatAfterSnooze),
+    );
+    _planChain(
+      planned,
+      lead: lead,
+      now: now,
+      privacyMode: privacyMode,
+      chain: repeats ? profile.offsets : const [Duration.zero],
+      soundName: alarmSoundName,
+      // One row is today's chain, byte for byte (same ids, same payload).
+      group: rows.length == 1 ? null : (members: members, rows: rows),
+    );
   }
 
   planned.sort((a, b) => a.fireAt.compareTo(b.fireAt));
   return planned.length > maxPending ? planned.sublist(0, maxPending) : planned;
 }
 
+/// The instant an alarm rings: `snoozedUntil` while snoozed, else `remindAt`.
+DateTime _baseOf(AlarmInput alarm) =>
+    ((alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ?? alarm.remindAt)
+        .toUtc();
+
+int _minuteOf(DateTime t) => t.toUtc().millisecondsSinceEpoch ~/ 60000;
+
+/// Earliest instant first; the reminder id breaks a tie so the lead row (and
+/// so every id derived from it) never depends on the replica's row order.
+int _byInstant(AlarmInput a, AlarmInput b) {
+  final byTime = _baseOf(a).compareTo(_baseOf(b));
+  return byTime != 0 ? byTime : a.reminderId.compareTo(b.reminderId);
+}
+
+/// One notification chain: [lead]'s alone, or — with [group] — the chain a
+/// whole urgent minute shares. A group of several tasks names none of them
+/// (title and body say how many); a group of one task (its remind and due
+/// rows in one minute) keeps the task's own wording. Either way the payload
+/// lists every task and reminder id, so a button applies to all of them, and
+/// nothing but ids (I-13).
+void _planChain(
+  List<PlannedNotification> planned, {
+  required AlarmInput lead,
+  required DateTime now,
+  required bool privacyMode,
+  required List<Duration> chain,
+  required String? soundName,
+  ({List<String> members, List<AlarmInput> rows})? group,
+}) {
+  final base = _baseOf(lead);
+  final count = group?.members.length ?? 1;
+  final reminderIds = group == null
+      ? null
+      : (group.rows.map((a) => a.reminderId).toSet().toList()..sort());
+
+  for (final (index, offset) in chain.indexed) {
+    final fireAt = base.add(offset).toUtc();
+    if (!fireAt.isAfter(now)) continue;
+
+    // Privacy mode (OPH-064, BLUEPRINT §8.3): nothing personal on the lock
+    // screen — the tap still deep-links to the task.
+    final String title;
+    final String body;
+    if (privacyMode) {
+      title = 'AllisWell';
+      body = 'notif.privateBody'.tr();
+    } else if (!lead.urgent) {
+      title = lead.taskTitle;
+      body = 'notif.reminder'.tr();
+    } else if (count > 1) {
+      title = '⏰ ${'alarm.groupTitle'.tr(args: {'count': '$count'})}';
+      body = index == 0
+          ? 'notif.urgentMany'.tr(args: {'count': '$count'})
+          : _repeatBody(index);
+    } else {
+      title = '⏰ ${lead.taskTitle}';
+      body = index == 0 ? _firstBody(lead) : _repeatBody(index);
+    }
+
+    final taskId = group?.members.first ?? lead.taskId;
+    final payload = jsonEncode(
+      group == null
+          ? {
+              'taskId': lead.taskId,
+              'reminderId': lead.reminderId,
+              'chainIndex': index,
+            }
+          : {
+              'taskId': taskId,
+              'taskIds': group.members,
+              'reminderIds': reminderIds,
+              'chainIndex': index,
+            },
+    );
+    final contentSeed =
+        '$index|${fireAt.millisecondsSinceEpoch}|$title|$body|${lead.urgent}|$soundName';
+    planned.add(
+      PlannedNotification(
+        // One task keeps the seed it always had, so an upgrade or a second
+        // row of the same task does not churn its chain.
+        id: notificationIdFor(
+          count > 1
+              ? 'group|${reminderIds!.join(',')}|$contentSeed'
+              : '${lead.reminderId}|$contentSeed',
+        ),
+        title: title,
+        body: body,
+        fireAt: fireAt,
+        urgent: lead.urgent,
+        payload: payload,
+        // Diagnostics only (OPH-176): what the alarm log names this slot.
+        kind: lead.kind,
+        slotIndex: index,
+        taskId: taskId,
+        reminderId: lead.reminderId,
+        soundName: soundName,
+      ),
+    );
+  }
+}
+
 /// Pure AlarmKit lane (OPH-141, NOTIFICATIONS.md §2b): the URGENT alarms, one
-/// AlarmKit alarm each. AlarmKit rings-until-answered natively, so there is NO
-/// re-alert chain here — a single entry per reminder replaces the notification
-/// lane's 5 slots. Ids are content hashes in their OWN namespace (`|alarmkit|`)
-/// so the scheduler's set-diff cancels them on acknowledge, exactly like
-/// notifications. Non-urgent reminders never enter this lane. Windowed and
+/// AlarmKit alarm per UTC minute — several tasks due in one minute share it
+/// (OPH-440, ADR-0068), and a minute with one task keeps that task's own
+/// OPH-424 id. AlarmKit rings-until-answered natively, so there is NO
+/// re-alert chain here — a single entry per occurrence replaces the
+/// notification lane's 5 slots. Ids are occurrence ids (task + instant,
+/// [alarmKitOccurrenceId]) so the scheduler's set-diff cancels them on
+/// acknowledge and replaces them when the time moves; a renamed task keeps its
+/// id and changes only its fingerprint. Non-urgent reminders never enter this lane. Windowed and
 /// past-skipped on the same rules as [planNotifications].
 ///
 /// Capped at [maxAlarms] NEAREST alarms (OPH-182): the per-app AlarmKit ceiling
@@ -186,30 +281,58 @@ List<AlarmKitAlarm> planAlarmKitAlarms({
   final snoozeLabelKey = kSnoozePresetLabels[snoozePreset];
   final snoozeLabel = (snoozeLabelKey ?? 'alarm.ringing.snooze').tr();
 
+  // Every urgent occurrence in one UTC minute is ONE alarm (ADR-0068, #47):
+  // AlarmKit gives no order to alarms due together, and two of them in one
+  // minute have been seen to leave both silent.
+  final byMinute = <int, List<AlarmInput>>{};
   for (final alarm in alarms) {
     if (!_activeStatuses.contains(alarm.status)) continue;
     if (!alarm.urgent) continue; // AlarmKit is the URGENT surface only.
-
-    final base =
-        (alarm.status == 'snoozed' ? alarm.snoozedUntil : null) ??
-        alarm.remindAt;
-    final fireAt = base.toUtc();
+    final fireAt = _baseOf(alarm);
     if (!fireAt.isAfter(now)) continue;
+    byMinute.putIfAbsent(_minuteOf(fireAt), () => []).add(alarm);
+  }
 
-    final title = privacyMode ? 'AllisWell' : alarm.taskTitle;
-    final body = privacyMode ? 'notif.privateBody'.tr() : _firstBody(alarm);
+  for (final rows in byMinute.values) {
+    rows.sort(_byInstant);
+    // The member key is the task (NOTIFICATIONS.md §2b.3): a task's remind and
+    // due rows in one minute are one member, and both ride on this alarm so
+    // the notification lane knows AlarmKit covers them.
+    final members = alarmKitMembers(rows.map((a) => a.taskId));
+    final lead = rows.first;
+    final first = rows.firstWhere((a) => a.taskId == members.first);
+    final fireAt = _baseOf(lead);
+    final count = members.length;
+
+    final title = privacyMode
+        ? 'AllisWell'
+        : (count == 1
+              ? lead.taskTitle
+              : 'alarm.groupTitle'.tr(args: {'count': '$count'}));
+    final body = privacyMode
+        ? 'notif.privateBody'.tr()
+        : (count == 1
+              ? _firstBody(lead)
+              : 'notif.urgentMany'.tr(args: {'count': '$count'}));
 
     planned.add(
       AlarmKitAlarm(
-        id: notificationIdFor(
-          '${alarm.reminderId}|alarmkit|${fireAt.millisecondsSinceEpoch}|$title'
-          '|$soundName',
+        id: alarmKitOccurrenceId(members, alarmKitFireAtMs(fireAt)),
+        members: members,
+        fp: alarmKitFingerprint(
+          title: title,
+          body: body,
+          soundName: soundName,
+          stopLabel: stopLabel,
+          snoozeLabel: snoozeLabel,
+          snoozePreset: snoozePreset,
         ),
         title: title,
         body: body,
         fireAt: fireAt,
-        taskId: alarm.taskId,
-        reminderId: alarm.reminderId,
+        taskId: first.taskId,
+        reminderId: first.reminderId,
+        reminderIds: {for (final a in rows) a.reminderId}.toList(),
         stopLabel: stopLabel,
         snoozeLabel: snoozeLabel,
         snoozePreset: snoozePreset,

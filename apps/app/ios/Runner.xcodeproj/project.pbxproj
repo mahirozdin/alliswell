@@ -7,11 +7,19 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0485E1C2090A6E227B7107C6 /* AWAlarmLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */; };
+		05FA36610EE25FC86CDBCE88 /* AWAlarmLedger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */; };
 		0F391A000000000000000001 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 0F391A000000000000000003 /* InfoPlist.strings */; };
+		14236ED5CCE6645EE7BDCF18 /* AWWidgetDayPick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		177A38B5C0B0E5F93BF6ADB6 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD16AD02B143C3376F0F6E16 /* ShareViewController.swift */; };
 		1C805BE1C3654858412D4CB6 /* AWAppShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971C36AA734DCD5B31DD3D0E /* AWAppShortcuts.swift */; };
+		221336FE2A9B37697ABB9DA6 /* AWSnapshotModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */; };
+		23159A0B9C0D21FC08609BA9 /* AWWidgetDayPick.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */; };
+		2EB2A92600196B4057BA4B6F /* AWSnapshotModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+		34374AD80D89EE170C2C599D /* AWSnoozeCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */; };
+		3B1016BC5B030568075708B9 /* AlarmIdentityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E41DF2EA06800FA1261BCFC /* AlarmIdentityTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		4E2F5686630E1B33A7600A18 /* ShareInboxBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = C660482E3BA4887F8A48C65D /* ShareInboxBridge.swift */; };
 		527FC94C523279749E690FF6 /* Pods_AllisWellShare.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB807EB31B52F74ABC1BE0E4 /* Pods_AllisWellShare.framework */; };
@@ -20,11 +28,16 @@
 		771B0720300A7CD52641BBEA /* AWAlarmShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */; };
 		7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */; };
 		7B4BC4DC894A20C99CD3EEAD /* AWAlarmShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */; };
+		8177D49B49DC1DF1A0DCA22A /* SnoozeTargetTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 14BB1652DA44CD8FA16E513F /* SnoozeTargetTests.swift */; };
 		8B199FDFAE9034BBDB9B4BAB /* AppShortcuts.strings in Resources */ = {isa = PBXBuildFile; fileRef = 3E101FA48BBDE185AC9536AC /* AppShortcuts.strings */; };
+		8E0F9B757F8CE84C03B87F9A /* AWSnoozeCore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		9BFE3BFAD237B825A5585911 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
+		A5CB0451000000000000A001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = A31D141CA43C61BDA8B5ED22 /* Localizable.strings */; };
+		A0C22B17E2CAB08B98FC56D2 /* SnoozeCoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 100165B4F549534A7D17108A /* SnoozeCoreTests.swift */; };
+		A27462FC05C6C20A744A7DA9 /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
 		A54B30D1301EDC60003E181C /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = A54B30CF301EDC60003E181C /* GoogleService-Info.plist */; };
 		A567B04A3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */; };
 		A567B04B3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A567B0493016C2BC007DBA20 /* PrivacyInfo.xcprivacy */; };
@@ -32,11 +45,16 @@
 		A5CBB5F2300AD02700CE60FF /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A5CBB5F1300AD02700CE60FF /* SwiftUI.framework */; };
 		A5CBB601300AD02800CE60FF /* AllisWellWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A5CBB5EE300AD02700CE60FF /* AllisWellWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		AA414C4152414C41524D00B1 /* aw_alarm.caf in Resources */ = {isa = PBXBuildFile; fileRef = AA414C4152414C41524D00F1 /* aw_alarm.caf */; };
+		ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */; };
+		AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */; };
+		A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A003 /* WidgetCompletionTests.swift */; };
+		A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */; };
 		B91CD40E1BEBA050A4C84CB2 /* AlarmKitBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = BDA5799ED22A0B86E0E50A43 /* AlarmKitBridge.swift */; };
 		C71CF13EF68287C0746FB2D5 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A1E645310745BD4734368576 /* Pods_RunnerTests.framework */; };
 		CEDA5C7A555318F3EF033452 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7D5609174DA84123DA2FFE05 /* Foundation.framework */; };
 		D767E2BD26C9FCED51D52539 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */; };
 		DCB1241EC7970CB68479F292 /* ShareNotifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */; };
+		FB633E0800E6DFC8B6E198FF /* AlarmLedgerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -89,13 +107,18 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0F391A000000000000000002 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		012D5F11C57722F9E3CBB898 /* Pods_Runner.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Runner.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		07A4383D5CFC7DCDC0913238 /* AllisWellWidget.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellWidget.xcconfig; path = Flutter/AllisWellWidget.xcconfig; sourceTree = "<group>"; };
+		0E41DF2EA06800FA1261BCFC /* AlarmIdentityTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmIdentityTests.swift; sourceTree = "<group>"; };
+		0F391A000000000000000002 /* tr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		0FB84AA988038830C33E7610 /* Pods-AllisWellShare.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.release.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.release.xcconfig"; sourceTree = "<group>"; };
+		100165B4F549534A7D17108A /* SnoozeCoreTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnoozeCoreTests.swift; sourceTree = "<group>"; };
 		12BA16DF6E2B364938EE1707 /* AllisWellShareDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareDebug.xcconfig; path = Flutter/AllisWellShareDebug.xcconfig; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		14BB1652DA44CD8FA16E513F /* SnoozeTargetTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SnoozeTargetTests.swift; sourceTree = "<group>"; };
+		18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWSnoozeCore.swift; sourceTree = "<group>"; };
+		2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmLedger.swift; sourceTree = "<group>"; };
 		310613F65256275C5E5875F9 /* Pods-AllisWellShare.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.debug.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.debug.xcconfig"; sourceTree = "<group>"; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -108,6 +131,11 @@
 		540ACEF19CA6AC021848BCF6 /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		5CEBC4792193C28E0669686C /* Pods-Runner.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.release.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"; sourceTree = "<group>"; };
 		5D0F6D87CA3681681A531A9E /* AWAlarmShared.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmShared.swift; sourceTree = "<group>"; };
+		5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWWidgetDayPick.swift; sourceTree = "<group>"; };
+		6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWSnapshotModel.swift; sourceTree = "<group>"; };
+		6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetDayPickTests.swift; sourceTree = "<group>"; };
+		A5CB0451000000000000A003 /* WidgetCompletionTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetCompletionTests.swift; sourceTree = "<group>"; };
+		A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = WidgetMoreCountTests.swift; sourceTree = "<group>"; };
 		7403D73B437A53572909BD99 /* Pods-RunnerTests.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.debug.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.debug.xcconfig"; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
@@ -115,6 +143,7 @@
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
 		7B7A51A1D5AE98E32CC7F99E /* en */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		7D5609174DA84123DA2FFE05 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AlarmLedgerTests.swift; sourceTree = "<group>"; };
 		85A46C53A340932C6DBE7C2E /* AllisWellShareProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = AllisWellShareProfile.xcconfig; path = Flutter/AllisWellShareProfile.xcconfig; sourceTree = "<group>"; };
 		914B58EC491C15E69D71AF02 /* Pods-AllisWellShare.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-AllisWellShare.profile.xcconfig"; path = "Target Support Files/Pods-AllisWellShare/Pods-AllisWellShare.profile.xcconfig"; sourceTree = "<group>"; };
 		95CB1B3B360E2D9C0F9F87A2 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
@@ -144,6 +173,7 @@
 		DD4116869764FEFFC46ADBD1 /* Pods-RunnerTests.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.profile.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.profile.xcconfig"; sourceTree = "<group>"; };
 		DE62831B9FE927B0C5F6868F /* ShareNotifier.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ShareNotifier.swift; sourceTree = "<group>"; };
 		FB7816051F744D02E916B219 /* tr */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.strings; name = tr; path = tr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AWAlarmIdentity.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -216,6 +246,11 @@
 				971C36AA734DCD5B31DD3D0E /* AWAppShortcuts.swift */,
 				3E101FA48BBDE185AC9536AC /* AppShortcuts.strings */,
 				A31D141CA43C61BDA8B5ED22 /* Localizable.strings */,
+				FD30BC06007AAC9FF8309B5A /* AWAlarmIdentity.swift */,
+				2AC3BE54374560422B2A26C7 /* AWAlarmLedger.swift */,
+				18117E35EBE4DBEC97B35FDA /* AWSnoozeCore.swift */,
+				6B962ADCF22C9D1DF05E4841 /* AWSnapshotModel.swift */,
+				5E1B6EEF98FC224CF67A6BE1 /* AWWidgetDayPick.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -224,6 +259,13 @@
 			isa = PBXGroup;
 			children = (
 				331C807B294A618700263BE5 /* RunnerTests.swift */,
+				0E41DF2EA06800FA1261BCFC /* AlarmIdentityTests.swift */,
+				7E89A0B0A43528789CF25142 /* AlarmLedgerTests.swift */,
+				100165B4F549534A7D17108A /* SnoozeCoreTests.swift */,
+				14BB1652DA44CD8FA16E513F /* SnoozeTargetTests.swift */,
+				6E602024C6B149911BB48467 /* WidgetDayPickTests.swift */,
+				A5CB0451000000000000A003 /* WidgetCompletionTests.swift */,
+				A5CB0451000000000000A005 /* WidgetMoreCountTests.swift */,
 			);
 			path = RunnerTests;
 			sourceTree = "<group>";
@@ -510,6 +552,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A567B04B3016C2BC007DBA20 /* PrivacyInfo.xcprivacy in Resources */,
+				A5CB0451000000000000A001 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -655,6 +698,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */,
+				3B1016BC5B030568075708B9 /* AlarmIdentityTests.swift in Sources */,
+				FB633E0800E6DFC8B6E198FF /* AlarmLedgerTests.swift in Sources */,
+				A0C22B17E2CAB08B98FC56D2 /* SnoozeCoreTests.swift in Sources */,
+				8177D49B49DC1DF1A0DCA22A /* SnoozeTargetTests.swift in Sources */,
+				AFD6769016EF39592847129D /* WidgetDayPickTests.swift in Sources */,
+				A5CB0451000000000000A002 /* WidgetCompletionTests.swift in Sources */,
+				A5CB0451000000000000A004 /* WidgetMoreCountTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -678,6 +728,11 @@
 				7B4BC4DC894A20C99CD3EEAD /* AWAlarmShared.swift in Sources */,
 				4E2F5686630E1B33A7600A18 /* ShareInboxBridge.swift in Sources */,
 				1C805BE1C3654858412D4CB6 /* AWAppShortcuts.swift in Sources */,
+				A27462FC05C6C20A744A7DA9 /* AWAlarmIdentity.swift in Sources */,
+				0485E1C2090A6E227B7107C6 /* AWAlarmLedger.swift in Sources */,
+				34374AD80D89EE170C2C599D /* AWSnoozeCore.swift in Sources */,
+				221336FE2A9B37697ABB9DA6 /* AWSnapshotModel.swift in Sources */,
+				14236ED5CCE6645EE7BDCF18 /* AWWidgetDayPick.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -686,6 +741,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				771B0720300A7CD52641BBEA /* AWAlarmShared.swift in Sources */,
+				ADB6273B042E70E29700B4CE /* AWAlarmIdentity.swift in Sources */,
+				05FA36610EE25FC86CDBCE88 /* AWAlarmLedger.swift in Sources */,
+				8E0F9B757F8CE84C03B87F9A /* AWSnoozeCore.swift in Sources */,
+				2EB2A92600196B4057BA4B6F /* AWSnapshotModel.swift in Sources */,
+				23159A0B9C0D21FC08609BA9 /* AWWidgetDayPick.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

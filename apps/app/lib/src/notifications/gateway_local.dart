@@ -1,11 +1,14 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart' show MethodChannel;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 
+import '../core/kv/local_kv.dart';
 import '../i18n/i18n.dart';
 import 'actions.dart';
 import 'gateway.dart';
@@ -75,10 +78,37 @@ InitializationSettings localInitializationSettings({
 ///   user-scheduled reminder is time-sensitive by definition — `.active`
 ///   was buried silently by every Focus mode, feedback round 6).
 class LocalNotificationsGateway implements NotificationsGateway {
-  LocalNotificationsGateway({FlutterLocalNotificationsPlugin? plugin})
-    : _plugin = plugin ?? FlutterLocalNotificationsPlugin();
+  LocalNotificationsGateway({
+    FlutterLocalNotificationsPlugin? plugin,
+    LocalKv? kv,
+    bool? android,
+    Future<void> Function()? refreshKv,
+  }) : _plugin = plugin ?? FlutterLocalNotificationsPlugin(),
+       _kv = kv ?? localKv,
+       _refreshKv = refreshKv ?? (kv == null ? reloadSharedPreferences : null),
+       _isAndroid =
+           android ??
+           (!kIsWeb && defaultTargetPlatform == TargetPlatform.android);
 
   final FlutterLocalNotificationsPlugin _plugin;
+
+  /// Where an urgent notification's payload is kept for [activeNotifications]
+  /// (OPH-445): Android hands back no payload for a SHOWN notification.
+  final LocalKv _kv;
+
+  /// Re-reads [_kv] from disk before [kUrgentPayloadsKey] is used. The
+  /// legacy SharedPreferences behind [localKv] caches every value per isolate
+  /// and never sees another isolate's write on its own, and on Android the
+  /// headless wake isolate lives as long as the process: without this it maps
+  /// shown alarms through a stale copy and overwrites the app's entries with
+  /// it. Null when [_kv] has no cache to refresh.
+  final Future<void> Function()? _refreshKv;
+
+  /// The one platform whose shown urgent notification loops until cancelled.
+  final bool _isAndroid;
+
+  /// Serialises the read-modify-write of [kUrgentPayloadsKey].
+  Future<void> _kvTail = Future<void>.value();
   final _events = StreamController<NotificationEvent>.broadcast();
   bool _initialized = false;
 
@@ -446,6 +476,53 @@ class LocalNotificationsGateway implements NotificationsGateway {
   @override
   Future<void> cancel(int id) => _plugin.cancel(id: id);
 
+  /// The plugin's own: pending requests and presented notifications alike,
+  /// on every platform it runs on.
+  @override
+  Future<void> cancelAll() => _plugin.cancelAll();
+
+  /// Android only (OPH-445). The plugin returns no payload for a shown
+  /// notification, so the one [schedule] stored maps it to its reminders;
+  /// every other platform answers an empty list and stays as it was.
+  @override
+  Future<List<ActiveAlarmNotification>> activeNotifications() async {
+    if (!_isAndroid) return const [];
+    final raw = await _plugin.getActiveNotifications();
+    if (raw.isEmpty) return const [];
+    await _kvTail;
+    await _refreshKv?.call();
+    return activeAlarmsFrom(
+      raw,
+      readUrgentPayloads(await _kv.get(kUrgentPayloadsKey)),
+    );
+  }
+
+  /// Records an urgent notification's payload (ids only, I-13) under its id.
+  /// Never throws: a lost record only means that notification cannot be
+  /// mapped, which is how every notification behaved before OPH-445.
+  @visibleForTesting
+  Future<void> rememberUrgent(PlannedNotification notification) {
+    final next = _kvTail.then((_) async {
+      try {
+        await _refreshKv?.call();
+        await _kv.set(
+          kUrgentPayloadsKey,
+          rememberUrgentPayload(
+            await _kv.get(kUrgentPayloadsKey),
+            id: notification.id,
+            payload: notification.payload,
+            fireAt: notification.fireAt,
+            now: DateTime.now().toUtc(),
+          ),
+        );
+      } on Object {
+        // See above.
+      }
+    });
+    _kvTail = next;
+    return next;
+  }
+
   @override
   Future<ScheduledDelivery> schedule(PlannedNotification notification) async {
     final urgent = notification.urgent;
@@ -571,6 +648,94 @@ class LocalNotificationsGateway implements NotificationsGateway {
           : AndroidScheduleMode.exactAllowWhileIdle,
       payload: notification.payload,
     );
+    if (_isAndroid && urgent && notification.id != kAlarmTestNotificationId) {
+      await rememberUrgent(notification);
+    }
     return delivery;
+  }
+}
+
+/// The local record of urgent payloads, by notification id (OPH-445).
+const kUrgentPayloadsKey = 'aw.notifications.urgentPayloads.v1';
+
+/// How long a stored payload is kept after its instant: well past the longest
+/// ring window, so a shown alarm is still mapped when the sync arrives.
+const _kUrgentPayloadKeep = Duration(days: 2);
+
+/// [existing] with [payload] stored under [id], entries older than
+/// [_kUrgentPayloadKeep] dropped. Junk in [existing] is started over.
+@visibleForTesting
+String rememberUrgentPayload(
+  String? existing, {
+  required int id,
+  required String payload,
+  required DateTime fireAt,
+  required DateTime now,
+}) {
+  final floor = now.subtract(_kUrgentPayloadKeep).millisecondsSinceEpoch;
+  final kept = <String, Object>{};
+  for (final MapEntry(:key, :value) in _decodeEntries(existing).entries) {
+    if (value.t >= floor) kept[key] = {'p': value.p, 't': value.t};
+  }
+  kept['$id'] = {'p': payload, 't': fireAt.millisecondsSinceEpoch};
+  return jsonEncode(kept);
+}
+
+/// The stored payloads by notification id; empty for anything unreadable.
+@visibleForTesting
+Map<int, String> readUrgentPayloads(String? json) => {
+  for (final MapEntry(:key, :value) in _decodeEntries(json).entries)
+    if (int.tryParse(key) != null) int.parse(key): value.p,
+};
+
+Map<String, ({String p, int t})> _decodeEntries(String? json) {
+  if (json == null || json.isEmpty) return const {};
+  Object? decoded;
+  try {
+    decoded = jsonDecode(json);
+  } on FormatException {
+    return const {};
+  }
+  if (decoded is! Map) return const {};
+  return {
+    for (final MapEntry(:key, :value) in decoded.entries)
+      if (key is String &&
+          value is Map &&
+          value['p'] is String &&
+          value['t'] is int)
+        key: (p: value['p'] as String, t: value['t'] as int),
+  };
+}
+
+/// The plugin's shown notifications as [ActiveAlarmNotification]s: urgent when
+/// posted on an urgent channel, mapped through their own payload or, as
+/// Android omits it, the one [stored] for that id.
+@visibleForTesting
+List<ActiveAlarmNotification> activeAlarmsFrom(
+  List<ActiveNotification> raw,
+  Map<int, String> stored,
+) => [
+  for (final n in raw)
+    if (n.id case final id?)
+      ActiveAlarmNotification.fromPayload(
+        id: id,
+        urgent:
+            n.channelId?.startsWith(_urgentChannelId) == true ||
+            n.channelId == _legacyUrgentChannelId,
+        payload: n.payload ?? stored[id],
+      ),
+];
+
+/// Re-reads this isolate's SharedPreferences copy from the platform, so a
+/// value another isolate wrote is seen (OPH-445). Never throws or hangs: on a
+/// failure the cached copy is used, as before.
+Future<void> reloadSharedPreferences() async {
+  try {
+    final prefs = await SharedPreferences.getInstance().timeout(
+      const Duration(seconds: 3),
+    );
+    await prefs.reload().timeout(const Duration(seconds: 3));
+  } on Object {
+    // See above.
   }
 }

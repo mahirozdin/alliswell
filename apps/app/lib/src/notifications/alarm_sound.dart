@@ -144,6 +144,14 @@ AwBundledSound? bundledSoundById(String id) {
   return null;
 }
 
+/// Where each lane's choice is stored, and what it is until somebody picks.
+/// Shared by the settings providers and the headless turn (OPH-452), which
+/// reads LocalKv directly and has to plan with the same sound.
+const String kAlarmSoundKey = 'alliswell_alarm_sound';
+const String kAlarmSoundFallback = 'bundled:aw_alarm';
+const String kReminderSoundKey = 'alliswell_reminder_sound';
+const String kReminderSoundFallback = 'os';
+
 /// What the user picked for one lane (alarm or reminder): the OS's own sound, a
 /// sound we ship, or a file they uploaded (OPH-181).
 class AwSoundChoice {

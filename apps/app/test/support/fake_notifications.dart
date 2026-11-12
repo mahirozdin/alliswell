@@ -20,6 +20,26 @@ class FakeNotificationsGateway implements NotificationsGateway {
   final Set<int> vanished = {};
   final _events = StreamController<NotificationEvent>.broadcast(sync: true);
 
+  /// What the OS is showing right now (OPH-445): [deliver] moves a scheduled
+  /// request here, the way Android drops it from pending once it is shown.
+  final Map<int, ActiveAlarmNotification> active = {};
+
+  /// The OS presents [id]: it leaves pending and is on screen, with the
+  /// reminders its payload names (what the real gateway maps it to).
+  void deliver(int id) {
+    final n = scheduled.remove(id)!;
+    active[id] = ActiveAlarmNotification.fromPayload(
+      id: id,
+      urgent: n.urgent,
+      payload: n.payload,
+    );
+  }
+
+  @override
+  Future<List<ActiveAlarmNotification>> activeNotifications() async => [
+    ...active.values,
+  ];
+
   @override
   Future<void> initialize() async {}
 
@@ -79,6 +99,15 @@ class FakeNotificationsGateway implements NotificationsGateway {
   Future<void> cancel(int id) async {
     cancelled.add(id);
     scheduled.remove(id);
+    active.remove(id);
+  }
+
+  /// Scheduled and shown alike, as the OS does; each id lands in [cancelled].
+  @override
+  Future<void> cancelAll() async {
+    cancelled.addAll({...scheduled.keys, ...active.keys});
+    scheduled.clear();
+    active.clear();
   }
 
   @override
@@ -87,8 +116,9 @@ class FakeNotificationsGateway implements NotificationsGateway {
   void emit(NotificationEvent event) => _events.add(event);
 }
 
-/// In-memory AlarmKit surface (OPH-141): records the schedule, replays
-/// Onayla/Ertele through [emit]. [supported] / [authorized] drive the
+/// In-memory AlarmKit surface (OPH-141, contract v2 §2b.3): records the
+/// schedule, holds a native action queue that only [ackActions] empties and a
+/// failure ring that a pull empties. [supported] / [authorized] drive the
 /// scheduler's lane decision (iOS 26+ build, user grant).
 class FakeAlarmKitHost implements AlarmKitHost {
   FakeAlarmKitHost({this.supported = true, this.authorized = true});
@@ -97,12 +127,26 @@ class FakeAlarmKitHost implements AlarmKitHost {
   bool authorized;
   final Map<int, AlarmKitAlarm> scheduled = {};
   final List<int> cancelled = [];
+  final List<int> stopped = [];
   bool authorizationRequested = false;
+
+  /// Ids the OS reports as `alerting`.
+  final Set<int> alerting = {};
+
+  /// Rows the OS holds that Dart did not schedule (a native snooze, an alarm
+  /// from an older build), keyed by id.
+  final Map<int, AlarmKitScheduled> foreign = {};
+
+  /// The native pending-action queue and failure ring.
+  final List<AlarmKitActionEvent> queue = [];
+  final List<AlarmKitFailure> failures = [];
+  final List<List<String>> acked = [];
+  final List<List<String>> fallbacksCleared = [];
 
   /// Set to make the next `schedule` calls fail the way the OS does when the
   /// undocumented per-app ceiling is hit (OPH-182).
   String? scheduleFailure;
-  final _events = StreamController<NotificationEvent>.broadcast(sync: true);
+  final _pending = StreamController<void>.broadcast(sync: true);
 
   @override
   Future<bool> isSupported() async => supported;
@@ -116,15 +160,34 @@ class FakeAlarmKitHost implements AlarmKitHost {
   @override
   Future<bool> isAuthorized() async => authorized;
 
-  /// Set to make `scheduledIds` throw the way a dead channel does — the case
-  /// that must leave every urgent alarm on the notification chain (round 19).
+  /// Set to make `scheduledIds` / `scheduledAlarms` throw the way a dead
+  /// channel does — the case that must leave every urgent alarm on the
+  /// notification chain (round 19).
   bool scheduledIdsThrows = false;
 
   @override
-  Future<Set<int>> scheduledIds() async {
+  Future<List<AlarmKitScheduled>> scheduledAlarms() async {
     if (scheduledIdsThrows) throw StateError('channel gone');
-    return scheduled.keys.toSet();
+    return [
+      for (final a in scheduled.values)
+        AlarmKitScheduled(
+          id: a.id,
+          fp: a.fp,
+          state: alerting.contains(a.id)
+              ? AlarmKitAlarmState.alerting
+              : AlarmKitAlarmState.scheduled,
+          members: a.members,
+          fireAtMs: a.toArgs()['fireAtMs'] as int?,
+        ),
+      for (final f in foreign.values)
+        if (!scheduled.containsKey(f.id)) f,
+    ];
   }
+
+  @override
+  Future<Set<int>> scheduledIds() async => {
+    for (final a in await scheduledAlarms()) a.id,
+  };
 
   @override
   Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async {
@@ -138,10 +201,51 @@ class FakeAlarmKitHost implements AlarmKitHost {
   Future<void> cancel(int id) async {
     cancelled.add(id);
     scheduled.remove(id);
+    foreign.remove(id);
+    alerting.remove(id);
   }
 
   @override
-  Stream<NotificationEvent> get events => _events.stream;
+  Future<AlarmKitStopResult> stop(int id) async {
+    stopped.add(id);
+    scheduled.remove(id);
+    foreign.remove(id);
+    alerting.remove(id);
+    return const AlarmKitStopResult(stopped: true);
+  }
 
-  void emit(NotificationEvent event) => _events.add(event);
+  @override
+  Future<List<AlarmKitActionEvent>> pullPendingActions() async =>
+      [...queue]..sort((a, b) => a.pressedAtMs.compareTo(b.pressedAtMs));
+
+  @override
+  Future<void> ackActions(List<String> eventIds) async {
+    acked.add([...eventIds]);
+    queue.removeWhere((e) => eventIds.contains(e.eventId));
+  }
+
+  @override
+  Future<void> clearFallbacks(List<String> eventIds) async {
+    fallbacksCleared.add([...eventIds]);
+  }
+
+  @override
+  Future<List<AlarmKitFailure>> pullFailures() async {
+    final out = [...failures];
+    failures.clear();
+    return out;
+  }
+
+  @override
+  Stream<void> get actionsPending => Stream<void>.multi((listener) {
+    listener.add(null);
+    final sub = _pending.stream.listen(listener.add);
+    listener.onCancel = sub.cancel;
+  });
+
+  /// Native `onActionsPending`: queue [event] and announce it.
+  void enqueue(AlarmKitActionEvent event) {
+    queue.add(event);
+    _pending.add(null);
+  }
 }

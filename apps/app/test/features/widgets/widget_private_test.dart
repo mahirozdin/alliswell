@@ -23,6 +23,8 @@ import 'package:alliswell/src/screens/settings_screen.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
+import 'ios_widget_swift.dart';
+
 import '../../support/fake_widget_host.dart';
 
 /// OPH-337 — "Private widget": no task's title reaches the widget's shared
@@ -309,9 +311,7 @@ void main() {
 
   // The native readers cannot run here; this pins what they must keep saying.
   group('density is drawn on both platforms', () {
-    final swift = File(
-      'ios/AllisWellWidget/AllisWellWidget.swift',
-    ).readAsStringSync();
+    final swift = readIosWidgetSwift();
     final kotlin = File(
       'android/app/src/main/kotlin/com/alliswell/alliswell/TasksWidgetService.kt',
     ).readAsStringSync();

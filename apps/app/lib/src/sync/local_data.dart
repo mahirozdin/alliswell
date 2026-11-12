@@ -9,6 +9,7 @@ import '../search/search_recents.dart' show kSearchRecentsKey;
 import 'db/database.dart';
 import 'providers.dart' show kCreatedByRepullPrefix;
 import 'revocation.dart';
+import 'sync_engine.dart' show kInstallClientIdKey;
 
 /// Whose replica this device holds (OPH-355, UI-AUDIT #3).
 ///
@@ -43,6 +44,7 @@ const List<String> kUserBoundKvPrefixes = [
   kCreatedByRepullPrefix,
   kReplicaOwnerKey,
   kSearchRecentsKey,
+  kInstallClientIdKey,
 ];
 
 /// Writes that exist on this device and nowhere else: the outbox, plus what
@@ -70,16 +72,56 @@ Future<int> unsentChangeCount(AwDatabase db) async {
 /// those pages, so the bytes are gone from the storage too (on web the
 /// IndexedDB blocks hold the same file), not merely unreachable.
 Future<void> wipeReplica(AwDatabase db) async {
+  await _wipeReplicaWhen(db, () async => true);
+}
+
+/// [wipeReplica], but only when [unsentChangeCount] is zero — decided inside
+/// the wipe's own transaction (OPH-447, headless-revocation-wipe-race).
+///
+/// A count read before the wipe is stale by the time the wipe runs: another
+/// connection on the same file (the foreground app resuming while a
+/// background turn cleans up) can commit an edit in between, and the wipe
+/// would delete it and its outbox row unasked. drift opens a native
+/// transaction with `BEGIN IMMEDIATE`, so the check and the deletes hold the
+/// write lock together: a writer that got there first is seen (or the lock is
+/// refused and nothing is deleted), one that comes later lands after the
+/// wipe. Returns whether the replica was emptied; a count that cannot be read
+/// is unsent work.
+Future<bool> wipeReplicaIfNothingUnsent(AwDatabase db) async {
+  try {
+    return await _wipeReplicaWhen(
+      db,
+      () async => await unsentChangeCount(db) == 0,
+    );
+  } on Object {
+    return false;
+  }
+}
+
+Future<bool> _wipeReplicaWhen(
+  AwDatabase db,
+  Future<bool> Function() allowed,
+) async {
   await _quietly(() => db.customStatement('PRAGMA secure_delete = ON'));
-  await db.transaction(() async {
-    for (final table in db.allTables) {
-      if (kDeviceLocalTables.contains(table.actualTableName)) continue;
-      await db.delete(table).go();
+  try {
+    final wiped = await db.transaction(() async {
+      if (!await allowed()) return false;
+      for (final table in db.allTables) {
+        if (kDeviceLocalTables.contains(table.actualTableName)) continue;
+        await db.delete(table).go();
+      }
+      return true;
+    });
+    if (wiped) {
+      await _quietly(() => db.customStatement('VACUUM'));
+      await _quietly(
+        () => db.customStatement('PRAGMA wal_checkpoint(TRUNCATE)'),
+      );
     }
-  });
-  await _quietly(() => db.customStatement('VACUUM'));
-  await _quietly(() => db.customStatement('PRAGMA wal_checkpoint(TRUNCATE)'));
-  await _quietly(() => db.customStatement('PRAGMA secure_delete = OFF'));
+    return wiped;
+  } finally {
+    await _quietly(() => db.customStatement('PRAGMA secure_delete = OFF'));
+  }
 }
 
 /// The sign-out and sign-in halves of "the replica is one person's".
@@ -105,6 +147,20 @@ class LocalDataGuard {
     return wiped;
   }
 
+  /// [wipe], but only when nothing in the replica is unsent, checked inside
+  /// the replica's wipe transaction ([wipeReplicaIfNothingUnsent]). When the
+  /// replica stays, so does everything else: the owner record is what lets
+  /// the same person's next sign-in adopt it. Returns whether it wiped.
+  Future<bool> wipeIfNothingUnsent() async {
+    if (!await wipeReplicaIfNothingUnsent(_database())) return false;
+    final clearAlerts = _clearAlerts;
+    if (clearAlerts != null) await _quietly(clearAlerts);
+    await _kv.removeWhere(
+      (key) => kUserBoundKvPrefixes.any((prefix) => key.startsWith(prefix)),
+    );
+    return true;
+  }
+
   /// Called with the person a session is about to start for, BEFORE anything
   /// reads the replica as theirs.
   ///
@@ -120,9 +176,24 @@ class LocalDataGuard {
       await _kv.set(kReplicaOwnerKey, userId);
       return;
     }
+    // This install's client id outlives the switch ([kInstallClientIdKey]):
+    // the sign-in that got here already named the install by it.
+    final installId = await _quietClientId();
     // Owner recorded only once the rows are really gone: a failed wipe is
     // retried by the next sign-in rather than blessed by this one.
-    if (await wipe()) await _kv.set(kReplicaOwnerKey, userId);
+    if (!await wipe()) return;
+    if (installId != null) await _kv.set(kInstallClientIdKey, installId);
+    await _kv.set(kReplicaOwnerKey, userId);
+  }
+
+  Future<String?> _quietClientId() async {
+    try {
+      final db = _database();
+      final row = await (db.select(db.syncStates)..limit(1)).getSingleOrNull();
+      return row?.clientId ?? await _kv.get(kInstallClientIdKey);
+    } on Object {
+      return null;
+    }
   }
 }
 

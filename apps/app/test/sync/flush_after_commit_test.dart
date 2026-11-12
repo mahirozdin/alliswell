@@ -45,67 +45,117 @@ class _RootLog extends QueryInterceptor {
 /// a statement runs after it. Every local write is a transaction — the row
 /// and its outbox entry together — so the last one before a reload was lost.
 void main() {
-  late _RootLog log;
-  late AwDatabase db;
+  group('a plain executor', () {
+    late _RootLog log;
+    late AwDatabase db;
 
-  setUp(() {
-    log = _RootLog();
-    final root = NativeDatabase.memory().interceptWith(log);
-    db = AwDatabase(
-      DatabaseConnection(root.interceptWith(FlushAfterCommit(root))),
-    );
-  });
-
-  tearDown(() => db.close());
-
-  Future<void> localWrite() => db.transaction(() async {
-    await enqueueMutation(
-      db,
-      workspaceId: 'W-OWN',
-      entityType: 'ee_ticket_draft',
-      entityId: 'D-1',
-      operation: 'create',
-      patch: const {'subject': 'Pres durdu'},
-    );
-  });
-
-  test('a committed local write is followed by a statement on the database '
-      'itself — the point where the web replica reaches IndexedDB', () async {
-    await db.customSelect('SELECT 1').get(); // opened, migrations done
-    log.outside.clear();
-
-    await localWrite();
-
-    expect(log.outside, [FlushAfterCommit.flushStatement]);
-    expect(await db.select(db.pendingMutations).get(), hasLength(1));
-  });
-
-  test('a nested transaction does not flush on its own — its parent does, '
-      'once', () async {
-    await db.customSelect('SELECT 1').get();
-    log.outside.clear();
-
-    await db.transaction(() async {
-      await localWrite(); // nested: a savepoint
-      expect(log.outside, isEmpty);
+    setUp(() {
+      log = _RootLog();
+      final root = NativeDatabase.memory().interceptWith(log);
+      db = AwDatabase(
+        DatabaseConnection(root.interceptWith(FlushAfterCommit(root))),
+      );
     });
 
-    expect(log.outside, [FlushAfterCommit.flushStatement]);
+    tearDown(() => db.close());
+
+    Future<void> localWrite() => db.transaction(() async {
+      await enqueueMutation(
+        db,
+        workspaceId: 'W-OWN',
+        entityType: 'ee_ticket_draft',
+        entityId: 'D-1',
+        operation: 'create',
+        patch: const {'subject': 'Pres durdu'},
+      );
+    });
+
+    test('a committed local write is followed by a statement on the database '
+        'itself — the point where the web replica reaches IndexedDB', () async {
+      await db.customSelect('SELECT 1').get(); // opened, migrations done
+      log.outside.clear();
+
+      await localWrite();
+
+      expect(log.outside, [FlushAfterCommit.flushStatement]);
+      expect(await db.select(db.pendingMutations).get(), hasLength(1));
+    });
+
+    test('a nested transaction does not flush on its own — its parent does, '
+        'once', () async {
+      await db.customSelect('SELECT 1').get();
+      log.outside.clear();
+
+      await db.transaction(() async {
+        await localWrite(); // nested: a savepoint
+        expect(log.outside, isEmpty);
+      });
+
+      expect(log.outside, [FlushAfterCommit.flushStatement]);
+    });
+
+    test('a rolled-back transaction asks for nothing', () async {
+      await db.customSelect('SELECT 1').get();
+      log.outside.clear();
+
+      await expectLater(
+        db.transaction(() async {
+          await localWrite();
+          throw StateError('refused');
+        }),
+        throwsStateError,
+      );
+
+      expect(log.outside, isEmpty);
+      expect(await db.select(db.pendingMutations).get(), isEmpty);
+    });
   });
 
-  test('a rolled-back transaction asks for nothing', () async {
-    await db.customSelect('SELECT 1').get();
-    log.outside.clear();
+  // OPH-480: the web connection is a DatabaseConnection, and drift hands an
+  // interceptor wrapped around one the executor INSIDE it as `parent`. Built
+  // around the connection itself, FlushAfterCommit never saw a top-level
+  // transaction, so the N2 flush never ran on the web.
+  group('the web-shaped connection (flushAfterEveryCommit)', () {
+    late _RootLog webLog;
+    late AwDatabase webDb;
 
-    await expectLater(
-      db.transaction(() async {
-        await localWrite();
-        throw StateError('refused');
-      }),
-      throwsStateError,
+    setUp(() {
+      webLog = _RootLog();
+      webDb = AwDatabase(
+        flushAfterEveryCommit(
+          DatabaseConnection(NativeDatabase.memory().interceptWith(webLog)),
+        ),
+      );
+    });
+
+    tearDown(() => webDb.close());
+
+    Future<void> probe() => webDb.customStatement(
+      "INSERT INTO action_receipts (event_id, action, applied_at) "
+      "VALUES ('FLUSH-PROBE', 'probe', 0)",
     );
 
-    expect(log.outside, isEmpty);
-    expect(await db.select(db.pendingMutations).get(), isEmpty);
+    test('a top-level commit on the web-shaped connection is followed by the '
+        'flush statement', () async {
+      await webDb.customSelect('SELECT 1').get();
+      webLog.outside.clear();
+
+      await webDb.transaction(probe);
+
+      expect(webLog.outside, [FlushAfterCommit.flushStatement]);
+    });
+
+    test('a savepoint on the web-shaped connection flushes nothing on its '
+        'own — its parent flushes once', () async {
+      await webDb.customSelect('SELECT 1').get();
+      webLog.outside.clear();
+
+      await webDb.transaction(() async {
+        await webDb.transaction(probe); // nested: a savepoint
+        expect(webLog.outside, isEmpty);
+      });
+
+      expect(webLog.outside, [FlushAfterCommit.flushStatement]);
+    });
   });
 }

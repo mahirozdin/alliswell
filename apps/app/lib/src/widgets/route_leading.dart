@@ -34,12 +34,22 @@ Widget? awRouteLeading(BuildContext context) {
   // Inside a section the shell's navigation is the way out; a section's root
   // (the request tab is one) must not grow a Home button beside it.
   if (StatefulNavigationShell.maybeOf(context) != null) return null;
-  if (Navigator.canPop(context)) return null;
-  final canPop = GoRouter.maybeOf(context)?.canPop() ?? false;
-  if (canPop) return null;
+  // What AppBar itself asks: is there a route BELOW this one? Not
+  // `Navigator.canPop`, which is also true for a sheet or page pushed ON TOP
+  // (W-08): a screen that rebuilt under one lost its Home button, and nothing
+  // rebuilt it after the pop. `ModalRoute.of` also makes the caller rebuild
+  // whenever a route above it comes or goes, so the answer never goes stale.
+  final route = ModalRoute.of(context);
+  if (route?.impliesAppBarDismissal ?? false) return null;
   // Hosted without a router (a widget test of one screen): there is no Home
   // to go to, and inventing one would be a button that throws.
-  if (GoRouter.maybeOf(context) == null) return null;
+  final router = GoRouter.maybeOf(context);
+  if (router == null) return null;
+  // The router also counts a parent or shell navigator's pages. While
+  // something sits on top of this screen it counts that too, which says
+  // nothing about a way back under it — so it is asked only while this route
+  // is the current one.
+  if ((route?.isCurrent ?? true) && router.canPop()) return null;
   return IconButton(
     key: const Key('aw-route-home'),
     icon: const Icon(Icons.home_outlined),

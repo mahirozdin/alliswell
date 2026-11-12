@@ -106,6 +106,75 @@ void main() {
     expect(gateway.cancelled, isEmpty);
   });
 
+  // OPH-445 (#48 gap A): the set-diff only sees PENDING requests, so an alarm
+  // acknowledged on another device stopped its future slots and kept ringing
+  // the one already on screen (FLAG_INSISTENT loops until cancelled).
+  group('a delivered alarm handled elsewhere (OPH-445)', () {
+    var clock = now;
+
+    NotificationScheduler build() => NotificationScheduler(
+      gateway: gateway,
+      alarms: alarms.stream,
+      privacyMode: false,
+      clock: () => clock,
+    );
+
+    // The first slot of R1's chain, shown by the OS two minutes after [now].
+    Future<int> ringFirstSlot() async {
+      alarms.add([
+        alarm('R1', urgent: true, after: const Duration(minutes: 1)),
+      ]);
+      await pump();
+      final first = gateway.scheduled.values.reduce(
+        (a, b) => a.fireAt.isBefore(b.fireAt) ? a : b,
+      );
+      gateway.deliver(first.id);
+      clock = now.add(const Duration(minutes: 2));
+      return first.id;
+    }
+
+    setUp(() => clock = now);
+
+    test(
+      'a reminder acknowledged elsewhere stops ringing, not only its pending slots',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        final ringingId = await ringFirstSlot();
+
+        // Still ringing: a pass leaves it on screen.
+        alarms.add([
+          alarm('R1', urgent: true, after: const Duration(minutes: 1)),
+        ]);
+        await pump();
+        expect(gateway.active.keys, [ringingId]);
+
+        // The sync brings the acknowledge from the other device.
+        alarms.add(const []);
+        await pump();
+        expect(gateway.scheduled, isEmpty);
+        expect(gateway.active, isEmpty);
+        expect(gateway.cancelled, contains(ringingId));
+      },
+    );
+
+    test(
+      'the headless turn (a fresh scheduler, applyOnce) does it too',
+      () async {
+        scheduler = build();
+        await scheduler.start();
+        final ringingId = await ringFirstSlot();
+
+        // A background isolate knows nothing of the app's scheduler.
+        final headless = build();
+        await headless.applyOnce(const []);
+        headless.dispose();
+        expect(gateway.active, isEmpty);
+        expect(gateway.cancelled, contains(ringingId));
+      },
+    );
+  });
+
   group('AlarmKit lane (OPH-141)', () {
     late FakeAlarmKitHost alarmKit;
 
@@ -565,6 +634,753 @@ void main() {
       addTearDown(s.dispose);
       await s.start();
       expect(asks, [true, false], reason: 'a stuck "asking" hides the strip');
+    });
+  });
+
+  // ── #49: the AlarmKit pass works on occurrences (NOTIFICATIONS §2b.3) ─────
+  group('AlarmKit occurrence pass (OPH-426)', () {
+    late FakeAlarmKitHost alarmKit;
+    late DateTime clock;
+    late Set<String> receipts;
+    late int drains;
+    void Function()? onDrain;
+
+    NotificationScheduler build() => NotificationScheduler(
+      gateway: gateway,
+      alarmKit: alarmKit,
+      alarms: alarms.stream,
+      privacyMode: false,
+      clock: () => clock,
+      drainActions: () async {
+        drains += 1;
+        onDrain?.call();
+      },
+      appliedEventIds: () async => {...receipts},
+    );
+
+    setUp(() {
+      alarmKit = FakeAlarmKitHost();
+      clock = now;
+      receipts = {};
+      drains = 0;
+      onDrain = null;
+    });
+
+    AlarmInput urgent({
+      String taskId = 'TASK1',
+      String reminderId = 'REM1',
+      String title = 'Görev',
+      required DateTime at,
+      String status = 'scheduled',
+      DateTime? snoozedUntil,
+      int snoozeRound = 0,
+    }) => AlarmInput(
+      reminderId: reminderId,
+      taskId: taskId,
+      taskTitle: title,
+      remindAt: at,
+      status: status,
+      urgent: true,
+      requiresAcknowledgement: true,
+      snoozeRound: snoozeRound,
+      snoozedUntil: snoozedUntil,
+    );
+
+    /// The alarm the planner would build for [input] — what a native snooze
+    /// computes for itself byte for byte (same id, same fingerprint).
+    AlarmKitAlarm planned(AlarmInput input) => planAlarmKitAlarms(
+      alarms: [input],
+      now: DateTime.utc(2000),
+      privacyMode: false,
+    ).single;
+
+    int fireAtMs(DateTime t) => t.millisecondsSinceEpoch;
+
+    test(
+      'moving an urgent task from 09:00 to 10:00 replaces its AlarmKit alarm and leaves nothing at 09:00',
+      () async {
+        final nine = DateTime.utc(2026, 7, 15, 9);
+        clock = DateTime.utc(2026, 7, 15, 8);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        alarms.add([urgent(at: nine, snoozeRound: 2)]);
+        await pump();
+        final oldId = alarmKit.scheduled.keys.single;
+
+        // The server rebuilds the row on a new remind_at with snooze_count 0.
+        alarms.add([urgent(at: nine.add(const Duration(hours: 1)))]);
+        await pump();
+
+        expect(alarmKit.cancelled, [oldId]);
+        expect(alarmKit.scheduled, hasLength(1));
+        expect(
+          alarmKit.scheduled.values.single.fireAt,
+          nine.add(const Duration(hours: 1)),
+        );
+        expect(
+          alarmKit.scheduled.values.where((a) => a.fireAt == nine),
+          isEmpty,
+        );
+        expect(gateway.scheduled, isEmpty, reason: 'one lane, one ring');
+      },
+    );
+
+    test(
+      'two native snoozes in a row converge to the second alarm only',
+      () async {
+        // A rang at 11:59; Ertele → B (12:04, e1); B rang; Ertele → C (12:09,
+        // e2). Each native snooze stopped the one before it. Dart was not
+        // running, so the model still says 11:59.
+        final a = DateTime.utc(2026, 7, 15, 11, 59);
+        final c = DateTime.utc(2026, 7, 15, 12, 9);
+        clock = DateTime.utc(2026, 7, 15, 12, 5);
+        final after = urgent(
+          at: a,
+          status: 'snoozed',
+          snoozedUntil: c,
+          snoozeRound: 2,
+        );
+        final native = planned(after);
+        alarmKit.foreign[native.id] = AlarmKitScheduled(
+          id: native.id,
+          fp: native.fp,
+          members: native.members,
+          fireAtMs: fireAtMs(c),
+          origin: 'native',
+          eventId: 'e2',
+        );
+        onDrain = () => receipts.addAll(['e1', 'e2']);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        // Pass 1: the drain applies e1 and e2, but the replica has not emitted
+        // the snooze yet — the plan still sees 11:59.
+        alarms.add([urgent(at: a, status: 'delivered')]);
+        await pump();
+        expect(drains, greaterThan(0));
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.stopped, isEmpty);
+        expect(
+          gateway.scheduled,
+          isEmpty,
+          reason: 'the 11:59 chain must not ring over the native snooze',
+        );
+
+        // Pass 2: the write lands in the replica.
+        alarms.add([after]);
+        await pump();
+
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.scheduled, isEmpty, reason: 'no duplicate of C');
+        final rows = await alarmKit.scheduledAlarms();
+        expect(rows.map((r) => r.fireAtMs), [fireAtMs(c)]);
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'a native alarm whose event is not yet applied survives a plan pass',
+      () async {
+        clock = DateTime.utc(2026, 7, 15, 12, 5);
+        final c = DateTime.utc(2026, 7, 15, 12, 30);
+        final native = planned(
+          urgent(at: c, status: 'snoozed', snoozedUntil: c, snoozeRound: 1),
+        );
+        alarmKit.foreign[native.id] = AlarmKitScheduled(
+          id: native.id,
+          fp: native.fp,
+          members: native.members,
+          fireAtMs: fireAtMs(c),
+          origin: 'native',
+          eventId: 'e9',
+        );
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        // The model does not know about the snooze (nothing active for it).
+        alarms.add(const []);
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.foreign, contains(native.id));
+
+        // Once its event has a receipt, an alarm the model does not want goes.
+        receipts.add('e9');
+        alarms.add(const []);
+        await pump();
+        expect(alarmKit.cancelled, [native.id]);
+        expect(alarmKit.stopped, isEmpty);
+      },
+    );
+
+    // OPH-454: a pull outside any pass (a resume, `onActionsPending`) commits
+    // the receipt before the replica re-emits. A pass in between used to see
+    // the receipt, judge the native alarm against the old list and cancel it.
+    test(
+      'a native snooze applied outside a pass is kept until the replica list carries it',
+      () async {
+        final a = DateTime.utc(2026, 7, 15, 11, 59);
+        final c = DateTime.utc(2026, 7, 15, 12, 30);
+        clock = DateTime.utc(2026, 7, 15, 12, 2);
+        final after = urgent(
+          at: a,
+          status: 'snoozed',
+          snoozedUntil: c,
+          snoozeRound: 1,
+        );
+        final native = planned(after);
+        alarmKit.foreign[native.id] = AlarmKitScheduled(
+          id: native.id,
+          fp: native.fp,
+          members: native.members,
+          fireAtMs: fireAtMs(c),
+          origin: 'native',
+          eventId: 'e5',
+        );
+        void Function()? resume;
+        final scheduler = NotificationScheduler(
+          gateway: gateway,
+          alarmKit: alarmKit,
+          alarms: alarms.stream,
+          privacyMode: false,
+          clock: () => clock,
+          appliedEventIds: () async => {...receipts},
+          onForeground: (onResume) {
+            resume = onResume;
+            return () {};
+          },
+        );
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([urgent(at: a, status: 'delivered')]);
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+
+        // The resume's pull commits e5; the replica has not re-emitted when
+        // the resume's pass runs.
+        receipts.add('e5');
+        scheduler.noteEventApplied('e5');
+        resume!();
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.foreign, contains(native.id));
+        expect(
+          gateway.scheduled,
+          isEmpty,
+          reason: 'the 11:59 chain must not ring over the native snooze',
+        );
+
+        // The replica carries the snooze: the alarm is the plan's own.
+        alarms.add([after]);
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+        expect((await alarmKit.scheduledAlarms()).map((r) => r.id), [
+          native.id,
+        ]);
+
+        // From now on the receipt counts: a list without it cancels it.
+        alarms.add(const []);
+        await pump();
+        expect(alarmKit.cancelled, [native.id]);
+      },
+    );
+
+    test(
+      'a ringing native snooze survives the pass whose drain applies its event',
+      () async {
+        // A rang at 11:59; Ertele → B (12:04, e1). The app opens at 12:04:30
+        // while B rings. The drain applies e1, but the replica has not emitted
+        // yet, so the plan still sees 11:59 delivered.
+        final a = DateTime.utc(2026, 7, 15, 11, 59);
+        final b = DateTime.utc(2026, 7, 15, 12, 4);
+        clock = DateTime.utc(2026, 7, 15, 12, 4, 30);
+        final after = urgent(
+          at: a,
+          status: 'snoozed',
+          snoozedUntil: b,
+          snoozeRound: 1,
+        );
+        final native = planned(after);
+        alarmKit.foreign[native.id] = AlarmKitScheduled(
+          id: native.id,
+          fp: native.fp,
+          state: AlarmKitAlarmState.alerting,
+          members: native.members,
+          fireAtMs: fireAtMs(b),
+          origin: 'native',
+          eventId: 'e1',
+        );
+        onDrain = () => receipts.add('e1');
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        alarms.add([urgent(at: a, status: 'delivered')]);
+        await pump();
+        expect(drains, greaterThan(0));
+        expect(
+          alarmKit.stopped,
+          isEmpty,
+          reason: 'the snoozed ring is current',
+        );
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.foreign, contains(native.id));
+        expect(gateway.scheduled, isEmpty);
+
+        // The write lands in the replica: the occurrence is B, still current.
+        alarms.add([after]);
+        await pump();
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.scheduled, isEmpty, reason: 'no duplicate of B');
+        expect(alarmKit.foreign, contains(native.id));
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'a synthetic alarm keeps its AlarmKit id when its reminder row syncs down',
+      () async {
+        final at = now.add(const Duration(hours: 1));
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        alarms.add([urgent(reminderId: 'syn:remind:TASK1', at: at)]);
+        await pump();
+        final id = alarmKit.scheduled.keys.single;
+
+        alarms.add([urgent(reminderId: '01JREALROW0000000000000000', at: at)]);
+        await pump();
+
+        expect(alarmKit.scheduled.keys, [id]);
+        expect(alarmKit.cancelled, isEmpty);
+        expect(
+          gateway.scheduled,
+          isEmpty,
+          reason: 'the real row is covered by the alarm already on the lane',
+        );
+      },
+    );
+
+    test(
+      'a renamed task is rescheduled under the same id with the new fingerprint',
+      () async {
+        final at = now.add(const Duration(hours: 1));
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+
+        alarms.add([urgent(title: 'Eski ad', at: at)]);
+        await pump();
+        final before = alarmKit.scheduled.values.single;
+
+        alarms.add([urgent(title: 'Yeni ad', at: at)]);
+        await pump();
+        final after = alarmKit.scheduled.values.single;
+
+        expect(after.id, before.id);
+        expect(after.fp, isNot(before.fp));
+        expect(after.title, 'Yeni ad');
+        expect(alarmKit.cancelled, [before.id]);
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'an alerting alarm whose occurrence another device snoozed is stopped and the new time is scheduled',
+      () async {
+        final noon = DateTime.utc(2026, 7, 15, 12);
+        clock = DateTime.utc(2026, 7, 15, 11, 50);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([urgent(at: noon)]);
+        await pump();
+        final ringing = alarmKit.scheduled.keys.single;
+
+        clock = DateTime.utc(2026, 7, 15, 12, 1);
+        alarmKit.alerting.add(ringing);
+        final later = DateTime.utc(2026, 7, 15, 12, 30);
+        alarms.add([urgent(at: noon, status: 'snoozed', snoozedUntil: later)]);
+        await pump();
+
+        expect(alarmKit.stopped, [ringing]);
+        expect(alarmKit.cancelled, isNot(contains(ringing)));
+        expect(alarmKit.scheduled.values.single.fireAt, later);
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
+    test(
+      'an alerting alarm whose occurrence is still current is never stopped or cancelled',
+      () async {
+        final noon = DateTime.utc(2026, 7, 15, 12);
+        clock = DateTime.utc(2026, 7, 15, 11, 50);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([urgent(at: noon)]);
+        await pump();
+        final ringing = alarmKit.scheduled.keys.single;
+
+        // It rings; the instant is now in the past, so it is no longer in the
+        // plan's future window — and that must not read as "not wanted".
+        clock = DateTime.utc(2026, 7, 15, 12, 3);
+        alarmKit.alerting.add(ringing);
+        alarms.add([
+          urgent(at: noon, status: 'delivered'),
+          urgent(
+            taskId: 'OTHER',
+            reminderId: 'REM2',
+            at: noon.add(const Duration(hours: 2)),
+          ),
+        ]);
+        await pump();
+
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.scheduled, contains(ringing));
+        expect(
+          gateway.scheduled,
+          isEmpty,
+          reason: 'the ringing alarm covers its reminder; no chain behind it',
+        );
+      },
+    );
+
+    test('an acknowledged occurrence stops its alerting alarm', () async {
+      final noon = DateTime.utc(2026, 7, 15, 12);
+      clock = DateTime.utc(2026, 7, 15, 11, 50);
+      final scheduler = build();
+      addTearDown(scheduler.dispose);
+      await scheduler.start();
+      alarms.add([urgent(at: noon)]);
+      await pump();
+      final ringing = alarmKit.scheduled.keys.single;
+
+      clock = DateTime.utc(2026, 7, 15, 12, 1);
+      alarmKit.alerting.add(ringing);
+      alarms.add(const []); // acknowledged: the row leaves the active set
+      await pump();
+
+      expect(alarmKit.stopped, [ringing]);
+      expect(alarmKit.cancelled, isEmpty);
+    });
+
+    test(
+      'an alerting group alarm stays while one member is still current',
+      () async {
+        final noon = DateTime.utc(2026, 7, 15, 12);
+        clock = DateTime.utc(2026, 7, 15, 11, 50);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([
+          urgent(at: noon),
+          urgent(
+            taskId: 'TASK2',
+            reminderId: 'REM2',
+            at: noon.add(const Duration(seconds: 20)),
+          ),
+        ]);
+        await pump();
+        final ringing = alarmKit.scheduled.keys.single;
+        expect(alarmKit.scheduled[ringing]!.members, ['TASK1', 'TASK2']);
+
+        // It rings; another device acknowledges TASK1 only. TASK2 still
+        // rings in this minute, so the group alarm is still its alarm.
+        clock = DateTime.utc(2026, 7, 15, 12, 1);
+        alarmKit.alerting.add(ringing);
+        alarms.add([
+          urgent(
+            taskId: 'TASK2',
+            reminderId: 'REM2',
+            at: noon.add(const Duration(seconds: 20)),
+            status: 'delivered',
+          ),
+        ]);
+        await pump();
+
+        expect(alarmKit.stopped, isEmpty);
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.scheduled.keys, [ringing]);
+        expect(gateway.scheduled, isEmpty, reason: 'one lane, one ring');
+
+        // Once TASK2 is answered too, the group alarm is superseded.
+        alarms.add(const []);
+        await pump();
+        expect(alarmKit.stopped, [ringing]);
+        expect(alarmKit.cancelled, isEmpty);
+      },
+    );
+
+    test(
+      "a member snoozed into an occupied minute joins that minute's alarm",
+      () async {
+        final noon = DateTime.utc(2026, 7, 15, 12);
+        final five = noon.add(const Duration(minutes: 5));
+        clock = DateTime.utc(2026, 7, 15, 11, 50);
+        final scheduler = build();
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([
+          urgent(at: noon),
+          urgent(taskId: 'TASK2', reminderId: 'REM2', at: five),
+        ]);
+        await pump();
+        expect(alarmKit.scheduled, hasLength(2));
+        final lone = alarmKit.scheduled.values
+            .firstWhere((a) => a.members.single == 'TASK2')
+            .id;
+
+        // TASK1 rings at 12:00 and is snoozed in the app to 12:05:17 — the
+        // minute TASK2 already rings in. Dart writes the target unchanged.
+        clock = DateTime.utc(2026, 7, 15, 12, 0, 17);
+        alarms.add([
+          urgent(
+            at: noon,
+            status: 'snoozed',
+            snoozedUntil: five.add(const Duration(seconds: 17)),
+            snoozeRound: 1,
+          ),
+          urgent(taskId: 'TASK2', reminderId: 'REM2', at: five),
+        ]);
+        await pump();
+
+        final at1205 = alarmKit.scheduled.values
+            .where((a) => a.fireAt.isAfter(noon))
+            .toList();
+        expect(at1205, hasLength(1), reason: 'one alarm in the 12:05 minute');
+        expect(at1205.single.members, ['TASK1', 'TASK2']);
+        expect(at1205.single.fireAt, five, reason: 'the earliest member');
+        expect(alarmKit.cancelled, contains(lone));
+        expect(gateway.scheduled, isEmpty);
+      },
+    );
+
+    test('every pass drains the pulled actions before it plans', () async {
+      // The drain lands a snooze in the lane's ledger; the plan that follows
+      // must see it, so the drain has to come first.
+      final at = now.add(const Duration(hours: 1));
+      final native = planned(urgent(at: at));
+      onDrain = () => alarmKit.foreign[native.id] = AlarmKitScheduled(
+        id: native.id,
+        fp: native.fp,
+        members: native.members,
+        fireAtMs: fireAtMs(at),
+      );
+      final scheduler = build();
+      addTearDown(scheduler.dispose);
+      await scheduler.start();
+      alarms.add([urgent(at: at)]);
+      await pump();
+      expect(drains, 1);
+      expect(alarmKit.scheduled, isEmpty, reason: 'already on the lane');
+      expect(alarmKit.cancelled, isEmpty);
+    });
+  });
+
+  group('planAlarmKitPass (OPH-426)', () {
+    final noon = DateTime.utc(2026, 7, 15, 12);
+    const stale = Duration(minutes: 15);
+
+    // Pure: no scheduler subscribes, and the shared tearDown's close() waits
+    // for a listener.
+    setUp(() => alarms.stream.listen(null));
+
+    AlarmInput row(DateTime at, {String status = 'delivered'}) => AlarmInput(
+      reminderId: 'REM1',
+      taskId: 'TASK1',
+      taskTitle: 'Görev',
+      remindAt: at,
+      status: status,
+      urgent: true,
+      requiresAcknowledgement: true,
+    );
+
+    AlarmKitScheduled alerting(
+      DateTime at, {
+      List<String> members = const ['TASK1'],
+    }) => AlarmKitScheduled(
+      id: 42,
+      fp: 7,
+      state: AlarmKitAlarmState.alerting,
+      members: members,
+      fireAtMs: at.millisecondsSinceEpoch,
+    );
+
+    test('a current alerting alarm past the stale window is stopped', () {
+      final plan = planAlarmKitPass(
+        desired: const [],
+        current: [alerting(noon)],
+        alarms: [row(noon)],
+        appliedEventIds: const {},
+        now: noon.add(stale + const Duration(seconds: 1)),
+        staleWindow: stale,
+      );
+      expect(plan.toStop.map((r) => r.id), [42]);
+      expect(plan.toCancel, isEmpty);
+    });
+
+    test(
+      'an alerting alarm with no ledger record waits for the stale window',
+      () {
+        AlarmKitPassPlan at(Duration after) => planAlarmKitPass(
+          desired: const [],
+          current: [alerting(noon, members: const [])],
+          alarms: const [],
+          appliedEventIds: const {},
+          now: noon.add(after),
+          staleWindow: stale,
+        );
+        final early = at(const Duration(minutes: 5));
+        expect(early.toStop, isEmpty);
+        expect(early.toCancel, isEmpty);
+        expect(at(stale + const Duration(minutes: 1)).toStop.map((r) => r.id), [
+          42,
+        ]);
+      },
+    );
+
+    test(
+      'an alerting native alarm whose event has no receipt is kept until the stale window',
+      () {
+        final b = noon.add(const Duration(minutes: 4));
+        AlarmKitPassPlan at(Duration after, {Set<String> applied = const {}}) =>
+            planAlarmKitPass(
+              desired: const [],
+              current: [
+                AlarmKitScheduled(
+                  id: 42,
+                  fp: 7,
+                  state: AlarmKitAlarmState.alerting,
+                  members: const ['TASK1'],
+                  fireAtMs: b.millisecondsSinceEpoch,
+                  origin: 'native',
+                  eventId: 'e1',
+                ),
+              ],
+              // The model still says the pre-snooze 12:00.
+              alarms: [row(noon)],
+              appliedEventIds: applied,
+              now: b.add(after),
+              staleWindow: stale,
+            );
+        final early = at(const Duration(seconds: 30));
+        expect(early.toStop, isEmpty);
+        expect(early.toCancel, isEmpty);
+        expect(early.held, contains('REM1'));
+        expect(at(stale + const Duration(seconds: 1)).toStop.map((r) => r.id), [
+          42,
+        ]);
+        // Once applied, a model that disagrees supersedes it.
+        expect(
+          at(
+            const Duration(seconds: 30),
+            applied: const {'e1'},
+          ).toStop.map((r) => r.id),
+          [42],
+        );
+      },
+    );
+
+    group('a replan inside a grouped minute (ADR-0068)', () {
+      final nine = DateTime.utc(2026, 7, 15, 9);
+      AlarmInput urgentAt(String task, DateTime at) => AlarmInput(
+        reminderId: 'R$task',
+        taskId: 'T$task',
+        taskTitle: 'Görev $task',
+        remindAt: at,
+        status: 'scheduled',
+        urgent: true,
+        requiresAcknowledgement: true,
+      );
+      final a = urgentAt('A', nine);
+      final b = urgentAt('B', nine.add(const Duration(seconds: 30)));
+
+      AlarmKitScheduled ringing(AlarmKitAlarm alarm) => AlarmKitScheduled(
+        id: alarm.id,
+        fp: alarm.fp,
+        state: AlarmKitAlarmState.alerting,
+        members: alarm.members,
+        fireAtMs: alarm.fireAt.millisecondsSinceEpoch,
+      );
+
+      test('the alarm ringing for the whole minute is the only one: no '
+          'second alarm for the member still ahead', () {
+        final grouped = planAlarmKitAlarms(
+          alarms: [a, b],
+          now: nine.subtract(const Duration(minutes: 1)),
+          privacyMode: false,
+        ).single;
+        expect(grouped.members, ['TA', 'TB']);
+
+        final replanAt = nine.add(const Duration(seconds: 10));
+        final plan = planAlarmKitPass(
+          desired: planAlarmKitAlarms(
+            alarms: [a, b],
+            now: replanAt,
+            privacyMode: false,
+          ),
+          current: [ringing(grouped)],
+          alarms: [a, b],
+          appliedEventIds: const {},
+          now: replanAt,
+          staleWindow: stale,
+        );
+        expect(plan.held, {'RA', 'RB'});
+        expect(plan.toStop, isEmpty);
+        expect(plan.toSchedule, isEmpty);
+      });
+
+      test('a task added to a minute that already rang without it still '
+          'gets its alarm', () {
+        final alone = planAlarmKitAlarms(
+          alarms: [a],
+          now: nine.subtract(const Duration(minutes: 1)),
+          privacyMode: false,
+        ).single;
+        final replanAt = nine.add(const Duration(seconds: 10));
+        final plan = planAlarmKitPass(
+          desired: planAlarmKitAlarms(
+            alarms: [a, b],
+            now: replanAt,
+            privacyMode: false,
+          ),
+          current: [ringing(alone)],
+          alarms: [a, b],
+          appliedEventIds: const {},
+          now: replanAt,
+          staleWindow: stale,
+        );
+        expect(plan.held, {'RA'});
+        expect(plan.toSchedule.single.members, ['TB']);
+      });
+    });
+
+    test('a ledger-less scheduled row is never rescheduled for its fp', () {
+      final alarm = planAlarmKitAlarms(
+        alarms: [row(noon, status: 'scheduled')],
+        now: noon.subtract(const Duration(hours: 1)),
+        privacyMode: false,
+      ).single;
+      final plan = planAlarmKitPass(
+        desired: [alarm],
+        current: [AlarmKitScheduled(id: alarm.id)],
+        alarms: [row(noon, status: 'scheduled')],
+        appliedEventIds: const {},
+        now: noon.subtract(const Duration(hours: 1)),
+        staleWindow: stale,
+      );
+      expect(plan.toReschedule, isEmpty);
+      expect(plan.toSchedule, isEmpty);
+      expect(plan.toCancel, isEmpty);
     });
   });
 }

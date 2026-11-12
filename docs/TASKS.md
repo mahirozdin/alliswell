@@ -38,6 +38,310 @@ Görsel değişiklikte golden matrisi gerektiği kadar: genişlik 360/375/393/41
 
 ---
 
+## Epic 36 follow-up — phase-end review findings (PR-1)
+
+Left open by the Epic 36 phase-end review (2026-11-12) and still present in the code; they fix
+shipped PR-1 behaviour, so they come before Epic 37. Each: failing test first, K1, commit body with
+`Changelog:` and `Device:` lines.
+
+### OPH-468 — A revoked session's cleanup finishes before any replacement session is exposed
+
+Kritik yol: auth. Found: phase-end review, `apps/app/lib/src/features/auth/data/auth_repository.dart`
+(`_doRefresh` deferred branch, `_setSession`).
+
+- [ ] Deferred branch: the old session's `_clearSession` (storage delete) is not awaited by the
+      sign-in that takes the cleanup over → a slow delete finishes after B saved and erases B,
+      publishing null (reproduced: stored=null, events `[A,B,null]`).
+- [ ] Overlapping sign-ins B and C during A's refusal: B consumes `_deferredRevocation`, C sees none
+      and exposes its session without awaiting `_revocationCleanup` → A's cleanup halts C's engines
+      and drops C's alarms. Every sign-in waits the running cleanup right before exposure.
+- **Test first:** `apps/app/test/features/auth/auth_repository_test.dart` — held `SecretStore.delete`;
+  two delayed `onSessionUser` hooks. **Verify:** `npm run verify:task -- <those tests>` + auth K1.
+
+### OPH-470 — Ring screen interaction restarts the 60-second quiet minute
+
+Kritik yol: push-notifications. Found: phase-end review, `apps/app/lib/src/notifications/alarm_overlay.dart`
+(`interacted()`).
+
+- [ ] Only `silence()` calls `interacted()`; scrolling, pointer, keyboard and picker use on the
+      ring screen do not → the sound resumes 60 s after the last action, not after the last touch.
+      Wire a `Listener`/scroll notification and the sheets/pickers to `interacted()`.
+- **Test first:** widget test — acknowledge one row, scroll at 50 s, no sound at 60 s, sound at 110 s.
+  **Verify:** `npm run verify:task -- <that test>` + `check:notify-matrix`.
+
+### OPH-478 — A widget completion leaves counts unchanged where the task was trimmed
+
+Found: phase-end review (`apps/app/ios/Shared/AWSnapshotModel.swift`, `awCompleteInView`). Left
+open: minor, heals on the next Dart publish.
+
+- [ ] With 13 tasks due today the whole list holds 12 rows; completing task 13 from a project
+      widget skips the whole-list bucket (its rows lack the id), so its count and `openToday`
+      stay 13 in every day view. Decrement a counted bucket whose `more` > 0 when the task's due
+      day puts it there, even when its row was trimmed.
+- **Test first:** XCTest on the Mac — 13 due today, complete the 13th: counts read 12. **Verify:** K1.
+
+### OPH-479 — Completing the next task can show "All caught up" while a trimmed task is open
+
+Found: phase-end review (`apps/app/ios/Shared/AWSnapshotModel.swift`, `awNextOpen`). Left open: minor.
+
+- [ ] 11 events then tasks A and B: the whole list draws 12 rows (A, `more` = 1). Completing A in
+      a project widget searches only the drawn rows, finds none and drops `next`, so the
+      lock-screen widget says "All caught up" while B is open. When a bucket has `more` > 0 keep
+      a stale-but-honest `next` (or take it from another view's rows) instead of removing it.
+- **Test first:** XCTest on the Mac with that fixture: `next` is B or kept. **Verify:** K1.
+
+---
+
+## Epic 37 — Widget fetches its own data (#50, PR-2)
+
+The swiped-away half of #50: with the app force-quit, iOS runs neither background refresh nor a
+silent push, so the widget extension fetches its own view with a read-only widget token. Starts
+after Epic 36 merges. Owner decisions 2026-11-12: self-fetch is in scope; iOS background sync,
+WidgetKit push and macOS self-fetch are not. Acceptance is softened (S-50): a change made elsewhere
+appears within one WidgetKit reload (typically 15–60 min), with no minute guarantee. The grouping
+fixture is born in OPH-463 and must reach the API lane before OPH-459. The self-fetch contract
+(Keychain item, App Group keys, `/widget/snapshot` schema) is written in OPH-457 before any lane
+starts; where a task and the contract differ, the contract wins. Swift tests run on the Mac:
+`xcodebuild test -only-testing:RunnerTests` (iOS 27.2 simulator) + `flutter build ios --simulator
+--debug`. Each commit body carries `Changelog:` and `Device:` lines; the shared docs are written
+once, in OPH-465. No Dart or Swift lane runs `apps/api` integration suites (one shared MySQL).
+
+### OPH-457 — ADRs and contract first: widget token, shared Keychain group, self-fetch contract
+
+W4 · api · #50.
+
+- [ ] ADR "Widget identity: a non-rotating, read-only widget token" — `aww_` prefix, shown once,
+      HMAC hash (ADR-0032 pattern), scope `GET /widget/snapshot` only, one per device, 90 days
+      renewed in the foreground under 30, no refresh; revoked with the device, sign-out, password
+      change and a dead minting family; MCP not extended; JS grouping locked to the shared fixture
+      (DESIGN §8 W9 revision: Dart defines the rule, the server is a second implementation).
+- [ ] ADR "Shared Keychain group, AfterFirstUnlock" — the widget token only, access group
+      `group.com.alliswell.alliswell`, `AfterFirstUnlockThisDeviceOnly` (assumption recorded);
+      session tokens stay app-private and `WhenUnlocked`. Index rows; revision notes on ADR-0038 §8
+      and ADR-0010 §5; `.claude/rules/auth.md` names the new widget paths and test (≤ 60 lines).
+- [ ] `docs/WIDGETS.md` "Widget self-fetch contract": the Keychain item (`kSecAttrService`,
+      `kSecAttrAccount` as flutter_secure_storage lays out key `aw_widget_token` in the version
+      pinned in `pubspec.lock`, access group, accessibility), every App Group key the widget reads
+      or writes with its JSON type (fetch profile, `aw_widget_token_state`,
+      `aw_widget_server_snapshot`, success and backoff stamps), and the `/widget/snapshot` request
+      and response schema. OPH-460, OPH-462, OPH-463 and OPH-464 implement it.
+- **Acceptance:** both ADRs and the contract exist before any W4 code commit.
+- **Verify:** `npm run check:docs && npm run check:no-ee`. Documentation only.
+
+### OPH-458 — Widget tokens: table, mint route, `authenticateWidget`, revocation
+
+Kritik yol: auth. Kritik yol: migrations. W4 · api · #50.
+
+- [ ] `apps/api/migrations/20261112140000_create_widget_tokens.js` (later timestamp if main moved):
+      user (FK cascade), device (unique per user), session family, token hash, created/expires/
+      last used/revoked.
+- [ ] `POST /widget-tokens {deviceId}` (session only, API keys rejected; upsert revokes the previous
+      one; returns `aww_…` once); `hashWidgetToken` (separator `widget:`); `app.authenticateWidget`
+      accepts only `aww_` with a live device and family; `app.authenticate` unchanged. Revoked by
+      device delete, logout, logout-all, session revoke, password change, reuse. `npm run api:docs`.
+- I-12: REST yes; MCP no — device infrastructure.
+- **Acceptance:** a leaked widget token reads only the widget view and dies with the device or the
+  session; no existing auth path changes.
+- **Test first:** `apps/api/test/integration/widget-tokens.test.js` → 'a widget token reads only the
+  snapshot and is refused everywhere else'.
+- **Verify:** `npm run verify:task -- apps/api/test/integration/widget-tokens.test.js
+  apps/api/test/integration/auth.test.js apps/api/test/integration/auth-refresh.test.js
+  apps/api/test/integration/auth-me.test.js apps/api/test/integration/sessions.test.js
+  apps/api/test/integration/mfa.test.js apps/api/test/integration/notification-devices-signout.test.js`
+  · `npm run check:openapi && npm run check:apidocs && npm run check:postman && npm run check:no-ee`.
+- **Device:** D-W9 — sign out or remove the phone: the widget gets 401 at its next reload and stops.
+
+### OPH-459 — Server widget grouping in JS locked to the shared fixture
+
+W4 · api · #50.
+
+- [ ] `apps/api/src/lib/widget-grouping.js` ports the widget grouping (buckets, +7/+30, events,
+      overdue and plan day per ADR-0053, open today, next, 12 rows + more, project views, time
+      style) language-free; day boundaries from the client tz. Needs OPH-463's fixture in main first.
+- **Acceptance:** every fixture case passes in Vitest and in `flutter test`.
+- **Test first:** `apps/api/test/unit/widget-grouping.test.js` → 'server grouping matches the shared
+  fixture'.
+- **Verify:** `npm run verify:task -- apps/api/test/unit/widget-grouping.test.js
+  apps/app/test/features/widgets/widget_core_test.dart`.
+
+### OPH-460 — `GET /widget/snapshot`: v6 day views for the widget token
+
+Kritik yol: auth. W4 · api · #50.
+
+- [ ] `GET /widget/snapshot?tz=&locale=&days=3&list=&private=` (widget token only): days 0..2 in the
+      v6 shape + `generatedAt`; `private=1` omits every title and summary; scope = the device's list
+      with membership enforced; events only for one workspace; invalid tz 400; ETag/304; `no-store`.
+      No labels from the server; the body is the WIDGETS.md self-fetch contract's. `npm run api:docs`.
+- I-12: REST yes; MCP no — device infrastructure.
+- **Acceptance:** the body matches the Dart v6 day view for the same data; only the widget token
+  opens it.
+- **Test first:** `apps/api/test/integration/widget-snapshot.test.js` → 'private=1 returns no title
+  or summary field anywhere in the body'.
+- **Verify:** `npm run verify:task -- apps/api/test/integration/widget-snapshot.test.js
+  apps/api/test/integration/widget-tokens.test.js apps/api/test/integration/auth.test.js
+  apps/api/test/integration/auth-refresh.test.js apps/api/test/integration/auth-me.test.js
+  apps/api/test/integration/sessions.test.js apps/api/test/integration/mfa.test.js` · `npm run
+  check:openapi && npm run check:apidocs && npm run check:postman && npm run check:no-ee`.
+- **Device:** D-W3 — private widget on: no titles in the response.
+
+### OPH-461 — Pure snapshot choice and fetch backoff
+
+W4 · swift · #50.
+
+- [ ] `ios/Shared/AWWidgetFetchPolicy.swift`: `awPickSnapshot` (queued widget completions overlay
+      the server view; local wins when newer or a completion is pending), `awShouldFetch` (no
+      profile or unreadable private flag → never; < 2 min since success → no; inside backoff → no),
+      `awNextBackoff(n)` = min(5 min · 2ⁿ, 2 h), `awReloadDate` (≤ now + 30 min + jitter; midnight
+      00:01 + 0–5 min).
+- **Acceptance:** self-fetch never undoes a change made on the phone that has not synced yet.
+- **Test first:** `ios/RunnerTests/WidgetFetchPolicyTests.swift` → `testPendingWidgetCompletionKeepsTheRowDone`.
+- **Verify:** Mac — `xcodebuild test -only-testing:RunnerTests` and `flutter build ios --simulator --debug`.
+
+### OPH-462 — Widget extension fetches `GET /widget/snapshot` with an 8 s timeout
+
+W4 · swift · #50.
+
+- [ ] In the timeline providers: local snapshot first; if `awShouldFetch`, read the token from the
+      shared Keychain group (names exactly as the WIDGETS.md self-fetch contract states), one
+      ephemeral request (6 s request / 8 s resource, no waiting for connectivity). 200 → App Group
+      `aw_widget_server_snapshot` (never Dart's key) → pick → day view; 304 → success stamp; 401 →
+      `aw_widget_token_state = invalid`, stop until the app re-mints; failure → backoff, local
+      snapshot. Strings come from Dart's profile. No WidgetKit push, no BGAppRefresh, macOS untouched.
+- [ ] The fetcher lives in `ios/Shared/AWWidgetFetcher.swift` (Runner + widget by script, so
+      RunnerTests can test it with an injected `URLProtocol`); the call site is `#if os(iOS)`.
+- **Acceptance:** swiped away, a change elsewhere shows within one WidgetKit reload; offline renders
+  the last snapshot within 8 s.
+- **Test first:** `ios/RunnerTests/WidgetFetchPolicyTests.swift` → `testUnauthorizedMarksTheTokenInvalidAndStops`.
+- **Verify:** Mac — `xcodebuild test -only-testing:RunnerTests` and `flutter build ios --simulator --debug`.
+- **Device:** D8/D-W1 (Developer Mode off, app swiped away: minutes until a Mac change shows), D-W2
+  (after first unlock fetches; before it does not), D-W4 (midnight closed).
+
+### OPH-463 — Shared widget grouping fixture and the App Group fetch profile
+
+W4 · dart-c · #50.
+
+- [ ] `apps/app/test/fixtures/widget_grouping_cases.json` (now, tz, tasks, events, scope, private →
+      v6 day views in the language-free shape; day boundaries, overdue, +7/+30, events by scope,
+      private, 12-row cap), written with `UPDATE_FIXTURES=1`. Cherry-picked to main before OPH-459.
+- [ ] App Group profile {baseUrl, scope, private flag — written only after "Private widget" was read,
+      strings incl. bucket labels and stale, date/time patterns, pendingOutbox, localWrittenAt} —
+      keys and types as the WIDGETS.md self-fetch contract states. No token here.
+- **Acceptance:** one fixture for both runtimes; no profile → the extension never fetches.
+- **Test first:** `test/features/widgets/widget_fetch_profile_test.dart` → 'profile is written only
+  after Private widget has been read'.
+- **Verify:** `npm run verify:task -- apps/app/test/features/widgets/widget_core_test.dart
+  apps/app/test/features/widgets/widget_fetch_profile_test.dart
+  apps/app/test/features/widgets/widget_private_test.dart` · `flutter analyze`.
+
+### OPH-464 — `WidgetTokenStore`: mint on sign-in, renew in the foreground, delete on sign-out
+
+W4 · dart-c · #50.
+
+- [ ] `features/widgets/widget_token_store.dart`: a separate secure store in the App Group access
+      group, first-unlock-this-device; session storage unchanged. iOS only: mint after the device
+      registered, renew on resume under 30 of 90 days, on sign-out delete the server record then
+      the local item, re-mint after an extension 401; an old server (404) → no token until restart.
+      Never log the token. Service, account and access group as the WIDGETS.md contract states.
+- **Acceptance:** the extension reads the token after first unlock; other platforms do nothing new.
+- **Test first:** `test/features/widgets/widget_token_store_test.dart` → 'widget token uses the app
+  group and first_unlock_this_device'.
+- **Verify:** `npm run verify:task -- apps/app/test/features/widgets/widget_token_store_test.dart
+  apps/app/test/features/widgets/widget_token_lifecycle_test.dart
+  apps/app/test/features/auth/logout_wipe_test.dart` · `flutter analyze`.
+- **Device:** D-W2 — the extension reads the item the app wrote (access group and service name).
+
+### OPH-465 — PR-2 close: notify matrix, API reference, CHANGELOG, DEVICE-CHECKS, STATE
+
+Kritik yol: push-notifications. W4 · wire · #50.
+
+- [ ] iOS matrix row "widget: self-fetch with a read-only widget token" → `npm run
+      check:notify-matrix -- --write`; check (not regenerate) the API reference; the `docs/WIDGETS.md`
+      self-fetch contract checked against what shipped; root `CHANGELOG.md` `[Unreleased]` #50 line
+      (no minute guarantee); DEVICE-CHECKS D8, D-W1…D-W5, D-W8, D-W9; STATE: S-50 owner-pending if
+      not confirmed; candidates WidgetKit push and macOS self-fetch; delete the OPH-457…465 blocks.
+- **Verify:** `npm run check:notify-matrix && npm run check:openapi && npm run check:apidocs && npm
+  run check:postman && npm run check:docs && npm run check:no-ee && npm run check:push-payload`.
+
+---
+
+## Epic 36 follow-up 2 — walkthrough leftovers (minor)
+
+Minor findings of the web and iOS simulator walkthroughs (2026-11-12) that the three polish rounds
+left open, each with the reason. None blocks an alarm: every surface can still be silenced and
+saved. Each: failing test first where a test can see it, K1, `Changelog:` and `Device:` lines.
+
+### OPH-473 — Turkish date and time pickers speak in "sen"
+
+Found: web walkthrough (W-17), pre-existing. Left open: framework strings, not alarm work.
+
+- [ ] Material's Turkish pickers say "Tarih seçin", "Saat seçin", "Saat girin" while the app says
+      "sen". Pass our own `helpText` / field labels from i18n keys through `awShowTimePicker` and
+      the date-picker call sites (`core/date_input.dart`, repeat dialog, ring "Saat seç").
+- **Test first:** widget test in Turkish: the pickers show the informal labels. **Verify:**
+  `npm run verify:task -- <that test>` + `check:i18n`.
+
+### OPH-474 — Web: Noto Color Emoji and Noto Sans Symbols 2 answer 404
+
+Found: web walkthroughs 1 and 2 (W-17). Left open: needs a release web build to measure.
+
+- [ ] The console shows 404 for both families under `fonts/noto/`, then "Could not find a set of
+      Noto fonts…"; such a glyph draws as a box. Check that `tool/mirror_noto_fallback.dart` fills
+      both into the release build, and fix the mirror list or the build step that skips it.
+- **Verify:** `web_fonts_offline_test.dart` + a release web build with no 404 in the console.
+
+### OPH-475 — The iOS AlarmKit banner covers the in-app ring header
+
+Found: iOS simulator walkthrough (IOS-02). Left open: the app cannot hide the system alert; the
+fix is a layout choice that needs a device to measure.
+
+- [ ] With the app in front, AlarmKit's own banner (Ertele/Durdur) sits over the ring screen's
+      header ("3 ACİL HATIRLATMA · 11:42"). Either surface closes both, so nothing sticks; keep the
+      header readable while the system alert shows (top inset or header below the banner area).
+- **Verify:** golden of the ring screen with the inset · iPhone or simulator, foreground alarm.
+
+### OPH-476 — A freshly installed iPhone lists `hasSession: false`
+
+Found: iOS simulator walkthrough (IOS-05). Left open: auth critical path, not polish.
+
+- [ ] After a clean install and sign-in the server's device row had `hasSession: false`, so
+      removing that iPhone elsewhere may not sign it out (ADR-0069). Measure whether the first
+      sign-in's refresh family is bound before the device row exists; bind it on registration or
+      on the next refresh. (The raw "Dart/3.13 (dart:io)" name is already shown as "iPhone".)
+- **Test first:** integration — sign in, register, list: `hasSession: true`. **Verify:** auth K1.
+
+### OPH-477 — The device detail sheet's close control does not close it
+
+Found: iOS simulator walkthrough (IOS-06). Left open: minor, outside the rounds' scope; the
+dimmed area above still closes it.
+
+- [ ] On iOS the element exposed as "Kapat" did nothing; tapping the dimmed area above the sheet
+      closed it. The close control closes the sheet.
+- **Test first:** widget test — tap the close control, the sheet is gone. **Verify:** K1.
+
+### OPH-481 — A widget circle tap shows its done row only seconds later
+
+Found: iOS simulator walkthrough 3 (Z-01). Left open: WidgetKit reload timing, needs a device.
+
+- [ ] In the medium widget the circle shows no pressed or done state at first; the done row
+      appears after the second timeline reload, about 5 s after the intent ran (once 49 s). A user
+      may tap again, and a tap on a row already done opens the app. Measure on an iPhone; if the
+      lag holds, draw the queued completion in the first reload after the intent.
+- **Verify:** Mac XCTest on the timeline after an intent · iPhone, tap and time the redraw.
+
+### OPH-482 — Overdue tasks are headed "BUGÜN" in the widget
+
+Found: iOS simulator walkthroughs 1 and 3 (IOS-10, Z-03). Left open: a widget grouping change
+that touches both platforms and the PR-2 grouping fixture.
+
+- [ ] When every row is overdue the app shows "Geciken 7 · Bugün 0", but the widget heads them
+      "BUGÜN" in grey with grey times and no overdue cue. The snapshot has an `overdue` bucket, so
+      find where the medium widget's day view folds it under the "BUGÜN" header; draw overdue
+      rows as the app does ("Geciken", danger cue) on iOS and Android alike.
+- **Test first:** `widget_core_test.dart` (day 0 keeps overdue rows apart) and a Swift layout test
+  for the heading. **Verify:** K1 + Mac XCTest.
+
+---
+
 ## Sahibin adımını bekleyen işler — ajan için kod işi yok
 
 Kod tarafları kapalı; kalan kutular sahibin hesap/panel adımları (STATE → "Kullanıcıdan bekleyen").
@@ -141,6 +445,14 @@ Yapılmamış ve bir işe bağlanmamış her şey. Bir madde bir epic'e alının
   inceltmesinden muafiyet mekanizması hazır, UI ürün kararı bekler); not etiketlerinin not
   push protokolüne girmesi (v1 bilinçli sınır: etiket yalnız REST `PUT /notes/:id/tags` ile
   yazılır, pull okur — OPH-261).
+- **Alarm ve widget adayları (Epic 36'dan, 2026-11-12 — ADR-0068/0069 ve ADR-0010/0015 notları):**
+  iPhone'da çalan alarmı başka cihazdan susturma — Notification Service Extension +
+  `AlarmManager.stop` spike'ı (AlarmKit'in uzak yolu yok, bugün yalnız iPhone'da susar); iOS
+  `BGAppRefreshTask` + iOS sessiz push (ADR-0038 §8 kilitli Keychain; başka cihazda kurulan alarmın
+  uygulama açılmadan kurulması da buna bağlı); WidgetKit push (doğrudan APNs, sahibin `.p8`
+  anahtarı); Android başsız turun ön planla aynı anda token yenileme yarışı / refresh kirası; macOS
+  widget'ının kendi verisini çekmesi; alarm-durdurma uyandırmasından onaylayan cihazı çıkarmak
+  (sync olayı istemci kimliği taşımıyor).
 - ICS export.
 - Metrics endpoint (Prometheus), audit log UI, admin panel.
 - E2E tests (Patrol/integration_test), F-Droid/TestFlight packaging.

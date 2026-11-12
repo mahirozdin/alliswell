@@ -1,10 +1,13 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show RequestOptions, ResponseBody;
 import 'package:drift/drift.dart' show DatabaseConnection, Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,6 +19,9 @@ import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/auth/ui/sign_out.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
+import 'package:alliswell/src/notifications/alarmkit.dart';
+import 'package:alliswell/src/notifications/gateway.dart';
+import 'package:alliswell/src/notifications/providers.dart';
 import 'package:alliswell/src/sync/db/connection_native.dart'
     show awSqlitePragmas;
 import 'package:alliswell/src/sync/db/database.dart';
@@ -24,7 +30,9 @@ import 'package:alliswell/src/sync/outbox.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_api.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
+import 'package:alliswell/src/sync/sync_engine.dart' show kInstallClientIdKey;
 
+import '../../support/fake_notifications.dart';
 import 'test_support.dart';
 
 /// UI-AUDIT #3 / OPH-355 — signing out leaves nothing of the person behind.
@@ -92,9 +100,19 @@ void main() {
   }
 
   /// A minimal signed-in app: one button that signs out the way Settings does.
+  ///
+  /// [answer] goes first for every auth request; `null` falls through to the
+  /// default answers.
   Future<(ProviderContainer, AwDatabase)> pumpSignedIn(
-    WidgetTester tester,
-  ) async {
+    WidgetTester tester, {
+    String? refreshRefusedWith,
+    Future<ResponseBody>? Function(
+      RequestOptions options,
+      Map<String, dynamic>? body,
+    )?
+    answer,
+    List<Override> overrides = const [],
+  }) async {
     final db = AwDatabase(
       DatabaseConnection(
         NativeDatabase.memory(),
@@ -111,9 +129,20 @@ void main() {
           authApiProvider.overrideWithValue(
             AuthApi(
               fakeDio(
-                FakeHttpClientAdapter((options, _) async {
+                FakeHttpClientAdapter((options, body) async {
+                  final answered = answer?.call(options, body);
+                  if (answered != null) return answered;
                   if (options.path == '/api/v1/auth/logout') {
                     return emptyBody(204);
+                  }
+                  if (options.path == '/api/v1/auth/refresh' &&
+                      refreshRefusedWith != null) {
+                    return jsonBody(401, {
+                      'statusCode': 401,
+                      'code': refreshRefusedWith,
+                      'error': 'Unauthorized',
+                      'message': 'Invalid or expired refresh token',
+                    });
                   }
                   return jsonBody(200, sessionJson());
                 }),
@@ -127,6 +156,7 @@ void main() {
               ),
             ),
           ),
+          ...overrides,
         ],
         child: MaterialApp(
           home: Scaffold(
@@ -299,6 +329,332 @@ void main() {
       );
     },
   );
+
+  // OPH-447 (#48) — "remove this device" on another device revokes the
+  // session family bound to it. The next refresh here is refused, and that
+  // must leave this device exactly as a sign-out does: signed out, the replica
+  // and the person's facts gone, and no alarm of theirs left in the OS.
+  testWidgets('a revoked family signs this device out and wipes local data', (
+    tester,
+  ) async {
+    final gateway = FakeNotificationsGateway();
+    final alarmKit = FakeAlarmKitHost();
+    final (container, db) = await pumpSignedIn(
+      tester,
+      refreshRefusedWith: 'AUTH_REFRESH_REUSED',
+      overrides: [
+        notificationsGatewayProvider.overrideWithValue(gateway),
+        alarmKitHostProvider.overrideWithValue(alarmKit),
+      ],
+    );
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      await localKv.set('${kWorkspacesCachePrefix}user-1', '[]');
+      await localKv.set(kServerUrlPrefKey, 'https://acme.example.com');
+      // What the scheduler left in the OS for this person.
+      await gateway.schedule(
+        PlannedNotification(
+          id: 11,
+          title: 'AllisWell',
+          body: marker,
+          fireAt: DateTime.utc(2026, 11, 13, 9),
+          urgent: true,
+          payload: '{}',
+        ),
+      );
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+      // revocation-leaves-delivered-alarm: one alarm is already presented —
+      // an Android notification looping its sound, an AlarmKit alert on the
+      // screen. Signed out, nothing in the app can silence them any more.
+      await gateway.schedule(
+        PlannedNotification(
+          id: 12,
+          title: 'AllisWell',
+          body: marker,
+          fireAt: DateTime.utc(2026, 11, 12, 9),
+          urgent: true,
+          payload: '{}',
+        ),
+      );
+      gateway.deliver(12);
+      alarmKit.foreign[23] = const AlarmKitScheduled(
+        id: 23,
+        state: AlarmKitAlarmState.alerting,
+      );
+    });
+
+    final token = await tester.runAsync(
+      () => container.read(authRepositoryProvider).refreshAccessToken(),
+    );
+    await tester.runAsync(() async {
+      for (var i = 0; i < 50; i++) {
+        if (await localKv.get(kReplicaOwnerKey) == null &&
+            alarmKit.cancelled.length >= 2) {
+          break;
+        }
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    await tester.pumpAndSettle();
+
+    expect(token, isNull);
+    expect(container.read(authControllerProvider).value, isNull);
+    final after = (await tester.runAsync(() => counts(db)))!;
+    for (final entry in after.entries) {
+      if (entry.key == 'alarm_events') continue;
+      expect(entry.value, 0, reason: '${entry.key} must be empty');
+    }
+    expect(
+      await tester.runAsync(
+        () => localKv.get('${kWorkspacesCachePrefix}user-1'),
+      ),
+      isNull,
+    );
+    expect(await tester.runAsync(() => localKv.get(kReplicaOwnerKey)), isNull);
+    // The device's own settings stay, as on a sign-out.
+    expect(
+      await tester.runAsync(() => localKv.get(kServerUrlPrefKey)),
+      'https://acme.example.com',
+    );
+    expect(gateway.scheduled, isEmpty);
+    expect(gateway.active, isEmpty, reason: 'the presented alarm is dismissed');
+    expect(gateway.cancelled, containsAll([11, 12]));
+    expect(alarmKit.stopped, [23], reason: 'the alerting alarm is silenced');
+    expect(alarmKit.cancelled, containsAll([22, 23]));
+  });
+
+  // OPH-355's rule holds here too: an unsent change is never lost without the
+  // person being asked. A revoked family with an outbox signs out and drops
+  // the alarms, but keeps the replica for the same person's next sign-in
+  // (claimFor adopts it; anyone else's sign-in wipes it).
+  testWidgets('a revoked family with unsent changes signs out but keeps them', (
+    tester,
+  ) async {
+    final gateway = FakeNotificationsGateway();
+    final alarmKit = FakeAlarmKitHost();
+    final (container, db) = await pumpSignedIn(
+      tester,
+      refreshRefusedWith: 'AUTH_REFRESH_REUSED',
+      overrides: [
+        notificationsGatewayProvider.overrideWithValue(gateway),
+        alarmKitHostProvider.overrideWithValue(alarmKit),
+      ],
+    );
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: 'T1',
+        operation: 'update',
+        patch: {'title': marker},
+      );
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+    });
+
+    await tester.runAsync(
+      () => container.read(authRepositoryProvider).refreshAccessToken(),
+    );
+    await tester.runAsync(() async {
+      for (var i = 0; i < 50; i++) {
+        if (alarmKit.cancelled.isNotEmpty) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    });
+    await tester.pumpAndSettle();
+
+    expect(container.read(authControllerProvider).value, isNull);
+    expect(await tester.runAsync(() => unsentChangeCount(db)), 1);
+    expect((await tester.runAsync(() => counts(db)))!['sync_states'], 1);
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-1',
+    );
+    expect(alarmKit.cancelled, [22]);
+  });
+
+  // signin-binds-discarded-client-id (OPH-447): B's sign-in is on the wire,
+  // already naming this install by its client id, when A's family is refused
+  // as revoked. A's cleanup must not wipe that id before B's owner check
+  // carries it over, or B's family stays bound to an id no device row lists
+  // and removing this device elsewhere never signs B out. A's alarms still go.
+  testWidgets('a family revoked while somebody else signs in leaves that '
+      'sign-in the client id it sent, and still drops the alarms', (
+    tester,
+  ) async {
+    final gateway = FakeNotificationsGateway();
+    final alarmKit = FakeAlarmKitHost();
+    final refreshAnswer = Completer<void>();
+    final loginGate = Completer<void>();
+    final sentDeviceIds = <Object?>[];
+    var logins = 0;
+    final (container, db) = await pumpSignedIn(
+      tester,
+      answer: (options, body) {
+        if (options.path == '/api/v1/auth/login') {
+          if (logins++ == 0) return null;
+          sentDeviceIds.add(body?['deviceId']);
+          return loginGate.future.then(
+            (_) => jsonBody(200, {
+              ...sessionJson(
+                accessToken: 'access-b',
+                refreshToken: 'refresh-b',
+              ),
+              'user': {
+                'id': 'user-2',
+                'email': 'b@example.com',
+                'displayName': 'B',
+              },
+            }),
+          );
+        }
+        if (options.path == '/api/v1/auth/refresh') {
+          return refreshAnswer.future.then(
+            (_) => jsonBody(401, {
+              'statusCode': 401,
+              'code': 'AUTH_REFRESH_REUSED',
+              'error': 'Unauthorized',
+              'message': 'Invalid or expired refresh token',
+            }),
+          );
+        }
+        return null;
+      },
+      overrides: [
+        notificationsGatewayProvider.overrideWithValue(gateway),
+        alarmKitHostProvider.overrideWithValue(alarmKit),
+      ],
+    );
+    Object? refreshed = #pending;
+    Object? signedIn = #pending;
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+      container
+          .read(authRepositoryProvider)
+          .refreshAccessToken()
+          .then((token) => refreshed = token);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      container
+          .read(authControllerProvider.notifier)
+          .login(email: 'b@example.com', password: 'pw')
+          .then((session) => signedIn = session.user.id);
+      for (var i = 0; i < 100 && sentDeviceIds.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+
+    /// Real time for the replica and the stores, fake time for what the
+    /// widget tree scheduled: both move until [done].
+    Future<void> settle(bool Function() done) async {
+      for (var i = 0; i < 200 && !done(); i++) {
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+      }
+    }
+
+    refreshAnswer.complete();
+    await settle(() => refreshed != #pending);
+    expect(refreshed, isNull);
+    loginGate.complete();
+    await settle(() => signedIn != #pending);
+    expect(signedIn, 'user-2');
+    await tester.pumpAndSettle();
+
+    expect(sentDeviceIds, ['C1']);
+    expect(container.read(authControllerProvider).value?.user.id, 'user-2');
+    expect(
+      await tester.runAsync(() => localKv.get(kInstallClientIdKey)),
+      'C1',
+      reason: 'the id B\'s family is bound to outlives the switch',
+    );
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-2',
+    );
+    // A's rows are gone all the same: B's own claim wiped them.
+    expect(
+      (await tester.runAsync(
+        () => counts(db),
+      ))![db.notifications.actualTableName],
+      0,
+    );
+    expect(alarmKit.cancelled, [22]);
+  });
+
+  // An expired refresh token (left unopened past AUTH_REFRESH_TTL_DAYS) is
+  // refused with AUTH_INVALID_REFRESH_TOKEN, the same code as an unknown one:
+  // nothing says the device was removed, so it signs out as before and keeps
+  // its offline edits for the next sign-in.
+  testWidgets('an expired refresh token signs out and wipes nothing', (
+    tester,
+  ) async {
+    final alarmKit = FakeAlarmKitHost();
+    final (container, db) = await pumpSignedIn(
+      tester,
+      refreshRefusedWith: 'AUTH_INVALID_REFRESH_TOKEN',
+      overrides: [alarmKitHostProvider.overrideWithValue(alarmKit)],
+    );
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      await enqueueMutation(
+        db,
+        workspaceId: ws,
+        entityType: 'task',
+        entityId: 'T1',
+        operation: 'update',
+        patch: {'title': marker},
+      );
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+    });
+
+    final token = await tester.runAsync(
+      () => container.read(authRepositoryProvider).refreshAccessToken(),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    expect(token, isNull);
+    expect(container.read(authControllerProvider).value, isNull);
+    expect(await tester.runAsync(() => unsentChangeCount(db)), 1);
+    expect((await tester.runAsync(() => counts(db)))!['sync_states'], 1);
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-1',
+    );
+    expect(alarmKit.cancelled, isEmpty);
+  });
+
+  testWidgets('a refresh that only failed to arrive wipes nothing', (
+    tester,
+  ) async {
+    final (container, db) = await pumpSignedIn(
+      tester,
+      refreshRefusedWith: 'RATE_LIMITED',
+    );
+    await tester.runAsync(() => seedPersonalRows(db));
+
+    await tester.runAsync(
+      () => container.read(authRepositoryProvider).refreshAccessToken(),
+    );
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 50)),
+    );
+    await tester.pumpAndSettle();
+
+    final after = (await tester.runAsync(() => counts(db)))!;
+    expect(after['sync_states'], 1);
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-1',
+    );
+  });
 
   test(
     'UI-AUDIT #3: the wiped words are gone from the file, not just unlinked',

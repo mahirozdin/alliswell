@@ -1,10 +1,26 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart' show AppLifecycleState;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'package:alliswell/src/core/firebase/push_messaging.dart';
+import 'package:alliswell/src/core/http_timeouts.dart';
+import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/auth/data/models.dart';
+import 'package:alliswell/src/features/auth/data/auth_api.dart';
+import 'package:alliswell/src/features/auth/data/secret_store.dart';
+import 'package:alliswell/src/features/auth/data/token_storage.dart';
+import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/devices/data/device_api.dart';
 import 'package:alliswell/src/features/devices/device_registry.dart';
+import 'package:alliswell/src/features/devices/providers.dart';
+import 'package:alliswell/src/notifications/device_gate.dart';
+import 'package:alliswell/src/sync/local_data.dart';
+import 'package:alliswell/src/sync/providers.dart';
 
 import '../auth/test_support.dart';
 
@@ -19,12 +35,51 @@ class _RecordingApi implements DeviceApi {
   bool failUnregister = false;
   bool failRegister = false;
 
+  /// Holds the PUT's answer until completed: a heartbeat still on the wire.
+  Completer<void>? registerGate;
+
+  /// What the PUT answers with: `null` = an old server without the field.
+  bool? ringsUrgent;
+
   @override
-  Future<void> register(String deviceId, DeviceDescriptor device) async {
+  Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) async {
     if (failRegister) throw StateError('offline');
     registeredIds.add(deviceId);
     registered.add(device);
+    final answer = ringsUrgent;
+    await registerGate?.future;
+    return DeviceInfo.fromJson({
+      'id': deviceId,
+      'platform': device.platform,
+      'ringsUrgent': ?answer,
+    });
   }
+
+  /// What GET answers with, how often it was asked, and whether it fails.
+  List<DeviceInfo> listed = const [];
+  int listCalls = 0;
+  bool failList = false;
+
+  /// The next GET never answers: a request lost on the wire (OPH-427).
+  bool hangNextList = false;
+
+  @override
+  Future<List<DeviceInfo>> list() async {
+    listCalls++;
+    if (failList) throw StateError('offline');
+    if (hangNextList) {
+      hangNextList = false;
+      return Completer<List<DeviceInfo>>().future;
+    }
+    return listed;
+  }
+
+  @override
+  Future<DevicePatchResult> patch(
+    String deviceId, {
+    bool? ringsUrgent,
+    String? deviceName,
+  }) async => throw UnimplementedError();
 
   @override
   Future<PushKeyLookup> lookupPushKey() async =>
@@ -48,13 +103,144 @@ DeviceRegistry _registryFor(
   _RecordingApi api, {
   String? clientId = _clientId,
   DeviceDescriptor? descriptor = _descriptor,
+  RingsUrgentStore? ringsUrgent,
+  void Function()? onRingsUrgentChanged,
+  Duration? listTimeout,
 }) => DeviceRegistry(
   api: api,
   readClientId: () async => clientId,
   describe: () => descriptor,
+  ringsUrgent: ringsUrgent,
+  onRingsUrgentChanged: onRingsUrgentChanged,
+  listTimeout: listTimeout ?? kApiCallDeadline,
 );
 
+/// A [LocalKv] the test can look into.
+class _MemoryKv implements LocalKv {
+  final Map<String, String> values = {};
+
+  @override
+  Future<String?> get(String key) async => values[key];
+
+  @override
+  Future<void> set(String key, String value) async => values[key] = value;
+
+  @override
+  Future<void> remove(String key) async => values.remove(key);
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async =>
+      values.removeWhere((key, _) => test(key));
+}
+
+/// A session that is there from the start and can be ended by the test.
+class _Session extends AuthController {
+  @override
+  Future<AuthSession?> build() async => fakeSession();
+
+  void end() => state = const AsyncData(null);
+}
+
+List<DeviceInfo> _listedAs(bool rings) => [
+  DeviceInfo.fromJson({
+    'id': _clientId,
+    'platform': 'web',
+    'ringsUrgent': rings,
+  }),
+];
+
 void main() {
+  // X-02 (OPH-446): an open web tab kept ringing for minutes after the server
+  // handed its alarms to a phone, because it re-read its answer only on a
+  // resume or when Settings ▸ Devices opened.
+  testWidgets('a foreground app re-reads its ring answer every minute and '
+      'stops when paused or signed out', (tester) async {
+    final kv = _MemoryKv()..values[kRingsUrgentKey] = 'on';
+    final api = _RecordingApi()
+      ..ringsUrgent = true
+      ..listed = _listedAs(true);
+    final c = ProviderContainer(
+      overrides: [
+        authControllerProvider.overrideWith(_Session.new),
+        syncClientIdProvider.overrideWith((_) => Stream.value(_clientId)),
+        deviceApiProvider.overrideWithValue(api),
+        deviceDescriptorProvider.overrideWithValue(_descriptor),
+        pushMessagingProvider.overrideWithValue(AwPushMessaging(isWeb: true)),
+        ringsUrgentStoreProvider.overrideWithValue(RingsUrgentStore(kv: kv)),
+      ],
+    );
+    c.listen(ringsUrgentHereProvider, (_, _) {});
+    c.listen(deviceRegistrationProvider, (_, _) {});
+    c.listen(syncClientIdProvider, (_, _) {});
+    await c.read(authControllerProvider.future);
+    await c.read(syncClientIdProvider.future);
+    for (var i = 0; i < 3; i++) {
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(api.registeredIds, [_clientId]);
+    expect(api.listCalls, 0);
+
+    // Every minute in the foreground, one GET — not before.
+    await tester.pump(const Duration(seconds: 59));
+    expect(api.listCalls, 0);
+    await tester.pump(const Duration(seconds: 1));
+    expect(api.listCalls, 1);
+    expect(kv.values[kRingsUrgentKey], 'on');
+
+    // The server hands the alarm over: the next minute brings it here, and
+    // the alarm gate follows without a resume.
+    api.listed = _listedAs(false);
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 2);
+    expect(kv.values[kRingsUrgentKey], 'off');
+    expect(await c.read(ringsUrgentHereProvider.future), RingsUrgentHere.off);
+
+    // Hidden or paused: nothing is asked, however long.
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+      await tester.pump();
+    }
+    await tester.pump(const Duration(minutes: 5));
+    expect(api.listCalls, 2);
+
+    // Back in front: the minute starts again (the resume also heartbeats).
+    for (final state in const [
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+      await tester.pump();
+    }
+    expect(api.registeredIds, hasLength(2));
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 3);
+
+    // Offline: a failed round is followed by a skipped one, not a request
+    // every minute; the cached answer stays.
+    api.failList = true;
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 4);
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 4);
+    await tester.pump(const Duration(seconds: 60));
+    expect(api.listCalls, 5);
+    expect(kv.values[kRingsUrgentKey], 'off');
+
+    // Signed out: the timer goes with the session.
+    api.failList = false;
+    (c.read(authControllerProvider.notifier) as _Session).end();
+    await tester.pump();
+    expect(c.read(deviceRegistryProvider).refreshingInForeground, isFalse);
+    await tester.pump(const Duration(minutes: 10));
+    expect(api.listCalls, 5);
+    c.dispose();
+  });
+
   group('the device registry calls the route', () {
     test('registers under the sync client id, with what it is', () async {
       final api = _RecordingApi();
@@ -218,6 +404,390 @@ void main() {
       final sent = adapter.requests.single;
       expect(sent.method, 'DELETE');
       expect(sent.path, '/api/v1/notification-devices/$_clientId');
+    });
+  });
+
+  group('the device gate state (OPH-446, #48)', () {
+    late InMemorySecretStore secrets;
+    late FakeHttpClientAdapter auth;
+
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await localKv.removeWhere((_) => true);
+      secrets = InMemorySecretStore();
+      auth = FakeHttpClientAdapter(
+        (options, body) async => jsonBody(200, sessionJson()),
+      );
+    });
+
+    // The real session wiring (auth/providers.dart): the hook that runs
+    // before a session is exposed is what decides unknown vs legacy.
+    ProviderContainer container({String? clientId}) {
+      final c = ProviderContainer(
+        overrides: [
+          // The replica's sync client id, without a platform database.
+          syncClientIdProvider.overrideWith((_) => Stream.value(clientId)),
+          secretStoreProvider.overrideWithValue(secrets),
+          authApiProvider.overrideWithValue(AuthApi(fakeDio(auth))),
+          localDataGuardProvider.overrideWithValue(
+            LocalDataGuard(database: () => throw StateError('no replica')),
+          ),
+        ],
+      );
+      addTearDown(c.dispose);
+      return c;
+    }
+
+    Future<RingsUrgentHere> stateIn(ProviderContainer c) =>
+        c.read(ringsUrgentStoreProvider).read();
+
+    test(
+      'a fresh sign-in starts unknown and turns on only after the register response',
+      () async {
+        // The previous person on this install had a ringing row.
+        await localKv.set(kRingsUrgentKey, 'on');
+        final c = container();
+        await c
+            .read(authRepositoryProvider)
+            .login(email: 'mahir@example.com', password: 'pw');
+        expect(await stateIn(c), RingsUrgentHere.unknown);
+        expect(
+          await c.read(ringsUrgentHereProvider.future),
+          RingsUrgentHere.unknown,
+        );
+
+        var changes = 0;
+        final api = _RecordingApi()..ringsUrgent = true;
+        // No sync client id yet: no register, still unknown.
+        await _registryFor(
+          api,
+          clientId: null,
+          ringsUrgent: c.read(ringsUrgentStoreProvider),
+          onRingsUrgentChanged: () => changes++,
+        ).sync(signedIn: true);
+        expect(await stateIn(c), RingsUrgentHere.unknown);
+
+        // A failed register: still unknown.
+        final registry = _registryFor(
+          api..failRegister = true,
+          ringsUrgent: c.read(ringsUrgentStoreProvider),
+          onRingsUrgentChanged: () => changes++,
+        );
+        await registry.sync(signedIn: true);
+        expect(await stateIn(c), RingsUrgentHere.unknown);
+        expect(changes, 0);
+
+        api.failRegister = false;
+        await registry.sync(signedIn: true);
+        expect(await stateIn(c), RingsUrgentHere.on);
+        expect(changes, 1);
+      },
+    );
+
+    test(
+      'a fresh sign-in killed before the register response stays unknown on restore',
+      () async {
+        final c = container();
+        await c
+            .read(authRepositoryProvider)
+            .login(email: 'mahir@example.com', password: 'pw');
+        // The app dies here; the next launch restores the session.
+        final next = container();
+        await next.read(authRepositoryProvider).restore();
+        expect(await stateIn(next), RingsUrgentHere.unknown);
+      },
+    );
+
+    test('an upgraded install with a restored session starts legacy', () async {
+      // An install from before #48: a stored session, no gate key.
+      await TokenStorage(secrets).save(fakeSession());
+      final c = container();
+      await c.read(authRepositoryProvider).restore();
+      expect(await localKv.get(kRingsUrgentKey), isNull);
+      expect(await stateIn(c), RingsUrgentHere.legacy);
+    });
+
+    test(
+      'a restored session of another account than the replica is unknown',
+      () async {
+        await localKv.set(kReplicaOwnerKey, 'someone-else');
+        await localKv.set(kRingsUrgentKey, 'on');
+        await TokenStorage(secrets).save(fakeSession());
+        final c = container();
+        await c.read(authRepositoryProvider).restore();
+        expect(await stateIn(c), RingsUrgentHere.unknown);
+      },
+    );
+
+    // OPH-447: the family a sign-in starts names this install — the same id
+    // the registry registers under — so "remove" elsewhere can revoke it.
+    group('sign-in names this device', () {
+      Future<Map<String, dynamic>?> signInBody({
+        required String? clientId,
+        String? stored,
+      }) async {
+        if (stored != null) await localKv.set(kRingsUrgentKey, stored);
+        final c = container(clientId: clientId);
+        await c
+            .read(authRepositoryProvider)
+            .login(email: 'mahir@example.com', password: 'pw');
+        return jsonDecode(jsonEncode(auth.requests.last.data))
+            as Map<String, dynamic>?;
+      }
+
+      test(
+        'sign-in passes the sync client id as deviceId when it exists',
+        () async {
+          final body = await signInBody(clientId: _clientId, stored: 'on');
+          expect(body?['deviceId'], _clientId);
+        },
+      );
+
+      test('a server that answered ringsUrgent (off) is asked too', () async {
+        final body = await signInBody(clientId: _clientId, stored: 'off');
+        expect(body?['deviceId'], _clientId);
+      });
+
+      test('no client id yet: no deviceId', () async {
+        final body = await signInBody(clientId: null, stored: 'on');
+        expect(body!.containsKey('deviceId'), isFalse);
+      });
+
+      test(
+        'a server that never answered ringsUrgent (legacy) is not sent it',
+        () async {
+          // Its auth bodies may be additionalProperties:false.
+          final body = await signInBody(clientId: _clientId);
+          expect(body!.containsKey('deviceId'), isFalse);
+          final legacy = await signInBody(
+            clientId: _clientId,
+            stored: 'legacy',
+          );
+          expect(legacy!.containsKey('deviceId'), isFalse);
+        },
+      );
+    });
+
+    test('a server without ringsUrgent leaves legacy', () async {
+      final kv = _MemoryKv()..values[kRingsUrgentKey] = 'unknown';
+      final store = RingsUrgentStore(kv: kv);
+      final api = _RecordingApi()..ringsUrgent = null;
+      await _registryFor(api, ringsUrgent: store).sync(signedIn: true);
+      expect(await store.read(), RingsUrgentHere.legacy);
+      expect(kv.values[kRingsUrgentKey], 'legacy');
+    });
+
+    test('register response ringsUrgent is cached', () async {
+      final kv = _MemoryKv();
+      final store = RingsUrgentStore(kv: kv);
+      var changes = 0;
+      final api = _RecordingApi()..ringsUrgent = false;
+      final registry = _registryFor(
+        api,
+        ringsUrgent: store,
+        onRingsUrgentChanged: () => changes++,
+      );
+      await registry.sync(signedIn: true);
+      expect(kv.values[kRingsUrgentKey], 'off');
+      expect(changes, 1);
+
+      // A heartbeat with the same answer is not a change.
+      await registry.sync(signedIn: true);
+      expect(changes, 1);
+
+      // The user switched this device on elsewhere: the next heartbeat says so.
+      api.ringsUrgent = true;
+      await registry.sync(signedIn: true);
+      expect(await store.read(), RingsUrgentHere.on);
+      expect(changes, 2);
+    });
+
+    // A heartbeat answers with what the server held when it got there. One
+    // asked before this device's switch changed must not put the old value
+    // back over the newer one (late-heartbeat-overwrites-switch).
+    test(
+      'a heartbeat asked before a switch change never overwrites it',
+      () async {
+        final kv = _MemoryKv()..values[kRingsUrgentKey] = 'on';
+        final store = RingsUrgentStore(kv: kv);
+        var changes = 0;
+        final api = _RecordingApi()
+          ..ringsUrgent = true
+          ..registerGate = Completer<void>();
+        final registry = _registryFor(
+          api,
+          ringsUrgent: store,
+          onRingsUrgentChanged: () => changes++,
+        );
+        final heartbeat = registry.sync(signedIn: true);
+        await pumpEventQueue();
+
+        // The person switches this device off; the PATCH answer is cached.
+        await store.write(RingsUrgentHere.off);
+        api.registerGate!.complete();
+        await heartbeat;
+        expect(await store.read(), RingsUrgentHere.off);
+        expect(changes, 0);
+
+        // Answered while the PATCH is still on the wire: also too old.
+        api.registerGate = Completer<void>();
+        final during = registry.sync(signedIn: true);
+        await pumpEventQueue();
+        store.changeStarted();
+        api.registerGate!.complete();
+        await during;
+        expect(await store.read(), RingsUrgentHere.off);
+        expect(changes, 0);
+
+        // A heartbeat asked after the change is believed again.
+        api.registerGate = null;
+        await registry.sync(signedIn: true);
+        expect(await store.read(), RingsUrgentHere.on);
+        expect(changes, 1);
+      },
+    );
+  });
+
+  // OPH-427 (#48): the refresh is single-flight — the minute timer and the
+  // ring screen share the one on the wire. A GET that never answered used to
+  // be that shared request forever, so no later refresh ever asked again.
+  group('a device list call that never answers (OPH-427)', () {
+    test('a device list call that never answers does not block the next '
+        'refresh', () async {
+      final kv = _MemoryKv()..values[kRingsUrgentKey] = 'off';
+      final store = RingsUrgentStore(kv: kv);
+      final api = _RecordingApi()
+        ..listed = _listedAs(true)
+        ..hangNextList = true;
+      final registry = _registryFor(
+        api,
+        ringsUrgent: store,
+        listTimeout: const Duration(milliseconds: 100),
+      );
+      expect(await registry.refreshRingAnswer(), isFalse);
+      expect(await store.read(), RingsUrgentHere.off, reason: 'unchanged');
+
+      expect(await registry.refreshRingAnswer(), isTrue);
+      expect(api.listCalls, 2, reason: 'the next refresh asked again');
+      expect(await store.read(), RingsUrgentHere.on);
+    });
+
+    test('without an override the bound is the app-wide backstop', () {
+      final registry = DeviceRegistry(
+        api: _RecordingApi(),
+        readClientId: () async => _clientId,
+        describe: () => _descriptor,
+      );
+      expect(registry.listTimeout, kApiCallDeadline);
+    });
+
+    test(
+      'every registry call carries its own bounds on the shared client',
+      () async {
+        final adapter = FakeHttpClientAdapter(
+          (options, body) async => options.method == 'GET'
+              ? jsonBody(200, {'items': <Object>[]})
+              : jsonBody(200, {'id': _clientId, 'platform': 'macos'}),
+        );
+        final api = HttpDeviceApi(fakeDio(adapter));
+        await api.list();
+        await api.register(_clientId, _descriptor);
+        for (final sent in adapter.requests) {
+          expect(sent.connectTimeout, kApiPhaseTimeout, reason: sent.method);
+          expect(sent.receiveTimeout, kApiPhaseTimeout, reason: sent.method);
+        }
+      },
+    );
+  });
+
+  group('the device list and patch calls (OPH-446)', () {
+    final row = {
+      'id': _clientId,
+      'platform': 'ios',
+      'deviceName': 'iPhone',
+      'appVersion': '1.20.0',
+      'lastSeenAt': '2026-11-12T08:00:00.000Z',
+      'createdAt': '2026-10-01T08:00:00.000Z',
+      'ringsUrgent': true,
+      'ringsUrgentSource': 'user',
+      'hasSession': true,
+    };
+
+    test('PUT returns the parsed device', () async {
+      final adapter = FakeHttpClientAdapter(
+        (options, body) async => jsonBody(200, row),
+      );
+      final device = await HttpDeviceApi(
+        fakeDio(adapter),
+      ).register(_clientId, _descriptor);
+      expect(device?.id, _clientId);
+      expect(device?.ringsUrgent, isTrue);
+      expect(device?.ringsUrgentSource, 'user');
+    });
+
+    test(
+      'GET lists every device, old servers without the new fields too',
+      () async {
+        final adapter = FakeHttpClientAdapter(
+          (options, body) async => jsonBody(200, {
+            'items': [
+              row,
+              {'id': 'old', 'platform': 'web', 'createdAt': 'not a date'},
+            ],
+          }),
+        );
+        final devices = await HttpDeviceApi(fakeDio(adapter)).list();
+        final sent = adapter.requests.single;
+        expect(sent.method, 'GET');
+        expect(sent.path, '/api/v1/notification-devices');
+
+        expect(devices, hasLength(2));
+        final first = devices.first;
+        expect(first.name, 'iPhone');
+        expect(first.appVersion, '1.20.0');
+        expect(first.lastSeenAt, DateTime.utc(2026, 11, 12, 8));
+        expect(first.createdAt, DateTime.utc(2026, 10, 1, 8));
+        expect(first.ringsUrgent, isTrue);
+        expect(first.hasSession, isTrue);
+        final old = devices.last;
+        expect(old.name, isNull);
+        expect(old.createdAt, isNull);
+        expect(old.ringsUrgent, isNull);
+        expect(old.ringsUrgentSource, isNull);
+        expect(old.hasSession, isNull);
+      },
+    );
+
+    test('PATCH sends only what changes and returns the warnings', () async {
+      final adapter = FakeHttpClientAdapter(
+        (options, body) async => jsonBody(200, {
+          ...row,
+          'ringsUrgent': false,
+          'warnings': ['NO_URGENT_DEVICE'],
+        }),
+      );
+      final result = await HttpDeviceApi(
+        fakeDio(adapter),
+      ).patch(_clientId, ringsUrgent: false);
+      final sent = adapter.requests.single;
+      expect(sent.method, 'PATCH');
+      expect(sent.path, '/api/v1/notification-devices/$_clientId');
+      expect(jsonDecode(jsonEncode(sent.data)), {'ringsUrgent': false});
+      expect(result.device.ringsUrgent, isFalse);
+      expect(result.warnings, ['NO_URGENT_DEVICE']);
+    });
+
+    test('PATCH renames without touching ringsUrgent', () async {
+      final adapter = FakeHttpClientAdapter(
+        (options, body) async => jsonBody(200, row),
+      );
+      final result = await HttpDeviceApi(
+        fakeDio(adapter),
+      ).patch(_clientId, deviceName: 'Work phone');
+      expect(jsonDecode(jsonEncode(adapter.requests.single.data)), {
+        'deviceName': 'Work phone',
+      });
+      expect(result.warnings, isEmpty);
     });
   });
 }

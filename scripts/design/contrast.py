@@ -378,6 +378,13 @@ PAIRS = [
     ('D mic ring on surface', '#7186B5', '#151F3C', 3.0),
     ('D mic ring on surfaceContainerHighest', '#7186B5', '#26345E', 3.0),
     ('D mic ring on surfaceBright', '#7186B5', '#2A3963', 3.0),
+    # #46 (OPH-423): a failed alarm action comes back with AwInlineError on the
+    # ring screen — errorContainer at 60% over the ring's urgency wash
+    # (prioUrgent 10% over surface) — and a "Try again" outlined button.
+    ('L ring action error text', '#99000F', '#FEE5E3', 4.5),
+    ('L ring retry label on ring wash', '#0A5CFF', '#FCE9E8', 4.5),
+    ('D ring action error text', '#FFD9D5', '#5B2126', 4.5),
+    ('D ring retry label on ring wash', '#3E9BFF', '#2C233C', 4.5),
 ]
 
 # ── Text on the PAGE (ADR-0063 #4, OPH-399) ──
@@ -444,6 +451,89 @@ PAGE_INKS = [
 ]
 
 
+# ── The ring screen, direction A (#46, OPH-466/467, DESIGN §11 A9) ──
+# Everything on the ring screen sits on its urgency WASH: `prioUrgent` at 10%
+# over `surface`, which is what `alarm_ring_screen.dart` composites. The wash
+# is DERIVED here from the prioUrgent token (and the badge fill, 14% over the
+# wash, from the wash), so a change to that token re-measures the screen.
+# The tiles are opaque `surface` capsules with a 1 px `outline` edge; a
+# pressed tile is `onSurface` at 12% over `surface`.
+#
+# The "ACİL HATIRLATMA" label was `prioUrgent` text on this wash: 3.94:1 (light) and
+# 4.36:1 (dark), under the 4.5 a label needs. prioUrgent is a FLAG colour
+# (>= 3:1 as a mark), so the label takes `errorOnPage`, the error tone tuned
+# for text on a tinted ground; the badge edge and glyph keep prioUrgent (3:1).
+_SCHEME = {
+    'light': {
+        'surface': '#FFFFFF', 'onSurface': '#0F1B2E', 'onSurfaceVariant': '#44536F',
+        'outline': '#63789E', 'primary': '#0A5CFF', 'error': '#D70015',
+        'onError': '#FFFFFF', 'primaryContainer': '#D6E5FF',
+        'onPrimaryContainer': '#0A3FBF',
+        'surfaceContainerLow': '#F6F9FF', 'surfaceContainerHigh': '#E7EEFA',
+    },
+    'dark': {
+        'surface': '#151F3C', 'onSurface': '#EAF0FD', 'onSurfaceVariant': '#AAB6D6',
+        'outline': '#7186B5', 'primary': '#3E9BFF', 'error': '#FF5147',
+        'onError': '#450603', 'primaryContainer': '#1D4FA6',
+        'onPrimaryContainer': '#D9E8FF',
+        'surfaceContainerLow': '#121B36', 'surfaceContainerHigh': '#1F2C51',
+    },
+}
+
+
+def _blend(fg: str, bg: str, alpha: float) -> str:
+    """`fg` at `alpha` over the opaque `bg` (Color.alphaBlend of withValues)."""
+    f = [int(fg.lstrip('#')[i : i + 2], 16) for i in (0, 2, 4)]
+    b = [int(bg.lstrip('#')[i : i + 2], 16) for i in (0, 2, 4)]
+    return '#' + ''.join(f'{round(alpha * x + (1 - alpha) * y):02X}' for x, y in zip(f, b))
+
+
+def _ring_colour(theme: str, name: str) -> str:
+    scheme = _SCHEME[theme]
+    if name in scheme:
+        return scheme[name]
+    if name == 'wash':
+        return _blend(_token(theme, 'prioUrgent'), scheme['surface'], 0.10)
+    if name == 'badge':
+        return _blend(_token(theme, 'prioUrgent'), _ring_colour(theme, 'wash'), 0.14)
+    if name == 'pressed':
+        return _blend(scheme['onSurface'], scheme['surface'], 0.12)
+    return _token(theme, name)
+
+
+# (name, ink, ground, minimum) — each measured in BOTH themes.
+RING_PAIRS = [
+    ('ring title and time (onSurface) on wash', 'onSurface', 'wash', 4.5),
+    ('ring snooze label / status line (onSurfaceVariant) on wash', 'onSurfaceVariant', 'wash', 4.5),
+    ('ring label "Acil hatırlatma" (errorOnPage) on wash', 'errorOnPage', 'wash', 4.5),
+    ('ring Tamamla / Aç label (link) on wash', 'link', 'wash', 4.5),
+    ('ring tile edge (outline) on wash', 'outline', 'wash', 3.0),
+    ('ring tile focus ring (primary) on wash', 'primary', 'wash', 3.0),
+    ('ring badge edge (prioUrgent) on wash', 'prioUrgent', 'wash', 3.0),
+    ('ring badge glyph (prioUrgent) on badge fill', 'prioUrgent', 'badge', 3.0),
+    ('ring Onayla fill (error) on wash', 'error', 'wash', 3.0),
+    ('ring Onayla label (onError) on error', 'onError', 'error', 4.5),
+    ('ring tile label (onSurface) on tile', 'onSurface', 'surface', 4.5),
+    ('ring tile icon / time (onSurfaceVariant) on tile', 'onSurfaceVariant', 'surface', 4.5),
+    ('ring pressed tile label (onSurface)', 'onSurface', 'pressed', 4.5),
+    ('ring pressed tile icon / time (onSurfaceVariant)', 'onSurfaceVariant', 'pressed', 4.5),
+    ('ring pressed tile edge (outline)', 'outline', 'pressed', 3.0),
+    # List mode (#47, OPH-443): rows are `surface` cards on the wash (title and
+    # time reuse the tile pairs above); their two pills are `surface` with an
+    # `outline` edge; a row whose write failed carries an errorOnPage icon.
+    ('ring row pill edge (outline) on card', 'outline', 'surface', 3.0),
+    ('ring row failed icon (errorOnPage) on card', 'errorOnPage', 'surface', 3.0),
+    # The row's "Ertele" sheet: `surfaceContainerLow` with 56 pt rows on
+    # `surfaceContainerHigh`; labels onSurface, icons / times / hints variant.
+    ('ring sheet title (onSurface) on sheet', 'onSurface', 'surfaceContainerLow', 4.5),
+    ('ring sheet subtitle / "Diğer" (onSurfaceVariant) on sheet', 'onSurfaceVariant', 'surfaceContainerLow', 4.5),
+    ('ring sheet row label (onSurface) on row', 'onSurface', 'surfaceContainerHigh', 4.5),
+    ('ring sheet row time / hint / icon (onSurfaceVariant) on row', 'onSurfaceVariant', 'surfaceContainerHigh', 4.5),
+    # Settings ▸ Devices: the "Bu cihaz" badge (#48), listed by name (§7.1).
+    ('devices "this device" badge', 'onPrimaryContainer', 'primaryContainer', 4.5),
+]
+
+
 def main() -> int:
     failures = 0
     for name, fg, bg, need in PAIRS:
@@ -461,6 +551,13 @@ def main() -> int:
             f"{'OK  ' if ok else 'FAIL'} {r:5.2f} (need {need})  {name}: {fg} on the page "
             f'(worst: {ground} {bg})'
         )
+    for name, ink, ground, need in RING_PAIRS:
+        for theme in ('light', 'dark'):
+            fg, bg = _ring_colour(theme, ink), _ring_colour(theme, ground)
+            r = ratio(fg, bg)
+            ok = r >= need
+            failures += 0 if ok else 1
+            print(f"{'OK  ' if ok else 'FAIL'} {r:5.2f} (need {need})  {theme[0].upper()} {name}: {fg} on {bg}")
     print(f'\nFAILURES: {failures}')
     return 1 if failures else 0
 

@@ -41,8 +41,11 @@ export default fp(
         allowedIss: JWT_ISSUER,
         allowedAud: JWT_AUDIENCE,
       },
-      // What request.user looks like after jwtVerify.
-      formatUser: (payload) => ({ id: payload.sub, email: payload.email }),
+      // What request.user looks like after jwtVerify. `issuedAt` (the token's
+      // whole-second `iat`) lets PUT /notification-devices tell a token minted
+      // by a sign-in after a device's removal from one the removed session
+      // still holds (OPH-435).
+      formatUser: (payload) => ({ id: payload.sub, email: payload.email, issuedAt: payload.iat }),
     });
 
     app.decorate('signAccessToken', (user) => app.jwt.sign({ sub: user.id, email: user.email }));

@@ -14,8 +14,10 @@ project = Xcodeproj::Project.open(project_path)
 
 runner = project.targets.find { |t| t.name == 'Runner' }
 widget = project.targets.find { |t| t.name == 'AllisWellWidgetExtension' }
+tests = project.targets.find { |t| t.name == 'RunnerTests' }
 raise 'Runner target not found' unless runner
 raise 'AllisWellWidgetExtension target not found' unless widget
+raise 'RunnerTests target not found' unless tests
 
 runner_group = project.main_group['Runner']
 raise 'Runner group not found' unless runner_group
@@ -45,6 +47,48 @@ add_source(runner, bridge_ref, 'Runner/AlarmKitBridge.swift')
 shared_ref = file_ref(shared_group, 'AWAlarmShared.swift')
 add_source(runner, shared_ref, 'Shared/AWAlarmShared.swift')
 add_source(widget, shared_ref, 'Shared/AWAlarmShared.swift')
+
+# OPH-429 — the occurrence id and fingerprint (NOTIFICATIONS.md 2b.3). Foundation
+# only, so the widget extension compiles it too: a native snooze inside the
+# widget process names the same alarm Dart would plan.
+identity_ref = file_ref(shared_group, 'AWAlarmIdentity.swift')
+add_source(runner, identity_ref, 'Shared/AWAlarmIdentity.swift')
+add_source(widget, identity_ref, 'Shared/AWAlarmIdentity.swift')
+
+# OPH-430 — the AlarmKit ledger and failure ring (NOTIFICATIONS.md 2b.3 "App
+# Group keys"). The alert's intents in AWAlarmShared.swift write the ledger, and
+# the widget extension compiles those intents, so both targets need it.
+ledger_ref = file_ref(shared_group, 'AWAlarmLedger.swift')
+add_source(runner, ledger_ref, 'Shared/AWAlarmLedger.swift')
+add_source(widget, ledger_ref, 'Shared/AWAlarmLedger.swift')
+
+# OPH-431 — the native snooze (NOTIFICATIONS.md 2b.3 "Native snooze"): the pure
+# core, the snooze target and the AlarmKit ops. The snooze intent in
+# AWAlarmShared.swift runs it, and the widget extension compiles that intent.
+snooze_ref = file_ref(shared_group, 'AWSnoozeCore.swift')
+add_source(runner, snooze_ref, 'Shared/AWSnoozeCore.swift')
+add_source(widget, snooze_ref, 'Shared/AWSnoozeCore.swift')
+
+# OPH-451 — the widget snapshot model and the timeline's day choice (#50, v6).
+# The widget draws them; Runner compiles them too so RunnerTests can test the
+# pure day pick (WidgetDayPickTests). Foundation only.
+%w[AWSnapshotModel.swift AWWidgetDayPick.swift].each do |name|
+  ref = file_ref(shared_group, name)
+  add_source(runner, ref, "Shared/#{name}")
+  add_source(widget, ref, "Shared/#{name}")
+end
+
+# XCTest sources go into the one existing RunnerTests target (hosted in
+# Runner.app, `@testable import Runner`); never a second test target.
+tests_group = project.main_group['RunnerTests']
+raise 'RunnerTests group not found' unless tests_group
+
+%w[
+  AlarmIdentityTests.swift AlarmLedgerTests.swift SnoozeCoreTests.swift SnoozeTargetTests.swift
+  WidgetDayPickTests.swift
+].each do |name|
+  add_source(tests, file_ref(tests_group, name), "RunnerTests/#{name}")
+end
 
 project.save
 puts "saved #{project_path}"

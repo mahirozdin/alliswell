@@ -17,6 +17,10 @@ import '../../core/persisted_prefs.dart';
 import '../../i18n/i18n.dart';
 import '../../notifications/alarm_banner.dart';
 import '../../notifications/missed_alarm_card.dart';
+import '../../notifications/alarm_overlay.dart'
+    show alarmClockProvider, alarmFeedProvider;
+import '../../notifications/planner.dart' show AlarmInput;
+import '../../notifications/urgent_minute.dart';
 import '../../screens/home_shell.dart';
 import '../../sections.dart';
 import '../../sync/refresh.dart';
@@ -35,6 +39,7 @@ import '../ai/providers.dart';
 import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
+import '../devices/new_device_alarm_card.dart';
 import '../ee/providers.dart';
 import '../onboarding/tour.dart' show TourAnchor, TourTarget;
 import '../tags/tags.dart';
@@ -249,12 +254,14 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         withDefaults: true,
       );
       final due = parse.dueAt ?? parse.whenDay;
+      final note = await _sharedMinuteNote(id);
       _afterQuickAdd(
         id,
         parse.title,
         due,
         withTime: parse.dueAt != null && parse.dueHasTime,
         repeat: parse.repeat,
+        note: note,
       );
       return;
     }
@@ -289,7 +296,34 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       withDefaults: true,
       dueAt: dueAt,
     );
-    _afterQuickAdd(id, parse.title, dueAt, withTime: true);
+    final note = await _sharedMinuteNote(id);
+    _afterQuickAdd(id, parse.title, dueAt, withTime: true, note: note);
+  }
+
+  /// OPH-444 (#47, owner answer 3): the quick-added task's urgent alarm lands
+  /// in a minute another urgent alarm already holds → the confirmation's
+  /// second line says they ring together ("09:00’da 2 acil alarm birlikte
+  /// çalacak"). Never blocked, never shifted, no button here; null when
+  /// nothing is shared. The feed is the one Home's missed-alarm card already
+  /// keeps alive; the new task is left out of it by id.
+  Future<String?> _sharedMinuteNote(String? id) async {
+    if (id == null) return null;
+    final task = await ref.read(taskStoreProvider).detailOnce(id);
+    if (task == null || !mounted) return null;
+    final hits = sharedUrgentMinutes(
+      ref.read(alarmFeedProvider).value ?? const <AlarmInput>[],
+      urgent: task.isUrgent && task.alarmsMutedAt == null,
+      now: ref.read(alarmClockProvider)(),
+      remindAt: task.remindAt,
+      dueAt: task.dueAt,
+      taskId: id,
+    );
+    if (hits.isEmpty) return null;
+    final format = ref.read(dateFormatProvider);
+    return [
+      for (final hit in hits)
+        sharedMinuteLine(hit.at, hit.count, format: format),
+    ].join('\n');
   }
 
   /// OPH-401 (U-13, A-67, DESIGN §47 Q6–Q7): say what was added and when,
@@ -305,6 +339,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     DateTime? due, {
     required bool withTime,
     AwRepeatRule? repeat,
+    String? note,
   }) {
     if (id == null || !mounted) return;
     final format = ref.read(dateFormatProvider);
@@ -332,7 +367,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     showAwActionSnackBar(
       messenger,
       key: const Key('quick-add-added'),
-      content: Text(added),
+      content: Text(note == null ? added : '$added\n$note'),
       actionLabel: 'common.undo'.tr(),
       duration: kQuickAddUndoWindow,
       onAction: () async {
@@ -739,6 +774,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               EeHomeTicketCards(),
               AlarmDegradationBanner(),
               MissedAlarmCard(),
+              // OPH-453 (#48): once, on a device that joined switched off,
+              // where its urgent alarms ring instead.
+              NewDeviceAlarmCard(),
             ],
           );
 

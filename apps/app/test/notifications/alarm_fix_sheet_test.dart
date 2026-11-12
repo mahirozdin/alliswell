@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/integrations/providers.dart'
     show urlLauncherProvider;
+import 'package:alliswell/src/features/workspaces/workspaces.dart'
+    show currentUserIdProvider;
 import 'package:alliswell/src/notifications/alarm_banner.dart';
 import 'package:alliswell/src/notifications/alarm_fix_sheet.dart';
 import 'package:alliswell/src/notifications/alarm_log.dart';
@@ -81,6 +83,9 @@ Future<_Opened> _openSheet(WidgetTester tester, AlarmSupport support) async {
           opened.launched.add(url);
           return true;
         }),
+        // The band also reads the account's devices (OPH-453); these tests
+        // are about this device's permission sheet, so no session.
+        currentUserIdProvider.overrideWithValue(null),
       ],
       child: MaterialApp(
         theme: _theme,

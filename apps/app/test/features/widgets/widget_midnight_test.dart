@@ -110,6 +110,73 @@ void main() {
     expect(host.updates, 2);
   });
 
+  // #50 (snapshot v6): on iOS nothing runs Dart at midnight, so the snapshot
+  // written the evening before must already hold tomorrow — its own Today,
+  // count, lock-screen row and project views, not yesterday's under a new date.
+  test(
+    "tomorrow's day view has its own Today list, open count, next task and project views",
+    () async {
+      await db
+          .into(db.projects)
+          .insert(
+            ProjectsCompanion.insert(
+              id: id('P1'),
+              workspaceId: ws,
+              name: 'Ev',
+              colorRgb: const Value('#10B981'),
+            ),
+          );
+      await seedTask('TOMORROW', dueAt: tomorrowMorning, projectId: id('P1'));
+      await seedTask('TONIGHT', dueAt: DateTime(2030, 6, 1, 23));
+      await seedTask(
+        'DONE-TODAY',
+        dueAt: DateTime(2030, 6, 1, 9),
+        status: 'completed',
+        completedAt: DateTime(2030, 6, 1, 20),
+      );
+      final host = FakeWidgetHost();
+
+      await publishWidgetFromReplica(
+        db,
+        scope: TaskScope.workspace(ws),
+        now: lateEvening,
+        host: host,
+      );
+
+      final snapshot = snapshotOf(host);
+      final days = (snapshot['days'] as List).cast<Map<String, dynamic>>();
+      expect(
+        [for (final d in days) d['date']],
+        ['2030-06-01', '2030-06-02', '2030-06-03'],
+      );
+      // Tonight (day 0): TONIGHT is Today, TOMORROW is this week.
+      expect(rowOf(days[0], id('TOMORROW'))!['bucket'], 'thisWeek');
+      expect(rowOf(days[0], id('TONIGHT'))!['bucket'], 'today');
+      expect(rowOf(days[0], id('DONE-TODAY'))!['done'], isTrue);
+      expect(days[0]['openToday'], 1);
+
+      final tomorrow = days[1];
+      expect(tomorrow['header']['day'], '2');
+      expect(rowOf(tomorrow, id('TOMORROW'))!['bucket'], 'today');
+      expect(rowOf(tomorrow, id('TONIGHT'))!['bucket'], 'overdue');
+      expect(rowOf(tomorrow, id('DONE-TODAY')), isNull);
+      expect(tomorrow['openToday'], 2);
+      expect(tomorrow['openTodayLabel'], isA<String>());
+      expect(tomorrow['next']['id'], id('TONIGHT'));
+      expect(tomorrow['next']['bucket'], 'overdue');
+      final ev = (tomorrow['views'] as Map)[id('P1')] as Map<String, dynamic>;
+      expect(rowOf(ev, id('TOMORROW'))!['bucket'], 'today');
+      expect(rowOf(ev, id('TOMORROW'))!['projectColor'], '#10B981');
+      expect(ev['openToday'], 1);
+      expect(ev['next']['id'], id('TOMORROW'));
+
+      // The day after: TOMORROW is late too, and the header moved on again.
+      expect(days[2]['header']['day'], '3');
+      expect(rowOf(days[2], id('TOMORROW'))!['bucket'], 'overdue');
+      expect(days[2]['openToday'], 2);
+    },
+  );
+
   test('it asks the replica the LIVE question, not a second one', () async {
     // `watchOpen(completedSince: start of today)` — OPH-185's dimmed rows. A
     // task finished today stays on the widget; one finished yesterday is gone.

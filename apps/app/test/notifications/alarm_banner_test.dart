@@ -1,18 +1,30 @@
+import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/features/devices/data/device_api.dart';
+import 'package:alliswell/src/features/devices/device_registry.dart';
+import 'package:alliswell/src/features/devices/providers.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
+import 'package:alliswell/src/features/workspaces/workspaces.dart';
+import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_banner.dart';
 import 'package:alliswell/src/notifications/alarm_log.dart';
 import 'package:alliswell/src/notifications/alarm_overlay.dart'
     show alarmClockProvider;
 import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/providers.dart';
+import 'package:alliswell/src/sync/db/database.dart';
+import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
 import '../support/fake_notifications.dart';
+import '../support/sync_overrides.dart';
 
 final _theme = ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
@@ -49,6 +61,9 @@ Future<ProviderContainer> pumpBanner(
       ),
       alarmLogProvider.overrideWithValue(_QuietLog()),
       if (clock != null) alarmClockProvider.overrideWithValue(clock),
+      // These tests are about this device's permissions; with no session the
+      // band has no device list to read (OPH-453 has its own group below).
+      currentUserIdProvider.overrideWithValue(null),
     ],
   );
   addTearDown(container.dispose);
@@ -111,6 +126,8 @@ const _serverWithoutPush = AlarmSupport(
 );
 
 void main() {
+  group('back from the system Settings app (OPH-428)', backFromSettingsTests);
+
   testWidgets('warns when notifications are off', (tester) async {
     await pumpBanner(
       tester,
@@ -543,4 +560,509 @@ void main() {
       expect(find.textContaining('Settings ▸ Notifications'), findsOneWidget);
     });
   });
+
+  // ── OPH-453 (#48, mobbin §2.5 "Son çalan cihazı kapatma") ────────────────
+  //
+  // Switching off the last ringing device is allowed (warn, never block), so
+  // the account can end up with urgent alarms ringing nowhere. The band says
+  // so and leads to the page that changes it.
+  group('no device rings urgent alarms (OPH-453)', () {
+    setUp(() async {
+      SharedPreferences.setMockInitialValues({});
+      await localKv.remove(kAlarmBannerDismissedKey);
+      await localKv.remove(kAlarmBannerDeviceDismissedKey);
+    });
+    tearDown(() async {
+      await localKv.remove(kAlarmBannerDismissedKey);
+      await localKv.remove(kAlarmBannerDeviceDismissedKey);
+    });
+
+    testWidgets(
+      'the band says no device rings urgent alarms and links to Devices',
+      (tester) async {
+        final api = _DevicesApi([
+          _device(_thisId, 'android', 'Pixel', rings: false),
+          _device(_phoneId, 'ios', 'iPhone 16', rings: false),
+        ]);
+        final container = await _pumpBand(tester, api);
+
+        final item = find.byKey(const Key('alarm-banner-no-device'));
+        expect(item, findsOneWidget);
+        expect(find.text('No device rings urgent alarms'), findsOneWidget);
+        expect(find.text('Choose a device'), findsOneWidget);
+        // A warning, like every strip in the band: amber tint, onSurface ink.
+        final surface = tester.widget<Material>(
+          find
+              .descendant(
+                of: find.byKey(const Key('alarm-banner-no-device-surface')),
+                matching: find.byType(Material),
+              )
+              .first,
+        );
+        expect(surface.color, isNot(_theme.colorScheme.errorContainer));
+        final action = tester.getSize(
+          find.byKey(const Key('alarm-banner-pick-device')),
+        );
+        expect(action.height, greaterThanOrEqualTo(44));
+
+        // The moment a device rings again — here, turned on from Devices,
+        // which shares this list — the item is gone.
+        await container
+            .read(devicesProvider.notifier)
+            .setRingsUrgent(_phoneId, true);
+        await tester.pumpAndSettle();
+        expect(item, findsNothing);
+
+        // Off again, and "Cihaz seç" opens Settings ▸ Devices.
+        await container
+            .read(devicesProvider.notifier)
+            .setRingsUrgent(_phoneId, false);
+        await tester.pumpAndSettle();
+        expect(item, findsOneWidget);
+        await tester.tap(find.byKey(const Key('alarm-banner-pick-device')));
+        await tester.pumpAndSettle();
+        expect(find.text('devices-page'), findsOneWidget);
+      },
+    );
+
+    testWidgets('Turkish copy', (tester) async {
+      AwI18n.instance.setActiveCached(const Locale('tr'));
+      addTearDown(() => AwI18n.instance.setActiveCached(const Locale('en')));
+      await _pumpBand(
+        tester,
+        _DevicesApi([_device(_thisId, 'android', 'Pixel', rings: false)]),
+      );
+      expect(find.text('Acil alarm çalan cihaz yok'), findsOneWidget);
+      expect(find.text('Cihaz seç'), findsOneWidget);
+    });
+
+    testWidgets('a device that rings anywhere, an old server, an offline list '
+        'or no session: nothing', (tester) async {
+      final item = find.byKey(const Key('alarm-banner-no-device'));
+      // Another device rings.
+      await _pumpBand(
+        tester,
+        _DevicesApi([
+          _device(_thisId, 'android', 'Pixel', rings: false),
+          _device(_phoneId, 'ios', 'iPhone 16', rings: true),
+        ]),
+      );
+      expect(item, findsNothing);
+
+      // A server from before #48 sends no flag: everything rings as before.
+      await tester.pumpWidget(const SizedBox());
+      await _pumpBand(
+        tester,
+        _DevicesApi([_device(_thisId, 'android', 'Pixel', rings: null)]),
+      );
+      expect(item, findsNothing);
+
+      // Unreachable with no list this session: nothing new appears.
+      await tester.pumpWidget(const SizedBox());
+      await _pumpBand(tester, _DevicesApi([])..unreachable = true);
+      expect(item, findsNothing);
+
+      // Signed out.
+      await tester.pumpWidget(const SizedBox());
+      await _pumpBand(
+        tester,
+        _DevicesApi([_device(_thisId, 'android', 'Pixel', rings: false)]),
+        userId: null,
+      );
+      expect(item, findsNothing);
+    });
+
+    testWidgets('a list that went offline shows nothing new', (tester) async {
+      final api = _DevicesApi([
+        _device(_thisId, 'android', 'Pixel', rings: false),
+        _device(_phoneId, 'ios', 'iPhone 16', rings: true),
+      ]);
+      final container = await _pumpBand(tester, api);
+      // The phone was switched off elsewhere while this one lost its network:
+      // the cached list cannot say so, and the band does not guess.
+      api
+        ..rows[1]['ringsUrgent'] = false
+        ..unreachable = true;
+      container.invalidate(devicesProvider);
+      await tester.pumpAndSettle();
+      expect(container.read(devicesProvider).value?.offline, isTrue);
+      expect(find.byKey(const Key('alarm-banner-no-device')), findsNothing);
+    });
+
+    testWidgets('back in the foreground, the list is read again', (
+      tester,
+    ) async {
+      final api = _DevicesApi([
+        _device(_thisId, 'android', 'Pixel', rings: false),
+        _device(_phoneId, 'ios', 'iPhone 16', rings: false),
+      ]);
+      await _pumpBand(tester, api);
+      final item = find.byKey(const Key('alarm-banner-no-device'));
+      expect(item, findsOneWidget);
+
+      // Turned on from the phone itself while this app was in the background.
+      api.rows[1]['ringsUrgent'] = true;
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.hidden);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(item, findsNothing);
+    });
+
+    testWidgets('it goes before a permission problem and hides on its own', (
+      tester,
+    ) async {
+      var now = DateTime.utc(2030, 6, 1, 9);
+      final api = _DevicesApi([
+        _device(_thisId, 'android', 'Pixel', rings: false),
+      ]);
+      await _pumpBand(tester, api, support: _off, clock: () => now);
+      final item = find.byKey(const Key('alarm-banner-no-device'));
+      final problem = find.byKey(const Key('alarm-banner'));
+      expect(item, findsOneWidget);
+      expect(problem, findsNothing, reason: 'one strip at a time');
+
+      await tester.tap(find.byKey(const Key('alarm-banner-close')));
+      await tester.pumpAndSettle();
+      expect(item, findsNothing);
+      expect(problem, findsOneWidget);
+
+      // Closing the permission strip does not bring the device item back.
+      await tester.tap(find.byKey(const Key('alarm-banner-close')));
+      await tester.pumpAndSettle();
+      expect(item, findsNothing);
+      expect(problem, findsNothing);
+
+      // A week later the account still has no ringing device: it says so.
+      now = now.add(const Duration(days: 7, minutes: 1));
+      await tester.pumpWidget(const SizedBox());
+      await _pumpBand(tester, api, support: _off, clock: () => now);
+      expect(item, findsOneWidget);
+    });
+  });
+}
+
+const _thisId = '01HZTHISDEVICEAAAAAAAAAAAA';
+const _phoneId = '01HZPHONEAAAAAAAAAAAAAAAAA';
+
+const _healthy = AlarmSupport(
+  notificationsEnabled: true,
+  criticalAlertsEnabled: false,
+  exactAlarmsEnabled: true,
+);
+
+Map<String, dynamic> _device(
+  String id,
+  String platform,
+  String name, {
+  required bool? rings,
+}) => {
+  'id': id,
+  'platform': platform,
+  'deviceName': name,
+  'lastSeenAt': DateTime.now().toUtc().toIso8601String(),
+  'createdAt': '2026-11-01T08:00:00.000Z',
+  'ringsUrgent': ?rings,
+  if (rings != null) 'ringsUrgentSource': 'user',
+  'hasSession': true,
+};
+
+class _DevicesApi implements DeviceApi {
+  _DevicesApi(this.rows);
+
+  final List<Map<String, dynamic>> rows;
+  bool unreachable = false;
+
+  @override
+  Future<List<DeviceInfo>> list() async {
+    if (unreachable) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/notification-devices'),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    return [for (final row in rows) DeviceInfo.fromJson(row)];
+  }
+
+  @override
+  Future<DevicePatchResult> patch(
+    String deviceId, {
+    bool? ringsUrgent,
+    String? deviceName,
+  }) async {
+    final row = rows.firstWhere((r) => r['id'] == deviceId);
+    if (ringsUrgent != null) row['ringsUrgent'] = ringsUrgent;
+    return DevicePatchResult(device: DeviceInfo.fromJson(row));
+  }
+
+  @override
+  Future<DeviceInfo?> register(
+    String deviceId,
+    DeviceDescriptor device,
+  ) async => null;
+
+  @override
+  Future<void> unregister(String deviceId) async {}
+
+  @override
+  Future<PushKeyLookup> lookupPushKey() async => const PushKeyLookup.unknown();
+}
+
+class _MemoryKv implements LocalKv {
+  final Map<String, String> values = {};
+
+  @override
+  Future<String?> get(String key) async => values[key];
+
+  @override
+  Future<void> set(String key, String value) async => values[key] = value;
+
+  @override
+  Future<void> remove(String key) async => values.remove(key);
+
+  @override
+  Future<void> removeWhere(bool Function(String key) test) async =>
+      values.removeWhere((key, _) => test(key));
+}
+
+/// The band as Home shows it, inside a router so "Cihaz seç" can go
+/// somewhere, with the account's devices served by [api].
+Future<ProviderContainer> _pumpBand(
+  WidgetTester tester,
+  _DevicesApi api, {
+  AlarmSupport support = _healthy,
+  DateTime Function()? clock,
+  String? userId = 'user-1',
+}) async {
+  final container = ProviderContainer(
+    overrides: [
+      notificationsGatewayProvider.overrideWithValue(SupportGateway(support)),
+      alarmLogProvider.overrideWithValue(_QuietLog()),
+      if (clock != null) alarmClockProvider.overrideWithValue(clock),
+      deviceApiProvider.overrideWithValue(api),
+      currentUserIdProvider.overrideWithValue(userId),
+      syncClientIdProvider.overrideWith((ref) => Stream.value(_thisId)),
+      ringsUrgentStoreProvider.overrideWithValue(
+        RingsUrgentStore(kv: _MemoryKv()),
+      ),
+    ],
+  );
+  addTearDown(container.dispose);
+  tester.view.physicalSize = const Size(393, 800);
+  tester.view.devicePixelRatio = 1;
+  addTearDown(tester.view.reset);
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: '/',
+        builder: (_, _) =>
+            const Scaffold(body: Column(children: [AlarmDegradationBanner()])),
+      ),
+      GoRoute(
+        path: '/settings/devices',
+        builder: (_, _) => const Scaffold(body: Text('devices-page')),
+      ),
+    ],
+  );
+  addTearDown(router.dispose);
+  await tester.pumpWidget(
+    UncontrolledProviderScope(
+      container: container,
+      child: MaterialApp.router(theme: _theme, routerConfig: router),
+    ),
+  );
+  await tester.pumpAndSettle();
+  return container;
+}
+
+/// OPH-428 (IOS-01): "Ayarları aç" leaves the app for the system Settings app,
+/// the person turns Alarms on there and comes back. Nothing in the app is
+/// told; the return to the foreground is the only signal, and both the strip
+/// and the plan must read the grant again on it — the strip said "alarm
+/// permission is off" until a relaunch, while urgent alarms stayed on the
+/// silenceable notification lane.
+void backFromSettingsTests() {
+  const ws = '01WSAAAAAAAAAAAAAAAAAAAAAA';
+  const declined = AlarmSupport(
+    notificationsEnabled: true,
+    criticalAlertsEnabled: false,
+    soundEnabled: true,
+    alertEnabled: true,
+    timeSensitiveEnabled: true,
+    alarmKitAuthorized: false,
+  );
+  const granted = AlarmSupport(
+    notificationsEnabled: true,
+    criticalAlertsEnabled: false,
+    soundEnabled: true,
+    alertEnabled: true,
+    timeSensitiveEnabled: true,
+    alarmKitAuthorized: true,
+  );
+
+  void leaveAndReturn(WidgetTester tester) {
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+  }
+
+  /// Lets the scheduler's passes (real drift streams, real awaits) finish.
+  Future<void> settle(WidgetTester tester) async {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'returning from system settings with the alarm permission granted clears the banner and re-plans',
+    (tester) async {
+      final gateway = SupportGateway(declined);
+      final alarmKit = FakeAlarmKitHost(authorized: false);
+      final container = ProviderContainer(
+        overrides: [
+          ...syncTestOverrides(
+            notificationsGateway: gateway,
+            alarmKitHost: alarmKit,
+          ),
+          taskScopeProvider.overrideWith(
+            (ref) async => TaskScope.workspace(ws),
+          ),
+          currentUserIdProvider.overrideWithValue(null),
+          ringsUrgentStoreProvider.overrideWithValue(
+            RingsUrgentStore(kv: _MemoryKv()),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // One urgent task with its urgent reminder two hours from now.
+      final at = DateTime.now().toUtc().add(const Duration(hours: 2));
+      await tester.runAsync(() async {
+        final db = container.read(databaseProvider);
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: 'U1'.padRight(26, '0'),
+                workspaceId: ws,
+                title: 'Acil görev',
+                isUrgent: const Value(true),
+                requiresAcknowledgement: const Value(true),
+                remindAt: Value(at),
+              ),
+            );
+        await db
+            .into(db.reminders)
+            .insert(
+              RemindersCompanion.insert(
+                id: 'RU1'.padRight(26, '0'),
+                taskId: 'U1'.padRight(26, '0'),
+                remindAt: at,
+                alarmLevel: const Value('urgent'),
+                requiresAcknowledgement: const Value(true),
+              ),
+            );
+      });
+
+      final scheduler = container.listen(
+        notificationSchedulerProvider,
+        (_, _) {},
+      );
+      addTearDown(scheduler.close);
+      tester.view.physicalSize = const Size(393, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: _theme,
+            home: const Scaffold(body: AlarmDegradationBanner()),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      // Declined: the strip says so, and the urgent alarm rides the
+      // notification chain because AlarmKit would refuse it.
+      expect(find.textContaining('Alarm permission is off'), findsOneWidget);
+      expect(alarmKit.scheduled, isEmpty);
+      expect(gateway.scheduled.values.where((n) => n.urgent), isNotEmpty);
+
+      // "Ayarları aç" → Settings ▸ AllisWell ▸ Alarms on → back to the app.
+      gateway.support = granted;
+      alarmKit.authorized = true;
+      leaveAndReturn(tester);
+      await settle(tester);
+
+      expect(
+        find.byKey(const Key('alarm-banner')),
+        findsNothing,
+        reason: 'IOS-01: the strip stayed until a relaunch',
+      );
+      expect(
+        alarmKit.scheduled,
+        hasLength(1),
+        reason: 'the urgent alarm moves to AlarmKit on the return itself',
+      );
+      expect(
+        gateway.scheduled.values.where((n) => n.urgent),
+        isEmpty,
+        reason: 'it would ring twice',
+      );
+
+      // The scheduler's heartbeat is a periodic timer: end it inside the body.
+      await tester.pumpWidget(const SizedBox.shrink());
+      scheduler.close();
+      container.dispose();
+    },
+  );
+
+  testWidgets('a permission turned off in Settings shows the strip on return '
+      '(Android exact alarms included)', (tester) async {
+    const healthyAndroid = AlarmSupport(
+      notificationsEnabled: true,
+      criticalAlertsEnabled: false,
+      exactAlarmsEnabled: true,
+    );
+    final gateway = SupportGateway(healthyAndroid);
+    await pumpBanner(tester, healthyAndroid, gateway: gateway);
+    expect(find.byKey(const Key('alarm-banner')), findsNothing);
+
+    gateway.support = const AlarmSupport(
+      notificationsEnabled: true,
+      criticalAlertsEnabled: false,
+      exactAlarmsEnabled: false,
+    );
+    leaveAndReturn(tester);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('alarm-banner')), findsOneWidget);
+  });
+
+  testWidgets(
+    'a return with nothing changed keeps the strip without a flicker',
+    (tester) async {
+      final gateway = SupportGateway(declined);
+      await pumpBanner(tester, declined, gateway: gateway);
+      final before = gateway.probes;
+      leaveAndReturn(tester);
+      // The re-probe is in flight: the strip keeps its last answer meanwhile.
+      await tester.pump();
+      expect(find.byKey(const Key('alarm-banner')), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(gateway.probes, greaterThan(before), reason: 're-probed');
+      expect(find.byKey(const Key('alarm-banner')), findsOneWidget);
+    },
+  );
 }

@@ -287,7 +287,55 @@
       "privateSub": "Ana ekran ve kilit ekranı widget'larında görev başlıklarını gizle — başlıklar uygulamadan hiç çıkmaz"
     },
     "teamNotificationPrefs": "Ekip bildirimleri",
-    "teamNotificationPrefsSub": "Başkalarının yaptıkları sana hangi kanaldan ulaşsın: uygulama, e-posta, telefon"
+    "teamNotificationPrefsSub": "Başkalarının yaptıkları sana hangi kanaldan ulaşsın: uygulama, e-posta, telefon",
+    "devices": {
+      "title": "Cihazlar",
+      "sub": "Acil alarmların hangi cihazlarda çaldığı",
+      "subtitleOne": "Acil alarmlar: {device}",
+      "subtitleMany": "Acil alarmlar {count} cihazda",
+      "subtitleNone": "Acil alarm çalan cihaz yok",
+      "intro": "Acil alarmlar yalnız seçtiğin cihazlarda çalar. Diğer cihazlarına aynı hatırlatma normal bildirim olarak gelir.",
+      "thisDevice": "Bu cihaz",
+      "sectionThis": "Bu cihaz",
+      "sectionOther": "Diğer cihazlar",
+      "ringSwitch": "Acil alarmları bu cihazda çaldır",
+      "ringSwitchWeb": "Acil alarmları bu sekmede çaldır",
+      "offHint": "Burada normal bildirim olarak gelir.",
+      "webHint": "Yalnız sekme açıkken çalar.",
+      "activeNow": "Şu an etkin",
+      "lastSeen": "{ago} görüldü",
+      "multiHint": "{count} cihazda çalar. Android’de ve açık uygulamada birinde onaylayınca diğerlerinde de susar; iPhone’da uygulama kapalıyken susmayabilir.",
+      "offline": "Çevrimdışısın. Cihaz ayarları bağlanınca değişebilir.",
+      "unsupported": "Sunucun bu ayarı henüz desteklemiyor. Acil alarmlar bütün cihazlarda çalar.",
+      "single": "Başka cihazda giriş yaptığında burada görünür.",
+      "stale": "Uzun süredir görülmeyen ({count})",
+      "saveFailed": "Kaydedilemedi. Tekrar dene.",
+      "unknownBrowser": "Tarayıcı",
+      "announceOn": "{device} acil alarmlar açık",
+      "announceOff": "{device} acil alarmlar kapalı",
+      "rename": "Ad",
+      "detailPlatform": "Platform: {value}",
+      "detailSeen": "Son görülme: {value}",
+      "detailAdded": "Eklendi: {value}",
+      "remove": "Cihazı kaldır",
+      "removeAction": "Kaldır",
+      "removeKeep": "Vazgeç",
+      "removeConfirm": "{device} kaldırılsın mı?",
+      "removeBody": "O cihazda oturum kapanır.",
+      "removeNoSession": "Bu cihazın oturumu eşlenemedi. Listeden kalkar ama kurulum bir sonraki açılışında yeniden görünebilir.",
+      "removeFailed": "Kaldırılamadı. Tekrar dene.",
+      "signOutHere": "Bu cihazda çıkış yap",
+      "footer": "Bir cihazı kaldırınca o cihazda oturum kapanır.",
+      "footerAlarms": "Kaldırdığın cihazda zaten kurulmuş alarmlar, cihaz bir sonraki açılışına kadar çalabilir.",
+      "lastOffTitle": "Acil alarmlar hiçbir cihazda çalmayacak",
+      "lastOffBody": "Hatırlatmalar yalnız normal bildirim olarak gelir.",
+      "lastOffConfirm": "Yine de kapat",
+      "lastOffKeep": "Vazgeç",
+      "pickTitle": "Acil alarmlar hangi cihazda çalsın?",
+      "pickBody": "Acil alarmların çaldığı cihazı kaldırdın. Seçtiğin cihazda çalarlar, diğerlerine normal bildirim olarak gelirler.",
+      "newDeviceCard": "Bu cihazda acil alarmlar kapalı. Alarmlar {device} çalıyor.",
+      "newDeviceTurnOn": "Bu cihazda da çal"
+    }
   },
   "shell": {
     "fabNewTask": "Seçeneklerle yeni görev",
@@ -911,6 +959,7 @@
     "privateBody": "Bir hatırlatıcın var",
     "urgentFirst": "Acil hatırlatıcı — onay bekliyor",
     "urgentRepeat": "Hâlâ onay bekliyor ({count}. hatırlatma)",
+    "urgentMany": "{count} acil alarm — onay bekliyor",
     "dueNow": "Görev saati geldi — onay bekliyor",
     "afterSnooze": "Erteleme {count}. tur — hâlâ onay bekliyor",
     "reminder": "Hatırlatıcı",
@@ -932,23 +981,42 @@
     }
   },
   "alarm": {
+    "groupTitle": "{count} acil alarm",
     "ringing": {
       "label": "Acil hatırlatma",
-      "snooze": "Ertele"
+      "snooze": "Ertele",
+      "announce": "{label}: {title}, {time}",
+      "count": "{count} acil hatırlatma",
+      "announceList": "{count} acil hatırlatma, {time}",
+      "late": "{time} · {ago}"
     },
     "banner": {
       "turnOn": "Aç",
       "allow": "İzin ver",
       "finishSetup": "Kurulumu tamamla",
       "showHow": "Nasıl açılır?",
-      "close": "7 gün gizle"
+      "close": "7 gün gizle",
+      "noRingingDevice": "Acil alarm çalan cihaz yok",
+      "pickDevice": "Cihaz seç"
     },
-    "snoozeRingsAt": "{time}’de çalar",
-    "snoozeConfirmed": "{time}’de tekrar çalacak",
+    "snoozeRingsAt": "{time} çalar",
+    "snoozeJoinsGroup": "{time} çalar · başka alarmla birlikte",
+    "snoozeSpoken": {
+      "5_min": "5 dakika ertele",
+      "30_min": "30 dakika ertele",
+      "1_hour": "1 saat ertele",
+      "tomorrow_morning": "Yarın sabaha ertele"
+    },
+    "sharedMinute": "{time} {count} acil alarm birlikte çalacak",
+    "sharedMinuteChange": "Saati değiştir",
+    "snoozeConfirmed": "{time} tekrar çalacak",
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
+    "silenceHint": "Görev açık kalır, alarm çalmaz",
     "startSound": "Sesi başlat",
     "snoozePast": "O saat geçti. Daha ileri bir saat seç.",
+    "actionFailed": "Kaydedilemedi. Ses durdu, tekrar dene.",
+    "retry": "Tekrar dene",
     "problem": {
       "notificationsOff": "Bildirimler kapalı. Hatırlatıcılar sana ulaşamaz.",
       "webPermissionPrompt": "Bu tarayıcıda bildirimlere henüz izin vermedin.",
@@ -956,8 +1024,8 @@
       "webUnsupported": "Bu tarayıcı bildirim gösteremiyor.",
       "webPushOff": "Bu tarayıcıya henüz bildirim gelmiyor.",
       "provisional": "Bildirimler sessiz geliyor, şerit ve ses yok.",
-      "soundOff": "AllisWell'in sesi kapalı. Alarmlar sessiz gelir.",
-      "alertOff": "Bildirim şeritleri kapalı. Alarmlar yalnız Bildirim Merkezi'nde görünür.",
+      "soundOff": "AllisWell’in sesi kapalı. Alarmlar sessiz gelir.",
+      "alertOff": "Bildirim şeritleri kapalı. Alarmlar yalnız Bildirim Merkezi’nde görünür.",
       "exactAlarmsOff": "Alarmlar geç gelebilir. “Alarmlar ve anımsatıcılar” izni kapalı.",
       "timeSensitiveOff": "Zaman Duyarlı kapalı. Odak ve Uyku modları alarmlarını gizleyebilir.",
       "alarmKitOff": "Alarm izni kapalı. Sessiz modda acil alarmlar çalmayabilir.",
@@ -967,17 +1035,17 @@
       "open": "Ayarları aç",
       "allow": "Bildirimlere izin ver",
       "checkAgain": "Tekrar kontrol et",
-      "notificationsOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç ve “Bildirimlere İzin Ver”i aç.",
+      "notificationsOff": "Ayarlar ▸ Bildirimler ▸ AllisWell’i aç ve “Bildirimlere İzin Ver”i aç.",
       "webPermissionPrompt": "Tarayıcın sorduğunda bildirimlere izin ver; böylece bu sekme kapalıyken de hatırlatıcılar sana ulaşır. İstem görünmezse adres çubuğunun solundaki site bilgisi simgesini (kilit) aç ve Bildirimler’i “İzin ver” yap.",
       "webPermissionBlocked": "Bildirimler bir kez engellenince tarayıcın bir daha sormaz. Adres çubuğunun solundaki site bilgisi simgesini (kilit) aç, Bildirimler’i “İzin ver” yap, sonra buraya dönüp “Tekrar kontrol et”i seç.",
-      "webUnsupported": "Bu tarayıcı bir web sitesinden bildirim alamıyor. iPhone ya da iPad'de AllisWell'i Safari'de aç, Paylaş ▸ Ana Ekrana Ekle'yi seç ve oradan kullan; bilgisayarda Chrome, Edge, Firefox ya da Safari'nin güncel bir sürümünü kullan.",
+      "webUnsupported": "Bu tarayıcı bir web sitesinden bildirim alamıyor. iPhone ya da iPad’de AllisWell’i Safari’de aç, Paylaş ▸ Ana Ekrana Ekle’yi seç ve oradan kullan; bilgisayarda Chrome, Edge, Firefox ya da Safari’nin güncel bir sürümünü kullan.",
       "webPushOff": "Bu tarayıcıda bildirimlere izin var, ama bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz; onu sunucunun göndermesi gerekir. Bağlı olduğun sunucuda push’un yapılandırıldığından emin ol, sonra “Tekrar kontrol et”i seç. iPhone’da bu yalnızca Ana Ekran’a eklenmiş AllisWell için çalışır.",
-      "provisional": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç, “Öne Çıkararak Teslim Et”i seç ve Sesler'i aç.",
-      "soundOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç ve “Sesler”i aç. Kapalıyken alarm yine gelir ama ses çıkarmaz.",
-      "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç; “Kilit Ekranı” ve “Banner'lar”ı aç.",
+      "provisional": "Ayarlar ▸ Bildirimler ▸ AllisWell’i aç, “Öne Çıkararak Teslim Et”i seç ve Sesler’i aç.",
+      "soundOff": "Ayarlar ▸ Bildirimler ▸ AllisWell’i aç ve “Sesler”i aç. Kapalıyken alarm yine gelir ama ses çıkarmaz.",
+      "alertOff": "Ayarlar ▸ Bildirimler ▸ AllisWell’i aç; “Kilit Ekranı” ve “Banner’lar”ı aç.",
       "exactAlarmsOff": "“Alarmlar ve anımsatıcılar” iznini ver ki alarm sistemin bir sonraki uyanışında değil, tam dakikasında çalsın.",
-      "timeSensitiveOff": "Ayarlar ▸ Bildirimler ▸ AllisWell'i aç ve “Zaman Duyarlı Bildirimler”i aç. Kapalıyken Uyku dahil her Odak modu alarmlarını gizler.",
-      "alarmKitOff": "Ayarlar ▸ AllisWell'i aç ve Alarmlara izin ver. Acil bir alarmın sessiz modu ve Odak'ı aşarak çalmasını sağlayan izin budur.",
+      "timeSensitiveOff": "Ayarlar ▸ Bildirimler ▸ AllisWell’i aç ve “Zaman Duyarlı Bildirimler”i aç. Kapalıyken Uyku dahil her Odak modu alarmlarını gizler.",
+      "alarmKitOff": "Ayarlar ▸ AllisWell’i aç ve Alarmlara izin ver. Acil bir alarmın sessiz modu ve Odak’ı aşarak çalmasını sağlayan izin budur.",
       "webPushUnconfigured": "Bir tarayıcı hatırlatıcıyı kendi başına zamanlayamaz, onu sunucu gönderir. Bu sunucuda tarayıcı bildirimleri için anahtar (VAPID) tanımlı değil, bu yüzden hiçbir tarayıcıya gönderim yapılamıyor. Sunucuyu yöneten kişi anahtarları eklediğinde hatırlatıcılar bu tarayıcıya da gelir. Telefon ve bilgisayar uygulamaları bundan etkilenmez."
     },
     "missed": {
@@ -987,7 +1055,24 @@
       "cardMore": "+{n} tane daha"
     },
     "silentByChoice": "Bilerek sessiz: bu tarayıcıyı Sessiz olarak ayarladın.",
-    "silentByDefault": "Bu tarayıcıda alarmlar varsayılan olarak sessiz. Sesi Ayarlar'dan açabilirsin."
+    "silentByDefault": "Bu tarayıcıda alarmlar varsayılan olarak sessiz. Sesi Ayarlar’dan açabilirsin.",
+    "ringingOnLockScreen": "Alarm kilit ekranında da çalıyor.",
+    "snoozeAll": "Tümünü ertele",
+    "acknowledgeAll": "Tümünü onayla ({count})",
+    "snoozedAllConfirmed": "{count} alarm {time} tekrar çalacak",
+    "acknowledgedAll": "{count} alarm onaylandı",
+    "acknowledged": "Onaylandı",
+    "completed": "Tamamlandı",
+    "sheet": {
+      "other": "Diğer",
+      "tomorrowAt": "yarın {time}",
+      "joinsGroup": "başka alarmla birlikte"
+    },
+    "row": {
+      "failed": "Kaydedilmedi",
+      "snoozeSpoken": "{title}: Ertele",
+      "acknowledgeSpoken": "{title}: Onayla"
+    }
   },
   "alarmLog": {
     "title": "Alarm günlüğü",
@@ -1108,14 +1193,16 @@
     "allCaughtUp": "Her şey tamam",
     "addTask": "Görev ekle",
     "openToday": "{count} açık",
+    "completeTask": "Tamamla: {title}",
     "upNext": "Sıradaki",
-    "chooseList": "Bu widget'ta göster",
+    "chooseList": "Bu widget’ta göster",
     "list": {
       "all": "Tüm görevler"
     },
     "privateTitle": "Gizli görev",
     "privateEvent": "Gizli etkinlik",
-    "allDay": "Tüm gün"
+    "allDay": "Tüm gün",
+    "stale": "Liste güncel değil · Güncellemek için aç"
   },
   "file": {
     "add": "Dosya ekle",

@@ -10,6 +10,8 @@ import 'package:alliswell/src/features/widgets/widget_grouping.dart';
 import 'package:alliswell/src/features/widgets/widget_snapshot.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
+import 'ios_widget_swift.dart';
+
 /// OPH-336 — a widget can be set to one project, and the lock screen names the
 /// next task. Both decisions live in Dart: the native side only PICKS a list
 /// id out of the snapshot (W9). These pin the Dart half; the Swift and Kotlin
@@ -144,7 +146,7 @@ void main() {
         (withLists['buckets'] as List).expand((b) => b['items'] as List),
         hasLength(tasks.length),
       );
-      expect(withLists['v'], 5);
+      expect(withLists['v'], 6);
     });
 
     test('the picker offers the whole list, then the live projects', () {
@@ -207,6 +209,29 @@ void main() {
       expect(json['next']['id'], 'work-late');
     });
 
+    // v6 (#50): a widget set to a project keeps drawing that project after
+    // midnight, so every day view carries every project view.
+    test('project views exist in every day view', () {
+      final json = jsonOf(
+        buildWidgetSnapshot(tasks, now: now, projects: projects),
+      );
+      final days = (json['days'] as List).cast<Map<String, dynamic>>();
+      expect(days, hasLength(3));
+      for (final day in days) {
+        expect((day['views'] as Map).keys, ['work', 'home', 'quiet']);
+        expect(day['views']['quiet'], {'buckets': <Object>[]});
+      }
+      // Tomorrow, the work project's Today task is late with the other one.
+      final work = days[1]['views']['work'] as Map<String, dynamic>;
+      expect((work['buckets'] as List).single['key'], 'overdue');
+      expect(work['openToday'], 2);
+      expect(work['next']['id'], 'work-late');
+      // Day 3 is Sunday: 'loose' (Monday) is still this week, in no project.
+      final home = days[2]['views']['home'] as Map<String, dynamic>;
+      expect((home['buckets'] as List).single['key'], 'overdue');
+      expect(jsonEncode(days[2]['views']), isNot(contains('loose')));
+    });
+
     test('the words are the app’s, in the app’s language', () {
       AwI18n.instance.setActiveCached(const Locale('tr'));
       final json = jsonOf(
@@ -214,7 +239,7 @@ void main() {
       );
       expect(json['lists'][0]['name'], 'Tüm görevler');
       expect(json['strings']['upNext'], 'Sıradaki');
-      expect(json['strings']['chooseList'], 'Bu widget\'ta göster');
+      expect(json['strings']['chooseList'], 'Bu widget’ta göster');
       expect(json['next']['label'], 'Gecikmiş');
     });
   });
@@ -223,9 +248,7 @@ void main() {
   // keep saying (the widget_clock_native_test pattern — structure, not
   // formatting).
   group('the native readers pick a list, they never filter one', () {
-    final swift = File(
-      'ios/AllisWellWidget/AllisWellWidget.swift',
-    ).readAsStringSync();
+    final swift = readIosWidgetSwift();
     final bundle = File(
       'ios/AllisWellWidget/AllisWellWidgetBundle.swift',
     ).readAsStringSync();

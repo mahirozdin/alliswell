@@ -3,6 +3,8 @@
 /// swap in a fake gateway; no platform channels leak into the logic layer.
 library;
 
+import 'dart:convert';
+
 /// One OS notification we want to exist. The [id] is a content hash — any
 /// change to when/what produces a different id, so diffing desired-vs-pending
 /// reduces to set arithmetic on ids (cancel the extras, schedule the missing).
@@ -48,13 +50,113 @@ class PlannedNotification {
   final String? soundName;
 }
 
-/// A user interaction with a delivered notification (tap or action button).
-class NotificationEvent {
-  const NotificationEvent({this.actionId, this.payload});
+/// A notification the OS is showing right now (OPH-445, #48 gap A).
+///
+/// An urgent one on Android loops its sound (FLAG_INSISTENT) until it is
+/// cancelled, so an alarm handled on another device has to be taken off the
+/// screen, not only out of the pending queue. [reminderIds] says which
+/// reminders it rings for; empty when the gateway could not tell, and such a
+/// notification is never touched.
+class ActiveAlarmNotification {
+  const ActiveAlarmNotification({
+    required this.id,
+    required this.urgent,
+    this.reminderIds = const [],
+    this.taskIds = const [],
+  });
 
-  /// Null/empty = plain tap on the notification body.
+  /// From a planned payload (`planner.dart`): `{taskId, reminderId}` for one
+  /// task, `{taskIds, reminderIds}` for a grouped minute. Anything else maps to
+  /// no reminder.
+  factory ActiveAlarmNotification.fromPayload({
+    required int id,
+    required bool urgent,
+    String? payload,
+  }) {
+    Object? decoded;
+    try {
+      decoded = payload == null || payload.isEmpty ? null : jsonDecode(payload);
+    } on FormatException {
+      decoded = null;
+    }
+    List<String> ids(String one, String many) {
+      if (decoded is! Map) return const [];
+      final list = decoded[many];
+      if (list is List) {
+        return [
+          for (final v in list)
+            if (v is String) v,
+        ];
+      }
+      final single = decoded[one];
+      return single is String ? [single] : const [];
+    }
+
+    return ActiveAlarmNotification(
+      id: id,
+      urgent: urgent,
+      reminderIds: ids('reminderId', 'reminderIds'),
+      taskIds: ids('taskId', 'taskIds'),
+    );
+  }
+
+  final int id;
+
+  /// Posted on the urgent (alarm) channel.
+  final bool urgent;
+  final List<String> reminderIds;
+  final List<String> taskIds;
+}
+
+/// A user interaction with a delivered notification (tap or action button),
+/// or an action pulled from the AlarmKit queue (NOTIFICATIONS §2b.3 "Action
+/// event").
+///
+/// An event with an [eventId] is applied exactly once: its `action_receipts`
+/// row commits in the same transaction as the write. Without one (a plain
+/// notification tap) it is handled the way it always was.
+class NotificationEvent {
+  const NotificationEvent({
+    this.actionId,
+    this.payload,
+    this.eventId,
+    this.taskIds = const [],
+    this.untilMs,
+    this.occurrenceFireAtMs,
+    this.pressedAtMs,
+    this.preset,
+    this.origin = 'notification',
+    this.lane = 'notification',
+  });
+
+  /// Null/empty = plain tap on the notification body. An AlarmKit event uses
+  /// its v2 action: `snooze`, `acknowledge` or `complete`.
   final String? actionId;
   final String? payload;
+
+  /// The `action_receipts` key; null for a receipt-less tap.
+  final String? eventId;
+
+  /// The members the action applies to (a grouped alarm has several).
+  final List<String> taskIds;
+
+  /// A snooze target fixed at press time, floored to the second — written
+  /// unchanged, never recomputed from the time the app read it.
+  final int? untilMs;
+
+  /// The instant of the occurrence that rang: what `acknowledge` acknowledges.
+  final int? occurrenceFireAtMs;
+  final int? pressedAtMs;
+
+  /// Only on an entry converted from v1 (no [untilMs]): the target is
+  /// computed from [pressedAtMs].
+  final String? preset;
+
+  /// `alarmkit` · `widget` · `inapp` · `notification`.
+  final String origin;
+
+  /// The alarm-log lane the action is recorded under ([AlarmLogLane]).
+  final String lane;
 }
 
 /// What the OS currently lets us do — feeds the honest status row in
@@ -341,6 +443,17 @@ abstract class NotificationsGateway {
   Future<ScheduledDelivery> schedule(PlannedNotification notification);
 
   Future<void> cancel(int id);
+
+  /// Every notification of this app, scheduled AND already shown, gone at
+  /// once — what a revoked session leaves (revocation-leaves-delivered-alarm):
+  /// a presented alarm, an Android one still looping its sound, has no
+  /// pending id and nobody signed in to answer it.
+  Future<void> cancelAll();
+
+  /// The notifications the OS is showing right now (OPH-445). Android only:
+  /// every other platform returns an empty list, so its behaviour is
+  /// unchanged.
+  Future<List<ActiveAlarmNotification>> activeNotifications();
 
   /// Taps and action-button presses, foreground-routed.
   Stream<NotificationEvent> get events;

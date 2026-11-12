@@ -62,7 +62,7 @@ class MissedAlarmCard extends ConsumerWidget {
                 onHandled: (_) {
                   ref
                       .read(alarmOverlayControllerProvider.notifier)
-                      .handled(first.reminderId);
+                      .handled(first);
                   Navigator.of(context, rootNavigator: true).maybePop();
                 },
               ),

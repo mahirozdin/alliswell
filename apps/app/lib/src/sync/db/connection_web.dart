@@ -16,15 +16,16 @@ DatabaseConnection openAwConnection() {
         sqlite3Uri: Uri.parse('sqlite3.wasm'),
         driftWorkerUri: Uri.parse('drift_worker.js'),
       );
-      final executor = result.resolvedExecutor;
+      final connection = result.resolvedExecutor;
       // N2: an IndexedDB-backed replica persists a transaction only when a
-      // statement runs after it — see [FlushAfterCommit].
+      // statement runs after it — see [FlushAfterCommit] and
+      // [flushAfterEveryCommit] (OPH-480: rooted at the inner executor).
       return switch (result.chosenImplementation) {
         WasmStorageImplementation.sharedIndexedDb ||
-        WasmStorageImplementation.unsafeIndexedDb => executor.interceptWith(
-          FlushAfterCommit(executor),
+        WasmStorageImplementation.unsafeIndexedDb => flushAfterEveryCommit(
+          connection,
         ),
-        _ => executor,
+        _ => connection,
       };
     }),
   );

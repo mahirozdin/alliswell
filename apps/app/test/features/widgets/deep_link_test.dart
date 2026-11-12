@@ -284,7 +284,7 @@ void main() {
       expect(snapshot.toJson().containsKey('openToday'), isFalse);
     });
 
-    test('the snapshot declares v5 and carries the localized phrase', () {
+    test('the snapshot declares v6 and carries the localized phrase', () {
       final snapshot = buildWidgetSnapshot([
         _task(title: 'Bugun', due: DateTime(2026, 7, 29, 17)),
       ], now: now);
@@ -293,8 +293,9 @@ void main() {
       // it does not fully understand (v3 = OPH-253's `clockFormat`; v4 =
       // OPH-336's `next`, `lists` and `views` — added BESIDE the v3 fields,
       // which stay where they were, so a v3 widget still draws the whole list;
-      // v5 = calendar event rows, `kind` and `day` on an item, both optional).
-      expect(snapshot.toJson()['v'], 5);
+      // v5 = calendar event rows, `kind` and `day` on an item, both optional;
+      // v6 = `days`, per-day views beside a top level that equals day 0).
+      expect(snapshot.toJson()['v'], 6);
       // Native code carries no translations (W-rule) — the wording ships here.
       expect(snapshot.strings['openToday'], contains('1'));
     });

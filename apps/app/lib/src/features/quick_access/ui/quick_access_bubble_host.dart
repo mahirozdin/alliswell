@@ -48,7 +48,11 @@ class QuickAccessBubbleHost extends ConsumerWidget {
     // The tour and the alarm ring screen paint INSIDE the shell, i.e. below
     // this layer — without these gates the bubble would float over both.
     if (ref.watch(tourControllerProvider).running) return child;
-    if (ref.watch(alarmOverlayControllerProvider).ringing != null) return child;
+    if (ref.watch(
+      alarmOverlayControllerProvider.select((s) => s.ringing.isNotEmpty),
+    )) {
+      return child;
+    }
 
     // OPH-271: and it does not float over a note being read or written. This
     // layer sits above the Router, so it follows navigation through the

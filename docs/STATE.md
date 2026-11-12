@@ -9,16 +9,16 @@
 > [CHANGELOG](../CHANGELOG.md). The full text as it stood before the 2026-09-26 cleanup:
 > `git show 85b6c1b:docs/STATE.md`.
 
-**Last updated:** 2026-11-08 — Epic 35 cila turu 4 (`.ceo/polish-4.md`) T-G1 kapandı: T-01…T-08; Epic 35 işleri bitti (OPH-390…OPH-415), ADR-0062/0063, araştırma `docs/research/2026-11-design-ux/`.
+**Last updated:** 2026-11-12 — Epic 36 (PR-1) + üç cila turu kapandı; OPH-468, 470, sonra Epic 37.
 
 ## Snapshot
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 35 açıldı (2026-11-07, sahip isteği: tasarım + UX turu; persona + Mobbin incelemesi, onaylı plan). Kapsam: kırıklar → kabuk (B+) → tipografi/satır/Ana Sayfa → akışlar → metin/biçim → uzantı ekranları (ikiz) → README/landing → demo tohumu. Araştırma: [research/2026-11-design-ux](research/2026-11-design-ux/README.md). |
-| Current epic             | **Epic 35 — Design and UX round** (`/faz E35`; ADR-0062, ADR-0063) |
-| ➡️ **Next task**         | **BACKLOG BOŞ** — Epic 35 işleri bitti; sırada faz sonu (K2 `verify:batch` + `verify:smoke`, review) |
-| Last completed           | Cila 4 T-G1 (OPH-392, 397, 400, 402, 404, 405, 407, 409) — mikrofon ve "+" aşağı kaydırmada ve klavye açıkken çekiliyor, silinmiş not "Not bulunamadı" ve açıkken silinince salt okunur, tur alarm adımı çalacak göreve, arama adımı telefonda düğmeye işaret ediyor, AI sayfası boşken rehber + üç çip ve gerçek Kapat, büyük metinde tarih/e-posta/birim adı/konu kesilmiyor ve Öncelik Durum'la aynı boyda, ekran okuyucu satırları ekranda yazdığı gibi okuyor, masaüstü Hızlı Erişim adları tam, "Tüm birimler" satırlarında açan ve alan. |
+| Current phase            | **v1.19.2 son sürüm (2026-11-09).** Epic 36 (PR-1) tamam; OPH-468, 470, sonra Epic 37 (PR-2). |
+| Current epic             | **Epic 36 follow-up** (OPH-468, 470), sonra **Epic 37** (#50, PR-2; `/faz E37`) |
+| ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
+| Last completed           | Epic 36 (OPH-421…456, 466, 467) + üç cila turu (OPH-469, 471, 472, 480); ayrıntı CHANGELOG'da. |
 
 ## Kullanıcıdan bekleyen (sahibin adımları)
 
@@ -94,12 +94,23 @@
     LICENSE, PRIVACY, mağaza satıcı adı); farklıysa hepsi birlikte değişir. PRIVACY.md "Self-hosting"
     bölümü işletmeciyi "APILLON BİLGİ TEKNOLOJİLERİ" diye anıyor; hangisi doğru?
 
+21. **#48 backfill** — "ilk eklenen cihaz" son 14 günde görülenlerden seçiliyor (önce web dışı) ki
+    eski kurulum alarmı yutmasın: varsayım (ADR-0069 #4), teyit et; değişecekse yayından önce.
+
 Cihazda bakılacaklar (isteğe bağlı gözlem): [DEVICE-CHECKS.md](DEVICE-CHECKS.md).
 
 ## Sahip kararları (bağlayıcı — yeniden tartışılmaz)
 
 Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. Burada her işi bağlayanlar:
 
+- **Alarm ve widget turu (2026-11-12, Epic 36–37, #46–#50):** zil ekranı **yön A** (eşit 2 sütun
+  ızgara, altta tam genişlik Onayla; çoklu alarmda liste + Tümünü ertele/onayla); aynı dakikadaki acil
+  alarmlar **gruplanır, engellenmez** — tek alarm olarak çalar, form yalnız bilgi satırı gösterir,
+  sunucu/REST/MCP reddetmez ve kaydırmaz (ADR-0068); güncellemeden sonra hesabın **ilk eklenen cihazı**
+  acil çalar, diğerleri kapalı ve Ayarlar ▸ Cihazlar'dan açılır (ADR-0069; 14 gün koruması bekleyen
+  21'de); **web sekmesi** alarm cihazı olabilir, çalan başka cihaz varken kapalı başlar; widget **kendi verisini çeker**, WidgetKit push ve iOS arka plan senkronu ertelendi;
+  **S-49:** iPhone'da native erteleme anında susar; görev ve diğer cihazlar onu uygulama o iPhone'da
+  açılınca öğrenir — kabul edilen sınır (ADR-0015 rev. 7).
 - **Tasarım ve UX turu (2026-11-07, Epic 35):** telefon alt barı **B+** (eşit 5 yuva, hepsi etiketli,
   sağda mikrofon + "+"; Hızlı Erişim balonu telefonda varsayılan kapalı — ADR-0062); **acil alarm
   varsayılanı açık kalır** (DESIGN §26 C1 teyit); landing H1 **alarm**, alt başlık self-host +
@@ -182,7 +193,7 @@ Alana özgü kararlar [LESSONS.md](LESSONS.md)'de, alan başlıkları altında. 
 
 ## How to continue (for agents)
 
-1. Oturum başı `/isler` (`npm run next -- --list`), fazlar `/faz E35 …`
+1. Oturum başı `/isler` (`npm run next -- --list`), fazlar `/faz E36 …`
    ([development/workflow.md](development/workflow.md)); TASKS'ı bütün okuma.
 2. Dokunacağın alanı [LESSONS.md](LESSONS.md)'de grep'le; kritik yolsa `.claude/rules/<alan>.md`;
    bağlayıcı metin ilgili ADR'lerde.

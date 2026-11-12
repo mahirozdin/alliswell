@@ -33,6 +33,7 @@
 | Density, private widget | ✅ **built (OPH-337):** Settings › General › Widget. **Compact** tightens the gaps and the type (iOS: 4 → 1 pt between rows, `.footnote` → `.caption`, one more row on large/extraLarge; Android: row padding 2 → 0 dp, 14 → 13 sp) — the circle you tap keeps its size (DESIGN §8 W4). **Private widget** is applied in the snapshot, not in native code: no task title is written to the App Group / SharedPreferences at all — rows, the lock screen's `next` and every project view carry "Private task" instead (§9) |
 | Calendar events (snapshot v5) | ✅ **built, both platforms (+ macOS by the shared Swift):** the whole list carries the user's own calendar events beside the tasks, under Home's rules (§3.1 v5). An event row has no circle — a calendar glyph instead — and its tap opens Home with the event's day selected (`alliswell://day/<yyyy-MM-dd>`). Android: `ACTION_ROW` → `openDay`, never `complete`; iOS: `AWEventRowView`, a `Link`, no `AWWidgetCompleteIntent`. Device pass on the owner's list (DEVICE-CHECKS) |
 | Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design. Like every Android background turn it is a broadcast to `home_widget`'s receiver, which only exists since OPH-341 |
+| Day views (snapshot v6) | ✅ **built (OPH-437, OPH-438, OPH-451; ADR-0010 revision 2026-11-12):** the snapshot carries today and the next two days as full views, and each iOS timeline entry draws its own day — after midnight the list, the counter and the lock screen's `next` are the new day's without the app running. Past the last day the widget shows a stale line instead of an old list (§3.1 v6). The app also writes the snapshot on its way to the background. With the app swiped away the data still ages after three days; the widget's own fetch is Epic 37 |
 | Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android, the other families, and every Epic 32 surface are on the owner's device list (STATE, "Kullanıcıdan bekleyen") |
 
 The Dart core is the single source of truth both native widgets render; it's the
@@ -135,13 +136,13 @@ Keep it **small** (single-digit KB — App-Group `UserDefaults` is memory-mapped
 the widget extension has a ~30 MB budget). Serialize only what renders, with
 **already-localized** strings (Epic 11):
 
-The shape as built (`v: 5`, `WidgetSnapshot.toJson()` in `widget_snapshot.dart`;
+The shape as built (`v: 6`, `WidgetSnapshot.toJson()` in `widget_snapshot.dart`;
 the Swift `AWSnapshot` and the Kotlin readers mirror it). The revisions below say
 when each field arrived and why:
 
 ```jsonc
 {
-  "v": 5,                                   // schema version
+  "v": 6,                                   // schema version
   "generatedAt": "2026-07-17T09:00:00Z",
   "locale": "tr",
   "date": { "weekday": "Cuma", "day": "17", "month": "Temmuz" },
@@ -157,11 +158,12 @@ when each field arrived and why:
                    "priority": "high", "time": "11:30", "projectColor": "#2563EB" },
                  { "id": "evt…", "title": "Standup", "done": false, "priority": "none",
                    "time": "09:00–09:15", "kind": "event", "day": "2026-07-17" } ], // v5
-      "more": 2 }                           // "+N" — count minus the rows carried (12 max)
+      "more": 2 }                           // "+N" — entries past the rows carried (12 max)
     // … noDate, today, thisWeek, thisMonth; empty buckets are omitted …
   ],
   "lists": [ … ],                           // v4 — what a widget can be set to
-  "views": { … }                            // v4 — one per project in `lists`
+  "views": { … },                           // v4 — one per project in `lists`
+  "days": [ … ]                             // v6 — today + 2 days, each a full view
 }
 ```
 
@@ -252,6 +254,39 @@ the link is kept and re-pushed in `onFlutterUiDisplayed` (task and day links ali
   one-workspace personal scope, never for a `mine` (organisation) scope.
 - **Old readers:** a v4 widget ignores `kind` and draws the event as a task row; its
   circle would queue a completion for an id no task has, which completes nothing.
+
+**Rev. 2026-11-12 (#50, OPH-437/451): schema `v: 6` — per-day views.** Before v6 every iOS
+timeline entry drew the one snapshot, bucketed for the day it was written, so after midnight the
+widget showed yesterday's Today under today's date until the app ran.
+
+```jsonc
+  "strings": { …, "stale": "Liste güncel değil · Güncellemek için aç" },
+  "days": [ { "date": "2026-11-12", "header": { … }, "openToday": 3, "openTodayLabel": "3 açık",
+              "next": { … }, "buckets": [ … ], "views": { … } },   // day 0 = the top level
+            { "date": "2026-11-13", … }, { "date": "2026-11-14", … } ]
+```
+
+- **Each day is built by the same Dart code** (`_listData` and the project loop) as the top level,
+  with that day's calendar rows. A later day keeps a finished task only if it was completed on or
+  after that day's start, so a task done today is not a dimmed row tomorrow.
+- **The top-level fields are day 0**, so a v5 extension keeps rendering unchanged.
+- **Native code picks a day, never builds one.** `awDayView(for:in:calendar:)`
+  (`ios/Shared/AWWidgetDayPick.swift`) returns the entry's local day, `.stale` for a day the
+  snapshot does not hold, or `.topLevel` for a v5 snapshot. Stale: the header keeps the entry's
+  date, the list becomes `strings.stale`, the counter and `next` are hidden (the circular
+  lock-screen widget shows a refresh glyph).
+- **A completion from the circle (OPH-451)** is written into the stored snapshot by
+  `awMarkSnapshotDone` (`ios/Shared/AWSnapshotModel.swift`), everywhere the task is drawn and by
+  the rules Dart wrote it with: a done row in today's views, gone from a later day's, one fewer
+  in its bucket's `count` and (overdue/today) in `openToday`, whose words are re-spelled from
+  `strings.openTodayPattern` ("{count} açık"); a `next` naming the task moves to the next open
+  row in Dart's order. The timeline also reads through the completions still queued for the app,
+  so a Dart rewrite before the app pulls the queue cannot put the row back. The circle's spoken
+  label is `strings.completeTask` ("Tamamla: {title}").
+- **A bucket's `count` is its open rows (OPH-451)** — Home's header rule (OPH-394): today's
+  finished row is drawn at the bottom but not counted. `more` still counts every trimmed entry.
+- **Size:** `kWidgetSnapshotMaxBytes` = 384 KiB, from a measured 282 425 bytes (300 tasks, 20
+  projects, long Turkish titles), locked by a test. The iOS archive budget counts one day's rows.
 
 - **N per bucket is per-size** (§5): medium shows few, large ~8–10, extraLarge
   more. Truncation is honest — show a "+N more" affordance, never silently drop
@@ -364,7 +399,7 @@ As built (`awRowBudget` in Swift; Android's list scrolls at every size):
 
 | Size | Date header | List | Actions |
 | --- | --- | --- | --- |
-| **4×2 medium** | none — the rows need the height | 4 rows with bucket labels + counts (3 when the widget is set to a project: its name takes a line) | "+" in a narrow trailing column; per-row complete |
+| **4×2 medium** | none — the rows need the height | up to 4 rows with bucket labels + counts (3 when the widget is set to a project: its name takes a line), only as many as fit whole in the card's height (`awFitBuckets`, OPH-451; about 3 on a 6.3" iPhone); the rest go to "+N" | "+" in a narrow trailing column; per-row complete |
 | **4×4 large** | full: day number · weekday · month, the clock, today's open count, "+" | ~10 rows (11 compact) with labels + counts + "+N" | "+" closes the header; per-row complete |
 | **extraLarge (iPad/Mac) · tall Android** | full | ~18 rows (19 compact); Android scrolls | same |
 | **Lock screen (iOS)** | — | rectangle: the next task · circle: today's open count | tap opens the task / the app |
@@ -403,6 +438,11 @@ budget but `updatePeriodMillis` has a **30-minute floor** and wakes the device.
    locale, not product strings, so W9 holds). Buckets stay the app's honest
    snapshot: an aging list under a correct date, never a native guess (W1).
    The Android midnight job, once the open half of this item, is OPH-334.
+   **Rev. 2026-11-12 (OPH-437/438/451):** each entry now draws its own day from the v6 `days`
+   (§3.1), so the midnight entries show the new day's list, not only its date; the lock-screen
+   timeline carries the next midnights too. When the app goes hidden or paused,
+   `widgetSyncProvider` writes the last snapshot once more and reloads the timelines — the last
+   budget-free write. `home_widget`'s interactivity callback is registered on Android only.
 3. Prefer `WidgetCenter.shared.reloadTimelines(ofKind:)` over `reloadAllTimelines()` —
    iOS does (`home_widget`'s `updateWidget(iOSName:)`, the complete intent). The Mac
    bridge reloads all: its extension has one kind.

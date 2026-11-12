@@ -1,14 +1,18 @@
 import 'dart:async';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/api_exception.dart';
 import '../../core/app_version.dart';
 import '../../core/firebase/push_messaging.dart';
 import '../../i18n/i18n.dart';
+import '../../notifications/device_gate.dart';
 import '../../sync/providers.dart';
 import '../auth/providers.dart';
+import '../workspaces/workspaces.dart' show currentUserIdProvider;
 import 'data/device_api.dart';
 import 'device_registry.dart';
 
@@ -103,6 +107,23 @@ final deviceDescriptorProvider = Provider<DeviceDescriptor?>((ref) {
   );
 });
 
+/// This device's cached ringsUrgent (OPH-446) — LocalKv-backed, so a test
+/// can hand it its own store.
+final ringsUrgentStoreProvider = Provider<RingsUrgentStore>(
+  (_) => RingsUrgentStore(),
+);
+
+/// Whether urgent alarms ring on this device (#48). Re-read whenever the
+/// session hook or a register response changes the stored answer; the alarm
+/// paths apply it through `forThisDevice`.
+///
+/// autoDispose (OPH-452): it lives only while an alarm path or a screen
+/// listens, so a signed-out app holds no stale answer and the next session
+/// starts from what the store says.
+final ringsUrgentHereProvider = FutureProvider.autoDispose<RingsUrgentHere>(
+  (ref) => ref.watch(ringsUrgentStoreProvider).read(),
+);
+
 /// Deliberately NOT rebuilt by the session: it remembers which id it registered
 /// so sign-out can delete that row, and a rebuild between the two would leave
 /// the row behind.
@@ -111,6 +132,16 @@ final deviceRegistryProvider = Provider<DeviceRegistry>(
     api: ref.watch(deviceApiProvider),
     readClientId: () => ref.read(syncClientIdProvider.future),
     describe: () => ref.read(deviceDescriptorProvider),
+    ringsUrgent: ref.watch(ringsUrgentStoreProvider),
+    onRingsUrgentChanged: () {
+      ref.invalidate(ringsUrgentHereProvider);
+      // The list Home's card and band read says the same thing now (X-02):
+      // a hand-over learned by a heartbeat or the minute refresh brings the
+      // card up without opening Settings.
+      if (ref.exists(devicesProvider)) {
+        ref.read(devicesProvider.notifier).refresh();
+      }
+    },
   ),
 );
 
@@ -135,8 +166,403 @@ final deviceRegistrationProvider = Provider<void>((ref) {
   final registry = ref.watch(deviceRegistryProvider);
   unawaited(registry.sync(signedIn: true));
 
+  // X-02 (OPH-446): while the app is in front, this device's ring answer is
+  // re-read every minute, so a hand-over done elsewhere stops the alarms here
+  // without a resume. A hidden tab or a paused app asks nothing; a signed-out
+  // one has no provider and no timer.
+  final foreground = switch (WidgetsBinding.instance.lifecycleState) {
+    null || AppLifecycleState.resumed || AppLifecycleState.inactive => true,
+    _ => false,
+  };
+  if (foreground) registry.startForegroundRefresh();
   final lifecycle = AppLifecycleListener(
-    onResume: () => unawaited(registry.sync(signedIn: true)),
+    onResume: () {
+      unawaited(registry.sync(signedIn: true));
+      registry.startForegroundRefresh();
+    },
+    onShow: registry.startForegroundRefresh,
+    onHide: registry.stopForegroundRefresh,
+    onPause: registry.stopForegroundRefresh,
   );
-  ref.onDispose(lifecycle.dispose);
+  ref.onDispose(() {
+    lifecycle.dispose();
+    registry.stopForegroundRefresh();
+  });
 });
+
+/// What Settings ▸ Devices shows (#48, OPH-448): the person's devices as the
+/// server listed them, whether that list is the last one seen rather than a
+/// fresh one ([offline]), and which rows have a switch change in flight.
+@immutable
+class DevicesView {
+  const DevicesView({
+    required this.devices,
+    this.offline = false,
+    this.saving = const {},
+  });
+
+  final List<DeviceInfo> devices;
+
+  /// The server could not be reached; [devices] is the last list this session
+  /// saw. Ring switches are a server setting and are not queued, so they are
+  /// inactive until it answers again.
+  final bool offline;
+
+  /// Device ids whose ring switch is waiting for the server.
+  final Set<String> saving;
+
+  /// Whether the server knows `ringsUrgent` at all — an older one sends no
+  /// such field, and then every device rings as before #48.
+  bool get supportsRingsUrgent =>
+      devices.isNotEmpty && devices.every((d) => d.ringsUrgent != null);
+
+  List<DeviceInfo> get ringing => [
+    for (final device in devices)
+      if (device.ringsUrgent == true) device,
+  ];
+
+  DeviceInfo? byId(String id) {
+    for (final device in devices) {
+      if (device.id == id) return device;
+    }
+    return null;
+  }
+
+  DevicesView _with(DeviceInfo device, {required bool saving}) => DevicesView(
+    devices: [for (final d in devices) d.id == device.id ? device : d],
+    offline: offline,
+    saving: {
+      for (final id in this.saving)
+        if (id != device.id) id,
+      if (saving) device.id,
+    },
+  );
+}
+
+/// The account has devices, the server knows the flag, and none of them
+/// rings urgent alarms (#48, OPH-453): Home's alarm band says so. Read from
+/// the list Settings ▸ Devices shares, so a switch turned on there clears it
+/// at once. An offline list says nothing new — it cannot know what changed.
+final noRingingDeviceProvider = Provider.autoDispose<bool>((ref) {
+  final view = ref.watch(devicesProvider).value;
+  if (view == null || view.offline || !view.supportsRingsUrgent) return false;
+  return view.ringing.isEmpty;
+});
+
+/// What removing a device left behind (OPH-449).
+@immutable
+class DeviceRemoval {
+  const DeviceRemoval({
+    required this.removed,
+    required this.devices,
+    required this.needsPick,
+  });
+
+  final DeviceInfo removed;
+
+  /// The list as the server holds it after the removal (its promotion
+  /// included).
+  final List<DeviceInfo> devices;
+
+  /// The removed device was the only one ringing: the person is asked where
+  /// urgent alarms ring now, so they never go quiet unnoticed.
+  final bool needsPick;
+}
+
+/// The last list this session saw, per person, for [DevicesView.offline].
+/// Memory only: device names are not worth a copy on disk that sign-out would
+/// then have to remember to remove.
+class _DevicesCache {
+  String? userId;
+  List<DeviceInfo>? devices;
+}
+
+final _devicesCacheProvider = Provider<_DevicesCache>((_) => _DevicesCache());
+
+/// Re-reads [ringsUrgentHereProvider]; kept alive so a save that lands after
+/// the Devices screen closed still reaches the alarm gate.
+final _ringsUrgentChangedProvider = Provider<void Function()>(
+  (ref) =>
+      () => ref.invalidate(ringsUrgentHereProvider),
+);
+
+/// The person's devices (`GET /api/v1/notification-devices`), loaded each
+/// time a screen that shows them opens, and again on every return to the
+/// foreground while one is open — Home's card and band (OPH-453) stay up for
+/// a whole session, and a device switched on elsewhere must reach them.
+///
+/// No automatic retry: the screen offers its own, and an offline answer comes
+/// back at once from the last list instead of after a backoff.
+final devicesProvider =
+    AsyncNotifierProvider.autoDispose<DevicesController, DevicesView>(
+      DevicesController.new,
+      retry: (_, _) => null,
+    );
+
+class DevicesController extends AsyncNotifier<DevicesView> {
+  @override
+  Future<DevicesView> build() async {
+    final userId = ref.watch(currentUserIdProvider);
+    if (userId == null) return const DevicesView(devices: []);
+    final lifecycle = AppLifecycleListener(onResume: refresh);
+    ref.onDispose(lifecycle.dispose);
+    final cache = ref.read(_devicesCacheProvider);
+    final store = ref.read(ringsUrgentStoreProvider);
+    final askedAt = store.generation;
+    try {
+      final devices = await ref.read(deviceApiProvider).list();
+      cache
+        ..userId = userId
+        ..devices = devices;
+      await _cacheThisDevice(devices, store, askedAt);
+      return DevicesView(devices: devices);
+    } on Object catch (error) {
+      final cached = cache.userId == userId ? cache.devices : null;
+      if (cached != null && _unreachable(error)) {
+        return DevicesView(devices: cached, offline: true);
+      }
+      if (error is DioException) throw asApiException(error);
+      rethrow;
+    }
+  }
+
+  /// The list is the server's answer for THIS device too: a switch turned on
+  /// another device since the last heartbeat reaches the alarm gate here as
+  /// soon as the list shows it (listed-flag-does-not-update-gate), so the
+  /// switch on screen and the flag that decides whether alarms ring here never
+  /// disagree. Written like a heartbeat answer: dropped when a change made here
+  /// came after the list was asked for.
+  Future<void> _cacheThisDevice(
+    List<DeviceInfo> devices,
+    RingsUrgentStore store,
+    int askedAt,
+  ) async {
+    if (!ref.mounted) return;
+    // Listened, not read: the list can be built before anything else asked
+    // for the client id, and an unlistened stream provider is paused.
+    final clientId = ref.listen(syncClientIdProvider.future, (_, _) {});
+    final String? thisId;
+    try {
+      thisId = await clientId.read().timeout(const Duration(seconds: 2));
+    } on Object {
+      return;
+    } finally {
+      clientId.close();
+    }
+    if (thisId == null || !ref.mounted) return;
+    final self = devices.where((d) => d.id == thisId).firstOrNull;
+    if (self == null) return;
+    final gateChanged = ref.read(_ringsUrgentChangedProvider);
+    final here = ringsUrgentHereFromServer(self.ringsUrgent);
+    if (await store.writeObserved(here, askedAt: askedAt)) gateChanged();
+  }
+
+  /// Asks the server again, keeping the list on screen meanwhile: on every
+  /// return to the foreground, and when the Devices screen opens while Home
+  /// already holds the list (W-10). A switch on its way to the server keeps
+  /// its row as it is, so nothing is asked then.
+  void refresh() {
+    if (state.value?.saving.isEmpty ?? true) ref.invalidateSelf();
+  }
+
+  /// Turns urgent ringing on or off for one device.
+  ///
+  /// Optimistic: the row shows [ringsUrgent] at once and is marked saving. On
+  /// a failure it goes back to what it was and this returns null, so the
+  /// screen can say so. When the row is THIS device, the server's answer is
+  /// also cached for the alarm gate (OPH-446) — only the answer, never the
+  /// optimistic guess.
+  Future<DevicePatchResult?> setRingsUrgent(
+    String deviceId,
+    bool ringsUrgent,
+  ) async {
+    final current = state.value;
+    if (current == null || current.offline) return null;
+    if (current.saving.contains(deviceId)) return null;
+    final before = current.byId(deviceId);
+    if (before == null) return null;
+
+    final api = ref.read(deviceApiProvider);
+    final store = ref.read(ringsUrgentStoreProvider);
+    final thisId = ref.read(syncClientIdProvider).value;
+    final cache = ref.read(_devicesCacheProvider);
+    final gateChanged = ref.read(_ringsUrgentChangedProvider);
+    state = AsyncData(
+      current._with(_withRings(before, ringsUrgent), saving: true),
+    );
+    // A heartbeat or list already on the wire answers with the old value.
+    if (deviceId == thisId) store.changeStarted();
+
+    final DevicePatchResult result;
+    try {
+      result = await api.patch(deviceId, ringsUrgent: ringsUrgent);
+    } on Object {
+      if (ref.mounted) _settle(before);
+      return null;
+    }
+    final after = _merged(before, result.device, ringsUrgent);
+    if (deviceId == thisId) {
+      await store.write(ringsUrgentHereFromServer(after.ringsUrgent));
+      // Through a provider that outlives this screen: the gate must hear
+      // about it even when the person has already left.
+      gateChanged();
+    }
+    final cached = cache.devices;
+    if (cached != null) {
+      cache.devices = [for (final d in cached) d.id == deviceId ? after : d];
+    }
+    if (ref.mounted) _settle(after);
+    return result;
+  }
+
+  /// Renames one device (`PATCH … {deviceName}`). Returns whether the server
+  /// took it; the row shows the new name only once it did.
+  Future<bool> rename(String deviceId, String name) async {
+    final current = state.value;
+    if (current == null || current.offline) return false;
+    final before = current.byId(deviceId);
+    if (before == null) return false;
+    final api = ref.read(deviceApiProvider);
+    final cache = ref.read(_devicesCacheProvider);
+    final DevicePatchResult result;
+    try {
+      result = await api.patch(deviceId, deviceName: name);
+    } on Object {
+      return false;
+    }
+    final fresh = result.device;
+    final after = _merged(
+      before,
+      DeviceInfo(
+        id: fresh.id,
+        platform: fresh.platform,
+        name: fresh.name ?? name,
+        appVersion: fresh.appVersion,
+        lastSeenAt: fresh.lastSeenAt,
+        createdAt: fresh.createdAt,
+        ringsUrgent: fresh.ringsUrgent,
+        ringsUrgentSource: fresh.ringsUrgentSource,
+      ),
+      before.ringsUrgent,
+    );
+    final cached = cache.devices;
+    if (cached != null) {
+      cache.devices = [for (final d in cached) d.id == deviceId ? after : d];
+    }
+    if (ref.mounted) _settle(after);
+    return true;
+  }
+
+  /// Removes another device: `DELETE /api/v1/notification-devices/:id`,
+  /// which also revokes that device's session (ADR-0069 §6) and, when it was
+  /// the last ringing one, promotes another. The list is read again so the
+  /// promotion shows; this device's alarm gate follows it at once.
+  ///
+  /// Null when the server could not be told; nothing changes then.
+  Future<DeviceRemoval?> remove(String deviceId) async {
+    final current = state.value;
+    if (current == null || current.offline) return null;
+    final before = current.byId(deviceId);
+    if (before == null) return null;
+    final lastRinging =
+        before.ringsUrgent == true && current.ringing.length == 1;
+
+    final api = ref.read(deviceApiProvider);
+    final store = ref.read(ringsUrgentStoreProvider);
+    final askedAt = store.generation;
+    final thisId = ref.read(syncClientIdProvider).value;
+    final cache = ref.read(_devicesCacheProvider);
+    final gateChanged = ref.read(_ringsUrgentChangedProvider);
+    try {
+      await api.unregister(deviceId);
+    } on Object {
+      return null;
+    }
+    List<DeviceInfo> fresh;
+    try {
+      fresh = await api.list();
+    } on Object {
+      fresh = current.devices;
+    }
+    fresh = [
+      for (final d in fresh)
+        if (d.id != deviceId) d,
+    ];
+    if (cache.devices != null) cache.devices = fresh;
+    if (thisId != null) {
+      final self = fresh.where((d) => d.id == thisId).firstOrNull;
+      final rings = self?.ringsUrgent;
+      if (rings != null &&
+          await store.writeObserved(
+            ringsUrgentHereFromServer(rings),
+            askedAt: askedAt,
+          )) {
+        gateChanged();
+      }
+    }
+    if (ref.mounted) state = AsyncData(DevicesView(devices: fresh));
+    return DeviceRemoval(
+      removed: before,
+      devices: fresh,
+      needsPick: lastRinging && fresh.isNotEmpty,
+    );
+  }
+
+  /// Makes [deviceId] the one device that rings (the pick page): it is
+  /// switched on first and every other ringing device off after, so there is
+  /// no moment with none. Returns whether every change was saved.
+  Future<bool> ringOnlyOn(String deviceId) async {
+    final current = state.value;
+    if (current == null) return false;
+    final target = current.byId(deviceId);
+    if (target == null) return false;
+    if (target.ringsUrgent != true) {
+      if (await setRingsUrgent(deviceId, true) == null) return false;
+    }
+    for (final other in current.ringing) {
+      if (other.id == deviceId) continue;
+      if (await setRingsUrgent(other.id, false) == null) return false;
+    }
+    return true;
+  }
+
+  void _settle(DeviceInfo device) {
+    final latest = state.value;
+    if (latest == null) return;
+    state = AsyncData(latest._with(device, saving: false));
+  }
+
+  static bool _unreachable(Object error) => switch (error) {
+    DioException() => error.response == null,
+    ApiException(code: 'NETWORK_ERROR') => true,
+    _ => false,
+  };
+
+  static DeviceInfo _withRings(DeviceInfo device, bool? ringsUrgent) =>
+      DeviceInfo(
+        id: device.id,
+        platform: device.platform,
+        name: device.name,
+        appVersion: device.appVersion,
+        lastSeenAt: device.lastSeenAt,
+        createdAt: device.createdAt,
+        ringsUrgent: ringsUrgent,
+        ringsUrgentSource: device.ringsUrgentSource,
+        hasSession: device.hasSession,
+      );
+
+  /// The PATCH answer, minus what only GET says (`hasSession`) and with the
+  /// requested value when the answer leaves the flag out.
+  static DeviceInfo _merged(DeviceInfo before, DeviceInfo fresh, bool? asked) =>
+      DeviceInfo(
+        id: before.id,
+        platform: fresh.platform.isEmpty ? before.platform : fresh.platform,
+        name: fresh.name ?? before.name,
+        appVersion: fresh.appVersion ?? before.appVersion,
+        lastSeenAt: fresh.lastSeenAt ?? before.lastSeenAt,
+        createdAt: fresh.createdAt ?? before.createdAt,
+        ringsUrgent: fresh.ringsUrgent ?? asked,
+        ringsUrgentSource: fresh.ringsUrgentSource ?? before.ringsUrgentSource,
+        hasSession: before.hasSession,
+      );
+}

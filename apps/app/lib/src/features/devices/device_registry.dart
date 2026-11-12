@@ -1,6 +1,112 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 
+import '../../core/http_timeouts.dart';
+import '../../core/kv/local_kv.dart';
+import '../../notifications/device_gate.dart';
 import 'data/device_api.dart';
+
+/// This device's cached "do urgent alarms ring here" (#48, OPH-446), in
+/// LocalKv under [kRingsUrgentKey] so the headless pass can read it too.
+class RingsUrgentStore {
+  RingsUrgentStore({LocalKv? kv, DateTime Function()? clock})
+    : _kv = kv ?? localKv,
+      _clock = clock ?? DateTime.now;
+
+  final LocalKv _kv;
+  final DateTime Function() _clock;
+
+  /// When this process last had the server's answer (X-02): a register or
+  /// list answer that was believed, or a PATCH answer. Memory only — a fresh
+  /// process has none until its first heartbeat answers.
+  DateTime? _answeredAt;
+
+  /// Whether the server answered in this process, longer than [age] ago. No
+  /// answer yet is not "old": the launch heartbeat is already asking.
+  bool answerOlderThan(Duration age) {
+    final at = _answeredAt;
+    return at != null && _clock().difference(at) > age;
+  }
+
+  /// Bumped by every local decision about the flag (a switch change, its
+  /// answer, a session hook), never by what a server listing reports.
+  int _generation = 0;
+
+  /// Taken just before asking the server for a listing (a heartbeat, the
+  /// device list), and handed back to [writeObserved] with its answer.
+  int get generation => _generation;
+
+  Future<RingsUrgentHere> read() async =>
+      ringsUrgentHereFromStored(await _kv.get(kRingsUrgentKey));
+
+  /// A decision made here: a PATCH answer or a session hook. It wins over any
+  /// listing asked for before it.
+  Future<void> write(RingsUrgentHere here) {
+    _generation++;
+    // A session hook's unknown is not an answer; a PATCH answer is.
+    _answeredAt = here == RingsUrgentHere.unknown ? null : _clock();
+    return _kv.set(kRingsUrgentKey, here.name);
+  }
+
+  /// A switch change for this device is on its way to the server: whatever a
+  /// listing already on the wire says about it is older than that change.
+  void changeStarted() => _generation++;
+
+  /// What a server listing said about this device, written only when no
+  /// local decision came after it was asked for ([askedAt], a [generation]).
+  /// A heartbeat that left before the person switched this device off
+  /// answers with the old value, and must not switch it back on
+  /// (late-heartbeat-overwrites-switch). Returns whether the stored answer
+  /// changed.
+  Future<bool> writeObserved(
+    RingsUrgentHere here, {
+    required int askedAt,
+  }) async {
+    if (askedAt != _generation) return false;
+    final stored = await read();
+    // Checked again after the read: the set below must follow the check with
+    // no await in between.
+    if (askedAt != _generation) return false;
+    _answeredAt = _clock();
+    if (stored == here) return false;
+    await _kv.set(kRingsUrgentKey, here.name);
+    return true;
+  }
+
+  /// Called with every session that is about to start, before it is exposed.
+  ///
+  /// A fresh sign-in, or a restored session whose person is not the one the
+  /// install last held ([switchedAccount]), forgets the previous answer and
+  /// writes [RingsUrgentHere.unknown] — written, not removed, so an app killed
+  /// before the register response does not come back as legacy and ring. A
+  /// plain restore keeps what is stored; with nothing stored (an install
+  /// updated from before #48) that reads as legacy and rings as before.
+  Future<void> onSessionUser({
+    required bool restored,
+    required bool switchedAccount,
+  }) async {
+    if (!restored || switchedAccount) await write(RingsUrgentHere.unknown);
+  }
+}
+
+/// How often an app in the foreground re-reads whether urgent alarms ring
+/// here (X-02, OPH-446): a hand-over done by the server, or a switch turned
+/// off on another device, reaches an open app within about a minute.
+const Duration kRingAnswerRefreshEvery = Duration(seconds: 60);
+
+/// How old the answer may be when an urgent alarm is about to open the ring
+/// screen; an older one is asked for again first.
+const Duration kRingAnswerMaxAge = Duration(seconds: 60);
+
+/// The longest that just-in-time question may hold a ring back. On a timeout
+/// or an error the alarm rings on the answer it already had.
+const Duration kRingAnswerCheckCap = Duration(milliseconds: 1500);
+
+/// Refresh rounds skipped after one that could not reach the server, by how
+/// many failed in a row: an offline app stops asking every minute and backs
+/// off to about every eight.
+const List<int> _kRefreshBackoff = [0, 1, 3, 7];
 
 /// The platform name the registry route accepts, or `null` when this build is
 /// running somewhere the server has no word for.
@@ -56,9 +162,18 @@ class DeviceRegistry {
     required this.api,
     required this.readClientId,
     required this.describe,
+    this.ringsUrgent,
+    this.onRingsUrgentChanged,
+    this.listTimeout = kApiCallDeadline,
   });
 
   final DeviceApi api;
+
+  /// How long the ring-answer refresh waits for the device list (OPH-427,
+  /// #48). The refresh is single-flight, so a GET that never answered would
+  /// otherwise stay the shared request for good and no later refresh — the
+  /// minute timer's or the ring screen's — would ask again.
+  final Duration listTimeout;
 
   /// Reads `sync_states.client_id` — `null` until the engine's first round.
   final Future<String?> Function() readClientId;
@@ -66,8 +181,100 @@ class DeviceRegistry {
   /// What this install is, or `null` on a platform the route cannot name.
   final DeviceDescriptor? Function() describe;
 
+  /// Where the register response's `ringsUrgent` is cached (OPH-446).
+  final RingsUrgentStore? ringsUrgent;
+
+  /// Told when that cached answer changed, so the alarm paths re-plan.
+  final void Function()? onRingsUrgentChanged;
+
   /// The id this registry actually got a row for — what sign-out deletes.
   String? _registeredId;
+
+  /// The foreground refresh (X-02); null while paused, hidden or signed out.
+  Timer? _foreground;
+
+  /// Refresh rounds still to skip after failures ([_kRefreshBackoff]).
+  int _skip = 0;
+  int _misses = 0;
+
+  /// The refresh on the wire, shared by the minute timer and the ring
+  /// screen's just-in-time question so they never ask twice at once.
+  Future<bool>? _refreshing;
+
+  /// Whether the foreground refresh is running.
+  bool get refreshingInForeground => _foreground != null;
+
+  /// Re-reads this device's ring answer every [kRingAnswerRefreshEvery] while
+  /// the app is in the foreground (X-02, OPH-446). Called when the session
+  /// appears and on every return to the foreground; one timer, restarted —
+  /// never a second one beside it.
+  void startForegroundRefresh() {
+    _foreground?.cancel();
+    _skip = 0;
+    _misses = 0;
+    _foreground = Timer.periodic(kRingAnswerRefreshEvery, (_) {
+      if (_skip > 0) {
+        _skip--;
+        return;
+      }
+      unawaited(_refreshRound());
+    });
+  }
+
+  /// Paused, hidden or signed out: no more rounds until the next start.
+  void stopForegroundRefresh() {
+    _foreground?.cancel();
+    _foreground = null;
+  }
+
+  Future<void> _refreshRound() async {
+    if (await refreshRingAnswer()) {
+      _misses = 0;
+      return;
+    }
+    _misses++;
+    _skip =
+        _kRefreshBackoff[_misses < _kRefreshBackoff.length
+            ? _misses
+            : _kRefreshBackoff.length - 1];
+  }
+
+  /// Asks the server for this person's devices (a GET, nothing written) and
+  /// caches what it says about this one, exactly like a heartbeat answer:
+  /// dropped when a switch change made here came after it was asked for.
+  /// Returns whether the server answered; a failure leaves the cached answer
+  /// as it was.
+  Future<bool> refreshRingAnswer() =>
+      _refreshing ??= _refresh().whenComplete(() => _refreshing = null);
+
+  Future<bool> _refresh() async {
+    final store = ringsUrgent;
+    if (store == null) return false;
+    final String? deviceId;
+    try {
+      deviceId = await readClientId();
+    } on Object {
+      return false;
+    }
+    if (deviceId == null) return false;
+    final askedAt = store.generation;
+    final List<DeviceInfo> devices;
+    try {
+      devices = await api.list().timeout(listTimeout);
+    } on Object {
+      return false;
+    }
+    final self = devices.where((d) => d.id == deviceId).firstOrNull;
+    // Not listed (not registered yet): the heartbeat will say.
+    if (self == null) return true;
+    if (await store.writeObserved(
+      ringsUrgentHereFromServer(self.ringsUrgent),
+      askedAt: askedAt,
+    )) {
+      onRingsUrgentChanged?.call();
+    }
+    return true;
+  }
 
   /// Register or heartbeat. Called when the session appears and again whenever
   /// the app comes back to the foreground.
@@ -77,18 +284,37 @@ class DeviceRegistry {
     if (device == null) return;
     final deviceId = await readClientId();
     if (deviceId == null) return;
+    final askedAt = ringsUrgent?.generation;
+    final DeviceInfo? row;
     try {
-      await api.register(deviceId, device);
+      row = await api.register(deviceId, device);
       _registeredId = deviceId;
     } on Object {
       // Swallowed on purpose: a heartbeat is background work and the next one
       // is a few minutes away. Leaving `_registeredId` alone is what makes the
-      // retry happen rather than being silently considered done.
+      // retry happen rather than being silently considered done. The cached
+      // ringsUrgent stays as it was: a failure says nothing about it.
+      return;
+    }
+    await _cacheRingsUrgent(row, askedAt);
+  }
+
+  /// The server's answer is the only thing that turns `unknown` into `on`.
+  /// An answer without the field (an older server) is `legacy`: it rings as
+  /// it did before #48. An answer older than a switch change made here since
+  /// it was asked for is dropped ([RingsUrgentStore.writeObserved]).
+  Future<void> _cacheRingsUrgent(DeviceInfo? row, int? askedAt) async {
+    final store = ringsUrgent;
+    if (store == null || askedAt == null) return;
+    final next = ringsUrgentHereFromServer(row?.ringsUrgent);
+    if (await store.writeObserved(next, askedAt: askedAt)) {
+      onRingsUrgentChanged?.call();
     }
   }
 
   /// Take this device off the list, before the token that could do it is gone.
   Future<void> signOut() async {
+    stopForegroundRefresh();
     final deviceId = _registeredId;
     if (deviceId == null) return;
     try {

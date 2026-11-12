@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 
 import { buildApp } from '../../src/app.js';
 import { loadConfig } from '../../src/config.js';
+import { newId } from '../../src/lib/ids.js';
 
 const enabled = process.env.INTEGRATION === '1';
 const emailPrefix = `oph284-${Date.now()}`;
@@ -172,5 +173,180 @@ describe.runIf(enabled)('integration: sessions', () => {
     expect(left[0].deviceName).toBe('FirstDevice/1.0');
     // The one that was kept still works.
     expect((await refresh(user.refreshToken)).statusCode).toBe(200);
+  });
+});
+
+/// OPH-435 (#48) — the reverse direction: a session that ends takes the
+/// notification device bound to it (`refresh_tokens.device_id`, OPH-434) with
+/// it, so a signed-out install stops receiving fallback pushes. Fresh
+/// accounts per test, so the counts never depend on test order.
+describe.runIf(enabled)('integration: ending a session removes its device (OPH-435)', () => {
+  let app;
+  let seq = 0;
+  const prefix = `${emailPrefix}-oph435`;
+  const PASSWORD = 'integration-pw-1';
+
+  beforeAll(async () => {
+    app = await buildApp({
+      config: loadConfig({ ...process.env, NODE_ENV: 'test', RATE_LIMIT_AUTH_MAX: '1000' }),
+    });
+  });
+
+  afterAll(async () => {
+    if (!app) return;
+    const users = await app.db('users').where('email', 'like', `${prefix}%`).select('id');
+    const ids = users.map((u) => u.id);
+    if (ids.length > 0) {
+      await app.db('workspaces').whereIn('owner_id', ids).delete();
+      await app.db('users').whereIn('id', ids).delete();
+    }
+    await app.close();
+  });
+
+  const session = (body, email) => ({
+    id: body.user.id,
+    email,
+    refreshToken: body.tokens.refreshToken,
+    headers: { authorization: `Bearer ${body.tokens.accessToken}` },
+  });
+
+  /** A fresh account whose first session is bound to `deviceId`, registered as a device. */
+  const account = async (deviceId) => {
+    seq += 1;
+    const email = `${prefix}-${seq}@example.com`;
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { email, password: PASSWORD, deviceId },
+    });
+    expect(res.statusCode).toBe(201);
+    const s = session(res.json(), email);
+    await putDevice(s, deviceId);
+    return s;
+  };
+
+  /** Another sign-in of the same account on `deviceId`, registered as a device. */
+  const signIn = async (user, deviceId) => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { email: user.email, password: PASSWORD, deviceId },
+    });
+    expect(res.statusCode).toBe(200);
+    const s = session(res.json(), user.email);
+    await putDevice(s, deviceId);
+    return s;
+  };
+
+  const putDevice = async (s, deviceId) => {
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/v1/notification-devices/${deviceId}`,
+      headers: s.headers,
+      payload: { platform: 'android' },
+    });
+    expect([200, 201]).toContain(res.statusCode);
+  };
+
+  const devices = async (userId) =>
+    (await app.db('notification_devices').where({ user_id: userId }).select('id'))
+      .map((r) => r.id)
+      .sort();
+
+  const liveFamilies = (userId) =>
+    app
+      .db('refresh_tokens')
+      .where({ user_id: userId })
+      .whereNull('revoked_at')
+      .whereNull('rotated_at')
+      .select('family_id', 'device_id');
+
+  it('revoking a session removes the notification device bound to it', async () => {
+    const mine = newId();
+    const phone = newId();
+    const me = await account(mine);
+    await signIn(me, phone);
+    const phoneFamily = (await liveFamilies(me.id)).find((r) => r.device_id === phone).family_id;
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/auth/sessions/${phoneFamily}`,
+      headers: me.headers,
+    });
+    expect(res.statusCode).toBe(204);
+
+    expect(await devices(me.id)).toEqual([mine]);
+  });
+
+  it('revoke-others keeps only the caller device row', async () => {
+    const mine = newId();
+    const me = await account(mine);
+    await signIn(me, newId());
+    await signIn(me, newId());
+    expect(await devices(me.id)).toHaveLength(3);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/sessions/revoke-others',
+      headers: me.headers,
+      payload: { refreshToken: me.refreshToken },
+    });
+    expect(res.statusCode).toBe(200);
+
+    expect(await devices(me.id)).toEqual([mine]);
+    // The caller's own session still works.
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/auth/refresh',
+          payload: { refreshToken: me.refreshToken },
+        })
+      ).statusCode,
+    ).toBe(200);
+  });
+
+  it('password change removes every bound notification device', async () => {
+    const me = await account(newId());
+    await signIn(me, newId());
+    // A device registered by an older client, bound to no family, is not a
+    // session and stays.
+    const unbound = newId();
+    await putDevice(me, unbound);
+    expect(await devices(me.id)).toHaveLength(3);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/password',
+      headers: me.headers,
+      payload: { currentPassword: PASSWORD, newPassword: 'integration-pw-2' },
+    });
+    expect(res.statusCode).toBe(204);
+
+    expect(await devices(me.id)).toEqual([unbound]);
+  });
+
+  it('refresh reuse removes the device bound to the burned family', async () => {
+    const mine = newId();
+    const phone = newId();
+    const me = await account(mine);
+    const other = await signIn(me, phone);
+
+    const first = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: other.refreshToken },
+    });
+    expect(first.statusCode).toBe(200);
+    // The rotated token comes back: theft, so the whole family burns.
+    const reused = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/refresh',
+      payload: { refreshToken: other.refreshToken },
+    });
+    expect(reused.statusCode).toBe(401);
+    expect(reused.json().code).toBe('AUTH_REFRESH_REUSED');
+
+    expect(await devices(me.id)).toEqual([mine]);
   });
 });

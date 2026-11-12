@@ -7,11 +7,28 @@ import 'package:flutter/foundation.dart';
 
 import '../core/api_exception.dart';
 import '../core/fold.dart';
+import '../core/http_timeouts.dart';
+import '../core/kv/local_kv.dart';
 import '../core/ulid.dart';
 import 'db/database.dart';
 import 'sync_api.dart';
 import 'revocation.dart';
 import 'sync_applier.dart';
+
+/// Where an account switch leaves this install's sync client id
+/// (signin-binds-discarded-client-id, OPH-447): `LocalDataGuard.claimFor`
+/// writes it after the wipe that dropped `sync_states`, and the next engine to
+/// create a state row takes it instead of minting a new one.
+///
+/// The id names the INSTALL to the server — the device registry's row and the
+/// device a session family is bound to on sign-in — and the sign-in already
+/// sent it before the switch was known. A new id here would leave the new
+/// person's session bound to an id nothing lists, so removing the device
+/// elsewhere could never sign it out. A person's own sign-out removes it
+/// (`kUserBoundKvPrefixes`): only the switch carries it over.
+const String kInstallClientIdKey = 'alliswell_install_client_id';
+
+Future<String?> _storedInstallClientId() => localKv.get(kInstallClientIdKey);
 
 /// A push outcome the user may need to know about (OPH-056): the server
 /// refused or LWW-discarded a local write. `discardedFields` carries partial
@@ -67,7 +84,36 @@ class SyncEngine {
     this.debounce = const Duration(milliseconds: 250),
     this.pullInterval,
     this.maxBackoff = const Duration(seconds: 60),
-  });
+    this.requestTimeout = kApiCallDeadline,
+    Future<String?> Function()? installClientId,
+  }) : _installClientId = installClientId ?? _storedInstallClientId,
+       _zone = _zoneOutsideTransactions(db);
+
+  /// The id an account switch carried over ([kInstallClientIdKey]), read only
+  /// when the replica holds no state row to take it from.
+  final Future<String?> Function() _installClientId;
+
+  /// The zone the engine was made in, with every drift transaction of [db]
+  /// stepped out of. Its rounds and every timer (debounce, retry, periodic
+  /// pull) run here, never in a caller's: a round asked for from inside a
+  /// transaction — a poke from a receipted alarm action (OPH-427), or an
+  /// engine a provider first built during one — would otherwise query that
+  /// transaction after it closed; on the remote executor of a release build
+  /// the request never answers and the engine stays running for good.
+  ///
+  /// Not [Zone.root]: a widget test's fake clock is the zone the engine is
+  /// made in, and a round outside it would never finish under that clock.
+  final Zone _zone;
+
+  /// The nearest zone at or above the current one in which [db] resolves to
+  /// itself, i.e. no transaction of it is open there.
+  static Zone _zoneOutsideTransactions(AwDatabase db) {
+    var zone = Zone.current;
+    while (zone.run(() => db.inTransactionZone)) {
+      zone = zone.parent ?? Zone.root;
+    }
+    return zone;
+  }
 
   final AwDatabase db;
   final SyncApi api;
@@ -80,6 +126,15 @@ class SyncEngine {
   /// signal will make this a fallback rather than the primary trigger.
   final Duration? pullInterval;
   final Duration maxBackoff;
+
+  /// How long one push or pull may stay unanswered (OPH-427, #46/#48). The
+  /// engine runs one round at a time, so a request that never answers would
+  /// otherwise hold every later round — a poke, the periodic pull — behind it
+  /// until the app restarts. Past it the round fails like an offline one and
+  /// the backoff retries. A push that did land before its answer was lost is
+  /// safe to resend: the server dedupes by (clientId, clientMutationId).
+  /// Only the network calls are bounded, never a database transaction.
+  final Duration requestTimeout;
 
   final _conflicts = StreamController<SyncConflict>.broadcast();
   Stream<SyncConflict> get conflicts => _conflicts.stream;
@@ -98,7 +153,9 @@ class SyncEngine {
     _stopped = false;
     await _ensureState();
     if (pullInterval != null) {
-      _pullTimer ??= Timer.periodic(pullInterval!, (_) => syncNow());
+      _pullTimer ??= _zone.run(
+        () => Timer.periodic(pullInterval!, (_) => syncNow()),
+      );
     }
     await syncNow();
   }
@@ -115,8 +172,14 @@ class SyncEngine {
     _pullTimer = null;
   }
 
+  /// [stop], and give up a request still out: a disposed engine has nobody
+  /// left to wait on its round ([halt] waits on a stopped one), so neither
+  /// the round nor its deadline timer may outlive it.
   void dispose() {
     stop();
+    for (final abandon in _abandonInFlight.toList()) {
+      abandon();
+    }
     _conflicts.close();
   }
 
@@ -138,7 +201,7 @@ class SyncEngine {
   void notifyLocalWrite() {
     if (_stopped) return;
     _debounceTimer?.cancel();
-    _debounceTimer = Timer(debounce, syncNow);
+    _debounceTimer = _zone.run(() => Timer(debounce, syncNow));
   }
 
   /// Runs one push+pull convergence round. Serialized: a call while a round
@@ -150,7 +213,9 @@ class SyncEngine {
   /// Pull-to-refresh (OPH-171) is the only caller that reads this: a user who
   /// just asked for a refresh must be told when it did not happen (DESIGN §15
   /// R4). Every background caller keeps ignoring it.
-  Future<bool> syncNow() async {
+  Future<bool> syncNow() => _zone.run(_syncRound);
+
+  Future<bool> _syncRound() async {
     // Being torn down (workspace switch / sign-out) is not a failure.
     if (_stopped) return true;
     if (_running) {
@@ -198,9 +263,11 @@ class SyncEngine {
   void _scheduleRetry() {
     if (_stopped) return;
     _retryTimer?.cancel();
-    _retryTimer = Timer(
-      syncBackoffDelay(_consecutiveFailures, cap: maxBackoff),
-      syncNow,
+    _retryTimer = _zone.run(
+      () => Timer(
+        syncBackoffDelay(_consecutiveFailures, cap: maxBackoff),
+        syncNow,
+      ),
     );
   }
 
@@ -238,12 +305,21 @@ class SyncEngine {
     final any = await (db.select(db.syncStates)..limit(1)).getSingleOrNull();
     final state = SyncStatesCompanion.insert(
       workspaceId: workspaceId,
-      clientId: any?.clientId ?? newUlid(),
+      clientId: any?.clientId ?? await _carriedOverClientId() ?? newUlid(),
     );
     await db.into(db.syncStates).insertOnConflictUpdate(state);
     return (db.select(
       db.syncStates,
     )..where((s) => s.workspaceId.equals(workspaceId))).getSingle();
+  }
+
+  Future<String?> _carriedOverClientId() async {
+    try {
+      final id = await _installClientId();
+      return id == null || id.isEmpty ? null : id;
+    } on Object {
+      return null;
+    }
   }
 
   Future<void> _pushPending() async {
@@ -262,11 +338,13 @@ class SyncEngine {
 
       List<SyncPushResult> results;
       try {
-        results = (await api.push(
-          clientId: state.clientId,
-          workspaceId: workspaceId,
-          baseRevision: state.lastRevision,
-          mutations: [for (final row in rows) _toMutation(row)],
+        results = (await _bounded(
+          api.push(
+            clientId: state.clientId,
+            workspaceId: workspaceId,
+            baseRevision: state.lastRevision,
+            mutations: [for (final row in rows) _toMutation(row)],
+          ),
         )).results;
       } catch (_) {
         await _bumpAttempts(rows);
@@ -282,6 +360,49 @@ class SyncEngine {
       if (rows.length < pushBatchSize) return;
     }
   }
+
+  /// [requestTimeout] around one network call, failing as the offline error
+  /// does so the round takes the ordinary backoff path. A late answer to the
+  /// abandoned call is dropped: the revision was not advanced, so the next
+  /// round asks for the same page again.
+  ///
+  /// [dispose] abandons the call at once the same way and cancels its
+  /// deadline, so no timer stays armed behind a disposed engine.
+  Future<T> _bounded<T>(Future<T> call) {
+    final result = Completer<T>();
+    late final Timer deadline;
+    void abandon() {
+      deadline.cancel();
+      _abandonInFlight.remove(abandon);
+      if (!result.isCompleted) {
+        result.completeError(
+          const ApiException(
+            'NETWORK_ERROR',
+            'The AllisWell server did not answer in time',
+          ),
+        );
+      }
+    }
+
+    deadline = Timer(requestTimeout, abandon);
+    _abandonInFlight.add(abandon);
+    call.then(
+      (value) {
+        deadline.cancel();
+        _abandonInFlight.remove(abandon);
+        if (!result.isCompleted) result.complete(value);
+      },
+      onError: (Object error, StackTrace stack) {
+        deadline.cancel();
+        _abandonInFlight.remove(abandon);
+        if (!result.isCompleted) result.completeError(error, stack);
+      },
+    );
+    return result.future;
+  }
+
+  /// One entry per [_bounded] call still out; [dispose] runs them all.
+  final _abandonInFlight = <void Function()>{};
 
   Future<void> _bumpAttempts(List<PendingMutation> rows) async {
     for (final row in rows) {
@@ -470,10 +591,12 @@ class SyncEngine {
     while (true) {
       if (_stopped) return;
       final state = await _ensureState();
-      final page = await api.pull(
-        workspaceId,
-        sinceRevision: state.lastRevision,
-        limit: pullPageSize,
+      final page = await _bounded(
+        api.pull(
+          workspaceId,
+          sinceRevision: state.lastRevision,
+          limit: pullPageSize,
+        ),
       );
       // Stopped while the request was out: sign-out gives up waiting after a
       // bound and wipes the replica, and somebody else may already be signed

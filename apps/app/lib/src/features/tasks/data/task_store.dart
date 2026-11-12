@@ -12,6 +12,42 @@ import 'task.dart';
 import 'task_scope.dart';
 import 'task_when.dart';
 
+/// The snooze target for [preset] pressed at [nowWall] (NOTIFICATIONS.md
+/// §2b.3, native snooze step 2). Pure: offsets add to [nowWall];
+/// `tomorrow_morning` is 09:00:00 on the calendar day after [nowWall]'s,
+/// also when pressed before 09:00. The result keeps [nowWall]'s UTC flag, so a
+/// UTC value can carry zone-free wall-clock fields.
+DateTime snoozeUntilWallClock(String preset, DateTime nowWall) {
+  switch (preset) {
+    case '5_min':
+      return nowWall.add(const Duration(minutes: 5));
+    case '30_min':
+      return nowWall.add(const Duration(minutes: 30));
+    case '1_hour':
+      return nowWall.add(const Duration(hours: 1));
+    case 'tomorrow_morning':
+      final n = nowWall;
+      return n.isUtc
+          ? DateTime.utc(n.year, n.month, n.day + 1, 9)
+          : DateTime(n.year, n.month, n.day + 1, 9);
+    default:
+      throw ArgumentError.value(preset, 'preset');
+  }
+}
+
+/// Throws unless [receiptId] is null or its `action_receipts` row is visible
+/// to the current transaction (OPH-427). Shared by the stores that apply
+/// pulled actions.
+Future<void> requireActionReceipt(AwDatabase db, String? receiptId) async {
+  if (receiptId == null) return;
+  final row = await (db.select(
+    db.actionReceipts,
+  )..where((r) => r.eventId.equals(receiptId))).getSingleOrNull();
+  if (row == null) {
+    throw StateError('action receipt $receiptId is not in this transaction');
+  }
+}
+
 /// Statuses that appear on planning lists (Home, project Tasks). Inbox captures
 /// (`inbox`) are excluded — they live only in the Inbox until triaged (OPH-107);
 /// terminal statuses (completed/cancelled/archived) never appear here either.
@@ -400,7 +436,17 @@ class TaskStore {
     return id;
   }
 
-  Future<void> update(String taskId, Map<String, dynamic> patch) async {
+  ///
+  /// [receiptId] (OPH-427): the write applies a pulled action whose
+  /// `action_receipts` row the caller inserted in its own transaction; the
+  /// write then runs inside that transaction and refuses to run without the
+  /// receipt, so neither can commit without the other. Null — a UI tap —
+  /// behaves as it always did.
+  Future<void> update(
+    String taskId,
+    Map<String, dynamic> patch, {
+    String? receiptId,
+  }) async {
     final record = await _record(taskId);
     if (record == null) return;
     final effective = {...patch};
@@ -519,6 +565,7 @@ class TaskStore {
     companion = companion.copyWith(updatedAt: Value(DateTime.now().toUtc()));
 
     await _db.transaction(() async {
+      await _requireReceipt(receiptId);
       await (_db.update(
         _db.tasks,
       )..where((t) => t.id.equals(taskId))).write(companion);
@@ -531,7 +578,9 @@ class TaskStore {
         patch: effective,
       );
     });
-    _poke();
+    // A receipted write is still inside the caller's transaction: the
+    // applier pokes once that one commits (OPH-427).
+    if (receiptId == null) _poke();
   }
 
   /// Set or clear a task's "when" (OPH-372, ADR-0053) — a DAY, stored as its
@@ -553,38 +602,33 @@ class TaskStore {
     'seriesScope': ?seriesScope,
   });
 
-  Future<void> complete(String taskId) =>
-      update(taskId, {'status': 'completed'});
+  Future<void> complete(String taskId, {String? receiptId}) =>
+      update(taskId, {'status': 'completed'}, receiptId: receiptId);
 
   Future<void> reopen(String taskId) => update(taskId, {'status': 'open'});
 
   /// Snooze presets shared with the server (BLUEPRINT §4.9). Offsets are
   /// from "now"; tomorrow_morning is 09:00 on the device's wall clock — the
-  /// server's task-timezone version applies when snoozing over REST.
+  /// server's task-timezone version applies when snoozing over REST. The rule
+  /// itself is [snoozeUntilWallClock], which the native AlarmKit snooze
+  /// mirrors (fixture `test/fixtures/snooze_preset_cases.json`).
   static DateTime snoozeUntilFor(String preset, {DateTime? now}) {
     final base = now ?? DateTime.now();
-    switch (preset) {
-      case '5_min':
-        return base.add(const Duration(minutes: 5));
-      case '30_min':
-        return base.add(const Duration(minutes: 30));
-      case '1_hour':
-        return base.add(const Duration(hours: 1));
-      case 'tomorrow_morning':
-        final local = base.toLocal();
-        return DateTime(local.year, local.month, local.day + 1, 9);
-      default:
-        throw ArgumentError.value(preset, 'preset');
-    }
+    return snoozeUntilWallClock(
+      preset,
+      preset == 'tomorrow_morning' ? base.toLocal() : base,
+    );
   }
 
   /// Silence this task's alarms indefinitely (OPH-178, round 9 #6.7) — WITHOUT
   /// completing it. Marking a task done to make it shut up would be a lie in the
   /// data; this is a reversible, replicated fact the engine reads
   /// (`alarmInstantsFor` → no alarms → the rows are cancelled everywhere).
-  Future<void> muteAlarms(String taskId) => update(taskId, {
-    'alarmsMutedAt': DateTime.now().toUtc().toIso8601String(),
-  });
+  Future<void> muteAlarms(String taskId, {String? receiptId}) => update(
+    taskId,
+    {'alarmsMutedAt': DateTime.now().toUtc().toIso8601String()},
+    receiptId: receiptId,
+  );
 
   /// Give the alarms back. Whether one still fires depends on its instant —
   /// the caller tells the user when it has already passed.
@@ -594,52 +638,101 @@ class TaskStore {
   /// Offline-first snooze (OPH-062): the task AND its active alarm move
   /// locally in one transaction; the outbox patch replays the same semantics
   /// server-side (sync push snoozedUntil → reminder snooze, same trx).
-  Future<void> snooze(String taskId, {String? preset, DateTime? until}) async {
-    final record = await _record(taskId);
-    if (record == null) return;
-    if (record.status == 'completed' || record.status == 'cancelled') return;
-    final snoozeUntil = (until ?? snoozeUntilFor(preset!)).toUtc();
+  ///
+  /// The one-element [snoozeBatch]. [until] is written as given (a native
+  /// AlarmKit snooze fixed it at press time); [receiptId] as in [update].
+  Future<void> snooze(
+    String taskId, {
+    String? preset,
+    DateTime? until,
+    String? receiptId,
+  }) => snoozeBatch(
+    [taskId],
+    until: until ?? snoozeUntilFor(preset!),
+    receiptId: receiptId,
+  );
+
+  /// A group snooze (OPH-439, NOTIFICATIONS §2b.3): every task in [taskIds]
+  /// moves to the same [until] in ONE transaction — the receipt check first,
+  /// then per task (de-duplicated, so a task listed once per occurrence of a
+  /// grouped alarm counts once) its `snoozedUntil`, every active alarm
+  /// `snoozed` with `snoozeCount + 1`, and one outbox mutation. A completed,
+  /// cancelled or unknown task is skipped. [until] is never shifted: a
+  /// target minute that already holds another urgent alarm is grouped with
+  /// it by the planner (ADR-0068).
+  Future<void> snoozeBatch(
+    List<String> taskIds, {
+    required DateTime until,
+    String? receiptId,
+  }) async {
+    final snoozeUntil = until.toUtc();
+    final ids = taskIds.toSet();
+    var wrote = false;
 
     await _db.transaction(() async {
-      await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
-        TasksCompanion(
-          snoozedUntil: Value(snoozeUntil),
-          updatedAt: Value(DateTime.now().toUtc()),
-        ),
-      );
-      // Every active alarm of the task (a reminder AND a deadline, OPH-175),
-      // each carrying its own round count (OPH-177) — read first, because the
-      // count is per row.
-      final active =
-          await (_db.select(_db.reminders)..where(
-                (r) =>
-                    r.taskId.equals(taskId) &
-                    r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
-              ))
-              .get();
-      for (final alarm in active) {
-        await (_db.update(
-          _db.reminders,
-        )..where((r) => r.id.equals(alarm.id))).write(
-          RemindersCompanion(
-            status: const Value('snoozed'),
+      await _requireReceipt(receiptId);
+      for (final taskId in ids) {
+        final record = await _record(taskId);
+        if (record == null) continue;
+        if (record.status == 'completed' || record.status == 'cancelled') {
+          continue;
+        }
+        final now = DateTime.now().toUtc();
+        await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
+          TasksCompanion(
             snoozedUntil: Value(snoozeUntil),
-            snoozeCount: Value(alarm.snoozeCount + 1),
-            updatedAt: Value(DateTime.now().toUtc()),
+            updatedAt: Value(now),
           ),
         );
+        // Every active alarm of the task (a reminder AND a deadline, OPH-175),
+        // each carrying its own round count (OPH-177) — read first, because the
+        // count is per row.
+        final active =
+            await (_db.select(_db.reminders)..where(
+                  (r) =>
+                      r.taskId.equals(taskId) &
+                      r.status.isIn(const [
+                        'scheduled',
+                        'snoozed',
+                        'delivered',
+                      ]),
+                ))
+                .get();
+        for (final alarm in active) {
+          await (_db.update(
+            _db.reminders,
+          )..where((r) => r.id.equals(alarm.id))).write(
+            RemindersCompanion(
+              status: const Value('snoozed'),
+              snoozedUntil: Value(snoozeUntil),
+              snoozeCount: Value(alarm.snoozeCount + 1),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+        await enqueueMutation(
+          _db,
+          workspaceId: record.workspaceId,
+          entityType: 'task',
+          entityId: taskId,
+          operation: 'update',
+          patch: {'snoozedUntil': snoozeUntil.toIso8601String()},
+        );
+        wrote = true;
       }
-      await enqueueMutation(
-        _db,
-        workspaceId: record.workspaceId,
-        entityType: 'task',
-        entityId: taskId,
-        operation: 'update',
-        patch: {'snoozedUntil': snoozeUntil.toIso8601String()},
-      );
     });
-    _poke();
+    if (wrote && receiptId == null) _poke();
   }
+
+  /// Pokes sync once for writes that were part of a caller's transaction
+  /// (a receipted action, OPH-427) — call it after that transaction
+  /// committed, never inside it.
+  void pokeSync() => _poke();
+
+  /// A write made for a pulled action must sit in the transaction that holds
+  /// its receipt (NOTIFICATIONS §2b.3); one without it is a caller bug.
+  Future<void> _requireReceipt(String? receiptId) =>
+      requireActionReceipt(_db, receiptId);
 
   /// Replace-set tags, like `PUT /tasks/:id/tags` (synced as an update patch).
   Future<void> setTags(String taskId, List<String> tagIds) async {

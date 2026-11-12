@@ -20,11 +20,14 @@ import 'web/push_host.dart';
 import 'alarm_log.dart';
 import 'alarm_sound.dart';
 import 'alarmkit.dart';
+import 'alarmkit_identity.dart';
+import 'device_gate.dart';
 import 'gateway.dart';
 import 'gateway_local.dart';
 import 'reminder_profile.dart';
 import 'reminder_store.dart';
 import 'sound_store.dart';
+import 'planner.dart' show AlarmInput;
 import 'platform_matrix.dart';
 import 'web_alert_mode.dart';
 import 'scheduler.dart';
@@ -106,12 +109,130 @@ final alarmKitHostProvider = Provider<AlarmKitHost>(
   (_) => MethodChannelAlarmKitHost(),
 );
 
+/// What the scheduler last knew the OS holds on the AlarmKit lane (#46, iOS
+/// 26+): its last `scheduledAlarms()` read, kept current by every schedule,
+/// cancel and stop it made since. The ring overlay asks it whether an
+/// occurrence already rings as a system alert (then the app stays quiet) and
+/// which alarm an in-app action has to stop. Empty wherever AlarmKit is not
+/// in use — Android, web, desktop, iOS < 26, permission off — so those keep
+/// today's in-app sound.
+class AlarmKitView extends Notifier<List<AlarmKitScheduled>> {
+  AlarmKitView([this._initial = const []]);
+
+  final List<AlarmKitScheduled> _initial;
+
+  @override
+  List<AlarmKitScheduled> build() => _initial;
+
+  void replace(List<AlarmKitScheduled> rows) => state = List.unmodifiable(rows);
+
+  /// An in-app action stopped [id]: it no longer covers anything.
+  void remove(int id) {
+    if (state.any((r) => r.id == id)) {
+      state = List.unmodifiable(state.where((r) => r.id != id));
+    }
+  }
+}
+
+final alarmKitViewProvider =
+    NotifierProvider<AlarmKitView, List<AlarmKitScheduled>>(AlarmKitView.new);
+
+/// The scheduler's AlarmKit host, watched: every answer that tells what the
+/// OS holds is folded into one list and handed to [onView] — the
+/// [alarmKitViewProvider] feed. Everything else passes straight through.
+class AlarmKitViewHost implements AlarmKitHost {
+  AlarmKitViewHost(this._inner, {required this.onView});
+
+  final AlarmKitHost _inner;
+  final void Function(List<AlarmKitScheduled> rows) onView;
+  final Map<int, AlarmKitScheduled> _rows = {};
+
+  void _emit() => onView(List.unmodifiable(_rows.values));
+
+  /// No lane, no view: an alarm the OS will not ring covers nothing.
+  bool _lane(bool open) {
+    if (!open && _rows.isNotEmpty) {
+      _rows.clear();
+      _emit();
+    }
+    return open;
+  }
+
+  @override
+  Future<bool> isSupported() async => _lane(await _inner.isSupported());
+
+  @override
+  Future<bool> requestAuthorization() async =>
+      _lane(await _inner.requestAuthorization());
+
+  @override
+  Future<bool> isAuthorized() async => _lane(await _inner.isAuthorized());
+
+  @override
+  Future<List<AlarmKitScheduled>> scheduledAlarms() async {
+    final rows = await _inner.scheduledAlarms();
+    _rows
+      ..clear()
+      ..addEntries(rows.map((r) => MapEntry(r.id, r)));
+    _emit();
+    return rows;
+  }
+
+  @override
+  Future<Set<int>> scheduledIds() => _inner.scheduledIds();
+
+  @override
+  Future<AlarmKitScheduleResult> schedule(AlarmKitAlarm alarm) async {
+    final result = await _inner.schedule(alarm);
+    if (result.ok) {
+      _rows[alarm.id] = AlarmKitScheduled(
+        id: alarm.id,
+        fp: alarm.fp,
+        members: alarm.members,
+        fireAtMs: alarmKitFireAtMs(alarm.fireAt),
+      );
+      _emit();
+    }
+    return result;
+  }
+
+  @override
+  Future<void> cancel(int id) async {
+    await _inner.cancel(id);
+    if (_rows.remove(id) != null) _emit();
+  }
+
+  @override
+  Future<AlarmKitStopResult> stop(int id) async {
+    final result = await _inner.stop(id);
+    if (result.error == null && _rows.remove(id) != null) _emit();
+    return result;
+  }
+
+  @override
+  Future<List<AlarmKitActionEvent>> pullPendingActions() =>
+      _inner.pullPendingActions();
+
+  @override
+  Future<void> ackActions(List<String> eventIds) => _inner.ackActions(eventIds);
+
+  @override
+  Future<void> clearFallbacks(List<String> eventIds) =>
+      _inner.clearFallbacks(eventIds);
+
+  @override
+  Future<List<AlarmKitFailure>> pullFailures() => _inner.pullFailures();
+
+  @override
+  Stream<void> get actionsPending => _inner.actionsPending;
+}
+
 /// The user's re-alert chain (OPH-179, DESIGN §18). Device-local, like every
 /// other delivery preference: each device schedules its own notifications, so
 /// each device owns how insistent they are.
 final reminderProfileRawProvider = NotifierProvider<PersistedChoice, String>(
   // Empty parses to the factory chain, so an upgrade changes nothing.
-  () => PersistedChoice('alliswell_reminder_profile', fallback: ''),
+  () => PersistedChoice(kReminderProfileKey, fallback: ''),
 );
 
 /// The parsed profile — junk resolves to [ReminderProfile.factory].
@@ -135,12 +256,12 @@ final snoozePresetOrderProvider = Provider<List<String>>(
 /// Which sound each lane plays (OPH-181). Device-local: the sound file lives on
 /// THIS device, and the library it can be chosen from is the workspace's.
 final alarmSoundRawProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice('alliswell_alarm_sound', fallback: 'bundled:aw_alarm'),
+  () => PersistedChoice(kAlarmSoundKey, fallback: kAlarmSoundFallback),
 );
 
 /// Ordinary reminders keep the OS sound until the user says otherwise.
 final reminderSoundRawProvider = NotifierProvider<PersistedChoice, String>(
-  () => PersistedChoice('alliswell_reminder_sound', fallback: 'os'),
+  () => PersistedChoice(kReminderSoundKey, fallback: kReminderSoundFallback),
 );
 
 /// How loud this BROWSER is (OPH-316). Device-local like every other delivery
@@ -252,6 +373,15 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   // Probe again the moment a permission prompt closes (OPH-393): what the
   // person just answered is the thing this reports.
   ref.watch(alarmPermissionAskProvider.select((open) => open > 0));
+  // And on every return to the foreground (OPH-428, IOS-01): the fix for most
+  // of these problems is a switch in the system Settings app, and nothing
+  // tells the app it was flipped. The fix sheet's own re-probe runs as the
+  // Settings app OPENS, before the person has touched anything, so the strip
+  // kept saying "alarm permission is off" until a relaunch. Until the new
+  // answer lands the strip keeps the last one — no flicker. The plan re-reads
+  // the same grants on the same resume (the scheduler's `onForeground`).
+  final lifecycle = AppLifecycleListener(onResume: ref.invalidateSelf);
+  ref.onDispose(lifecycle.dispose);
   try {
     await gateway.initialize();
     final support = await gateway.alarmSupport();
@@ -290,11 +420,73 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   }
 });
 
+/// The gate's answer as the alarm paths use it: the stored state once read
+/// (kept through a re-read), [RingsUrgentHere.unknown] if it cannot be read —
+/// never ring on a guess — and null while the first read is in flight.
+RingsUrgentHere? ringsUrgentHereNow(AsyncValue<RingsUrgentHere> stored) {
+  if (stored.hasValue) return stored.value;
+  if (stored.hasError) return RingsUrgentHere.unknown;
+  return null;
+}
+
+/// [alarms] through the device gate (OPH-446) as [here] changes: each new
+/// list or new answer emits `forThisDevice(latest list, latest answer)`.
+/// Nothing is emitted before both are known — a plan made on a guess would
+/// cancel and re-schedule the urgent chain on every launch.
+Stream<List<AlarmInput>> gateAlarms(
+  Stream<List<AlarmInput>> alarms,
+  Stream<RingsUrgentHere> here,
+) {
+  late final StreamController<List<AlarmInput>> out;
+  StreamSubscription<List<AlarmInput>>? alarmsSub;
+  StreamSubscription<RingsUrgentHere>? hereSub;
+  List<AlarmInput>? latest;
+  RingsUrgentHere? gate;
+  void emit() {
+    final list = latest;
+    final current = gate;
+    if (list == null || current == null || out.isClosed) return;
+    out.add(forThisDevice(list, current));
+  }
+
+  out = StreamController<List<AlarmInput>>(
+    onListen: () {
+      alarmsSub = alarms.listen((next) {
+        latest = next;
+        emit();
+      }, onError: out.addError);
+      hereSub = here.listen((next) {
+        if (next == gate) return;
+        gate = next;
+        emit();
+      });
+    },
+    onPause: () {
+      alarmsSub?.pause();
+      hereSub?.pause();
+    },
+    onResume: () {
+      alarmsSub?.resume();
+      hereSub?.resume();
+    },
+    onCancel: () async {
+      await hereSub?.cancel();
+      await alarmsSub?.cancel();
+    },
+  );
+  return out.stream;
+}
+
 /// One scheduler per signed-in person: keeps the OS schedule equal to the
 /// replica (OPH-061) and routes notification taps/actions into the stores
 /// (OPH-062/063). Rebuilt when the privacy setting flips (OPH-064) so
 /// content re-renders under the new policy.
-final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
+///
+/// autoDispose (OPH-452): it exists while HomeShell — a session — watches it,
+/// so a signed-out app keeps no scheduler and no listener on the device gate.
+final notificationSchedulerProvider = Provider.autoDispose<NotificationScheduler?>((
+  ref,
+) {
   // The person's own work — the same scope Home shows. In an organisation's
   // workspaces that is not "every task of the selected unit": a colleague's
   // reminder rang on every member's phone that happened to have that unit open.
@@ -302,13 +494,76 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
   // scheduler rebuilt for it would re-plan the whole OS schedule for nothing.
   final scope = ref.watch(taskScopeProvider.select((s) => s.value));
   if (scope == null) return null;
+  // Whether urgent alarms ring on THIS device (#48, OPH-452). Listened, not
+  // watched: a new answer flows into the alarm stream below and re-plans at
+  // once (urgent moves to or from AlarmKit and the chain), without tearing the
+  // scheduler down and asking for permission again.
+  final gate = StreamController<RingsUrgentHere>();
+  ref.onDispose(gate.close);
+  ref.listen<RingsUrgentHere?>(
+    ringsUrgentHereProvider.select(ringsUrgentHereNow),
+    (_, here) {
+      if (here != null && !gate.isClosed) gate.add(here);
+    },
+    fireImmediately: true,
+  );
   final gateway = ref.watch(notificationsGatewayProvider);
   final alarmKit = ref.watch(alarmKitHostProvider);
+  final db = ref.watch(databaseProvider);
+
+  // Taps/actions from EITHER lane route through the one handler — an AlarmKit
+  // "Onayla"/"Ertele" is the same acknowledge/snooze as a notification button.
+  // A pulled AlarmKit action carries an eventId and is applied exactly once
+  // (OPH-427, NOTIFICATIONS §2b.3).
+  //
+  // A commit outside the scheduler's own drain (a pull on resume or on
+  // `onActionsPending`) is announced to it at once: until the replica emits,
+  // a pass must not judge the native alarm by the list from before the write
+  // (OPH-454).
+  late final NotificationScheduler scheduler;
+  Future<bool> onEvent(NotificationEvent event) => handleNotificationEvent(
+    event,
+    tasks: ref.read(taskStoreProvider),
+    reminders: ref.read(reminderStoreProvider),
+    navigate: (location) => ref.read(routerProvider).push(location),
+    log: ref.read(alarmLogProvider),
+    db: db,
+    onCommitted: (eventId) => scheduler.noteEventApplied(eventId),
+  );
+  final pump = AlarmKitActionPump(
+    host: alarmKit,
+    apply: onEvent,
+    log: ref.watch(alarmLogProvider),
+  );
+
+  // A receipt guards against a redelivery from the native queue, which never
+  // holds an action this long.
+  unawaited(
+    db
+        .pruneActionReceipts(
+          olderThan: DateTime.now().toUtc().subtract(const Duration(days: 30)),
+        )
+        .then<void>((_) {}, onError: (Object _) {}),
+  );
 
   final ask = ref.read(alarmPermissionAskProvider.notifier);
-  final scheduler = NotificationScheduler(
+  // The ring overlay reads what this scheduler saw and changed on the
+  // AlarmKit lane (#46). A microtask, for the same reason as the permission
+  // ask below; a container already gone has nobody left to tell.
+  final observedAlarmKit = AlarmKitViewHost(
+    alarmKit,
+    onView: (rows) => scheduleMicrotask(() {
+      try {
+        ref.read(alarmKitViewProvider.notifier).replace(rows);
+      } on Object {
+        // Signed out or torn down.
+      }
+    }),
+  );
+
+  scheduler = NotificationScheduler(
     gateway: gateway,
-    alarmKit: alarmKit,
+    alarmKit: observedAlarmKit,
     // A microtask, because `start()` below runs inside this provider's build
     // and Riverpod refuses a write to another provider from there. The order
     // of begin/end is kept: microtasks run first-in, first-out.
@@ -319,7 +574,12 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
         // The container is gone (signed out, test torn down): nothing to hide.
       }
     }),
-    alarms: ref.watch(reminderStoreProvider).watchAlarmsIn(scope),
+    // The one gate (OPH-446): off and unknown plan every urgent alarm as an
+    // ordinary notification, on and legacy ring as before.
+    alarms: gateAlarms(
+      ref.watch(reminderStoreProvider).watchAlarmsIn(scope),
+      gate.stream,
+    ),
     privacyMode: ref.watch(notificationPrivacyProvider),
     log: ref.watch(alarmLogProvider),
     profile: ref.watch(reminderProfileProvider),
@@ -334,26 +594,36 @@ final notificationSchedulerProvider = Provider<NotificationScheduler?>((ref) {
     // moved when the replica emitted. Injected rather than reached for inside
     // the scheduler so a pure scheduler test needs no `WidgetsBinding`.
     onForeground: (onResume) {
-      final listener = AppLifecycleListener(onResume: onResume);
+      final listener = AppLifecycleListener(
+        onResume: () {
+          onResume();
+          // Every resume pulls (§2b.3), also where no AlarmKit pass runs.
+          unawaited(pump.pull());
+        },
+      );
       return listener.dispose;
+    },
+    // The plan pass pulls and applies first, so a native snooze is in the
+    // model before the plan judges the alarm it left behind (OPH-426); a
+    // fallback notification goes once a later plan rang the alarm itself.
+    drainActions: pump.beforePlan,
+    afterPlan: pump.afterPlan,
+    keepPendingIds: pump.heldFallbackIds,
+    appliedEventIds: () async => {
+      for (final r in await db.select(db.actionReceipts).get()) r.eventId,
     },
   );
   unawaited(scheduler.start());
   ref.onDispose(scheduler.dispose);
 
-  // Taps/actions from EITHER lane route through the one handler — an AlarmKit
-  // "Onayla"/"Ertele" is the same acknowledge/snooze as a notification button.
-  void onEvent(NotificationEvent event) => handleNotificationEvent(
-    event,
-    tasks: ref.read(taskStoreProvider),
-    reminders: ref.read(reminderStoreProvider),
-    navigate: (location) => ref.read(routerProvider).push(location),
-    log: ref.read(alarmLogProvider),
-  );
   final responses = gateway.events.listen(onEvent);
   ref.onDispose(responses.cancel);
-  final alarmKitResponses = alarmKit.events.listen(onEvent);
-  ref.onDispose(alarmKitResponses.cancel);
+  // AlarmKit presses are PULLED (§2b.3): one pull when this listener attaches,
+  // one per native `onActionsPending`; each is acked only after its commit.
+  final alarmKitPending = alarmKit.actionsPending.listen(
+    (_) => unawaited(pump.pull()),
+  );
+  ref.onDispose(alarmKitPending.cancel);
 
   return scheduler;
 });

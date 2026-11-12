@@ -213,3 +213,54 @@ Platform constraints that shape any fix (sources in
   transcoding and a cross-device settings store in the backlog; per-task
   reminder-profile overrides (only if the global profile proves insufficient —
   deliberately not shipped now).
+
+## Revision — 2026-11-12 (#46, #48, #49; OPH-421…431, OPH-450)
+
+The decision text above stands. Issue #49 (the AlarmKit alert's "Ertele" did nothing; only Stop
+worked) and #46 showed where decision 9 and the lane under it were incomplete. This revision adds;
+the channel contract both runtimes implement is [NOTIFICATIONS.md](../NOTIFICATIONS.md) §2b.3.
+
+1. **`.custom` stays, and the native snooze now acts.** Decision 9 kept the snooze `.custom` so
+   that the planner owns the schedule. With `.custom` the system does not stop the alert, and the
+   intent only queued a record, so the alarm kept ringing and nothing came back if Dart never ran.
+   `AWAlarmSnoozeIntent.perform()` now, in order: computes the target at press time (the user's
+   first snooze preset; +1 minute rule of [ADR-0068](0068-urgent-alarms-in-one-minute-ring-as-one.md)),
+   schedules a `.fixed` alarm with the same presentation, **always** stops the ringing alarm
+   (`cancel` if `stop` fails), and queues the event. It never throws. The planner still owns the
+   schedule: Dart writes the native `untilMs` unchanged and its next plan pass converges on the
+   same occurrence id, so the native alarm is a bridge until Dart runs, not a second owner.
+2. **Occurrence identity.** An alarm's id is computed from its members (task ids, sorted and
+   de-duplicated — never reminder ids) and its instant floored to the second; its presentation
+   (title, body, sound, labels, preset) goes into a separate fingerprint `fp`. A moved task gets a
+   new id, a renamed one keeps its id and is re-scheduled in place, and a synthetic reminder keeps
+   its id when the real row syncs down. Because AlarmKit returns no metadata, an App Group
+   **ledger** (`aw.alarmkit.ledger`) records `{id, fp, members, fireAtMs, origin, eventId}` per
+   alarm, written by the bridge on every schedule and by Swift on a native snooze.
+3. **Error policy.** A failed native schedule (`maximumLimitReached` or any other error) still
+   stops the alarm, adds one time-sensitive local notification at the snooze instant
+   (`aw.fallback.<eventId>`, removed once Dart has re-planned) and writes a failure record
+   (`aw.alarmkit.failures`, last 50) that Dart copies into the alarm log as `degraded`.
+4. **Pull, then receipt, then ack.** The action queue is no longer drained by pushing events down
+   the channel. Native code only signals `onActionsPending`; Dart pulls the queue, applies each
+   event in one transaction with a row in the local `action_receipts` table (a redelivered event is
+   a no-op), and acknowledges it to the native side only after the commit. An acknowledgement that
+   woke someone at 03:00 can no longer be lost to a cold start or applied twice.
+5. **Never cancel a ringing alarm.** A plan pass leaves an `.alerting` alarm alone while one of its
+   members is still due at that instant; when none is (acknowledged, snoozed or moved elsewhere),
+   it calls `stop`, never `cancel`. Every in-app action on the ring screen also stops the alerting
+   AlarmKit alarm of that occurrence, and a screen covered by AlarmKit plays no second sound.
+6. **Which device rings moved to the server.** Decision 4's "delivery is a per-device concern"
+   stays true for the chain profile, the sound and the snooze order; whether this device rings
+   urgent alarms at all is now a server-held flag — [ADR-0069](0069-urgent-alarm-device-is-a-server-flag.md).
+7. **Accepted limit (S-49, in the plan the owner approved on 2026-11-12).** The native snooze silences and re-arms the iPhone at
+   once. The task row, the server and the other devices learn about it only when the app's Dart
+   side next runs on that iPhone (there is no iOS background sync — ADR-0038 §8 is unchanged).
+   Until then another device that rings urgent alarms may ring at the old time; the one-ringing-
+   device default (ADR-0069) makes that rare.
+
+**Note — 2026-11-12, as shipped (Epic 36).** Points 1–7 shipped as written. NOTIFICATIONS §2b.3
+gained three rules while the lanes built it: a notification tap stays receipt-less (the plugin hands
+over no delivery timestamp); a ringing native snooze whose event has no receipt yet is kept until
+the stale window ends; and an event pulled outside a plan pass counts as unapplied until the replica
+re-emits. The Android headless turn now reads the stored reminder profile and sounds, so its urgent
+chain matches the foreground's (ADR-0069 note).

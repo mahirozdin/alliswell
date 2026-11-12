@@ -469,6 +469,35 @@ class ShareEvents extends Table {
   TextColumn get detail => text().nullable()();
 }
 
+/// v40 (OPH-421, #49): one row per alarm action this device has APPLIED, keyed
+/// by the action's `eventId` (NOTIFICATIONS §2b.3). A native action stays in
+/// its queue until Dart acks it after the commit, so a crash between the two
+/// delivers it again; the receipt is written in the same transaction as the
+/// model change and the outbox mutation, which makes that second delivery a
+/// no-op instead of a second snooze.
+///
+/// Device-local and NOT a sync entity: the server's own idempotency is the
+/// outbox's `clientMutationId`. Content-free (an id and an action name), so it
+/// survives a revocation and a sign-out like the other device logs; rows older
+/// than 30 days are pruned at app start.
+@DataClassName('ActionReceiptRecord')
+class ActionReceipts extends Table {
+  /// The action's `eventId`: a native `UUID`, or
+  /// `<notificationId>|<actionId>|<deliveryTimestamp>` from the notification
+  /// lane.
+  TextColumn get eventId => text()();
+
+  /// `snooze` | `stop` | `complete` | … — what was applied, for diagnosis.
+  TextColumn get action => text()();
+
+  /// When it was applied, UTC epoch milliseconds (an INTEGER on purpose: the
+  /// prune compares numbers, not ISO text).
+  IntColumn get appliedAt => integer()();
+
+  @override
+  Set<Column<Object>> get primaryKey => {eventId};
+}
+
 /// How many share-log rows the device keeps (a ring buffer, newest first).
 /// Smaller than the alarm log: shares are rare and only the recent ones answer
 /// "did the last thing I tried arrive?".
@@ -1168,10 +1197,20 @@ class TicketComments extends Table {
     Assets,
     KbArticles,
     TicketDrafts,
+    ActionReceipts,
   ],
 )
 class AwDatabase extends _$AwDatabase {
   AwDatabase(super.e);
+
+  /// Whether code running in the current zone runs inside one of this
+  /// database's transactions: drift then resolves every query to that
+  /// transaction, also after it closed. The sync engine steps out of such a
+  /// zone (OPH-427). drift marks [resolvedEngine]
+  /// internal; this is its one read in the app.
+  bool get inTransactionZone =>
+      // ignore: invalid_use_of_internal_member
+      !identical(resolvedEngine, this);
 
   /// Bump this for every schema change AND add the matching step below.
   /// v1 → v2 (OPH-081): tasks.calendar_mirror_enabled.
@@ -1219,8 +1258,10 @@ class AwDatabase extends _$AwDatabase {
   /// user deleted is not recreated in that calendar (ADR-0050).
   /// v38 → v39 (OPH-374): file_rows.name_fold for the global search
   /// (ADR-0055).
+  /// v39 → v40 (OPH-421): action_receipts — the device-local ledger that
+  /// applies an alarm action exactly once. Not a sync entity.
   @override
-  int get schemaVersion => 39;
+  int get schemaVersion => 40;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1510,8 +1551,49 @@ class AwDatabase extends _$AwDatabase {
         await m.addColumn(fileRows, fileRows.nameFold);
         await backfillFileNameFolds(this);
       }
+      // v40 (OPH-421, #49): one new device-local table and nothing else — no
+      // synced table is touched, and nothing to backfill: no action was
+      // answered under this ledger before it existed.
+      if (from < 40) await m.createTable(actionReceipts);
     },
   );
+
+  /// Records that the action [eventId] is being applied, unless it already
+  /// was. True only when this call inserted the row; false means a redelivery
+  /// of an action already applied, and the caller does nothing.
+  ///
+  /// `INSERT OR IGNORE`, so a duplicate is not an error that would abort the
+  /// caller's transaction. Runs on whatever executor is current: inside a
+  /// caller's `transaction`, the receipt commits and rolls back with the model
+  /// change it guards (NOTIFICATIONS §2b.3).
+  Future<bool> insertReceiptIfAbsent({
+    required String eventId,
+    required String action,
+    required DateTime appliedAt,
+  }) async {
+    final inserted = await customUpdate(
+      'INSERT OR IGNORE INTO action_receipts (event_id, action, applied_at) '
+      'VALUES (?, ?, ?)',
+      variables: [
+        Variable.withString(eventId),
+        Variable.withString(action),
+        Variable.withInt(appliedAt.toUtc().millisecondsSinceEpoch),
+      ],
+      updates: {actionReceipts},
+      updateKind: UpdateKind.insert,
+    );
+    return inserted > 0;
+  }
+
+  /// Deletes receipts applied before [olderThan]; returns how many went. A
+  /// native queue never holds an action that long, so an old receipt guards
+  /// nothing.
+  Future<int> pruneActionReceipts({required DateTime olderThan}) {
+    final cutoff = olderThan.toUtc().millisecondsSinceEpoch;
+    return (delete(
+      actionReceipts,
+    )..where((r) => r.appliedAt.isSmallerThanValue(cutoff))).go();
+  }
 
   /// `IF NOT EXISTS` so the two callers (fresh install, upgrade) can never
   /// collide, and a re-run is a no-op.

@@ -5,6 +5,7 @@ import '../sync/outbox.dart';
 import '../sync/streams.dart';
 import 'planner.dart';
 import '../features/tasks/data/task_scope.dart';
+import '../features/tasks/data/task_store.dart' show requireActionReceipt;
 
 /// Reminder-id prefix for alarms derived straight from a task row while the
 /// server's reminder is still in flight (see [ReminderStore.watchAlarms]).
@@ -213,7 +214,12 @@ class ReminderStore {
   /// task's active reminder row — by tap time it has usually synced down. If
   /// no row exists yet (fully offline), this no-ops: complete/snooze still
   /// work through the task, and the chain stops at its last slot.
-  Future<void> acknowledge(String reminderId) async {
+  ///
+  /// [receiptId] (OPH-427): the write applies a pulled action whose receipt
+  /// the caller inserted in its own transaction; it runs inside that
+  /// transaction and refuses to run without the receipt. Null behaves as
+  /// before.
+  Future<void> acknowledge(String reminderId, {String? receiptId}) async {
     var id = reminderId;
     final synthetic = parseSyntheticReminderId(reminderId);
     if (synthetic != null) {
@@ -252,6 +258,7 @@ class ReminderStore {
     }
 
     await _db.transaction(() async {
+      await requireActionReceipt(_db, receiptId);
       await (_db.update(
         _db.reminders,
       )..where((r) => r.id.equals(reminder.id))).write(
@@ -270,6 +277,104 @@ class ReminderStore {
         patch: {'status': 'acknowledged'},
       );
     });
-    _poke();
+    // Receipted: the applier pokes after the caller's transaction (OPH-427).
+    if (receiptId == null) _poke();
+  }
+
+  /// A grouped stop (OPH-439, NOTIFICATIONS §2b.3): every member's active
+  /// urgent reminder whose effective instant (the snooze target of a snoozed
+  /// row, else `remindAt`) falls in the UTC minute [occurrenceMinute]
+  /// (`floor(ms / 60000)`) is acknowledged in ONE transaction, the receipt
+  /// check first, one outbox mutation per reminder. [taskIds] is
+  /// de-duplicated; a reminder of a member in another minute is its own
+  /// alarm and stays.
+  Future<void> acknowledgeBatch(
+    List<String> taskIds, {
+    required int occurrenceMinute,
+    String? receiptId,
+  }) async {
+    final ids = taskIds.toSet();
+    var wrote = false;
+    await _db.transaction(() async {
+      await requireActionReceipt(_db, receiptId);
+      if (ids.isEmpty) return;
+      final rows =
+          await ((_db.select(_db.reminders)..where(
+                    (r) =>
+                        r.taskId.isIn(ids) &
+                        r.alarmLevel.equals('urgent') &
+                        r.status.isIn(const [
+                          'scheduled',
+                          'snoozed',
+                          'delivered',
+                        ]),
+                  ))
+                  .join([
+                    innerJoin(
+                      _db.tasks,
+                      _db.tasks.id.equalsExp(_db.reminders.taskId),
+                    ),
+                  ]))
+              .get();
+      final now = DateTime.now().toUtc();
+      for (final row in rows) {
+        final reminder = row.readTable(_db.reminders);
+        if (!_matches(reminder, occurrenceMinute, now)) continue;
+        await (_db.update(
+          _db.reminders,
+        )..where((r) => r.id.equals(reminder.id))).write(
+          RemindersCompanion(
+            status: const Value('acknowledged'),
+            acknowledgedAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+        await enqueueMutation(
+          _db,
+          workspaceId: row.readTable(_db.tasks).workspaceId,
+          entityType: 'reminder',
+          entityId: reminder.id,
+          operation: 'update',
+          patch: {'status': 'acknowledged'},
+        );
+        wrote = true;
+      }
+    });
+    if (wrote && receiptId == null) _poke();
+  }
+
+  /// The active urgent reminders of [taskId] an AlarmKit stop acknowledges
+  /// (NOTIFICATIONS §2b.3): those whose effective instant (the snooze target
+  /// of a snoozed row, else `remindAt`) falls in the UTC minute of
+  /// [occurrenceFireAtMs] — a group rings at its earliest member's second.
+  /// Without an occurrence (an entry converted from v1), every one that had
+  /// come due by [dueBy].
+  Future<List<String>> urgentReminderIdsAt(
+    String taskId, {
+    int? occurrenceFireAtMs,
+    required DateTime dueBy,
+  }) async {
+    final rows =
+        await (_db.select(_db.reminders)..where(
+              (r) =>
+                  r.taskId.equals(taskId) &
+                  r.alarmLevel.equals('urgent') &
+                  r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
+            ))
+            .get();
+    final minute = occurrenceFireAtMs == null
+        ? null
+        : occurrenceFireAtMs ~/ 60000;
+    return [
+      for (final r in rows)
+        if (_matches(r, minute, dueBy)) r.id,
+    ];
+  }
+
+  static bool _matches(Reminder r, int? minute, DateTime dueBy) {
+    final at = ((r.status == 'snoozed' ? r.snoozedUntil : null) ?? r.remindAt)
+        .toUtc();
+    if (minute != null) return at.millisecondsSinceEpoch ~/ 60000 == minute;
+    return !at.isAfter(dueBy.toUtc());
   }
 }

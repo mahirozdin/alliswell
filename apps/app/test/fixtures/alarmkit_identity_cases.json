@@ -1,0 +1,379 @@
+{
+  "contract": "NOTIFICATIONS.md 2b.3 Identity",
+  "note": "Written by the Dart test (UPDATE_FIXTURES=1); every other reader only compares. fnv1a over UTF-16 code units, masked & 0x7fffffff.",
+  "cases": [
+    {
+      "name": "single member, whole second",
+      "members": [
+        "01JTASK0000000000000000001"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "01JTASK0000000000000000001"
+      ],
+      "idSeed": "akv2|01JTASK0000000000000000001|1784116800000",
+      "id": 1789014878,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "fireAt with a millisecond part is floored",
+      "members": [
+        "01JTASK0000000000000000001"
+      ],
+      "rawFireAtMs": 1784116800999,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "01JTASK0000000000000000001"
+      ],
+      "idSeed": "akv2|01JTASK0000000000000000001|1784116800000",
+      "id": 1789014878,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "one ms before a second boundary",
+      "members": [
+        "01JTASK0000000000000000001"
+      ],
+      "rawFireAtMs": 1767225599999,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1767225599000,
+      "sortedMembers": [
+        "01JTASK0000000000000000001"
+      ],
+      "idSeed": "akv2|01JTASK0000000000000000001|1767225599000",
+      "id": 1344325567,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "unsorted members",
+      "members": [
+        "T3",
+        "T1",
+        "T2"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1",
+        "T2",
+        "T3"
+      ],
+      "idSeed": "akv2|T1,T2,T3|1784116800000",
+      "id": 2089746063,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "duplicated members collapse",
+      "members": [
+        "T2",
+        "T1",
+        "T2",
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1",
+        "T2"
+      ],
+      "idSeed": "akv2|T1,T2|1784116800000",
+      "id": 97906426,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "members sort by UTF-16 code unit (upper before lower)",
+      "members": [
+        "b",
+        "B",
+        "a",
+        "A"
+      ],
+      "rawFireAtMs": 1784116860000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116860000,
+      "sortedMembers": [
+        "A",
+        "B",
+        "a",
+        "b"
+      ],
+      "idSeed": "akv2|A,B,a,b|1784116860000",
+      "id": 233157591,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "Turkish letters in the title",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "ğüşıöçİ Ğ Ü Ş Ö Ç toplantısı",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|ğüşıöçİ Ğ Ü Ş Ö Ç toplantısı|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 1520868011
+    },
+    {
+      "name": "emoji surrogate pair in title and body",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "İlaç 💊",
+      "body": "Şimdi 🔔 al",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|İlaç 💊|Şimdi 🔔 al|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 220556614
+    },
+    {
+      "name": "null sound (system alarm sound)",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": null,
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|Görev|Hatırlatma||Onayla|5 dk|5_min",
+      "fp": 28445951
+    },
+    {
+      "name": "empty sound hashes like null",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|Görev|Hatırlatma||Onayla|5 dk|5_min",
+      "fp": 28445951
+    },
+    {
+      "name": "tomorrow_morning preset and its label",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784185200000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "Yarın sabah",
+      "snoozePreset": "tomorrow_morning",
+      "fireAtMs": 1784185200000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784185200000",
+      "id": 1415723746,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|Yarın sabah|tomorrow_morning",
+      "fp": 2132577513
+    },
+    {
+      "name": "English labels",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Acknowledge",
+      "snoozeLabel": "30 min",
+      "snoozePreset": "30_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Acknowledge|30 min|30_min",
+      "fp": 297294236
+    },
+    {
+      "name": "privacy mode presentation",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "AllisWell",
+      "body": "Bir hatırlatman var",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|AllisWell|Bir hatırlatman var|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 1469914798
+    },
+    {
+      "name": "empty title and body",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "",
+      "body": "",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|||aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 1276826756
+    },
+    {
+      "name": "separator characters inside text",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 1784116800000,
+      "title": "a|b,c",
+      "body": "|",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116800000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|1784116800000",
+      "id": 1196688252,
+      "fpSeed": "fp1|a|b,c|||aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 815345672
+    },
+    {
+      "name": "group of ULID members, same minute",
+      "members": [
+        "01JZZ00000000000000000000B",
+        "01JZZ00000000000000000000A"
+      ],
+      "rawFireAtMs": 1784116830500,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 1784116830000,
+      "sortedMembers": [
+        "01JZZ00000000000000000000A",
+        "01JZZ00000000000000000000B"
+      ],
+      "idSeed": "akv2|01JZZ00000000000000000000A,01JZZ00000000000000000000B|1784116830000",
+      "id": 720679197,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    },
+    {
+      "name": "epoch-scale fireAt far in the future",
+      "members": [
+        "T1"
+      ],
+      "rawFireAtMs": 4102444799123,
+      "title": "Görev",
+      "body": "Hatırlatma",
+      "soundName": "aw_alarm.caf",
+      "stopLabel": "Onayla",
+      "snoozeLabel": "5 dk",
+      "snoozePreset": "5_min",
+      "fireAtMs": 4102444799000,
+      "sortedMembers": [
+        "T1"
+      ],
+      "idSeed": "akv2|T1|4102444799000",
+      "id": 688911234,
+      "fpSeed": "fp1|Görev|Hatırlatma|aw_alarm.caf|Onayla|5 dk|5_min",
+      "fp": 792094701
+    }
+  ]
+}

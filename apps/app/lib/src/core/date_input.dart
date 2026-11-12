@@ -47,7 +47,7 @@ Future<DateTime?> awPickDateTime(
     cancelText: cancelText,
   );
   if (date == null || !context.mounted) return null;
-  final time = await showTimePicker(
+  final time = await awShowTimePicker(
     context: context,
     // The value being EDITED wins over any default: this is the line that keeps
     // 14:30 at 14:30 when only the day changes.
@@ -61,6 +61,41 @@ Future<DateTime?> awPickDateTime(
     date.day,
     time?.hour ?? current?.hour ?? defHour,
     time?.minute ?? current?.minute ?? defMinute,
+  );
+}
+
+/// The app's one clock picker: [showTimePicker] with the locale's own hour
+/// format honoured in TEXT ENTRY too (OPH-471, walkthrough W-06).
+///
+/// A 24-hour locale (tr) draws a 24-hour dial with no AM/PM toggle, but
+/// Flutter's text-entry parser reads `MediaQuery.alwaysUse24HourFormat`
+/// instead — false on web and desktop, and on a phone whose system 24-hour
+/// switch is off. It then took a typed "05" as 5 in the CURRENT half of the
+/// day (17 from a 23:59 start) and refused 13–23. So when the locale's base
+/// clock is 24-hour the flag is forced on, and the dial, the fields and the
+/// parser agree. A 12-hour locale keeps the platform's value and its toggle.
+/// The user's DISPLAY format (`dateFormatProvider`) is deliberately not
+/// consulted: the picker's layout follows the locale either way.
+Future<TimeOfDay?> awShowTimePicker({
+  required BuildContext context,
+  required TimeOfDay initialTime,
+}) {
+  return showTimePicker(
+    context: context,
+    initialTime: initialTime,
+    builder: (context, child) {
+      final media = MediaQuery.of(context);
+      final base = MaterialLocalizations.of(
+        context,
+      ).timeOfDayFormat(alwaysUse24HourFormat: false);
+      if (media.alwaysUse24HourFormat || hourFormat(of: base) == HourFormat.h) {
+        return child!;
+      }
+      return MediaQuery(
+        data: media.copyWith(alwaysUse24HourFormat: true),
+        child: child!,
+      );
+    },
   );
 }
 

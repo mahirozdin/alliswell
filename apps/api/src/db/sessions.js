@@ -24,6 +24,8 @@
 
 import { newId } from '../lib/ids.js';
 import { hashRefreshToken, newRefreshToken } from '../lib/tokens.js';
+import { lockUsers, promoteIfNoneRings } from './notification-devices.js';
+import { transactionWithRetry } from './tx.js';
 
 /** What a client shows about one session. Never the token, never its digest. */
 function serialize(rows, { currentFamilyId = null } = {}) {
@@ -88,29 +90,185 @@ export async function familyOfToken(db, tokenHash) {
   return row?.family_id ?? null;
 }
 
+/** The distinct non-null values of one column (rows come back whole from the unit fake). */
+const distinctOf = (rows, col) => [...new Set(rows.map((row) => row[col]).filter(Boolean))];
+
+/** Runs `fn` inside the transaction `db` already is, or in a fresh retrying one. */
+function inTransaction(db, fn) {
+  return db.isTransaction ? fn(db) : transactionWithRetry(db, fn);
+}
+
 /**
- * Closes one session. Scoped by user as well as family so that knowing a
- * family id — which the owner's own screen shows them — can never end
- * somebody else's session.
+ * ── A SESSION THAT ENDS TAKES ITS DEVICE WITH IT (OPH-435, #48) ───────────
  *
- * @returns {Promise<number>} rows revoked; 0 means "no such live session".
+ * A family may be bound to one `notification_devices` row (`device_id`,
+ * OPH-434). When the family is revoked, that row is the install it was
+ * signed in on, and leaving it registered means the server keeps sending
+ * fallback pushes to somebody who signed out. So every door that revokes
+ * families — closing a session, "everywhere else", a password change or
+ * reset, refresh reuse, `logout?all` — removes the devices bound to them.
+ *
+ * A device is kept when another live family is still bound to it: a device
+ * signed in again after an old session expired must not lose its row because
+ * the old family's leftover rows were stamped. Devices no family names (older
+ * clients that sent no `deviceId`) are never touched here — nothing says
+ * which session they belong to.
+ *
+ * Call with the user's row locked (`lockUsers`): removing the ringing device
+ * runs the OPH-433 promotion, which must not race a registration.
+ *
+ * @returns {Promise<string[]>} the ids of the device rows removed
  */
-export function revokeSession(db, { userId, familyId, at = new Date() }) {
-  return db('refresh_tokens')
-    .where({ user_id: userId, family_id: familyId })
+export async function dropDevicesOfFamilies(trx, userId, familyIds, { at = new Date() } = {}) {
+  const families = [...new Set(familyIds.filter(Boolean))];
+  if (families.length === 0) return [];
+  const bound = distinctOf(
+    await trx('refresh_tokens')
+      .where({ user_id: userId })
+      .whereIn('family_id', families)
+      .whereNotNull('device_id')
+      .select('device_id'),
+    'device_id',
+  );
+  if (bound.length === 0) return [];
+  const stillLive = await devicesWithSession(trx, userId, bound, { at });
+  const drop = bound.filter((id) => !stillLive.has(id));
+  if (drop.length === 0) return [];
+  const rows = await trx('notification_devices')
+    .where({ user_id: userId })
+    .whereIn('id', drop)
+    .select('id', 'rings_urgent');
+  if (rows.length === 0) return [];
+  await trx('notification_devices')
+    .where({ user_id: userId })
+    .whereIn(
+      'id',
+      rows.map((row) => row.id),
+    )
+    .delete();
+  if (rows.some((row) => Number(row.rings_urgent) === 1)) {
+    await promoteIfNoneRings(trx, userId);
+  }
+  return rows.map((row) => row.id);
+}
+
+/**
+ * Which of these devices still have somebody signed in on them — a live
+ * (neither rotated, revoked nor expired) family bound to the device
+ * (`GET /notification-devices` `hasSession`, OPH-435).
+ * @returns {Promise<Set<string>>}
+ */
+export async function devicesWithSession(db, userId, deviceIds, { at = new Date() } = {}) {
+  if (deviceIds.length === 0) return new Set();
+  const rows = await db('refresh_tokens')
+    .where({ user_id: userId })
+    .whereIn('device_id', deviceIds)
+    .whereNull('revoked_at')
+    .whereNull('rotated_at')
+    .where('expires_at', '>', at)
+    .select('device_id');
+  return new Set(distinctOf(rows, 'device_id'));
+}
+
+/**
+ * Was somebody signed in on this device and is nobody any more? True when at
+ * least one family of this user is bound to the device and none of them is
+ * live (OPH-435): the device was removed or its session ended. A device no
+ * family names (an older client) is never "signed out" by this test.
+ *
+ * `PUT /notification-devices/:id` asks it before it creates a row, so a
+ * removed device cannot register itself again with the access token it still
+ * holds for a few minutes and keep receiving pushes after the sign-out.
+ *
+ * `issuedAt` is the caller's access-token `iat` (whole seconds). A token
+ * minted after the last bound family ended comes from a sign-in that happened
+ * after it — an older client that never sends the optional `deviceId` signs
+ * in with a live family bound to nothing — so it is not the removed session
+ * and may register the device again. `iat` is floored, so a token minted in
+ * the very second the family ended still counts as the removed one: the test
+ * errs towards refusing, never towards letting a removed session back in.
+ * Without `issuedAt` (an API key) nothing is admitted this way.
+ */
+export async function deviceSignedOut(db, userId, deviceId, { at = new Date(), issuedAt } = {}) {
+  const bound = await db('refresh_tokens')
+    .where({ user_id: userId, device_id: deviceId })
+    .select('revoked_at', 'rotated_at', 'expires_at');
+  if (bound.length === 0) return false;
+  const live = await devicesWithSession(db, userId, [deviceId], { at });
+  if (live.has(deviceId)) return false;
+  if (!Number.isFinite(issuedAt)) return true;
+  // When the device's last session ended: a revoked row ended at its
+  // revocation, the head of a family nobody revoked at its expiry; a rotated
+  // row's successor carries its family's end.
+  let endedAt = 0;
+  for (const row of bound) {
+    const end = row.revoked_at ?? (row.rotated_at ? null : row.expires_at);
+    if (end) endedAt = Math.max(endedAt, new Date(end).getTime());
+  }
+  return issuedAt * 1000 <= endedAt;
+}
+
+/**
+ * Signs one device out (OPH-435): every family bound to it is revoked, every
+ * row of it at once, the same single UPDATE `revokeOtherSessions` uses. The
+ * caller removes the device row itself. Call inside a transaction holding
+ * `lockUsers(trx, [userId])`.
+ * @returns {Promise<number>} rows revoked; 0 when no live session was bound
+ */
+export function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() }) {
+  return trx('refresh_tokens')
+    .where({ user_id: userId, device_id: deviceId })
     .whereNull('revoked_at')
     .update({ revoked_at: at });
 }
 
 /**
+ * Closes one session. Scoped by user as well as family so that knowing a
+ * family id — which the owner's own screen shows them — can never end
+ * somebody else's session. Also the reuse response: a rotated token coming
+ * back burns its whole family. The device bound to the family goes with it,
+ * also when the family was already revoked.
+ *
+ * `db` may be an open transaction (it is used as is) or the pool.
+ *
+ * @returns {Promise<number>} rows revoked; 0 means "no such live session".
+ */
+export function revokeSession(db, { userId, familyId, at = new Date() }) {
+  return inTransaction(db, async (trx) => {
+    await lockUsers(trx, [userId]);
+    const revoked = await trx('refresh_tokens')
+      .where({ user_id: userId, family_id: familyId })
+      .whereNull('revoked_at')
+      .update({ revoked_at: at });
+    // Even when nothing was left to revoke: a family revoked earlier (a
+    // removed device, say) may have had its device registered again while
+    // its access token still worked, and this — a refused refresh of that
+    // family — is the last moment the server hears from it.
+    await dropDevicesOfFamilies(trx, userId, [familyId], { at });
+    return revoked;
+  });
+}
+
+/**
  * Closes every session except one. `keepFamilyId` null closes all of them —
- * which is what an administrator's force-logout means, and what a person who
- * did not name their own session gets.
+ * which is what an administrator's force-logout means, what a password change
+ * does, and what a person who did not name their own session gets. The
+ * devices bound to the closed families go with them.
+ *
+ * `db` may be an open transaction (it is used as is) or the pool.
  */
 export function revokeOtherSessions(db, { userId, keepFamilyId = null, at = new Date() }) {
-  let q = db('refresh_tokens').where({ user_id: userId }).whereNull('revoked_at');
-  if (keepFamilyId) q = q.whereNot({ family_id: keepFamilyId });
-  return q.update({ revoked_at: at });
+  return inTransaction(db, async (trx) => {
+    await lockUsers(trx, [userId]);
+    const open = () => {
+      const q = trx('refresh_tokens').where({ user_id: userId }).whereNull('revoked_at');
+      return keepFamilyId ? q.whereNot('family_id', keepFamilyId) : q;
+    };
+    const families = distinctOf(await open().select('family_id'), 'family_id');
+    const revoked = await open().update({ revoked_at: at });
+    await dropDevicesOfFamilies(trx, userId, families, { at });
+    return revoked;
+  });
 }
 
 /** How many live sessions a person has — the count an admin screen leads with. */
@@ -160,7 +318,7 @@ export function deviceLabel(request) {
 export async function createRefreshRecord(
   executor,
   auth,
-  { userId, familyId, ip, deviceName = null },
+  { userId, familyId, ip, deviceName = null, deviceId = null },
 ) {
   const token = newRefreshToken();
   const expiresAt = new Date(Date.now() + auth.refreshTtlDays * 24 * 60 * 60 * 1000);
@@ -172,6 +330,8 @@ export async function createRefreshRecord(
     expires_at: expiresAt,
     created_ip: ip ?? null,
     device_name: deviceName,
+    // OPH-434 — the notification device this family is bound to, or null.
+    device_id: deviceId,
   });
   return { token, expiresAt };
 }

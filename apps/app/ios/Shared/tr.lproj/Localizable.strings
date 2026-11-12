@@ -9,3 +9,12 @@
 "Adds a task to AllisWell. Dates and times in the text are understood." = "AllisWell'e görev ekler. Metindeki tarih ve saatler anlaşılır.";
 "Opens AllisWell on today." = "AllisWell'i bugünle açar.";
 "Add ${text} to AllisWell" = "${text} görevini AllisWell'e ekle";
+
+/* OPH-451 (IOS-07): ana ekran widget'ının galeri metinleri ve kendi
+   niyetleri. Widget uzantısı da bu dosyayı paketler. */
+"AllisWell" = "AllisWell";
+"Your tasks at a glance — overdue, today and beyond." = "Görevlerin bir bakışta: gecikenler, bugün ve sonrası.";
+"Complete task" = "Görevi tamamla";
+"Marks an AllisWell task done." = "Bir AllisWell görevini tamamlandı olarak işaretler.";
+"List" = "Liste";
+"Choose which list this widget shows." = "Bu widget’ta hangi listenin görüneceğini seç.";

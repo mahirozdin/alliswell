@@ -57,7 +57,9 @@ Future<void> widgetCallback(Uri? uri) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   // Registered before the first frame so a press that arrives during launch is
-  // not dropped. Only where the plugin exists (android/iOS).
+  // not dropped. Android only: iOS widget taps go through the app's own App
+  // Intent, and registering there before the App Group is set is home_widget's
+  // error -7 (OPH-438).
   if (homeWidgetCallbackSupported(
     isWeb: kIsWeb,
     platform: defaultTargetPlatform,

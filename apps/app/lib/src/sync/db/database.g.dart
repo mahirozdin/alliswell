@@ -22867,6 +22867,282 @@ class TicketDraftsCompanion extends UpdateCompanion<TicketDraftRecord> {
   }
 }
 
+class $ActionReceiptsTable extends ActionReceipts
+    with TableInfo<$ActionReceiptsTable, ActionReceiptRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ActionReceiptsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<String> eventId = GeneratedColumn<String>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _appliedAtMeta = const VerificationMeta(
+    'appliedAt',
+  );
+  @override
+  late final GeneratedColumn<int> appliedAt = GeneratedColumn<int>(
+    'applied_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [eventId, action, appliedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'action_receipts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ActionReceiptRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('applied_at')) {
+      context.handle(
+        _appliedAtMeta,
+        appliedAt.isAcceptableOrUnknown(data['applied_at']!, _appliedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_appliedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {eventId};
+  @override
+  ActionReceiptRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ActionReceiptRecord(
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}event_id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      appliedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}applied_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ActionReceiptsTable createAlias(String alias) {
+    return $ActionReceiptsTable(attachedDatabase, alias);
+  }
+}
+
+class ActionReceiptRecord extends DataClass
+    implements Insertable<ActionReceiptRecord> {
+  /// The action's `eventId`: a native `UUID`, or
+  /// `<notificationId>|<actionId>|<deliveryTimestamp>` from the notification
+  /// lane.
+  final String eventId;
+
+  /// `snooze` | `stop` | `complete` | … — what was applied, for diagnosis.
+  final String action;
+
+  /// When it was applied, UTC epoch milliseconds (an INTEGER on purpose: the
+  /// prune compares numbers, not ISO text).
+  final int appliedAt;
+  const ActionReceiptRecord({
+    required this.eventId,
+    required this.action,
+    required this.appliedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['event_id'] = Variable<String>(eventId);
+    map['action'] = Variable<String>(action);
+    map['applied_at'] = Variable<int>(appliedAt);
+    return map;
+  }
+
+  ActionReceiptsCompanion toCompanion(bool nullToAbsent) {
+    return ActionReceiptsCompanion(
+      eventId: Value(eventId),
+      action: Value(action),
+      appliedAt: Value(appliedAt),
+    );
+  }
+
+  factory ActionReceiptRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ActionReceiptRecord(
+      eventId: serializer.fromJson<String>(json['eventId']),
+      action: serializer.fromJson<String>(json['action']),
+      appliedAt: serializer.fromJson<int>(json['appliedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'eventId': serializer.toJson<String>(eventId),
+      'action': serializer.toJson<String>(action),
+      'appliedAt': serializer.toJson<int>(appliedAt),
+    };
+  }
+
+  ActionReceiptRecord copyWith({
+    String? eventId,
+    String? action,
+    int? appliedAt,
+  }) => ActionReceiptRecord(
+    eventId: eventId ?? this.eventId,
+    action: action ?? this.action,
+    appliedAt: appliedAt ?? this.appliedAt,
+  );
+  ActionReceiptRecord copyWithCompanion(ActionReceiptsCompanion data) {
+    return ActionReceiptRecord(
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      action: data.action.present ? data.action.value : this.action,
+      appliedAt: data.appliedAt.present ? data.appliedAt.value : this.appliedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActionReceiptRecord(')
+          ..write('eventId: $eventId, ')
+          ..write('action: $action, ')
+          ..write('appliedAt: $appliedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(eventId, action, appliedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ActionReceiptRecord &&
+          other.eventId == this.eventId &&
+          other.action == this.action &&
+          other.appliedAt == this.appliedAt);
+}
+
+class ActionReceiptsCompanion extends UpdateCompanion<ActionReceiptRecord> {
+  final Value<String> eventId;
+  final Value<String> action;
+  final Value<int> appliedAt;
+  final Value<int> rowid;
+  const ActionReceiptsCompanion({
+    this.eventId = const Value.absent(),
+    this.action = const Value.absent(),
+    this.appliedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ActionReceiptsCompanion.insert({
+    required String eventId,
+    required String action,
+    required int appliedAt,
+    this.rowid = const Value.absent(),
+  }) : eventId = Value(eventId),
+       action = Value(action),
+       appliedAt = Value(appliedAt);
+  static Insertable<ActionReceiptRecord> custom({
+    Expression<String>? eventId,
+    Expression<String>? action,
+    Expression<int>? appliedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (eventId != null) 'event_id': eventId,
+      if (action != null) 'action': action,
+      if (appliedAt != null) 'applied_at': appliedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ActionReceiptsCompanion copyWith({
+    Value<String>? eventId,
+    Value<String>? action,
+    Value<int>? appliedAt,
+    Value<int>? rowid,
+  }) {
+    return ActionReceiptsCompanion(
+      eventId: eventId ?? this.eventId,
+      action: action ?? this.action,
+      appliedAt: appliedAt ?? this.appliedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (eventId.present) {
+      map['event_id'] = Variable<String>(eventId.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (appliedAt.present) {
+      map['applied_at'] = Variable<int>(appliedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActionReceiptsCompanion(')
+          ..write('eventId: $eventId, ')
+          ..write('action: $action, ')
+          ..write('appliedAt: $appliedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AwDatabase extends GeneratedDatabase {
   _$AwDatabase(QueryExecutor e) : super(e);
   $AwDatabaseManager get managers => $AwDatabaseManager(this);
@@ -22910,6 +23186,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
   late final $AssetsTable assets = $AssetsTable(this);
   late final $KbArticlesTable kbArticles = $KbArticlesTable(this);
   late final $TicketDraftsTable ticketDrafts = $TicketDraftsTable(this);
+  late final $ActionReceiptsTable actionReceipts = $ActionReceiptsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -22947,6 +23224,7 @@ abstract class _$AwDatabase extends GeneratedDatabase {
     assets,
     kbArticles,
     ticketDrafts,
+    actionReceipts,
   ];
   @override
   DriftDatabaseOptions get options =>
@@ -33640,6 +33918,172 @@ typedef $$TicketDraftsTableProcessedTableManager =
       TicketDraftRecord,
       PrefetchHooks Function()
     >;
+typedef $$ActionReceiptsTableCreateCompanionBuilder =
+    ActionReceiptsCompanion Function({
+      required String eventId,
+      required String action,
+      required int appliedAt,
+      Value<int> rowid,
+    });
+typedef $$ActionReceiptsTableUpdateCompanionBuilder =
+    ActionReceiptsCompanion Function({
+      Value<String> eventId,
+      Value<String> action,
+      Value<int> appliedAt,
+      Value<int> rowid,
+    });
+
+class $$ActionReceiptsTableFilterComposer
+    extends Composer<_$AwDatabase, $ActionReceiptsTable> {
+  $$ActionReceiptsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get appliedAt => $composableBuilder(
+    column: $table.appliedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ActionReceiptsTableOrderingComposer
+    extends Composer<_$AwDatabase, $ActionReceiptsTable> {
+  $$ActionReceiptsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get eventId => $composableBuilder(
+    column: $table.eventId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get appliedAt => $composableBuilder(
+    column: $table.appliedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ActionReceiptsTableAnnotationComposer
+    extends Composer<_$AwDatabase, $ActionReceiptsTable> {
+  $$ActionReceiptsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get eventId =>
+      $composableBuilder(column: $table.eventId, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<int> get appliedAt =>
+      $composableBuilder(column: $table.appliedAt, builder: (column) => column);
+}
+
+class $$ActionReceiptsTableTableManager
+    extends
+        RootTableManager<
+          _$AwDatabase,
+          $ActionReceiptsTable,
+          ActionReceiptRecord,
+          $$ActionReceiptsTableFilterComposer,
+          $$ActionReceiptsTableOrderingComposer,
+          $$ActionReceiptsTableAnnotationComposer,
+          $$ActionReceiptsTableCreateCompanionBuilder,
+          $$ActionReceiptsTableUpdateCompanionBuilder,
+          (
+            ActionReceiptRecord,
+            BaseReferences<
+              _$AwDatabase,
+              $ActionReceiptsTable,
+              ActionReceiptRecord
+            >,
+          ),
+          ActionReceiptRecord,
+          PrefetchHooks Function()
+        > {
+  $$ActionReceiptsTableTableManager(_$AwDatabase db, $ActionReceiptsTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ActionReceiptsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ActionReceiptsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ActionReceiptsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> eventId = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<int> appliedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ActionReceiptsCompanion(
+                eventId: eventId,
+                action: action,
+                appliedAt: appliedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String eventId,
+                required String action,
+                required int appliedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ActionReceiptsCompanion.insert(
+                eventId: eventId,
+                action: action,
+                appliedAt: appliedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ActionReceiptsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AwDatabase,
+      $ActionReceiptsTable,
+      ActionReceiptRecord,
+      $$ActionReceiptsTableFilterComposer,
+      $$ActionReceiptsTableOrderingComposer,
+      $$ActionReceiptsTableAnnotationComposer,
+      $$ActionReceiptsTableCreateCompanionBuilder,
+      $$ActionReceiptsTableUpdateCompanionBuilder,
+      (
+        ActionReceiptRecord,
+        BaseReferences<_$AwDatabase, $ActionReceiptsTable, ActionReceiptRecord>,
+      ),
+      ActionReceiptRecord,
+      PrefetchHooks Function()
+    >;
 
 class $AwDatabaseManager {
   final _$AwDatabase _db;
@@ -33707,4 +34151,6 @@ class $AwDatabaseManager {
       $$KbArticlesTableTableManager(_db, _db.kbArticles);
   $$TicketDraftsTableTableManager get ticketDrafts =>
       $$TicketDraftsTableTableManager(_db, _db.ticketDrafts);
+  $$ActionReceiptsTableTableManager get actionReceipts =>
+      $$ActionReceiptsTableTableManager(_db, _db.actionReceipts);
 }

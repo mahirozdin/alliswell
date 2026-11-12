@@ -20,21 +20,25 @@ import Foundation
 /// `scheduler.dart`) is the single source of truth: it decides WHICH alarms
 /// should exist, in which language their buttons are labelled, which sound they
 /// carry and how long "Ertele" postpones them. This class only carries
-/// schedule/cancel across the `alliswell/alarmkit` channel and reports which
-/// alarms exist so that set-diff converges.
+/// schedule/cancel/stop across the `alliswell/alarmkit` channel and reports
+/// which alarms exist, and what each one is, so that set-diff converges
+/// (contract v2, docs/NOTIFICATIONS.md §2b.3).
 ///
 /// **Ids.** The app-assigned integer id is mapped to a deterministic `UUID`
 /// (fixed namespace + big-endian id), and back again. That round trip is what
-/// makes `scheduledIds` possible at all: `AlarmKit.Alarm` exposes `id`,
+/// makes `scheduledAlarms` possible at all: `AlarmKit.Alarm` exposes `id`,
 /// `schedule`, `countdownDuration` and `state` — and NOT the attributes — so
-/// there is no metadata to read back after a relaunch.
+/// what an alarm IS (members, occurrence, fingerprint, origin) lives in the App
+/// Group ledger (`AWAlarmLedger`), joined with the OS list on every read.
 ///
 /// **Buttons.** Pressing Onayla/Ertele works while the app is not running, so
 /// the presses arrive as `LiveActivityIntent`s that park the action in the
-/// shared App Group queue (`AWAlarmActionQueue`). Dart drains that queue as soon
-/// as it has a handler installed, and again on every foreground. Nothing is
-/// pushed down the channel speculatively — an acknowledgement dropped because no
-/// engine was running is exactly the bug this lane exists to avoid.
+/// shared App Group queue (`AWAlarmActionQueue`). Dart PULLS that queue
+/// (`pullPendingActions`) and removes an entry only after applying it
+/// (`ackActions`). The only thing ever pushed is `onActionsPending`, with no
+/// payload — an acknowledgement dropped because no engine was running, or
+/// because the process died before Dart committed it, is exactly the bug this
+/// lane exists to avoid.
 ///
 /// Gated on iOS 26: on older systems `isSupported` returns false and the whole
 /// URGENT lane stays on OPH-139 time-sensitive notifications.
@@ -70,14 +74,31 @@ final class AlarmKitBridge {
       isAuthorized(result)
     case "timeSensitiveEnabled":
       timeSensitiveEnabled(result)
+    case "scheduledAlarms":
+      result(scheduledAlarms())
     case "scheduledIds":
-      scheduledIds(result)
+      result(scheduledAlarms().compactMap { $0["id"] as? Int })
     case "schedule":
       schedule(call.arguments as? [String: Any] ?? [:], result)
     case "cancel":
       cancel(call.arguments as? [String: Any] ?? [:], result)
+    case "stop":
+      stop(call.arguments as? [String: Any] ?? [:], result)
+    case "pullPendingActions":
+      result(AWAlarmActionQueue.pending().map(\.dictionary))
+    case "ackActions":
+      let args = call.arguments as? [String: Any] ?? [:]
+      AWAlarmActionQueue.ack(eventIds: args["eventIds"] as? [String] ?? [])
+      result(nil)
+    case "clearFallbacks":
+      clearFallbacks(call.arguments as? [String: Any] ?? [:])
+      result(nil)
+    case "pullFailures":
+      result(AWAlarmFailures.pull())
     case "drainPendingActions":
-      drainPendingActions()
+      // Contract v1's push drain. Kept answering for an older Dart, and a
+      // no-op: the queue now empties only through `ackActions`, so an old
+      // caller neither errors nor loses an entry.
       result(nil)
     default:
       result(FlutterMethodNotImplemented)
@@ -86,81 +107,48 @@ final class AlarmKitBridge {
 
   // MARK: - Deterministic id <-> UUID mapping
 
-  /// Namespace bytes that mark a UUID as ours, so a foreign alarm (or a stale
-  /// one from another app writing into the same store) is never decoded as an
-  /// app id.
-  private static let namespace: [UInt8] = [0xA1, 0x15, 0x00, 0x00, 0xA1, 0x15, 0x00, 0x00]
+  /// The app id as an AlarmKit `UUID`, and back (`AWAlarmUUID`, shared with
+  /// the native snooze): a fixed namespace + the id big-endian, so `cancel`
+  /// and `stop` target the exact alarm without a stored table.
+  private func uuid(for id: Int) -> UUID { AWAlarmUUID.uuid(for: id) }
 
-  /// A stable UUID for an app id: fixed 8-byte namespace + the id big-endian.
-  /// Lets `cancel` target the exact AlarmKit alarm without a stored table.
-  private func uuid(for id: Int) -> UUID {
-    var bytes = [UInt8](repeating: 0, count: 16)
-    for i in 0..<8 { bytes[i] = Self.namespace[i] }
-    let value = UInt64(bitPattern: Int64(id))
-    for i in 0..<8 { bytes[8 + i] = UInt8((value >> (UInt64(56 - i * 8))) & 0xff) }
-    return UUID(
-      uuid: (
-        bytes[0], bytes[1], bytes[2], bytes[3], bytes[4], bytes[5], bytes[6],
-        bytes[7], bytes[8], bytes[9], bytes[10], bytes[11], bytes[12], bytes[13],
-        bytes[14], bytes[15]
-      ))
-  }
-
-  /// The inverse, or nil when the UUID was not minted by [uuid(for:)].
-  private func appId(from id: UUID) -> Int? {
-    let bytes = withUnsafeBytes(of: id.uuid) { Array($0) }
-    guard bytes.count == 16 else { return nil }
-    for i in 0..<8 where bytes[i] != Self.namespace[i] { return nil }
-    var value: UInt64 = 0
-    for i in 0..<8 { value = (value << 8) | UInt64(bytes[8 + i]) }
-    return Int(Int64(bitPattern: value))
-  }
+  private func appId(from id: UUID) -> Int? { AWAlarmUUID.appId(from: id) }
 
   // MARK: - Button presses
 
-  /// Forward whatever the intents parked while we may or may not have been
-  /// running. Safe to call at any time: the queue empties as it is read.
-  private func drainPendingActions() {
-    let queued = AWAlarmActionQueue.drain()
-    guard !queued.isEmpty else { return }
-    for action in queued {
-      guard let actionId = action["actionId"] else { continue }
-      let payload = payloadJson(
-        taskId: action["taskId"] ?? "", reminderId: action["reminderId"] ?? "")
-      DispatchQueue.main.async { [weak self] in
-        self?.channel.invokeMethod(
-          "onAlarmAction", arguments: ["actionId": actionId, "payload": payload])
-      }
-    }
-  }
-
-  /// Drain when an intent runs in this process, and on every foreground — the
-  /// two moments a queued press can become deliverable.
+  /// Tell Dart to pull when an intent enqueues in this process, and on every
+  /// foreground — the two moments a queued press can become deliverable. No
+  /// payload: the queue is the only carrier, and Dart acks what it applied.
   private func observeActionSources() {
     let center = NotificationCenter.default
     observers.append(
       center.addObserver(
         forName: AWAlarmActionQueue.didEnqueue, object: nil, queue: .main
-      ) { [weak self] _ in self?.drainPendingActions() })
+      ) { [weak self] _ in self?.notifyActionsPending() })
     #if canImport(UIKit)
       observers.append(
         center.addObserver(
           forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main
-        ) { [weak self] _ in self?.drainPendingActions() })
+        ) { [weak self] _ in self?.notifyActionsPending() })
     #endif
   }
 
-  /// The same JSON shape the notification lane's payload uses, so one Dart
-  /// handler serves both lanes.
-  private func payloadJson(taskId: String, reminderId: String) -> String {
-    let payload: [String: String] = ["taskId": taskId, "reminderId": reminderId]
-    guard
-      let data = try? JSONSerialization.data(withJSONObject: payload),
-      let json = String(data: data, encoding: .utf8)
-    else {
-      return "{}"
-    }
-    return json
+  private func notifyActionsPending() {
+    channel.invokeMethod("onActionsPending", arguments: nil)
+  }
+
+  /// Removes the local-notification fallbacks of snoozes Dart has applied
+  /// and re-planned, pending and delivered alike. Each is named by
+  /// `AWAlarmFallback.identifier(eventId:)` (the decimal of its plugin id).
+  private func clearFallbacks(_ args: [String: Any]) {
+    let eventIds = args["eventIds"] as? [String] ?? []
+    guard !eventIds.isEmpty else { return }
+    #if canImport(UIKit)
+      let ids = eventIds.map(AWAlarmFallback.identifier(eventId:))
+      let center = UNUserNotificationCenter.current()
+      center.removePendingNotificationRequests(withIdentifiers: ids)
+      center.removeDeliveredNotifications(withIdentifiers: ids)
+    #endif
   }
 
   // MARK: - iOS 26 AlarmKit
@@ -170,7 +158,7 @@ final class AlarmKitBridge {
   // hand-off draft assumed — it never compiled, because it was never compiled.)
 
   private func requestAuthorization(_ result: @escaping FlutterResult) {
-    #if canImport(AlarmKit)
+    #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *) {
         Task {
           do {
@@ -227,7 +215,7 @@ final class AlarmKitBridge {
   /// because a task's due date changed would be its own bug. So this reads the
   /// state and never prompts.
   private func isAuthorized(_ result: @escaping FlutterResult) {
-    #if canImport(AlarmKit)
+    #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *) {
         result(AlarmManager.shared.authorizationState == .authorized)
         return
@@ -236,30 +224,111 @@ final class AlarmKitBridge {
     result(false)
   }
 
-  private func scheduledIds(_ result: @escaping FlutterResult) {
-    #if canImport(AlarmKit)
+  /// Every alarm of ours the OS holds, joined with its ledger record:
+  /// `[{id, fp, state, members, fireAtMs, origin, eventId}]`. An OS alarm with
+  /// no record reads `members: []`, `fp: 0`, `origin: "dart"` and the instant
+  /// of its fixed schedule. Records the OS no longer holds are pruned — but
+  /// only when the OS list was actually read: a throwing `alarms` prunes
+  /// nothing. The list is read under the ledger lock
+  /// (`AWAlarmLedger.records(listedBy:)`), so a native snooze confirming its
+  /// record meanwhile is never pruned against a list older than its alarm.
+  private func scheduledAlarms() -> [[String: Any]] {
+    #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *) {
-        // `Alarm` carries no attributes, so the id round trip IS the recovery
-        // mechanism — see the note on `uuid(for:)`.
-        let alarms = (try? AlarmManager.shared.alarms) ?? []
-        result(alarms.compactMap { appId(from: $0.id) })
-        return
+        var ours: [(Alarm, Int)] = []
+        func list() throws -> Set<Int> {
+          ours = try AlarmManager.shared.alarms.compactMap { alarm in
+            appId(from: alarm.id).map { (alarm, $0) }
+          }
+          return Set(ours.map { $0.1 })
+        }
+        let records: [AWAlarmLedgerRecord]
+        do {
+          if let ledger = AWAlarmLedger.shared {
+            records = try ledger.records(listedBy: list)
+          } else {
+            _ = try list()
+            records = []
+          }
+        } catch {
+          return []
+        }
+        let byId = Dictionary(records.map { ($0.id, $0) }, uniquingKeysWith: { a, _ in a })
+        return ours.map { alarm, id in
+          let record = byId[id]
+          var row: [String: Any] = [
+            "id": id,
+            "fp": record?.fp ?? 0,
+            "state": stateName(alarm.state),
+            "members": record?.members ?? [],
+            "fireAtMs": NSNumber(value: record?.fireAtMs ?? fixedFireAtMs(alarm)),
+            "origin": record?.origin ?? "dart",
+          ]
+          let eventId: Any = record?.eventId ?? NSNull()
+          row["eventId"] = eventId
+          return row
+        }
       }
     #endif
-    result([Int]())
+    return []
   }
 
+  #if canImport(AlarmKit) && os(iOS)
+    @available(iOS 26.0, *)
+    private func stateName(_ state: Alarm.State) -> String {
+      switch state {
+      case .scheduled: return "scheduled"
+      case .countdown: return "countdown"
+      case .paused: return "paused"
+      case .alerting: return "alerting"
+      @unknown default: return "scheduled"
+      }
+    }
+
+    /// The instant of a `.fixed` schedule, floored to the second; 0 when the
+    /// alarm has none (we only ever schedule `.fixed`).
+    @available(iOS 26.0, *)
+    private func fixedFireAtMs(_ alarm: Alarm) -> Int64 {
+      if case .fixed(let date)? = alarm.schedule { return AWAlarmIdentity.fireAtMs(date) }
+      return 0
+    }
+  #endif
+
   private func cancel(_ args: [String: Any], _ result: @escaping FlutterResult) {
-    #if canImport(AlarmKit)
+    #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *), let id = args["id"] as? Int {
         try? AlarmManager.shared.cancel(id: uuid(for: id))
+        AWAlarmLedger.shared?.remove(id: id)
       }
     #endif
     result(nil)
   }
 
+  /// Silences a ringing alarm: `AlarmManager.stop`, and `cancel` when stop
+  /// throws (an alarm that is not alerting cannot be stopped) — the same
+  /// order the native snooze uses (`AWSnoozeCore.silence`). The ledger record
+  /// goes either way. `{stopped, cancelled, error}`.
+  private func stop(_ args: [String: Any], _ result: @escaping FlutterResult) {
+    guard let id = args["id"] as? Int else {
+      result(FlutterError(code: "bad_args", message: "stop needs id", details: nil))
+      return
+    }
+    #if canImport(AlarmKit) && os(iOS)
+      if #available(iOS 26.0, *) {
+        let outcome = AWSnoozeCore.silence(id: id, ops: AWAlarmKitOps())
+        AWAlarmLedger.shared?.remove(id: id)
+        let errorValue: Any = outcome.error ?? NSNull()
+        result([
+          "stopped": outcome.stopped, "cancelled": outcome.cancelled, "error": errorValue,
+        ])
+        return
+      }
+    #endif
+    result(["stopped": false, "cancelled": false, "error": "unsupported"])
+  }
+
   private func schedule(_ args: [String: Any], _ result: @escaping FlutterResult) {
-    #if canImport(AlarmKit)
+    #if canImport(AlarmKit) && os(iOS)
       if #available(iOS 26.0, *) {
         scheduleWithAlarmKit(args, result)
         return
@@ -268,7 +337,7 @@ final class AlarmKitBridge {
     result(nil)
   }
 
-  #if canImport(AlarmKit)
+  #if canImport(AlarmKit) && os(iOS)
     @available(iOS 26.0, *)
     private func scheduleWithAlarmKit(_ args: [String: Any], _ result: @escaping FlutterResult) {
       guard
@@ -281,8 +350,11 @@ final class AlarmKitBridge {
         return
       }
       let body = args["body"] as? String ?? ""
-      let taskId = args["taskId"] as? String ?? ""
       let reminderId = args["reminderId"] as? String ?? ""
+      // Contract v2: the members (task ids) and the fingerprint. `taskId`
+      // alone is what an older Dart sends.
+      let legacyTaskId = args["taskId"] as? String ?? ""
+      let members = AWAlarmIntentArgs.taskIds(args["members"] as? [String], legacy: legacyTaskId)
       // Pre-localized by Dart: the app knows the user's language, this file does
       // not (and a hard-coded "Onayla" was the round-9 bug in miniature).
       let stopLabel = args["stopLabel"] as? String ?? "OK"
@@ -291,37 +363,29 @@ final class AlarmKitBridge {
       // The installed `Library/Sounds` file from OPH-181, or nil for the system
       // alarm sound.
       let soundName = args["soundName"] as? String
-      let fireDate = Date(timeIntervalSince1970: Double(fireAtMs) / 1000.0)
+      let fp =
+        args["fp"] as? Int
+        ?? AWAlarmIdentity.fingerprint(
+          title: title, body: body, soundName: soundName, stopLabel: stopLabel,
+          snoozeLabel: snoozeLabel, snoozePreset: snoozePreset)
+      let flooredMs = AWAlarmIdentity.floorToSecond(ms: Int64(fireAtMs))
+      // The same alert, sound and intents a native snooze builds
+      // (`AWAlarmKitOps`), so a snoozed alarm is the one it replaces, moved.
+      let spec = AWAlarmSpec(
+        id: id, fireAtMs: flooredMs, members: members, title: title, body: body,
+        soundName: soundName, stopLabel: stopLabel, snoozeLabel: snoozeLabel,
+        snoozePreset: snoozePreset, reminderId: reminderId)
 
       Task {
         do {
-          let alert = alertPresentation(
-            title: title, stopLabel: stopLabel, snoozeLabel: snoozeLabel)
-          let attributes = AlarmAttributes<AWAlarmMetadata>(
-            presentation: AlarmPresentation(alert: alert),
-            metadata: AWAlarmMetadata(
-              awId: id, taskId: taskId, reminderId: reminderId, body: body),
-            tintColor: .accentColor)
-
-          var stopIntent: (any LiveActivityIntent)?
-          var secondaryIntent: (any LiveActivityIntent)?
-          if #available(iOS 17.0, *) {
-            stopIntent = AWAlarmStopIntent(taskId: taskId, reminderId: reminderId)
-            if !snoozePreset.isEmpty {
-              secondaryIntent = AWAlarmSnoozeIntent(
-                taskId: taskId, reminderId: reminderId, preset: snoozePreset)
-            }
-          }
-
-          let configuration = AlarmManager.AlarmConfiguration(
-            schedule: .fixed(fireDate),
-            attributes: attributes,
-            stopIntent: stopIntent,
-            secondaryIntent: secondaryIntent,
-            sound: soundName.map { AlertConfiguration.AlertSound.named($0) } ?? .default)
-          _ = try await AlarmManager.shared.schedule(id: uuid(for: id), configuration: configuration)
+          try await AWAlarmKitOps().schedule(spec)
+          // One record per id: a re-schedule under the same id (new `fp`)
+          // replaces the old record.
+          AWAlarmLedger.shared?.write(
+            AWAlarmLedgerRecord(
+              id: id, fp: fp, members: members, fireAtMs: flooredMs, origin: "dart"))
           result(nil)
-        } catch AlarmManager.AlarmError.maximumLimitReached {
+        } catch AWAlarmOpsError.maximumLimitReached {
           // The per-app ceiling is undocumented, so this is the only honest way
           // to learn it. Dart writes it to the alarm log and leaves the alarm on
           // the notification lane rather than pretending it is covered.
@@ -332,38 +396,6 @@ final class AlarmKitBridge {
           result(FlutterError(code: "schedule_failed", message: "\(error)", details: nil))
         }
       }
-    }
-
-    /// iOS 26.1 retired `stopButton` (the system draws its own); 26.0 still
-    /// requires it. Both initializers exist in the SDK — pick by OS so a 26.0
-    /// device is not left without an alert.
-    @available(iOS 26.0, *)
-    private func alertPresentation(
-      title: String, stopLabel: String, snoozeLabel: String
-    ) -> AlarmPresentation.Alert {
-      let snoozeButton = AlarmButton(
-        text: LocalizedStringResource(stringLiteral: snoozeLabel),
-        textColor: .white,
-        systemImageName: "clock")
-      if #available(iOS 26.1, *) {
-        return AlarmPresentation.Alert(
-          title: LocalizedStringResource(stringLiteral: title),
-          secondaryButton: snoozeButton,
-          // `.custom` — not `.countdown` — on purpose (see ADR-0015 §8): the
-          // Dart planner owns WHEN an alarm exists. A native countdown would
-          // re-ring an alarm the planner also re-schedules (two alerts), and the
-          // snooze would stay invisible to the task row and to every other
-          // device.
-          secondaryButtonBehavior: .custom)
-      }
-      return AlarmPresentation.Alert(
-        title: LocalizedStringResource(stringLiteral: title),
-        stopButton: AlarmButton(
-          text: LocalizedStringResource(stringLiteral: stopLabel),
-          textColor: .white,
-          systemImageName: "checkmark"),
-        secondaryButton: snoozeButton,
-        secondaryButtonBehavior: .custom)
     }
   #endif
 }

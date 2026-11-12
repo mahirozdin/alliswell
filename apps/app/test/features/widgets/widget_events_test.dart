@@ -178,7 +178,7 @@ void main() {
   });
 
   group('snapshot v5', () {
-    test('declares v5; an event row carries kind and day', () {
+    test('declares v6; an event row carries kind and day', () {
       final json = _json(
         buildWidgetSnapshot(
           [_task('t1', dueAt: DateTime(2026, 7, 17, 16))],
@@ -192,8 +192,9 @@ void main() {
           ],
         ),
       );
-      expect(json['v'], 5);
-      expect(kWidgetSnapshotVersion, 5);
+      // v6 (#50) added the day views; an event row reads as it did in v5.
+      expect(json['v'], 6);
+      expect(kWidgetSnapshotVersion, 6);
       final event = _row(json, 'meet')!;
       expect(event['kind'], 'event');
       expect(event['day'], '2026-07-17');
@@ -313,6 +314,49 @@ void main() {
       // The row is still a row: its time and its day stay.
       expect(_row(json, 'secret')!['time'], '${_t(14)}–${_t(15)}');
       expect(_row(json, 'secret')!['day'], '2026-07-17');
+    });
+
+    // v6 (#50): each day view groups the calendar for ITS day — tomorrow's
+    // meeting is that day's Today, and a meeting that is over is gone.
+    test("calendar events land in their own day's view", () {
+      final json = _json(
+        buildWidgetSnapshot(
+          const [],
+          now: now,
+          events: [
+            _event(
+              'tomorrow',
+              DateTime(2026, 7, 18, 14),
+              DateTime(2026, 7, 18, 15),
+            ),
+            _event(
+              'sunday',
+              DateTime(2026, 7, 19),
+              DateTime(2026, 7, 20),
+              allDay: true,
+            ),
+          ],
+        ),
+      );
+      final days = (json['days'] as List).cast<Map<String, dynamic>>();
+      expect(_row(days[0], 'tomorrow')!['bucket'], 'thisWeek');
+      expect(_row(days[0], 'sunday')!['bucket'], 'thisWeek');
+
+      final saturday = _row(days[1], 'tomorrow')!;
+      expect(saturday['bucket'], 'today');
+      expect(saturday['day'], '2026-07-18');
+      expect(saturday['time'], '${_t(14)}–${_t(15)}');
+      expect(_row(days[1], 'sunday')!['bucket'], 'thisWeek');
+
+      expect(_row(days[2], 'tomorrow'), isNull, reason: 'over by Sunday');
+      final sunday = _row(days[2], 'sunday')!;
+      expect(sunday['bucket'], 'today');
+      expect(sunday['time'], 'All day');
+      // Events never count as open work on any day.
+      for (final day in days) {
+        expect(day.containsKey('openToday'), isFalse);
+        expect(day.containsKey('next'), isFalse);
+      }
     });
 
     test('events stay out of a project view', () {

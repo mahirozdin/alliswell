@@ -1,0 +1,108 @@
+{
+  "contract": "NOTIFICATIONS.md 2b.3 Native snooze, step 2",
+  "note": "Written by the Dart test (UPDATE_FIXTURES=1); every other reader only compares. Zone-free local wall-clock times; the target is then floored to the second.",
+  "cases": [
+    {
+      "name": "5 minutes",
+      "preset": "5_min",
+      "nowWall": "2026-07-15T12:00:00",
+      "untilWall": "2026-07-15T12:05:00"
+    },
+    {
+      "name": "5 minutes keeps the seconds",
+      "preset": "5_min",
+      "nowWall": "2026-07-15T12:00:30",
+      "untilWall": "2026-07-15T12:05:30"
+    },
+    {
+      "name": "5 minutes across midnight and a month end",
+      "preset": "5_min",
+      "nowWall": "2026-01-31T23:58:00",
+      "untilWall": "2026-02-01T00:03:00"
+    },
+    {
+      "name": "30 minutes",
+      "preset": "30_min",
+      "nowWall": "2026-07-15T12:00:00",
+      "untilWall": "2026-07-15T12:30:00"
+    },
+    {
+      "name": "30 minutes across midnight",
+      "preset": "30_min",
+      "nowWall": "2026-08-31T23:45:10",
+      "untilWall": "2026-09-01T00:15:10"
+    },
+    {
+      "name": "1 hour",
+      "preset": "1_hour",
+      "nowWall": "2026-07-15T12:00:00",
+      "untilWall": "2026-07-15T13:00:00"
+    },
+    {
+      "name": "1 hour across a year end",
+      "preset": "1_hour",
+      "nowWall": "2026-12-31T23:30:00",
+      "untilWall": "2027-01-01T00:30:00"
+    },
+    {
+      "name": "tomorrow morning, pressed before 09:00",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-07-15T07:00:00",
+      "untilWall": "2026-07-16T09:00:00"
+    },
+    {
+      "name": "tomorrow morning, pressed one second before 09:00",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-07-15T08:59:59",
+      "untilWall": "2026-07-16T09:00:00"
+    },
+    {
+      "name": "tomorrow morning, pressed at 09:00",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-07-15T09:00:00",
+      "untilWall": "2026-07-16T09:00:00"
+    },
+    {
+      "name": "tomorrow morning, pressed after 09:00",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-07-15T21:15:42",
+      "untilWall": "2026-07-16T09:00:00"
+    },
+    {
+      "name": "tomorrow morning, just after midnight",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-07-16T00:00:01",
+      "untilWall": "2026-07-17T09:00:00"
+    },
+    {
+      "name": "tomorrow morning across a month end",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-01-31T22:00:00",
+      "untilWall": "2026-02-01T09:00:00"
+    },
+    {
+      "name": "tomorrow morning across a 30-day month end",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-06-30T08:00:00",
+      "untilWall": "2026-07-01T09:00:00"
+    },
+    {
+      "name": "tomorrow morning across a year end",
+      "preset": "tomorrow_morning",
+      "nowWall": "2026-12-31T23:59:59",
+      "untilWall": "2027-01-01T09:00:00"
+    },
+    {
+      "name": "tomorrow morning onto a leap day",
+      "preset": "tomorrow_morning",
+      "nowWall": "2028-02-28T10:00:00",
+      "untilWall": "2028-02-29T09:00:00"
+    },
+    {
+      "name": "tomorrow morning off a leap day",
+      "preset": "tomorrow_morning",
+      "nowWall": "2028-02-29T10:00:00",
+      "untilWall": "2028-03-01T09:00:00"
+    }
+  ]
+}

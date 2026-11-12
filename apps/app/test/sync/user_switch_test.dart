@@ -14,6 +14,7 @@ import 'package:alliswell/src/features/auth/data/models.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/ee/notifications_providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
+import 'package:alliswell/src/notifications/device_gate.dart';
 import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/local_data.dart';
 import 'package:alliswell/src/sync/providers.dart';
@@ -53,6 +54,7 @@ void main() {
 
   late AwDatabase db;
   late InMemorySecretStore store;
+  final loginBodies = <Map<String, dynamic>>[];
 
   setUp(() {
     db = AwDatabase(DatabaseConnection(NativeDatabase.memory()));
@@ -71,7 +73,8 @@ void main() {
             fakeDio(
               FakeHttpClientAdapter((options, body) async {
                 if (options.path == '/api/v1/auth/login') {
-                  final email = body!['email'] as String;
+                  loginBodies.add(body!);
+                  final email = body['email'] as String;
                   return jsonBody(200, sessionFor(email.split('@').first));
                 }
                 return emptyBody(204);
@@ -160,6 +163,70 @@ void main() {
     await seedNotification('saha2');
     expect(await centreIds(c), ['N-saha2']);
   });
+
+  // signin-binds-discarded-client-id (OPH-447): the sign-in names this
+  // install by its sync client id BEFORE the switch drops the replica, and
+  // the server binds the new session to that id for good. The id therefore
+  // has to outlive the account-switch wipe, or the next engine mints another
+  // one, the registry lists that one, and removing it never signs B out.
+  test('an account switch keeps the install\'s client id: the one the '
+      'sign-in bound is the one the next engine uses', () async {
+    const install = '01HZINSTALLAAAAAAAAAAAAAAA';
+    final first = container();
+    await login(first, 'saha3');
+    await seedNotification('saha3');
+    await db
+        .into(db.syncStates)
+        .insertOnConflictUpdate(
+          SyncStatesCompanion.insert(workspaceId: ws, clientId: install),
+        );
+    await localKv.set(kRingsUrgentKey, RingsUrgentHere.on.name);
+    // saha3's session expires without a sign-out.
+    await TokenStorage(store).clear();
+    first.dispose();
+
+    final second = container();
+    loginBodies.clear();
+    await login(second, 'saha2');
+    expect(loginBodies.single['deviceId'], install);
+    expect(await db.select(db.syncStates).get(), isEmpty);
+
+    final engine = SyncEngine(
+      db: db,
+      api: SyncApi(
+        fakeDio(
+          FakeHttpClientAdapter(
+            (options, body) async => jsonBody(503, {'statusCode': 503}),
+          ),
+        ),
+      ),
+      workspaceId: 'W2',
+    );
+    addTearDown(engine.dispose);
+    try {
+      await engine.syncNow();
+    } on Object {
+      // The server is not the point; the state row is.
+    }
+    final states = await db.select(db.syncStates).get();
+    expect(states.map((s) => s.clientId), [install]);
+  });
+
+  test(
+    'a sign-out does not hand this install\'s id to whoever is next',
+    () async {
+      const install = '01HZINSTALLAAAAAAAAAAAAAAA';
+      final c = container();
+      await login(c, 'saha3');
+      await db
+          .into(db.syncStates)
+          .insertOnConflictUpdate(
+            SyncStatesCompanion.insert(workspaceId: ws, clientId: install),
+          );
+      await c.read(authControllerProvider.notifier).logout();
+      expect(await localKv.get(kInstallClientIdKey), isNull);
+    },
+  );
 
   test('the same person signing back in keeps their replica', () async {
     final c = container();

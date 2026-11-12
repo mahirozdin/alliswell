@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 import '../core/app_version.dart';
 import '../core/date_format.dart';
+import '../core/date_input.dart';
 import '../core/persisted_prefs.dart';
 import '../core/server_url.dart' show prettyServerUrl;
 import '../features/ai/ui/ai_settings_card.dart';
@@ -14,6 +15,7 @@ import '../features/api_keys/ui/api_docs_row.dart';
 import '../features/auth/providers.dart';
 import '../features/auth/ui/sign_out.dart';
 import '../features/calendar/apple/apple_calendar_card.dart';
+import '../features/devices/devices_screen.dart' show DevicesSettingsRow;
 import '../features/integrations/ui/caldav_calendar_card.dart';
 import '../features/integrations/ui/google_calendar_card.dart';
 import '../features/workspaces/workspaces.dart';
@@ -544,6 +546,15 @@ class SettingsAccountScreen extends ConsumerWidget {
               // it signs the user out (tokens belong to the server that
               // issued them).
               const ServerUrlTile(),
+              // OPH-448: the devices signed in to this account. Their home is
+              // Notifications & alarms; this is only a door to it.
+              ListTile(
+                key: const Key('settings-account-devices'),
+                leading: const Icon(Icons.devices_outlined),
+                title: Text('settings.devices.title'.tr()),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => context.push('/settings/devices'),
+              ),
             ],
           ),
         ),
@@ -617,7 +628,7 @@ class SettingsGeneralScreen extends ConsumerWidget {
                 ),
                 trailing: const Icon(Icons.chevron_right),
                 onTap: () async {
-                  final picked = await showTimePicker(
+                  final picked = await awShowTimePicker(
                     context: context,
                     initialTime: current,
                   );
@@ -771,6 +782,9 @@ class SettingsNotificationsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right),
               onTap: () => context.push('/settings/reminders'),
             ),
+            // OPH-448 (#48): which of the person's devices ring urgent
+            // alarms — a server setting, one switch per device.
+            const DevicesSettingsRow(),
             // OPH-176 (DESIGN §11 A6): what this device DID about alarms.
             // Round 9 was argued from memory; it won't be again.
             ListTile(
@@ -1085,10 +1099,32 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
   late Future<AlarmSupport> _support;
   bool _testing = false;
 
+  /// Back from the system Settings app (OPH-428, IOS-01): the switch that
+  /// fixes the problem is flipped there and nothing tells the app, so the
+  /// row asks again on every return. FutureBuilder keeps the last answer on
+  /// screen until the new one lands.
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
     _support = _probe();
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        // A block body: an arrow would return the Future to setState (#19).
+        if (mounted) {
+          setState(() {
+            _support = _probe();
+          });
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<AlarmSupport> _probe() async {

@@ -1,8 +1,18 @@
+import 'dart:async';
+
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/http_timeouts.dart';
+import '../../core/kv/local_kv.dart';
 import '../../core/reachability.dart';
 import '../../core/server_url.dart';
+import '../../notifications/alarmkit.dart' show AlarmKitHost;
+import '../../notifications/device_gate.dart';
+import '../../notifications/gateway.dart' show NotificationsGateway;
+import '../../notifications/os_alarms.dart';
+import '../../notifications/providers.dart';
 import '../../notifications/web/alert_cache.dart';
 import '../../sync/local_data.dart';
 import '../../sync/providers.dart';
@@ -33,8 +43,13 @@ final tokenStorageProvider = Provider<TokenStorage>(
 /// Bare client for the auth endpoints themselves (no interceptor — the
 /// interceptor's refresh path must not recurse through itself).
 final authApiProvider = Provider<AuthApi>(
-  (ref) => AuthApi(Dio(BaseOptions(baseUrl: ref.watch(apiBaseUrlProvider)))),
+  (ref) => AuthApi(authHttpClient(ref.watch(apiBaseUrlProvider))),
 );
+
+/// The auth endpoints answer small and quick, so their client is bounded
+/// (OPH-427): a token refresh that never answered would hold every request
+/// queued behind the auth interceptor — sync included — for good.
+Dio authHttpClient(String baseUrl) => Dio(boundedBaseOptions(baseUrl));
 
 /// The replica and the person's small facts belong to one person (OPH-355):
 /// wiped at sign-out, and wiped at sign-in when they were somebody else's.
@@ -49,15 +64,155 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final repository = AuthRepository(
     api: ref.watch(authApiProvider),
     storage: ref.watch(tokenStorageProvider),
-    onSessionUser: (userId, {required restored}) =>
-        ref.read(localDataGuardProvider).claimFor(userId, restored: restored),
+    onSessionUser: (userId, {required restored}) async {
+      // Read before the claim records the new owner: a restored session of
+      // somebody else is an account switch for the device gate (OPH-446).
+      final owner = await localKv.get(kReplicaOwnerKey);
+      await ref
+          .read(localDataGuardProvider)
+          .claimFor(userId, restored: restored);
+      await ref
+          .read(ringsUrgentStoreProvider)
+          .onSessionUser(
+            restored: restored,
+            switchedAccount: owner != null && owner != userId,
+          );
+      ref.invalidate(ringsUrgentHereProvider);
+    },
+    deviceId: () => _deviceIdForAuth(ref),
+    onSessionRevoked: (userId, {required replaced}) =>
+        _endRevokedSession(ref, userId, replaced: replaced),
   );
   ref.onDispose(repository.dispose);
   return repository;
 });
 
+/// The id a sign-in or refresh names this install by (OPH-447, #48): the
+/// sync client id — the same id the device registry registers under — or
+/// null.
+///
+/// Only once this server has shown it knows #48: a stored `ringsUrgent` that
+/// is not [RingsUrgentHere.legacy] came from a register response carrying the
+/// field. A server from before it validates auth bodies strictly; the API
+/// client retries without the field on that 400 anyway, this just spares the
+/// round trip. Bounded and never throwing: a sign-in does not wait on the
+/// replica.
+Future<String?> _deviceIdForAuth(Ref ref) async {
+  try {
+    final here = await ref.read(ringsUrgentStoreProvider).read();
+    if (here == RingsUrgentHere.legacy) return null;
+    // Listened, not read: an unlistened stream provider is paused and would
+    // never deliver its first value.
+    final clientId = ref.listen(syncClientIdProvider.future, (_, _) {});
+    try {
+      return await clientId.read().timeout(const Duration(seconds: 2));
+    } finally {
+      clientId.close();
+    }
+  } on Object {
+    return null;
+  }
+}
+
+/// A session family the server refused as revoked or reused (OPH-447): the
+/// device was removed on another device, a password changed, or the family
+/// was burned. The session is already gone; this does what an explicit
+/// sign-out does with what the person left here — the push token, the
+/// replica and their facts — and also takes their alarms out of the OS,
+/// which no scheduler will ever reconcile again for this install.
+///
+/// The device row needs no delete: the server dropped it with the family,
+/// and the token that could delete it is dead.
+///
+/// Never a silent loss (OPH-355): a sign-out asks before it deletes unsent
+/// changes, and nobody is asked here. So with an outbox (or refused writes
+/// kept for the person) the replica stays: the same person signing in again
+/// adopts it and the outbox goes out (`LocalDataGuard.claimFor`); anybody
+/// else signing in wipes it first. A count that cannot be read is treated as
+/// unsent work.
+///
+/// For [userId]'s session only (revocation-cleanup-crosses-sessions): the
+/// repository holds the next session's start until this returns, and the
+/// replica is wiped only while it is still recorded as [userId]'s (or as
+/// nobody's).
+///
+/// [replaced] — a sign-in that was under way when the refusal came runs this
+/// before it exposes its session, and its own `claimFor` decides the replica:
+/// it adopts it for the same person, or wipes it for somebody else while
+/// carrying over the client id that sign-in already sent. Wiping here first
+/// would discard that id (signin-binds-discarded-client-id), so the replica is
+/// left to it; the token, the engines and the OS alarms go as always.
+Future<void> _endRevokedSession(
+  Ref ref,
+  String userId, {
+  required bool replaced,
+}) async {
+  try {
+    await ref.read(pushMessagingProvider).forgetToken();
+  } on Object {
+    // Best effort, as on a sign-out.
+  }
+  await _haltSyncEngines(ref);
+  final owner = await localKv.get(kReplicaOwnerKey);
+  if (!replaced &&
+      (owner == null || owner == userId) &&
+      await _nothingUnsent(ref)) {
+    await ref.read(localDataGuardProvider).wipe();
+  }
+  await _dropOsAlarms(ref);
+}
+
+Future<bool> _nothingUnsent(Ref ref) async {
+  try {
+    return await unsentChangeCount(ref.read(databaseProvider)) == 0;
+  } on Object {
+    return false;
+  }
+}
+
+/// Every engine stops and finishes the round it is in, so no pull lands on
+/// the replica after a wipe. Bounded: a request hanging on a dead network must
+/// not hold the sign-out — a stopped engine drops the page that answers late
+/// instead of applying it (`SyncEngine._pullAll`).
+///
+/// Through the registry, never `syncEnginesProvider` (OPH-390, E-01): the
+/// engines hang off the session, so reading them from here is a dependency
+/// loop — Riverpod threw on it and the sign-out never ran.
+Future<void> _haltSyncEngines(Ref ref) async {
+  final engines = ref.read(runningSyncEnginesProvider).toList();
+  if (engines.isEmpty) return;
+  await Future.wait([
+    for (final engine in engines) engine.halt(),
+  ]).timeout(const Duration(seconds: 5), onTimeout: () => const []);
+}
+
+/// Cancels every notification and AlarmKit alarm this install still holds in
+/// the OS, the presented ones included ([dropEveryOsAlarm]). Not on the web,
+/// where the alert cache the wipe clears is the whole schedule.
+Future<void> _dropOsAlarms(Ref ref) async {
+  if (kIsWeb) return;
+  NotificationsGateway gateway;
+  AlarmKitHost? alarmKit;
+  try {
+    gateway = ref.read(notificationsGatewayProvider);
+  } on Object {
+    return;
+  }
+  try {
+    alarmKit = ref.read(alarmKitHostProvider);
+  } on Object {
+    alarmKit = null;
+  }
+  await dropEveryOsAlarm(gateway: gateway, alarmKit: alarmKit);
+}
+
 /// Authenticated dio for every feature API (tasks, projects, /me, …):
 /// attaches the access token and transparently refreshes it once on a 401.
+///
+/// No timeouts here on purpose (OPH-427): an AI stream, an import, a
+/// transcription upload or an export may run for minutes on this client.
+/// A short call that a single-flight loop waits on carries its own bounds per
+/// request ([boundedApiCall]: sync push/pull, the device registry).
 final apiClientProvider = Provider<Dio>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   final dio = Dio(BaseOptions(baseUrl: ref.watch(apiBaseUrlProvider)));
@@ -128,20 +283,8 @@ class AuthController extends AsyncNotifier<AuthSession?> {
     // And stop being reachable even if the row outlives the request: a deleted
     // token cannot be sent to, whatever the server still believes (OPH-319).
     await ref.read(pushMessagingProvider).forgetToken();
-    // Every engine stops and finishes the round it is in, so no pull lands
-    // on the replica after the wipe below. Bounded: a request hanging on a
-    // dead network must not hold the sign-out — a stopped engine drops the
-    // page that answers late instead of applying it (`SyncEngine._pullAll`).
-    //
-    // Through the registry, never `syncEnginesProvider` (OPH-390, E-01): the
-    // engines hang off this very session, so reading them from here is a
-    // dependency loop — Riverpod threw on it and the sign-out never ran.
-    final engines = ref.read(runningSyncEnginesProvider).toList();
-    if (engines.isNotEmpty) {
-      await Future.wait([
-        for (final engine in engines) engine.halt(),
-      ]).timeout(const Duration(seconds: 5), onTimeout: () => const []);
-    }
+    // Every engine stops before the wipe below (see [_haltSyncEngines]).
+    await _haltSyncEngines(ref);
     await ref.read(authRepositoryProvider).logout(allDevices: allDevices);
     await ref.read(localDataGuardProvider).wipe();
   }

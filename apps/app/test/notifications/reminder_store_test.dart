@@ -313,4 +313,110 @@ void main() {
       expect(task.remindAt, isNotNull);
     });
   });
+
+  // OPH-439 (#47, NOTIFICATIONS §2b.3): a grouped stop acknowledges every
+  // member's urgent alarm in the minute that rang — one write.
+  group('acknowledgeBatch', () {
+    final nineAm = DateTime.utc(2030, 6, 1, 9);
+    final minute = nineAm.millisecondsSinceEpoch ~/ 60000;
+
+    Future<void> seedGroup() async {
+      await seedTask(tid: 'T1', remindAt: nineAm, urgent: true);
+      await seedTask(tid: 'T2', remindAt: nineAm, urgent: true);
+      await seedTask(tid: 'T3', remindAt: nineAm, urgent: true);
+      await seedTask(tid: 'T4', remindAt: nineAm, urgent: true);
+      await seedReminder(rid: 'R1', tid: 'T1', remindAt: nineAm);
+      // Same task, another minute: its own alarm, not this occurrence.
+      await seedReminder(
+        rid: 'R1DUE',
+        tid: 'T1',
+        kind: 'due',
+        remindAt: DateTime.utc(2030, 6, 1, 10),
+      );
+      await seedReminder(
+        rid: 'R2',
+        tid: 'T2',
+        remindAt: nineAm.add(const Duration(seconds: 30)),
+      );
+      // Snoozed INTO the minute: its effective instant is the snooze target.
+      await seedReminder(
+        rid: 'R4',
+        tid: 'T4',
+        remindAt: DateTime.utc(2030, 6, 1, 8),
+        status: 'snoozed',
+      );
+      await (db.update(db.reminders)..where((r) => r.id.equals(id('R4'))))
+          .write(RemindersCompanion(snoozedUntil: Value(nineAm)));
+      // In the minute but not a member of the batch.
+      await seedReminder(rid: 'R3', tid: 'T3', remindAt: nineAm);
+    }
+
+    Future<Map<String, String>> statuses() async => {
+      for (final r in await db.select(db.reminders).get()) r.id: r.status,
+    };
+
+    test(
+      'acknowledgeBatch acknowledges every member of the minute in one transaction',
+      () async {
+        await seedGroup();
+        // Injected fault: the second member's row refuses the write — the
+        // first member's acknowledgement must roll back with it.
+        await db.customStatement(
+          "CREATE TRIGGER boom BEFORE UPDATE ON reminders "
+          "WHEN OLD.id = '${id('R2')}' "
+          "BEGIN SELECT RAISE(ABORT, 'disk full'); END",
+        );
+        await expectLater(
+          store.acknowledgeBatch([
+            id('T1'),
+            id('T2'),
+            id('T4'),
+          ], occurrenceMinute: minute),
+          throwsA(anything),
+        );
+        expect((await statuses()).values.toSet(), {'scheduled', 'snoozed'});
+        expect(await db.select(db.pendingMutations).get(), isEmpty);
+
+        await db.customStatement('DROP TRIGGER boom');
+        await store.acknowledgeBatch([
+          id('T1'),
+          id('T2'),
+          id('T2'),
+          id('T4'),
+        ], occurrenceMinute: minute);
+
+        expect(await statuses(), {
+          id('R1'): 'acknowledged',
+          id('R1DUE'): 'scheduled',
+          id('R2'): 'acknowledged',
+          id('R4'): 'acknowledged',
+          id('R3'): 'scheduled',
+        });
+        final outbox = await db.select(db.pendingMutations).get();
+        expect(outbox.map((m) => m.entityId).toList()..sort(), [
+          id('R1'),
+          id('R2'),
+          id('R4'),
+        ]);
+        expect(outbox.every((m) => m.entityType == 'reminder'), isTrue);
+
+        // A redelivery finds nothing left to acknowledge.
+        await store.acknowledgeBatch([id('T1')], occurrenceMinute: minute);
+        expect(await db.select(db.pendingMutations).get(), hasLength(3));
+      },
+    );
+
+    test('acknowledgeBatch refuses a receipt it does not hold', () async {
+      await seedGroup();
+      await expectLater(
+        store.acknowledgeBatch(
+          [id('T1')],
+          occurrenceMinute: minute,
+          receiptId: 'ev-missing',
+        ),
+        throwsStateError,
+      );
+      expect((await statuses())[id('R1')], 'scheduled');
+    });
+  });
 }

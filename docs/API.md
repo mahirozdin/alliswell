@@ -351,7 +351,7 @@ client: use the ordinary REST endpoints, which is what the recipes above do.
 
 <!-- BEGIN GENERATED REFERENCE -->
 
-_123 operations across 89 paths, generated from
+_124 operations across 89 paths, generated from
 [`openapi.json`](openapi.json) — which is itself generated from the server's own
 route schemas. Do not edit this section by hand; run `npm run api:docs`._
 
@@ -363,7 +363,7 @@ route schemas. Do not edit this section by hand; run `npm run api:docs`._
 - **Authentication** — [`POST /api/v1/auth/login`](#post-api-v1-auth-login) · [`POST /api/v1/auth/logout`](#post-api-v1-auth-logout) · [`GET /api/v1/auth/mfa/totp`](#get-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp`](#post-api-v1-auth-mfa-totp) · [`DELETE /api/v1/auth/mfa/totp`](#delete-api-v1-auth-mfa-totp) · [`POST /api/v1/auth/mfa/totp/confirm`](#post-api-v1-auth-mfa-totp-confirm) · [`POST /api/v1/auth/mfa/totp/recovery-codes`](#post-api-v1-auth-mfa-totp-recovery-codes) · [`POST /api/v1/auth/oauth`](#post-api-v1-auth-oauth) · [`POST /api/v1/auth/password`](#post-api-v1-auth-password) · [`POST /api/v1/auth/password/forgot`](#post-api-v1-auth-password-forgot) · [`POST /api/v1/auth/password/reset`](#post-api-v1-auth-password-reset) · [`GET /api/v1/auth/providers`](#get-api-v1-auth-providers) · [`POST /api/v1/auth/refresh`](#post-api-v1-auth-refresh) · [`POST /api/v1/auth/register`](#post-api-v1-auth-register) · [`GET /api/v1/auth/sessions`](#get-api-v1-auth-sessions) · [`DELETE /api/v1/auth/sessions/{id}`](#delete-api-v1-auth-sessions-id) · [`POST /api/v1/auth/sessions/revoke-others`](#post-api-v1-auth-sessions-revoke-others)
 - **CalDAV calendar** — [`PATCH /api/v1/integrations/caldav/accounts/{accountId}`](#patch-api-v1-integrations-caldav-accounts-accountid) · [`DELETE /api/v1/integrations/caldav/accounts/{accountId}`](#delete-api-v1-integrations-caldav-accounts-accountid) · [`GET /api/v1/integrations/caldav/accounts/{accountId}/calendars`](#get-api-v1-integrations-caldav-accounts-accountid-calendars) · [`GET /api/v1/workspaces/{workspaceId}/integrations/caldav`](#get-api-v1-workspaces-workspaceid-integrations-caldav) · [`POST /api/v1/workspaces/{workspaceId}/integrations/caldav`](#post-api-v1-workspaces-workspaceid-integrations-caldav)
 - **Capabilities** — [`GET /api/v1/ee/status`](#get-api-v1-ee-status)
-- **Devices** — [`GET /api/v1/notification-devices`](#get-api-v1-notification-devices) · [`PUT /api/v1/notification-devices/{deviceId}`](#put-api-v1-notification-devices-deviceid) · [`DELETE /api/v1/notification-devices/{deviceId}`](#delete-api-v1-notification-devices-deviceid)
+- **Devices** — [`GET /api/v1/notification-devices`](#get-api-v1-notification-devices) · [`PUT /api/v1/notification-devices/{deviceId}`](#put-api-v1-notification-devices-deviceid) · [`PATCH /api/v1/notification-devices/{deviceId}`](#patch-api-v1-notification-devices-deviceid) · [`DELETE /api/v1/notification-devices/{deviceId}`](#delete-api-v1-notification-devices-deviceid)
 - **Files** — [`GET /api/v1/files/{fileId}`](#get-api-v1-files-fileid) · [`PATCH /api/v1/files/{fileId}`](#patch-api-v1-files-fileid) · [`DELETE /api/v1/files/{fileId}`](#delete-api-v1-files-fileid) · [`POST /api/v1/files/{fileId}/complete`](#post-api-v1-files-fileid-complete) · [`PATCH /api/v1/folders/{folderId}`](#patch-api-v1-folders-folderid) · [`DELETE /api/v1/folders/{folderId}`](#delete-api-v1-folders-folderid) · [`GET /api/v1/storage`](#get-api-v1-storage) · [`GET /api/v1/workspaces/{workspaceId}/files`](#get-api-v1-workspaces-workspaceid-files) · [`POST /api/v1/workspaces/{workspaceId}/files`](#post-api-v1-workspaces-workspaceid-files) · [`GET /api/v1/workspaces/{workspaceId}/files/usage`](#get-api-v1-workspaces-workspaceid-files-usage) · [`GET /api/v1/workspaces/{workspaceId}/folders`](#get-api-v1-workspaces-workspaceid-folders) · [`POST /api/v1/workspaces/{workspaceId}/folders`](#post-api-v1-workspaces-workspaceid-folders)
 - **Google Calendar** — [`PATCH /api/v1/integrations/google/accounts/{accountId}`](#patch-api-v1-integrations-google-accounts-accountid) · [`DELETE /api/v1/integrations/google/accounts/{accountId}`](#delete-api-v1-integrations-google-accounts-accountid) · [`GET /api/v1/integrations/google/accounts/{accountId}/calendars`](#get-api-v1-integrations-google-accounts-accountid-calendars) · [`GET /api/v1/integrations/google/callback`](#get-api-v1-integrations-google-callback) · [`POST /api/v1/integrations/google/webhook`](#post-api-v1-integrations-google-webhook) · [`GET /api/v1/workspaces/{workspaceId}/integrations/google`](#get-api-v1-workspaces-workspaceid-integrations-google) · [`POST /api/v1/workspaces/{workspaceId}/integrations/google/connect`](#post-api-v1-workspaces-workspaceid-integrations-google-connect)
 - **Health** — [`GET /health/live`](#get-health-live) · [`GET /health/ready`](#get-health-ready)
@@ -1210,6 +1210,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/me/deletion/cancel' \
 | `email` | string (email) | **yes** | length 0–255 |
 | `password` | string | **yes** | length 1–128 |
 | `totpCode` | string | no | length 6–32 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -1441,6 +1442,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/mfa/totp/recovery-codes' \
 | `provider` | `google` · `apple` | **yes** | — |
 | `idToken` | string | **yes** | length 16–8192 |
 | `totpCode` | string | no | length 6–32 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -1606,6 +1608,7 @@ curl -X GET 'https://api.alliswell.space/api/v1/auth/providers'
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `refreshToken` | string | **yes** | length 20–512 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -1652,6 +1655,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/auth/refresh' \
 | `email` | string (email) | **yes** | length 0–255 |
 | `password` | string | **yes** | length 8–128 |
 | `displayName` | string | no | length 1–255 |
+| `deviceId` | string | no | pattern `^[0-9A-HJKMNP-TV-Z]{26}$` — Optional. The notification device (its id from PUT /notification-devices) this session runs on. Binds the session once; a ULID, anything else is a 400. |
 
 **Request**
 
@@ -2111,7 +2115,10 @@ curl -X GET 'https://api.alliswell.space/api/v1/notification-devices' \
       "lastPushAt": "2026-09-04T14:30:00.000Z",
       "lastSeenAt": "2026-09-04T14:30:00.000Z",
       "createdAt": "2026-09-04T14:30:00.000Z",
-      "updatedAt": "2026-09-04T14:30:00.000Z"
+      "updatedAt": "2026-09-04T14:30:00.000Z",
+      "ringsUrgent": false,
+      "ringsUrgentSource": "auto",
+      "hasSession": false
     }
   ]
 }
@@ -2158,6 +2165,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' 
 | `200` | Success. |
 | `201` | Created. |
 | `400` | A field is malformed or missing. The body names a `code`. |
+| `401` | No credential, or one that is expired, revoked or unknown. |
 
 **Example response** (`200`)
 
@@ -2175,14 +2183,76 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' 
   "lastPushAt": "2026-09-04T14:30:00.000Z",
   "lastSeenAt": "2026-09-04T14:30:00.000Z",
   "createdAt": "2026-09-04T14:30:00.000Z",
-  "updatedAt": "2026-09-04T14:30:00.000Z"
+  "updatedAt": "2026-09-04T14:30:00.000Z",
+  "ringsUrgent": false,
+  "ringsUrgentSource": "auto"
+}
+```
+
+
+#### <a name="patch-api-v1-notification-devices-deviceid"></a>`PATCH /api/v1/notification-devices/{deviceId}`
+
+**Auth:** Personal API key **or** session JWT.
+
+**Path parameters**
+
+| Name | Type | Notes |
+| --- | --- | --- |
+| `deviceId` | ULID | 26-character identifier |
+
+**Request body**
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `ringsUrgent` | boolean | no | — |
+| `deviceName` | string or null | no | length 0–255 |
+
+**Request**
+
+```bash
+curl -X PATCH 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' \
+  -H "Authorization: Bearer $ALLISWELL_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{"ringsUrgent":false,"deviceName":"string"}'
+```
+
+**Responses**
+
+| Status | Meaning |
+| --- | --- |
+| `200` | Success. |
+| `400` | A field is malformed or missing. The body names a `code`. |
+| `404` | Not visible to you. Someone else’s row answers 404, never 403. |
+
+**Example response** (`200`)
+
+```json
+{
+  "id": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+  "platform": "ios",
+  "pushToken": "string",
+  "deviceName": "string",
+  "appVersion": "string",
+  "locale": "tr",
+  "pushProvider": "fcm",
+  "pushEndpoint": "string",
+  "invalidAt": "2026-09-04T14:30:00.000Z",
+  "lastPushAt": "2026-09-04T14:30:00.000Z",
+  "lastSeenAt": "2026-09-04T14:30:00.000Z",
+  "createdAt": "2026-09-04T14:30:00.000Z",
+  "updatedAt": "2026-09-04T14:30:00.000Z",
+  "ringsUrgent": false,
+  "ringsUrgentSource": "auto",
+  "warnings": [
+    "NO_URGENT_DEVICE"
+  ]
 }
 ```
 
 
 #### <a name="delete-api-v1-notification-devices-deviceid"></a>`DELETE /api/v1/notification-devices/{deviceId}`
 
-**Auth:** Personal API key **or** session JWT.
+**Auth:** Session JWT only — an API key is refused with `403 AUTH_APIKEY_FORBIDDEN`.
 
 **Path parameters**
 
@@ -2194,7 +2264,7 @@ curl -X PUT 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' 
 
 ```bash
 curl -X DELETE 'https://api.alliswell.space/api/v1/notification-devices/:deviceId' \
-  -H "Authorization: Bearer $ALLISWELL_KEY"
+  -H "Authorization: Bearer $ALLISWELL_JWT"
 ```
 
 **Responses**
@@ -2202,6 +2272,7 @@ curl -X DELETE 'https://api.alliswell.space/api/v1/notification-devices/:deviceI
 | Status | Meaning |
 | --- | --- |
 | `204` | Done. No body. |
+| `403` | Authenticated, but not allowed here — wrong workspace, missing role, or an API key on a JWT-only route. |
 
 
 ### Files

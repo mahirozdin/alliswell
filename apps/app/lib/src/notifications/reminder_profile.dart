@@ -39,6 +39,10 @@ const List<ReminderProfilePreset> kReminderProfilePresets = [
   ReminderProfilePreset('insistent', [0, 1, 2, 3, 5, 8, 12, 17, 25, 40]),
 ];
 
+/// Where the chain is stored (empty parses to [ReminderProfile.factory]);
+/// read by the settings provider and the headless turn alike (OPH-452).
+const String kReminderProfileKey = 'alliswell_reminder_profile';
+
 /// Minutes after the alarm instant at which the alerts fire, plus whether a
 /// post-snooze ring runs the same chain again.
 class ReminderProfile {
@@ -176,4 +180,13 @@ const Map<String, String> kSnoozePresetLabels = {
   '30_min': 'notif.action.snooze30m',
   '1_hour': 'notif.action.snooze1h',
   'tomorrow_morning': 'notif.action.snoozeTomorrow',
+};
+
+/// What a screen reader says for a snooze preset (spec §1.8): "5 min" reads
+/// as "Snooze 5 minutes", the tile's own subline follows it.
+const Map<String, String> kSnoozePresetSpokenLabels = {
+  '5_min': 'alarm.snoozeSpoken.5_min',
+  '30_min': 'alarm.snoozeSpoken.30_min',
+  '1_hour': 'alarm.snoozeSpoken.1_hour',
+  'tomorrow_morning': 'alarm.snoozeSpoken.tomorrow_morning',
 };

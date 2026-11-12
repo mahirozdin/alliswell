@@ -19,6 +19,11 @@ enum PasswordResetDelivery {
 /// Raw HTTP calls to `/api/v1/auth/*`. No Authorization header is required by
 /// these endpoints, so this client uses the bare (interceptor-free) dio — the
 /// auth interceptor itself calls [refresh] and must not recurse.
+///
+/// Every door that starts or rotates a session family takes an optional
+/// `deviceId` (OPH-447, #48): this install's notification-device id, which the
+/// server binds the family to so "remove this device" elsewhere can revoke it.
+/// The field never costs a sign-in — see [_postNamingDevice].
 class AuthApi {
   const AuthApi(this._dio);
 
@@ -28,12 +33,13 @@ class AuthApi {
     required String email,
     required String password,
     String? displayName,
-  }) => _post('/api/v1/auth/register', {
+    String? deviceId,
+  }) => _postNamingDevice('/api/v1/auth/register', {
     'email': email,
     'password': password,
     if (displayName != null && displayName.isNotEmpty)
       'displayName': displayName,
-  }).then(AuthSession.fromJson);
+  }, deviceId).then(AuthSession.fromJson);
 
   /// [totpCode] is the authenticator or recovery code, sent only on the retry
   /// after the server answered `AUTH_MFA_REQUIRED` (OPH-283, OPH-381).
@@ -41,11 +47,12 @@ class AuthApi {
     required String email,
     required String password,
     String? totpCode,
-  }) => _post('/api/v1/auth/login', {
+    String? deviceId,
+  }) => _postNamingDevice('/api/v1/auth/login', {
     'email': email,
     'password': password,
     'totpCode': ?totpCode,
-  }).then(AuthSession.fromJson);
+  }, deviceId).then(AuthSession.fromJson);
 
   /// Exchange a Google/Apple ID token for an AllisWell session (ADR-0026).
   ///
@@ -62,16 +69,19 @@ class AuthApi {
     required String provider,
     required String idToken,
     String? totpCode,
-  }) => _post('/api/v1/auth/oauth', {
+    String? deviceId,
+  }) => _postNamingDevice('/api/v1/auth/oauth', {
     'provider': provider,
     'idToken': idToken,
     'totpCode': ?totpCode,
-  }).then(AuthSession.fromJson);
+  }, deviceId).then(AuthSession.fromJson);
 
-  Future<AuthSession> refresh(String refreshToken) => _post(
-    '/api/v1/auth/refresh',
-    {'refreshToken': refreshToken},
-  ).then(AuthSession.fromJson);
+  /// The server binds an unbound family to [deviceId] on a rotation and keeps
+  /// a bound family's device as it is (OPH-434).
+  Future<AuthSession> refresh(String refreshToken, {String? deviceId}) =>
+      _postNamingDevice('/api/v1/auth/refresh', {
+        'refreshToken': refreshToken,
+      }, deviceId).then(AuthSession.fromJson);
 
   /// Which social sign-ins this server can complete (OPH-392, E-23). A server
   /// older than the question answers 404 — the caller treats any failure as
@@ -121,6 +131,32 @@ class AuthApi {
       'refreshToken': refreshToken,
     }, query: allDevices ? {'all': 'true'} : null);
   }
+
+  /// [body] plus `deviceId` when there is one — and, when the server refuses
+  /// the body's SHAPE, the same call once more without it.
+  ///
+  /// A server from before OPH-434 validates auth bodies with
+  /// `additionalProperties: false`, so the unknown field is Fastify's 400
+  /// `FST_ERR_VALIDATION`. Validation runs before the handler, so nothing was
+  /// spent — not a refresh token, not a TOTP code — and repeating the call is
+  /// safe. Any other answer is the real one and is passed on as it is.
+  Future<Map<String, dynamic>> _postNamingDevice(
+    String path,
+    Map<String, dynamic> body,
+    String? deviceId,
+  ) async {
+    if (deviceId == null) return _post(path, body);
+    try {
+      return await _post(path, {...body, 'deviceId': deviceId});
+    } on AuthException catch (e) {
+      if (!_isShapeRefusal(e)) rethrow;
+      return _post(path, body);
+    }
+  }
+
+  static bool _isShapeRefusal(AuthException e) =>
+      e.statusCode == 400 &&
+      (e.code == 'FST_ERR_VALIDATION' || e.code == 'HTTP_400');
 
   Future<Map<String, dynamic>> _post(
     String path,

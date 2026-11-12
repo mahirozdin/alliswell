@@ -33,6 +33,7 @@ import '../providers.dart';
 import 'duration_picker.dart';
 import 'task_tile.dart' show TaskTile, deleteTaskWithUndo;
 import 'repeat_row.dart';
+import 'task_create_sheet.dart' show UrgentMinuteHints;
 import 'task_visuals.dart';
 import '../../ee/assignments_providers.dart';
 import '../../ee/ui/assignee_avatars.dart';
@@ -249,6 +250,25 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
       await action(ref.read(taskStoreProvider), task.id);
     } on Object catch (_) {
       messenger.showSnackBar(SnackBar(content: Text('task.couldNotSave'.tr())));
+    }
+  }
+
+  /// "Saati değiştir" under the urgent row (OPH-444): the same picker and the
+  /// same write as tapping the deadline or reminder row itself.
+  Future<void> _changeAlarmTime(String kind) async {
+    final due = kind == 'due';
+    final picked = await awPickDateTime(
+      context,
+      ref,
+      current: (due ? task.dueAt : task.remindAt)?.toLocal(),
+      anchor: due ? null : task.dueAt?.toLocal(),
+    );
+    if (picked == null || !mounted) return;
+    final iso = picked.toUtc().toIso8601String();
+    if (due) {
+      await _applyScoped({'dueAt': iso}, isDateEdit: true);
+    } else {
+      await _apply((store, id) => store.update(id, {'remindAt': iso}));
     }
   }
 
@@ -550,6 +570,24 @@ class _TaskDetailState extends ConsumerState<_TaskDetail> {
                       onChanged: (v) => _apply(
                         (store, id) => store.update(id, {'isUrgent': v}),
                       ),
+                    ),
+                    // OPH-444 (#47): a minute another urgent alarm already
+                    // holds is said, never blocked. A muted or closed task
+                    // rings nothing, so it shares nothing.
+                    UrgentMinuteHints(
+                      urgent:
+                          task.isUrgent &&
+                          task.alarmsMutedAt == null &&
+                          !const {
+                            'completed',
+                            'cancelled',
+                            'archived',
+                          }.contains(task.status),
+                      remindAt: task.remindAt,
+                      dueAt: task.dueAt,
+                      taskId: task.id,
+                      padding: const EdgeInsetsDirectional.only(start: 40),
+                      onChangeTime: (kind) => unawaited(_changeAlarmTime(kind)),
                     ),
                     // OPH-178: silence this task's alarms for good, without
                     // completing it. The subtitle says what silence means; the
