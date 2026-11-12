@@ -145,6 +145,63 @@ void main() {
     await sub.cancel();
   });
 
+  // refresh-timeout-signout: the auth client is bounded (30 s per phase), so
+  // a refresh the server answers slowly ends as NETWORK_ERROR. That says
+  // nothing about the token: the session (and its stored refresh token) stays
+  // for the next try — sync backs off and retries — instead of signing out.
+  test('a refresh that timed out keeps the session for the next try', () async {
+    var refreshCalls = 0;
+    final h = harness((options, body) async {
+      if (options.path == '/api/v1/auth/login') {
+        return jsonBody(200, sessionJson());
+      }
+      refreshCalls++;
+      if (refreshCalls == 1) {
+        throw DioException.receiveTimeout(
+          timeout: const Duration(seconds: 30),
+          requestOptions: options,
+        );
+      }
+      expect(body, {'refreshToken': 'refresh-1'});
+      return jsonBody(
+        200,
+        sessionJson(accessToken: 'access-2', refreshToken: 'refresh-2'),
+      );
+    });
+    await h.repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+    final events = <AuthSession?>[];
+    final sub = h.repo.sessionChanges.listen(events.add);
+
+    expect(await h.repo.refreshAccessToken(), isNull);
+    expect(h.repo.session, isNotNull);
+    expect((await h.storage.read())?.tokens.refreshToken, 'refresh-1');
+    await Future<void>.delayed(Duration.zero);
+    expect(events, isEmpty, reason: 'no sign-out for a slow answer');
+
+    expect(await h.repo.refreshAccessToken(), 'access-2');
+    expect((await h.storage.read())?.tokens.refreshToken, 'refresh-2');
+    await sub.cancel();
+  });
+
+  test('a refresh the server could not serve (5xx, 429, 408) keeps the '
+      'session', () async {
+    var status = 503;
+    final h = harness((options, body) async {
+      if (options.path == '/api/v1/auth/login') {
+        return jsonBody(200, sessionJson());
+      }
+      return jsonBody(status, {'statusCode': status, 'code': 'HTTP_$status'});
+    });
+    await h.repo.login(email: 'mahir@example.com', password: 'pw-pw-pw-pw');
+
+    for (final s in [500, 502, 503, 504, 429, 408]) {
+      status = s;
+      expect(await h.repo.refreshAccessToken(), isNull);
+      expect(h.repo.session, isNotNull, reason: 'HTTP $s');
+      expect(await h.storage.read(), isNotNull, reason: 'HTTP $s');
+    }
+  });
+
   // OPH-447 (#48) — a session family names the device it runs on, so removing
   // that device elsewhere can sign it out.
   const deviceId = '01JDEV1CE0000000000000000A';
@@ -307,8 +364,9 @@ void main() {
       expect(await repo.refreshAccessToken(), isNull);
     }
 
-    // The other failures still end the session (as before) but say nothing
-    // about this device having been removed: no wipe for them.
+    // An expired token still ends the session, and a network error or a rate
+    // limit keeps it (refresh-timeout-signout); none of them says this device
+    // was removed: no wipe for them.
     expect(revoked, 1);
   });
 

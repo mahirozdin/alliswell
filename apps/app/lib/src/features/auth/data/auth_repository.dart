@@ -190,6 +190,10 @@ class AuthRepository {
       await _setSession(next);
       return next.tokens.accessToken;
     } on AuthException catch (e) {
+      // No answer about the token — the bounded auth client timed out, the
+      // network dropped, the server was down or busy: the session stays, the
+      // caller sees its 401 and retries later (refresh-timeout-signout).
+      if (_isUnanswered(e)) return null;
       // The refusal is about [current]. A session that replaced it meanwhile
       // is not this refusal's to end, nor its leftovers this cleanup's
       // (revocation-cleanup-crosses-sessions).
@@ -217,6 +221,15 @@ class AuthRepository {
       await cleared;
       return null;
     }
+  }
+
+  /// A refresh failure that says nothing about the refresh token: no answer
+  /// at all (`NETWORK_ERROR`, a timeout included), a server error, a request
+  /// timeout or a rate limit. Only the server's refusal of the token ends the
+  /// session.
+  static bool _isUnanswered(AuthException e) {
+    final status = e.statusCode;
+    return status == null || status == 408 || status == 429 || status >= 500;
   }
 
   void _trackRevocation(Future<void> cleanup) {
