@@ -491,7 +491,9 @@ token).
 4. `200` → write the envelope and `aw_widget_fetched_at_ms`, failures 0, remove the backoff.
    `304` → refresh `fetchedAtMs` and the stamp, failures 0. `401` → `aw_widget_token_state =
    invalid`. Anything else (400, 403, 429, 5xx, timeout, offline) → failures + 1 and backoff until
-   now + min(5 min × 2^n, 2 h), n = the failures before this one.
+   now + min(5 min × 2^n, 2 h), n = the failures before this one. An answer whose profile is no
+   longer current (`baseUrl` or query changed while it was out, e.g. "Private widget" turned on)
+   writes nothing — no envelope, no stamp, no failure.
 5. **Choose** (decision K-11): no usable envelope → local; `pendingOutbox > 0` → local; a widget
    completion still queued (`aw_alarm_pending_actions`, `complete`) → local; `localWrittenAtMs ≥
    fetchedAtMs` → local; else the server's days. Both clocks are the device's, which is why the

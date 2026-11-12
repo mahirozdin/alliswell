@@ -338,10 +338,12 @@ final class WidgetFetcherTests: XCTestCase {
     super.tearDown()
   }
 
-  private func profileJSON(localWrittenAtMs: Int, outbox: Int = 0) -> String {
+  private func profileJSON(localWrittenAtMs: Int, outbox: Int = 0, isPrivate: Bool = true)
+    -> String
+  {
     """
     {"v":1,"baseUrl":"https://api.example.test/","scope":{"workspaceIds":["01JW1"]},
-     "private":true,"locale":"tr",
+     "private":\(isPrivate),"locale":"tr",
      "patterns":{"time":"HH:mm","day":"d MMM","dayYear":"d MMM y","relativeDays":true},
      "strings":{"bucket.overdue":"Gecikmiş","bucket.today":"Bugün","privateTitle":"Gizli görev",
        "privateEvent":"Gizli etkinlik","allDay":"Tüm gün","today":"Bugün","tomorrow":"Yarın",
@@ -501,6 +503,76 @@ final class WidgetFetcherTests: XCTestCase {
     _ = await fetcher().refresh()
     XCTAssertNotNil(defaults.string(forKey: kAWServerSnapshotKey))
     XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
+  }
+
+  // MARK: - A profile that changed during the request
+
+  /// "Private widget" turned on while a request made without it was still
+  /// out: Dart removed the server view, and the late answer must not put the
+  /// titles back into the App Group (WIDGETS.md §9).
+  func testAnAnswerForAProfileNoLongerCurrentIsDiscarded() async throws {
+    defaults.set(
+      profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: false),
+      forKey: kAWFetchProfileKey)
+    var titled = serverBody()
+    var days = titled["days"] as! [[String: Any]]
+    var buckets = days[0]["buckets"] as! [[String: Any]]
+    var items = buckets[0]["items"] as! [[String: Any]]
+    items[0]["title"] = "secret title"
+    buckets[0]["items"] = items
+    days[0]["buckets"] = buckets
+    titled["days"] = days
+    let body = try JSONSerialization.data(withJSONObject: titled)
+    let turnedPrivate = profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: true)
+    let defaults = self.defaults!
+    AWStubProtocol.handler = { request in
+      // What the app does while the answer is on its way.
+      defaults.set(turnedPrivate, forKey: kAWFetchProfileKey)
+      defaults.removeObject(forKey: kAWServerSnapshotKey)
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: 200, httpVersion: "HTTP/1.1",
+        headerFields: ["ETag": "\"abc\""])!
+      return (response, body)
+    }
+
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertEqual(
+      AWStubProtocol.requests.first?.url?.query?.contains("private=0"), true,
+      "the request went out under the old profile")
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
+    // Neither a success nor a failure: the next turn asks again at once.
+    XCTAssertNil(defaults.object(forKey: kAWFetchedAtKey))
+    XCTAssertNil(defaults.object(forKey: kAWFetchFailuresKey))
+    XCTAssertNil(defaults.object(forKey: kAWBackoffUntilKey))
+    XCTAssertEqual(try drawn().buckets.first?.items.first?.id, "L")
+  }
+
+  /// The same race on a 304: the stored view of the old profile is not
+  /// written back after the app removed it.
+  func testANotModifiedForAProfileNoLongerCurrentIsDiscarded() async throws {
+    defaults.set(
+      profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: false),
+      forKey: kAWFetchProfileKey)
+    let body = try JSONSerialization.data(withJSONObject: serverBody())
+    respond(200, body: body, headers: ["ETag": "\"abc\""])
+    _ = await fetcher().refresh()
+    XCTAssertNotNil(defaults.string(forKey: kAWServerSnapshotKey))
+
+    let turnedPrivate = profileJSON(localWrittenAtMs: startMs - 600_000, isPrivate: true)
+    let defaults = self.defaults!
+    AWStubProtocol.handler = { request in
+      defaults.set(turnedPrivate, forKey: kAWFetchProfileKey)
+      defaults.removeObject(forKey: kAWServerSnapshotKey)
+      let response = HTTPURLResponse(
+        url: request.url!, statusCode: 304, httpVersion: "HTTP/1.1",
+        headerFields: ["ETag": "\"abc\""])!
+      return (response, Data())
+    }
+    clock = start.addingTimeInterval(180)
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .discarded)
+    XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
   }
 
   // MARK: - 401

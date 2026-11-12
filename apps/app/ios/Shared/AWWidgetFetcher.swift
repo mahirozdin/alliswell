@@ -75,6 +75,10 @@ enum AWWidgetFetchOutcome: Equatable {
   case unauthorized
   /// Anything else, a timeout or no network: backed off.
   case failed
+  /// An answer for a profile that is no longer current — "Private widget",
+  /// the scope or the server changed while it was on its way: nothing is
+  /// written, neither a success nor a failure, so the next turn asks again.
+  case discarded
 }
 
 /// A redirect is answered as the failure it is: the token goes to the
@@ -168,6 +172,12 @@ struct AWWidgetFetcher {
       return failed()
     }
 
+    // The app may have changed the profile while the request was out — above
+    // all turned "Private widget" on and removed the server view: an answer
+    // asked with the old profile is not this profile's, and writing it back
+    // would put titles into the App Group again (WIDGETS.md §9).
+    guard isCurrent(profile, query: query) else { return .discarded }
+
     // The device's clock when the answer came: what the choice compares with
     // the app's own write (K-11), never the server's `generatedAt`.
     let receivedMs = awMs(now())
@@ -200,6 +210,14 @@ struct AWWidgetFetcher {
     default:
       return failed()
     }
+  }
+
+  /// Whether the stored profile still asks what `profile` asked, of the same
+  /// server.
+  private func isCurrent(_ profile: AWWidgetFetchProfile, query: String) -> Bool {
+    guard let current = self.profile else { return false }
+    return current.baseUrl == profile.baseUrl
+      && awSnapshotQuery(profile: current, timeZone: timeZone) == query
   }
 
   private func succeeded(at ms: Int) {
