@@ -1,5 +1,7 @@
 import 'package:dio/dio.dart';
 
+import '../../../core/http_timeouts.dart';
+
 /// How a sender can reach this install (OPH-313). Null until a browser has
 /// subscribed, or on a platform whose token arrives later (OPH-319).
 class DevicePushCredentials {
@@ -179,6 +181,10 @@ class PushKeyLookup {
   final bool? configured;
 }
 
+/// Every call here is small and quick, so each carries its own bounds on the
+/// shared (unbounded) client ([boundedApiCall], OPH-427): the ring-answer
+/// refresh is single-flight, and one GET that never answered used to be the
+/// shared request forever.
 class HttpDeviceApi implements DeviceApi {
   const HttpDeviceApi(this._dio);
 
@@ -189,18 +195,24 @@ class HttpDeviceApi implements DeviceApi {
     final response = await _dio.put(
       '/api/v1/notification-devices/$deviceId',
       data: device.toJson(),
+      options: boundedApiCall(),
     );
     final body = response.data;
     return body is Map<String, dynamic> ? DeviceInfo.fromJson(body) : null;
   }
 
   @override
-  Future<void> unregister(String deviceId) =>
-      _dio.delete('/api/v1/notification-devices/$deviceId');
+  Future<void> unregister(String deviceId) => _dio.delete(
+    '/api/v1/notification-devices/$deviceId',
+    options: boundedApiCall(),
+  );
 
   @override
   Future<List<DeviceInfo>> list() async {
-    final response = await _dio.get('/api/v1/notification-devices');
+    final response = await _dio.get(
+      '/api/v1/notification-devices',
+      options: boundedApiCall(),
+    );
     final items = (response.data as Map?)?['items'];
     return [
       if (items is List)
@@ -218,6 +230,7 @@ class HttpDeviceApi implements DeviceApi {
     final response = await _dio.patch(
       '/api/v1/notification-devices/$deviceId',
       data: {'ringsUrgent': ?ringsUrgent, 'deviceName': ?deviceName},
+      options: boundedApiCall(),
     );
     final body = response.data;
     if (body is! Map<String, dynamic>) {
@@ -237,7 +250,10 @@ class HttpDeviceApi implements DeviceApi {
   @override
   Future<PushKeyLookup> lookupPushKey() async {
     try {
-      final response = await _dio.get('/api/v1/push/public-key');
+      final response = await _dio.get(
+        '/api/v1/push/public-key',
+        options: boundedApiCall(),
+      );
       final key = (response.data as Map?)?['publicKey'];
       return key is String && key.isNotEmpty
           ? PushKeyLookup.key(key)

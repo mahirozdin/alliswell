@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 
+import '../../core/http_timeouts.dart';
 import '../../core/kv/local_kv.dart';
 import '../../notifications/device_gate.dart';
 import 'data/device_api.dart';
@@ -163,9 +164,16 @@ class DeviceRegistry {
     required this.describe,
     this.ringsUrgent,
     this.onRingsUrgentChanged,
+    this.listTimeout = kApiCallDeadline,
   });
 
   final DeviceApi api;
+
+  /// How long the ring-answer refresh waits for the device list (OPH-427,
+  /// #48). The refresh is single-flight, so a GET that never answered would
+  /// otherwise stay the shared request for good and no later refresh — the
+  /// minute timer's or the ring screen's — would ask again.
+  final Duration listTimeout;
 
   /// Reads `sync_states.client_id` — `null` until the engine's first round.
   final Future<String?> Function() readClientId;
@@ -252,7 +260,7 @@ class DeviceRegistry {
     final askedAt = store.generation;
     final List<DeviceInfo> devices;
     try {
-      devices = await api.list();
+      devices = await api.list().timeout(listTimeout);
     } on Object {
       return false;
     }

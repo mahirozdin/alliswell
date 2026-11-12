@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 
 import '../core/api_exception.dart';
 import '../core/fold.dart';
+import '../core/http_timeouts.dart';
 import '../core/kv/local_kv.dart';
 import '../core/ulid.dart';
 import 'db/database.dart';
@@ -83,6 +84,7 @@ class SyncEngine {
     this.debounce = const Duration(milliseconds: 250),
     this.pullInterval,
     this.maxBackoff = const Duration(seconds: 60),
+    this.requestTimeout = kApiCallDeadline,
     Future<String?> Function()? installClientId,
   }) : _installClientId = installClientId ?? _storedInstallClientId,
        _zone = _zoneOutsideTransactions(db);
@@ -124,6 +126,15 @@ class SyncEngine {
   /// signal will make this a fallback rather than the primary trigger.
   final Duration? pullInterval;
   final Duration maxBackoff;
+
+  /// How long one push or pull may stay unanswered (OPH-427, #46/#48). The
+  /// engine runs one round at a time, so a request that never answers would
+  /// otherwise hold every later round — a poke, the periodic pull — behind it
+  /// until the app restarts. Past it the round fails like an offline one and
+  /// the backoff retries. A push that did land before its answer was lost is
+  /// safe to resend: the server dedupes by (clientId, clientMutationId).
+  /// Only the network calls are bounded, never a database transaction.
+  final Duration requestTimeout;
 
   final _conflicts = StreamController<SyncConflict>.broadcast();
   Stream<SyncConflict> get conflicts => _conflicts.stream;
@@ -321,11 +332,13 @@ class SyncEngine {
 
       List<SyncPushResult> results;
       try {
-        results = (await api.push(
-          clientId: state.clientId,
-          workspaceId: workspaceId,
-          baseRevision: state.lastRevision,
-          mutations: [for (final row in rows) _toMutation(row)],
+        results = (await _bounded(
+          api.push(
+            clientId: state.clientId,
+            workspaceId: workspaceId,
+            baseRevision: state.lastRevision,
+            mutations: [for (final row in rows) _toMutation(row)],
+          ),
         )).results;
       } catch (_) {
         await _bumpAttempts(rows);
@@ -341,6 +354,18 @@ class SyncEngine {
       if (rows.length < pushBatchSize) return;
     }
   }
+
+  /// [requestTimeout] around one network call, failing as the offline error
+  /// does so the round takes the ordinary backoff path. A late answer to the
+  /// abandoned call is dropped: the revision was not advanced, so the next
+  /// round asks for the same page again.
+  Future<T> _bounded<T>(Future<T> call) => call.timeout(
+    requestTimeout,
+    onTimeout: () => throw const ApiException(
+      'NETWORK_ERROR',
+      'The AllisWell server did not answer in time',
+    ),
+  );
 
   Future<void> _bumpAttempts(List<PendingMutation> rows) async {
     for (final row in rows) {
@@ -529,10 +554,12 @@ class SyncEngine {
     while (true) {
       if (_stopped) return;
       final state = await _ensureState();
-      final page = await api.pull(
-        workspaceId,
-        sinceRevision: state.lastRevision,
-        limit: pullPageSize,
+      final page = await _bounded(
+        api.pull(
+          workspaceId,
+          sinceRevision: state.lastRevision,
+          limit: pullPageSize,
+        ),
       );
       // Stopped while the request was out: sign-out gives up waiting after a
       // bound and wipes the replica, and somebody else may already be signed

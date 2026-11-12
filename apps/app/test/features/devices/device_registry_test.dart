@@ -8,6 +8,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:alliswell/src/core/firebase/push_messaging.dart';
+import 'package:alliswell/src/core/http_timeouts.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/auth/data/models.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
@@ -59,10 +60,17 @@ class _RecordingApi implements DeviceApi {
   int listCalls = 0;
   bool failList = false;
 
+  /// The next GET never answers: a request lost on the wire (OPH-427).
+  bool hangNextList = false;
+
   @override
   Future<List<DeviceInfo>> list() async {
     listCalls++;
     if (failList) throw StateError('offline');
+    if (hangNextList) {
+      hangNextList = false;
+      return Completer<List<DeviceInfo>>().future;
+    }
     return listed;
   }
 
@@ -97,12 +105,14 @@ DeviceRegistry _registryFor(
   DeviceDescriptor? descriptor = _descriptor,
   RingsUrgentStore? ringsUrgent,
   void Function()? onRingsUrgentChanged,
+  Duration? listTimeout,
 }) => DeviceRegistry(
   api: api,
   readClientId: () async => clientId,
   describe: () => descriptor,
   ringsUrgent: ringsUrgent,
   onRingsUrgentChanged: onRingsUrgentChanged,
+  listTimeout: listTimeout ?? kApiCallDeadline,
 );
 
 /// A [LocalKv] the test can look into.
@@ -634,6 +644,58 @@ void main() {
         await registry.sync(signedIn: true);
         expect(await store.read(), RingsUrgentHere.on);
         expect(changes, 1);
+      },
+    );
+  });
+
+  // OPH-427 (#48): the refresh is single-flight — the minute timer and the
+  // ring screen share the one on the wire. A GET that never answered used to
+  // be that shared request forever, so no later refresh ever asked again.
+  group('a device list call that never answers (OPH-427)', () {
+    test('a device list call that never answers does not block the next '
+        'refresh', () async {
+      final kv = _MemoryKv()..values[kRingsUrgentKey] = 'off';
+      final store = RingsUrgentStore(kv: kv);
+      final api = _RecordingApi()
+        ..listed = _listedAs(true)
+        ..hangNextList = true;
+      final registry = _registryFor(
+        api,
+        ringsUrgent: store,
+        listTimeout: const Duration(milliseconds: 100),
+      );
+      expect(await registry.refreshRingAnswer(), isFalse);
+      expect(await store.read(), RingsUrgentHere.off, reason: 'unchanged');
+
+      expect(await registry.refreshRingAnswer(), isTrue);
+      expect(api.listCalls, 2, reason: 'the next refresh asked again');
+      expect(await store.read(), RingsUrgentHere.on);
+    });
+
+    test('without an override the bound is the app-wide backstop', () {
+      final registry = DeviceRegistry(
+        api: _RecordingApi(),
+        readClientId: () async => _clientId,
+        describe: () => _descriptor,
+      );
+      expect(registry.listTimeout, kApiCallDeadline);
+    });
+
+    test(
+      'every registry call carries its own bounds on the shared client',
+      () async {
+        final adapter = FakeHttpClientAdapter(
+          (options, body) async => options.method == 'GET'
+              ? jsonBody(200, {'items': <Object>[]})
+              : jsonBody(200, {'id': _clientId, 'platform': 'macos'}),
+        );
+        final api = HttpDeviceApi(fakeDio(adapter));
+        await api.list();
+        await api.register(_clientId, _descriptor);
+        for (final sent in adapter.requests) {
+          expect(sent.connectTimeout, kApiPhaseTimeout, reason: sent.method);
+          expect(sent.receiveTimeout, kApiPhaseTimeout, reason: sent.method);
+        }
       },
     );
   });

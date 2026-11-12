@@ -1,6 +1,7 @@
 import 'package:dio/dio.dart';
 
 import '../core/api_exception.dart';
+import '../core/http_timeouts.dart';
 
 /// One change row from `GET /sync/pull` — a snapshot (`data`) for
 /// create/update or a tombstone (`data == null`, operation `delete`).
@@ -202,6 +203,7 @@ class SyncApi {
           'sinceRevision': '$sinceRevision',
           if (limit != null) 'limit': '$limit',
         },
+        options: boundedApiCall(),
       ),
     );
     return SyncPullPage.fromJson(res.data!);
@@ -222,6 +224,7 @@ class SyncApi {
           'baseRevision': baseRevision,
           'mutations': mutations.map((m) => m.toJson()).toList(),
         },
+        options: boundedApiCall(),
       ),
     );
     return SyncPushResponse.fromJson(res.data!);

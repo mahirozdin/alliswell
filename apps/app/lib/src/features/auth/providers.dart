@@ -4,6 +4,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/http_timeouts.dart';
 import '../../core/kv/local_kv.dart';
 import '../../core/reachability.dart';
 import '../../core/server_url.dart';
@@ -42,8 +43,13 @@ final tokenStorageProvider = Provider<TokenStorage>(
 /// Bare client for the auth endpoints themselves (no interceptor — the
 /// interceptor's refresh path must not recurse through itself).
 final authApiProvider = Provider<AuthApi>(
-  (ref) => AuthApi(Dio(BaseOptions(baseUrl: ref.watch(apiBaseUrlProvider)))),
+  (ref) => AuthApi(authHttpClient(ref.watch(apiBaseUrlProvider))),
 );
+
+/// The auth endpoints answer small and quick, so their client is bounded
+/// (OPH-427): a token refresh that never answered would hold every request
+/// queued behind the auth interceptor — sync included — for good.
+Dio authHttpClient(String baseUrl) => Dio(boundedBaseOptions(baseUrl));
 
 /// The replica and the person's small facts belong to one person (OPH-355):
 /// wiped at sign-out, and wiped at sign-in when they were somebody else's.
@@ -202,6 +208,11 @@ Future<void> _dropOsAlarms(Ref ref) async {
 
 /// Authenticated dio for every feature API (tasks, projects, /me, …):
 /// attaches the access token and transparently refreshes it once on a 401.
+///
+/// No timeouts here on purpose (OPH-427): an AI stream, an import, a
+/// transcription upload or an export may run for minutes on this client.
+/// A short call that a single-flight loop waits on carries its own bounds per
+/// request ([boundedApiCall]: sync push/pull, the device registry).
 final apiClientProvider = Provider<Dio>((ref) {
   final repository = ref.watch(authRepositoryProvider);
   final dio = Dio(BaseOptions(baseUrl: ref.watch(apiBaseUrlProvider)));
