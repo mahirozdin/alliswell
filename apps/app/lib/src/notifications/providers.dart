@@ -373,6 +373,15 @@ final alarmSupportProvider = FutureProvider.autoDispose<AlarmSupport>((
   // Probe again the moment a permission prompt closes (OPH-393): what the
   // person just answered is the thing this reports.
   ref.watch(alarmPermissionAskProvider.select((open) => open > 0));
+  // And on every return to the foreground (OPH-428, IOS-01): the fix for most
+  // of these problems is a switch in the system Settings app, and nothing
+  // tells the app it was flipped. The fix sheet's own re-probe runs as the
+  // Settings app OPENS, before the person has touched anything, so the strip
+  // kept saying "alarm permission is off" until a relaunch. Until the new
+  // answer lands the strip keeps the last one — no flicker. The plan re-reads
+  // the same grants on the same resume (the scheduler's `onForeground`).
+  final lifecycle = AppLifecycleListener(onResume: ref.invalidateSelf);
+  ref.onDispose(lifecycle.dispose);
   try {
     await gateway.initialize();
     final support = await gateway.alarmSupport();

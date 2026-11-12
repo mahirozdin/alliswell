@@ -1099,10 +1099,32 @@ class _AlarmStatusTileState extends ConsumerState<_AlarmStatusTile> {
   late Future<AlarmSupport> _support;
   bool _testing = false;
 
+  /// Back from the system Settings app (OPH-428, IOS-01): the switch that
+  /// fixes the problem is flipped there and nothing tells the app, so the
+  /// row asks again on every return. FutureBuilder keeps the last answer on
+  /// screen until the new one lands.
+  late final AppLifecycleListener _lifecycle;
+
   @override
   void initState() {
     super.initState();
     _support = _probe();
+    _lifecycle = AppLifecycleListener(
+      onResume: () {
+        // A block body: an arrow would return the Future to setState (#19).
+        if (mounted) {
+          setState(() {
+            _support = _probe();
+          });
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _lifecycle.dispose();
+    super.dispose();
   }
 
   Future<AlarmSupport> _probe() async {

@@ -99,4 +99,60 @@ void main() {
       findsOneWidget,
     );
   });
+
+  // OPH-428 (IOS-01): the permission is granted in the system Settings app,
+  // which tells the app nothing. The return to the foreground is the signal.
+  testWidgets('back from the system Settings app, the row reads it again', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(1280, 1400);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    SharedPreferences.setMockInitialValues({});
+    final store = InMemorySecretStore();
+    await TokenStorage(store).save(fakeSession());
+    final browser = _AskableBrowser();
+    final api = FakeApi();
+    await tester.pumpWidget(
+      ProviderScope(
+        retry: awRetry,
+        overrides: [
+          ...syncTestOverrides(notificationsGateway: browser),
+          secretStoreProvider.overrideWithValue(store),
+          apiClientProvider.overrideWithValue(
+            fakeDio(FakeHttpClientAdapter(api.handle)),
+          ),
+        ],
+        child: const AllisWellApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await openSettingsGroup(tester, kSettingsNotifications);
+
+    final row = find.byKey(const Key('alarm-status'));
+    expect(
+      find.descendant(of: row, matching: find.textContaining('Ready')),
+      findsNothing,
+    );
+
+    // Allowed outside the app, then back.
+    browser.allowed = true;
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: row, matching: find.textContaining('Ready')),
+      findsOneWidget,
+    );
+  });
 }

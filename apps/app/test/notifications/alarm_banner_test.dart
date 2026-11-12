@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -9,6 +10,7 @@ import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/devices/data/device_api.dart';
 import 'package:alliswell/src/features/devices/device_registry.dart';
 import 'package:alliswell/src/features/devices/providers.dart';
+import 'package:alliswell/src/features/tasks/providers.dart';
 import 'package:alliswell/src/features/workspaces/workspaces.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/alarm_banner.dart';
@@ -17,10 +19,12 @@ import 'package:alliswell/src/notifications/alarm_overlay.dart'
     show alarmClockProvider;
 import 'package:alliswell/src/notifications/gateway.dart';
 import 'package:alliswell/src/notifications/providers.dart';
+import 'package:alliswell/src/sync/db/database.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/tokens.dart';
 
 import '../support/fake_notifications.dart';
+import '../support/sync_overrides.dart';
 
 final _theme = ThemeData(
   colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF2563EB)),
@@ -122,6 +126,8 @@ const _serverWithoutPush = AlarmSupport(
 );
 
 void main() {
+  group('back from the system Settings app (OPH-428)', backFromSettingsTests);
+
   testWidgets('warns when notifications are off', (tester) async {
     await pumpBanner(
       tester,
@@ -870,4 +876,193 @@ Future<ProviderContainer> _pumpBand(
   );
   await tester.pumpAndSettle();
   return container;
+}
+
+/// OPH-428 (IOS-01): "Ayarları aç" leaves the app for the system Settings app,
+/// the person turns Alarms on there and comes back. Nothing in the app is
+/// told; the return to the foreground is the only signal, and both the strip
+/// and the plan must read the grant again on it — the strip said "alarm
+/// permission is off" until a relaunch, while urgent alarms stayed on the
+/// silenceable notification lane.
+void backFromSettingsTests() {
+  const ws = '01WSAAAAAAAAAAAAAAAAAAAAAA';
+  const declined = AlarmSupport(
+    notificationsEnabled: true,
+    criticalAlertsEnabled: false,
+    soundEnabled: true,
+    alertEnabled: true,
+    timeSensitiveEnabled: true,
+    alarmKitAuthorized: false,
+  );
+  const granted = AlarmSupport(
+    notificationsEnabled: true,
+    criticalAlertsEnabled: false,
+    soundEnabled: true,
+    alertEnabled: true,
+    timeSensitiveEnabled: true,
+    alarmKitAuthorized: true,
+  );
+
+  void leaveAndReturn(WidgetTester tester) {
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      tester.binding.handleAppLifecycleStateChanged(state);
+    }
+  }
+
+  /// Lets the scheduler's passes (real drift streams, real awaits) finish.
+  Future<void> settle(WidgetTester tester) async {
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 100)),
+    );
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets(
+    'returning from system settings with the alarm permission granted clears the banner and re-plans',
+    (tester) async {
+      final gateway = SupportGateway(declined);
+      final alarmKit = FakeAlarmKitHost(authorized: false);
+      final container = ProviderContainer(
+        overrides: [
+          ...syncTestOverrides(
+            notificationsGateway: gateway,
+            alarmKitHost: alarmKit,
+          ),
+          taskScopeProvider.overrideWith(
+            (ref) async => TaskScope.workspace(ws),
+          ),
+          currentUserIdProvider.overrideWithValue(null),
+          ringsUrgentStoreProvider.overrideWithValue(
+            RingsUrgentStore(kv: _MemoryKv()),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      // One urgent task with its urgent reminder two hours from now.
+      final at = DateTime.now().toUtc().add(const Duration(hours: 2));
+      await tester.runAsync(() async {
+        final db = container.read(databaseProvider);
+        await db
+            .into(db.tasks)
+            .insert(
+              TasksCompanion.insert(
+                id: 'U1'.padRight(26, '0'),
+                workspaceId: ws,
+                title: 'Acil görev',
+                isUrgent: const Value(true),
+                requiresAcknowledgement: const Value(true),
+                remindAt: Value(at),
+              ),
+            );
+        await db
+            .into(db.reminders)
+            .insert(
+              RemindersCompanion.insert(
+                id: 'RU1'.padRight(26, '0'),
+                taskId: 'U1'.padRight(26, '0'),
+                remindAt: at,
+                alarmLevel: const Value('urgent'),
+                requiresAcknowledgement: const Value(true),
+              ),
+            );
+      });
+
+      final scheduler = container.listen(
+        notificationSchedulerProvider,
+        (_, _) {},
+      );
+      addTearDown(scheduler.close);
+      tester.view.physicalSize = const Size(393, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: _theme,
+            home: const Scaffold(body: AlarmDegradationBanner()),
+          ),
+        ),
+      );
+      await settle(tester);
+
+      // Declined: the strip says so, and the urgent alarm rides the
+      // notification chain because AlarmKit would refuse it.
+      expect(find.textContaining('Alarm permission is off'), findsOneWidget);
+      expect(alarmKit.scheduled, isEmpty);
+      expect(gateway.scheduled.values.where((n) => n.urgent), isNotEmpty);
+
+      // "Ayarları aç" → Settings ▸ AllisWell ▸ Alarms on → back to the app.
+      gateway.support = granted;
+      alarmKit.authorized = true;
+      leaveAndReturn(tester);
+      await settle(tester);
+
+      expect(
+        find.byKey(const Key('alarm-banner')),
+        findsNothing,
+        reason: 'IOS-01: the strip stayed until a relaunch',
+      );
+      expect(
+        alarmKit.scheduled,
+        hasLength(1),
+        reason: 'the urgent alarm moves to AlarmKit on the return itself',
+      );
+      expect(
+        gateway.scheduled.values.where((n) => n.urgent),
+        isEmpty,
+        reason: 'it would ring twice',
+      );
+
+      // The scheduler's heartbeat is a periodic timer: end it inside the body.
+      await tester.pumpWidget(const SizedBox.shrink());
+      scheduler.close();
+      container.dispose();
+    },
+  );
+
+  testWidgets('a permission turned off in Settings shows the strip on return '
+      '(Android exact alarms included)', (tester) async {
+    const healthyAndroid = AlarmSupport(
+      notificationsEnabled: true,
+      criticalAlertsEnabled: false,
+      exactAlarmsEnabled: true,
+    );
+    final gateway = SupportGateway(healthyAndroid);
+    await pumpBanner(tester, healthyAndroid, gateway: gateway);
+    expect(find.byKey(const Key('alarm-banner')), findsNothing);
+
+    gateway.support = const AlarmSupport(
+      notificationsEnabled: true,
+      criticalAlertsEnabled: false,
+      exactAlarmsEnabled: false,
+    );
+    leaveAndReturn(tester);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('alarm-banner')), findsOneWidget);
+  });
+
+  testWidgets(
+    'a return with nothing changed keeps the strip without a flicker',
+    (tester) async {
+      final gateway = SupportGateway(declined);
+      await pumpBanner(tester, declined, gateway: gateway);
+      final before = gateway.probes;
+      leaveAndReturn(tester);
+      // The re-probe is in flight: the strip keeps its last answer meanwhile.
+      await tester.pump();
+      expect(find.byKey(const Key('alarm-banner')), findsOneWidget);
+      await tester.pumpAndSettle();
+      expect(gateway.probes, greaterThan(before), reason: 're-probed');
+      expect(find.byKey(const Key('alarm-banner')), findsOneWidget);
+    },
+  );
 }
