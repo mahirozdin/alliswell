@@ -15,7 +15,7 @@
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.20.0 son sürüm (2026-11-12).** Epic 36–37 tamam. |
+| Current phase            | **v1.21.0 son sürüm (2026-11-12).** Epic 36–37 tamam. |
 | Current epic             | **Epic 36 follow-up** (OPH-468…479), sonra Epic 37 follow-up (OPH-483…485) ve follow-up 2 |
 | ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
 | Last completed           | Widget self-fetch düzeltme turu (OPH-458, 462, 464); ayrıntı CHANGELOG'da. |
