@@ -10,7 +10,7 @@
 Hepsi **NOT RUN**: işler birim/widget testleriyle kapandı; web turunun ikinci geçişinde ve telefonda bakılır.
 
 - OPH-427 — **web release derlemesi** (NOT RUN): 2+ alarmlı listede bir eylem yap, sonra yeni acil alarm ekle: zamanında çalıyor, düzenlemeler yenilemeden eşitleniyor.
-- OPH-441 — **web** (NOT RUN): hh:mm:11 ve hh:mm:32'de iki acil alarm :11'de tek liste açıyor; alarmdan 3 dk sonra açılan uygulama "· 3 dk önce" diyor.
+- OPH-441 — **web** (NOT RUN): hh:mm:11 ve hh:mm:32'de iki acil alarm :11'de tek liste açıyor; alarmdan 3 dk sonra açılan uygulama "· 3 dk önce" diyor. Aynı acil görevde :11 hatırlatıcı + :32 deadline: tek Onayla ikisini kapatıyor, :32'de ekran geri gelmiyor; iki dakikalık listede Tümünü onayla sonrası hiçbiri yeniden çalmıyor.
 - OPH-466 — **web 360×640 ve 430×932, açık ve koyu; 2.0× metin** (NOT RUN): tek zil ekranında sessiz satır + "Sesi başlat" varken Onayla, Tamamla ve Aç ekranda; dakika değişince erteleme karoları güncelleniyor; saat kullanıcının 12/24 biçiminde; Onayla/Tamamla "Onaylandı"/"Tamamlandı" diyor.
 - OPH-443 — **web 360×640, 430×932 ve 1280×800, açık ve koyu** (NOT RUN): üç alarmlı listede başlık sayı + saat, kenar 24 pt, geniş ekranda ortada; satırın erteleme sayfası dakika değişince güncelleniyor; kesik kartta solma.
 - OPH-448/449 — **web, açık ve koyu** (NOT RUN): `/settings/devices`'ı yenile, çalan cihazı kaldır, seç, kaydet: geri düğmesi duruyor; başka cihaz kaydolduktan sonra Cihazlar'ı yeniden aç: liste güncel; kapalı web satırında tek not; son çalan cihazı kapatma ve kaldırma diyaloglarında "Vazgeç", "Yine de kapat" kırmızı.

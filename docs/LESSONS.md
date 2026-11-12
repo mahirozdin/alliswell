@@ -172,13 +172,14 @@
 - **KARAR** Görev saati de alarmdır: hatırlatıcı deadline alarmını silmez (`reminders.kind` remind|due); süresiz susturma (`alarms_muted_at`) görevi açık bırakır — susturmak tamamlamak değildir (ADR-0015).
 - **KARAR** Dürüstlük: reddedilen alarm günlükte `degraded`, asla `scheduled`; acil alarmın her slotu aynı ses/seviyede, sessiz düşüş yasak — her düşüş ekranda + günlükte söylenir (ADR-0015).
 - **KARAR** Sessiz anahtarlı iPhone'da meşru yol AlarmKit (iOS 26+), critical-alerts yalnız iOS<26 yedeği; arka plan ses hilesi reddedildi; Watch hedefi açılmaz (ADR-0015).
-- **DERS** Bildirim id'si çevrilmiş metnin hash'i, Android kanal adı `.tr()` → i18n'siz arka plan turu alarmı çift kurar, kanalı ham anahtarla adlandırır → başsız tur önce `AwI18n.boot()`; iki okuyucu tek `mergeAlarms`.
-- **DERS** Başsız tur: workspace `/me`'den değil `sync_states`'ten (çevrimdışı "iş yok" olur), base URL `PersistedChoice`'tan değil `localKv`'den; `ProviderContainer` kurma; oturum yoksa sessiz çık.
+- **DERS** Bildirim id'si çeviri hash'i, kanal adı `.tr()` → i18n'siz başsız tur alarmı çift kurar, kanalı ham anahtarla adlandırır → önce `AwI18n.boot()`; iki okuyucu tek `mergeAlarms`.
+- **DERS** Başsız tur: workspace `sync_states`'ten (`/me` çevrimdışı "iş yok" olur), base URL `localKv`'den (`PersistedChoice` değil); `ProviderContainer` kurma; oturum yoksa sessiz çık.
 - **DERS** İki hatlı (AlarmKit/bildirim) planlamada dışlanan küme niyetten değil KABUL edilenden hesaplanır (yoksa reddedilen alarm hiçbir hatta kalmaz); her `schedule()` ayrı try/catch; yetkiyi yeniden oku.
-- **DERS** Soğuk açılışta bildirim yanıtı tamponsuz broadcast'te dinleyici doğmadan kaybolur → tampon + ilk kareden önce `getNotificationAppLaunchDetails`; iOS eylemi `.foreground` değilse kayıtsız işleyiciye düşer.
-- **DERS** Teşhis teşhis ettiğini bozmamalı: günlük yazımı durum probunu yutup alarmları kapalı cihazı sağlıklı gösterdi → günlük yazımı `unawaited` + kendi try/catch.
-- **DERS** iOS 64 bekleyen bildirimin fazlasını sessizce atar → pencere 40; AlarmKit en yakın 8, taşan bildirim zincirinde (planner'a kapsanan id KÜMESİ); iOS teslimi bildirmez → günlük teslim iddia etmez.
-- **DERS** iOS ses adı çözülemezse sessizce ding'e düşer, önce `Library/Sounds`'a bakılır → sesler oraya kurulur, yoksa `degraded`; ≤30 sn caf/aiff/wav (mp3 çalmaz); sessiz anahtar `timeSensitive` sesini susturur.
+- **DERS** Soğuk açılışta bildirim yanıtı tamponsuz broadcast'te kaybolur → tampon + ilk kareden önce `getNotificationAppLaunchDetails`; `.foreground` olmayan iOS eylemi kayıtsız işleyiciye düşer.
+- **DERS** Günlük yazımı durum probunu yutup alarmı kapalı cihazı sağlıklı gösterdi → yazım `unawaited` + kendi try/catch.
+- **DERS** iOS 64 bekleyen bildirimin fazlasını sessizce atar → pencere 40; AlarmKit en yakın 8, taşan bildirim zincirinde (planner'a id KÜMESİ); teslim bildirilmez → günlük iddia etmez.
+- **DERS** Dakika ilk saniyesinde çalar → onay görevin dakikasını kapsar (`alarmMinuteMembers`); çok dakikalı toplu onay gizlediği `reminderIds`'i yollar (OPH-441).
+- **DERS** iOS çözülemeyen ses adında sessizce ding'e düşer → sesler `Library/Sounds`'a kurulur, yoksa `degraded`; ≤30 sn caf/aiff/wav (mp3 çalmaz); sessiz anahtar `timeSensitive` sesini susturur.
 
 ## push — sunucu push'u, web push, FCM/APNs
 - **KARAR** Yük yalnız kimlik; gövde tek yerde (`lib/push/payload.js`), olay sınıfı taşınmaz; görünür yedek herkese aynı katalog cümlesi (dil cihaz→hesap→en; loc-key reddedildi), görev adı yok (ADR-0038).

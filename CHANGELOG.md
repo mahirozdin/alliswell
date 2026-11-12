@@ -62,7 +62,9 @@ This file holds the unreleased changes and the latest release; at each release t
   ([#46](https://github.com/mahirozdin/alliswell/issues/46)–[#48](https://github.com/mahirozdin/alliswell/issues/48)).
   Answering several alarms at once no longer stops later changes from syncing until a reload, and
   urgent alarms due in the same minute open as one list at the first one's second; an alarm the
-  app shows late says how late it is. Snooze times stay right as the minute changes, every time
+  app shows late says how late it is. One Acknowledge answers an urgent task whose reminder and
+  deadline fall in the same minute, and Acknowledge all on a list spanning two minutes acknowledges
+  every alarm it showed. Snooze times stay right as the minute changes, every time
   follows your 12/24-hour setting, Acknowledge and Complete confirm, and small phones keep
   Acknowledge, Complete and Open on screen. The list of ringing alarms is laid out like the single
   alarm screen and fades where more alarms lie below. Devices always has a way back, even after a
