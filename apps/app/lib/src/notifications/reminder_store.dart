@@ -280,6 +280,68 @@ class ReminderStore {
     _poke();
   }
 
+  /// A grouped stop (OPH-439, NOTIFICATIONS §2b.3): every member's active
+  /// urgent reminder whose effective instant (the snooze target of a snoozed
+  /// row, else `remindAt`) falls in the UTC minute [occurrenceMinute]
+  /// (`floor(ms / 60000)`) is acknowledged in ONE transaction, the receipt
+  /// check first, one outbox mutation per reminder. [taskIds] is
+  /// de-duplicated; a reminder of a member in another minute is its own
+  /// alarm and stays.
+  Future<void> acknowledgeBatch(
+    List<String> taskIds, {
+    required int occurrenceMinute,
+    String? receiptId,
+  }) async {
+    final ids = taskIds.toSet();
+    var wrote = false;
+    await _db.transaction(() async {
+      await requireActionReceipt(_db, receiptId);
+      if (ids.isEmpty) return;
+      final rows =
+          await ((_db.select(_db.reminders)..where(
+                    (r) =>
+                        r.taskId.isIn(ids) &
+                        r.alarmLevel.equals('urgent') &
+                        r.status.isIn(const [
+                          'scheduled',
+                          'snoozed',
+                          'delivered',
+                        ]),
+                  ))
+                  .join([
+                    innerJoin(
+                      _db.tasks,
+                      _db.tasks.id.equalsExp(_db.reminders.taskId),
+                    ),
+                  ]))
+              .get();
+      final now = DateTime.now().toUtc();
+      for (final row in rows) {
+        final reminder = row.readTable(_db.reminders);
+        if (!_matches(reminder, occurrenceMinute, now)) continue;
+        await (_db.update(
+          _db.reminders,
+        )..where((r) => r.id.equals(reminder.id))).write(
+          RemindersCompanion(
+            status: const Value('acknowledged'),
+            acknowledgedAt: Value(now),
+            updatedAt: Value(now),
+          ),
+        );
+        await enqueueMutation(
+          _db,
+          workspaceId: row.readTable(_db.tasks).workspaceId,
+          entityType: 'reminder',
+          entityId: reminder.id,
+          operation: 'update',
+          patch: {'status': 'acknowledged'},
+        );
+        wrote = true;
+      }
+    });
+    if (wrote) _poke();
+  }
+
   /// The active urgent reminders of [taskId] an AlarmKit stop acknowledges
   /// (NOTIFICATIONS §2b.3): those whose effective instant (the snooze target
   /// of a snoozed row, else `remindAt`) falls in the UTC minute of

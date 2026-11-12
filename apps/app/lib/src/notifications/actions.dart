@@ -119,11 +119,9 @@ Future<bool> handleNotificationEvent(
   }
   if (action.startsWith(kActionSnoozePrefix)) {
     final preset = action.substring(kActionSnoozePrefix.length);
-    // One target for the whole group, so its members ring again as one.
-    final until = members.length > 1 ? TaskStore.snoozeUntilFor(preset) : null;
-    for (final m in members) {
-      await tasks.snooze(m, preset: preset, until: until);
-    }
+    // One target and one write for the whole group, so its members ring
+    // again as one (OPH-439).
+    await tasks.snoozeBatch(members, until: TaskStore.snoozeUntilFor(preset));
     return true;
   }
   return false;
@@ -186,28 +184,43 @@ Future<bool> _applyOnce(
     );
     if (!fresh) return;
     applied = true;
-    for (final taskId in members) {
-      switch (action) {
-        case 'snooze':
-          if (until != null) {
-            await tasks.snooze(taskId, until: until, receiptId: eventId);
+    // A group action is one batch write per store (OPH-439); complete and
+    // mute keep their per-task update, inside the same transaction.
+    switch (action) {
+      case 'snooze':
+        if (until != null) {
+          await tasks.snoozeBatch(members, until: until, receiptId: eventId);
+        }
+      case kActionAcknowledge:
+        final occurrence = event.occurrenceFireAtMs;
+        if (reminderId is String && reminderId.isNotEmpty) {
+          await reminders.acknowledge(reminderId, receiptId: eventId);
+        } else if (occurrence != null) {
+          await reminders.acknowledgeBatch(
+            members,
+            occurrenceMinute: occurrence ~/ 60000,
+            receiptId: eventId,
+          );
+        } else {
+          // An entry converted from v1 names no occurrence: every member's
+          // urgent reminder due by the press is the one that rang.
+          for (final taskId in members) {
+            for (final id in await reminders.urgentReminderIdsAt(
+              taskId,
+              dueBy: pressedAt,
+            )) {
+              await reminders.acknowledge(id, receiptId: eventId);
+            }
           }
-        case kActionAcknowledge:
-          final ids = reminderId is String && reminderId.isNotEmpty
-              ? [reminderId]
-              : await reminders.urgentReminderIdsAt(
-                  taskId,
-                  occurrenceFireAtMs: event.occurrenceFireAtMs,
-                  dueBy: pressedAt,
-                );
-          for (final id in ids) {
-            await reminders.acknowledge(id, receiptId: eventId);
-          }
-        case kActionComplete:
+        }
+      case kActionComplete:
+        for (final taskId in members) {
           await tasks.complete(taskId, receiptId: eventId);
-        case kActionMute:
+        }
+      case kActionMute:
+        for (final taskId in members) {
           await tasks.muteAlarms(taskId, receiptId: eventId);
-      }
+        }
     }
   });
   if (!applied) return false;

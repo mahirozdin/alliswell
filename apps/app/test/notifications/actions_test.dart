@@ -608,6 +608,125 @@ void main() {
       },
     );
 
+    // OPH-439 (#47): a group action is one receipt, one batch write and one
+    // outbox mutation per task.
+    test(
+      'a group snooze event moves every member to the same untilMs under one receipt',
+      () async {
+        // T1's deadline rings in the same minute as its reminder.
+        await db
+            .into(db.reminders)
+            .insert(
+              RemindersCompanion.insert(
+                id: id('R1DUE'),
+                taskId: id('T1'),
+                kind: const Value('due'),
+                remindAt: nineAm,
+                alarmLevel: const Value('urgent'),
+                requiresAcknowledgement: const Value(true),
+              ),
+            );
+        await addUrgent('T2', 'R2', nineAm.add(const Duration(seconds: 30)));
+        final until = DateTime.utc(2030, 6, 1, 9, 5, 7);
+        final recording = _RecordingTaskStore(db);
+        final host = FakeAlarmKitHost()
+          ..queue.add(
+            native(
+              'ev-group',
+              'snooze',
+              taskIds: [id('T1'), id('T2'), id('T1')],
+              untilMs: until.millisecondsSinceEpoch,
+            ),
+          );
+        await pumpFor(host, taskStore: recording).pull();
+
+        expect(recording.batches, [
+          [id('T1'), id('T2')],
+        ], reason: 'one batch call, members de-duplicated');
+        expect(recording.singles, 0);
+        final tasksNow = await db.select(db.tasks).get();
+        expect(tasksNow.map((t) => t.snoozedUntil), [until, until]);
+        final rows = await db.select(db.reminders).get();
+        expect(rows.map((r) => r.snoozedUntil).toSet(), {until});
+        expect(rows.map((r) => r.snoozeCount), [1, 1, 1]);
+        expect(await db.select(db.actionReceipts).get(), hasLength(1));
+        final outbox = await db.select(db.pendingMutations).get();
+        expect(outbox.map((m) => m.entityId).toList()..sort(), [
+          id('T1'),
+          id('T2'),
+        ]);
+        expect(host.acked, [
+          ['ev-group'],
+        ]);
+      },
+    );
+
+    test(
+      'a snooze into a minute that already holds another urgent alarm is written unchanged',
+      () async {
+        // T3 already rings at 09:05; T1's snooze lands in that minute. Dart
+        // never shifts: the planner groups the two into one alarm (OPH-440).
+        final taken = DateTime.utc(2030, 6, 1, 9, 5);
+        await addUrgent('T3', 'R3', taken);
+        final until = DateTime.utc(2030, 6, 1, 9, 5, 20);
+        for (final origin in ['alarmkit', 'inapp']) {
+          final applied = await handleNotificationEvent(
+            NotificationEvent(
+              eventId: 'ev-$origin',
+              actionId: 'snooze',
+              taskIds: [id('T1')],
+              untilMs: until.millisecondsSinceEpoch,
+              pressedAtMs: nineAm.millisecondsSinceEpoch,
+              origin: origin,
+            ),
+            db: db,
+            tasks: tasks,
+            reminders: reminders,
+            navigate: (_) => fail('no navigation'),
+          );
+          expect(applied, isTrue);
+          final t1 = await (db.select(
+            db.tasks,
+          )..where((t) => t.id.equals(id('T1')))).getSingle();
+          expect(t1.snoozedUntil, until, reason: origin);
+        }
+        final t3 = await (db.select(
+          db.reminders,
+        )..where((r) => r.id.equals(id('R3')))).getSingle();
+        expect(t3.remindAt, taken);
+        expect(t3.status, 'scheduled');
+        expect(t3.snoozedUntil, isNull);
+      },
+    );
+
+    test(
+      'a group stop acknowledges every member through one batch call',
+      () async {
+        await addUrgent('T2', 'R2', nineAm.add(const Duration(seconds: 30)));
+        final recording = _RecordingReminderStore(db);
+        final host = FakeAlarmKitHost()
+          ..queue.add(
+            native(
+              'ev-stop',
+              'acknowledge',
+              taskIds: [id('T1'), id('T2'), id('T2')],
+              occurrenceFireAtMs: nineAm.millisecondsSinceEpoch,
+            ),
+          );
+        await pumpFor(host, reminderStore: recording).pull();
+
+        expect(recording.batches, [
+          [id('T1'), id('T2')],
+        ]);
+        expect(recording.minutes, [nineAm.millisecondsSinceEpoch ~/ 60000]);
+        expect(
+          (await db.select(db.reminders).get()).map((r) => r.status).toSet(),
+          {'acknowledged'},
+        );
+        expect(await db.select(db.actionReceipts).get(), hasLength(1));
+      },
+    );
+
     test('a tap without a receipt id still writes as before', () async {
       final applied = await handleNotificationEvent(
         NotificationEvent(
@@ -660,18 +779,69 @@ class _ExplodingTaskStore extends TaskStore {
   _ExplodingTaskStore(AwDatabase db) : super(db, () {});
 
   @override
+  Future<void> snoozeBatch(
+    List<String> taskIds, {
+    required DateTime until,
+    String? receiptId,
+  }) async {
+    await super.snoozeBatch(taskIds, until: until, receiptId: receiptId);
+    throw StateError('disk full');
+  }
+}
+
+/// Records how a pulled snooze reaches the store.
+class _RecordingTaskStore extends TaskStore {
+  _RecordingTaskStore(AwDatabase db) : super(db, () {});
+
+  final List<List<String>> batches = [];
+  int singles = 0;
+
+  @override
   Future<void> snooze(
     String taskId, {
     String? preset,
     DateTime? until,
     String? receiptId,
-  }) async {
-    await super.snooze(
+  }) {
+    singles++;
+    return super.snooze(
       taskId,
       preset: preset,
       until: until,
       receiptId: receiptId,
     );
-    throw StateError('disk full');
+  }
+
+  @override
+  Future<void> snoozeBatch(
+    List<String> taskIds, {
+    required DateTime until,
+    String? receiptId,
+  }) {
+    batches.add([...taskIds]);
+    return super.snoozeBatch(taskIds, until: until, receiptId: receiptId);
+  }
+}
+
+/// Records how a pulled stop reaches the store.
+class _RecordingReminderStore extends ReminderStore {
+  _RecordingReminderStore(AwDatabase db) : super(db, () {});
+
+  final List<List<String>> batches = [];
+  final List<int> minutes = [];
+
+  @override
+  Future<void> acknowledgeBatch(
+    List<String> taskIds, {
+    required int occurrenceMinute,
+    String? receiptId,
+  }) {
+    batches.add([...taskIds]);
+    minutes.add(occurrenceMinute);
+    return super.acknowledgeBatch(
+      taskIds,
+      occurrenceMinute: occurrenceMinute,
+      receiptId: receiptId,
+    );
   }
 }

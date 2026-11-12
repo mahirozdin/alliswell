@@ -637,59 +637,89 @@ class TaskStore {
   /// locally in one transaction; the outbox patch replays the same semantics
   /// server-side (sync push snoozedUntil → reminder snooze, same trx).
   ///
-  /// [until] is written as given (a native AlarmKit snooze fixed it at press
-  /// time); [receiptId] as in [update].
+  /// The one-element [snoozeBatch]. [until] is written as given (a native
+  /// AlarmKit snooze fixed it at press time); [receiptId] as in [update].
   Future<void> snooze(
     String taskId, {
     String? preset,
     DateTime? until,
     String? receiptId,
+  }) => snoozeBatch(
+    [taskId],
+    until: until ?? snoozeUntilFor(preset!),
+    receiptId: receiptId,
+  );
+
+  /// A group snooze (OPH-439, NOTIFICATIONS §2b.3): every task in [taskIds]
+  /// moves to the same [until] in ONE transaction — the receipt check first,
+  /// then per task (de-duplicated, so a task listed once per occurrence of a
+  /// grouped alarm counts once) its `snoozedUntil`, every active alarm
+  /// `snoozed` with `snoozeCount + 1`, and one outbox mutation. A completed,
+  /// cancelled or unknown task is skipped. [until] is never shifted: a
+  /// target minute that already holds another urgent alarm is grouped with
+  /// it by the planner (ADR-0068).
+  Future<void> snoozeBatch(
+    List<String> taskIds, {
+    required DateTime until,
+    String? receiptId,
   }) async {
-    final record = await _record(taskId);
-    if (record == null) return;
-    if (record.status == 'completed' || record.status == 'cancelled') return;
-    final snoozeUntil = (until ?? snoozeUntilFor(preset!)).toUtc();
+    final snoozeUntil = until.toUtc();
+    final ids = taskIds.toSet();
+    var wrote = false;
 
     await _db.transaction(() async {
       await _requireReceipt(receiptId);
-      await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
-        TasksCompanion(
-          snoozedUntil: Value(snoozeUntil),
-          updatedAt: Value(DateTime.now().toUtc()),
-        ),
-      );
-      // Every active alarm of the task (a reminder AND a deadline, OPH-175),
-      // each carrying its own round count (OPH-177) — read first, because the
-      // count is per row.
-      final active =
-          await (_db.select(_db.reminders)..where(
-                (r) =>
-                    r.taskId.equals(taskId) &
-                    r.status.isIn(const ['scheduled', 'snoozed', 'delivered']),
-              ))
-              .get();
-      for (final alarm in active) {
-        await (_db.update(
-          _db.reminders,
-        )..where((r) => r.id.equals(alarm.id))).write(
-          RemindersCompanion(
-            status: const Value('snoozed'),
+      for (final taskId in ids) {
+        final record = await _record(taskId);
+        if (record == null) continue;
+        if (record.status == 'completed' || record.status == 'cancelled') {
+          continue;
+        }
+        final now = DateTime.now().toUtc();
+        await (_db.update(_db.tasks)..where((t) => t.id.equals(taskId))).write(
+          TasksCompanion(
             snoozedUntil: Value(snoozeUntil),
-            snoozeCount: Value(alarm.snoozeCount + 1),
-            updatedAt: Value(DateTime.now().toUtc()),
+            updatedAt: Value(now),
           ),
         );
+        // Every active alarm of the task (a reminder AND a deadline, OPH-175),
+        // each carrying its own round count (OPH-177) — read first, because the
+        // count is per row.
+        final active =
+            await (_db.select(_db.reminders)..where(
+                  (r) =>
+                      r.taskId.equals(taskId) &
+                      r.status.isIn(const [
+                        'scheduled',
+                        'snoozed',
+                        'delivered',
+                      ]),
+                ))
+                .get();
+        for (final alarm in active) {
+          await (_db.update(
+            _db.reminders,
+          )..where((r) => r.id.equals(alarm.id))).write(
+            RemindersCompanion(
+              status: const Value('snoozed'),
+              snoozedUntil: Value(snoozeUntil),
+              snoozeCount: Value(alarm.snoozeCount + 1),
+              updatedAt: Value(now),
+            ),
+          );
+        }
+        await enqueueMutation(
+          _db,
+          workspaceId: record.workspaceId,
+          entityType: 'task',
+          entityId: taskId,
+          operation: 'update',
+          patch: {'snoozedUntil': snoozeUntil.toIso8601String()},
+        );
+        wrote = true;
       }
-      await enqueueMutation(
-        _db,
-        workspaceId: record.workspaceId,
-        entityType: 'task',
-        entityId: taskId,
-        operation: 'update',
-        patch: {'snoozedUntil': snoozeUntil.toIso8601String()},
-      );
     });
-    _poke();
+    if (wrote) _poke();
   }
 
   /// A write made for a pulled action must sit in the transaction that holds
