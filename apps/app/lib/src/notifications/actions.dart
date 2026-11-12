@@ -30,6 +30,11 @@ String snoozeActionId(String preset) => '$kActionSnoozePrefix$preset';
 /// exactly once — see [_applyOnce]; it needs [db]. True when the event
 /// changed something or was handled, false when it was a redelivery of one
 /// already applied (or not ours).
+///
+/// [onCommitted] hears a receipted event's id the moment its transaction
+/// commits, before the alarm-log row: the scheduler's
+/// `noteEventApplied` (OPH-454), so no plan pass can see the receipt
+/// without knowing the replica list has not caught up yet.
 Future<bool> handleNotificationEvent(
   NotificationEvent event, {
   required TaskStore tasks,
@@ -37,6 +42,7 @@ Future<bool> handleNotificationEvent(
   required void Function(String location) navigate,
   AlarmLog? log,
   AwDatabase? db,
+  void Function(String eventId)? onCommitted,
 }) async {
   if (event.eventId != null) {
     if (db == null) {
@@ -48,6 +54,7 @@ Future<bool> handleNotificationEvent(
       tasks: tasks,
       reminders: reminders,
       log: log,
+      onCommitted: onCommitted,
     );
   }
   final raw = event.payload;
@@ -146,6 +153,7 @@ Future<bool> _applyOnce(
   required TaskStore tasks,
   required ReminderStore reminders,
   AlarmLog? log,
+  void Function(String eventId)? onCommitted,
 }) async {
   final eventId = event.eventId!;
   final raw = event.actionId ?? '';
@@ -231,6 +239,7 @@ Future<bool> _applyOnce(
     }
   });
   if (!applied) return false;
+  onCommitted?.call(eventId);
 
   await log?.record(
     event: AlarmLogEvent.action,

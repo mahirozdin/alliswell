@@ -506,6 +506,12 @@ final notificationSchedulerProvider = Provider.autoDispose<NotificationScheduler
   // "Onayla"/"Ertele" is the same acknowledge/snooze as a notification button.
   // A pulled AlarmKit action carries an eventId and is applied exactly once
   // (OPH-427, NOTIFICATIONS §2b.3).
+  //
+  // A commit outside the scheduler's own drain (a pull on resume or on
+  // `onActionsPending`) is announced to it at once: until the replica emits,
+  // a pass must not judge the native alarm by the list from before the write
+  // (OPH-454).
+  late final NotificationScheduler scheduler;
   Future<bool> onEvent(NotificationEvent event) => handleNotificationEvent(
     event,
     tasks: ref.read(taskStoreProvider),
@@ -513,6 +519,7 @@ final notificationSchedulerProvider = Provider.autoDispose<NotificationScheduler
     navigate: (location) => ref.read(routerProvider).push(location),
     log: ref.read(alarmLogProvider),
     db: db,
+    onCommitted: (eventId) => scheduler.noteEventApplied(eventId),
   );
   final pump = AlarmKitActionPump(
     host: alarmKit,
@@ -545,7 +552,7 @@ final notificationSchedulerProvider = Provider.autoDispose<NotificationScheduler
     }),
   );
 
-  final scheduler = NotificationScheduler(
+  scheduler = NotificationScheduler(
     gateway: gateway,
     alarmKit: observedAlarmKit,
     // A microtask, because `start()` below runs inside this provider's build

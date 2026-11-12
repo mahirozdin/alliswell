@@ -818,6 +818,78 @@ void main() {
       },
     );
 
+    // OPH-454: a pull outside any pass (a resume, `onActionsPending`) commits
+    // the receipt before the replica re-emits. A pass in between used to see
+    // the receipt, judge the native alarm against the old list and cancel it.
+    test(
+      'a native snooze applied outside a pass is kept until the replica list carries it',
+      () async {
+        final a = DateTime.utc(2026, 7, 15, 11, 59);
+        final c = DateTime.utc(2026, 7, 15, 12, 30);
+        clock = DateTime.utc(2026, 7, 15, 12, 2);
+        final after = urgent(
+          at: a,
+          status: 'snoozed',
+          snoozedUntil: c,
+          snoozeRound: 1,
+        );
+        final native = planned(after);
+        alarmKit.foreign[native.id] = AlarmKitScheduled(
+          id: native.id,
+          fp: native.fp,
+          members: native.members,
+          fireAtMs: fireAtMs(c),
+          origin: 'native',
+          eventId: 'e5',
+        );
+        void Function()? resume;
+        final scheduler = NotificationScheduler(
+          gateway: gateway,
+          alarmKit: alarmKit,
+          alarms: alarms.stream,
+          privacyMode: false,
+          clock: () => clock,
+          appliedEventIds: () async => {...receipts},
+          onForeground: (onResume) {
+            resume = onResume;
+            return () {};
+          },
+        );
+        addTearDown(scheduler.dispose);
+        await scheduler.start();
+        alarms.add([urgent(at: a, status: 'delivered')]);
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+
+        // The resume's pull commits e5; the replica has not re-emitted when
+        // the resume's pass runs.
+        receipts.add('e5');
+        scheduler.noteEventApplied('e5');
+        resume!();
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+        expect(alarmKit.foreign, contains(native.id));
+        expect(
+          gateway.scheduled,
+          isEmpty,
+          reason: 'the 11:59 chain must not ring over the native snooze',
+        );
+
+        // The replica carries the snooze: the alarm is the plan's own.
+        alarms.add([after]);
+        await pump();
+        expect(alarmKit.cancelled, isEmpty);
+        expect((await alarmKit.scheduledAlarms()).map((r) => r.id), [
+          native.id,
+        ]);
+
+        // From now on the receipt counts: a list without it cancels it.
+        alarms.add(const []);
+        await pump();
+        expect(alarmKit.cancelled, [native.id]);
+      },
+    );
+
     test(
       'a ringing native snooze survives the pass whose drain applies its event',
       () async {

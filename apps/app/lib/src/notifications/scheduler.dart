@@ -110,6 +110,9 @@ class NotificationScheduler {
   Timer? _heartbeat;
   void Function()? _lifecycle;
   List<AlarmInput> _latest = const [];
+
+  /// Events applied since [_latest] arrived; see [noteEventApplied].
+  final Set<String> _appliedUnseen = {};
   bool _applying = false;
   bool _reapplyWanted = false;
   bool _stopped = false;
@@ -145,6 +148,7 @@ class NotificationScheduler {
   /// this exposes.
   Future<void> applyOnce(List<AlarmInput> alarms) async {
     _latest = alarms;
+    _appliedUnseen.clear(); // the caller's list was read after them
     await _apply();
   }
 
@@ -157,6 +161,7 @@ class NotificationScheduler {
     }
     _subscription = alarms.listen((list) {
       _latest = list;
+      _appliedUnseen.clear();
       unawaited(_apply());
     });
 
@@ -196,6 +201,13 @@ class NotificationScheduler {
       _alarmKitActive = false;
     }
   }
+
+  /// [eventId]'s write just committed outside this scheduler's own drain —
+  /// a pull on resume or on `onActionsPending` (OPH-454). Until the replica
+  /// next emits, [_latest] is the list from before that write, so a pass in
+  /// between must not judge the event's native alarm by it: the receipt is
+  /// there, the model is not. The next list clears the note.
+  void noteEventApplied(String eventId) => _appliedUnseen.add(eventId);
 
   void dispose() {
     _stopped = true;
@@ -445,12 +457,14 @@ class NotificationScheduler {
       desired: desired,
       current: current,
       alarms: _latest,
+      // A receipt counts only once [_latest] carries its write (OPH-454).
       appliedEventIds:
-          applied ??
-          {
-            for (final row in current)
-              if (row.eventId != null) row.eventId!,
-          },
+          (applied ??
+                  {
+                    for (final row in current)
+                      if (row.eventId != null) row.eventId!,
+                  })
+              .difference(_appliedUnseen),
       now: now,
       staleWindow: staleWindow,
     );

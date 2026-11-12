@@ -467,7 +467,9 @@ stale window) → untouched, the model has not seen that snooze yet; `alerting`
 otherwise → `stop`, **never** `cancel` (no ledger record: only after the stale window);
 `origin: native` whose `eventId` has no receipt yet → untouched; `id` not desired → `cancel`;
 desired with another `fp` → `cancel` + `schedule` under the same `id`; desired and missing →
-`schedule`.
+`schedule`. A receipt counts only once the list the pass plans from carries its write: a commit outside
+the pass's own drain (a pull on resume or `onActionsPending`) reads as "no receipt" until the replica
+next emits (`noteEventApplied`, OPH-454).
 
 #### Shared fixtures (Dart writes them with `UPDATE_FIXTURES=1`; Swift reads only)
 

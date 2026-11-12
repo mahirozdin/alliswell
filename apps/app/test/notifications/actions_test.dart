@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:drift/drift.dart' hide isNull, isNotNull;
@@ -767,6 +768,64 @@ void main() {
           {'acknowledged'},
         );
         expect(await db.select(db.actionReceipts).get(), hasLength(1));
+      },
+    );
+
+    // OPH-454: the scheduler hears of a commit before anything else runs.
+    test(
+      'onCommitted names a receipted event once, after its commit and before its log row',
+      () async {
+        final log = AlarmLog(db);
+        final seen = <String>[];
+        var receiptsAtCall = -1;
+        var logRowsAtCall = -1;
+        Future<bool> apply({TaskStore? store}) => handleNotificationEvent(
+          notificationEventForAlarmKit(
+            native(
+              'ev-1',
+              'snooze',
+              untilMs: DateTime.utc(2030, 6, 1, 9, 5).millisecondsSinceEpoch,
+            ),
+          ),
+          db: db,
+          tasks: store ?? tasks,
+          reminders: reminders,
+          log: log,
+          navigate: (_) => fail('no navigation'),
+          onCommitted: (eventId) {
+            seen.add(eventId);
+            // Issued now, so they run ahead of the log row's insert.
+            unawaited(
+              db
+                  .select(db.actionReceipts)
+                  .get()
+                  .then((r) => receiptsAtCall = r.length),
+            );
+            unawaited(
+              db
+                  .select(db.alarmEvents)
+                  .get()
+                  .then((r) => logRowsAtCall = r.length),
+            );
+          },
+        );
+
+        // A write that rolls back is never announced.
+        await expectLater(
+          apply(store: _ExplodingTaskStore(db)),
+          throwsStateError,
+        );
+        expect(seen, isEmpty);
+
+        expect(await apply(), isTrue);
+        await pumpEventQueue();
+        expect(seen, ['ev-1']);
+        expect(receiptsAtCall, 1, reason: 'called after the commit');
+        expect(logRowsAtCall, 0, reason: 'called before the log row');
+
+        // A redelivery changes nothing and announces nothing.
+        expect(await apply(), isFalse);
+        expect(seen, ['ev-1']);
       },
     );
 
