@@ -137,8 +137,9 @@ final class AlarmKitBridge {
     channel.invokeMethod("onActionsPending", arguments: nil)
   }
 
-  /// Removes the local-notification fallbacks (`aw.fallback.<eventId>`) of
-  /// snoozes Dart has applied and re-planned, pending and delivered alike.
+  /// Removes the local-notification fallbacks of snoozes Dart has applied
+  /// and re-planned, pending and delivered alike. Each is named by
+  /// `AWAlarmFallback.identifier(eventId:)` (the decimal of its plugin id).
   private func clearFallbacks(_ args: [String: Any]) {
     let eventIds = args["eventIds"] as? [String] ?? []
     guard !eventIds.isEmpty else { return }

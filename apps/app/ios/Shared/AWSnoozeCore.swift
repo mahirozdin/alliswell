@@ -145,16 +145,57 @@ struct AWAlarmSpec: Equatable {
   var fireDate: Date { Date(timeIntervalSince1970: Double(fireAtMs) / 1000.0) }
 }
 
+/// The local-notification fallback a failed native snooze leaves behind.
+///
+/// It must stay reachable through the Dart notification gateway: the sign-out
+/// cleanup lists pending requests and cancels each one by id, and
+/// `flutter_local_notifications` (22.x) lists a request under
+/// `userInfo["NotificationId"]` and cancels the identifier
+/// `[NotificationId stringValue]`. So the request identifier is the decimal
+/// of the notification id, not a readable name.
+enum AWAlarmFallback {
+  /// The plugin's notification id: FNV-1a over `aw.fallback.<eventId>`,
+  /// 31-bit and positive like every Dart notification id.
+  static func notificationId(eventId: String) -> Int {
+    AWAlarmIdentity.fnv1a("aw.fallback.\(eventId)")
+  }
+
+  /// The `UNNotificationRequest` identifier: `String(notificationId)`.
+  static func identifier(eventId: String) -> String {
+    String(notificationId(eventId: eventId))
+  }
+}
+
 /// The local notification a failed native snooze leaves at its target.
 struct AWFallbackRequest: Equatable {
-  /// `aw.fallback.<eventId>`.
-  let identifier: String
+  let eventId: String
   let fireAtMs: Int64
   let title: String
   let body: String
   let soundName: String?
   let taskIds: [String]
-  let eventId: String
+
+  /// `AWAlarmFallback.notificationId(eventId:)`.
+  var notificationId: Int { AWAlarmFallback.notificationId(eventId: eventId) }
+
+  /// `AWAlarmFallback.identifier(eventId:)`: the decimal of [notificationId].
+  var identifier: String { AWAlarmFallback.identifier(eventId: eventId) }
+
+  /// The keys `flutter_local_notifications` (22.x) marks its own requests
+  /// with: without them its delegate ignores the buttons, and its pending
+  /// list reports `NotificationId` as the id Dart cancels by.
+  var userInfo: [String: Any] {
+    [
+      "NotificationId": NSNumber(value: notificationId),
+      "title": title,
+      "presentAlert": NSNumber(value: true),
+      "presentSound": NSNumber(value: true),
+      "presentBadge": NSNumber(value: false),
+      "presentBanner": NSNumber(value: true),
+      "presentList": NSNumber(value: true),
+      "payload": payloadJSON,
+    ]
+  }
 
   /// What `flutter_local_notifications` hands Dart as the payload: the same
   /// handler as a scheduled urgent notification's buttons.
@@ -378,9 +419,9 @@ enum AWSnoozeCore {
     var fallbackAdded = false
     if scheduleOutcome != "ok" {
       let fallback = AWFallbackRequest(
-        identifier: AWAlarmFallback.identifier(eventId: eventId), fireAtMs: untilMs,
+        eventId: eventId, fireAtMs: untilMs,
         title: request.title.isEmpty ? legacyTitle : request.title, body: request.body,
-        soundName: request.soundName, taskIds: request.taskIds, eventId: eventId)
+        soundName: request.soundName, taskIds: request.taskIds)
       do {
         try await ops.addFallbackNotification(fallback)
         fallbackAdded = true
@@ -490,18 +531,7 @@ enum AWSnoozeCore {
       content.sound =
         request.soundName.map { UNNotificationSound(named: UNNotificationSoundName($0)) }
         ?? .default
-      // The keys flutter_local_notifications (22.x) marks its own requests
-      // with; without them its delegate ignores the buttons.
-      content.userInfo = [
-        "NotificationId": NSNumber(value: AWAlarmIdentity.fnv1a(request.identifier)),
-        "title": request.title,
-        "presentAlert": NSNumber(value: true),
-        "presentSound": NSNumber(value: true),
-        "presentBadge": NSNumber(value: false),
-        "presentBanner": NSNumber(value: true),
-        "presentList": NSNumber(value: true),
-        "payload": request.payloadJSON,
-      ]
+      content.userInfo = request.userInfo
       let fireAt = Date(timeIntervalSince1970: Double(request.fireAtMs) / 1000.0)
       let trigger = UNTimeIntervalNotificationTrigger(
         timeInterval: max(1, fireAt.timeIntervalSinceNow), repeats: false)

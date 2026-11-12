@@ -108,6 +108,9 @@ final class SnoozeCoreTests: XCTestCase {
 
   private var queued: [AWAlarmActionEvent] { AWAlarmActionQueue.pending(in: defaults, now: now) }
 
+  /// The fallback of event `E-1`: the decimal of fnv1a("aw.fallback.E-1").
+  private let fallbackIdentifier = "1019953648"
+
   /// 12:00:30.250 + 5 min, floored: 12:05:30.000.
   private let expectedUntilMs: Int64 = 1_784_117_130_000
 
@@ -176,8 +179,8 @@ final class SnoozeCoreTests: XCTestCase {
       ops.fallbacks,
       [
         AWFallbackRequest(
-          identifier: "aw.fallback.E-1", fireAtMs: expectedUntilMs, title: "Pay rent",
-          body: "Today", soundName: nil, taskIds: ["t2", "t1"], eventId: "E-1")
+          eventId: "E-1", fireAtMs: expectedUntilMs, title: "Pay rent", body: "Today",
+          soundName: nil, taskIds: ["t2", "t1"])
       ])
     XCTAssertEqual(failures.count, 1)
     XCTAssertEqual(failures.first?["stage"] as? String, "schedule")
@@ -199,7 +202,7 @@ final class SnoozeCoreTests: XCTestCase {
     XCTAssertTrue(ops.calls.contains("stop:\(ringingId)"))
     XCTAssertEqual(result.scheduleOutcome, "failed")
     XCTAssertEqual(result.stopOutcome, "stopped")
-    XCTAssertEqual(ops.fallbacks.map(\.identifier), ["aw.fallback.E-1"])
+    XCTAssertEqual(ops.fallbacks.map(\.identifier), [fallbackIdentifier])
     XCTAssertEqual(ops.fallbacks.first?.fireAtMs, expectedUntilMs)
     XCTAssertEqual(failures.count, 1)
     XCTAssertEqual(failures.first?["code"] as? String, "other")
@@ -275,6 +278,35 @@ final class SnoozeCoreTests: XCTestCase {
     XCTAssertEqual(rows.last?["stage"] as? String, "fallback")
   }
 
+  /// flutter_local_notifications 22.x lists a pending request under its
+  /// `userInfo["NotificationId"]` and cancels `[id stringValue]`: a fallback
+  /// whose identifier is not that decimal is listed by sign-out's
+  /// `_dropOsAlarms` and never removed, so the old account's reminder rings
+  /// after the wipe. The identifier IS the number the plugin hands Dart.
+  func testFallbackIsCancellableThroughThePluginsNumericId() async {
+    let ops = FakeOps()
+    ops.scheduleError = Boom(description: "daemon gone")
+
+    await run(ops, request(alarmId: ringingId))
+
+    let fallback = try? XCTUnwrap(ops.fallbacks.first)
+    let listedId = fallback?.userInfo["NotificationId"] as? NSNumber
+    XCTAssertNotNil(listedId)
+    // The plugin's `cancel:` removes exactly this string.
+    XCTAssertEqual(listedId?.stringValue, fallback?.identifier)
+    XCTAssertEqual(fallback?.identifier, fallbackIdentifier)
+    XCTAssertEqual(listedId?.intValue, AWAlarmFallback.notificationId(eventId: "E-1"))
+    // A Dart notification id: 31-bit, positive.
+    XCTAssertLessThanOrEqual(listedId?.int64Value ?? -1, Int64(Int32.max))
+    XCTAssertGreaterThanOrEqual(listedId?.int64Value ?? -1, 0)
+    // And the bridge's clearFallbacks names the same request.
+    XCTAssertEqual(AWAlarmFallback.identifier(eventId: "E-1"), fallback?.identifier)
+    // The keys the plugin's delegate needs to route the buttons stay.
+    XCTAssertEqual(fallback?.userInfo["payload"] as? String, fallback?.payloadJSON)
+    XCTAssertEqual(fallback?.userInfo["title"] as? String, "Pay rent")
+    XCTAssertEqual((fallback?.userInfo["presentAlert"] as? NSNumber)?.boolValue, true)
+  }
+
   func testLegacyIntentWithoutAlarmIdStopsAlertingAlarms() async {
     let ops = FakeOps()
     ops.alerting = [11, 22]
@@ -288,7 +320,7 @@ final class SnoozeCoreTests: XCTestCase {
 
     XCTAssertFalse(ops.calls.contains { $0.hasPrefix("schedule:") })
     XCTAssertEqual(
-      ops.calls, ["alerting", "stop:11", "stop:22", "fallback:aw.fallback.E-1"])
+      ops.calls, ["alerting", "stop:11", "stop:22", "fallback:\(fallbackIdentifier)"])
     XCTAssertEqual(result.scheduleOutcome, "failed")
     XCTAssertEqual(result.stopOutcome, "stopped")
     XCTAssertTrue(result.fallbackAdded)

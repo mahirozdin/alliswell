@@ -225,6 +225,9 @@ final class AlarmLedgerTests: XCTestCase {
   }
 
   func testFallbackIdentifier() {
-    XCTAssertEqual(AWAlarmFallback.identifier(eventId: "E-1"), "aw.fallback.E-1")
+    // The plugin cancels `String(NotificationId)`, so the request identifier
+    // is that decimal: fnv1a over "aw.fallback.<eventId>".
+    XCTAssertEqual(AWAlarmFallback.notificationId(eventId: "E-1"), 1_019_953_648)
+    XCTAssertEqual(AWAlarmFallback.identifier(eventId: "E-1"), "1019953648")
   }
 }

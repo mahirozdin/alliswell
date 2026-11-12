@@ -252,11 +252,6 @@ enum AWAlarmActionQueue {
   }
 }
 
-/// The local-notification fallback a failed native snooze leaves behind.
-enum AWAlarmFallback {
-  static func identifier(eventId: String) -> String { "aw.fallback.\(eventId)" }
-}
-
 /// The member list an alarm intent applies to: `taskIds` when the alarm was
 /// scheduled under contract v2, else the legacy single `taskId` (an alarm
 /// scheduled by an older build keeps ringing with its old intents).

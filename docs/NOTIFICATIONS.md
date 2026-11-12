@@ -382,7 +382,7 @@ occurrence in one UTC minute (`floor(ms / 60000)`); its `fireAtMs` is the earlie
 | `scheduledIds` | — | `[int]`, derived from `scheduledAlarms` (kept for older callers) |
 | `pullPendingActions` **(new)** | — | `[event]` (shape below), sorted by `pressedAtMs`, **not removed** |
 | `ackActions` **(new)** | `{eventIds: [String]}` | `null`; removes those queue entries, unknown ids ignored |
-| `clearFallbacks` **(new)** | `{eventIds: [String]}` | `null`; removes pending and delivered requests `aw.fallback.<eventId>` |
+| `clearFallbacks` **(new)** | `{eventIds: [String]}` | `null`; removes pending and delivered fallback requests of those events (identifier below) |
 | `pullFailures` **(new)** | — | `[failure]` (shape below); the returned rows are removed |
 | `drainPendingActions` | — | iOS: a no-op kept for an older Dart (removes nothing). macOS: legacy drain, see below |
 
@@ -454,7 +454,10 @@ rule (native only):** while the ledger holds a record with `id ≠ alarmId` whos
 Dart never shifts. (4) `newId`, `fp` from the intent's parameters and `T`; schedule `.fixed(T)`
 with the same presentation and new intents (`alarmId = newId`, `fireAtMs = T`) → outcome.
 (5) **Always** `stop(alarmId)`; `cancel` if stop throws; both recorded, independent of (4).
-(6) If (4) failed: one `.timeSensitive` `UNNotificationRequest` `aw.fallback.<eventId>` at `T`,
+(6) If (4) failed: one `.timeSensitive` `UNNotificationRequest` at `T` whose identifier is the
+decimal of its plugin id `NotificationId = fnv1a("aw.fallback.<eventId>")` (31-bit) — the plugin
+lists a pending request under `NotificationId` and cancels `String(id)`, so sign-out's gateway
+cleanup removes it like any other notification;
 category `aw_urgent`, `userInfo` carrying the keys `flutter_local_notifications` marks its own
 notifications with (confirm against the plugin version in `pubspec.lock`) and `payload` =
 `{"taskId": first, "taskIds": [...], "eventId": ...}`, so its buttons reach the same Dart handler; that
