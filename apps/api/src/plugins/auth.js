@@ -1,7 +1,8 @@
 import fp from 'fastify-plugin';
 import jwt from '@fastify/jwt';
 import { bearerApiKey } from '../lib/api-keys.js';
-import { hashApiKey } from '../lib/tokens.js';
+import { bearerWidgetToken, hashApiKey } from '../lib/tokens.js';
+import { findLiveWidgetToken } from '../db/widget-tokens.js';
 
 // Fixed token claims — OPH-023's authenticate decorator verifies against the same values.
 export const JWT_ISSUER = 'alliswell-api';
@@ -18,6 +19,8 @@ const LAST_USED_THROTTLE_MS = 60_000;
  * - `app.requirePermission(request, workspaceId, verb)` — the same check plus a
  *   verb, when an extension has registered a resolver; identical without one
  * - `app.rejectApiKeys` — preHandler for the routes keys may never reach
+ * - `app.authenticateWidget` — the widget snapshot's guard, and only its
+ *   (OPH-458, ADR-0070): takes an `aww_` widget token and nothing else
  * Refresh tokens are opaque and DB-backed — see src/lib/tokens.js.
  *
  * OPH-264 made `authenticate` dual-mode (ADR-0032): an `Authorization: Bearer
@@ -113,6 +116,45 @@ export default fp(
         );
         err.code = expired ? 'AUTH_TOKEN_EXPIRED' : 'AUTH_INVALID_TOKEN';
         throw err;
+      }
+    });
+
+    /**
+     * The widget's door (OPH-458, ADR-0070 §3). A separate guard rather than a
+     * third mode of `authenticate`, so that function stays byte for byte what
+     * it was: an `aww_` value is not `awk_`, so there it goes to `jwtVerify`
+     * and fails with AUTH_INVALID_TOKEN on every route, `/auth/refresh`
+     * included. Here, only an `aww_` bearer is looked at, and every refusal —
+     * missing, unknown, revoked, expired, device removed, minting session
+     * ended, account deleted — is the same 401: the caller learns that this
+     * token does not work, never why.
+     *
+     * Sets `request.user = { id, email }` and `request.widgetAuth =
+     * { tokenId, deviceId }`. Use as `onRequest: [app.authenticateWidget]` on
+     * `GET /widget/snapshot` alone.
+     */
+    app.decorate('authenticateWidget', async function authenticateWidget(request) {
+      const token = bearerWidgetToken(request);
+      const found = token
+        ? await findLiveWidgetToken(app.db, app.config.auth.refreshSecret, token)
+        : null;
+      if (!found) {
+        const err = app.httpErrors.unauthorized('Invalid or missing widget token');
+        err.code = 'AUTH_WIDGET_TOKEN_INVALID';
+        throw err;
+      }
+      const { row, user } = found;
+      request.user = { id: user.id, email: user.email };
+      request.widgetAuth = { tokenId: row.id, deviceId: row.device_id };
+
+      // Throttled liveness stamp (~1/min), fire-and-forget like the key's.
+      const last = row.last_used_at ? new Date(row.last_used_at).getTime() : 0;
+      if (Date.now() - last > LAST_USED_THROTTLE_MS) {
+        app
+          .db('widget_tokens')
+          .where({ id: row.id })
+          .update({ last_used_at: new Date() })
+          .catch(() => {});
       }
     });
 

@@ -388,8 +388,10 @@ builds is not used, not even for `If-None-Match`.
 Session JWT only. Body `{ "deviceId": "<notification_devices.id>" }`. `201`
 `{ "token": "aww_…", "deviceId": "…", "expiresAt": "<ISO instant>" }` — the token is shown this
 once; minting again for the device revokes the previous one. Errors: `401` (no session), `403
-AUTH_APIKEY_FORBIDDEN` (an API key), `404 DEVICE_NOT_FOUND` (not this user's device; register,
-retry at the next foreground). A `404` without that code is an older server: no token, no retry
+AUTH_APIKEY_FORBIDDEN` (an API key), `404 DEVICE_NOT_FOUND` (not this user's device, or no live
+session bound to it yet; register, retry at the next foreground). The token is tied to the newest
+live session family bound to the device (`refresh_tokens.device_id`, set by a sign-in or refresh
+that names the device): the access token carries no family, so the device binding names it. A `404` without that code is an older server: no token, no retry
 until the next app start. Life 90 days; Dart re-mints in the foreground when fewer than 30 remain
 or `aw_widget_token_state` is `invalid`.
 

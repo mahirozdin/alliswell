@@ -4536,6 +4536,54 @@
           }
         }
       ]
+    },
+    {
+      "name": "Widget",
+      "item": [
+        {
+          "name": "POST /api/v1/widget-tokens",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/widget-tokens",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "widget-tokens"
+              ]
+            },
+            "description": "Mints the read-only widget token (`aww_…`) for one of your notification devices. Session only; the token is shown once, opens GET /widget/snapshot alone, lives 90 days, and dies with the device or the session that minted it. Minting again for the device revokes the previous token.\n\nSession JWT only. A personal API key is refused here with `403 AUTH_APIKEY_FORBIDDEN` (ADR-0032 §4).",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deviceId\": \"01J9Z4K8QK7B2N0M3XG5T6WQ7A\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{sessionJwt}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

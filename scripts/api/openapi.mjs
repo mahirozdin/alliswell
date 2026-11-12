@@ -151,6 +151,7 @@ const TAG_RULES = [
   [/quick-links/, 'Quick links'],
   [/reminders/, 'Reminders'],
   [/notification-devices/, 'Devices'],
+  [/widget/, 'Widget'],
   [/import|export/, 'Import & export'],
   [/integrations\/caldav/, 'CalDAV calendar'],
   [/sync/, 'Sync'],

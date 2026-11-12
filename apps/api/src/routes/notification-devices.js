@@ -406,7 +406,8 @@ export default async function notificationDeviceRoutes(app) {
   // repeating it (or aiming at a device you no longer own, or one that does
   // not exist) must never fail a sign-out flow, and such a call revokes
   // nothing. On the caller's own row, in one transaction: every refresh family
-  // bound to the device is revoked, the row is removed, and removing the
+  // bound to the device is revoked, and so is its widget token (OPH-458,
+  // inside `revokeDeviceSessions`), the row is removed, and removing the
   // device that rang hands the alarm to the most recently seen remaining one
   // (OPH-433).
   //

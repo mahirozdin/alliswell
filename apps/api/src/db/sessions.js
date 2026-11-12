@@ -26,6 +26,7 @@ import { newId } from '../lib/ids.js';
 import { hashRefreshToken, newRefreshToken } from '../lib/tokens.js';
 import { lockUsers, promoteIfNoneRings } from './notification-devices.js';
 import { transactionWithRetry } from './tx.js';
+import { revokeAllWidgetTokens, revokeWidgetTokens } from './widget-tokens.js';
 
 /** What a client shows about one session. Never the token, never its digest. */
 function serialize(rows, { currentFamilyId = null } = {}) {
@@ -115,7 +116,8 @@ function inTransaction(db, fn) {
  * which session they belong to.
  *
  * Call with the user's row locked (`lockUsers`): removing the ringing device
- * runs the OPH-433 promotion, which must not race a registration.
+ * runs the OPH-433 promotion, which must not race a registration. A removed
+ * device's widget token is revoked with it (OPH-458, ADR-0070).
  *
  * @returns {Promise<string[]>} the ids of the device rows removed
  */
@@ -146,6 +148,7 @@ export async function dropDevicesOfFamilies(trx, userId, familyIds, { at = new D
       rows.map((row) => row.id),
     )
     .delete();
+  await revokeWidgetTokens(trx, { userId, deviceIds: rows.map((row) => row.id), at });
   if (rows.some((row) => Number(row.rings_urgent) === 1)) {
     await promoteIfNoneRings(trx, userId);
   }
@@ -210,16 +213,19 @@ export async function deviceSignedOut(db, userId, deviceId, { at = new Date(), i
 
 /**
  * Signs one device out (OPH-435): every family bound to it is revoked, every
- * row of it at once, the same single UPDATE `revokeOtherSessions` uses. The
- * caller removes the device row itself. Call inside a transaction holding
+ * row of it at once, the same single UPDATE `revokeOtherSessions` uses, and
+ * the device's widget token with them (OPH-458). The caller removes the
+ * device row itself. Call inside a transaction holding
  * `lockUsers(trx, [userId])`.
  * @returns {Promise<number>} rows revoked; 0 when no live session was bound
  */
-export function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() }) {
-  return trx('refresh_tokens')
+export async function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() }) {
+  const revoked = await trx('refresh_tokens')
     .where({ user_id: userId, device_id: deviceId })
     .whereNull('revoked_at')
     .update({ revoked_at: at });
+  await revokeWidgetTokens(trx, { userId, deviceIds: [deviceId], at });
+  return revoked;
 }
 
 /**
@@ -227,7 +233,8 @@ export function revokeDeviceSessions(trx, { userId, deviceId, at = new Date() })
  * family id — which the owner's own screen shows them — can never end
  * somebody else's session. Also the reuse response: a rotated token coming
  * back burns its whole family. The device bound to the family goes with it,
- * also when the family was already revoked.
+ * also when the family was already revoked, and so does every widget token
+ * the family minted (OPH-458).
  *
  * `db` may be an open transaction (it is used as is) or the pool.
  *
@@ -245,6 +252,7 @@ export function revokeSession(db, { userId, familyId, at = new Date() }) {
     // its access token still worked, and this — a refused refresh of that
     // family — is the last moment the server hears from it.
     await dropDevicesOfFamilies(trx, userId, [familyId], { at });
+    await revokeWidgetTokens(trx, { userId, familyIds: [familyId], at });
     return revoked;
   });
 }
@@ -253,7 +261,8 @@ export function revokeSession(db, { userId, familyId, at = new Date() }) {
  * Closes every session except one. `keepFamilyId` null closes all of them —
  * which is what an administrator's force-logout means, what a password change
  * does, and what a person who did not name their own session gets. The
- * devices bound to the closed families go with them.
+ * devices bound to the closed families go with them, and so do the widget
+ * tokens those families minted — all of them when nothing is kept (OPH-458).
  *
  * `db` may be an open transaction (it is used as is) or the pool.
  */
@@ -267,6 +276,11 @@ export function revokeOtherSessions(db, { userId, keepFamilyId = null, at = new 
     const families = distinctOf(await open().select('family_id'), 'family_id');
     const revoked = await open().update({ revoked_at: at });
     await dropDevicesOfFamilies(trx, userId, families, { at });
+    if (keepFamilyId) {
+      await revokeWidgetTokens(trx, { userId, familyIds: families, at });
+    } else {
+      await revokeAllWidgetTokens(trx, { userId, at });
+    }
     return revoked;
   });
 }
