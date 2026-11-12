@@ -118,7 +118,8 @@ Future<void> runHeadlessRefresh({
         storage: TokenStorage(secretStore ?? defaultSecretStore()),
         // Only noted here: the cleanup runs below, once the sync round that
         // heard the refusal is over (a request is still waiting on it).
-        onSessionRevoked: (userId) async => revokedUserId = userId,
+        onSessionRevoked: (userId, {required replaced}) async =>
+            revokedUserId = userId,
       );
       // A Keychain that cannot be read is not an error here, it is an answer:
       // iOS stores the session under `kSecAttrAccessibleWhenUnlocked`, so a

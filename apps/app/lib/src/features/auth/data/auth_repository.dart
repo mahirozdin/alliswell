@@ -41,10 +41,27 @@ class AuthRepository {
   /// other things) must not wait on it in turn. The next session to start
   /// waits for it instead ([_settleRevocation]), so the cleanup only ever
   /// touches what the revoked session left.
-  final Future<void> Function(String userId)? _onSessionRevoked;
+  ///
+  /// [replaced] — a sign-in was already under way when the refusal came, and
+  /// its session is about to replace the revoked one. That sign-in may have
+  /// named this install by its client id already, and its own owner check
+  /// (`claimFor`) decides the replica — which carries that id over — so the
+  /// cleanup leaves the replica to it. It runs inside the sign-in, before the
+  /// new session is exposed, never after (signin-binds-discarded-client-id,
+  /// revocation-cleanup-crosses-sessions).
+  final Future<void> Function(String userId, {required bool replaced})?
+  _onSessionRevoked;
 
   /// The cleanup [_onSessionRevoked] started and has not finished, if any.
   Future<void>? _revocationCleanup;
+
+  /// Sign-ins between their start and their end, whatever the outcome.
+  int _signIns = 0;
+
+  /// The user of a session revoked while a sign-in was under way: cleaned up
+  /// by that sign-in before it exposes its session, or — when it fails — as
+  /// soon as no sign-in is left ([_releaseDeferredRevocation]).
+  String? _deferredRevocation;
 
   /// The refresh answers that mean "this session family was revoked" —
   /// unlike a network error or a rate limit, which say nothing about it.
@@ -86,46 +103,63 @@ class AuthRepository {
     required String email,
     required String password,
     String? displayName,
-  }) async {
-    final session = await _api.register(
+  }) => _signIn(
+    (deviceId) => _api.register(
       email: email,
       password: password,
       displayName: displayName,
-      deviceId: await _readDeviceId(),
-    );
-    await _setSession(session);
-    return session;
-  }
+      deviceId: deviceId,
+    ),
+  );
 
   Future<AuthSession> login({
     required String email,
     required String password,
     String? totpCode,
-  }) async {
-    final session = await _api.login(
+  }) => _signIn(
+    (deviceId) => _api.login(
       email: email,
       password: password,
       totpCode: totpCode,
-      deviceId: await _readDeviceId(),
-    );
-    await _setSession(session);
-    return session;
-  }
+      deviceId: deviceId,
+    ),
+  );
 
   /// Sign in through Google or Apple. [idToken] comes from [SocialSignIn].
   Future<AuthSession> signInWithProvider({
     required String provider,
     required String idToken,
     String? totpCode,
-  }) async {
-    final session = await _api.oauth(
+  }) => _signIn(
+    (deviceId) => _api.oauth(
       provider: provider,
       idToken: idToken,
       totpCode: totpCode,
-      deviceId: await _readDeviceId(),
-    );
-    await _setSession(session);
-    return session;
+      deviceId: deviceId,
+    ),
+  );
+
+  /// One sign-in, from naming the device to exposing the session.
+  ///
+  /// A revoked session's cleanup discards the replica and with it this
+  /// install's client id, so the id is read only once a cleanup already
+  /// running is over: read before, the sign-in would bind its family to an id
+  /// the cleanup then throws away, and nothing would ever list it
+  /// (signin-binds-discarded-client-id). A refusal that comes while this is
+  /// under way defers its cleanup to [_setSession] instead of starting it.
+  Future<AuthSession> _signIn(
+    Future<AuthSession> Function(String? deviceId) request,
+  ) async {
+    _signIns++;
+    try {
+      await _settleRevocation();
+      final session = await request(await _readDeviceId());
+      await _setSession(session);
+      return session;
+    } finally {
+      _signIns--;
+      _releaseDeferredRevocation();
+    }
   }
 
   /// Rotates the refresh token and returns the new access token, or null when
@@ -169,7 +203,16 @@ class AuthRepository {
       // way an explicit sign-out takes it (OPH-447).
       final cleanup = _onSessionRevoked;
       if (cleanup != null && _revokedCodes.contains(e.code)) {
-        _trackRevocation(cleared.then((_) => cleanup(current.user.id)));
+        if (_signIns > 0) {
+          // A sign-in is under way: started now, the cleanup could outlast
+          // it and halt, cancel and wipe what the new session already owns.
+          // That sign-in runs it before it exposes its session.
+          _deferredRevocation = current.user.id;
+        } else {
+          _trackRevocation(
+            cleared.then((_) => cleanup(current.user.id, replaced: false)),
+          );
+        }
       }
       await cleared;
       return null;
@@ -191,8 +234,38 @@ class AuthRepository {
 
   /// Waits for a revoked session's cleanup before another session starts.
   Future<void> _settleRevocation() async {
-    final pending = _revocationCleanup;
-    if (pending != null) await pending;
+    for (
+      var pending = _revocationCleanup;
+      pending != null;
+      pending = _revocationCleanup
+    ) {
+      await pending;
+    }
+  }
+
+  /// Runs, inside the sign-in that is replacing it, the cleanup of a session
+  /// revoked while that sign-in was under way. Callers check
+  /// [_deferredRevocation] synchronously first: even an empty `await` yields,
+  /// and a refusal could slip in between it and the session's exposure.
+  Future<void> _runDeferredRevocation() async {
+    final userId = _deferredRevocation;
+    final cleanup = _onSessionRevoked;
+    _deferredRevocation = null;
+    if (userId == null || cleanup == null) return;
+    _trackRevocation(cleanup(userId, replaced: true));
+    await _settleRevocation();
+  }
+
+  /// The last sign-in ended without taking over a deferred revocation — it
+  /// failed — so the revoked session's cleanup runs as it would have.
+  void _releaseDeferredRevocation() {
+    final userId = _deferredRevocation;
+    final cleanup = _onSessionRevoked;
+    if (_signIns > 0 || userId == null || cleanup == null) return;
+    _deferredRevocation = null;
+    // A session that is current now was never the revoked one.
+    if (_session != null) return;
+    _trackRevocation(cleanup(userId, replaced: false));
   }
 
   Future<String?> _readDeviceId() async {
@@ -226,7 +299,16 @@ class AuthRepository {
   Future<void> _setSession(AuthSession session) async {
     if (_session?.user.id != session.user.id) {
       await _settleRevocation();
+      while (_deferredRevocation != null) {
+        await _runDeferredRevocation();
+      }
       await _onSessionUser?.call(session.user.id, restored: false);
+    }
+    // A refusal that came during the hook: its cleanup finishes before this
+    // session is exposed, so it can never reach this session's engines or
+    // alarms (revocation-cleanup-crosses-sessions).
+    while (_deferredRevocation != null) {
+      await _runDeferredRevocation();
     }
     _session = session;
     await _storage.save(session);

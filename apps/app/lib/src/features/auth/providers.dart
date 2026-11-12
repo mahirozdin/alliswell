@@ -74,7 +74,8 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
       ref.invalidate(ringsUrgentHereProvider);
     },
     deviceId: () => _deviceIdForAuth(ref),
-    onSessionRevoked: (userId) => _endRevokedSession(ref, userId),
+    onSessionRevoked: (userId, {required replaced}) =>
+        _endRevokedSession(ref, userId, replaced: replaced),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -128,7 +129,18 @@ Future<String?> _deviceIdForAuth(Ref ref) async {
 /// repository holds the next session's start until this returns, and the
 /// replica is wiped only while it is still recorded as [userId]'s (or as
 /// nobody's).
-Future<void> _endRevokedSession(Ref ref, String userId) async {
+///
+/// [replaced] — a sign-in that was under way when the refusal came runs this
+/// before it exposes its session, and its own `claimFor` decides the replica:
+/// it adopts it for the same person, or wipes it for somebody else while
+/// carrying over the client id that sign-in already sent. Wiping here first
+/// would discard that id (signin-binds-discarded-client-id), so the replica is
+/// left to it; the token, the engines and the OS alarms go as always.
+Future<void> _endRevokedSession(
+  Ref ref,
+  String userId, {
+  required bool replaced,
+}) async {
   try {
     await ref.read(pushMessagingProvider).forgetToken();
   } on Object {
@@ -136,7 +148,9 @@ Future<void> _endRevokedSession(Ref ref, String userId) async {
   }
   await _haltSyncEngines(ref);
   final owner = await localKv.get(kReplicaOwnerKey);
-  if ((owner == null || owner == userId) && await _nothingUnsent(ref)) {
+  if (!replaced &&
+      (owner == null || owner == userId) &&
+      await _nothingUnsent(ref)) {
     await ref.read(localDataGuardProvider).wipe();
   }
   await _dropOsAlarms(ref);

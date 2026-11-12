@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:dio/dio.dart' show RequestOptions, ResponseBody;
 import 'package:drift/drift.dart' show DatabaseConnection, Value;
 import 'package:drift/native.dart';
 import 'package:flutter/material.dart';
@@ -28,6 +30,7 @@ import 'package:alliswell/src/sync/outbox.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/sync/sync_api.dart';
 import 'package:alliswell/src/sync/sync_applier.dart';
+import 'package:alliswell/src/sync/sync_engine.dart' show kInstallClientIdKey;
 
 import '../../support/fake_notifications.dart';
 import 'test_support.dart';
@@ -97,9 +100,17 @@ void main() {
   }
 
   /// A minimal signed-in app: one button that signs out the way Settings does.
+  ///
+  /// [answer] goes first for every auth request; `null` falls through to the
+  /// default answers.
   Future<(ProviderContainer, AwDatabase)> pumpSignedIn(
     WidgetTester tester, {
     String? refreshRefusedWith,
+    Future<ResponseBody>? Function(
+      RequestOptions options,
+      Map<String, dynamic>? body,
+    )?
+    answer,
     List<Override> overrides = const [],
   }) async {
     final db = AwDatabase(
@@ -118,7 +129,9 @@ void main() {
           authApiProvider.overrideWithValue(
             AuthApi(
               fakeDio(
-                FakeHttpClientAdapter((options, _) async {
+                FakeHttpClientAdapter((options, body) async {
+                  final answered = answer?.call(options, body);
+                  if (answered != null) return answered;
                   if (options.path == '/api/v1/auth/logout') {
                     return emptyBody(204);
                   }
@@ -458,6 +471,117 @@ void main() {
     expect(
       await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
       'user-1',
+    );
+    expect(alarmKit.cancelled, [22]);
+  });
+
+  // signin-binds-discarded-client-id (OPH-447): B's sign-in is on the wire,
+  // already naming this install by its client id, when A's family is refused
+  // as revoked. A's cleanup must not wipe that id before B's owner check
+  // carries it over, or B's family stays bound to an id no device row lists
+  // and removing this device elsewhere never signs B out. A's alarms still go.
+  testWidgets('a family revoked while somebody else signs in leaves that '
+      'sign-in the client id it sent, and still drops the alarms', (
+    tester,
+  ) async {
+    final gateway = FakeNotificationsGateway();
+    final alarmKit = FakeAlarmKitHost();
+    final refreshAnswer = Completer<void>();
+    final loginGate = Completer<void>();
+    final sentDeviceIds = <Object?>[];
+    var logins = 0;
+    final (container, db) = await pumpSignedIn(
+      tester,
+      answer: (options, body) {
+        if (options.path == '/api/v1/auth/login') {
+          if (logins++ == 0) return null;
+          sentDeviceIds.add(body?['deviceId']);
+          return loginGate.future.then(
+            (_) => jsonBody(200, {
+              ...sessionJson(
+                accessToken: 'access-b',
+                refreshToken: 'refresh-b',
+              ),
+              'user': {
+                'id': 'user-2',
+                'email': 'b@example.com',
+                'displayName': 'B',
+              },
+            }),
+          );
+        }
+        if (options.path == '/api/v1/auth/refresh') {
+          return refreshAnswer.future.then(
+            (_) => jsonBody(401, {
+              'statusCode': 401,
+              'code': 'AUTH_REFRESH_REUSED',
+              'error': 'Unauthorized',
+              'message': 'Invalid or expired refresh token',
+            }),
+          );
+        }
+        return null;
+      },
+      overrides: [
+        notificationsGatewayProvider.overrideWithValue(gateway),
+        alarmKitHostProvider.overrideWithValue(alarmKit),
+      ],
+    );
+    Object? refreshed = #pending;
+    Object? signedIn = #pending;
+    await tester.runAsync(() async {
+      await seedPersonalRows(db);
+      alarmKit.foreign[22] = const AlarmKitScheduled(id: 22);
+      container
+          .read(authRepositoryProvider)
+          .refreshAccessToken()
+          .then((token) => refreshed = token);
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+      container
+          .read(authControllerProvider.notifier)
+          .login(email: 'b@example.com', password: 'pw')
+          .then((session) => signedIn = session.user.id);
+      for (var i = 0; i < 100 && sentDeviceIds.isEmpty; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+
+    /// Real time for the replica and the stores, fake time for what the
+    /// widget tree scheduled: both move until [done].
+    Future<void> settle(bool Function() done) async {
+      for (var i = 0; i < 200 && !done(); i++) {
+        await tester.pump();
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 10)),
+        );
+      }
+    }
+
+    refreshAnswer.complete();
+    await settle(() => refreshed != #pending);
+    expect(refreshed, isNull);
+    loginGate.complete();
+    await settle(() => signedIn != #pending);
+    expect(signedIn, 'user-2');
+    await tester.pumpAndSettle();
+
+    expect(sentDeviceIds, ['C1']);
+    expect(container.read(authControllerProvider).value?.user.id, 'user-2');
+    expect(
+      await tester.runAsync(() => localKv.get(kInstallClientIdKey)),
+      'C1',
+      reason: 'the id B\'s family is bound to outlives the switch',
+    );
+    expect(
+      await tester.runAsync(() => localKv.get(kReplicaOwnerKey)),
+      'user-2',
+    );
+    // A's rows are gone all the same: B's own claim wiped them.
+    expect(
+      (await tester.runAsync(
+        () => counts(db),
+      ))![db.notifications.actualTableName],
+      0,
     );
     expect(alarmKit.cancelled, [22]);
   });
