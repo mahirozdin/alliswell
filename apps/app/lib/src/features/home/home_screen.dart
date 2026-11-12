@@ -39,6 +39,7 @@ import '../ai/providers.dart';
 import '../quick_access/ui/quick_access_rail_section.dart';
 import '../calendar/providers.dart';
 import '../calendar/ui/external_event_tile.dart';
+import '../devices/new_device_alarm_card.dart';
 import '../ee/providers.dart';
 import '../onboarding/tour.dart' show TourAnchor, TourTarget;
 import '../tags/tags.dart';
@@ -773,6 +774,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               EeHomeTicketCards(),
               AlarmDegradationBanner(),
               MissedAlarmCard(),
+              // OPH-453 (#48): once, on a device that joined switched off,
+              // where its urgent alarms ring instead.
+              NewDeviceAlarmCard(),
             ],
           );
 

@@ -93,7 +93,9 @@ class _NewDeviceAlarmCardState extends ConsumerState<NewDeviceAlarmCard> {
     final userId = ref.watch(currentUserIdProvider);
     final thisId = ref.watch(syncClientIdProvider.select((id) => id.value));
     final view = ref.watch(devicesProvider).value;
-    if (userId == null || thisId == null || view == null) {
+    // An offline list is the last one this session saw: it cannot tell what
+    // changed meanwhile, so it brings up nothing new (OPH-453).
+    if (userId == null || thisId == null || view == null || view.offline) {
       return const SizedBox.shrink();
     }
     final ringer = newDeviceCardRinger(view, thisId);
@@ -161,9 +163,7 @@ class _NewDeviceAlarmCardState extends ConsumerState<NewDeviceAlarmCard> {
                     height: 48,
                     child: TextButton(
                       key: const Key('new-device-card-turn-on'),
-                      onPressed: _busy || view.offline
-                          ? null
-                          : () => _turnOn(key, thisId),
+                      onPressed: _busy ? null : () => _turnOn(key, thisId),
                       child: Text('settings.devices.newDeviceTurnOn'.tr()),
                     ),
                   ),

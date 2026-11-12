@@ -992,7 +992,9 @@
       "allow": "İzin ver",
       "finishSetup": "Kurulumu tamamla",
       "showHow": "Nasıl açılır?",
-      "close": "7 gün gizle"
+      "close": "7 gün gizle",
+      "noRingingDevice": "Acil alarm çalan cihaz yok",
+      "pickDevice": "Cihaz seç"
     },
     "snoozeRingsAt": "{time} çalar",
     "snoozeJoinsGroup": "{time} çalar · başka alarmla birlikte",

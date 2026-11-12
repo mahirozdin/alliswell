@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/persisted_prefs.dart';
+import '../features/devices/providers.dart' show noRingingDeviceProvider;
 import '../i18n/i18n.dart';
 import '../theme/tokens.dart';
 import 'alarm_fix_sheet.dart';
@@ -21,10 +23,23 @@ final alarmBannerDismissedProvider = NotifierProvider<PersistedChoice, String>(
   () => PersistedChoice(kAlarmBannerDismissedKey, fallback: ''),
 );
 
-/// Whether [problem] was closed and its week is not over yet.
-bool _dismissed(String stored, AlarmProblem problem, DateTime now) {
+/// Where the closed "no device rings urgent alarms" item is remembered, in
+/// the same `<item>@<until>` form. Its own key: closing a permission strip
+/// after it must not bring it back (OPH-453).
+const String kAlarmBannerDeviceDismissedKey =
+    'alliswell_alarm_banner_device_dismissed';
+
+final alarmBannerDeviceDismissedProvider =
+    NotifierProvider<PersistedChoice, String>(
+      () => PersistedChoice(kAlarmBannerDeviceDismissedKey, fallback: ''),
+    );
+
+const String _noRingingDevice = 'noRingingDevice';
+
+/// Whether the item called [name] was closed and its week is not over yet.
+bool _dismissed(String stored, String name, DateTime now) {
   final at = stored.lastIndexOf('@');
-  if (at <= 0 || stored.substring(0, at) != problem.name) return false;
+  if (at <= 0 || stored.substring(0, at) != name) return false;
   final until = int.tryParse(stored.substring(at + 1));
   return until != null && now.millisecondsSinceEpoch < until;
 }
@@ -56,6 +71,11 @@ String? _actionKey(AlarmProblem problem) => switch (problem) {
 /// OPH-393 (U-05, E-14): a warning, not an alarm — amber, one calm sentence,
 /// a verb button, and an "×" that hides it for a week. A server without push
 /// keys is the admin's message, never the person's fault.
+///
+/// OPH-453 (#48): when the account has devices and none rings urgent alarms,
+/// that goes first — it is why no alarm rings anywhere, this device's
+/// permissions included — with "Choose a device" into Settings ▸ Devices.
+/// One strip at a time; closing it lets the next one through.
 class AlarmDegradationBanner extends ConsumerWidget {
   const AlarmDegradationBanner({super.key});
 
@@ -66,6 +86,31 @@ class AlarmDegradationBanner extends ConsumerWidget {
     if (ref.watch(alarmPermissionAskProvider) > 0) {
       return const SizedBox.shrink();
     }
+    final now = ref.watch(alarmClockProvider)();
+    String until() => '${now.add(kAlarmBannerSnooze).millisecondsSinceEpoch}';
+
+    if (ref.watch(noRingingDeviceProvider) &&
+        !_dismissed(
+          ref.watch(alarmBannerDeviceDismissedProvider),
+          _noRingingDevice,
+          now,
+        )) {
+      void pick() => context.push('/settings/devices');
+      return _Strip(
+        itemKey: const Key('alarm-banner-no-device'),
+        surfaceKey: const Key('alarm-banner-no-device-surface'),
+        icon: Icons.devices_outlined,
+        message: 'alarm.banner.noRingingDevice'.tr(),
+        action: 'alarm.banner.pickDevice'.tr(),
+        actionKey: const Key('alarm-banner-pick-device'),
+        onOpen: pick,
+        onAction: pick,
+        onClose: () => ref
+            .read(alarmBannerDeviceDismissedProvider.notifier)
+            .set('$_noRingingDevice@${until()}'),
+      );
+    }
+
     final support = ref.watch(alarmSupportProvider).value;
     if (support == null) return const SizedBox.shrink();
 
@@ -73,29 +118,65 @@ class AlarmDegradationBanner extends ConsumerWidget {
     // (OPH-277), so this strip and the Settings row cannot drift apart.
     final problem = support.worstProblem;
     if (problem == null) return const SizedBox.shrink();
-    final now = ref.watch(alarmClockProvider)();
-    if (_dismissed(ref.watch(alarmBannerDismissedProvider), problem, now)) {
+    if (_dismissed(
+      ref.watch(alarmBannerDismissedProvider),
+      problem.name,
+      now,
+    )) {
       return const SizedBox.shrink();
     }
-    return _Strip(problem: problem, now: now);
+    final actionKey = _actionKey(problem);
+    // Round 19: the old banner re-ran `requestPermissions()`, which does
+    // nothing once the person has answered. It opens the page that CAN fix
+    // it, and says which switch to look for.
+    void fix() => showAlarmFixSheet(context, ref, problem);
+    return _Strip(
+      itemKey: const Key('alarm-banner'),
+      surfaceKey: const Key('alarm-banner-surface'),
+      icon: problem == AlarmProblem.webPushUnconfigured
+          ? Icons.dns_outlined
+          : Icons.notifications_off_outlined,
+      message: 'alarm.problem.${problem.name}'.tr(),
+      action: actionKey?.tr(),
+      actionKey: const Key('alarm-banner-action'),
+      // The sentence is a target too: it opens the same explanation.
+      onOpen: fix,
+      onAction: fix,
+      onClose: () => ref
+          .read(alarmBannerDismissedProvider.notifier)
+          .set('${problem.name}@${until()}'),
+    );
   }
 }
 
-class _Strip extends ConsumerWidget {
-  const _Strip({required this.problem, required this.now});
+/// One item of the band: icon, sentence, an optional verb and "×".
+class _Strip extends StatelessWidget {
+  const _Strip({
+    required this.itemKey,
+    required this.surfaceKey,
+    required this.icon,
+    required this.message,
+    required this.action,
+    required this.actionKey,
+    required this.onOpen,
+    required this.onAction,
+    required this.onClose,
+  });
 
-  final AlarmProblem problem;
-  final DateTime now;
+  final Key itemKey;
+  final Key surfaceKey;
+  final IconData icon;
+  final String message;
 
-  void _close(WidgetRef ref) {
-    final until = now.add(kAlarmBannerSnooze).millisecondsSinceEpoch;
-    ref
-        .read(alarmBannerDismissedProvider.notifier)
-        .set('${problem.name}@$until');
-  }
+  /// The verb on the button, or null when nothing the person presses fixes it.
+  final String? action;
+  final Key actionKey;
+  final VoidCallback onOpen;
+  final VoidCallback onAction;
+  final VoidCallback onClose;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final tokens = context.awTokens;
@@ -106,19 +187,19 @@ class _Strip extends ConsumerWidget {
       scheme.surface,
     );
     final ink = scheme.onSurface;
-    final actionKey = _actionKey(problem);
     // Large text: a button squeezed beside two lines of 2× text truncates the
     // sentence, so it drops below at full width (U-05).
     final stacked = MediaQuery.textScalerOf(context).scale(1) > 1.3;
 
     final message = Text(
-      'alarm.problem.${problem.name}'.tr(),
+      this.message,
       style: theme.textTheme.bodyMedium?.copyWith(color: ink),
     );
-    final action = actionKey == null
+    final label = this.action;
+    final action = label == null
         ? null
         : TextButton(
-            key: const Key('alarm-banner-action'),
+            key: actionKey,
             style: TextButton.styleFrom(
               foregroundColor: ink,
               minimumSize: const Size(48, 44),
@@ -126,38 +207,28 @@ class _Strip extends ConsumerWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            // Round 19: the old banner re-ran `requestPermissions()`, which
-            // does nothing once the person has answered. It opens the page
-            // that CAN fix it, and says which switch to look for.
-            onPressed: () => showAlarmFixSheet(context, ref, problem),
-            child: Text(actionKey.tr()),
+            onPressed: onAction,
+            child: Text(label),
           );
     final close = IconButton(
       key: const Key('alarm-banner-close'),
       tooltip: 'alarm.banner.close'.tr(),
       constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
       icon: Icon(Icons.close, size: 20, color: scheme.onSurfaceVariant),
-      onPressed: () => _close(ref),
+      onPressed: onClose,
     );
-    final icon = Icon(
-      problem == AlarmProblem.webPushUnconfigured
-          ? Icons.dns_outlined
-          : Icons.notifications_off_outlined,
-      size: 20,
-      color: tokens.warning,
-    );
+    final icon = Icon(this.icon, size: 20, color: tokens.warning);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(AwSpace.x4, AwSpace.x2, AwSpace.x4, 0),
       child: Material(
-        key: const Key('alarm-banner-surface'),
+        key: surfaceKey,
         color: surface,
         borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
         child: InkWell(
-          key: const Key('alarm-banner'),
+          key: itemKey,
           borderRadius: const BorderRadius.all(Radius.circular(AwRadius.m)),
-          // The sentence is a target too: it opens the same explanation.
-          onTap: () => showAlarmFixSheet(context, ref, problem),
+          onTap: onOpen,
           child: ConstrainedBox(
             constraints: const BoxConstraints(minHeight: 56),
             child: Padding(

@@ -213,6 +213,16 @@ class DevicesView {
   );
 }
 
+/// The account has devices, the server knows the flag, and none of them
+/// rings urgent alarms (#48, OPH-453): Home's alarm band says so. Read from
+/// the list Settings ▸ Devices shares, so a switch turned on there clears it
+/// at once. An offline list says nothing new — it cannot know what changed.
+final noRingingDeviceProvider = Provider.autoDispose<bool>((ref) {
+  final view = ref.watch(devicesProvider).value;
+  if (view == null || view.offline || !view.supportsRingsUrgent) return false;
+  return view.ringing.isEmpty;
+});
+
 /// What removing a device left behind (OPH-449).
 @immutable
 class DeviceRemoval {
@@ -251,7 +261,9 @@ final _ringsUrgentChangedProvider = Provider<void Function()>(
 );
 
 /// The person's devices (`GET /api/v1/notification-devices`), loaded each
-/// time a screen that shows them opens.
+/// time a screen that shows them opens, and again on every return to the
+/// foreground while one is open — Home's card and band (OPH-453) stay up for
+/// a whole session, and a device switched on elsewhere must reach them.
 ///
 /// No automatic retry: the screen offers its own, and an offline answer comes
 /// back at once from the last list instead of after a backoff.
@@ -266,6 +278,13 @@ class DevicesController extends AsyncNotifier<DevicesView> {
   Future<DevicesView> build() async {
     final userId = ref.watch(currentUserIdProvider);
     if (userId == null) return const DevicesView(devices: []);
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        // A switch on its way to the server keeps its row as it is.
+        if (state.value?.saving.isEmpty ?? true) ref.invalidateSelf();
+      },
+    );
+    ref.onDispose(lifecycle.dispose);
     final cache = ref.read(_devicesCacheProvider);
     try {
       final devices = await ref.read(deviceApiProvider).list();

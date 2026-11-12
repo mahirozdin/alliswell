@@ -1,8 +1,14 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:alliswell/src/app.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
+import 'package:alliswell/src/core/retry.dart';
+import 'package:alliswell/src/features/auth/data/secret_store.dart';
+import 'package:alliswell/src/features/auth/data/token_storage.dart';
+import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/devices/data/device_api.dart';
 import 'package:alliswell/src/features/devices/device_registry.dart';
 import 'package:alliswell/src/features/devices/new_device_alarm_card.dart';
@@ -12,6 +18,10 @@ import 'package:alliswell/src/i18n/i18n.dart';
 import 'package:alliswell/src/notifications/device_gate.dart';
 import 'package:alliswell/src/sync/providers.dart';
 import 'package:alliswell/src/theme/theme.dart';
+
+import '../auth/test_support.dart';
+import '../projects/fake_api.dart';
+import '../../support/sync_overrides.dart';
 
 /// OPH-449 (#48, owner answer 5) — a device that joined the account switched
 /// off hears once, without opening Settings, where its alarms ring instead.
@@ -39,11 +49,18 @@ class _FakeApi implements DeviceApi {
 
   List<Map<String, dynamic>> rows;
   final List<(String, bool?)> patches = [];
+  bool unreachable = false;
 
   @override
-  Future<List<DeviceInfo>> list() async => [
-    for (final row in rows) DeviceInfo.fromJson(row),
-  ];
+  Future<List<DeviceInfo>> list() async {
+    if (unreachable) {
+      throw DioException(
+        requestOptions: RequestOptions(path: '/notification-devices'),
+        type: DioExceptionType.connectionError,
+      );
+    }
+    return [for (final row in rows) DeviceInfo.fromJson(row)];
+  }
 
   @override
   Future<DevicePatchResult> patch(
@@ -57,9 +74,12 @@ class _FakeApi implements DeviceApi {
     return DevicePatchResult(device: DeviceInfo.fromJson(row));
   }
 
+  /// The shell's heartbeat registers this install; the card does not care.
   @override
-  Future<DeviceInfo?> register(String deviceId, DeviceDescriptor device) =>
-      throw UnimplementedError();
+  Future<DeviceInfo?> register(
+    String deviceId,
+    DeviceDescriptor device,
+  ) async => null;
 
   @override
   Future<void> unregister(String deviceId) => throw UnimplementedError();
@@ -189,5 +209,104 @@ void main() {
       kv.values.keys.where((k) => k.startsWith(kNewDeviceCardKeyPrefix)),
       isEmpty,
     );
+  });
+
+  // ── OPH-453: where the card lives ────────────────────────────────────────
+  group('on Home (OPH-453)', () {
+    Future<void> pumpHome(
+      WidgetTester tester,
+      _FakeApi devices,
+      _MemoryKv kv,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final store = InMemorySecretStore();
+      await TokenStorage(store).save(fakeSession());
+      await tester.pumpWidget(
+        ProviderScope(
+          key: UniqueKey(),
+          retry: awRetry,
+          overrides: [
+            ...syncTestOverrides(),
+            secretStoreProvider.overrideWithValue(store),
+            apiClientProvider.overrideWithValue(
+              fakeDio(FakeHttpClientAdapter(FakeApi().handle)),
+            ),
+            deviceApiProvider.overrideWithValue(devices),
+            syncClientIdProvider.overrideWith((ref) => Stream.value(_thisId)),
+            ringsUrgentStoreProvider.overrideWithValue(
+              RingsUrgentStore(kv: kv),
+            ),
+            newDeviceCardKvProvider.overrideWithValue(kv),
+          ],
+          child: const AllisWellApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+    }
+
+    final card = find.byKey(const Key('new-device-alarm-card'));
+
+    testWidgets('Home shows the card once on a device that does not ring', (
+      tester,
+    ) async {
+      AwI18n.instance.setActiveCached(const Locale('en'));
+      final kv = _MemoryKv();
+      final api = _FakeApi([
+        _row(_thisId, 'android', 'Pixel', false),
+        _row(_phoneId, 'ios', 'iPhone 16', true),
+      ]);
+      await pumpHome(tester, api, kv);
+      expect(find.byKey(const Key('home-quick-add')), findsOneWidget);
+      expect(card, findsOneWidget);
+      expect(
+        find.text(
+          'Urgent alarms are off on this device. Alarms ring on '
+          'iPhone 16.',
+        ),
+        findsOneWidget,
+      );
+      // Above the day's tasks, with the rest of Home's notices.
+      expect(
+        tester.getTopLeft(card).dy,
+        lessThan(tester.getTopLeft(find.byKey(const Key('home-quick-add'))).dy),
+      );
+
+      await tester.tap(find.byKey(const Key('new-device-card-ok')));
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+
+      // The next launch: answered, so never again on this account + device.
+      await tester.pumpWidget(const SizedBox());
+      await pumpHome(tester, api, kv);
+      expect(find.byKey(const Key('home-quick-add')), findsOneWidget);
+      expect(card, findsNothing);
+    });
+
+    testWidgets('never on the ringing device, never offline', (tester) async {
+      final kv = _MemoryKv();
+      await pumpHome(
+        tester,
+        _FakeApi([
+          _row(_thisId, 'android', 'Pixel', true),
+          _row(_phoneId, 'ios', 'iPhone 16', false),
+        ]),
+        kv,
+      );
+      expect(find.byKey(const Key('home-quick-add')), findsOneWidget);
+      expect(card, findsNothing);
+
+      await tester.pumpWidget(const SizedBox());
+      await pumpHome(
+        tester,
+        _FakeApi([
+          _row(_thisId, 'android', 'Pixel', false),
+          _row(_phoneId, 'ios', 'iPhone 16', true),
+        ])..unreachable = true,
+        kv,
+      );
+      expect(find.byKey(const Key('home-quick-add')), findsOneWidget);
+      expect(card, findsNothing);
+    });
   });
 }

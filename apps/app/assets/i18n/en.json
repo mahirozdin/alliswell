@@ -993,7 +993,9 @@
       "allow": "Allow",
       "finishSetup": "Finish setup",
       "showHow": "Show me how",
-      "close": "Hide for 7 days"
+      "close": "Hide for 7 days",
+      "noRingingDevice": "No device rings urgent alarms",
+      "pickDevice": "Choose a device"
     },
     "snoozeRingsAt": "rings at {time}",
     "snoozeJoinsGroup": "rings at {time} · with another alarm",
