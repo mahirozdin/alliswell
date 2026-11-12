@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/core/kv/local_kv.dart';
 import 'package:alliswell/src/features/auth/data/auth_api.dart';
 import 'package:alliswell/src/features/auth/data/secret_store.dart';
+import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/devices/data/device_api.dart';
 import 'package:alliswell/src/features/devices/device_registry.dart';
@@ -66,7 +67,58 @@ void main() {
   });
   tearDown(() => plugin.uninstall());
 
-  Future<ProviderContainer> signedIn({String? refreshRefusedWith}) async {
+  /// What a signed-in session left in the App Group: the app's snapshot
+  /// with titles and its fetch profile, then the extension's own keys and a
+  /// titled answer from the server.
+  Future<void> leaveAccountInAppGroup(ProviderContainer container) async {
+    await container
+        .read(widgetBridgeProvider)
+        .publish(
+          [_task('A'), _task('B')],
+          now: DateTime.now(),
+          fetch: WidgetFetchSource(
+            baseUrl: 'https://api.example.com',
+            scope: TaskScope.workspace('W1'),
+            pendingOutbox: 0,
+          ),
+        );
+    plugin.values.addAll({
+      kWidgetTokenStateKey: 'valid',
+      kWidgetServerSnapshotKey: jsonEncode({
+        'fetchedAtMs': 1,
+        'etag': '"e"',
+        'query': 'workspaceIds=W1&private=0',
+        'body': {
+          'days': [
+            {
+              'buckets': [
+                {
+                  'key': 'today',
+                  'items': [
+                    {'id': 'S', 'title': '$secret server row'},
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      }),
+      kWidgetFetchedAtKey: 1,
+      kWidgetFetchFailuresKey: 0,
+      kWidgetBackoffUntilKey: 2,
+    });
+    expect(plugin.values.values.join(), contains(secret));
+    expect(plugin.isAbsent(kWidgetFetchProfileKey), isFalse);
+    plugin.log.clear();
+  }
+
+  /// [secrets] — the session store the app starts with: empty unless a test
+  /// seeds a stored session. [signIn] — false starts from that store alone.
+  Future<ProviderContainer> signedIn({
+    String? refreshRefusedWith,
+    InMemorySecretStore? secrets,
+    bool signIn = true,
+  }) async {
     final db = AwDatabase(
       DatabaseConnection(
         NativeDatabase.memory(),
@@ -78,7 +130,7 @@ void main() {
       retry: (_, _) => null,
       overrides: [
         databaseProvider.overrideWithValue(db),
-        secretStoreProvider.overrideWithValue(InMemorySecretStore()),
+        secretStoreProvider.overrideWithValue(secrets ?? InMemorySecretStore()),
         authApiProvider.overrideWithValue(
           AuthApi(
             fakeDio(
@@ -92,7 +144,7 @@ void main() {
                     'statusCode': 401,
                     'code': refreshRefusedWith,
                     'error': 'Unauthorized',
-                    'message': 'Refresh token reuse detected',
+                    'message': 'Refresh refused',
                   });
                 }
                 return jsonBody(200, sessionJson());
@@ -135,54 +187,20 @@ void main() {
       ],
     );
     addTearDown(container.dispose);
+    if (!signIn) return container;
     await container.read(authControllerProvider.future);
     await container
         .read(authControllerProvider.notifier)
         .login(email: 'mahir@example.com', password: 'pw');
-
-    // What a signed-in session left in the App Group: the app's snapshot
-    // with titles and its fetch profile, then the extension's own keys and
-    // a titled answer from the server.
-    await container
-        .read(widgetBridgeProvider)
-        .publish(
-          [_task('A'), _task('B')],
-          now: DateTime.now(),
-          fetch: WidgetFetchSource(
-            baseUrl: 'https://api.example.com',
-            scope: TaskScope.workspace('W1'),
-            pendingOutbox: 0,
-          ),
-        );
-    plugin.values.addAll({
-      kWidgetTokenStateKey: 'valid',
-      kWidgetServerSnapshotKey: jsonEncode({
-        'fetchedAtMs': 1,
-        'etag': '"e"',
-        'query': 'workspaceIds=W1&private=0',
-        'body': {
-          'days': [
-            {
-              'buckets': [
-                {
-                  'key': 'today',
-                  'items': [
-                    {'id': 'S', 'title': '$secret server row'},
-                  ],
-                },
-              ],
-            },
-          ],
-        },
-      }),
-      kWidgetFetchedAtKey: 1,
-      kWidgetFetchFailuresKey: 0,
-      kWidgetBackoffUntilKey: 2,
-    });
-    expect(plugin.values.values.join(), contains(secret));
-    expect(plugin.isAbsent(kWidgetFetchProfileKey), isFalse);
-    plugin.log.clear();
+    await leaveAccountInAppGroup(container);
     return container;
+  }
+
+  Future<void> untilRedrawn() async {
+    for (var i = 0; i < 100; i++) {
+      if (plugin.log.isNotEmpty && plugin.log.last == 'update') break;
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
   }
 
   void expectNothingOfTheAccount() {
@@ -246,10 +264,44 @@ void main() {
     final token = await container
         .read(authRepositoryProvider)
         .refreshAccessToken();
-    for (var i = 0; i < 100; i++) {
-      if (plugin.log.isNotEmpty && plugin.log.last == 'update') break;
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-    }
+    await untilRedrawn();
+
+    expect(token, isNull);
+    expect(container.read(authControllerProvider).value, isNull);
+    expectNothingOfTheAccount();
+  });
+
+  // A stored session whose refresh token ran out while the app was closed:
+  // the start drops it and shows the sign-in screen, and the widget, which
+  // nothing else would ever write over, shows nothing of the account either.
+  test('a session that expired before the start leaves the same', () async {
+    final secrets = InMemorySecretStore();
+    final container = await signedIn(secrets: secrets, signIn: false);
+    await leaveAccountInAppGroup(container);
+    await TokenStorage(secrets).save(
+      fakeSession(
+        refreshExpiresAt: DateTime.now().subtract(const Duration(days: 1)),
+      ),
+    );
+
+    final session = await container.read(authControllerProvider.future);
+
+    expect(session, isNull);
+    expect(await TokenStorage(secrets).read(), isNull);
+    expectNothingOfTheAccount();
+  });
+
+  // The same session refused at its first refresh as expired or unknown
+  // (not revoked): signed out here, and nothing of it left on the widget.
+  test('a session the server refused as expired leaves the same', () async {
+    final container = await signedIn(
+      refreshRefusedWith: 'AUTH_INVALID_REFRESH_TOKEN',
+    );
+
+    final token = await container
+        .read(authRepositoryProvider)
+        .refreshAccessToken();
+    await untilRedrawn();
 
     expect(token, isNull);
     expect(container.read(authControllerProvider).value, isNull);

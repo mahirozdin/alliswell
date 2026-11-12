@@ -91,6 +91,7 @@ final authRepositoryProvider = Provider<AuthRepository>((ref) {
     deviceId: () => _deviceIdForAuth(ref),
     onSessionRevoked: (userId, {required replaced}) =>
         _endRevokedSession(ref, userId, replaced: replaced),
+    onSessionExpired: (_) => _endExpiredSession(ref),
   );
   ref.onDispose(repository.dispose);
   return repository;
@@ -175,6 +176,18 @@ Future<void> _endRevokedSession(
   // shows nothing of the person (#50, PR2-02).
   await _showWidgetSignedOut(ref);
   await _dropOsAlarms(ref);
+}
+
+/// A session that ended on its own (#50): its refresh token ran out while the
+/// app was closed, or the server refused it as expired rather than revoked.
+/// What the person left here stays — the replica and its outbox wait for the
+/// next sign-in (OPH-355) — but the widget does not: with no session nothing
+/// would ever write over the account's rows on it, and its token died with
+/// the family. So its token and fetch keys go, and it draws the signed-out
+/// snapshot, as after a sign-out.
+Future<void> _endExpiredSession(Ref ref) async {
+  await ref.read(widgetTokenLifecycleProvider).signOut();
+  await _showWidgetSignedOut(ref);
 }
 
 /// The home-screen widget, once the session is gone (#50, PR2-02): the

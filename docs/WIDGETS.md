@@ -358,7 +358,10 @@ server first where it still can (that revokes the token, ADR-0070), then removes
 except `aw_widget_snapshot`, `aw_widget_completed_at_ms` and `aw_widget_fetch_claim_ms` (times, nothing about a task), then the Keychain item, then writes `aw_widget_snapshot` empty (no
 row, no project, no event: the signed-out state) and asks for a reload — on every widget platform,
 since nothing else would write over the person's rows. With the profile gone the extension never
-fetches and draws that empty snapshot.
+fetches and draws that empty snapshot. A session that ended on its own — its refresh token found
+expired at app start, or refused by the server as expired rather than revoked — clears the widget
+the same way (keys, Keychain item, empty snapshot); the replica and its outbox stay for the next
+sign-in.
 A change of scope, server address or "Private widget" applies at once, also while Settings covers
 the app's shell (#50, PR2-04), and in this order: the new profile, then `aw_widget_server_snapshot`
 removed (it may hold the titles just hidden; a late answer for the old profile is refused or taken

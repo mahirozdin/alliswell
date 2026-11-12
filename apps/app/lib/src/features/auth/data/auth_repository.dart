@@ -14,6 +14,7 @@ class AuthRepository {
     this._onSessionUser,
     this._deviceId,
     this._onSessionRevoked,
+    this._onSessionExpired,
   });
 
   final AuthApi _api;
@@ -52,6 +53,19 @@ class AuthRepository {
   final Future<void> Function(String userId, {required bool replaced})?
   _onSessionRevoked;
 
+  /// Runs once a session has ended on its own, with its user id: its refresh
+  /// token ran out while the app was closed (found by [restore]), or the
+  /// server refused it as expired or unknown rather than revoked. Unlike a
+  /// revocation nothing the person left here is taken — their offline edits
+  /// wait for the next sign-in — only what would go on showing the account
+  /// with no session behind it (the home-screen widget, #50).
+  ///
+  /// [restore] awaits it before it returns. After a refusal it is tracked as
+  /// a revocation's cleanup is, so the next session waits for it, and it is
+  /// left out while a sign-in is under way: that session takes the widget
+  /// over and must not find it cleared after it published.
+  final Future<void> Function(String userId)? _onSessionExpired;
+
   /// The cleanup [_onSessionRevoked] started and has not finished, if any.
   Future<void>? _revocationCleanup;
 
@@ -89,7 +103,13 @@ class AuthRepository {
     if (stored != null &&
         stored.tokens.refreshTokenExpiresAt.isBefore(DateTime.now())) {
       await _storage.clear();
+      final expiredUserId = stored.user.id;
       stored = null;
+      try {
+        await _onSessionExpired?.call(expiredUserId);
+      } on Object {
+        // Best effort: the start is never blocked by it.
+      }
     }
     if (stored != null) {
       await _settleRevocation();
@@ -206,17 +226,23 @@ class AuthRepository {
       // Revoked, not merely unreachable: what this person left here goes the
       // way an explicit sign-out takes it (OPH-447).
       final cleanup = _onSessionRevoked;
-      if (cleanup != null && _revokedCodes.contains(e.code)) {
-        if (_signIns > 0) {
-          // A sign-in is under way: started now, the cleanup could outlast
-          // it and halt, cancel and wipe what the new session already owns.
-          // That sign-in runs it before it exposes its session.
-          _deferredRevocation = current.user.id;
-        } else {
-          _trackRevocation(
-            cleared.then((_) => cleanup(current.user.id, replaced: false)),
-          );
+      final expired = _onSessionExpired;
+      if (_revokedCodes.contains(e.code)) {
+        if (cleanup != null) {
+          if (_signIns > 0) {
+            // A sign-in is under way: started now, the cleanup could outlast
+            // it and halt, cancel and wipe what the new session already owns.
+            // That sign-in runs it before it exposes its session.
+            _deferredRevocation = current.user.id;
+          } else {
+            _trackRevocation(
+              cleared.then((_) => cleanup(current.user.id, replaced: false)),
+            );
+          }
         }
+      } else if (expired != null && _signIns == 0) {
+        // Expired or unknown, not revoked: only the widget's copy goes.
+        _trackRevocation(cleared.then((_) => expired(current.user.id)));
       }
       await cleared;
       return null;
