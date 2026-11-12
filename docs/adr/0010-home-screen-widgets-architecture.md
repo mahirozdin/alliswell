@@ -167,3 +167,18 @@ hides the counter and the next task and shows a refresh glyph on the circular lo
 The lock-screen timeline now carries the next midnights too, so `next` moves to the new day even
 when the 00:01 reload is deferred. The snapshot cap is 384 KiB, from a measured 282 KB worst case
 (300 tasks, 20 projects).
+
+## Revision — 2026-11-12 (#50, OPH-457): §5 freshness with the app swiped away
+
+Decision 5 relied on the app for fresh data. On iOS a widget whose app was swiped away now
+**fetches its own data**: inside its timeline, at most one request with an 8-second limit to
+`GET /api/v1/widget/snapshot` ([ADR-0070](0070-widget-token.md)), using a read-only token from the
+shared Keychain group ([ADR-0071](0071-shared-keychain-group-after-first-unlock.md)) and the fetch
+profile Dart wrote to the App Group. The answer is stored beside Dart's snapshot, never over it;
+Dart's snapshot wins while it is newer, while the outbox holds unsent changes and while a widget
+completion is still queued, so a self-fetch never undoes a local change. Labels and date patterns stay
+Dart's; the server sends keys and instants. Reloads stay inside WidgetKit's budget (`.after` at
+most 30 minutes plus jitter, midnight + 0–5 minutes), so a change made elsewhere shows within a
+WidgetKit reload, typically 15–60 minutes, with no minute guarantee. A failure backs off and draws
+the App Group snapshot. Android is unchanged (its background turn runs Dart); the macOS widget and
+WidgetKit push are later candidates. The contract is [WIDGETS.md §3.2](../WIDGETS.md#32-widget-self-fetch-contract-ios-50).

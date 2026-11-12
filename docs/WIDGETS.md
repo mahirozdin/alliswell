@@ -34,6 +34,7 @@
 | Calendar events (snapshot v5) | ✅ **built, both platforms (+ macOS by the shared Swift):** the whole list carries the user's own calendar events beside the tasks, under Home's rules (§3.1 v5). An event row has no circle — a calendar glyph instead — and its tap opens Home with the event's day selected (`alliswell://day/<yyyy-MM-dd>`). Android: `ACTION_ROW` → `openDay`, never `complete`; iOS: `AWEventRowView`, a `Link`, no `AWWidgetCompleteIntent`. Device pass on the owner's list (DEVICE-CHECKS) |
 | Midnight rollover (Android) | ✅ **OPH-334:** the background turn ends by republishing the snapshot from the replica (`publishWidgetFromReplica`), and `WidgetMidnightWorker` asks for that turn at the next local midnight — the six-hourly OPH-321 worker alone could leave yesterday's buckets up until morning. Not exact under Doze, by design. Like every Android background turn it is a broadcast to `home_widget`'s receiver, which only exists since OPH-341 |
 | Day views (snapshot v6) | ✅ **built (OPH-437, OPH-438, OPH-451; ADR-0010 revision 2026-11-12):** the snapshot carries today and the next two days as full views, and each iOS timeline entry draws its own day — after midnight the list, the counter and the lock screen's `next` are the new day's without the app running. Past the last day the widget shows a stale line instead of an old list (§3.1 v6). The app also writes the snapshot on its way to the background. With the app swiped away the data still ages after three days; the widget's own fetch is Epic 37 |
+| Self-fetch (iOS, swiped-away app) | 🟡 **contract written (§3.2, ADR-0070/0071), building in Epic 37:** the WidgetKit extension fetches `GET /widget/snapshot` with a read-only `aww_` token from the shared Keychain group, stores the answer beside Dart's snapshot and keeps Dart's while it is newer or a local change is pending. Android and macOS unchanged |
 | Device visual/QA pass (all sizes, light+dark, sync) | 🟡 **iOS `systemLarge` done** — light + dark, English + Turkish, and a minute-boundary pixel diff proving only the clock's digits move (`screenshots/ios/12-widget.png`, `13-widget-dark.png`; recipe in [SCREENSHOTS §6](SCREENSHOTS.md)). It found and fixed a clipped header. Android, the other families, and every Epic 32 surface are on the owner's device list (STATE, "Kullanıcıdan bekleyen") |
 
 The Dart core is the single source of truth both native widgets render; it's the
@@ -300,6 +301,189 @@ widget showed yesterday's Today under today's date until the app ran.
   from the timeline ENTRY's date with the snapshot's `locale` (round 15), and the
   clock's minute, with the snapshot's `clockFormat` (OPH-253). The choices stay the
   app's; only the ticking is native.
+
+### 3.2 Widget self-fetch contract (iOS, #50)
+
+The single agreement between the Dart side (fetch profile, widget token store), the Swift side
+(the WidgetKit extension's fetch and snapshot choice) and the API (`/widget-tokens`,
+`/widget/snapshot`). When this text and a task brief differ, this text wins; a lane that finds a
+real gap edits this section in the same commit as its code. Decisions:
+[ADR-0070](adr/0070-widget-token.md) (token), [ADR-0071](adr/0071-shared-keychain-group-after-first-unlock.md)
+(Keychain), [ADR-0010](adr/0010-home-screen-widgets-architecture.md) revision of §5.
+
+**iOS only.** Android's background turn runs Dart (§0, midnight rollover) and the macOS widget's
+self-fetch is a later candidate: on those platforms nothing below is written or read, and the
+mint route is never called.
+
+#### Keychain item — Dart writes, Swift only reads
+
+| Attribute | Value |
+| --- | --- |
+| `kSecClass` | `kSecClassGenericPassword` |
+| `kSecAttrService` | `"flutter_secure_storage_service"` — the plugin's default `accountName` (`flutter_secure_storage` 10.3.1, `flutter_secure_storage_darwin` 0.3.2 in `pubspec.lock`) |
+| `kSecAttrAccount` | `"aw_widget_token"` — the key, passed through unchanged |
+| `kSecAttrAccessGroup` | `"group.com.alliswell.alliswell"` — the plugin's `groupId`, no team prefix |
+| `kSecAttrAccessible` | `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` (`first_unlock_this_device`) |
+| `kSecAttrSynchronizable` | `false` (the plugin default) |
+| `kSecValueData` | the token's UTF-8 bytes, `aww_…` |
+
+- **Dart:** `FlutterSecureStorage(iOptions: IOSOptions(groupId: 'group.com.alliswell.alliswell',
+  accessibility: KeychainAccessibility.first_unlock_this_device))`, default `accountName`, key
+  `aw_widget_token`. The session (`alliswell_session`) keeps `const FlutterSecureStorage()`.
+- **Swift:** `SecItemCopyMatching` with class, service, account, access group,
+  `kSecReturnData: true`, `kSecMatchLimitOne`. `errSecItemNotFound` → no token;
+  `errSecInteractionNotAllowed` (before the first unlock) → no fetch and nothing written. The
+  extension never writes, deletes or logs the item.
+
+#### App Group keys (`UserDefaults(suiteName: "group.com.alliswell.alliswell")`)
+
+| Key | Type | Written by | Meaning |
+| --- | --- | --- | --- |
+| `aw_widget_snapshot` | String (JSON) | Dart | unchanged — §3.1 v6; chrome (`strings`, `lists`, `clockFormat`, `density`, `locale`) always comes from here |
+| `aw_widget_fetch_profile` | String (JSON, below) | Dart | what a fetch needs; **absent = never fetch** |
+| `aw_widget_token_state` | String `valid` · `invalid` | Swift writes `invalid` on a 401; Dart writes `valid` after a mint | `invalid` stops fetching until the app re-mints |
+| `aw_widget_server_snapshot` | String (JSON envelope, below) | Swift | the last 200 answer; never written over `aw_widget_snapshot` |
+| `aw_widget_fetched_at_ms` | Int, UTC ms | Swift | last 200 or 304; no new fetch within 2 minutes of it |
+| `aw_widget_fetch_failures` | Int | Swift | failures in a row; 0 after a success |
+| `aw_widget_backoff_until_ms` | Int, UTC ms | Swift | no fetch before it |
+
+On sign-out or an account switch Dart deletes the device on the server first (that revokes the
+token, ADR-0070), then removes every key above except `aw_widget_snapshot`, then the Keychain item.
+A change of scope or of "Private widget" removes `aw_widget_server_snapshot` when the profile is
+rewritten.
+
+**Fetch profile** (`v: 1`). Dart writes it in the same publish as `aw_widget_snapshot` and again
+after every sync push round (so `pendingOutbox` stays current), and only once "Private widget" has
+been **read** (fail-closed, the OPH-337 rule):
+
+```jsonc
+{
+  "v": 1,
+  "baseUrl": "https://api.alliswell.space",   // apiBaseUrlProvider as the app uses it, no trailing /; "/api/v1/…" is appended
+  "scope": { "workspaceIds": ["01J…"], "mineFor": "01H…" },  // TaskScope.toJson(); mineFor absent when solo
+  "private": true,                            // "Private widget" as read
+  "locale": "tr",                             // the tag Dart formats rows with
+  "patterns": { "time": "HH:mm", "day": "d MMM", "dayYear": "d MMM y", "relativeDays": true },
+  "strings": { "bucket.overdue": "Gecikmiş", "bucket.noDate": "…", "bucket.today": "Bugün",
+               "bucket.thisWeek": "…", "bucket.thisMonth": "…", "privateTitle": "Gizli görev",
+               "privateEvent": "Gizli etkinlik", "allDay": "Tüm gün",
+               "today": "Bugün", "tomorrow": "Yarın", "yesterday": "Dün" },
+  "pendingOutbox": 0,                          // outbox entries not yet sent to the server
+  "localWrittenAtMs": 1762934400000            // when aw_widget_snapshot was last written, UTC ms
+}
+```
+
+`patterns` are the ICU patterns `awFormatTime` / `awFormatShort(withTime: false)` use for the
+user's date format: the system default gives the region's clock and day order, `dayYear` adding
+the year for another year, `relativeDays: true`; a chosen format gives its `time` and `short`
+(`dayYear` = `day`), `relativeDays: false`.
+
+**Server envelope** (`aw_widget_server_snapshot`):
+`{ "fetchedAtMs": Int, "etag": String, "query": String, "body": { …the 200 body… } }`. `query` is
+the exact query string sent; an envelope whose `query` differs from the one the current profile
+builds is not used, not even for `If-None-Match`.
+
+#### Mint — `POST /api/v1/widget-tokens` (Dart ↔ API)
+
+Session JWT only. Body `{ "deviceId": "<notification_devices.id>" }`. `201`
+`{ "token": "aww_…", "deviceId": "…", "expiresAt": "<ISO instant>" }` — the token is shown this
+once; minting again for the device revokes the previous one. Errors: `401` (no session), `403
+AUTH_APIKEY_FORBIDDEN` (an API key), `404 DEVICE_NOT_FOUND` (not this user's device; register,
+retry at the next foreground). A `404` without that code is an older server: no token, no retry
+until the next app start. Life 90 days; Dart re-mints in the foreground when fewer than 30 remain
+or `aw_widget_token_state` is `invalid`.
+
+#### Fetch — `GET /api/v1/widget/snapshot` (Swift ↔ API)
+
+```
+GET {baseUrl}/api/v1/widget/snapshot?tz=Europe%2FIstanbul&workspaceIds=01J…,01J…&mine=1&private=1&days=3
+Authorization: Bearer aww_…
+If-None-Match: "<etag>"            (only with a usable envelope)
+```
+
+| Parameter | Rule |
+| --- | --- |
+| `tz` | required; IANA id (`TimeZone.current.identifier`); day boundaries and every local date use it |
+| `workspaceIds` | required; 1–20 comma-separated ULIDs = `scope.workspaceIds`; each must be the token user's membership |
+| `mine` | `0` (default) · `1` = `scope.mineFor` present; always the token's own user, never an id |
+| `private` | `1` (default, fail-closed) · `0`; `1` sends no `title` key anywhere |
+| `days` | `1`–`3`, default `3` |
+
+No `locale` and no `list`: the server sends no words, and every project view is in the body.
+
+**200** — `Cache-Control: no-store`, `ETag: "<hex>"`:
+
+```jsonc
+{
+  "v": 1,
+  "generatedAt": "2026-11-12T08:00:00.000Z",   // server clock; informative only
+  "tz": "Europe/Istanbul",
+  "days": [
+    { "date": "2026-11-12",                     // local day in tz; days[0] = today
+      "openToday": 3,                           // always present, 0 = none
+      "next": { "id": "01J…", "title": "…", "bucket": "overdue",
+                "dueAt": "2026-11-11T09:00:00.000Z", "timeStyle": "day" },   // absent = nothing open
+      "buckets": [
+        { "key": "overdue", "count": 2, "more": 1,
+          "items": [
+            { "id": "01J…", "title": "…", "done": false, "priority": "high",
+              "dueAt": "2026-11-11T09:00:00.000Z", "timeStyle": "day", "projectColor": "#2563EB" },
+            { "id": "01K…", "title": "Standup", "done": false, "priority": "none",
+              "kind": "event", "day": "2026-11-12", "dueAt": "…", "endAt": "…",
+              "allDay": false, "timeStyle": "range" } ] } ],
+      "views": { "<projectId>": { "openToday": 1, "next": { … }, "buckets": [ … ] } } } ]
+}
+```
+
+- **Same rules as Dart's `buildWidgetSnapshot`, by the shared fixture**
+  (`apps/app/test/fixtures/widget_grouping_cases.json`): bucket keys and order `overdue`,
+  `noDate`, `today`, `thisWeek`, `thisMonth`, empty buckets left out; at most 12 `items`; `count`
+  = open rows; `more` = open entries past the rows, absent at 0; day 0 is seen from now, a later
+  day from its first minute and keeps only tasks completed on or after it; `next` and `openToday`
+  are task-only; `views` hold every non-archived project of the scope (an empty one as
+  `{"openToday": 0, "buckets": []}`), tasks only; events only when `workspaceIds` has one id and
+  `mine=0`.
+- **Item fields:** `id`, `done`, `priority` (events `"none"`), `title` (absent when `private=1`;
+  Swift draws `strings.privateTitle` / `privateEvent`), `projectColor` (`#RRGGBB`, the project's
+  else the task's own, absent when none), `kind: "event"` + `day` (`yyyy-MM-dd`) for events,
+  `dueAt` (a task's due instant, an event's start; absent for a dateless task), `endAt` and
+  `allDay` (events only), `timeStyle` (absent = no label).
+- **`timeStyle` → text** (Swift, profile `patterns` and `locale`, in `tz`): `time` = time(dueAt) ·
+  `day` = day(dueAt), or day(`day`) for an all-day event · `allDay` = `strings.allDay` · `range` =
+  time(dueAt) + "–" + time(endAt) · `start` = time(dueAt) · `end` = "–" + time(endAt) · `dayTime`
+  = with `relativeDays`, the bare time on the view's date, `today`/`tomorrow`/`yesterday` +
+  U+00A0 + time on a neighbouring day, else day + ", " + time; without it, day + ", " + time.
+  day() uses `dayYear` for another year. The header (weekday, day, month) is formatted from `date`;
+  a bucket's label and `next`'s label are `strings["bucket.<key>"]`; a view's open-count words
+  come from the snapshot's `strings.openTodayPattern`.
+- **ETag** covers the whole body except `generatedAt`, plus the query: equal ETag, equal days.
+  `If-None-Match` equal → **304**, empty body, same headers.
+
+**Errors** (body `{statusCode, code, error, message}`): `400` invalid `tz` (`WIDGET_INVALID_TZ`) or
+parameters (`FST_ERR_VALIDATION`) · `401 AUTH_WIDGET_TOKEN_INVALID` for a missing, unknown,
+revoked or expired token, a removed device or a dead session family (one code, no reason) · `403
+AUTH_WORKSPACE_FORBIDDEN` for a workspace the user is not in · `429 RATE_LIMITED` (30 an hour per
+token).
+
+#### The extension's turn (Swift)
+
+1. Load `aw_widget_snapshot` first; with none, keep today's behaviour and do not fetch.
+2. Fetch only when all hold: a profile that decodes (with `private`); `aw_widget_token_state` is
+   not `invalid`; the Keychain item reads; now ≥ `aw_widget_backoff_until_ms`; now −
+   `aw_widget_fetched_at_ms` ≥ 2 minutes.
+3. One request: `URLSession(configuration: .ephemeral)`, `timeoutIntervalForRequest` 6 s,
+   `timeoutIntervalForResource` 8 s, `waitsForConnectivity = false`.
+4. `200` → write the envelope and `aw_widget_fetched_at_ms`, failures 0, remove the backoff.
+   `304` → refresh `fetchedAtMs` and the stamp, failures 0. `401` → `aw_widget_token_state =
+   invalid`. Anything else (400, 403, 429, 5xx, timeout, offline) → failures + 1 and backoff until
+   now + min(5 min × 2^n, 2 h), n = the failures before this one.
+5. **Choose** (decision K-11): no usable envelope → local; `pendingOutbox > 0` → local; a widget
+   completion still queued (`aw_alarm_pending_actions`, `complete`) → local; `localWrittenAtMs ≥
+   fetchedAtMs` → local; else the server's days. Both clocks are the device's, which is why the
+   envelope's `fetchedAtMs` and not the server's `generatedAt` is compared. Queued completions are
+   overlaid as done on whichever wins (`awMarkSnapshotDone`'s rules). A self-fetch never undoes a
+   local change.
+6. Reload `.after(min(clock horizon, now + 30 min + 0–300 s))`; the midnight entry at 00:01 + 0–300 s.
 
 ## 4. Interactivity — quick-add & quick-complete
 

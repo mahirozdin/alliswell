@@ -364,6 +364,8 @@ Rules:
   every day, so they would inflate every day. The number is computed in the Dart
   snapshot (pure + unit-tested), never in native code, and its label ships
   pre-localized in `strings` like every other widget word.
+  _(Rev. 2026-11-12, ADR-0070:)_ Dart defines the rule; the server's widget snapshot is a
+  second implementation locked to the same fixture; native code still carries no rule.
 - **W7 — Density per size** (WIDGETS.md §5): 4×2 = header + 3–4 rows, no bucket
   labels; 4×4 = bucketed scroll ~8–10 rows + labels/counts; extraLarge/4×6 =
   richest, optional week strip. Truncate with an honest "+N more", never silently.

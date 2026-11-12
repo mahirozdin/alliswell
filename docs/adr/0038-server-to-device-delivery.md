@@ -189,3 +189,15 @@ ulaştırıp iOS'ta hiçbir şey yapmazdı; bu bir kanal değil, yarım bir kana
 Kural değişmedi: sağlayıcının sunucularından geçen şey hâlâ kimlik ve sabit
 cümledir, ve `check:push-payload` kapısı yeni girdileri satır satır gösterip
 onay istedi.
+
+## Revision — 2026-11-12 (#50, OPH-457): §8 and the swiped-away widget
+
+§8 stands: iOS still gets no headless wake, no `BGAppRefreshTask` and no silent push, and the
+session stays `kSecAttrAccessibleWhenUnlocked` with no re-key migration. The answer for a widget
+whose app was swiped away is not a push but **self-fetch**: the WidgetKit extension calls
+`GET /api/v1/widget/snapshot` itself with a read-only widget token
+([ADR-0070](0070-widget-token.md)) kept in the App Group's Keychain group under
+`AfterFirstUnlockThisDeviceOnly` ([ADR-0071](0071-shared-keychain-group-after-first-unlock.md)).
+That is the Keychain-class decision §8 asked for, taken for the widget token only. The request is
+HTTPS to the user's own server, not a push: no payload reaches a push provider and I-13 is
+unchanged. WidgetKit push (direct APNs) is a later candidate.
