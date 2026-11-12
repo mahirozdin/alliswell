@@ -9,7 +9,7 @@
 
 Hepsi **NOT RUN**: işler birim/widget testleriyle, widget işi Mac'te XCTest ile kapandı.
 
-- OPH-427 — **web** (NOT RUN): API'yi bir dakika durdurup yeniden başlat: eşitleme sayfa yenilenmeden sürüyor, Cihazlar listesi sonraki yenilemede geliyor.
+- OPH-427 — **web** (NOT RUN): API'yi bir dakika durdurup yeniden başlat: eşitleme sayfa yenilenmeden sürüyor, Cihazlar listesi sonraki yenilemede geliyor; erişim token'ı o arada dolsa da oturum kapanmıyor.
 - OPH-480 — **web** (NOT RUN): çevrimdışıyken bir görevi düzenle, sayfayı yenile: düzenleme duruyor ve bağlanınca eşitleniyor.
 - OPH-443 — **iPhone VoiceOver; web klavye** (NOT RUN): liste modunda satır düğmeleri "<başlık>: Ertele" / "<başlık>: Onayla" okunuyor; satırın erteleme sayfasındaki her seçenek bir düğme; sayfa kapanınca Enter ve rakam tuşları yine çalışıyor.
 - OPH-466 — **iPhone VoiceOver; masaüstü tarayıcı** (NOT RUN): tek zil ekranında başlık bir kez okunuyor; tam görünen başlığın üzerine gelince ipucu çıkmıyor, kesik başlıkta çıkıyor.

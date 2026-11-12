@@ -96,6 +96,8 @@ This file holds the unreleased changes and the latest release; at each release t
 - **Sync recovers by itself after a request that never answers.** Sync and the device list run
   again on their own after a stalled connection, without reloading the app. On the web, an edit
   made offline is no longer lost when the page is reloaded.
+- **A slow or briefly failing server no longer signs you out.** The app keeps your session and
+  syncs again once the server answers.
 
 ## [1.19.2] — 2026-11-09
 

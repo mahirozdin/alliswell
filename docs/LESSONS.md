@@ -73,7 +73,7 @@
 - **DERS** Socket.IO `sync:ready` connect ack'iyle aynı segmentte gelebilir → dinleyici handshake'ten ÖNCE. Oda üyeliği bağlanırken donar (JWT o an) → yeni üyelik yeniden bağlanana dek `sync:changed` almaz; pull yedek.
 - **KARAR** Paylaşılan alanlar birlikte senkronda: alan başına motor, yazım `pokeSync(ref)` ile hepsini dürter, düşen alan son tur alır; kişisel kullanımda tek motor (ADR-0044).
 - **DERS** Gözlemcinin fırlatması push'u 500'e çevirir, cihaz yazımı sonsuza dek yollar → içeriden ret `syncRefusal(code)` (REST 409, push rejected+rebase).
-- **DERS** Tek uçuşlu ağ döngüsü cevapsız istekte sonsuza dek takılır → istek ve çağrı süresi (`http_timeouts.dart`), zaman aşımı → NETWORK_ERROR backoff'u (OPH-427).
+- **DERS** Tek uçuşlu ağ döngüsü cevapsız istekte sonsuza dek takılır → istek ve çağrı süresi (`http_timeouts.dart`), zaman aşımı → NETWORK_ERROR backoff'u (OPH-427). `Future.timeout` timer'ı iptal edilmez → kendi timer'ı, `dispose()` çağrıyı bırakır.
 
 ## drift-replica — istemci replikası, göçler, outbox
 - **DERS** drift'in varsayılan `onUpgrade`'i fırlatır: basamaksız `schemaVersion` artışı her replikayı tuğlalar → her sürüm `if (from < n)` basamağı; replika outbox taşır, "sil, yeniden çek" güvenli değil.
@@ -88,7 +88,7 @@
 - **DERS** Replikanın iki yazarı var (widget arka plan izolatı + uygulama) → `awSqlitePragmas`: WAL + `busy_timeout=5000`.
 - **DERS** Süzgecin okuduğu sunucu-sahipli yeni kolon (v37 `createdBy`) eski satırda null → alan bir kez imleç 0'dan çekilir (`repullOnceForCreatedBy`); başsız tur `sync_states`'in HER satırını dolaşır.
 - **DERS** Web replikası commit'li `web/sqlite3.wasm` + `web/drift_worker.js`'e dayanır, drift/sqlite3 sürümüne sabittir → drift yükseltilirken ikisi birlikte yenilenir.
-- **DERS** drift txn'i: web IDB yalnız txn dışı ifadeden sonra flush eder → `FlushAfterCommit` (OPH-361); txn içinde kurulan timer/poke txn zone'unda koşar, eşitleme yenilenene dek takılır → motor `inTransactionZone` dışında (Zone.root değil), receipt'li yazım commit'ten sonra dürter (OPH-427). Interceptor `parent` olarak iç executor'ı alır → `connection.executor`'a kökle, yoksa web hiç flush etmez (`flushAfterEveryCommit`, OPH-480).
+- **DERS** drift txn'i: web IDB yalnız txn dışı ifadeden sonra flush eder → `FlushAfterCommit` (OPH-361); txn içinde kurulan timer/poke txn zone'unda koşup eşitlemeyi takar → motor `inTransactionZone` dışında (Zone.root değil), receipt'li yazım commit'ten sonra dürter (OPH-427). Interceptor iç executor'ı `parent` alır → `connection.executor`'a kökle, yoksa web flush etmez (OPH-480).
 
 ## flutter-app — ürün sözleşmeleri, Riverpod, go_router, testler
 - **KARAR** Inbox ("Fikirler") yakalama kutusudur: yakalamalar Home'da asla görünmez; tarih ya da proje verilince aynı yazımda `open`'a terfi eder.
@@ -96,13 +96,13 @@
 - **KARAR** `alliswell://` URL'leri yalnız gezinir, asla yazmaz (`complete` yok, `add` parametre almaz); bilinmeyen URL hata değil; widget'tan yazan tek yol imzalı App Intent / App Group kuyruğu (ADR-0016).
 - **KARAR** Gizli widget modunda başlık App Group/SharedPreferences'a hiç yazılmaz. Hızlı Erişim `quick_link` kullanıcıya özel, `kind+target_id` saklar, rota dizesi asla; ≤50 (ADR-0018).
 - **DERS** `PersistedChoice`/`Toggle` depo okunmadan varsayılanı söyler → kısa ömürlü süreçte varsayılan cevap olur, gizli ayar ilk cevapta sızar → `localKv`'yi doğrudan oku.
-- **DERS** go_router boş yolu `/`'ye çevirir, `alliswell://add` kök rotaya eşleşip `onException`'a varmaz → şemayı üst düzey `redirect`'te çöz; soğuk açılışta `?add=1` `/splash` parkında kaybolur → provider bayrağı. Adresle açılan ekranda geri `awRouteLeading`'den: `Navigator.canPop` üstteki sheet'i sayar (OPH-448).
+- **DERS** go_router boş yolu `/`'ye çevirir, `alliswell://add` kök rotaya eşleşip `onException`'a varmaz → şemayı `redirect`'te çöz; soğukta `?add=1` `/splash`'ta kaybolur → provider bayrağı. Adresle açılan ekranda geri `awRouteLeading`'den: `Navigator.canPop` üstteki sheet'i sayar (OPH-448).
 - **DERS** `ref.listen` yalnız değişimde ateşler → açılışta zaten bekleyen yük (paylaşım) hiç işlenmez: ilk kareden sonra bekleyeni süpür; sonradan beliren değeri tek atımlı okuma, akışı izle.
 - **DERS** Hazır olmayan/hatalı async provider "boş" okunur (`.value` null → sahte "yok"/çevrimdışı) → eylemde `await x.future`; sunucu hakkında iddia eden ekran hatayı fırlatır, boş liste göstermez.
 - **DERS** HomeShell `extendBody:true` + cam çubuk: `useRootNavigator`'sız sheet/dialog çubuğun ALTINDA kalır → kök navigator'da; iç FAB'ı kabuk gövdesi `viewPadding`'le üste alır (OPH-359); `findsOneWidget` kaçırır → dokun.
 - **DERS** `AppSection.values` ↔ shell dal indeksi ↔ rail/bar hedefleri KONUMSAL kimliktir; hedef listesini filtrelemek yanlış ekranı açar → gizleme `visibleSections` ile, golden'la.
 - **DERS** Ertelenmiş closure (geri al, commit) `WidgetRef` yakalarsa satır dispose olunca iş sessizce koşmaz → store'u mount'luyken çöz; autoDispose family'yi akış ortasında `ref.read`'leme.
-- **DERS** `State.mounted` `dispose()` sırasında hâlâ true → dispose'tan tetiklenen `setState` çöker; Notifier dispose sonrası `state` yazımı `UnmountedRefException` → ayrı `_disposed` bayrağı; await edilen sheet controller'ını State'e ver (OPH-360). Tembel controller `dispose()`'ta ilk kez kurulursa eski Flutter assert atar, dispose'un kalanı atlanır → `initState`'te (OPH-443/466).
+- **DERS** `State.mounted` `dispose()` sırasında hâlâ true → dispose'tan `setState` çöker; Notifier dispose sonrası `state` yazımı da → ayrı `_disposed` bayrağı; await edilen sheet controller'ını State'e ver (OPH-360). Tembel controller `dispose()`'ta ilk kurulursa assert atar, kalanı atlanır → `initState`'te (OPH-443/466).
 - **DERS** Flutter 3.44'te eylemli `SnackBar` süre dolunca kapanmaz → eylemli snackbar yalnız `showAwActionSnackBar` (`persist:false`).
 - **DERS** Web'de dio 204 gövdesi `''` → `as Map` TypeError, temizlik atlanır → `data is Map ? … : {}`.
 - **DERS** Saate bağlı etiket kendiliğinden yenilenmez (askıda timer ateşlemez) → gün listesi gece yarısı+1 sn, zil etiketi dakika başı (`AlarmMinuteTick`) + `resumed`; yazılan an etiketinki, `nowProvider` (OPH-466); `DateTime(y,m,d+1)` (`add(Duration)` DST'de kayar).
@@ -127,7 +127,7 @@
 ## i18n — AwI18n, anahtarlar, check:i18n
 - **KARAR** i18n uygulamanın senkron deposu `AwI18n`, paket yok (async delegate fake-async testte yüklenmez); `boot()` `runApp`'ten önce, `MaterialApp` dil dinleyicisinin İÇİNDE (const child yenilenmez) (ADR-0009).
 - **DERS** `check:i18n` yalnız literal tarar: `Text(değişken)`'le basılan ham enum, argümanla ya da `.tr(` içinde geçen yanlış anahtar, kullanıcının BELGESİNE yazılan dize kaçar → enum'u etiketten geçir, `extraction_test.dart`.
-- **DERS** Çoğul yok → her form ayrı anahtar; `locale` yalnız tarihi biçimler; CLDR AM/PM'den önce U+202F koyar → saati parça bazlı doğrula; dile göre değişen kural her dil için ayrı iddia ister. 24 saatlik yerelde `showTimePicker` metin girişi `alwaysUse24HourFormat`'ı okur (05→17) → yalnız `awShowTimePicker` (OPH-471).
+- **DERS** Çoğul yok → her form ayrı anahtar; `locale` yalnız tarihi biçimler; CLDR AM/PM'den önce U+202F koyar → saati parça bazlı doğrula; dile göre değişen kurala dil başına iddia. 24 saatlik yerelde `showTimePicker` metin girişi `alwaysUse24HourFormat`'ı okur (05→17) → yalnız `awShowTimePicker` (OPH-471).
 
 ## search — TR fold, yerel-önce arama
 - **KARAR** Arama yerel-önce: replikadaki fold motoru otoriter, sunucu FULLTEXT ikincil (ADR-0013, ADR-0014); dışarıya "aksanları yok sayan arama" diye anlatılır, Türkçe farklılaştırıcı diye pazarlanmaz.
@@ -205,7 +205,7 @@
 - **DERS** Uygulama ve widget App Group'a ayrı süreçte yazar: tek kuyruk anahtarında birinin onayı ötekinin basışını siler → eyleme bir anahtar (OPH-430)
 - **DERS** WidgetKit'te canlı saat yok → dakikalık girdiler, ufuk bayttan (~16.6 MB'ı aşan arşivi chronod atar, widget placeholder'da kalır); timeline şimdi + 4 gece yarısı, başlık tarihi ENTRY'den.
 - **DERS** Snapshot'a yeni alan: native taraf eksiğe toleranslı (Swift opsiyonel, Kotlin `optInt`), JSONSerialization (Codable yeni alanı düşürür); iki platformun yerleşimi de pariteye tabi.
-- **DERS** v6'da her girdi kendi gün görünümünü çizer → üst düzeye yazılan native tamamlama görünmez; `awMarkSnapshotDone` Dart'ın kuralıyla her görünüme (sonraki günden sil, sayı, `next`), çizim kuyruktakileri uygular; "+N" = kovanın açık sayısı − çizilen açık satır (`awMoreCount`), 0'da satır yok (tamamlananı saymaz; OPH-451).
+- **DERS** v6'da her girdi kendi gün görünümünü çizer → üst düzeye yazılan native tamamlama görünmez; `awMarkSnapshotDone` Dart kuralıyla her görünüme, çizim kuyruğu uygular; "+N" = kovanın açık sayısı − çizilen açık satır (`awMoreCount`), 0'da satır yok (tamamlananı saymaz; OPH-451).
 - **DERS** Oturum `kSecAttrAccessibleWhenUnlocked` → kilitli iPhone'da başsız yol Keychain'i null okuyup "çıkış yapılmış" sanar → oturum yoksa sessiz çıkış, widget'ı replikadan yine çiz.
 - **DERS** AlarmKit: `Alarm`'da attributes yok (id↔UUID eşlemesi), `.stopped` yok (düğmeler `LiveActivityIntent`), erteleme `.custom` (`.countdown` ikiler) susturmaz → `perform()` hep `stop` (atarsa `cancel`); çalana `cancel` değil `stop` (#49); `NSSupportsLiveActivities` iki Info.plist'te.
 - **DERS** Focus `.active`'i gömer → hatırlatıcı `timeSensitive`; izinsiz iOS onu sessizce `.active`'e düşürür, plugin ayarı vermez → native sonda; `critical` yalnız `isCriticalEnabled`'da; kategori ~4 eylem gösterir.
@@ -260,6 +260,7 @@
 - **DERS** İki OAuth ters yöne bakar: `routes/oauth.js` MCP'nin OAuth 2.1 sunucusu, `lib/oauth-identity.js` Google/Apple ID token. Her giriş kapısı yazmadan önce `lib/sign-in-factors.js` (OPH-381).
 - **DERS** Kullanıcı kontrollü dış URL SSRF'tir: yalnız http/https, IP denetimi DNS'ten SONRA ve her yönlendirmede, gövde tavanı; AI `baseUrl`'inde (`aiFetch`) allowlist yok — bilinçli kabul (SECURITY.md).
 - **DERS** `refresh_tokens` her yenilemede satır yazar: "oturum" = `family_id` ailesi, liste/iptal aile başına; yenileme UA göndermeyebilir → cihaz adı yalnız INSERT'te ("kolon var" ≠ "kolon dolu").
+- **DERS** Yenileme oturumu yalnız sunucu token'ı reddedince siler; cevapsız/5xx/408/429 → null, oturum kalır (OPH-427).
 
 ## extension-seam — uzantı dikişi (yalnız public yüzey)
 - **KARAR** Uzantı ayrı özel depoda (`ee/` iç içe checkout; `.gitignore` + `check:no-ee`); çekirdek işleri CE davranışını değiştirmez (boş defter); public belge/commit'e uzantı tasarımı değil yalnız kayıt kimliği girer.
