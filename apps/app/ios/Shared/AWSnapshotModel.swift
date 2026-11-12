@@ -90,6 +90,17 @@ struct AWTaskRow: Codable, Identifiable {
   /// task the app holds.
   var canCompleteInPlace: Bool { !done && !isEvent && serverOnly != true }
 
+  /// Where a task row without a complete button goes (#50, PR2-03): the app
+  /// at that task. An id that is not a plain token (a URL is input) opens
+  /// the app instead.
+  var taskURL: URL {
+    guard
+      !isEvent, id.range(of: #"^[0-9A-Za-z_-]+$"#, options: .regularExpression) != nil,
+      let url = URL(string: "alliswell://task/\(id)")
+    else { return URL(string: "alliswell://open")! }
+    return url
+  }
+
   /// Where an event row's tap goes: Home with its day selected. Nil for a
   /// task, or for a day that is not `yyyy-MM-dd` (a URL is input).
   var dayURL: URL? {

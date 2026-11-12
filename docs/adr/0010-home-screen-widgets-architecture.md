@@ -182,3 +182,11 @@ most 30 minutes plus jitter, midnight + 0–5 minutes), so a change made elsewhe
 WidgetKit reload, typically 15–60 minutes, with no minute guarantee. A failure backs off and draws
 the App Group snapshot. Android is unchanged (its background turn runs Dart); the macOS widget and
 WidgetKit push are later candidates. The contract is [WIDGETS.md §3.2](../WIDGETS.md#32-widget-self-fetch-contract-ios-50).
+
+**Note — 2026-11-12 (#50, PR2-03/05/09), as shipped.** A widget completion still queued no longer
+picks Dart's snapshot: it is laid over whichever view was drawn, and no fetch runs while it is
+queued or for 90 s after the tap, so the rows stay where the finger saw them and the reload after a
+tap answers at once. A self-fetch still never undoes a local change. With a server view stored, the
+extension fetches at most once per 30-minute reload interval, and a fetch that stored a new view
+reloads the other widgets so they draw the same one. Contract:
+[WIDGETS.md §3.2](../WIDGETS.md#32-widget-self-fetch-contract-ios-50) steps 2, 4 and 5.

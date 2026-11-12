@@ -123,15 +123,26 @@ final class WidgetFetchPolicyTests: XCTestCase {
 
   func testPendingWidgetCompletionKeepsTheRowDone() throws {
     // The circle completed A after the app last wrote; the server, fetched
-    // later still, has A open because the app has not pulled the queue yet.
+    // before the tap, has A open because the app has not pulled the queue
+    // yet. The queued completion does not change which view is drawn
+    // (#50, PR2-03): it lies over that view as done.
     let local = try local()
+    XCTAssertEqual(local.buckets.first?.items.first?.done, true)
     let newer = envelope(fetchedAtMs: nowMs + 60_000)
     let choice = pick(local: local, localWrittenAtMs: nowMs, server: newer, pending: ["A"])
-    XCTAssertEqual(choice.localReason, .pendingCompletion)
-    XCTAssertEqual(local.buckets.first?.items.first?.done, true)
+    let drawn = try XCTUnwrap(choice.serverView, "the view drawn before the tap")
+    XCTAssertEqual(row("A", in: drawn.days[0].buckets?.first { $0.key == "overdue" })?.done, true)
+    // The app's snapshot drawn before the tap stays drawn, A done in it.
+    let older = envelope(fetchedAtMs: nowMs - 60_000)
+    XCTAssertEqual(
+      pick(local: local, localWrittenAtMs: nowMs, server: older, pending: ["A"]).localReason,
+      .localNewer)
+    XCTAssertEqual(
+      pick(local: local, localWrittenAtMs: nowMs, server: newer, pending: ["A"], outbox: 1)
+        .localReason, .pendingOutbox)
 
-    // And wherever the server's view is drawn, the queued completion lies
-    // over it as done, by awMarkSnapshotDone's rules.
+    // Wherever the server's view is drawn, the queued completion lies over
+    // it as done, by awMarkSnapshotDone's rules.
     let view = try XCTUnwrap(
       awServerView(newer, pendingCompletionTaskIds: ["A"], today: "2025-11-12"))
     let today = view.days[0]
@@ -222,9 +233,58 @@ final class WidgetFetchPolicyTests: XCTestCase {
     XCTAssertFalse(shouldFetch(hasLocal: false, profile: profile()))
   }
 
-  func testNoFetchWithinTwoMinutesOfTheLastSuccess() {
-    XCTAssertFalse(shouldFetch(profile: profile(), lastSuccessAtMs: nowMs - 119_999))
-    XCTAssertTrue(shouldFetch(profile: profile(), lastSuccessAtMs: nowMs - 120_000))
+  /// #50, PR2-09: one request per refresh interval while a server view is
+  /// stored — a second widget, or a reload after the app wrote, draws it.
+  func testNoFetchWithinTheRefreshIntervalOfTheLastSuccess() {
+    XCTAssertEqual(kAWFetchMinInterval, kAWReloadInterval)
+    XCTAssertFalse(shouldFetch(profile: profile(), lastSuccessAtMs: nowMs - 5_000))
+    XCTAssertFalse(shouldFetch(profile: profile(), lastSuccessAtMs: nowMs - 1_799_999))
+    XCTAssertTrue(shouldFetch(profile: profile(), lastSuccessAtMs: nowMs - 1_800_000))
+    // No view for this query yet (none stored, or the profile changed and
+    // the app removed it): the turn fetches, however recent the stamp.
+    XCTAssertTrue(
+      awShouldFetch(
+        now: now, hasLocalSnapshot: true, profile: profile(), tokenState: "valid",
+        tokenReadable: true, lastSuccessAtMs: nowMs - 5_000, backoffUntilMs: nil,
+        hasServerView: false))
+  }
+
+  /// #50, PR2-03/05: no request while a completion from the circle is
+  /// queued, nor within 90 s of the circle's last press, so the reload after
+  /// a tap answers at once and the view does not change under the finger.
+  func testNoFetchWhileCompletionOrSoonAfterAnIntent() {
+    func fetches(pending: Bool = false, completedAtMs: Int? = nil, view: Bool = false) -> Bool {
+      awShouldFetch(
+        now: now, hasLocalSnapshot: true, profile: profile(), tokenState: "valid",
+        tokenReadable: true, lastSuccessAtMs: nil, backoffUntilMs: nil,
+        hasServerView: view, pendingCompletion: pending, completedAtMs: completedAtMs)
+    }
+    XCTAssertTrue(fetches())
+    XCTAssertFalse(fetches(pending: true))
+    XCTAssertFalse(fetches(pending: true, completedAtMs: nowMs - 86_400_000))
+    XCTAssertFalse(fetches(completedAtMs: nowMs))
+    XCTAssertFalse(fetches(completedAtMs: nowMs - 89_999))
+    XCTAssertTrue(fetches(completedAtMs: nowMs - 90_000))
+    // A clock moved back a little still waits; a stamp a day ahead of any
+    // honest one does not block.
+    XCTAssertFalse(fetches(completedAtMs: nowMs + 1_000))
+    XCTAssertTrue(fetches(completedAtMs: nowMs + 86_400_000))
+  }
+
+  /// #50, PR2-09: only a 200 that stored another view reloads the other widgets.
+  func testOnlyANewViewReloadsTheOtherWidgets() {
+    let e1 = envelope(fetchedAtMs: nowMs)
+    let e2 = AWServerEnvelope(fetchedAtMs: nowMs, etag: "\"e2\"", query: query, body: serverBody())
+    let otherQuery = AWServerEnvelope(
+      fetchedAtMs: nowMs, etag: "\"e1\"", query: "q2", body: serverBody())
+    XCTAssertTrue(awFetchChangedTheView(.stored, before: nil, after: e1))
+    XCTAssertTrue(awFetchChangedTheView(.stored, before: e1, after: e2))
+    XCTAssertTrue(awFetchChangedTheView(.stored, before: e1, after: otherQuery))
+    XCTAssertFalse(awFetchChangedTheView(.stored, before: e1, after: e1))
+    XCTAssertFalse(awFetchChangedTheView(.stored, before: e1, after: nil))
+    for outcome in [AWWidgetFetchOutcome.skipped, .notModified, .unauthorized, .failed, .discarded] {
+      XCTAssertFalse(awFetchChangedTheView(outcome, before: nil, after: e2))
+    }
   }
 
   func testNoFetchInsideTheBackoff() {
@@ -486,14 +546,14 @@ final class WidgetFetcherTests: XCTestCase {
     _ = await fetcher().refresh()
 
     respond(304, headers: ["ETag": "\"abc\""])
-    clock = start.addingTimeInterval(180)
+    clock = start.addingTimeInterval(kAWFetchMinInterval)
     let outcome = await fetcher().refresh()
     XCTAssertEqual(outcome, .notModified)
     XCTAssertEqual(AWStubProtocol.requests.last?.value(forHTTPHeaderField: "If-None-Match"), "\"abc\"")
     let envelope = try XCTUnwrap(
       AWServerEnvelope(json: defaults.string(forKey: kAWServerSnapshotKey)))
-    XCTAssertEqual(envelope.fetchedAtMs, startMs + 180_000)
-    XCTAssertEqual(int(kAWFetchedAtKey), startMs + 180_000)
+    XCTAssertEqual(envelope.fetchedAtMs, startMs + 1_800_000)
+    XCTAssertEqual(int(kAWFetchedAtKey), startMs + 1_800_000)
     XCTAssertNotNil(awServerView(envelope, pendingCompletionTaskIds: [], today: nil))
   }
 
@@ -577,6 +637,207 @@ final class WidgetFetcherTests: XCTestCase {
     XCTAssertTrue(row.done, "the snapshot the app wrote during the request")
   }
 
+  // MARK: - A tap on the circle (#50, PR2-03, PR2-05, PR2-09)
+
+  private let fetchQuery = "tz=Europe%2FIstanbul&workspaceIds=01JW1&mine=0&private=1&days=3"
+
+  /// The app holds B, C and D today; the server's view holds A (created
+  /// elsewhere, not on the phone yet), B and C.
+  private let slotLocalJSON = """
+    {"v":6,"generatedAt":"2025-11-12T07:50:00.000Z","locale":"tr",
+     "date":{"weekday":"Çarşamba","day":"12","month":"Kasım"},
+     "strings":{"openToday":"3 açık","openTodayPattern":"{count} açık"},
+     "buckets":[{"key":"today","label":"Bugün","count":3,
+       "items":[{"id":"B","title":"B","done":false,"priority":"none"},
+                {"id":"C","title":"C","done":false,"priority":"none"},
+                {"id":"D","title":"D","done":false,"priority":"none"}]}]}
+    """
+
+  private func slotServerBody() -> [String: Any] {
+    func task(_ id: String, _ dueAt: String) -> [String: Any] {
+      ["id": id, "done": false, "priority": "none", "dueAt": dueAt, "timeStyle": "time"]
+    }
+    let items = [
+      task("A", "2025-11-12T10:00:00.000Z"), task("B", "2025-11-12T11:00:00.000Z"),
+      task("C", "2025-11-12T12:00:00.000Z"),
+    ]
+    let day0: [String: Any] = [
+      "date": "2025-11-12", "openToday": 3,
+      "buckets": [["key": "today", "count": 3, "items": items]],
+    ]
+    return ["v": 1, "generatedAt": "2025-11-12T07:59:00.000Z", "tz": zone, "days": [day0]]
+  }
+
+  /// A server view fetched a minute ago, after the app last wrote: it wins.
+  private func storeSlotServerView() {
+    defaults.set(slotLocalJSON, forKey: kAWLocalSnapshotKey)
+    let envelope = AWServerEnvelope(
+      fetchedAtMs: startMs - 60_000, etag: "\"s1\"", query: fetchQuery, body: slotServerBody())
+    defaults.set(envelope.json, forKey: kAWServerSnapshotKey)
+    defaults.set(startMs - 60_000, forKey: kAWFetchedAtKey)
+  }
+
+  /// What the circle's intent does to the App Group (AWWidgetCompleteIntent).
+  @discardableResult
+  private func tap(_ taskId: String) -> String {
+    let eventId = AWAlarmActionQueue.enqueue(
+      action: "complete", taskIds: [taskId], origin: "widget", pressedAt: clock,
+      in: defaults, notify: false)
+    awStampWidgetCompletion(in: defaults, at: clock)
+    return eventId
+  }
+
+  private func todayIds(_ snap: AWSnapshot) -> [String] {
+    snap.buckets.first { $0.key == "today" }?.items.map(\.id) ?? []
+  }
+
+  /// A completion queued by the circle: the turn answers at once from the
+  /// App Group, no request, however long it has been since the last fetch.
+  func testNoFetchWhileCompletionQueued() async throws {
+    respond(200, body: try JSONSerialization.data(withJSONObject: serverBody()))
+    let eventId = tap("L")
+    clock = start.addingTimeInterval(3600)
+
+    let outcome = await fetcher().refresh()
+    XCTAssertEqual(outcome, .skipped)
+    XCTAssertEqual(AWStubProtocol.requests.count, 0)
+    let snap = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 0)
+    XCTAssertEqual(snap.buckets.first?.items.first?.done, true, "the done mark, at once")
+
+    // The app pulled the queue: the next turn may fetch again.
+    AWAlarmActionQueue.ack(eventIds: [eventId], in: defaults)
+    let after = await fetcher().refresh()
+    XCTAssertEqual(after, .stored)
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+  }
+
+  /// Within 90 s of the circle's press no turn fetches, even once the app
+  /// has pulled the queue.
+  func testNoFetchWithin90sOfAnIntent() async throws {
+    respond(200, body: try JSONSerialization.data(withJSONObject: serverBody()))
+    let pressed = clock
+    AWAlarmActionQueue.ack(eventIds: [tap("L")], in: defaults)
+    XCTAssertEqual(int(kAWCompletedAtKey), startMs)
+
+    clock = pressed.addingTimeInterval(89)
+    let early = await fetcher().refresh()
+    XCTAssertEqual(early, .skipped)
+    XCTAssertEqual(AWStubProtocol.requests.count, 0)
+
+    clock = pressed.addingTimeInterval(90)
+    let later = await fetcher().refresh()
+    XCTAssertEqual(later, .stored)
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+  }
+
+  /// Two widgets on one screen (PR2-09): the first turn's fetch stores a new
+  /// view and asks the others to reload; their turns, seconds or minutes
+  /// later, make no request and draw the same stored view.
+  func testSecondWidgetReusesEnvelope() async throws {
+    respond(
+      200, body: try JSONSerialization.data(withJSONObject: serverBody()),
+      headers: ["ETag": "\"abc\""])
+    clock = start.addingTimeInterval(1)
+    let first = await fetcher().turn(fetch: true, today: { "2025-11-12" })
+    XCTAssertTrue(first.changed, "a new view: the other widgets reload")
+    XCTAssertEqual(AWStubProtocol.requests.count, 1)
+
+    for seconds in [6.0, 600, 1_799] {
+      clock = start.addingTimeInterval(seconds)
+      let second = await fetcher().turn(fetch: true, today: { "2025-11-12" })
+      XCTAssertFalse(second.changed, "a reused view reloads nothing, so no loop")
+      XCTAssertEqual(AWStubProtocol.requests.count, 1, "no request at +\(seconds) s")
+      XCTAssertEqual(todayIds(second.snapshot), todayIds(first.snapshot))
+      XCTAssertEqual(second.snapshot.openToday, first.snapshot.openToday)
+    }
+
+    // One refresh interval on, the next turn asks again; a 304 is no new view.
+    respond(304, headers: ["ETag": "\"abc\""])
+    clock = start.addingTimeInterval(1 + kAWFetchMinInterval)
+    let next = await fetcher().turn(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 2)
+    XCTAssertFalse(next.changed)
+  }
+
+  /// The server's view was drawn ([A, B, C], A only on the server). A tap on
+  /// B's circle leaves every row where it was and B done in its own slot:
+  /// switching to the app's view ([B, C, D]) moved B up a row, and a second
+  /// tap at the same point completed C.
+  func testCompletedRowKeepsItsSlot() async throws {
+    storeSlotServerView()
+    let before = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(todayIds(before), ["A", "B", "C"])
+
+    tap("B")
+    clock = start.addingTimeInterval(2)
+    let after = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(AWStubProtocol.requests.count, 0)
+    XCTAssertEqual(todayIds(after), ["A", "B", "C"], "no row moved under the finger")
+    let rows = try XCTUnwrap(after.buckets.first { $0.key == "today" }?.items)
+    XCTAssertEqual(rows.map(\.done), [false, true, false])
+    XCTAssertFalse(rows[1].canCompleteInPlace, "a done row has no button to press again")
+    XCTAssertEqual(after.openToday, 2)
+
+    // The app's own view drawn before the tap keeps its rows too.
+    defaults.set(
+      profileJSON(localWrittenAtMs: startMs), forKey: kAWFetchProfileKey)
+    let local = await fetcher().drawnSnapshot(fetch: true, today: { "2025-11-12" })
+    XCTAssertEqual(todayIds(local), ["B", "C", "D"])
+    XCTAssertEqual(local.buckets.first?.items.map(\.done), [true, false, false])
+  }
+
+  /// The rows both views hold are drawn in the same order whichever view
+  /// wins, so a swap at a refresh shows or hides the rows only one view
+  /// holds and moves nothing else around.
+  func testRowsInBothViewsKeepTheirOrder() throws {
+    storeSlotServerView()
+    let local = try JSONDecoder().decode(AWSnapshot.self, from: Data(slotLocalJSON.utf8))
+    let server = fetcher().snapshotToDraw(local: local, today: "2025-11-12")
+    XCTAssertEqual(todayIds(server), ["A", "B", "C"])
+    let shared = Set(todayIds(local)).intersection(todayIds(server))
+    XCTAssertEqual(
+      todayIds(server).filter(shared.contains), todayIds(local).filter(shared.contains))
+    // The same holds with a completion laid over both views.
+    tap("C")
+    let overServer = fetcher().snapshotToDraw(
+      local: awLoadLocalSnapshot(in: defaults, today: "2025-11-12"), today: "2025-11-12")
+    let overLocal = awLoadLocalSnapshot(in: defaults, today: "2025-11-12")
+    XCTAssertEqual(todayIds(overServer), ["A", "B", "C"])
+    XCTAssertEqual(todayIds(overLocal), ["B", "C", "D"])
+    XCTAssertEqual(
+      todayIds(overServer).filter(shared.contains), todayIds(overLocal).filter(shared.contains))
+  }
+
+  /// A row only the server holds opens the app at its task (PR2-03): its
+  /// Link goes to the task, not to the widget-wide `alliswell://open`.
+  func testAServerOnlyRowOpensItsTask() throws {
+    storeSlotServerView()
+    let local = try JSONDecoder().decode(AWSnapshot.self, from: Data(slotLocalJSON.utf8))
+    let rows = try XCTUnwrap(
+      fetcher().snapshotToDraw(local: local, today: "2025-11-12").buckets.first?.items)
+    let a = try XCTUnwrap(rows.first { $0.id == "A" })
+    XCTAssertEqual(a.serverOnly, true)
+    XCTAssertFalse(a.canCompleteInPlace)
+    XCTAssertEqual(a.taskURL.absoluteString, "alliswell://task/A")
+    XCTAssertEqual(
+      AWTaskRow(
+        id: "01JABC", title: "", done: false, priority: "none", time: nil, projectColor: nil,
+        kind: nil, day: nil
+      ).taskURL.absoluteString, "alliswell://task/01JABC")
+    // An id that is not a plain token, and an event, open the app.
+    XCTAssertEqual(
+      AWTaskRow(
+        id: "x/../y?z", title: "", done: false, priority: "none", time: nil, projectColor: nil,
+        kind: nil, day: nil
+      ).taskURL.absoluteString, "alliswell://open")
+    XCTAssertEqual(
+      AWTaskRow(
+        id: "E", title: "", done: false, priority: "none", time: nil, projectColor: nil,
+        kind: "event", day: "2025-11-12"
+      ).taskURL.absoluteString, "alliswell://open")
+  }
+
   // MARK: - A profile that changed during the request
 
   /// "Private widget" turned on while a request made without it was still
@@ -641,7 +902,7 @@ final class WidgetFetcherTests: XCTestCase {
         headerFields: ["ETag": "\"abc\""])!
       return (response, Data())
     }
-    clock = start.addingTimeInterval(180)
+    clock = start.addingTimeInterval(kAWFetchMinInterval)
     let outcome = await fetcher().refresh()
     XCTAssertEqual(outcome, .discarded)
     XCTAssertNil(defaults.string(forKey: kAWServerSnapshotKey))
@@ -700,7 +961,7 @@ final class WidgetFetcherTests: XCTestCase {
       hooked.set(turnedPrivate, forKey: kAWFetchProfileKey)
       hooked.removeObject(forKey: kAWServerSnapshotKey)
     }
-    clock = start.addingTimeInterval(180)
+    clock = start.addingTimeInterval(kAWFetchMinInterval)
     let outcome = await fetcher().refresh()
     XCTAssertNil(hooked.beforeServerWrite, "the write went through the hook")
     XCTAssertEqual(outcome, .discarded)

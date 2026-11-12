@@ -31,6 +31,9 @@ let kAWFetchedAtKey = "aw_widget_fetched_at_ms"
 let kAWFetchFailuresKey = "aw_widget_fetch_failures"
 /// UTC ms; no fetch before it.
 let kAWBackoffUntilKey = "aw_widget_backoff_until_ms"
+/// UTC ms of the last completion from the widget's circle; the extension
+/// stamps it in the intent. No fetch within 90 s of it (#50, PR2-03).
+let kAWCompletedAtKey = "aw_widget_completed_at_ms"
 
 /// A key's text, nil when it is missing or empty. The app removes a key by
 /// writing the empty string — `home_widget` 0.9.3 aborts the iOS app on a
@@ -43,9 +46,16 @@ func awStoredString(_ defaults: UserDefaults, _ key: String) -> String? {
 
 // MARK: - Timing
 
-/// No new fetch within this long of the last success: the N widget instances
-/// WidgetKit reloads together make one request.
-let kAWFetchMinInterval: TimeInterval = 120
+/// No new fetch within this long of the last success while a usable server
+/// view is stored: the refresh interval (#50, PR2-09). Every other turn —
+/// a second widget asking seconds later, a reload after the app wrote, a
+/// reload after a tap — draws the stored view at once instead of waiting up
+/// to 8 s for a request whose answer would move rows under the finger.
+let kAWFetchMinInterval: TimeInterval = kAWReloadInterval
+/// No fetch while a completion from the circle is queued, nor within this
+/// long of the last one: the reload after a tap answers at once from the
+/// App Group, and the rows stay where the finger saw them (#50, PR2-03/05).
+let kAWCompletionQuietInterval: TimeInterval = 90
 /// The first backoff; each failure in a row doubles it, up to the cap.
 let kAWBackoffBase: TimeInterval = 300
 let kAWBackoffCap: TimeInterval = 7200
@@ -292,8 +302,6 @@ enum AWLocalReason: Equatable {
   case noServerView
   /// The outbox holds a change the server has not seen.
   case pendingOutbox
-  /// A completion from the widget's circle is still queued for the app.
-  case pendingCompletion
   /// The app wrote its snapshot at or after the fetch (or its time is unknown).
   case localNewer
 }
@@ -319,10 +327,16 @@ enum AWSnapshotChoice {
 ///
 /// The app's snapshot unless every one of these holds: it exists; the envelope
 /// was fetched with the current profile's `query` and decodes; the outbox is
-/// empty; no completion from the circle is queued; and the fetch is strictly
-/// newer than the app's last write. Both stamps are the device's own clock —
-/// the server's `generatedAt` is never compared. A self-fetch never undoes a
-/// local change.
+/// empty; and the fetch is strictly newer than the app's last write. Both
+/// stamps are the device's own clock — the server's `generatedAt` is never
+/// compared. A self-fetch never undoes a local change.
+///
+/// A completion from the circle still queued does not pick the view (#50,
+/// PR2-03): it is laid over whichever view wins as done, and no fetch runs
+/// while it is queued (`awShouldFetch`), so the view drawn before the tap is
+/// the view drawn after it — the tapped row keeps its slot, and no row moves
+/// under the finger. Switching to the app's view on a tap dropped the rows
+/// only the server holds, and the next tap landed on another task.
 func awPickSnapshot(
   local: AWSnapshot?, localWrittenAtMs: Int?, server: AWServerEnvelope?, query: String?,
   pendingCompletionTaskIds: [String], pendingOutbox: Int, today: String?
@@ -334,7 +348,6 @@ func awPickSnapshot(
       server, pendingCompletionTaskIds: pendingCompletionTaskIds, today: today)
   else { return .local(.noServerView) }
   if pendingOutbox > 0 { return .local(.pendingOutbox) }
-  if !pendingCompletionTaskIds.isEmpty { return .local(.pendingCompletion) }
   guard let localWrittenAtMs, localWrittenAtMs < server.fetchedAtMs else {
     return .local(.localNewer)
   }
@@ -352,26 +365,52 @@ func awMs(_ date: Date) -> Int {
 ///
 /// Never without a snapshot from the app, a profile that decoded (with its
 /// `private` flag) and a workspace to ask for, a token the Keychain gave and
-/// the server has not refused. Not inside the backoff, and not within two
-/// minutes of the last success. A stamp later than any honest one could be —
-/// the device clock was set back — is ignored rather than blocking for as long
-/// as the clock was moved.
+/// the server has not refused. Not inside the backoff. Not while a completion
+/// from the circle is queued or within 90 s of the last one (#50, PR2-03):
+/// the reload after a tap answers at once, from what the App Group holds.
+/// And, while a server view for this query is stored, not within the refresh
+/// interval of the last success: one request per interval, however many
+/// widgets ask (#50, PR2-09). Without a usable view (none yet, or one the
+/// profile no longer asks for) the turn fetches. A stamp later than any
+/// honest one could be — the device clock was set back — is ignored rather
+/// than blocking for as long as the clock was moved.
 func awShouldFetch(
   now: Date, hasLocalSnapshot: Bool, profile: AWWidgetFetchProfile?, tokenState: String?,
-  tokenReadable: Bool, lastSuccessAtMs: Int?, backoffUntilMs: Int?
+  tokenReadable: Bool, lastSuccessAtMs: Int?, backoffUntilMs: Int?,
+  hasServerView: Bool = true, pendingCompletion: Bool = false, completedAtMs: Int? = nil
 ) -> Bool {
   guard
     hasLocalSnapshot, let profile, !profile.scope.workspaceIds.isEmpty,
-    tokenState != kAWTokenStateInvalid, tokenReadable
+    tokenState != kAWTokenStateInvalid, tokenReadable, !pendingCompletion
   else { return false }
   let nowMs = awMs(now)
   if let until = backoffUntilMs, until > nowMs, until <= nowMs + Int(kAWBackoffCap * 1000) {
     return false
   }
-  if let last = lastSuccessAtMs, last <= nowMs, nowMs - last < Int(kAWFetchMinInterval * 1000) {
+  let quietMs = Int(kAWCompletionQuietInterval * 1000)
+  if let completed = completedAtMs, completed <= nowMs + quietMs, nowMs - completed < quietMs {
+    return false
+  }
+  if hasServerView, let last = lastSuccessAtMs, last <= nowMs,
+    nowMs - last < Int(kAWFetchMinInterval * 1000)
+  {
     return false
   }
   return true
+}
+
+/// Whether a turn's fetch changed the stored server view, so the other
+/// widgets on the screen reload and draw it too (#50, PR2-09): a 200 whose
+/// envelope differs from the one stored before — another query, another
+/// ETag, or none before. A 304, a skip or a failure changes nothing. The
+/// reload cannot loop: the turns it starts fall inside the refresh interval
+/// and do not fetch.
+func awFetchChangedTheView(
+  _ outcome: AWWidgetFetchOutcome, before: AWServerEnvelope?, after: AWServerEnvelope?
+) -> Bool {
+  guard outcome == .stored, let after else { return false }
+  guard let before, !before.etag.isEmpty, !after.etag.isEmpty else { return true }
+  return before.query != after.query || before.etag != after.etag
 }
 
 /// The backoff after a failure: min(5 min · 2ⁿ, 2 h), n = the failures in a

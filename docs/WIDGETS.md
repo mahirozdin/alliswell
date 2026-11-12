@@ -343,9 +343,10 @@ mint route is never called.
 | `aw_widget_fetch_profile` | String (JSON, below) | Dart | what a fetch needs; **absent = never fetch** |
 | `aw_widget_token_state` | String `valid` · `invalid` | Swift writes `invalid` on a 401; Dart writes `valid` after a mint | `invalid` stops fetching until the app re-mints |
 | `aw_widget_server_snapshot` | String (JSON envelope, below) | Swift | the last 200 answer; never written over `aw_widget_snapshot` |
-| `aw_widget_fetched_at_ms` | Int, UTC ms | Swift | last 200 or 304; no new fetch within 2 minutes of it |
+| `aw_widget_fetched_at_ms` | Int, UTC ms | Swift | last 200 or 304; while a view for the current query is stored, no new fetch within 30 minutes (the reload interval) of it |
 | `aw_widget_fetch_failures` | Int | Swift | failures in a row; 0 after a success |
 | `aw_widget_backoff_until_ms` | Int, UTC ms | Swift | no fetch before it |
+| `aw_widget_completed_at_ms` | Int, UTC ms | Swift (the circle's intent) | last completion from the circle; no fetch within 90 s of it |
 
 **Removing a key** means writing the empty string, never a null: `home_widget` 0.9.3 hands a
 Dart null to iOS as `NSNull` and `NSUserDefaults` aborts the app on it (#50, PR2-01). Every
@@ -353,7 +354,7 @@ reader — Dart and Swift — treats an empty or missing value as absent.
 
 On sign-out, an account switch, or a session the server refused, Dart deletes the device on the
 server first where it still can (that revokes the token, ADR-0070), then removes every key above
-except `aw_widget_snapshot`, then the Keychain item, then writes `aw_widget_snapshot` empty (no
+except `aw_widget_snapshot` and `aw_widget_completed_at_ms` (a time, nothing about a task), then the Keychain item, then writes `aw_widget_snapshot` empty (no
 row, no project, no event: the signed-out state) and asks for a reload — on every widget platform,
 since nothing else would write over the person's rows. With the profile gone the extension never
 fetches and draws that empty snapshot.
@@ -494,25 +495,36 @@ token).
 
 1. Load `aw_widget_snapshot` first; with none, keep today's behaviour and do not fetch.
 2. Fetch only when all hold: a profile that decodes (with `private`; an empty one is absent); `aw_widget_token_state` is
-   not `invalid`; the Keychain item reads; now ≥ `aw_widget_backoff_until_ms`; now −
-   `aw_widget_fetched_at_ms` ≥ 2 minutes.
+   not `invalid`; the Keychain item reads; now ≥ `aw_widget_backoff_until_ms`; no widget completion
+   is queued (`aw_alarm_pending_actions`, `complete`) and now − `aw_widget_completed_at_ms` ≥ 90 s,
+   so the reload after a tap answers at once from the App Group; and either no envelope for the
+   current query is stored or now − `aw_widget_fetched_at_ms` ≥ 30 minutes — one request per
+   reload interval, however many widgets ask (#50, PR2-03/05/09).
 3. One request: `URLSession(configuration: .ephemeral)`, `timeoutIntervalForRequest` 6 s,
    `timeoutIntervalForResource` 8 s, `waitsForConnectivity = false`.
 4. `200` → write the envelope and `aw_widget_fetched_at_ms`, failures 0, remove the backoff.
    `304` → refresh `fetchedAtMs` and the stamp, failures 0. `401` → `aw_widget_token_state =
    invalid`. Anything else (400, 403, 429, 5xx, timeout, offline) → failures + 1 and backoff until
-   now + min(5 min × 2^n, 2 h), n = the failures before this one. An answer whose profile is no
+   now + min(5 min × 2^n, 2 h), n = the failures before this one. A `200` whose envelope differs
+   from the one stored before (another query or ETag, or none) reloads the widget kind, so every
+   widget on the screen draws the same view; their turns fall inside the 30 minutes and do not
+   fetch. An answer whose profile is no
    longer current (`baseUrl` or query changed while it was out, e.g. "Private widget" turned on)
    writes nothing — no envelope, no stamp, no failure. The profile is read again after the
    envelope is written too: changed by then, the write is removed and counts as nothing.
-5. **Choose** (decision K-11): no usable envelope → local; `pendingOutbox > 0` → local; a widget
-   completion still queued (`aw_alarm_pending_actions`, `complete`) → local; `localWrittenAtMs ≥
-   fetchedAtMs` → local; else the server's days. Both clocks are the device's, which is why the
+5. **Choose** (decision K-11): no usable envelope → local; `pendingOutbox > 0` → local;
+   `localWrittenAtMs ≥ fetchedAtMs` → local; else the server's days. A widget completion still
+   queued does not pick the view: with no fetch while it is queued (step 2), the view drawn before
+   the tap is drawn after it, the tapped row done in its own slot, so no row moves under the
+   finger (switching to the local view dropped the server-only rows and the next tap hit another
+   task, #50 PR2-03). Both clocks are the device's, which is why the
    envelope's `fetchedAtMs` and not the server's `generatedAt` is compared. Queued completions are
    overlaid as done on whichever wins (`awMarkSnapshotDone`'s rules). A self-fetch never undoes a
    local change. `aw_widget_snapshot` is read after the request, not before it. A server task
-   row the app's snapshot does not hold draws a plain circle (no complete intent; the tap opens
-   the app): the app has no copy to apply a queued completion to.
+   row the app's snapshot does not hold draws a plain circle (no complete intent): the app has no
+   copy to apply a queued completion to. Every task row without a complete button is a `Link` to
+   `alliswell://task/<id>` (a row's `widgetURL` is one of many, which WidgetKit leaves undefined),
+   with the button's 28 pt circle frame so all rows share one inset.
 6. Reload `.after(min(clock horizon, now + 30 min + 0–300 s))`; the midnight entry at 00:01 + 0–300 s.
 
 ## 4. Interactivity — quick-add & quick-complete

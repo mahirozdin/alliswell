@@ -139,16 +139,22 @@ struct AWWidgetFetcher {
     let tokenState = awStoredString(defaults, kAWTokenStateKey)
     let lastSuccess = defaults.object(forKey: kAWFetchedAtKey) as? Int
     let backoffUntil = defaults.object(forKey: kAWBackoffUntilKey) as? Int
+    let query = profile.map { awSnapshotQuery(profile: $0, timeZone: timeZone) }
+    // An envelope fetched with another query is not used, not even here.
+    let stored = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
+    let current = stored.flatMap { $0.query == query ? $0 : nil }
     // Everything but the token first: the Keychain is read only for a turn
     // that would fetch.
     guard
       awShouldFetch(
         now: start, hasLocalSnapshot: hasLocal, profile: profile, tokenState: tokenState,
-        tokenReadable: true, lastSuccessAtMs: lastSuccess, backoffUntilMs: backoffUntil),
-      let profile, let token = readToken()
+        tokenReadable: true, lastSuccessAtMs: lastSuccess, backoffUntilMs: backoffUntil,
+        hasServerView: current != nil,
+        pendingCompletion: !awQueuedCompletionTaskIds(in: defaults).isEmpty,
+        completedAtMs: defaults.object(forKey: kAWCompletedAtKey) as? Int),
+      let profile, let query, let token = readToken()
     else { return .skipped }
 
-    let query = awSnapshotQuery(profile: profile, timeZone: timeZone)
     guard let url = awWidgetSnapshotURL(baseUrl: profile.baseUrl, query: query) else {
       return .skipped
     }
@@ -156,9 +162,7 @@ struct AWWidgetFetcher {
     request.httpMethod = "GET"
     request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
     request.setValue("application/json", forHTTPHeaderField: "Accept")
-    // An envelope fetched with another query is not used, not even here.
-    let stored = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
-    let usable = stored.flatMap { $0.query == query && !$0.etag.isEmpty ? $0 : nil }
+    let usable = current.flatMap { $0.etag.isEmpty ? nil : $0 }
     if let usable { request.setValue(usable.etag, forHTTPHeaderField: "If-None-Match") }
 
     let data: Data
@@ -258,9 +262,24 @@ struct AWWidgetFetcher {
   /// out; the choice reads the new count, so it must draw the new snapshot
   /// too, or a change still waiting to sync comes back undone.
   func drawnSnapshot(fetch: Bool, today: () -> String) async -> AWSnapshot {
-    if fetch { await refresh() }
+    await turn(fetch: fetch, today: today).snapshot
+  }
+
+  /// `drawnSnapshot`, and whether this turn's fetch changed the stored
+  /// server view — then the other widgets reload to draw it too, so two
+  /// widgets on one screen never show two views (#50, PR2-09).
+  func turn(fetch: Bool, today: () -> String) async -> (snapshot: AWSnapshot, changed: Bool) {
+    var changed = false
+    if fetch {
+      let before = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
+      let outcome = await refresh()
+      let after = AWServerEnvelope(json: awStoredString(defaults, kAWServerSnapshotKey))
+      changed = awFetchChangedTheView(outcome, before: before, after: after)
+    }
     let day = today()
-    return snapshotToDraw(local: awLoadLocalSnapshot(in: defaults, today: day), today: day)
+    let snapshot = snapshotToDraw(
+      local: awLoadLocalSnapshot(in: defaults, today: day), today: day)
+    return (snapshot, changed)
   }
 
   /// The choice (step 5, K-11) for `local`, the app's snapshot as the widget
@@ -320,6 +339,12 @@ func awLoadLocalSnapshot(in defaults: UserDefaults, today: String) -> AWSnapshot
     data = out
   }
   return (try? JSONDecoder().decode(AWSnapshot.self, from: data)) ?? .empty
+}
+
+/// The intent's stamp (WIDGETS.md §3.2, `aw_widget_completed_at_ms`): the
+/// circle completed a task at `date`. For 90 s no turn fetches (#50, PR2-03).
+func awStampWidgetCompletion(in defaults: UserDefaults?, at date: Date = Date()) {
+  defaults?.set(awMs(date), forKey: kAWCompletedAtKey)
 }
 
 /// The task ids of every completion from the widget's circle still queued

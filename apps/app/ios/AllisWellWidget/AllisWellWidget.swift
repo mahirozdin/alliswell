@@ -83,13 +83,17 @@ func loadAWSnapshot() -> AWSnapshot {
 /// the contract allows it (8 s at most; any failure keeps the App Group
 /// snapshot). The app's snapshot is read after the request, never before it:
 /// the app may complete a task and write both while the request is out.
+/// A turn whose fetch stored a new server view reloads the other widgets,
+/// so two widgets on one screen draw the same view (#50, PR2-09); their
+/// turns fall inside the refresh interval and do not fetch again.
 /// iOS only: the macOS widget's self-fetch is a later candidate.
 func loadAWDrawnSnapshot(fetch: Bool) async -> AWSnapshot {
   #if os(iOS)
     guard let fetcher = AWWidgetFetcher.live() else { return loadAWSnapshot() }
-    let snapshot = await fetcher.drawnSnapshot(fetch: fetch, today: awToday)
+    let turn = await fetcher.turn(fetch: fetch, today: awToday)
     fetcher.session.finishTasksAndInvalidate()
-    return snapshot
+    if turn.changed { WidgetCenter.shared.reloadTimelines(ofKind: kWidgetKind) }
+    return turn.snapshot
   #else
     return loadAWSnapshot()
   #endif
@@ -150,6 +154,9 @@ struct AWWidgetCompleteIntent: AppIntent {
     // Queue entry v2 (NOTIFICATIONS.md §2b.3): kept until Dart acks it.
     AWAlarmActionQueue.enqueue(action: "complete", taskIds: [taskId], origin: "widget")
     markAWSnapshotDone(taskId: taskId)
+    // #50, PR2-03/05: the reload below, and every turn for 90 s, answers at
+    // once from the App Group — no request, no swap of views under the finger.
+    awStampWidgetCompletion(in: UserDefaults(suiteName: kAppGroupId))
     WidgetCenter.shared.reloadTimelines(ofKind: kWidgetKind)
     return .result()
   }
@@ -673,7 +680,22 @@ struct AWTaskRowView: View {
     }
   }
 
-  private var taskRow: some View {
+  @ViewBuilder private var taskRow: some View {
+    if #available(iOS 17.0, macOS 14.0, *), row.canCompleteInPlace {
+      rowContent
+        // OPH-188/189: the row opens ITS task, not just the app. Needs the
+        // routing OPH-189 added — before that this URL produced "No route for …".
+        .widgetURL(URL(string: "alliswell://task/\(row.id)"))
+    } else {
+      // #50, PR2-03: a row with no complete button — a task only the server's
+      // view holds, a done one, iOS 16's — opens its task through a Link.
+      // A `widgetURL` here was one of many in the widget, which WidgetKit
+      // leaves undefined: the server-only row's tap opened nothing.
+      Link(destination: row.taskURL) { rowContent }
+    }
+  }
+
+  private var rowContent: some View {
     HStack(spacing: 8) {
       // OPH-188: the circle is a BUTTON on iOS 17+. WidgetKit performs the
       // intent in the background — no app launch — and the press lands in the
@@ -695,9 +717,12 @@ struct AWTaskRowView: View {
         // OPH-451 (IOS-11): VoiceOver read the symbol's name ("Circle").
         .accessibilityLabel(awCompleteLabel(title: row.title, strings: strings))
       } else {
+        // #50, PR2-08: the same 28 pt frame as the button's, so every row's
+        // circle and title start at the same inset.
         Image(systemName: row.done ? "largecircle.fill.circle" : "circle")
           .foregroundStyle(row.done ? Color.green : Color.secondary)
           .imageScale(.medium)
+          .frame(width: 28, height: 28)
       }
       if let flag = priorityColor(row.priority) {
         Circle().fill(flag).frame(width: 6, height: 6)
@@ -714,9 +739,6 @@ struct AWTaskRowView: View {
         Circle().fill(color).frame(width: 8, height: 8)
       }
     }
-    // OPH-188/189: the row opens ITS task, not just the app. Needs the routing
-    // OPH-189 added — before that this URL produced "No route for …".
-    .widgetURL(URL(string: "alliswell://task/\(row.id)"))
   }
 }
 
