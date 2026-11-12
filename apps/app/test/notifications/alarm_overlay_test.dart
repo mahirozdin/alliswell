@@ -930,6 +930,49 @@ void main() {
       },
     );
 
+    // #47 / decisions §3.1: the first action silences the list — the
+    // Android notification looping for the minute included, though another
+    // of its members still rings in the app.
+    test(
+      'a local row action cancels the shown notification ringing the list',
+      () async {
+        final gateway = FakeNotificationsGateway();
+        gateway.active[50] = const ActiveAlarmNotification(
+          id: 50,
+          urgent: true,
+          reminderIds: ['R1', 'R3'],
+          taskIds: ['T-R1', 'T-R3'],
+        );
+        // An ordinary reminder of the same task is not the alarm's sound.
+        gateway.active[51] = const ActiveAlarmNotification(
+          id: 51,
+          urgent: false,
+          reminderIds: ['R1'],
+        );
+        boot(gateway: gateway);
+        final r1 = alarm(
+          rid: 'R1',
+          remindAt: now.subtract(const Duration(seconds: 60)),
+        );
+        final r3 = alarm(
+          rid: 'R3',
+          remindAt: now.subtract(const Duration(seconds: 20)),
+        );
+        feed.add([r1, r3]);
+        await pumpEventQueue();
+        expect(overlay().ringing, hasLength(2));
+
+        expect(
+          await controller().actOnRow('T-R1', AlarmRowAction.acknowledge),
+          isTrue,
+        );
+        await pumpEventQueue();
+        expect(overlay().ringing.single.reminderId, 'R3');
+        expect(gateway.cancelled, [50]);
+        expect(gateway.active.keys, [51]);
+      },
+    );
+
     test(
       'three urgent alarms in one minute ring as one screen listing all three',
       () async {

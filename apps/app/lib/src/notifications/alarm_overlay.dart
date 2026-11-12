@@ -535,9 +535,45 @@ class AlarmOverlayController extends Notifier<AlarmOverlayState> {
   /// Stop the in-app sound now, synchronously — the first thing every ring
   /// screen action does, before any await. An interaction: if rows remain,
   /// the sound comes back after [kAlarmResumeAfter] untouched.
+  ///
+  /// The Android notification ringing the list goes too (#47, decisions
+  /// §3.1: the first action silences the list): a grouped insistent
+  /// notification would otherwise keep looping for the members still on
+  /// screen, and [activeToCancel] keeps it while any of them rings.
   void silence() {
     _stopSound();
+    _cancelRingingNotifications(state.ringing);
     interacted();
+  }
+
+  /// Cancels the shown urgent OS notifications that ring any of [rows]
+  /// (Android only — every other gateway shows none). Fire-and-forget: the
+  /// action never waits for the plugin, and a failure is only printed.
+  void _cancelRingingNotifications(List<AlarmInput> rows) {
+    if (rows.isEmpty) return;
+    final reminderIds = {for (final a in rows) a.reminderId};
+    final taskIds = {for (final a in rows) a.taskId};
+    final NotificationsGateway gateway;
+    try {
+      gateway = ref.read(notificationsGatewayProvider);
+    } on Object {
+      return; // No notification surface here.
+    }
+    unawaited(() async {
+      try {
+        for (final n in await gateway.activeNotifications()) {
+          if (!n.urgent || n.id == kAlarmTestNotificationId) continue;
+          if (n.reminderIds.any(reminderIds.contains) ||
+              n.taskIds.any(taskIds.contains)) {
+            await gateway.cancel(n.id);
+          }
+        }
+      } on Object catch (error) {
+        debugPrint(
+          'alarm overlay: silencing a shown notification failed: $error',
+        );
+      }
+    }());
   }
 
   List<AlarmKitScheduled> _covering(AlarmInput alarm) =>
