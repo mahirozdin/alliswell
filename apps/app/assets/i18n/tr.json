@@ -946,6 +946,7 @@
       "close": "7 gün gizle"
     },
     "snoozeRingsAt": "{time} çalar",
+    "snoozeJoinsGroup": "{time} çalar · başka alarmla birlikte",
     "snoozeConfirmed": "{time} tekrar çalacak",
     "snoozeCustom": "Saat seç…",
     "silence": "Süresiz ertele",
