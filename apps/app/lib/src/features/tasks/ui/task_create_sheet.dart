@@ -22,6 +22,10 @@ import '../../projects/providers.dart';
 import '../../projects/ui/project_picker.dart';
 import '../../tags/ui/tag_input.dart';
 import '../../ee/providers.dart';
+import '../../../notifications/alarm_overlay.dart'
+    show alarmClockProvider, alarmFeedProvider;
+import '../../../notifications/planner.dart' show AlarmInput;
+import '../../../notifications/urgent_minute.dart';
 import '../../workspaces/workspaces.dart';
 import '../data/task.dart';
 import '../data/task_defaults.dart';
@@ -414,6 +418,28 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
       await awPickDateTime(context, ref, current: current, anchor: anchor) ??
       current;
 
+  Future<void> _pickDue() async {
+    final picked = await _pickDateTime(_dueAt);
+    if (!mounted) return;
+    setState(() {
+      _dueAt = picked;
+      _syncAutoReminder();
+    });
+  }
+
+  Future<void> _pickRemind() async {
+    // A reminder belongs near its deadline, so it opens on the due day when
+    // there is one (OPH-173).
+    final picked = await _pickDateTime(_remindAt, anchor: _dueAt);
+    if (!mounted) return;
+    setState(() {
+      if (picked != _remindAt) {
+        _remindAt = picked;
+        _remindAuto = false;
+      }
+    });
+  }
+
   Future<void> _create() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() {
@@ -747,13 +773,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 _dueAt = null;
                 _syncAutoReminder();
               }),
-              onTap: () async {
-                final picked = await _pickDateTime(_dueAt);
-                setState(() {
-                  _dueAt = picked;
-                  _syncAutoReminder();
-                });
-              },
+              onTap: _pickDue,
             ),
             const SizedBox(height: 8),
             _SheetTile(
@@ -768,17 +788,7 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                 // An explicit clear is a decision — stop deriving.
                 _remindAuto = false;
               }),
-              onTap: () async {
-                // A reminder belongs near its deadline, so it opens on the
-                // due day when there is one (OPH-173).
-                final picked = await _pickDateTime(_remindAt, anchor: _dueAt);
-                setState(() {
-                  if (picked != _remindAt) {
-                    _remindAt = picked;
-                    _remindAuto = false;
-                  }
-                });
-              },
+              onTap: _pickRemind,
             ),
             const SizedBox(height: 8),
             // OPH-372 (DESIGN §38 W3): how long it takes — the calendar
@@ -816,22 +826,39 @@ class _TaskCreateSheetState extends ConsumerState<TaskCreateSheet> {
                   canProvider('alarms.create_urgent'),
                 );
                 return _SheetSurface(
-                  child: SwitchListTile(
-                    key: const Key('task-sheet-urgent'),
-                    title: Text('task.urgentAlarm'.tr()),
-                    subtitle: Text(
-                      canUrgent
-                          ? 'task.urgentAlarmSub'.tr()
-                          : 'perm.deniedUrgentAlarm'.tr(),
-                    ),
-                    secondary: Icon(
-                      Icons.notification_important_outlined,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    value: _isUrgent && canUrgent,
-                    onChanged: canUrgent
-                        ? (v) => setState(() => _isUrgent = v)
-                        : null,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
+                        key: const Key('task-sheet-urgent'),
+                        title: Text('task.urgentAlarm'.tr()),
+                        subtitle: Text(
+                          canUrgent
+                              ? 'task.urgentAlarmSub'.tr()
+                              : 'perm.deniedUrgentAlarm'.tr(),
+                        ),
+                        secondary: Icon(
+                          Icons.notification_important_outlined,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        value: _isUrgent && canUrgent,
+                        onChanged: canUrgent
+                            ? (v) => setState(() => _isUrgent = v)
+                            : null,
+                      ),
+                      // OPH-444 (#47): a minute another urgent alarm already
+                      // holds is said, never blocked or shifted.
+                      UrgentMinuteHints(
+                        urgent: _isUrgent && canUrgent,
+                        remindAt: _remindAt,
+                        dueAt: _dueAt,
+                        taskId: widget.task?.id,
+                        padding: const EdgeInsets.fromLTRB(16, 0, 8, 8),
+                        onChangeTime: (kind) => unawaited(
+                          kind == 'due' ? _pickDue() : _pickRemind(),
+                        ),
+                      ),
+                    ],
                   ),
                 );
               },
@@ -1038,3 +1065,80 @@ class _SheetHeader extends StatelessWidget {
 // sites unchanged.
 typedef _SheetSurface = AwSheetSurface;
 typedef _SheetTile = AwSheetTile;
+
+/// OPH-444 (#47, owner answer 3): under an urgent row, one line per alarm
+/// instant of this task whose UTC minute already holds another task's urgent
+/// alarm — "09:00’da 2 acil alarm birlikte çalacak" — and "Saati değiştir",
+/// which opens that instant's own picker ([onChangeTime] gets `remind` or
+/// `due`). Never a dialog and never a disabled Save: the alarms simply ring
+/// together as one. Reads the scoped alarm feed the planner rings from; no
+/// other task's title is shown. Empty when nothing is shared.
+class UrgentMinuteHints extends ConsumerWidget {
+  const UrgentMinuteHints({
+    required this.urgent,
+    required this.onChangeTime,
+    this.remindAt,
+    this.dueAt,
+    this.taskId,
+    this.padding = EdgeInsets.zero,
+    super.key,
+  });
+
+  /// Whether the task's alarm is urgent (and live) as written right now.
+  final bool urgent;
+  final DateTime? remindAt;
+  final DateTime? dueAt;
+
+  /// The task itself when it already exists — its own alarms never count.
+  final String? taskId;
+  final EdgeInsetsGeometry padding;
+  final void Function(String kind) onChangeTime;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!urgent) return const SizedBox.shrink();
+    final feed = ref.watch(alarmFeedProvider).value ?? const <AlarmInput>[];
+    final hits = sharedUrgentMinutes(
+      feed,
+      urgent: urgent,
+      now: ref.read(alarmClockProvider)(),
+      remindAt: remindAt,
+      dueAt: dueAt,
+      taskId: taskId,
+    );
+    if (hits.isEmpty) return const SizedBox.shrink();
+    final format = ref.watch(dateFormatProvider);
+    final theme = Theme.of(context);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    return Padding(
+      padding: padding,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final hit in hits)
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              children: [
+                Text(
+                  sharedMinuteLine(hit.at, hit.count, format: format),
+                  key: Key('urgent-minute-line-${hit.kind}'),
+                  style: theme.textTheme.bodySmall?.copyWith(color: muted),
+                ),
+                TextButton(
+                  key: Key('urgent-minute-change-${hit.kind}'),
+                  style: TextButton.styleFrom(
+                    minimumSize: const Size(48, 48),
+                    tapTargetSize: MaterialTapTargetSize.padded,
+                  ),
+                  onPressed: () => onChangeTime(hit.kind),
+                  child: Text('alarm.sharedMinuteChange'.tr()),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}

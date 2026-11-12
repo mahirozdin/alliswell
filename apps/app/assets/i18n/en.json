@@ -951,6 +951,8 @@
     },
     "snoozeRingsAt": "rings at {time}",
     "snoozeJoinsGroup": "rings at {time} · with another alarm",
+    "sharedMinute": "{count} urgent alarms will ring together at {time}",
+    "sharedMinuteChange": "Change time",
     "snoozeConfirmed": "Rings again at {time}",
     "snoozeCustom": "Pick a time…",
     "silence": "Silence indefinitely",

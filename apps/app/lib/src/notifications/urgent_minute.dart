@@ -7,7 +7,8 @@
 /// "09:05’te çalar · başka alarmla birlikte".
 ///
 /// Pure: no widget, no provider, no clock. The snooze tile (OPH-466) and the
-/// creation hint (OPH-444) share [urgentAlarmsInMinute].
+/// creation hint (OPH-444, [sharedUrgentMinutes]) share
+/// [urgentAlarmsInMinute].
 library;
 
 import '../core/date_format.dart';
@@ -73,4 +74,58 @@ String snoozeTileSubline(
   return (joinsGroup ? 'alarm.snoozeJoinsGroup' : 'alarm.snoozeRingsAt').tr(
     args: {'time': time},
   );
+}
+
+/// One of the written task's own alarm instants that lands in a minute another
+/// task's urgent alarm already holds (OPH-444): [kind] is `remind` or `due`,
+/// [at] the instant, [count] how many urgent alarms ring together there —
+/// this task included.
+typedef SharedUrgentMinute = ({String kind, DateTime at, int count});
+
+/// The minutes the task being written would share with other urgent alarms.
+///
+/// Owner answer 3: never block, never shift — the create sheet, the detail
+/// screen and the quick-add confirmation only say it. The task's instants are
+/// the ones `taskAlarmInstants` rings: the reminder, and the deadline while
+/// the alarm is urgent. Two of them in one UTC minute ring as one alarm, so
+/// that minute gets one line (the reminder's). Nothing when [urgent] is off (a
+/// normal reminder rings alone, never in a group) and nothing for a minute
+/// before [now]'s (it never rings again). [taskId] is the task itself when it
+/// already exists: its own alarms in the feed never make a minute "taken".
+List<SharedUrgentMinute> sharedUrgentMinutes(
+  List<AlarmInput> feed, {
+  required bool urgent,
+  required DateTime now,
+  DateTime? remindAt,
+  DateTime? dueAt,
+  String? taskId,
+}) {
+  if (!urgent) return const [];
+  final nowMinute = _utcMinute(now);
+  final seen = <int>{};
+  final hits = <SharedUrgentMinute>[];
+  for (final (kind, at) in [('remind', remindAt), ('due', dueAt)]) {
+    if (at == null) continue;
+    final minute = _utcMinute(at);
+    if (minute < nowMinute || !seen.add(minute)) continue;
+    final others = urgentAlarmsInMinute(feed, at, exceptTaskIds: {?taskId});
+    if (others > 0) hits.add((kind: kind, at: at, count: others + 1));
+  }
+  return hits;
+}
+
+/// "09:00’da 2 acil alarm birlikte çalacak" — [count] includes the task being
+/// written. The time goes through the OPH-422 locative like the snooze tile;
+/// no other task's title is ever part of it.
+String sharedMinuteLine(
+  DateTime at,
+  int count, {
+  String format = kAwSystemDateFormat,
+  String? languageCode,
+}) {
+  final time = awAt(
+    awFormatTime(at.toLocal(), format: format),
+    languageCode: languageCode ?? AwI18n.instance.locale.languageCode,
+  );
+  return 'alarm.sharedMinute'.tr(args: {'time': time, 'count': '$count'});
 }
