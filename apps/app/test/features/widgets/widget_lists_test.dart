@@ -10,6 +10,8 @@ import 'package:alliswell/src/features/widgets/widget_grouping.dart';
 import 'package:alliswell/src/features/widgets/widget_snapshot.dart';
 import 'package:alliswell/src/i18n/i18n.dart';
 
+import 'ios_widget_swift.dart';
+
 /// OPH-336 — a widget can be set to one project, and the lock screen names the
 /// next task. Both decisions live in Dart: the native side only PICKS a list
 /// id out of the snapshot (W9). These pin the Dart half; the Swift and Kotlin
@@ -246,9 +248,7 @@ void main() {
   // keep saying (the widget_clock_native_test pattern — structure, not
   // formatting).
   group('the native readers pick a list, they never filter one', () {
-    final swift = File(
-      'ios/AllisWellWidget/AllisWellWidget.swift',
-    ).readAsStringSync();
+    final swift = readIosWidgetSwift();
     final bundle = File(
       'ios/AllisWellWidget/AllisWellWidgetBundle.swift',
     ).readAsStringSync();

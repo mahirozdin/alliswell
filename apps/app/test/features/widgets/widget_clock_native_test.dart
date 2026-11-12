@@ -4,6 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:alliswell/src/features/widgets/widget_clock.dart';
 
+import 'ios_widget_swift.dart';
+
 /// Round 17 (OPH-253) — the header clock is DRAWN in Swift and in an Android
 /// layout, and no Dart test can exercise either.
 ///
@@ -18,8 +20,12 @@ import 'package:alliswell/src/features/widgets/widget_clock.dart';
 /// the identifiers and constants that carry meaning, so reindenting or renaming
 /// a local never fails the suite.
 void main() {
-  final swift = File(
-    'ios/AllisWellWidget/AllisWellWidget.swift',
+  final swift = readIosWidgetSwift();
+  final iosProject = File(
+    'ios/Runner.xcodeproj/project.pbxproj',
+  ).readAsStringSync();
+  final macWidgetScript = File(
+    'macos/scripts/add_widget_extension.rb',
   ).readAsStringSync();
   final layout = File(
     'android/app/src/main/res/layout/tasks_widget.xml',
@@ -61,7 +67,15 @@ void main() {
     test('the entries beyond the horizon carry no clock', () {
       // The midnight entries are the fallback for when the reload never comes,
       // which is exactly when a clock would be lying.
-      expect(swift, contains('showsClock: false'));
+      // OPH-451: every entry is built by one helper that resolves its own
+      // day; the midnight ones (and the lock screen's) pass clock: false.
+      expect(swift, contains('showsClock: clock'));
+      expect(
+        swift,
+        contains('entries.append(entry(at: midnight, clock: false))'),
+      );
+      expect(swift, contains('midnights.map { entry(at: \$0, clock: false) }'));
+      expect(swift, isNot(contains('entry(at: midnight, clock: true)')));
     });
 
     test('the horizon is budgeted in BYTES, not in entries', () {
@@ -81,7 +95,8 @@ void main() {
       expect(
         swift,
         contains(
-          'awRowBudget(family, titled: list != nil, compact: snapshot.isCompact)',
+          'awRowBudget(family, titled: c.list != nil, '
+          'compact: c.snapshot.isCompact)',
         ),
         reason:
             'the row count depends on the widget SIZE; an extraLarge draws 18 '
@@ -91,20 +106,67 @@ void main() {
       // OPH-336 lifted the timeline out of AWProvider into `awTimeline`, so
       // the size has to be handed in — by BOTH providers, or one of them
       // budgets a medium widget's clock for an extraLarge's rows.
+      // OPH-451: an entry carries only its own day, and the minute entries
+      // can cross one midnight — so the bigger of the two days is budgeted.
       expect(
         swift,
         contains(
-          'awTimeline(snapshot: loadAWSnapshot(), list: nil, '
+          'max(rows(content(at: start)), rows(content(at: horizonEnd)))',
+        ),
+        reason:
+            'budgeting today alone lets a fuller tomorrow push the archive '
+            'past the limit after midnight',
+      );
+      expect(
+        swift,
+        contains(
+          'awTimeline(snapshot: loadAWSnapshot(), listId: nil, '
           'family: context.family)',
         ),
       );
       expect(
         swift,
         contains(
-          'awTimeline(snapshot: picked.snapshot, list: picked.list, '
-          'family: context.family)',
+          'awTimeline(snapshot: loadAWSnapshot(), '
+          'listId: configuration.list?.id, family: context.family)',
         ),
       );
+    });
+
+    test('the widget compiles every shared file these pins read', () {
+      // OPH-451 moved the snapshot model and the day pick to ios/Shared. A
+      // pin that reads a file the widget does not compile pins nothing, and
+      // the widget would not build without them: both the iOS extension and
+      // the macOS widget must list each one.
+      final target = iosProject.indexOf('name = AllisWellWidgetExtension;');
+      expect(target, greaterThan(0));
+      final targetStart = iosProject.lastIndexOf(
+        'isa = PBXNativeTarget;',
+        target,
+      );
+      final phaseId = RegExp(
+        r'(\w{24}) /\* Sources \*/,',
+      ).firstMatch(iosProject.substring(targetStart, target))?.group(1);
+      expect(
+        phaseId,
+        isNotNull,
+        reason: 'the widget target has a Sources phase',
+      );
+      final phaseStart = iosProject.indexOf('$phaseId /* Sources */ = {');
+      expect(phaseStart, greaterThan(0));
+      final phase = iosProject.substring(
+        phaseStart,
+        iosProject.indexOf('};', phaseStart),
+      );
+      for (final path in kIosWidgetSharedSwift) {
+        final name = path.split('/').last;
+        expect(phase, contains('/* $name in Sources */'), reason: path);
+        expect(
+          macWidgetScript,
+          contains("shared.new_reference('Shared/$name')"),
+          reason: path,
+        );
+      }
     });
 
     test('the clock ticks on the minute, not on the second it was built', () {
