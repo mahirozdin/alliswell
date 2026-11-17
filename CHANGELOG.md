@@ -7,6 +7,8 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
+## [1.22.0] — 2026-11-18
+
 ### Fixed
 
 - **A note you type on one device no longer says "edited on another device too", and no typed
@@ -22,20 +24,3 @@ This file holds the unreleased changes and the latest release; at each release t
   happened (edited, merged, restored…), which of your devices wrote it by the name in your device
   list ("This device" for the one you hold), and when, to the second. The conflict banner says
   which device and when for both sides, and the difference view names both sides too.
-
-## [1.21.0] — 2026-11-12
-
-### Added
-
-- **The iPhone widget keeps itself current while the app is swiped away**
-  ([#50](https://github.com/mahirozdin/alliswell/issues/50)). The widget asks your server for the
-  latest list itself, with a read-only key that opens nothing but the widget's view, so a change
-  made on another device shows within one of iOS's widget refreshes, typically 15 to 60 minutes.
-  iOS sets that timing, so there is no minute guarantee. A change made on the phone that has not
-  synced yet is never undone, offline or before the first unlock the widget keeps its last list,
-  and with Private widget on no task title leaves the server; turning it on or off shows on the
-  widget at once. The widget gets its key within seconds of signing in. Signing out or removing
-  the phone turns the key off and leaves the widget empty. A tap on a circle shows the task done
-  at once without moving the other rows, a task added on another device opens in the app when
-  tapped, and two widgets on one screen show the same list. Each day's list stays right across a
-  daylight-saving change that skips midnight.
