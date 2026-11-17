@@ -62,7 +62,6 @@
 - **DERS** Push `guard` create+update'te koşar, DELETE'te ASLA → sahiplik `checkOwnership`'te; `!(await ownershipOk())` dönen hata KODU dizesini geçirir; silinmesi denetlenecek varlığa delete açma; delete patch'i doğrulanmaz → `validateDelete`.
 - **DERS** Yazma iki dikişten geçer: REST/MCP/import `db/*.js` domain'inden, sync push kendi ENTITIES makinesinden (`afterCreate/afterUpdate`) → her yeni kural ikisine bağlanır.
 - **DERS** Serileştiriciyi REST ile sync PULL paylaşır → pull yükleyicisi yeni alanı (`tagIds`) yüklemezse snapshot sessizce `[]` olur.
-- **DERS** Not kilidinin base'i notun KENDİ revizyonudur, workspace imleci değil — imleç soket pull'uyla karşı yazımı geçer, gövde sessizce ezilir; kendi başarılı push'u base'i ilerletir.
 - **DERS** LWW intent adı gerçekten yazılan kolon olmalı: emekli kolona bağlı intent hiç eşleşmez, kilit log'suz kilitlemeyi bırakır → kolon emekliye çıkınca intent'i taşı.
 - **DERS** Kullanıcı-kapsamlı varlıkta filtre yalnız loader'daysa başkasının ULID'leri tombstone olarak sızar → `userScoped` + görünmeyeni düşür, yalnız soft sil; yerelde de `userId` süz (ADR-0018).
 - **KARAR** Replika tek kişinin (OPH-355): çıkış + başkasının girişi onu ve `kUserBoundKvPrefixes`'i siler, yerinde (`secure_delete`+VACUUM); kişiye ait yeni LocalKv anahtarı → o listeye.
@@ -73,6 +72,7 @@
 - **DERS** Socket.IO `sync:ready` connect ack'iyle aynı segmentte gelebilir → dinleyici handshake'ten ÖNCE. Oda üyeliği bağlanırken donar (JWT o an) → yeni üyelik yeniden bağlanana dek `sync:changed` almaz; pull yedek.
 - **KARAR** Paylaşılan alanlar birlikte senkronda: alan başına motor, yazım `pokeSync(ref)` ile hepsini dürter, düşen alan son tur alır; kişisel kullanımda tek motor (ADR-0044).
 - **DERS** Gözlemcinin fırlatması push'u 500'e çevirir, cihaz yazımı sonsuza dek yollar → içeriden ret `syncRefusal(code)` (REST 409, push rejected+rebase).
+- **DERS** Not base'i notun kendi revizyonu, imleç değil. Id-tek idempotency değişen yükü eski cevapla yutar → `payload_hash`; gönderilmiş outbox satırı yeniden yazılmaz (`sent_at`); base 0 ve yalnız-kendi-yazımı aralık düz yazım; conflict sürümü base olmaz (ADR-0072).
 - **DERS** Tek uçuşlu ağ döngüsü cevapsız istekte sonsuza dek takılır → istek ve çağrı süresi (`http_timeouts.dart`), zaman aşımı → NETWORK_ERROR backoff'u (OPH-427). `Future.timeout` timer'ı iptal edilmez → kendi timer'ı, `dispose()` çağrıyı bırakır.
 
 ## drift-replica — istemci replikası, göçler, outbox
@@ -84,7 +84,7 @@
 - **DERS** Cihazın YAZDIĞI replika tablosuna kolon eklenince applier onu da eşlemeli, yoksa itmeden sonraki çekme ekrandaki değeri siler.
 - **DERS** JOIN'li `customSelect`'te `readsFrom`'a her tablo yazılmazsa stream JOIN'lenen tablo değişince SESSİZCE donar.
 - **DERS** JOIN'li sorguda `LIMIT` join satırlarını sayar (3 etiketli görev 3 slot yer) → sayfayı ana satırda al, ilişkiyi sonra oku; kararlı eşitlik bozucu (`id` DESC).
-- **DERS** Outbox koalesansı + settle'da koşulsuz silme uçuştayken yazılan gövdeyi siler → settle yalnız `localUpdatedAt` eşleşirse siler; açık editör temizse pull'u yerinde alır (`adoptRemote`), kirliyse metnini korur.
+- **DERS** Not outbox'ı: settle yalnız `localUpdatedAt` eşleşirse siler; kuyrukta kayıt varken pull gövde/revizyonu ezmez; temiz editör pull.u kirletmeden alır; ret replikayı düzeltmez ("diğerini kullan" REST kopyası); `dispose()`.da `ref` fırlatır (ADR-0072).
 - **DERS** Replikanın iki yazarı var (widget arka plan izolatı + uygulama) → `awSqlitePragmas`: WAL + `busy_timeout=5000`.
 - **DERS** Süzgecin okuduğu sunucu-sahipli yeni kolon (v37 `createdBy`) eski satırda null → alan bir kez imleç 0'dan çekilir (`repullOnceForCreatedBy`); başsız tur `sync_states`'in HER satırını dolaşır.
 - **DERS** Web replikası commit'li `web/sqlite3.wasm` + `web/drift_worker.js`'e dayanır, drift/sqlite3 sürümüne sabittir → drift yükseltilirken ikisi birlikte yenilenir.
