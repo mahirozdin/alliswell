@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 
 import '../core/fold.dart';
 import 'db/database.dart';
+import 'outbox.dart';
 import 'sync_api.dart';
 
 DateTime? _date(Object? value) =>
@@ -899,24 +900,14 @@ TicketAssignmentsCompanion ticketAssignmentCompanion(
   updatedAt: _dateValue(data['updatedAt']),
 );
 
-/// Whether the note in [data] has a queued create or update and a local row
-/// that holds it (OPH-489).
+/// Whether the note in [data] has a queued create or body/title update and a
+/// local row that holds it (OPH-489).
 Future<bool> _hasPendingNoteWrite(
   AwDatabase db,
   Map<String, dynamic> data,
 ) async {
   final id = data['id'] as String;
-  final pending =
-      await (db.select(db.pendingMutations)
-            ..where(
-              (m) =>
-                  m.entityType.equals('note') &
-                  m.entityId.equals(id) &
-                  m.operation.isIn(const ['create', 'update']),
-            )
-            ..limit(1))
-          .getSingleOrNull();
-  if (pending == null) return false;
+  if ((await queuedNoteContentRows(db, id)).isEmpty) return false;
   final local = await (db.select(
     db.notes,
   )..where((n) => n.id.equals(id))).getSingleOrNull();

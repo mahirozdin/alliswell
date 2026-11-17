@@ -228,6 +228,37 @@ void main() {
     expect(api.notes.single['contentMarkdown'], 'A\nM\nX\nZ');
   });
 
+  testWidgets('OPH-490: "use the other one" while still typing drops that '
+      'typing — the choice is not reversed by the next autosave', (
+    tester,
+  ) async {
+    final api = NoteSyncServer();
+    await newNote(tester, api);
+    await tester.enterText(find.byKey(const Key('note-title')), 'Ortak');
+    await tester.enterText(source, 'A\nM\nN');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    api.foreignWrite(api.notes.single['id'] as String, 'A\nM\nX');
+    await tester.enterText(source, 'A\nM\nY');
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 10));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(source, 'A\nM\nY daha');
+    await tester.pump(const Duration(milliseconds: 300)); // within the debounce
+    await tester.tap(find.byKey(const Key('conflict-use-theirs')));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+
+    expect(api.notes.single['contentMarkdown'], 'A\nM\nX');
+    final editor = tester.widget<EditableText>(
+      find.descendant(of: source, matching: find.byType(EditableText)),
+    );
+    expect(editor.controller.text, 'A\nM\nX');
+  });
+
   testWidgets('OPH-489: a change pulled into a clean editor is adopted, and '
       'not saved back up as an edit', (tester) async {
     final api = NoteSyncServer()

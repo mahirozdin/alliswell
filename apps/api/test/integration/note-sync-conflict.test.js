@@ -123,6 +123,16 @@ describe.runIf(enabled)('note sync: own writes never conflict (OPH-486/487)', ()
       expect((await note(noteId)).content_markdown).toBe('Merhaba\nDünya');
     });
 
+    it('base 0 is still a conflict when ANOTHER writer reached the note first', async () => {
+      const pc = newId();
+      const web = newId();
+      const { noteId, rev } = await create(pc, 'A\nM\nN');
+      expect((await update(web, noteId, rev, 'A\nM\nWEB')).status).toBe('applied');
+      const late = await update(pc, noteId, 0, 'A\nM\nPC');
+      expect(late.status).toBe('conflict');
+      expect((await note(noteId)).content_markdown).toBe('A\nM\nWEB');
+    });
+
     it('a base one of its OWN writes behind is applied (rolling head erased that version)', async () => {
       const pc = newId();
       const { noteId, rev: r0 } = await create(pc, '');

@@ -34,7 +34,9 @@ client before the fix:
 
 **Server (backwards compatible, protects installed clients first):**
 
-1. `baseRevision: 0` is "no answer reached this device yet" and is an ordinary write.
+1. `baseRevision: 0` is "no answer reached this device yet". It is not waved through: it applies
+   by rule 2 (the create is the device's own write), and stays an honest conflict if another
+   writer reached the note first.
 2. A content write applies without a merge when its body equals the current body, or when every
    sync write to the note after its base came from the same `clientId` (attributed through
    `client_mutations.result_revision`, as `foreignChangesSince` already does). A REST or MCP
@@ -50,18 +52,24 @@ client before the fix:
 **Client:**
 
 5. `pending_mutations.sent_at` (replica v41, null for existing rows) is set in the same
-   transaction that reads a push batch, and kept through failures. Coalescing only merges into
+   transaction that reads a push batch, and kept through failures that may have reached the
+   server (a timeout). A push that could not connect at all (`SyncPushNotSent`) unmarks the rows
+   it marked, so offline typing keeps coalescing. Coalescing only merges into
    rows with `sent_at` null; a save behind a sent row is a row of its own.
 6. A save while the note's create is still unsent rides in the create. A content update of a note
    whose replica revision is 0 sends no base.
-7. When a note row is **applied** (not merged), the note's unsent update rows that carry its base
-   move to the result revision. On **merged**, if another save of the note is queued, the replica
-   keeps its body and revision: the queued body lacks the merged lines, so its base must not
-   claim them.
-8. A pull keeps a note's title, body and revision while a create or update of it is queued; the
-   other fields are taken.
+7. The replica's note revision is the base of the next save, so only an answer that says "this
+   body is the note now" moves it: a fresh (not replayed) applied or merged answer to a create or
+   a body/title update. A pin, archive or project answer moves nothing (its revision could claim a
+   foreign body a pull held back), and neither does a replay (a merged write is recorded as
+   applied, without its body). When a body row is **applied**, the note's unsent body rows that
+   carry its base move to the result revision. On **merged**, if another body save of the note is
+   queued, the replica keeps its body and revision: the queued body lacks the merged lines.
+8. A pull keeps a note's title, body and revision while a create or body/title update of it is
+   queued; the other fields are taken.
 9. "Use the other one" fetches the server's note over REST and writes it to the replica, unless a
-   save of the note is queued (that body is newer and is kept). The server does not attach a
+   save of the note is queued (that body is newer and is kept); the open editor drops its unsaved
+   typing and shows the server copy, or its autosave would reverse the choice. The server does not attach a
    rebase to `NOTE_CONTENT_CONFLICT`: the answer to it is only needed when the person chooses.
 
 ## Alternatives considered

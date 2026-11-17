@@ -476,14 +476,13 @@ export async function threeWayNoteWrite(app, { row, baseRevision, incoming, only
   // to THIS note, so this is an ordinary write. A protocol that breaks its own
   // old clients is not a protocol.
   //
-  // OPH-486 (ADR-0072): base 0 is "this device has never had an answer about
-  // the note" — a save queued before its own create came back. No version can
-  // exist at revision 0, so it used to be BASE_MISSING, a false conflict on
-  // every brand-new note whose first push was slow. Nobody else can have the
-  // note in that window, so it is an ordinary write.
-  if (baseRevision == null || baseRevision === 0 || baseRevision >= current) {
-    return { outcome: 'apply' };
-  }
+  // OPH-486 (ADR-0072): base 0 — "this device never had an answer about the
+  // note", a save queued behind its own create — is NOT waved through here.
+  // It used to be BASE_MISSING, a false conflict on every brand-new note
+  // whose first push was slow; it now applies through the own-history check
+  // below (the create is this client's own write). Should another writer have
+  // reached the note first, it stays an honest conflict, with both bodies kept.
+  if (baseRevision == null || baseRevision >= current) return { outcome: 'apply' };
 
   const theirs = noteMarkdownFrom(incoming, {
     currentFormat: row.content_format,

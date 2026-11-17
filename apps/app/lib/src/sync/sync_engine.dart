@@ -11,6 +11,7 @@ import '../core/http_timeouts.dart';
 import '../core/kv/local_kv.dart';
 import '../core/ulid.dart';
 import 'db/database.dart';
+import 'outbox.dart';
 import 'sync_api.dart';
 import 'revocation.dart';
 import 'sync_applier.dart';
@@ -329,6 +330,7 @@ class SyncEngine {
       // landing in between can never be coalesced into a row this push
       // carries. The mark stays through a failure: the server may have
       // recorded the row before its answer was lost.
+      var fresh = const <String>[];
       final rows = await db.transaction(() async {
         final read =
             await (db.select(db.pendingMutations)
@@ -339,7 +341,7 @@ class SyncEngine {
                   ])
                   ..limit(pushBatchSize))
                 .get();
-        final fresh = [
+        fresh = [
           for (final row in read)
             if (row.sentAt == null) row.id,
         ];
@@ -364,8 +366,13 @@ class SyncEngine {
             mutations: [for (final row in rows) _toMutation(row)],
           ),
         )).results;
-      } catch (_) {
+      } catch (error) {
         await _bumpAttempts(rows);
+        if (error is SyncPushNotSent && fresh.isNotEmpty) {
+          // Nothing left the device: what this attempt marked is unsent.
+          await (db.update(db.pendingMutations)..where((m) => m.id.isIn(fresh)))
+              .write(const PendingMutationsCompanion(sentAt: Value(null)));
+        }
         rethrow;
       }
 
@@ -562,26 +569,33 @@ class SyncEngine {
   /// carries a base the server recognises instead of the one from before our
   /// own write.
   Future<void> _settleNote(PendingMutation row, SyncPushResult result) async {
-    // OPH-488/489 (ADR-0072): the note's other outbox rows decide what this
-    // answer may do to the replica.
-    final others =
-        await (db.select(db.pendingMutations)..where(
-              (m) =>
-                  m.entityType.equals('note') &
-                  m.entityId.equals(row.entityId) &
-                  m.id.equals(row.id).not() &
-                  m.operation.isIn(const ['create', 'update']),
-            ))
-            .get();
-    if (result.merged) {
+    // OPH-488/489 (ADR-0072): the replica's revision is the BASE of the next
+    // save — the server revision whose body the replica's body descends from.
+    // Only an answer that says "this body is the note now" may move it:
+    // - a pin, archive or project change is not a body; its revision would
+    //   claim a foreign body a pull held back, and the next save would erase
+    //   it on the server;
+    // - a replay does not say whether the server merged (a merged write is
+    //   recorded as applied, without its body), so it moves nothing.
+    final content = row.operation == 'create' || isNoteContentRow(row);
+    final others = (await queuedNoteContentRows(
+      db,
+      row.entityId,
+    )).where((m) => m.id != row.id).toList();
+    var takeRevision =
+        result.applied &&
+        result.revision != null &&
+        content &&
+        !result.replayed;
+    if (result.merged && others.isNotEmpty) {
       // A newer local save is still queued: the replica holds THAT body,
       // which lacks the other side's lines. Neither the merged body nor its
       // revision may land, or the next save would claim a base whose lines
       // it does not have and silently delete them. The queued row keeps its
       // own base and is merged by the server in turn.
-      if (others.isNotEmpty) return;
-    } else if (result.applied && result.revision != null) {
-      // Our own write landed. Rows queued behind it carry the base it started
+      takeRevision = false;
+    } else if (takeRevision && !result.merged) {
+      // Our own body landed. Rows queued behind it carry the base it started
       // from; they continue the same session, so they start from its result
       // now. Without this, a save that could not be coalesced into a SENT row
       // would conflict with its own device (finding #3). Only unsent rows:
@@ -600,13 +614,13 @@ class SyncEngine {
         );
       }
     }
-    if (result.applied && result.revision != null) {
+    if (takeRevision) {
       await (db.update(db.notes)..where((n) => n.id.equals(row.entityId)))
           .write(NotesCompanion(revision: Value(result.revision!)));
     }
     // The server merged our text with somebody else's: the merged body IS the
     // note now, so the replica takes it (an open editor reads the replica).
-    if (result.merged && result.mergedMarkdown != null) {
+    if (takeRevision && result.merged && result.mergedMarkdown != null) {
       await (db.update(
         db.notes,
       )..where((n) => n.id.equals(row.entityId))).write(

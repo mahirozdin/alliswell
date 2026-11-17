@@ -7,6 +7,7 @@ import '../../../core/persisted_prefs.dart';
 import '../../../i18n/i18n.dart';
 import '../../../sync/providers.dart';
 import '../../../theme/tokens.dart';
+import '../data/note.dart';
 import '../data/note_versions_api.dart';
 import '../providers.dart';
 import 'note_versions_screen.dart';
@@ -27,10 +28,17 @@ class NoteConflictBanner extends ConsumerStatefulWidget {
     super.key,
     required this.noteId,
     required this.conflictVersionId,
+    this.onTookServerCopy,
   });
 
   final String noteId;
   final String conflictVersionId;
+
+  /// The device took the server's copy ("use the other one"). The editor
+  /// drops its unsaved typing and shows that copy — a pending autosave would
+  /// otherwise send the refused text back with the server's own revision as
+  /// its base, and win (OPH-490).
+  final ValueChanged<NoteDetail>? onTookServerCopy;
 
   @override
   ConsumerState<NoteConflictBanner> createState() => _NoteConflictBannerState();
@@ -220,7 +228,9 @@ class _NoteConflictBannerState extends ConsumerState<NoteConflictBanner> {
       final server = await ref.read(notesApiProvider).get(widget.noteId);
       final store = ref.read(noteStoreProvider);
       // A save queued since keeps its text; the pointer still goes.
-      if (!await store.takeServerCopy(server)) {
+      if (await store.takeServerCopy(server)) {
+        widget.onTookServerCopy?.call(server);
+      } else {
         await store.clearConflict(widget.noteId);
       }
     } on ApiException catch (e) {

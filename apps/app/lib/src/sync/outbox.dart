@@ -139,3 +139,31 @@ Future<void> _mergeInto(
     ),
   );
 }
+
+/// Whether an outbox row of a note carries its body or title — the rows that
+/// decide the note's base (OPH-489). A pin, archive or project move does not.
+bool isNoteContentRow(PendingMutation row) {
+  if (row.operation == 'create') return true;
+  if (row.operation != 'update' || row.patchJson == null) return false;
+  final patch = jsonDecode(row.patchJson!) as Map<String, dynamic>;
+  return patch.containsKey('contentMarkdown') ||
+      patch.containsKey('contentDelta') ||
+      patch.containsKey('title');
+}
+
+/// The note's queued creates and body/title updates (OPH-489, OPH-490): while
+/// one exists, the replica's body is newer than anything the server sent.
+Future<List<PendingMutation>> queuedNoteContentRows(
+  AwDatabase db,
+  String noteId,
+) async {
+  final rows =
+      await (db.select(db.pendingMutations)..where(
+            (m) =>
+                m.entityType.equals('note') &
+                m.entityId.equals(noteId) &
+                m.operation.isIn(const ['create', 'update']),
+          ))
+          .get();
+  return rows.where(isNoteContentRow).toList();
+}

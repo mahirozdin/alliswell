@@ -250,6 +250,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _onIncoming(oldWidget.note, widget.note);
   }
 
+  /// OPH-490: the person chose the server's text. Unsaved typing goes with
+  /// that choice — its autosave would carry the server's revision as its
+  /// base and quietly put the refused text back.
+  void _takeServerCopy(NoteDetail server) {
+    _debounce?.cancel();
+    _dirty = false;
+    _onIncoming(null, server);
+    _setSaveState(_SaveState.saved);
+  }
+
   void _onIncoming(NoteDetail? previous, NoteDetail? incoming) {
     if (incoming == null || widget.external) return;
     if (incoming.revision == previous?.revision) return;
@@ -413,6 +423,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       _setSaveState(_SaveState.failed);
     } finally {
       _saving = false;
+      // OPH-491: typing that landed while this save ran, with the editor
+      // closed meanwhile — the close flush returned early (a save was
+      // running), so this is its last chance.
+      if (_disposed && _dirty && !widget.external && !_gone) {
+        unawaited(_save());
+      }
     }
   }
 
@@ -664,6 +680,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
               NoteConflictBanner(
                 noteId: _noteId!,
                 conflictVersionId: _note!.conflictVersionId!,
+                onTookServerCopy: _takeServerCopy,
               ),
             if (_gone) _DeletedNotice(onClose: _closeGone),
             if (!_gone)

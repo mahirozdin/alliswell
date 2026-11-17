@@ -153,9 +153,26 @@ describe.runIf(enabled)('note versions: device and time (OPH-494)', () => {
         headers: owner.headers,
       });
       expect(res.statusCode).toBe(200);
-      const row = await note(noteId);
-      expect(res.json().current).toEqual({
-        updatedAt: new Date(row.updated_at).toISOString(),
+      const head = await app
+        .db('note_versions')
+        .where({ note_id: noteId, client_id: mac })
+        .first('updated_at');
+      // A pin afterwards moves the note's updated_at, not the body's moment.
+      await new Promise((r) => setTimeout(r, 20));
+      const pin = await app.inject({
+        method: 'PATCH',
+        url: `/api/v1/notes/${noteId}`,
+        headers: owner.headers,
+        payload: { isPinned: true },
+      });
+      expect(pin.statusCode).toBe(200);
+      const res2 = await app.inject({
+        method: 'GET',
+        url: `/api/v1/notes/${noteId}/versions/${mine.conflictVersionId}/diff`,
+        headers: owner.headers,
+      });
+      expect(res2.json().current).toEqual({
+        updatedAt: new Date(head.updated_at).toISOString(),
         origin: 'edit',
         clientId: mac,
         deviceName: 'Ofis Mac',

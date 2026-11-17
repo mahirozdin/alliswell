@@ -39,6 +39,9 @@ class StrictServer implements SyncApi {
   /// The next content update is answered `merged` with this body.
   String? mergeNext;
 
+  /// No connection at all: nothing reaches the server.
+  bool unreachable = false;
+
   @override
   Future<SyncPullPage> pull(
     String workspaceId, {
@@ -60,6 +63,7 @@ class StrictServer implements SyncApi {
     required int baseRevision,
     required List<SyncMutation> mutations,
   }) async {
+    if (unreachable) throw const SyncPushNotSent();
     final results = <SyncPushResult>[];
     for (final m in mutations) {
       final prior = recorded[m.clientMutationId];
@@ -309,6 +313,77 @@ void main() {
       expect(queued.single.baseRevision, settled);
     },
   );
+
+  test('OPH-489: a pin answer does not move the base past a body a pull '
+      'held back', () async {
+    final id = await store.create(ws, body('A'));
+    await engine.syncNow();
+    final settled = (await local(id)).revision;
+    // Another device has rewritten the body on the server.
+    api.revisions[id] = settled + 3;
+    api.revision = settled + 3;
+    await store.update(id, body('A B'));
+    api.gate = Completer<void>();
+    final round = engine.syncNow(); // the body save is on the wire
+    await pumpEventQueue();
+    await store.update(id, {'isPinned': true}); // its own row: one is sent
+    // The foreign body arrives while the body save waits: it is held back.
+    await applyPulledChanges(
+      db,
+      workspaceId: ws,
+      toRevision: settled + 3,
+      changes: [
+        SyncChange(
+          revision: settled + 3,
+          entityType: 'note',
+          entityId: id,
+          operation: 'upsert',
+          data: pulled(id, 'A F', settled + 3),
+        ),
+      ],
+    );
+    api.gate!.complete();
+    api.gate = null;
+    await round;
+    await engine.syncNow();
+
+    // The body save was refused; the pin landed — and must not hand the
+    // replica a revision whose body (A F) it does not have.
+    expect(api.processed.map((m) => m.patch?.keys.first), contains('isPinned'));
+    expect((await local(id)).revision, settled);
+  });
+
+  test('OPH-489: a replayed answer moves no revision — it may have been a '
+      'merge', () async {
+    final id = await store.create(ws, body('A'));
+    await engine.syncNow();
+    final settled = (await local(id)).revision;
+    await store.update(id, body('A B'));
+    final row = (await db.select(db.pendingMutations).get()).single;
+    // The server already answered this id (the first answer was lost).
+    api.recorded[row.id] = SyncPushResult(
+      clientMutationId: row.id,
+      status: 'applied',
+      replayed: false,
+      revision: settled + 7,
+    );
+    await engine.syncNow();
+    expect((await local(id)).revision, settled);
+    expect(await db.select(db.pendingMutations).get(), isEmpty);
+  });
+
+  test('OPH-488: a push that never connected leaves its rows unsent, so the '
+      'next save still joins them', () async {
+    final id = await store.create(ws, body('A'));
+    await engine.syncNow();
+    await store.update(id, body('A B'));
+    api.unreachable = true;
+    await engine.syncNow();
+    final queued = (await db.select(db.pendingMutations).get()).single;
+    expect(queued.sentAt, isNull);
+    await store.update(id, body('A B C'));
+    expect(await db.select(db.pendingMutations).get(), hasLength(1));
+  });
 
   test('OPH-493: rebuilding the engines does not show the last conflict '
       'again', () async {

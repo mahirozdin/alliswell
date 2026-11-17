@@ -279,7 +279,9 @@ export default async function noteVersionRoutes(app) {
         // wire-contract change with nothing to gain.
         comparable: (version.content_format ?? 'markdown') === (note.content_format ?? 'markdown'),
         current: {
-          updatedAt: toIso(note.updated_at),
+          // When the BODY was last written: a pin or a project move touches
+          // the note's own `updated_at` without writing a word.
+          updatedAt: toIso(head?.updated_at ?? head?.created_at ?? note.updated_at),
           origin: head?.origin ?? null,
           clientId: head?.client_id ?? null,
           deviceName: head?.device_name ?? null,
