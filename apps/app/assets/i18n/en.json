@@ -1636,7 +1636,13 @@
     "emptyTitle": "No history yet",
     "emptyBody": "Edits are saved here as you make them.",
     "offlineTitle": "History is available online",
-    "offlineBody": "Older versions live on the server, not on this device. Reconnect to read them."
+    "offlineBody": "Older versions live on the server, not on this device. Reconnect to read them.",
+    "originEdit": "Edited",
+    "deviceUnknown": "A device not in your device list",
+    "deviceNone": "Not from a synced device",
+    "diffThisVersion": "This version: {who}",
+    "diffCurrent": "The note now: {who}",
+    "diffLegend": "Struck-through text is only in this version; underlined text is only in the note now."
   },
   "conflict": {
     "bannerTitle": "This note was edited on another device too",
@@ -1646,7 +1652,9 @@
     "useTheirs": "Use the other one",
     "keepBoth": "Keep both",
     "usedMine": "Your version is the note's text now",
-    "keptBoth": "Your version was saved as a separate note"
+    "keptBoth": "Your version was saved as a separate note",
+    "mineLine": "Your text, not saved: {who}",
+    "theirsLine": "Saved text: {who}"
   },
   "ee": {
     "audit": {

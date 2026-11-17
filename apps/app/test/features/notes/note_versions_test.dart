@@ -9,6 +9,7 @@ import 'package:alliswell/src/features/auth/data/token_storage.dart';
 import 'package:alliswell/src/features/auth/providers.dart';
 import 'package:alliswell/src/features/notes/ui/note_conflict_banner.dart';
 import 'package:alliswell/src/features/notes/ui/note_versions_screen.dart';
+import 'package:alliswell/src/features/notes/ui/version_labels.dart';
 import 'package:alliswell/src/theme/theme.dart';
 
 import '../auth/test_support.dart';
@@ -72,9 +73,84 @@ void main() {
     expect(find.text('Today'), findsOneWidget);
     expect(find.text('Yesterday'), findsOneWidget);
     // Origins are named in the user's words, never as raw enum values.
-    expect(find.text('Merged'), findsOneWidget);
-    expect(find.text('Conflict'), findsOneWidget);
-    expect(find.textContaining('device'), findsOneWidget);
+    expect(find.textContaining('Merged · '), findsOneWidget);
+    expect(find.textContaining('Conflict · '), findsOneWidget);
+    expect(find.textContaining('Edited · '), findsOneWidget);
+  });
+
+  testWidgets('OPH-494: each version names its device and its exact time', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    final start = DateTime(2026, 11, 18, 14, 2, 5);
+    api.seedNoteVersion(
+      noteId: noteId,
+      clientId: '01MACAAAAAAAAAAAAAAAAAAAAA',
+      deviceName: 'Ofis MacBook',
+      devicePlatform: 'macos',
+      createdAt: start.toUtc(),
+      updatedAt: start.add(const Duration(minutes: 7, seconds: 26)).toUtc(),
+    );
+    api.seedNoteVersion(
+      noteId: noteId,
+      origin: 'conflict',
+      clientId: '01GONEAAAAAAAAAAAAAAAAAAAA',
+      createdAt: start.add(const Duration(minutes: 9)).toUtc(),
+    );
+    api.seedNoteVersion(
+      noteId: noteId,
+      origin: 'mcp',
+      createdAt: start.add(const Duration(minutes: 10)).toUtc(),
+    );
+
+    await tester.pumpWidget(
+      await hostWith(api, const NoteVersionsScreen(noteId: noteId)),
+    );
+    await tester.pumpAndSettle();
+
+    // The registry's name, not "Another device".
+    expect(find.text('Edited · Ofis MacBook'), findsOneWidget);
+    // A device that is not (any longer) on the list says so plainly.
+    expect(
+      find.text('Conflict · A device not in your device list'),
+      findsOneWidget,
+    );
+    expect(find.text('Assistant · Assistant'), findsOneWidget);
+    // A rolled-up session shows its span, to the second at its end.
+    expect(find.textContaining('2:09:31'), findsOneWidget);
+    expect(find.textContaining('2:02'), findsOneWidget);
+
+    await tester.tap(find.text('Edited · Ofis MacBook'));
+    await tester.pumpAndSettle();
+    final who = tester.widget<Text>(find.byKey(const Key('version-who')));
+    expect(who.data, contains('Ofis MacBook'));
+    expect(who.data, contains('2:09:31'));
+  });
+
+  test('OPH-494: "This device" is decided by the sync client id', () {
+    expect(
+      versionDeviceLabel(
+        clientId: '01MEAAAAAAAAAAAAAAAAAAAAAA',
+        myClientId: '01MEAAAAAAAAAAAAAAAAAAAAAA',
+        deviceName: 'Ofis MacBook',
+      ),
+      'This device',
+    );
+    expect(
+      versionDeviceLabel(
+        clientId: '01WEBAAAAAAAAAAAAAAAAAAAAA',
+        myClientId: '01MEAAAAAAAAAAAAAAAAAAAAAA',
+        devicePlatform: 'web',
+        deviceName:
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) '
+            'AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+      ),
+      'Chrome · macOS',
+    );
+    expect(
+      versionDeviceLabel(clientId: null, myClientId: 'x', origin: 'restore'),
+      'Not from a synced device',
+    );
   });
 
   testWidgets('restoring asks first, and says that nothing is lost', (
@@ -173,6 +249,48 @@ void main() {
       );
       await tester.pumpAndSettle();
     }
+
+    testWidgets('OPH-494: it names both sides — device and exact time', (
+      tester,
+    ) async {
+      final api = FakeApi();
+      api.seedNoteVersion(
+        noteId: noteId,
+        clientId: '01MACAAAAAAAAAAAAAAAAAAAAA',
+        deviceName: 'Ofis MacBook',
+        devicePlatform: 'macos',
+        createdAt: DateTime(2026, 11, 18, 14, 31, 2).toUtc(),
+      );
+      final mine = api.seedNoteVersion(
+        noteId: noteId,
+        origin: 'conflict',
+        clientId: '01GONEAAAAAAAAAAAAAAAAAAAA',
+        createdAt: DateTime(2026, 11, 18, 14, 31, 40).toUtc(),
+      );
+      await tester.pumpWidget(
+        await hostWith(
+          api,
+          Scaffold(
+            body: NoteConflictBanner(
+              noteId: noteId,
+              conflictVersionId: mine['id'] as String,
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final mineLine = tester.widget<Text>(
+        find.byKey(const Key('conflict-mine-line')),
+      );
+      final theirsLine = tester.widget<Text>(
+        find.byKey(const Key('conflict-theirs-line')),
+      );
+      expect(mineLine.data, contains('2:31:40'));
+      expect(mineLine.data, contains('not saved'));
+      expect(theirsLine.data, contains('Ofis MacBook'));
+      expect(theirsLine.data, contains('2:31:02'));
+    });
 
     testWidgets('offers four choices and promises none of them deletes', (
       tester,

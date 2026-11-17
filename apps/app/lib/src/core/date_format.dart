@@ -202,6 +202,24 @@ String awFormatTime(
   ).format(value.toLocal());
 }
 
+/// Time to the second, in the same clock as [awFormatTime]: "23:59:07" or
+/// "11:59:07 PM". For moments that are told apart by seconds — two versions
+/// of one note written in the same minute (OPH-494).
+String awFormatTimeSeconds(
+  DateTime value, {
+  required String format,
+  String? locale,
+  String? region,
+}) {
+  final spec = awDateFormatSpec(format);
+  final language = _isSystem(spec) ? awLanguageOf(locale) : _locale(locale);
+  final pattern = awTimePattern(format: format, locale: locale, region: region);
+  final withSeconds = pattern.contains('s') || !pattern.contains('mm')
+      ? pattern
+      : pattern.replaceFirst('mm', 'mm:ss');
+  return DateFormat(withSeconds, language).format(value.toLocal());
+}
+
 /// The full instant, for detail rows and pickers. The system default:
 /// "Bugün 13:47", "Yarın 11:00", "7 Kas, 13:47", "7 Kas 2025, 13:47".
 /// A chosen format: "31.12.2026 23:59".

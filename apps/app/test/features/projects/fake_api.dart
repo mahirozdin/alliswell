@@ -303,6 +303,9 @@ class FakeApi {
     String? clientId,
     String markdown = 'gövde',
     DateTime? createdAt,
+    DateTime? updatedAt,
+    String? deviceName,
+    String? devicePlatform,
   }) {
     final row = {
       'id': 'VER${(_versionSeq++).toString().padLeft(23, '0')}',
@@ -315,6 +318,9 @@ class FakeApi {
       'sizeBytes': markdown.length,
       'createdAt': (createdAt ?? DateTime.utc(2026, 8, 17, 9))
           .toIso8601String(),
+      'updatedAt': ?updatedAt?.toIso8601String(),
+      'deviceName': deviceName,
+      'devicePlatform': devicePlatform,
     };
     noteVersions.add(row);
     return row;
