@@ -90,17 +90,24 @@ function serializeVersionRow(row) {
 }
 
 /**
- * OPH-494: version rows with the writing device's registry entry beside them.
- * Only the CALLER's own devices are named: a shared workspace's history also
- * holds other members' writes, and what they call their phone is theirs.
+ * OPH-494: version rows with the writing device's registry entry beside them
+ * (`device_name`, `device_platform`). Only the CALLER's own devices are named:
+ * a shared workspace's history also holds other members' writes, and what
+ * they call their phone is theirs.
  */
-function versionsWithDevice(app, userId) {
-  return app
-    .db('note_versions as v')
-    .leftJoin('notification_devices as d', function joinOwnDevice() {
-      this.on('d.id', '=', 'v.client_id').andOn('d.user_id', '=', app.db.raw('?', [userId]));
-    })
-    .select('v.*', 'd.device_name as device_name', 'd.platform as device_platform');
+async function withDevices(app, userId, rows) {
+  const ids = [...new Set(rows.map((r) => r.client_id).filter(Boolean))];
+  if (ids.length === 0) return rows;
+  const devices = await app
+    .db('notification_devices')
+    .whereIn('id', ids)
+    .where({ user_id: userId })
+    .select('id', 'device_name', 'platform');
+  const byId = new Map(devices.map((d) => [d.id, d]));
+  return rows.map((r) => {
+    const d = byId.get(r.client_id);
+    return d ? { ...r, device_name: d.device_name, device_platform: d.platform } : r;
+  });
 }
 
 function serializeVersionDetail(row) {
@@ -140,9 +147,8 @@ export default async function noteVersionRoutes(app) {
     const note = await loadNote(app, request.params.noteId);
     await app.requireWorkspaceMember(request, note.workspace_id);
     if (!versionId) return { note, version: null };
-    const version = await versionsWithDevice(app, request.user.id)
-      .where({ 'v.id': versionId, 'v.note_id': note.id })
-      .first();
+    const found = await app.db('note_versions').where({ id: versionId, note_id: note.id }).first();
+    const [version] = found ? await withDevices(app, request.user.id, [found]) : [];
     if (!version) {
       throw coded(app.httpErrors.notFound('Version not found'), 'NOTE_VERSION_NOT_FOUND');
     }
@@ -179,12 +185,13 @@ export default async function noteVersionRoutes(app) {
     async (request) => {
       const { note } = await loadOwn(request);
       const q = request.query;
-      let query = versionsWithDevice(app, request.user.id)
-        .where({ 'v.note_id': note.id })
-        .orderBy('v.id', 'desc')
+      let query = app
+        .db('note_versions')
+        .where({ note_id: note.id })
+        .orderBy('id', 'desc')
         .limit(q.limit);
-      if (q.cursor) query = query.where('v.id', '<', q.cursor);
-      const rows = await query.select();
+      if (q.cursor) query = query.where('id', '<', q.cursor);
+      const rows = await withDevices(app, request.user.id, await query.select());
       return {
         items: rows.map(serializeVersionRow),
         nextCursor: rows.length === q.limit ? rows.at(-1).id : null,
@@ -258,11 +265,13 @@ export default async function noteVersionRoutes(app) {
     },
     async (request) => {
       const { note, version } = await loadOwn(request, { versionId: request.params.versionId });
-      const head = await versionsWithDevice(app, request.user.id)
-        .where({ 'v.note_id': note.id })
-        .whereNot('v.origin', 'conflict')
-        .orderBy('v.id', 'desc')
+      const newest = await app
+        .db('note_versions')
+        .where({ note_id: note.id })
+        .whereNot('origin', 'conflict')
+        .orderBy('id', 'desc')
         .first();
+      const [head] = newest ? await withDevices(app, request.user.id, [newest]) : [];
       const before = comparableText(version, version.title);
       const after = comparableText(versionSnapshotOf(note), note.plain_text ?? '');
       const segments = diffWords(before, after).map((part) => ({
