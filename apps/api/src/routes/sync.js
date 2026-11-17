@@ -18,6 +18,8 @@
  * are discarded individually (`discardedFields`); a mutation that loses every
  * field comes back as `conflict`/`SYNC_STALE_MUTATION`.
  */
+import crypto from 'node:crypto';
+
 import { isUlid, newId, ULID_RE } from '../lib/ids.js';
 import { toIso } from '../lib/serialize.js';
 import { slugify } from '../lib/slug.js';
@@ -66,6 +68,18 @@ const ULID_PARAM = { type: 'string', minLength: 26, maxLength: 26 };
 const COLOR_RE = new RegExp(COLOR_PATTERN);
 const MAX_PULL_LIMIT = 500;
 const MAX_PUSH_MUTATIONS = 100;
+
+/** JSON with object keys sorted at every depth — one payload, one string. */
+function stableJson(value) {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(',')}]`;
+  if (value !== null && typeof value === 'object') {
+    const keys = Object.keys(value)
+      .filter((k) => value[k] !== undefined)
+      .sort();
+    return `{${keys.map((k) => `${JSON.stringify(k)}:${stableJson(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value) ?? 'null';
+}
 
 const errorResponseSchema = {
   type: 'object',
@@ -740,6 +754,32 @@ export default async function syncRoutes(app) {
     return { all: false, fields };
   }
 
+  /**
+   * OPH-486 (ADR-0072): whether every sync write to this entity after `since`
+   * came from THIS client — attributed the way `foreignChangesSince` does it,
+   * through `client_mutations.result_revision`. A REST or MCP write records no
+   * client mutation (or one under another client id), so it is foreign.
+   */
+  async function onlyOwnWritesSince(ctx, entityType, entityId, since) {
+    if (!ctx.clientId) return false;
+    const rows = await app
+      .db('sync_revisions')
+      .where({ workspace_id: ctx.workspaceId, entity_type: entityType, entity_id: entityId })
+      .where('revision', '>', since)
+      .select('revision');
+    if (rows.length === 0) return true;
+    const own = await app
+      .db('client_mutations')
+      .where({ client_id: ctx.clientId, workspace_id: ctx.workspaceId, entity_id: entityId })
+      .whereIn(
+        'result_revision',
+        rows.map((r) => Number(r.revision)),
+      )
+      .select('result_revision');
+    const ownRevisions = new Set(own.map((r) => Number(r.result_revision)));
+    return rows.every((r) => ownRevisions.has(Number(r.revision)));
+  }
+
   async function assertProjectRef(projectId, workspaceId, code) {
     const project = await app
       .db('projects')
@@ -1324,12 +1364,47 @@ export default async function syncRoutes(app) {
     if (def.entity) ENTITIES[type] = def.entity;
   }
 
+  /**
+   * OPH-487 (ADR-0072): what a mutation SAID, so a resend can be told apart
+   * from a different write that reused its id. `localUpdatedAt` is left out on
+   * purpose: an unchanged row resent later is still the same write.
+   */
+  function payloadHash(mutation) {
+    return crypto
+      .createHash('sha256')
+      .update(
+        stableJson({
+          operation: mutation.operation,
+          entityType: mutation.entityType,
+          entityId: mutation.entityId,
+          patch: mutation.patch ?? null,
+          baseRevision: mutation.baseRevision ?? null,
+        }),
+      )
+      .digest('hex');
+  }
+
   async function findRecorded(ctx, mutation) {
     const row = await app
       .db('client_mutations')
       .where({ client_id: ctx.clientId, client_mutation_id: mutation.clientMutationId })
       .first();
     if (!row) return null;
+    // OPH-487: the same id with a DIFFERENT payload is not a resend. An
+    // installed client coalesced a newer note body into an outbox row it had
+    // already sent; replaying the first answer threw that body away with no
+    // trace. The old record steps aside under a fresh id — it keeps its
+    // `result_revision`, so the write it describes stays this client's own —
+    // and the caller processes the mutation as the new write it is.
+    if (row.payload_hash != null && row.payload_hash !== payloadHash(mutation)) {
+      const moved = await app
+        .db('client_mutations')
+        .where({ id: row.id, client_mutation_id: mutation.clientMutationId })
+        .update({ client_mutation_id: newId() });
+      // Lost a race with a concurrent resend: whoever moved it processes it;
+      // look again so this one replays whatever that answer was.
+      return moved === 1 ? null : findRecorded(ctx, mutation);
+    }
     return {
       status: row.status,
       revision: row.result_revision == null ? null : Number(row.result_revision),
@@ -1351,6 +1426,7 @@ export default async function syncRoutes(app) {
       status,
       result_revision: revision ?? null,
       error_code: errorCode ?? null,
+      payload_hash: payloadHash(mutation),
     });
   }
 
@@ -1449,6 +1525,8 @@ export default async function syncRoutes(app) {
         row,
         baseRevision: mutation.baseRevision,
         incoming: patch,
+        onlyOwnSince: (since) =>
+          onlyOwnWritesSince(ctx, mutation.entityType, mutation.entityId, since),
       });
       if (decision.outcome === 'conflict') {
         // The losing body is kept BEFORE the refusal is returned: "the
