@@ -492,8 +492,8 @@ class HomeShell extends ConsumerWidget {
         if (context.mounted) _goBranch(AppSection.home.index);
       });
     }
-    ref.listen(syncConflictsProvider, (_, next) {
-      final conflict = next.value;
+    ref.listen(syncConflictsProvider, (previous, next) {
+      final conflict = freshSyncConflict(previous, next);
       if (conflict == null) return;
       ScaffoldMessenger.maybeOf(
         context,
@@ -948,6 +948,23 @@ AppBar buildSectionAppBar(
       const SizedBox(width: 4),
     ],
   );
+}
+
+/// The conflict a change of [syncConflictsProvider] brings, or null when it
+/// brings none that is new (OPH-493).
+///
+/// When the engines are rebuilt — a token rotation re-reads the session about
+/// every 15 minutes — the provider goes to loading while keeping its last
+/// value, and the shell used to show that conflict again, as if it had just
+/// happened. Only a new answer is news.
+SyncConflict? freshSyncConflict(
+  AsyncValue<SyncConflict>? previous,
+  AsyncValue<SyncConflict> next,
+) {
+  final conflict = next.value;
+  if (conflict == null || next.isLoading) return null;
+  if (identical(conflict, previous?.value)) return null;
+  return conflict;
 }
 
 /// OPH-056: a sync push the server refused (or trimmed via LWW) surfaces

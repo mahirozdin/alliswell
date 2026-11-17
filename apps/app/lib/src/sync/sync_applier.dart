@@ -29,7 +29,12 @@ Future<void> applyPulledChanges(
       if (change.isTombstone) {
         await _applyTombstone(db, change, workspaceId: workspaceId);
       } else {
-        await _applySnapshot(db, change.entityType, change.data!);
+        await _applySnapshot(
+          db,
+          change.entityType,
+          change.data!,
+          keepPendingNoteBody: true,
+        );
       }
     }
     await (db.update(
@@ -204,8 +209,9 @@ Future<void> _applyTombstone(
 Future<void> _applySnapshot(
   AwDatabase db,
   String entityType,
-  Map<String, dynamic> data,
-) async {
+  Map<String, dynamic> data, {
+  bool keepPendingNoteBody = false,
+}) async {
   switch (entityType) {
     case 'project':
       await db.into(db.projects).insertOnConflictUpdate(projectCompanion(data));
@@ -219,7 +225,31 @@ Future<void> _applySnapshot(
         ((data['tagIds'] as List?) ?? const []).cast<String>(),
       );
     case 'note':
-      await db.into(db.notes).insertOnConflictUpdate(noteCompanion(data));
+      if (keepPendingNoteBody && await _hasPendingNoteWrite(db, data)) {
+        // OPH-489 (ADR-0072): the device has a save of this note the server
+        // has not answered yet. The pulled body is older than it, and the
+        // revision with it would become the base of the next save — which
+        // would then claim to have seen lines it never had. The body, title
+        // and revision stay as they are until the queued save is answered;
+        // everything else (pin, archive, project) is taken.
+        final companion = noteCompanion(data);
+        await (db.update(
+          db.notes,
+        )..where((n) => n.id.equals(data['id'] as String))).write(
+          companion.copyWith(
+            title: const Value.absent(),
+            titleFold: const Value.absent(),
+            contentMarkdown: const Value.absent(),
+            contentFormat: const Value.absent(),
+            plainText: const Value.absent(),
+            bodyFold: const Value.absent(),
+            revision: const Value.absent(),
+            updatedAt: const Value.absent(),
+          ),
+        );
+      } else {
+        await db.into(db.notes).insertOnConflictUpdate(noteCompanion(data));
+      }
       await _replaceNoteLinks(
         db,
         data['id'] as String,
@@ -868,3 +898,27 @@ TicketAssignmentsCompanion ticketAssignmentCompanion(
   revision: Value((data['revision'] as num?)?.toInt() ?? 0),
   updatedAt: _dateValue(data['updatedAt']),
 );
+
+/// Whether the note in [data] has a queued create or update and a local row
+/// that holds it (OPH-489).
+Future<bool> _hasPendingNoteWrite(
+  AwDatabase db,
+  Map<String, dynamic> data,
+) async {
+  final id = data['id'] as String;
+  final pending =
+      await (db.select(db.pendingMutations)
+            ..where(
+              (m) =>
+                  m.entityType.equals('note') &
+                  m.entityId.equals(id) &
+                  m.operation.isIn(const ['create', 'update']),
+            )
+            ..limit(1))
+          .getSingleOrNull();
+  if (pending == null) return false;
+  final local = await (db.select(
+    db.notes,
+  )..where((n) => n.id.equals(id))).getSingleOrNull();
+  return local != null;
+}

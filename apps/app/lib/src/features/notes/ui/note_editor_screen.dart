@@ -167,6 +167,33 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// T-02: read-only because the note no longer exists.
   bool get _gone => widget.deletedElsewhere && !_deletingHere;
 
+  /// OPH-491: the provider container, taken while the editor is mounted.
+  ///
+  /// `dispose()` flushes the last unsaved edit, and that save used
+  /// `ref.read` — which throws once the element is unmounted. The error was
+  /// swallowed, so everything typed in the last 1.5 s before leaving a note
+  /// was lost everywhere, the replica included. The container outlives the
+  /// widget; the save reads through it.
+  ProviderContainer? _container;
+
+  /// OPH-492: the replica's copy of a note this `/notes/new` session created.
+  /// The route was built with no note, so without this the session never saw
+  /// what sync did to its own note — no banner, no adopted merge.
+  NoteDetail? _live;
+
+  /// The note as the replica has it: the route's, or the one this session
+  /// created.
+  NoteDetail? get _note => widget.note ?? _live;
+
+  /// OPH-493: the text the editor last saw, so a listener that fires without
+  /// a text change (a tap, an arrow key: a selection move) is not an edit.
+  String _seenTitle = '';
+  String _seenBody = '';
+
+  /// Set while a remote change is being adopted: that is not the user typing,
+  /// and must not be saved back up as if it were (the stale-adopt echo).
+  bool _adopting = false;
+
   /// The mode on screen: a gone note only reads.
   NoteMode get _mode => _gone ? NoteMode.reading : _doc.mode;
 
@@ -186,6 +213,8 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     // when the OS handed it to us. This entry point is "Edit a file…", so it
     // lands on the editor instead — the mode control still offers both.
     if (widget.external) _doc.setMode(NoteMode.source);
+    _seenTitle = _doc.title.text;
+    _seenBody = _doc.source.text;
     _doc.title.addListener(_markDirty);
     _doc.source.addListener(_markDirty);
     // Round 19 #4: the source field's styling is a device preference, not a
@@ -204,6 +233,12 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// what the user is typing — the push-time three-way merge is what reconciles
   /// those two, and it can only do that if the text still exists.
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _container ??= ProviderScope.containerOf(context, listen: false);
+  }
+
+  @override
   void didUpdateWidget(covariant _NoteEditor oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.deletedElsewhere && !oldWidget.deletedElsewhere) {
@@ -212,11 +247,21 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       _debounce?.cancel();
       _dirty = false;
     }
-    final incoming = widget.note;
+    _onIncoming(oldWidget.note, widget.note);
+  }
+
+  void _onIncoming(NoteDetail? previous, NoteDetail? incoming) {
     if (incoming == null || widget.external) return;
-    if (incoming.revision == oldWidget.note?.revision) return;
+    if (incoming.revision == previous?.revision) return;
     if (_dirty || _saving) return;
-    _doc.adoptRemote(incoming);
+    _adopting = true;
+    try {
+      _doc.adoptRemote(incoming);
+    } finally {
+      _adopting = false;
+    }
+    _seenTitle = _doc.title.text;
+    _seenBody = _doc.source.text;
   }
 
   @override
@@ -302,7 +347,13 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   }
 
   void _markDirty() {
-    if (_gone) return;
+    if (_gone || _adopting) return;
+    // OPH-493: a listener fires on a selection move too. Only a change of
+    // text is an edit; every extra autosave was another push, and with a
+    // stale base another chance to be refused.
+    if (_doc.title.text == _seenTitle && _doc.source.text == _seenBody) return;
+    _seenTitle = _doc.title.text;
+    _seenBody = _doc.source.text;
     _dirty = true;
     // W2: autosave belongs to AllisWell's own notes. An external file — and
     // the note it would otherwise be silently imported as — changes only on a
@@ -339,10 +390,16 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
     _dirty = false;
     _setSaveState(_SaveState.saving);
     try {
-      final store = ref.read(noteStoreProvider);
+      // OPH-491: through the container, never `ref` — this also runs from
+      // `dispose()`, after the element is gone.
+      final container =
+          _container ?? ProviderScope.containerOf(context, listen: false);
+      final store = container.read(noteStoreProvider);
       final body = _doc.bodyFor(_titleText);
       if (_noteId == null) {
-        final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
+        final workspaceId = await container.read(
+          activeWorkspaceIdProvider.future,
+        );
         if (workspaceId == null) return;
         _noteId = await store.create(workspaceId, body);
       } else {
@@ -429,6 +486,22 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       noteSourceStylingChoiceProvider,
       (_, next) => _doc.source.styling = next,
     );
+    // OPH-492: once this `/notes/new` session has created its note, it
+    // follows the replica's copy like a `/notes/:id` editor does — the
+    // banner for a refusal, the adopted body for a merge.
+    final createdHere = _noteId;
+    if (widget.note == null && !widget.external && createdHere != null) {
+      ref.listen<AsyncValue<NoteDetail>>(noteDetailProvider(createdHere), (
+        _,
+        next,
+      ) {
+        final incoming = next.value;
+        if (incoming == null || _disposed) return;
+        final previous = _live;
+        setState(() => _live = incoming);
+        _onIncoming(previous, incoming);
+      });
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -498,7 +571,7 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
                       format: format,
                       title: _titleText,
                       markdown: _doc.markdown,
-                      updatedAt: widget.note?.updatedAt,
+                      updatedAt: _note?.updatedAt,
                     ),
                   );
                   return;
@@ -587,10 +660,10 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
             if (widget.external) ExternalDocBand(dirty: _dirty),
             // V3: the conflict lives ON the note, where the user's attention
             // already is — not in a sibling note they have to go find.
-            if (!widget.external && widget.note?.conflictVersionId != null)
+            if (!widget.external && _note?.conflictVersionId != null)
               NoteConflictBanner(
                 noteId: _noteId!,
-                conflictVersionId: widget.note!.conflictVersionId!,
+                conflictVersionId: _note!.conflictVersionId!,
               ),
             if (_gone) _DeletedNotice(onClose: _closeGone),
             if (!_gone)

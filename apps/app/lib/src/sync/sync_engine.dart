@@ -325,15 +325,33 @@ class SyncEngine {
   Future<void> _pushPending() async {
     while (true) {
       final state = await _ensureState();
-      final rows =
-          await (db.select(db.pendingMutations)
-                ..where((m) => m.workspaceId.equals(workspaceId))
-                ..orderBy([
-                  (m) => OrderingTerm.asc(m.createdAt),
-                  (m) => OrderingTerm.asc(m.id),
-                ])
-                ..limit(pushBatchSize))
-              .get();
+      // OPH-488 (ADR-0072): read and mark SENT in one transaction, so a save
+      // landing in between can never be coalesced into a row this push
+      // carries. The mark stays through a failure: the server may have
+      // recorded the row before its answer was lost.
+      final rows = await db.transaction(() async {
+        final read =
+            await (db.select(db.pendingMutations)
+                  ..where((m) => m.workspaceId.equals(workspaceId))
+                  ..orderBy([
+                    (m) => OrderingTerm.asc(m.createdAt),
+                    (m) => OrderingTerm.asc(m.id),
+                  ])
+                  ..limit(pushBatchSize))
+                .get();
+        final fresh = [
+          for (final row in read)
+            if (row.sentAt == null) row.id,
+        ];
+        if (fresh.isNotEmpty) {
+          await (db.update(
+            db.pendingMutations,
+          )..where((m) => m.id.isIn(fresh))).write(
+            PendingMutationsCompanion(sentAt: Value(DateTime.now().toUtc())),
+          );
+        }
+        return read;
+      });
       if (rows.isEmpty) return;
 
       List<SyncPushResult> results;
@@ -544,6 +562,44 @@ class SyncEngine {
   /// carries a base the server recognises instead of the one from before our
   /// own write.
   Future<void> _settleNote(PendingMutation row, SyncPushResult result) async {
+    // OPH-488/489 (ADR-0072): the note's other outbox rows decide what this
+    // answer may do to the replica.
+    final others =
+        await (db.select(db.pendingMutations)..where(
+              (m) =>
+                  m.entityType.equals('note') &
+                  m.entityId.equals(row.entityId) &
+                  m.id.equals(row.id).not() &
+                  m.operation.isIn(const ['create', 'update']),
+            ))
+            .get();
+    if (result.merged) {
+      // A newer local save is still queued: the replica holds THAT body,
+      // which lacks the other side's lines. Neither the merged body nor its
+      // revision may land, or the next save would claim a base whose lines
+      // it does not have and silently delete them. The queued row keeps its
+      // own base and is merged by the server in turn.
+      if (others.isNotEmpty) return;
+    } else if (result.applied && result.revision != null) {
+      // Our own write landed. Rows queued behind it carry the base it started
+      // from; they continue the same session, so they start from its result
+      // now. Without this, a save that could not be coalesced into a SENT row
+      // would conflict with its own device (finding #3). Only unsent rows:
+      // a sent one may already be recorded under what it said.
+      final preBase = row.operation == 'create' ? null : row.baseRevision;
+      for (final other in others) {
+        if (other.sentAt != null || other.operation != 'update') continue;
+        final sameBase = preBase == null
+            ? (other.baseRevision == null || other.baseRevision == 0)
+            : other.baseRevision == preBase;
+        if (!sameBase) continue;
+        await (db.update(
+          db.pendingMutations,
+        )..where((m) => m.id.equals(other.id) & m.sentAt.isNull())).write(
+          PendingMutationsCompanion(baseRevision: Value(result.revision)),
+        );
+      }
+    }
     if (result.applied && result.revision != null) {
       await (db.update(db.notes)..where((n) => n.id.equals(row.entityId)))
           .write(NotesCompanion(revision: Value(result.revision!)));

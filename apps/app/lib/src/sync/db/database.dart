@@ -529,6 +529,14 @@ class PendingMutations extends Table {
   /// as they did before.
   IntColumn get baseRevision => integer().nullable()();
 
+  /// When a push first carried this row (v41, OPH-488, ADR-0072). Null = never
+  /// sent. A row the server may already have recorded is never rewritten:
+  /// the server answers a resend of its id with the FIRST answer, so a newer
+  /// body coalesced into it was silently lost (the 2026-11-18 report). Set
+  /// before the request leaves and kept through a timeout, because a push
+  /// whose answer was lost may still have landed.
+  DateTimeColumn get sentAt => dateTime().nullable()();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -1261,7 +1269,7 @@ class AwDatabase extends _$AwDatabase {
   /// v39 → v40 (OPH-421): action_receipts — the device-local ledger that
   /// applies an alarm action exactly once. Not a sync entity.
   @override
-  int get schemaVersion => 40;
+  int get schemaVersion => 41;
 
   /// The replica is disposable cache — MySQL is canonical (AGENTS.md §6) — but
   /// it is NOT expendable: it holds the outbox, so a failed open would strand
@@ -1555,6 +1563,13 @@ class AwDatabase extends _$AwDatabase {
       // synced table is touched, and nothing to backfill: no action was
       // answered under this ledger before it existed.
       if (from < 40) await m.createTable(actionReceipts);
+      // v41 (OPH-488, ADR-0072): when a push first carried an outbox row. A
+      // column on a table v1 already had, so it takes the `from >= 1` guard.
+      // Existing rows read as never sent (null): an upgrade cannot know, and
+      // the server re-keys a reused id with a different payload anyway.
+      if (from >= 1 && from < 41) {
+        await m.addColumn(pendingMutations, pendingMutations.sentAt);
+      }
     },
   );
 

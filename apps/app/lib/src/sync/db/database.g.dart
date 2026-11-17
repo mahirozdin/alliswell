@@ -11888,6 +11888,15 @@ class $PendingMutationsTable extends PendingMutations
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sentAtMeta = const VerificationMeta('sentAt');
+  @override
+  late final GeneratedColumn<DateTime> sentAt = GeneratedColumn<DateTime>(
+    'sent_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -11901,6 +11910,7 @@ class $PendingMutationsTable extends PendingMutations
     attempts,
     lastError,
     baseRevision,
+    sentAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -12000,6 +12010,12 @@ class $PendingMutationsTable extends PendingMutations
         ),
       );
     }
+    if (data.containsKey('sent_at')) {
+      context.handle(
+        _sentAtMeta,
+        sentAt.isAcceptableOrUnknown(data['sent_at']!, _sentAtMeta),
+      );
+    }
     return context;
   }
 
@@ -12053,6 +12069,10 @@ class $PendingMutationsTable extends PendingMutations
         DriftSqlType.int,
         data['${effectivePrefix}base_revision'],
       ),
+      sentAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}sent_at'],
+      ),
     );
   }
 
@@ -12084,6 +12104,14 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
   /// replace another. Nullable: writes that do not carry one behave exactly
   /// as they did before.
   final int? baseRevision;
+
+  /// When a push first carried this row (v41, OPH-488, ADR-0072). Null = never
+  /// sent. A row the server may already have recorded is never rewritten:
+  /// the server answers a resend of its id with the FIRST answer, so a newer
+  /// body coalesced into it was silently lost (the 2026-11-18 report). Set
+  /// before the request leaves and kept through a timeout, because a push
+  /// whose answer was lost may still have landed.
+  final DateTime? sentAt;
   const PendingMutation({
     required this.id,
     required this.workspaceId,
@@ -12096,6 +12124,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     required this.attempts,
     this.lastError,
     this.baseRevision,
+    this.sentAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -12116,6 +12145,9 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     }
     if (!nullToAbsent || baseRevision != null) {
       map['base_revision'] = Variable<int>(baseRevision);
+    }
+    if (!nullToAbsent || sentAt != null) {
+      map['sent_at'] = Variable<DateTime>(sentAt);
     }
     return map;
   }
@@ -12139,6 +12171,9 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       baseRevision: baseRevision == null && nullToAbsent
           ? const Value.absent()
           : Value(baseRevision),
+      sentAt: sentAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sentAt),
     );
   }
 
@@ -12159,6 +12194,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       attempts: serializer.fromJson<int>(json['attempts']),
       lastError: serializer.fromJson<String?>(json['lastError']),
       baseRevision: serializer.fromJson<int?>(json['baseRevision']),
+      sentAt: serializer.fromJson<DateTime?>(json['sentAt']),
     );
   }
   @override
@@ -12176,6 +12212,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       'attempts': serializer.toJson<int>(attempts),
       'lastError': serializer.toJson<String?>(lastError),
       'baseRevision': serializer.toJson<int?>(baseRevision),
+      'sentAt': serializer.toJson<DateTime?>(sentAt),
     };
   }
 
@@ -12191,6 +12228,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     int? attempts,
     Value<String?> lastError = const Value.absent(),
     Value<int?> baseRevision = const Value.absent(),
+    Value<DateTime?> sentAt = const Value.absent(),
   }) => PendingMutation(
     id: id ?? this.id,
     workspaceId: workspaceId ?? this.workspaceId,
@@ -12203,6 +12241,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     attempts: attempts ?? this.attempts,
     lastError: lastError.present ? lastError.value : this.lastError,
     baseRevision: baseRevision.present ? baseRevision.value : this.baseRevision,
+    sentAt: sentAt.present ? sentAt.value : this.sentAt,
   );
   PendingMutation copyWithCompanion(PendingMutationsCompanion data) {
     return PendingMutation(
@@ -12225,6 +12264,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
       baseRevision: data.baseRevision.present
           ? data.baseRevision.value
           : this.baseRevision,
+      sentAt: data.sentAt.present ? data.sentAt.value : this.sentAt,
     );
   }
 
@@ -12241,7 +12281,8 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
           ..write('createdAt: $createdAt, ')
           ..write('attempts: $attempts, ')
           ..write('lastError: $lastError, ')
-          ..write('baseRevision: $baseRevision')
+          ..write('baseRevision: $baseRevision, ')
+          ..write('sentAt: $sentAt')
           ..write(')'))
         .toString();
   }
@@ -12259,6 +12300,7 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
     attempts,
     lastError,
     baseRevision,
+    sentAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -12274,7 +12316,8 @@ class PendingMutation extends DataClass implements Insertable<PendingMutation> {
           other.createdAt == this.createdAt &&
           other.attempts == this.attempts &&
           other.lastError == this.lastError &&
-          other.baseRevision == this.baseRevision);
+          other.baseRevision == this.baseRevision &&
+          other.sentAt == this.sentAt);
 }
 
 class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
@@ -12289,6 +12332,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
   final Value<int> attempts;
   final Value<String?> lastError;
   final Value<int?> baseRevision;
+  final Value<DateTime?> sentAt;
   final Value<int> rowid;
   const PendingMutationsCompanion({
     this.id = const Value.absent(),
@@ -12302,6 +12346,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     this.attempts = const Value.absent(),
     this.lastError = const Value.absent(),
     this.baseRevision = const Value.absent(),
+    this.sentAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   PendingMutationsCompanion.insert({
@@ -12316,6 +12361,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     this.attempts = const Value.absent(),
     this.lastError = const Value.absent(),
     this.baseRevision = const Value.absent(),
+    this.sentAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        workspaceId = Value(workspaceId),
@@ -12336,6 +12382,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     Expression<int>? attempts,
     Expression<String>? lastError,
     Expression<int>? baseRevision,
+    Expression<DateTime>? sentAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -12350,6 +12397,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
       if (attempts != null) 'attempts': attempts,
       if (lastError != null) 'last_error': lastError,
       if (baseRevision != null) 'base_revision': baseRevision,
+      if (sentAt != null) 'sent_at': sentAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -12366,6 +12414,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     Value<int>? attempts,
     Value<String?>? lastError,
     Value<int?>? baseRevision,
+    Value<DateTime?>? sentAt,
     Value<int>? rowid,
   }) {
     return PendingMutationsCompanion(
@@ -12380,6 +12429,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
       attempts: attempts ?? this.attempts,
       lastError: lastError ?? this.lastError,
       baseRevision: baseRevision ?? this.baseRevision,
+      sentAt: sentAt ?? this.sentAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -12420,6 +12470,9 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
     if (baseRevision.present) {
       map['base_revision'] = Variable<int>(baseRevision.value);
     }
+    if (sentAt.present) {
+      map['sent_at'] = Variable<DateTime>(sentAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -12440,6 +12493,7 @@ class PendingMutationsCompanion extends UpdateCompanion<PendingMutation> {
           ..write('attempts: $attempts, ')
           ..write('lastError: $lastError, ')
           ..write('baseRevision: $baseRevision, ')
+          ..write('sentAt: $sentAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -28766,6 +28820,7 @@ typedef $$PendingMutationsTableCreateCompanionBuilder =
       Value<int> attempts,
       Value<String?> lastError,
       Value<int?> baseRevision,
+      Value<DateTime?> sentAt,
       Value<int> rowid,
     });
 typedef $$PendingMutationsTableUpdateCompanionBuilder =
@@ -28781,6 +28836,7 @@ typedef $$PendingMutationsTableUpdateCompanionBuilder =
       Value<int> attempts,
       Value<String?> lastError,
       Value<int?> baseRevision,
+      Value<DateTime?> sentAt,
       Value<int> rowid,
     });
 
@@ -28845,6 +28901,11 @@ class $$PendingMutationsTableFilterComposer
 
   ColumnFilters<int> get baseRevision => $composableBuilder(
     column: $table.baseRevision,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get sentAt => $composableBuilder(
+    column: $table.sentAt,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -28912,6 +28973,11 @@ class $$PendingMutationsTableOrderingComposer
     column: $table.baseRevision,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<DateTime> get sentAt => $composableBuilder(
+    column: $table.sentAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PendingMutationsTableAnnotationComposer
@@ -28963,6 +29029,9 @@ class $$PendingMutationsTableAnnotationComposer
     column: $table.baseRevision,
     builder: (column) => column,
   );
+
+  GeneratedColumn<DateTime> get sentAt =>
+      $composableBuilder(column: $table.sentAt, builder: (column) => column);
 }
 
 class $$PendingMutationsTableTableManager
@@ -29013,6 +29082,7 @@ class $$PendingMutationsTableTableManager
                 Value<int> attempts = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
                 Value<int?> baseRevision = const Value.absent(),
+                Value<DateTime?> sentAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingMutationsCompanion(
                 id: id,
@@ -29026,6 +29096,7 @@ class $$PendingMutationsTableTableManager
                 attempts: attempts,
                 lastError: lastError,
                 baseRevision: baseRevision,
+                sentAt: sentAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -29041,6 +29112,7 @@ class $$PendingMutationsTableTableManager
                 Value<int> attempts = const Value.absent(),
                 Value<String?> lastError = const Value.absent(),
                 Value<int?> baseRevision = const Value.absent(),
+                Value<DateTime?> sentAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => PendingMutationsCompanion.insert(
                 id: id,
@@ -29054,6 +29126,7 @@ class $$PendingMutationsTableTableManager
                 attempts: attempts,
                 lastError: lastError,
                 baseRevision: baseRevision,
+                sentAt: sentAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
