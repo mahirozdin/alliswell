@@ -229,7 +229,7 @@ class _NoteConflictBannerState extends ConsumerState<NoteConflictBanner> {
       final store = ref.read(noteStoreProvider);
       // A save queued since keeps its text; the pointer still goes.
       if (await store.takeServerCopy(server)) {
-        widget.onTookServerCopy?.call(server);
+        if (mounted) widget.onTookServerCopy?.call(server);
       } else {
         await store.clearConflict(widget.noteId);
       }

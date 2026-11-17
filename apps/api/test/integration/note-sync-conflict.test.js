@@ -133,6 +133,26 @@ describe.runIf(enabled)('note sync: own writes never conflict (OPH-486/487)', ()
       expect((await note(noteId)).content_markdown).toBe('A\nM\nWEB');
     });
 
+    it('base 0 after someone else only PINNED the note merges from the own create', async () => {
+      const pc = newId();
+      const web = newId();
+      const { noteId } = await create(pc, 'Bir');
+      const [pin] = await push(web, [
+        {
+          clientMutationId: newId(),
+          entityType: 'note',
+          entityId: noteId,
+          operation: 'update',
+          localUpdatedAt: new Date().toISOString(),
+          patch: { isPinned: true },
+        },
+      ]);
+      expect(pin.status).toBe('applied');
+      const late = await update(pc, noteId, 0, 'Bir\nİki');
+      expect(['applied', 'merged']).toContain(late.status);
+      expect((await note(noteId)).content_markdown).toBe('Bir\nİki');
+    });
+
     it('a base one of its OWN writes behind is applied (rolling head erased that version)', async () => {
       const pc = newId();
       const { noteId, rev: r0 } = await create(pc, '');

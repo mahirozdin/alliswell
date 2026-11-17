@@ -372,6 +372,22 @@ void main() {
     expect(await db.select(db.pendingMutations).get(), isEmpty);
   });
 
+  test(
+    'OPH-488: a replayed create still gives the note its revision',
+    () async {
+      final id = await store.create(ws, body('A'));
+      final row = (await db.select(db.pendingMutations).get()).single;
+      api.recorded[row.id] = SyncPushResult(
+        clientMutationId: row.id,
+        status: 'applied',
+        replayed: false,
+        revision: 42,
+      );
+      await engine.syncNow();
+      expect((await local(id)).revision, 42);
+    },
+  );
+
   test('OPH-488: a push that never connected leaves its rows unsent, so the '
       'next save still joins them', () async {
     final id = await store.create(ws, body('A'));

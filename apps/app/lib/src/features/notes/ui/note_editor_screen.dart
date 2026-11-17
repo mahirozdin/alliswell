@@ -194,6 +194,9 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// and must not be saved back up as if it were (the stale-adopt echo).
   bool _adopting = false;
 
+  /// The close flush retried once after a save that was running (OPH-491).
+  bool _closeRetried = false;
+
   /// The mode on screen: a gone note only reads.
   NoteMode get _mode => _gone ? NoteMode.reading : _doc.mode;
 
@@ -254,9 +257,19 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
   /// that choice — its autosave would carry the server's revision as its
   /// base and quietly put the refused text back.
   void _takeServerCopy(NoteDetail server) {
+    if (_disposed) return;
     _debounce?.cancel();
     _dirty = false;
-    _onIncoming(null, server);
+    // Adopted even while a save is running: that save holds the refused
+    // text, and the person just chose the other one.
+    _adopting = true;
+    try {
+      _doc.adoptRemote(server);
+    } finally {
+      _adopting = false;
+    }
+    _seenTitle = _doc.title.text;
+    _seenBody = _doc.source.text;
     _setSaveState(_SaveState.saved);
   }
 
@@ -426,7 +439,8 @@ class _NoteEditorState extends ConsumerState<_NoteEditor> {
       // OPH-491: typing that landed while this save ran, with the editor
       // closed meanwhile — the close flush returned early (a save was
       // running), so this is its last chance.
-      if (_disposed && _dirty && !widget.external && !_gone) {
+      if (_disposed && _dirty && !_closeRetried && !widget.external && !_gone) {
+        _closeRetried = true; // once: a save that keeps failing must not loop
         unawaited(_save());
       }
     }

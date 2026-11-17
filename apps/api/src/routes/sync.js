@@ -1527,6 +1527,19 @@ export default async function syncRoutes(app) {
         incoming: patch,
         onlyOwnSince: (since) =>
           onlyOwnWritesSince(ctx, mutation.entityType, mutation.entityId, since),
+        ownCreateRevision: async () => {
+          const created = await app
+            .db('client_mutations')
+            .where({
+              client_id: ctx.clientId,
+              workspace_id: ctx.workspaceId,
+              entity_id: mutation.entityId,
+              operation: 'create',
+              status: 'applied',
+            })
+            .first('result_revision');
+          return created?.result_revision == null ? null : Number(created.result_revision);
+        },
       });
       if (decision.outcome === 'conflict') {
         // The losing body is kept BEFORE the refusal is returned: "the

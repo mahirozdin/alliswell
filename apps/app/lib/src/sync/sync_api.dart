@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../core/api_exception.dart';
 import '../core/http_timeouts.dart';
@@ -240,7 +241,10 @@ class SyncApi {
     try {
       return await call();
     } on DioException catch (e) {
+      // Not on the web: a browser reports every network failure as a
+      // connection error, including one after the request went out.
       if (notSentOnConnectFailure &&
+          !kIsWeb &&
           e.type == DioExceptionType.connectionError) {
         throw const SyncPushNotSent();
       }

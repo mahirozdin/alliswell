@@ -381,9 +381,7 @@ class NoteStore {
   /// of this note is still queued: that body is newer than anything chosen
   /// here, and overwriting it would lose it. Returns whether it was taken.
   Future<bool> takeServerCopy(NoteDetail server) => _db.transaction(() async {
-    if ((await queuedNoteContentRows(_db, server.id)).isNotEmpty) {
-      return false;
-    }
+    if (await hasQueuedNoteContent(_db, server.id)) return false;
     final markdown = server.contentMarkdown ?? '';
     final plain = plainTextFromMarkdown(markdown);
     await (_db.update(_db.notes)..where((n) => n.id.equals(server.id))).write(

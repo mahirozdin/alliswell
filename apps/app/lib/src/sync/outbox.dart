@@ -167,3 +167,16 @@ Future<List<PendingMutation>> queuedNoteContentRows(
           .get();
   return rows.where(isNoteContentRow).toList();
 }
+
+/// Whether any [queuedNoteContentRows] exists — stops at the first one.
+Future<bool> hasQueuedNoteContent(AwDatabase db, String noteId) async {
+  final rows =
+      await (db.select(db.pendingMutations)..where(
+            (m) =>
+                m.entityType.equals('note') &
+                m.entityId.equals(noteId) &
+                m.operation.isIn(const ['create', 'update']),
+          ))
+          .get();
+  return rows.any(isNoteContentRow);
+}

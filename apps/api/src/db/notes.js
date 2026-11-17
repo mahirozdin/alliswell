@@ -470,7 +470,18 @@ export async function setNoteTags(app, { row, userId, tagIds }) {
  * @returns {Promise<{outcome:'apply'}|{outcome:'merge', contentMarkdown:string}|
  *   {outcome:'conflict', reason:'BASE_MISSING'|'OVERLAP'}>}
  */
-export async function threeWayNoteWrite(app, { row, baseRevision, incoming, onlyOwnSince }) {
+export async function threeWayNoteWrite(
+  app,
+  { row, baseRevision: claimedBase, incoming, onlyOwnSince, ownCreateRevision },
+) {
+  // OPH-486: base 0 from a device that created the note means "what I
+  // created" — its own create's revision is the base it never got to hear.
+  // A pin or tag move by someone else since then is then judged like any
+  // stale base, instead of failing a lookup at a revision no version has.
+  let baseRevision = claimedBase;
+  if (baseRevision === 0 && ownCreateRevision) {
+    baseRevision = (await ownCreateRevision()) ?? 0;
+  }
   const current = Number(row.revision ?? 0);
   // No base (an older client) or an up-to-date base: nothing foreign happened
   // to THIS note, so this is an ordinary write. A protocol that breaks its own

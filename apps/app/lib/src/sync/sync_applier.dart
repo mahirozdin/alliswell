@@ -907,7 +907,7 @@ Future<bool> _hasPendingNoteWrite(
   Map<String, dynamic> data,
 ) async {
   final id = data['id'] as String;
-  if ((await queuedNoteContentRows(db, id)).isEmpty) return false;
+  if (!await hasQueuedNoteContent(db, id)) return false;
   final local = await (db.select(
     db.notes,
   )..where((n) => n.id.equals(id))).getSingleOrNull();

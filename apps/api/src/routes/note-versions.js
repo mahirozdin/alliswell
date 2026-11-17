@@ -281,7 +281,9 @@ export default async function noteVersionRoutes(app) {
         current: {
           // When the BODY was last written: a pin or a project move touches
           // the note's own `updated_at` without writing a word.
-          updatedAt: toIso(head?.updated_at ?? head?.created_at ?? note.updated_at),
+          // A head from before the column has no last-write moment; the note's
+          // own is the closest one there is.
+          updatedAt: toIso(head?.updated_at ?? note.updated_at),
           origin: head?.origin ?? null,
           clientId: head?.client_id ?? null,
           deviceName: head?.device_name ?? null,

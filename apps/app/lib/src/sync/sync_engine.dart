@@ -577,7 +577,7 @@ class SyncEngine {
     //   it on the server;
     // - a replay does not say whether the server merged (a merged write is
     //   recorded as applied, without its body), so it moves nothing.
-    final content = row.operation == 'create' || isNoteContentRow(row);
+    final content = isNoteContentRow(row);
     final others = (await queuedNoteContentRows(
       db,
       row.entityId,
@@ -586,7 +586,8 @@ class SyncEngine {
         result.applied &&
         result.revision != null &&
         content &&
-        !result.replayed;
+        // A create cannot have been merged, so even its replay is the body.
+        (!result.replayed || row.operation == 'create');
     if (result.merged && others.isNotEmpty) {
       // A newer local save is still queued: the replica holds THAT body,
       // which lacks the other side's lines. Neither the merged body nor its
