@@ -332,12 +332,19 @@ class NoteStore {
     }
 
     await _db.transaction(() async {
+      // The base is read INSIDE the transaction that enqueues it: a push
+      // result settled between a read outside and this write would leave the
+      // row claiming a base the replica had already moved past.
+      final current = await (_db.select(
+        _db.notes,
+      )..where((n) => n.id.equals(noteId))).getSingleOrNull();
+      if (current == null) return;
       await (_db.update(
         _db.notes,
       )..where((n) => n.id.equals(noteId))).write(companion);
       await enqueueMutation(
         _db,
-        workspaceId: record.workspaceId,
+        workspaceId: current.workspaceId,
         entityType: 'note',
         entityId: noteId,
         operation: 'update',
@@ -347,7 +354,14 @@ class NoteStore {
         // its own previous push, which the engine writes back on success. That
         // is what makes two consecutive autosaves an ordinary pair of writes
         // instead of a conflict against ourselves.
-        baseRevision: isContentPatch(patch) ? record.revision : null,
+        //
+        // OPH-488 (ADR-0072): revision 0 means no answer about this note has
+        // reached the device yet — its create is still queued or in flight.
+        // There is no base to claim, so none is sent (H1 sent 0, and the
+        // server answered BASE_MISSING: a false "edited on another device").
+        baseRevision: isContentPatch(patch) && current.revision > 0
+            ? current.revision
+            : null,
       );
     });
     _poke();
@@ -357,6 +371,33 @@ class NoteStore {
   /// not conflict with anything).
   static bool isContentPatch(Map<String, dynamic> patch) =>
       patch.containsKey('contentMarkdown') || patch.containsKey('title');
+
+  /// "Use the other one" (OPH-490, ADR-0072): the replica takes the server's
+  /// note as [server] has it, and the conflict pointer goes.
+  ///
+  /// A refused write changes nothing on the server and nothing in incremental
+  /// pull, so the replica used to keep the refused body for good — and the
+  /// next save quietly turned "use theirs" into "use mine". Not when a save
+  /// of this note is still queued: that body is newer than anything chosen
+  /// here, and overwriting it would lose it. Returns whether it was taken.
+  Future<bool> takeServerCopy(NoteDetail server) => _db.transaction(() async {
+    if (await hasQueuedNoteContent(_db, server.id)) return false;
+    final markdown = server.contentMarkdown ?? '';
+    final plain = plainTextFromMarkdown(markdown);
+    await (_db.update(_db.notes)..where((n) => n.id.equals(server.id))).write(
+      NotesCompanion(
+        title: Value(server.title),
+        titleFold: Value(foldSearchText(server.title)),
+        contentMarkdown: Value(markdown),
+        contentFormat: const Value('markdown'),
+        plainText: Value(plain),
+        bodyFold: Value(foldSearchText(plain)),
+        revision: Value(server.revision),
+        conflictVersionId: const Value(null),
+      ),
+    );
+    return true;
+  });
 
   /// The user resolved a conflict banner: the pointer goes, the note stays.
   /// Never pushed — `conflictVersionId` is device-local (v18).

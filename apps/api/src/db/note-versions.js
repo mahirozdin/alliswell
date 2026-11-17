@@ -142,6 +142,9 @@ export async function captureNoteVersion(
         note_revision: Number(row.revision ?? 0),
         content_hash: hash,
         created_by: userId ?? previous.created_by ?? null,
+        // OPH-494: the moment this body was written, for history and the
+        // conflict banner — `created_at` stays the session's start.
+        updated_at: now,
       });
     return { action: 'coalesced', id: previous.id };
   }
@@ -158,6 +161,7 @@ export async function captureNoteVersion(
     created_by: userId,
     content_hash: hash,
     created_at: now,
+    updated_at: now,
   });
   return { action: 'inserted', id };
 }

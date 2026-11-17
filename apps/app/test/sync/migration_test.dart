@@ -52,6 +52,10 @@ void main() {
     //
     // v40 (OPH-421): the device-local action receipts — a v1 device had none.
     await db.customStatement('DROP TABLE action_receipts');
+    // v41 (OPH-488): when a push first carried an outbox row.
+    await db.customStatement(
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at',
+    );
     // v37 (EE-296): who made a task. `tickets` and `task_assignments` go
     // whole below, and their v37 column and index go with them.
     await db.customStatement('ALTER TABLE tasks DROP COLUMN created_by');
@@ -267,6 +271,10 @@ void main() {
       // an offline write made before the upgrade simply carries no base, which
       // is exactly the old-client path the server still honours.
       expect(pending.single.baseRevision, null);
+      // v41 (OPH-488): and as never sent — an upgrade cannot know, and a row
+      // read as unsent may still take a newer save, which is what it did
+      // before the column existed.
+      expect(pending.single.sentAt, null);
 
       // v20 (EE-051): a brand-new table for refused writes. It arrives empty
       // on an upgrade, which is the honest state — a device that has never
@@ -408,7 +416,7 @@ void main() {
       await db.customSelect('SELECT asset_id FROM ticket_drafts').get();
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
 
       // Opening an already-migrated file is a no-op, not a second ALTER (which
@@ -435,6 +443,7 @@ void main() {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     for (final drop in [
       'DROP TABLE action_receipts', // v40
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at', // v41
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       // v37 — an indexed column cannot be dropped, so the index goes first.
@@ -552,7 +561,7 @@ void main() {
       expect(workIndexes, hasLength(2));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
     },
   );
@@ -572,6 +581,7 @@ void main() {
     // that adds it fail the open (OPH-350 found this one).
     for (final drop in [
       'DROP TABLE action_receipts', // v40
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at', // v41
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
       'ALTER TABLE apple_event_links DROP COLUMN suppressed_at', // v38
       'DROP INDEX idx_tickets_work_task', // v37
@@ -622,6 +632,8 @@ void main() {
       // beside the outbox, not over it.
       final pending = await db.select(db.pendingMutations).get();
       expect(pending.map((m) => m.entityId), ['D1']);
+      // v41 (OPH-488): the ALTER ran on a table holding a row.
+      expect(pending.single.sentAt, null);
 
       // And the pull that follows a push keeps the machine this device sent.
       await db
@@ -642,7 +654,7 @@ void main() {
       expect(filled.assetId, 'A1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
     },
   );
@@ -653,7 +665,11 @@ void main() {
   /// with a real mapping — the one row whose loss would duplicate an event.
   Future<void> seedV37AppleDatabase() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
-    await db.customStatement('DROP TABLE action_receipts'); // v40
+    await db.customStatement('DROP TABLE action_receipts');
+    // v41 (OPH-488): when a push first carried an outbox row.
+    await db.customStatement(
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at',
+    ); // v40
     await db.customStatement(
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
     );
@@ -702,7 +718,7 @@ void main() {
       );
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
 
       // A second open is a no-op, not a second ALTER.
@@ -718,7 +734,11 @@ void main() {
   /// person will type the name of into the global search.
   Future<void> seedV38FileDatabase() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
-    await db.customStatement('DROP TABLE action_receipts'); // v40
+    await db.customStatement('DROP TABLE action_receipts');
+    // v41 (OPH-488): when a push first carried an outbox row.
+    await db.customStatement(
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at',
+    ); // v40
     await db.customStatement(
       'ALTER TABLE file_rows DROP COLUMN name_fold', // v39
     );
@@ -749,7 +769,7 @@ void main() {
       expect(hits.single.id, 'F1');
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
 
       // A second open is a no-op, not a second ALTER.
@@ -793,6 +813,10 @@ void main() {
   Future<Map<String, Object>> seedV39Database() async {
     final db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
     await db.customStatement('DROP TABLE action_receipts'); // v40
+    // v41 (OPH-488): when a push first carried an outbox row.
+    await db.customStatement(
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at',
+    );
     await db.customStatement('PRAGMA user_version = 39');
     await db.customStatement('''
       INSERT INTO tasks (id, workspace_id, title, status, priority, timezone,
@@ -844,12 +868,16 @@ void main() {
         },
       );
 
-      // Every other table — columns AND rows — is what it was on v39.
-      final after = await snapshotTables(db, except: {'action_receipts'});
-      expect(after, before);
+      // Every other table — columns AND rows — is what it was on v39. The
+      // outbox is the v41 step's, proven by the test below.
+      final after = await snapshotTables(
+        db,
+        except: {'action_receipts', 'pending_mutations'},
+      );
+      expect(after, Map.of(before)..remove('pending_mutations'));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
 
       // A second open is a no-op, not a second CREATE.
@@ -858,6 +886,42 @@ void main() {
       await again.close();
     },
   );
+
+  /// OPH-488: an install on v40 with a write still queued when v41 arrives.
+  test('v40 → v41 adds sent_at to the outbox, every queued write kept as '
+      'unsent', () async {
+    var db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    await db.customStatement(
+      'ALTER TABLE pending_mutations DROP COLUMN sent_at',
+    );
+    await db.customStatement('PRAGMA user_version = 40');
+    await db.customStatement('''
+      INSERT INTO pending_mutations (id, workspace_id, entity_type, entity_id,
+                                     operation, patch_json, local_updated_at,
+                                     created_at, attempts, base_revision)
+      VALUES ('M1', 'W1', 'note', 'N1', 'update', '{"contentMarkdown":"x"}',
+              '2026-11-18T09:05:00.000Z', '2026-11-18T09:05:00.000Z', 2, 7)
+    ''');
+    final before = await snapshotTables(db, except: {'pending_mutations'});
+    await db.close();
+
+    db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    final pending = await db.select(db.pendingMutations).get();
+    expect(pending, hasLength(1));
+    expect(pending.single.id, 'M1');
+    expect(pending.single.baseRevision, 7);
+    expect(pending.single.attempts, 2);
+    expect(pending.single.sentAt, null);
+    expect(await snapshotTables(db, except: {'pending_mutations'}), before);
+    final version = await db.customSelect('PRAGMA user_version').getSingle();
+    expect(version.data['user_version'], 41);
+    await db.close();
+
+    // A second open is a no-op, not a second ALTER.
+    db = AwDatabase(DatabaseConnection(NativeDatabase(file)));
+    expect(await db.select(db.pendingMutations).get(), hasLength(1));
+    await db.close();
+  });
 
   test(
     'a fresh install creates the latest schema directly, no migration involved',
@@ -891,7 +955,7 @@ void main() {
       expect(indexes, hasLength(1));
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
     },
   );
@@ -938,7 +1002,7 @@ void main() {
       expect(File('${file.path}-wal').existsSync(), isTrue);
 
       final version = await db.customSelect('PRAGMA user_version').getSingle();
-      expect(version.data['user_version'], 40);
+      expect(version.data['user_version'], 41);
       await db.close();
     },
   );

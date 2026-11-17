@@ -13,6 +13,8 @@ import '../data/note_versions_api.dart';
 import '../providers.dart';
 import 'package:markdown_forge/markdown_forge.dart';
 
+import 'version_labels.dart';
+
 /// Version history (OPH-269, DESIGN §35 V4–V6).
 ///
 /// A day-grouped list read in the editor's own clothes: the preview uses the
@@ -73,23 +75,6 @@ String dayHeaderFor(
   return awFormatDate(when, format: dateFormat);
 }
 
-/// The origin chip's words. `clientId` decides "this device" vs "another one"
-/// — the same id the sync engine pushes with.
-String originLabel(NoteVersionSummary version, {String? myClientId}) =>
-    switch (version.origin) {
-      'merge' => 'versions.originMerge'.tr(),
-      'conflict' => 'versions.originConflict'.tr(),
-      'restore' => 'versions.originRestore'.tr(),
-      'import' => 'versions.originImport'.tr(),
-      'api' => 'versions.originApi'.tr(),
-      'mcp' => 'versions.originAi'.tr(),
-      'create' => 'versions.originCreate'.tr(),
-      _ =>
-        version.clientId != null && version.clientId == myClientId
-            ? 'versions.originThisDevice'.tr()
-            : 'versions.originOtherDevice'.tr(),
-    };
-
 class _VersionList extends ConsumerWidget {
   const _VersionList({required this.noteId, required this.versions});
 
@@ -127,10 +112,14 @@ class _VersionList extends ConsumerWidget {
             child: ListTile(
               key: Key('version-${version.id}'),
               title: Text(
-                awFormatTime(version.createdAt, format: dateFormat),
+                versionClock(version, dateFormat: dateFormat),
                 style: theme.textTheme.titleSmall,
               ),
-              subtitle: Text(originLabel(version, myClientId: myClientId)),
+              // OPH-494: what happened, and on which device — by its name.
+              subtitle: Text(
+                '${versionOriginLabel(version.origin)} · '
+                '${versionDeviceLabel(clientId: version.clientId, myClientId: myClientId, deviceName: version.deviceName, devicePlatform: version.devicePlatform, origin: version.origin)}',
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(
@@ -175,9 +164,32 @@ class _NoteVersionPreviewState extends ConsumerState<NoteVersionPreview> {
   Widget build(BuildContext context) {
     final arg = (noteId: widget.noteId, versionId: widget.version.id);
     final detail = ref.watch(noteVersionDetailProvider(arg));
+    // OPH-494: the header names the device by its own id — the preview used
+    // to call every edit "Another device", even on the one that wrote it.
+    final myClientId = ref.watch(syncClientIdProvider).value;
+    final dateFormat = ref.watch(dateFormatProvider);
+    // The banner opens this with only an id; the server's row knows more.
+    final version = detail.value?.summary ?? widget.version;
     return Scaffold(
       appBar: AppBar(
-        title: Text(originLabel(widget.version)),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(versionOriginLabel(version.origin)),
+            Text(
+              versionWho(
+                version,
+                myClientId: myClientId,
+                dateFormat: dateFormat,
+              ),
+              key: const Key('version-who'),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             key: const Key('version-diff-toggle'),
@@ -192,7 +204,12 @@ class _NoteVersionPreviewState extends ConsumerState<NoteVersionPreview> {
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 720),
           child: _showDiff
-              ? _DiffView(noteId: widget.noteId, versionId: widget.version.id)
+              ? _DiffView(
+                  noteId: widget.noteId,
+                  version: version,
+                  myClientId: myClientId,
+                  dateFormat: dateFormat,
+                )
               : detail.when(
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
@@ -295,14 +312,21 @@ class _NoteVersionPreviewState extends ConsumerState<NoteVersionPreview> {
 
 /// The server's word-level segments, drawn and nothing more (ADR-0031 §8).
 class _DiffView extends ConsumerWidget {
-  const _DiffView({required this.noteId, required this.versionId});
+  const _DiffView({
+    required this.noteId,
+    required this.version,
+    required this.myClientId,
+    required this.dateFormat,
+  });
 
   final String noteId;
-  final String versionId;
+  final NoteVersionSummary version;
+  final String? myClientId;
+  final String dateFormat;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final arg = (noteId: noteId, versionId: versionId);
+    final arg = (noteId: noteId, versionId: version.id);
     final diff = ref.watch(noteVersionDiffProvider(arg));
     final theme = Theme.of(context);
     final tokens = context.awTokens;
@@ -313,33 +337,95 @@ class _DiffView extends ConsumerWidget {
         message: 'versions.offlineBody'.tr(),
         onRetry: () => ref.invalidate(noteVersionDiffProvider(arg)),
       ),
-      data: (segments) => SingleChildScrollView(
+      data: (diff) => SingleChildScrollView(
         padding: awListPadding(context, top: AwSpace.x2),
-        child: SelectableText.rich(
-          key: const Key('version-diff'),
-          TextSpan(
-            children: [
-              for (final segment in segments)
-                TextSpan(
-                  text: segment.value,
-                  style: switch (segment.type) {
-                    // Colour is never the only carrier (§3): removed text is
-                    // struck through, added text is underlined.
-                    'added' => theme.textTheme.bodyMedium?.copyWith(
-                      color: tokens.success,
-                      decoration: TextDecoration.underline,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // OPH-494: both sides of the comparison, named — which device
+            // wrote each, and exactly when.
+            _DiffLegend(
+              thisVersion: versionWho(
+                version,
+                myClientId: myClientId,
+                dateFormat: dateFormat,
+              ),
+              current: diff.current == null
+                  ? null
+                  : currentSideWho(
+                      diff.current!,
+                      myClientId: myClientId,
+                      dateFormat: dateFormat,
                     ),
-                    'removed' => theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.error,
-                      decoration: TextDecoration.lineThrough,
-                    ),
-                    _ => theme.textTheme.bodyMedium,
-                  },
-                ),
-            ],
-          ),
+            ),
+            const SizedBox(height: AwSpace.x3),
+            _segments(theme, tokens, diff.segments),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _segments(
+    ThemeData theme,
+    AwTokens tokens,
+    List<NoteDiffSegment> segments,
+  ) => SelectableText.rich(
+    key: const Key('version-diff'),
+    TextSpan(
+      children: [
+        for (final segment in segments)
+          TextSpan(
+            text: segment.value,
+            style: switch (segment.type) {
+              // Colour is never the only carrier (§3): removed text is
+              // struck through, added text is underlined.
+              'added' => theme.textTheme.bodyMedium?.copyWith(
+                color: tokens.success,
+                decoration: TextDecoration.underline,
+              ),
+              'removed' => theme.textTheme.bodyMedium?.copyWith(
+                color: theme.colorScheme.error,
+                decoration: TextDecoration.lineThrough,
+              ),
+              _ => theme.textTheme.bodyMedium,
+            },
+          ),
+      ],
+    ),
+  );
+}
+
+/// Which side is which, in words (OPH-494). Colour is never the only carrier
+/// (§3), and neither is the strike-through: the sentence says it.
+class _DiffLegend extends StatelessWidget {
+  const _DiffLegend({required this.thisVersion, required this.current});
+
+  final String thisVersion;
+  final String? current;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final style = theme.textTheme.bodySmall?.copyWith(
+      color: theme.colorScheme.onSurfaceVariant,
+    );
+    return Column(
+      key: const Key('version-diff-legend'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'versions.diffThisVersion'.tr(args: {'who': thisVersion}),
+          style: style,
+        ),
+        if (current != null)
+          Text(
+            'versions.diffCurrent'.tr(args: {'who': current!}),
+            style: style,
+          ),
+        const SizedBox(height: AwSpace.x1),
+        Text('versions.diffLegend'.tr(), style: style),
+      ],
     );
   }
 }

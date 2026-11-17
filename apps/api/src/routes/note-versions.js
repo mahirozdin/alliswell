@@ -44,9 +44,18 @@ const versionRowSchema = {
     contentFormat: { type: 'string' },
     origin: { type: 'string' },
     clientId: { type: ['string', 'null'] },
+    // OPH-494: the device that wrote it, by the name the person knows it by —
+    // from the device registry, joined on `clientId`. Null when the writer was
+    // not a synced device (REST, MCP), when the device is no longer
+    // registered, or when it is another member's device (names are private).
+    deviceName: { type: ['string', 'null'] },
+    devicePlatform: { type: ['string', 'null'] },
     createdBy: { type: ['string', 'null'] },
     sizeBytes: { type: 'integer' },
     createdAt: { type: 'string' },
+    // When the body was last written: a same-device session rolls into one
+    // row, which keeps the session's start as `createdAt`.
+    updatedAt: { type: 'string' },
   },
 };
 
@@ -71,10 +80,34 @@ function serializeVersionRow(row) {
     origin: row.origin,
     // The app compares this with its own client id to say "this device".
     clientId: row.client_id ?? null,
+    deviceName: row.device_name ?? null,
+    devicePlatform: row.device_platform ?? null,
     createdBy: row.created_by ?? null,
     sizeBytes: Buffer.byteLength(String(body), 'utf8'),
     createdAt: toIso(row.created_at),
+    updatedAt: toIso(row.updated_at ?? row.created_at),
   };
+}
+
+/**
+ * OPH-494: version rows with the writing device's registry entry beside them
+ * (`device_name`, `device_platform`). Only the CALLER's own devices are named:
+ * a shared workspace's history also holds other members' writes, and what
+ * they call their phone is theirs.
+ */
+async function withDevices(app, userId, rows) {
+  const ids = [...new Set(rows.map((r) => r.client_id).filter(Boolean))];
+  if (ids.length === 0) return rows;
+  const devices = await app
+    .db('notification_devices')
+    .whereIn('id', ids)
+    .where({ user_id: userId })
+    .select('id', 'device_name', 'platform');
+  const byId = new Map(devices.map((d) => [d.id, d]));
+  return rows.map((r) => {
+    const d = byId.get(r.client_id);
+    return d ? { ...r, device_name: d.device_name, device_platform: d.platform } : r;
+  });
 }
 
 function serializeVersionDetail(row) {
@@ -114,10 +147,8 @@ export default async function noteVersionRoutes(app) {
     const note = await loadNote(app, request.params.noteId);
     await app.requireWorkspaceMember(request, note.workspace_id);
     if (!versionId) return { note, version: null };
-    const version = await app
-      .db('note_versions')
-      .where({ id: versionId, note_id: note.id })
-      .first();
+    const found = await app.db('note_versions').where({ id: versionId, note_id: note.id }).first();
+    const [version] = found ? await withDevices(app, request.user.id, [found]) : [];
     if (!version) {
       throw coded(app.httpErrors.notFound('Version not found'), 'NOTE_VERSION_NOT_FOUND');
     }
@@ -160,7 +191,7 @@ export default async function noteVersionRoutes(app) {
         .orderBy('id', 'desc')
         .limit(q.limit);
       if (q.cursor) query = query.where('id', '<', q.cursor);
-      const rows = await query.select();
+      const rows = await withDevices(app, request.user.id, await query.select());
       return {
         items: rows.map(serializeVersionRow),
         nextCursor: rows.length === q.limit ? rows.at(-1).id : null,
@@ -212,6 +243,19 @@ export default async function noteVersionRoutes(app) {
                 },
               },
               comparable: { type: 'boolean' },
+              // OPH-494: the other side of the diff — the note as it is now:
+              // when it was last written, and by which device (its newest
+              // non-conflict version's writer). Null fields when unknown.
+              current: {
+                type: 'object',
+                properties: {
+                  updatedAt: { type: 'string' },
+                  origin: { type: ['string', 'null'] },
+                  clientId: { type: ['string', 'null'] },
+                  deviceName: { type: ['string', 'null'] },
+                  devicePlatform: { type: ['string', 'null'] },
+                },
+              },
             },
           },
           403: errorResponseSchema,
@@ -221,6 +265,13 @@ export default async function noteVersionRoutes(app) {
     },
     async (request) => {
       const { note, version } = await loadOwn(request, { versionId: request.params.versionId });
+      const newest = await app
+        .db('note_versions')
+        .where({ note_id: note.id })
+        .whereNot('origin', 'conflict')
+        .orderBy('id', 'desc')
+        .first();
+      const [head] = newest ? await withDevices(app, request.user.id, [newest]) : [];
       const before = comparableText(version, version.title);
       const after = comparableText(versionSnapshotOf(note), note.plain_text ?? '');
       const segments = diffWords(before, after).map((part) => ({
@@ -236,6 +287,17 @@ export default async function noteVersionRoutes(app) {
         // field stays because the client renders on it and removing it is a
         // wire-contract change with nothing to gain.
         comparable: (version.content_format ?? 'markdown') === (note.content_format ?? 'markdown'),
+        current: {
+          // When the BODY was last written: a pin or a project move touches
+          // the note's own `updated_at` without writing a word.
+          // A head from before the column has no last-write moment; the note's
+          // own is the closest one there is.
+          updatedAt: toIso(head?.updated_at ?? note.updated_at),
+          origin: head?.origin ?? null,
+          clientId: head?.client_id ?? null,
+          deviceName: head?.device_name ?? null,
+          devicePlatform: head?.device_platform ?? null,
+        },
       };
     },
   );

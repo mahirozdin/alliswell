@@ -18,7 +18,10 @@ class NoteVersionSummary {
     this.clientId,
     this.title = '',
     this.contentFormat = 'markdown',
-  });
+    DateTime? updatedAt,
+    this.deviceName,
+    this.devicePlatform,
+  }) : updatedAt = updatedAt ?? createdAt;
 
   final String id;
 
@@ -33,6 +36,17 @@ class NoteVersionSummary {
   final String title;
   final String contentFormat;
 
+  /// When this body was last written (OPH-494). A same-device session rolls
+  /// into one version, which keeps the session's start as [createdAt]; an
+  /// older server sends no `updatedAt`, and then it is [createdAt].
+  final DateTime updatedAt;
+
+  /// The writing device from the person's own device registry, joined by the
+  /// server on [clientId] (OPH-494). Null when it is not a registered device
+  /// of theirs, or the server predates the field.
+  final String? deviceName;
+  final String? devicePlatform;
+
   factory NoteVersionSummary.fromJson(Map<String, dynamic> json) =>
       NoteVersionSummary(
         id: json['id'] as String,
@@ -44,7 +58,53 @@ class NoteVersionSummary {
         clientId: json['clientId'] as String?,
         title: json['title'] as String? ?? '',
         contentFormat: json['contentFormat'] as String? ?? 'markdown',
+        updatedAt: DateTime.tryParse(
+          json['updatedAt'] as String? ?? '',
+        )?.toLocal(),
+        deviceName: json['deviceName'] as String?,
+        devicePlatform: json['devicePlatform'] as String?,
       );
+}
+
+/// The other side of a diff — the note as it is now (OPH-494): when it was
+/// last written, and by which device.
+class NoteDiffSide {
+  const NoteDiffSide({
+    required this.updatedAt,
+    this.origin,
+    this.clientId,
+    this.deviceName,
+    this.devicePlatform,
+  });
+
+  final DateTime updatedAt;
+  final String? origin;
+  final String? clientId;
+  final String? deviceName;
+  final String? devicePlatform;
+
+  static NoteDiffSide? fromJson(Object? json) {
+    if (json is! Map<String, dynamic>) return null;
+    final at = DateTime.tryParse(json['updatedAt'] as String? ?? '');
+    if (at == null) return null;
+    return NoteDiffSide(
+      updatedAt: at.toLocal(),
+      origin: json['origin'] as String?,
+      clientId: json['clientId'] as String?,
+      deviceName: json['deviceName'] as String?,
+      devicePlatform: json['devicePlatform'] as String?,
+    );
+  }
+}
+
+/// What `…/diff` answers: the segments, and who the current side is.
+class NoteDiff {
+  const NoteDiff({required this.segments, this.current});
+
+  final List<NoteDiffSegment> segments;
+
+  /// Null from a server that predates OPH-494.
+  final NoteDiffSide? current;
 }
 
 class NoteVersionDetail {
@@ -100,16 +160,18 @@ class NoteVersionsApi {
         return NoteVersionDetail.fromJson(res.data ?? const {});
       });
 
-  Future<List<NoteDiffSegment>> diff(String noteId, String versionId) =>
-      _run(() async {
-        final res = await _dio.get<Map<String, dynamic>>(
-          '/api/v1/notes/$noteId/versions/$versionId/diff',
-        );
-        final segments = (res.data?['segments'] as List?) ?? const [];
-        return segments
-            .map((s) => NoteDiffSegment.fromJson(s as Map<String, dynamic>))
-            .toList();
-      });
+  Future<NoteDiff> diff(String noteId, String versionId) => _run(() async {
+    final res = await _dio.get<Map<String, dynamic>>(
+      '/api/v1/notes/$noteId/versions/$versionId/diff',
+    );
+    final segments = (res.data?['segments'] as List?) ?? const [];
+    return NoteDiff(
+      segments: segments
+          .map((s) => NoteDiffSegment.fromJson(s as Map<String, dynamic>))
+          .toList(),
+      current: NoteDiffSide.fromJson(res.data?['current']),
+    );
+  });
 
   /// `replace` writes the old body as a NEW head (history is never rewritten,
   /// DESIGN §35 V5); `copy` births a separate note.

@@ -5,6 +5,15 @@
 > Bir satır gözlenince (ya da artık anlamsızsa) silinir; bir aksaklık bulunursa TASKS'a iş olur.
 > Her oturumda okunmaz.
 
+## Not eşitleme: sahte çakışma, kayıp metin, sürümlerde cihaz ve saat (2026-11-18, OPH-486…494)
+
+Hepsi **NOT RUN**: işler Vitest (gerçek MySQL), `flutter test` (gerçek editör, sahte sunucu) ve web
+duman testiyle kapandı; cihaz turu sahiple yapılır (ADR-0072).
+
+- OPH-488 — **Mac/Windows masaüstü, yavaş ağ (ör. tarayıcı/OS ağ kısıtlama)** (NOT RUN): yeni not aç, başlık yaz, 2 sn bekle, uzunca metin yaz; "başka bir cihazda da düzenlendi" hiç çıkmıyor; web'de not tam.
+- OPH-491 — **iPhone ve Android** (NOT RUN): bir nota yazıp hemen geri çık; başka cihazda son cümle de var.
+- OPH-494 — **web + bir telefon, açık ve koyu tema** (NOT RUN): Sürüm geçmişi satırları "Düzenleme · <cihaz adı>" ve saniyeli saat gösteriyor, kendi cihazında "Bu cihaz"; iki cihazdan aynı anda farklı satır düzenleyip gerçek çakışma üret: bant iki tarafın cihazını ve saatini yazıyor, "Farkı gör" iki tarafı adlandırıyor; metin her iki temada okunuyor.
+
 ## Widget kendi verisini çekiyor (2026-11-12, Epic 37, #50)
 
 Hepsi **NOT RUN**: işler Vitest, `flutter test` ve Mac'te iOS 27.2 simülatöründe XCTest ile kapandı;

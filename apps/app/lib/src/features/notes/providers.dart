@@ -24,6 +24,12 @@ final noteStoreProvider = Provider<NoteStore>(
 /// Note history (OPH-269) — an ONLINE surface: the list is fetched when the
 /// screen opens and never cached in the replica (DESIGN §35 V6, the OPH-265
 /// rule). Every mutation invalidates rather than patching a local list.
+/// The REST notes surface, for the few online-only reads around sync — the
+/// server's copy a conflict's "use the other one" takes (OPH-490).
+final notesApiProvider = Provider<NotesApi>(
+  (ref) => NotesApi(ref.watch(apiClientProvider)),
+);
+
 final noteVersionsApiProvider = Provider<NoteVersionsApi>(
   (ref) => NoteVersionsApi(ref.watch(apiClientProvider)),
 );
@@ -34,10 +40,7 @@ final noteVersionsProvider =
     );
 
 final noteVersionDiffProvider =
-    FutureProvider.family<
-      List<NoteDiffSegment>,
-      ({String noteId, String versionId})
-    >(
+    FutureProvider.family<NoteDiff, ({String noteId, String versionId})>(
       (ref, arg) =>
           ref.watch(noteVersionsApiProvider).diff(arg.noteId, arg.versionId),
     );

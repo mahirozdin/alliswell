@@ -470,11 +470,29 @@ export async function setNoteTags(app, { row, userId, tagIds }) {
  * @returns {Promise<{outcome:'apply'}|{outcome:'merge', contentMarkdown:string}|
  *   {outcome:'conflict', reason:'BASE_MISSING'|'OVERLAP'}>}
  */
-export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
+export async function threeWayNoteWrite(
+  app,
+  { row, baseRevision: claimedBase, incoming, onlyOwnSince, ownCreateRevision },
+) {
+  // OPH-486: base 0 from a device that created the note means "what I
+  // created" — its own create's revision is the base it never got to hear.
+  // A pin or tag move by someone else since then is then judged like any
+  // stale base, instead of failing a lookup at a revision no version has.
+  let baseRevision = claimedBase;
+  if (baseRevision === 0 && ownCreateRevision) {
+    baseRevision = (await ownCreateRevision()) ?? 0;
+  }
   const current = Number(row.revision ?? 0);
   // No base (an older client) or an up-to-date base: nothing foreign happened
   // to THIS note, so this is an ordinary write. A protocol that breaks its own
   // old clients is not a protocol.
+  //
+  // OPH-486 (ADR-0072): base 0 — "this device never had an answer about the
+  // note", a save queued behind its own create — is NOT waved through here.
+  // It used to be BASE_MISSING, a false conflict on every brand-new note
+  // whose first push was slow; it now applies through the own-history check
+  // below (the create is this client's own write). Should another writer have
+  // reached the note first, it stays an honest conflict, with both bodies kept.
   if (baseRevision == null || baseRevision >= current) return { outcome: 'apply' };
 
   const theirs = noteMarkdownFrom(incoming, {
@@ -486,12 +504,28 @@ export async function threeWayNoteWrite(app, { row, baseRevision, incoming }) {
   // merge and nothing to lose.
   if (theirs === null) return { outcome: 'apply' };
 
+  // OPH-486: the incoming body IS the current body — there is nothing to
+  // merge and nothing to lose, whatever the base says.
+  if (theirs === (row.content_markdown ?? '')) return { outcome: 'apply' };
+
+  // OPH-486: every write since the base came from this same client. The
+  // device is continuing its own session; its body already contains each of
+  // those writes, so a merge could only invent a conflict with itself. A REST
+  // or MCP write (another client id, or none) is foreign and keeps the merge.
+  if (onlyOwnSince && (await onlyOwnSince(baseRevision))) return { outcome: 'apply' };
+
   // The base body has to still exist. Retention thins old versions (ADR-0031
   // §6), so a client that was offline for months legitimately finds nothing —
   // an honest conflict, not a guess.
   const base = await app
     .db('note_versions')
     .where({ note_id: row.id, note_revision: baseRevision })
+    // OPH-486: a refused body is stored AT the revision it lost against, so
+    // it shares `note_revision` with the real state — and, being newer, won
+    // this lookup. A merge against a body the server never had reads its
+    // extra lines as deleted. Never a "nearest version" fallback either: a
+    // wrong base silently drops lines (ADR-0072).
+    .whereNot('origin', 'conflict')
     .orderBy('id', 'desc')
     .first();
   if (!base) return { outcome: 'conflict', reason: 'BASE_MISSING' };

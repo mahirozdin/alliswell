@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 import '../core/api_exception.dart';
 import '../core/http_timeouts.dart';
@@ -215,7 +216,10 @@ class SyncApi {
     required int baseRevision,
     required List<SyncMutation> mutations,
   }) async {
+    // OPH-488: a push that could not even connect never reached the server,
+    // so the rows it carried are still unsent (see [SyncPushNotSent]).
     final res = await _run(
+      notSentOnConnectFailure: true,
       () => _dio.post<Map<String, dynamic>>(
         '/api/v1/sync/push',
         data: {
@@ -230,11 +234,32 @@ class SyncApi {
     return SyncPushResponse.fromJson(res.data!);
   }
 
-  Future<T> _run<T>(Future<T> Function() call) async {
+  Future<T> _run<T>(
+    Future<T> Function() call, {
+    bool notSentOnConnectFailure = false,
+  }) async {
     try {
       return await call();
     } on DioException catch (e) {
+      // Not on the web: a browser reports every network failure as a
+      // connection error, including one after the request went out.
+      if (notSentOnConnectFailure &&
+          !kIsWeb &&
+          e.type == DioExceptionType.connectionError) {
+        throw const SyncPushNotSent();
+      }
       throw asApiException(e);
     }
   }
+}
+
+/// A push that failed before any byte could reach the server — no connection
+/// at all (OPH-488). Unlike a timeout, its rows are certainly not recorded
+/// there, so the engine marks them unsent again and a later save may still be
+/// coalesced into them instead of queuing one more full-body row per retry.
+class SyncPushNotSent implements Exception {
+  const SyncPushNotSent();
+
+  @override
+  String toString() => 'SyncPushNotSent';
 }

@@ -5675,6 +5675,14 @@
                             "type": "string",
                             "nullable": true
                           },
+                          "deviceName": {
+                            "type": "string",
+                            "nullable": true
+                          },
+                          "devicePlatform": {
+                            "type": "string",
+                            "nullable": true
+                          },
                           "createdBy": {
                             "type": "string",
                             "nullable": true
@@ -5683,6 +5691,9 @@
                             "type": "integer"
                           },
                           "createdAt": {
+                            "type": "string"
+                          },
+                          "updatedAt": {
                             "type": "string"
                           }
                         }
@@ -5819,6 +5830,14 @@
                       "type": "string",
                       "nullable": true
                     },
+                    "deviceName": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "devicePlatform": {
+                      "type": "string",
+                      "nullable": true
+                    },
                     "createdBy": {
                       "type": "string",
                       "nullable": true
@@ -5827,6 +5846,9 @@
                       "type": "integer"
                     },
                     "createdAt": {
+                      "type": "string"
+                    },
+                    "updatedAt": {
                       "type": "string"
                     },
                     "contentMarkdown": {
@@ -5958,6 +5980,30 @@
                     },
                     "comparable": {
                       "type": "boolean"
+                    },
+                    "current": {
+                      "type": "object",
+                      "properties": {
+                        "updatedAt": {
+                          "type": "string"
+                        },
+                        "origin": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "clientId": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "deviceName": {
+                          "type": "string",
+                          "nullable": true
+                        },
+                        "devicePlatform": {
+                          "type": "string",
+                          "nullable": true
+                        }
+                      }
                     }
                   }
                 }

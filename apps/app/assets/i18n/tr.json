@@ -1617,7 +1617,6 @@
     "today": "Bugün",
     "yesterday": "Dün",
     "originThisDevice": "Bu cihaz",
-    "originOtherDevice": "Diğer cihaz",
     "originCreate": "Oluşturuldu",
     "originMerge": "Birleştirme",
     "originConflict": "Çakışma",
@@ -1635,7 +1634,13 @@
     "emptyTitle": "Henüz geçmiş yok",
     "emptyBody": "Düzenlemelerin yaptıkça buraya kaydedilir.",
     "offlineTitle": "Geçmiş çevrimiçi kullanılabilir",
-    "offlineBody": "Eski sürümler sunucuda duruyor, bu cihazda değil. Okumak için bağlan."
+    "offlineBody": "Eski sürümler sunucuda duruyor, bu cihazda değil. Okumak için bağlan.",
+    "originEdit": "Düzenleme",
+    "deviceUnknown": "Cihaz listende olmayan bir cihaz",
+    "deviceNone": "Eşitlenen bir cihazdan değil",
+    "diffThisVersion": "Bu sürüm: {who}",
+    "diffCurrent": "Notun şu hali: {who}",
+    "diffLegend": "Üstü çizili metin yalnız bu sürümde, altı çizili metin yalnız notun şu halinde var."
   },
   "conflict": {
     "bannerTitle": "Bu not başka bir cihazda da düzenlendi",
@@ -1645,7 +1650,9 @@
     "useTheirs": "Diğerini kullan",
     "keepBoth": "Kopya olarak ayır",
     "usedMine": "Notun metni artık senin sürümün",
-    "keptBoth": "Senin sürümün ayrı bir not olarak kaydedildi"
+    "keptBoth": "Senin sürümün ayrı bir not olarak kaydedildi",
+    "mineLine": "Senin metnin, kaydedilmedi: {who}",
+    "theirsLine": "Kaydedilen metin: {who}"
   },
   "ee": {
     "audit": {

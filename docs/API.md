@@ -3680,9 +3680,12 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/versions' \
       "contentFormat": "2026-09-04T14:30:00.000Z",
       "origin": "string",
       "clientId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+      "deviceName": "string",
+      "devicePlatform": "string",
       "createdBy": "string",
       "sizeBytes": 1,
-      "createdAt": "2026-09-04T14:30:00.000Z"
+      "createdAt": "2026-09-04T14:30:00.000Z",
+      "updatedAt": "2026-09-04T14:30:00.000Z"
     }
   ],
   "nextCursor": "string"
@@ -3727,9 +3730,12 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/versions/:versionI
   "contentFormat": "2026-09-04T14:30:00.000Z",
   "origin": "string",
   "clientId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+  "deviceName": "string",
+  "devicePlatform": "string",
   "createdBy": "string",
   "sizeBytes": 1,
   "createdAt": "2026-09-04T14:30:00.000Z",
+  "updatedAt": "2026-09-04T14:30:00.000Z",
   "contentMarkdown": "# Heading\n\nbody",
   "contentDelta": []
 }
@@ -3772,7 +3778,14 @@ curl -X GET 'https://api.alliswell.space/api/v1/notes/:noteId/versions/:versionI
       "value": "string"
     }
   ],
-  "comparable": false
+  "comparable": false,
+  "current": {
+    "updatedAt": "2026-09-04T14:30:00.000Z",
+    "origin": "string",
+    "clientId": "01J9Z4K8QK7B2N0M3XG5T6WQ7A",
+    "deviceName": "string",
+    "devicePlatform": "string"
+  }
 }
 ```
 
