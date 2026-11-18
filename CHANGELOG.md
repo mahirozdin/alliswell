@@ -7,20 +7,18 @@ This file holds the unreleased changes and the latest release; at each release t
 
 ## [Unreleased]
 
-## [1.22.0] — 2026-11-18
+## [1.22.1] — 2026-11-18
 
 ### Fixed
 
-- **A note you type on one device no longer says "edited on another device too", and no typed
-  text goes missing.** A new note saved before its first sync finished was refused as a conflict
-  with itself, and text typed while a save was still on its way could be dropped without a trace.
-  Both are fixed on the server and in the app; text typed right before closing a note is saved,
-  moving the cursor no longer saves, "Use the other one" now really shows the other text, and a
-  conflict is no longer announced twice.
-
-### Added
-
-- **Version history and conflicts name the device and the exact time.** Each version shows what
-  happened (edited, merged, restored…), which of your devices wrote it by the name in your device
-  list ("This device" for the one you hold), and when, to the second. The conflict banner says
-  which device and when for both sides, and the difference view names both sides too.
+- **The AI assistant understands what "this" means.** Send a link and then write "remind me to
+  read this news in 2 hours": the task is now named after the article (from the link's own words),
+  the link goes into its description, and the reminder is set two hours from now. It used to
+  read only your last message, so the task was titled with the request itself and the link was lost.
+- **The review card shows everything it will save.** Next to the title you now see the
+  description (with the link, editable) and the reminder, which you can clear; a time that has
+  already passed is marked. Before, a reminder was saved without being shown.
+- **Short follow-ups work.** "Yes, save it" after the assistant offers to save something creates
+  that task, and the conversation records that the review card was opened.
+- **The assistant reads links it cannot open.** Instead of only "I can't open links", it says what
+  the page appears to be from its address and offers to save it as a task or reminder.
