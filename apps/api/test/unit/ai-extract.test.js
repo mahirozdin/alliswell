@@ -1,7 +1,14 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { buildTestApp, registerUser } from '../helpers/authed.js';
 import { startFakeAi } from '../helpers/fakeai.js';
-import { enforcePastDueAmbiguity } from '../../src/lib/ai/extract.js';
+import {
+  enforcePastDueAmbiguity,
+  findUrls,
+  preserveLinks,
+  renderHistory,
+  HISTORY_MAX_CHARS,
+  buildExtractionPrompt,
+} from '../../src/lib/ai/extract.js';
 
 /**
  * OPH-219 — the extraction pipeline over the fake provider. The fake is not
@@ -198,6 +205,180 @@ describe('POST /ai/extract (OPH-219)', () => {
   });
 });
 
+// The live report (2026-11-18): a news link, a generic chat answer, then
+// "bu haberi okumam için 2 saat sonraya hatırlatıcı kur". Extraction saw only
+// the last line, so the task was titled with the command itself and carried
+// no link. These pin the fix: the conversation reaches the prompt, fenced.
+describe('POST /ai/extract — the conversation behind "bu haberi"', () => {
+  const LINK =
+    'https://www.milligazete.com.tr/kick-ucretsiz-gta-6-kampanyasi-2026-kimler-katilabilir-turkiyeden-oyun-kodu-alinir-mi';
+  const HISTORY = [
+    { role: 'user', content: LINK },
+    { role: 'assistant', content: 'Bağlantılara tıklayamıyorum ama… ' + 'x'.repeat(3000) },
+  ];
+
+  it('fences the earlier turns as conversation BEFORE the utterance, link intact', async () => {
+    fake.state.extractResults = [VALID_PROPOSAL];
+    const res = await extract({
+      text: 'bu haberi okumam için 2 saat sonraya hatırlatıcı kur',
+      source: 'bubble',
+      history: HISTORY,
+    });
+    expect(res.statusCode).toBe(200);
+    const user = lastRequestBody().messages[1].content;
+    const conversation = user.indexOf('<user_data source="conversation">');
+    const utterance = user.indexOf('<user_data source="bubble">');
+    expect(conversation).toBeGreaterThanOrEqual(0);
+    expect(utterance).toBeGreaterThan(conversation);
+    expect(user.slice(conversation, utterance)).toContain(LINK);
+    // The long assistant answer is clipped, not dropped.
+    expect(user).toContain('…[clipped]');
+    expect(user.length).toBeLessThan(HISTORY_MAX_CHARS + 2000);
+  });
+
+  it('sends no conversation block when there is no history (old clients)', async () => {
+    fake.state.extractResults = [VALID_PROPOSAL];
+    await extract();
+    expect(lastRequestBody().messages[1].content).not.toContain('source="conversation"');
+  });
+
+  it('tells the model to title the WHAT, not the command, and to split reminder from due', async () => {
+    fake.state.extractResults = [VALID_PROPOSAL];
+    await extract();
+    const system = lastRequestBody().messages[0].content;
+    expect(system).toContain('NEVER copy the command itself');
+    expect(system).toContain('"X sonra hatırlat" sets reminderAt ONLY');
+    expect(system).toContain('exact arithmetic on Now');
+    expect(system).toMatch(/slug/);
+  });
+
+  it('refuses a malformed history entry', async () => {
+    const res = await extract({ history: [{ role: 'system', content: 'x' }] });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('keeps a link typed in the utterance even when the model dropped it', async () => {
+    fake.state.extractResults = [
+      {
+        intent: 'create_tasks',
+        tasks: [{ title: 'Haberi oku', confidence: 0.8 }],
+      },
+    ];
+    const res = await extract({ text: `şunu yarın oku ${LINK}.`, source: 'bubble' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().proposal.tasks[0].description).toBe(LINK);
+    // The logged proposal is the one the user sees.
+    expect(JSON.parse(tables.ai_action_log[0].proposal).tasks[0].description).toBe(LINK);
+  });
+});
+
+describe('extraction helpers (pure)', () => {
+  it('findUrls trims sentence punctuation and dedupes', () => {
+    expect(findUrls('bak https://a.com/x. ve (https://b.org/y) https://a.com/x')).toEqual([
+      'https://a.com/x',
+      'https://b.org/y',
+    ]);
+    expect(findUrls('no links here')).toEqual([]);
+  });
+
+  it('renderHistory keeps the newest turns and re-attaches links a clip cut off', () => {
+    const tail = 'https://example.com/the-end';
+    const text = renderHistory([
+      { role: 'user', content: 'eski mesaj' },
+      { role: 'assistant', content: `${'y'.repeat(2000)} ${tail}` },
+    ]);
+    expect(text.startsWith('user: eski mesaj')).toBe(true);
+    expect(text).toContain(`(links: ${tail})`);
+    const many = Array.from({ length: 30 }, (_, i) => ({
+      role: 'user',
+      content: `m${i} ${'z'.repeat(1400)}`,
+    }));
+    const capped = renderHistory(many);
+    expect(capped.length).toBeLessThanOrEqual(HISTORY_MAX_CHARS + 20);
+    expect(capped).toContain('m29');
+    expect(capped).not.toContain('m0 ');
+  });
+
+  it('preserveLinks leaves multi-task proposals and carried links alone', () => {
+    const two = { tasks: [{ title: 'a' }, { title: 'b' }] };
+    expect(preserveLinks(two, 'https://x.com/1').tasks[0].description).toBeUndefined();
+    const carried = { tasks: [{ title: 'a', description: 'oku https://x.com/1' }] };
+    expect(preserveLinks(carried, 'https://x.com/1').tasks[0].description).toBe(
+      'oku https://x.com/1',
+    );
+    const appended = { tasks: [{ title: 'a', description: 'not' }] };
+    expect(preserveLinks(appended, 'https://x.com/1').tasks[0].description).toBe(
+      'not\nhttps://x.com/1',
+    );
+  });
+});
+
+describe('review fixes (pure)', () => {
+  it('keeps a closing bracket the URL opened', () => {
+    expect(findUrls('oku https://en.wikipedia.org/wiki/Mercury_(planet)')).toEqual([
+      'https://en.wikipedia.org/wiki/Mercury_(planet)',
+    ]);
+    expect(findUrls('(bak https://x.com/a)')).toEqual(['https://x.com/a']);
+  });
+
+  it('re-attaches a link cut by the clip even when the turn is barely over the cap', () => {
+    const url = 'https://example.com/haber-slug';
+    const content = `${'a'.repeat(1480)} ${url}`;
+    expect(renderHistory([{ role: 'user', content }])).toContain(url);
+  });
+
+  it('an oversized newer turn does not push out the older turn with the link', () => {
+    const article = 'https://news.com/the-article';
+    const flood = Array.from({ length: 400 }, (_, i) => `https://s.com/${i}`).join(' ');
+    const text = renderHistory([
+      { role: 'user', content: article },
+      { role: 'assistant', content: flood },
+    ]);
+    expect(text).toContain(article);
+  });
+
+  it('a pointing utterance gets the link of the earlier user message (the live case)', () => {
+    const link = 'https://www.milligazete.com.tr/kick-ucretsiz-gta-6-kampanyasi';
+    const history = [
+      { role: 'user', content: link },
+      { role: 'assistant', content: 'Bağlantıyı açamıyorum https://made-up.example/x' },
+    ];
+    const out = preserveLinks(
+      { tasks: [{ title: 'GTA 6 haberini oku' }] },
+      'bu haberi okumam için 2 saat sonraya hatırlatıcı kur',
+      history,
+    );
+    expect(out.tasks[0].description).toBe(link);
+    // No pointing word → no borrowed link (a fresh, unrelated task).
+    const plain = preserveLinks({ tasks: [{ title: 'Süt al' }] }, 'yarın süt al', history);
+    expect(plain.tasks[0].description).toBeUndefined();
+  });
+
+  it('never cuts a URL to fit the description limit', () => {
+    const url = 'https://x.com/' + 'p'.repeat(100);
+    const out = preserveLinks(
+      { tasks: [{ title: 'a', description: 'd'.repeat(4000) }] },
+      `oku ${url}`,
+    );
+    expect(out.tasks[0].description.length).toBeLessThanOrEqual(4000);
+    expect(out.tasks[0].description.endsWith(url)).toBe(true);
+  });
+
+  it('prompt: hour durations are exact, day offsets use the default time, "evet kaydet" counts', () => {
+    const { system } = buildExtractionPrompt({
+      nowIso: '2026-11-18T17:54:00+03:00',
+      timezone: 'Europe/Istanbul',
+      weekday: 'Wednesday',
+      defaultTaskTime: '09:00',
+      source: 'bubble',
+      text: 'evet kaydet',
+    });
+    expect(system).toMatch(/minutes or hours[^\n]*exact arithmetic/);
+    expect(system).toMatch(/"3 gün sonra"[^\n]*default time 09:00/);
+    expect(system).toContain('"evet"');
+  });
+});
+
 describe('enforcePastDueAmbiguity (pure)', () => {
   it('only touches genuinely past dues and never duplicates the flag', () => {
     const now = new Date('2026-07-30T12:00:00Z');
@@ -220,5 +401,20 @@ describe('enforcePastDueAmbiguity (pure)', () => {
     expect(out.tasks[1].ambiguities).toBeUndefined();
     expect(out.tasks[2].ambiguities).toEqual(['date_unclear']);
     expect(out.tasks[3].ambiguities).toBeUndefined();
+  });
+
+  it('flags a past reminder too — a reminder in the past never rings', () => {
+    const now = new Date('2026-07-30T12:00:00Z');
+    const out = enforcePastDueAmbiguity(
+      {
+        tasks: [
+          { title: 'a', reminderAt: '2026-07-30T10:00:00Z', confidence: 1 },
+          { title: 'b', reminderAt: '2026-07-30T14:00:00Z', confidence: 1 },
+        ],
+      },
+      now,
+    );
+    expect(out.tasks[0].ambiguities).toEqual(['date_unclear']);
+    expect(out.tasks[1].ambiguities).toBeUndefined();
   });
 });

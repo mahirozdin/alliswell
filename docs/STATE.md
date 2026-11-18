@@ -15,7 +15,7 @@
 
 |                          |                                                                                              |
 | ------------------------ | -------------------------------------------------------------------------------------------- |
-| Current phase            | **v1.22.0 son sürüm (2026-11-18).** Epic 36–37 tamam; not eşitleme düzeltmesi (ADR-0072). |
+| Current phase            | **v1.22.1 son sürüm (2026-11-18).** Epic 36–37 tamam; not eşitleme (ADR-0072), AI bağlamı. |
 | Current epic             | **Epic 36 follow-up** (OPH-468…479), sonra Epic 37 follow-up (OPH-483…485) ve follow-up 2 |
 | ➡️ **Next task**         | **OPH-468** — A revoked session's cleanup finishes before any replacement session is exposed |
 | Last completed           | Not eşitleme: sahte çakışma ve kayıp metin düzeltildi, sürümlerde cihaz + saat (OPH-486…494, ADR-0072); ayrıntı CHANGELOG'da. |

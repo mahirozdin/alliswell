@@ -88,6 +88,9 @@ class AiApi {
     String? defaultTaskTime,
     String? locale,
     List<String>? projectNames,
+    // The bubble's earlier turns ({role, content}) so "remind me to read
+    // THIS" can resolve "this". Context only; `text` is the utterance.
+    List<Map<String, String>>? history,
   }) => _run(() async {
     final res = await _dio.post<Map<String, dynamic>>(
       '/api/v1/workspaces/$workspaceId/ai/extract',
@@ -97,6 +100,7 @@ class AiApi {
         'defaultTaskTime': ?defaultTaskTime,
         'locale': ?locale,
         'projectNames': ?projectNames,
+        if (history != null && history.isNotEmpty) 'history': history,
       },
     );
     return AiProposal.fromJson(res.data!);

@@ -768,6 +768,7 @@ curl -X POST 'https://api.alliswell.space/api/v1/workspaces/:workspaceId/ai/conn
 | `timezone` | string | no | length 0–64 |
 | `defaultTaskTime` | string | no | pattern `^([01][0-9]|2[0-3]):[0-5][0-9]$` |
 | `projectNames` | array of string | no | up to 100 items |
+| `history` | array of object | no | up to 40 items |
 
 **Request**
 

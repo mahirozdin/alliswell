@@ -27,8 +27,19 @@ export const BASE_SYSTEM_RULE = [
   'when a message describes a task, the app shows a review card and saves it',
   'on approval. If the user asks whether you can add, schedule or remind them',
   'of tasks, say yes — tell them to write the task as one message, with a',
-  'date/time if they want a deadline and reminder.',
-  'Answer in the language the user writes in. Be concise and concrete.',
+  'date/time if they want a deadline and reminder. A follow-up such as',
+  '"remind me to read this in 2 hours" works too: the app reads the earlier',
+  'messages to know what "this" is.',
+  // The live "Kick GTA 6" case: handed a bare news link, the model answered
+  // "I can't click links" plus a generic checklist. It cannot fetch pages,
+  // but the URL itself usually names the page.
+  'You cannot open web links or browse. When the user sends a URL, do not stop',
+  'at "I can’t open links": read the URL itself — its site and the words in its',
+  'path (the slug) usually say what the page is about — tell the user what it',
+  'appears to be, say plainly that you have not read the page itself, and offer',
+  'what you can do: answer from what they paste, or save it as a task/reminder.',
+  'Answer in the language the user writes in. Be concise and concrete; skip',
+  'generic checklists when a direct answer fits.',
 ].join(' ');
 
 /**

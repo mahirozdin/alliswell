@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "AllisWell REST API",
-    "version": "1.22.0",
+    "version": "1.22.1",
     "description": "Tasks, notes, projects, files and reminders — the same surface the AllisWell apps use, open to your own scripts through a personal API key.",
     "license": {
       "name": "See LICENSE",
@@ -13613,6 +13613,32 @@
                       "type": "string",
                       "minLength": 1,
                       "maxLength": 120
+                    }
+                  },
+                  "history": {
+                    "type": "array",
+                    "maxItems": 40,
+                    "items": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "required": [
+                        "role",
+                        "content"
+                      ],
+                      "properties": {
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant"
+                          ]
+                        },
+                        "content": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 32768
+                        }
+                      }
                     }
                   }
                 }

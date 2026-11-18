@@ -7,7 +7,7 @@ import { parseJsonColumn } from '../db/task-series.js';
 import { MODEL_CATALOG } from '../lib/ai/models.js';
 import { AI_PROVIDERS } from '../lib/ai/vendors.js';
 import { upstreamMessage } from '../lib/ai/http.js';
-import { buildExtractionPrompt, extractTasks } from '../lib/ai/extract.js';
+import { buildExtractionPrompt, extractTasks, preserveLinks } from '../lib/ai/extract.js';
 import {
   runChat,
   sseSink,
@@ -804,6 +804,22 @@ export default async function aiRoutes(app) {
               maxItems: 100,
               items: { type: 'string', minLength: 1, maxLength: 120 },
             },
+            // The bubble's earlier turns, so "remind me to read THIS" can
+            // resolve what "this" is. Context only — the utterance is `text`.
+            // The server clips it again (lib/ai/extract.js renderHistory).
+            history: {
+              type: 'array',
+              maxItems: 40,
+              items: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['role', 'content'],
+                properties: {
+                  role: { type: 'string', enum: ['user', 'assistant'] },
+                  content: { type: 'string', minLength: 1, maxLength: 32768 },
+                },
+              },
+            },
           },
         },
         response: {
@@ -875,6 +891,7 @@ export default async function aiRoutes(app) {
         projectNames: request.body.projectNames ?? [],
         source: request.body.source,
         text: request.body.text,
+        history: request.body.history ?? [],
       });
 
       const requestId = newId();
@@ -936,6 +953,8 @@ export default async function aiRoutes(app) {
           await app.ai.dailyCap.add(userId, totalTokens);
         }
       }
+
+      preserveLinks(outcome.proposal, request.body.text, request.body.history ?? []);
 
       const actionId = newId();
       await app.db('ai_action_log').insert({
