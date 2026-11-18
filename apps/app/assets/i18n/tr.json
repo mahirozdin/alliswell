@@ -1472,6 +1472,7 @@
       "cancel": "Vazgeç"
     },
     "bubble": {
+      "cardOpened": "Görev kartını açtım: {titles}",
       "hint": "Sor, ya da bir iş söyle…",
       "send": "Gönder",
       "stop": "Durdur",
@@ -1496,6 +1497,8 @@
       "accept": "{count} ekle",
       "reject": "Vazgeç",
       "taskTitle": "Başlık",
+      "description": "Açıklama",
+      "inPast": "geçmişte kaldı, kontrol et",
       "projectUnresolved": "\"{name}\" dedin — bir proje seç",
       "dueSource": "{source} → {resolved}",
       "created": "{count} eklendi",

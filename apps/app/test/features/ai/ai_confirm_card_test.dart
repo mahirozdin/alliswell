@@ -162,4 +162,85 @@ void main() {
     await pumpSettled(tester, await cardWith(api, proposal));
     expect(find.textContaining('yarın →'), findsOneWidget);
   });
+  // 2026-11-18 report: "remind me to read this news in 2 hours" WAS armed for
+  // 19:54, but the card showed only a title — no reminder, no link — so it
+  // read as lost. The card now shows both, and the user can edit/clear them.
+  testWidgets('shows the reminder and the description, and commits them', (
+    tester,
+  ) async {
+    final api = FakeApi();
+    final remind = DateTime.now().add(const Duration(hours: 2));
+    final proposal = proposalOf([
+      AiProposalTask(
+        title: 'GTA 6 kampanyası haberini oku',
+        description: 'https://example.com/kick-ucretsiz-gta-6',
+        reminderAt: remind.toUtc().toIso8601String(),
+      ),
+    ]);
+    await pumpSettled(tester, await cardWith(api, proposal));
+
+    expect(find.byKey(const Key('ai-confirm-remind-0')), findsOneWidget);
+    expect(find.byKey(const Key('ai-confirm-description-0')), findsOneWidget);
+    expect(
+      find.text('https://example.com/kick-ucretsiz-gta-6'),
+      findsOneWidget,
+    );
+
+    await tester.tap(find.byKey(const Key('ai-confirm-accept')));
+    await tester.pumpAndSettle();
+    final patch =
+        api.pushedMutations.firstWhere(
+              (m) => m['entityType'] == 'task' && m['operation'] == 'create',
+            )['patch']
+            as Map;
+    expect(patch['description'], 'https://example.com/kick-ucretsiz-gta-6');
+    expect(
+      DateTime.parse(patch['remindAt'] as String).toLocal().minute,
+      remind.minute,
+    );
+  });
+
+  testWidgets('a reminder already in the past says so', (tester) async {
+    final api = FakeApi();
+    final proposal = proposalOf([
+      AiProposalTask(
+        title: 'Haberi oku',
+        reminderAt: DateTime.now()
+            .subtract(const Duration(hours: 3))
+            .toUtc()
+            .toIso8601String(),
+      ),
+    ]);
+    await pumpSettled(tester, await cardWith(api, proposal));
+    expect(find.textContaining('already past'), findsOneWidget);
+  });
+
+  testWidgets('a cleared reminder is not committed', (tester) async {
+    final api = FakeApi();
+    final proposal = proposalOf([
+      AiProposalTask(
+        title: 'Haberi oku',
+        reminderAt: DateTime.now()
+            .add(const Duration(hours: 2))
+            .toUtc()
+            .toIso8601String(),
+      ),
+    ]);
+    await pumpSettled(tester, await cardWith(api, proposal));
+    final clear = find.descendant(
+      of: find.byKey(const Key('ai-confirm-remind-0')),
+      matching: find.byType(IconButton),
+    );
+    await tester.tap(clear);
+    await tester.pump();
+    expect(find.byKey(const Key('ai-confirm-remind-0')), findsNothing);
+    await tester.tap(find.byKey(const Key('ai-confirm-accept')));
+    await tester.pumpAndSettle();
+    final patch =
+        api.pushedMutations.firstWhere(
+              (m) => m['entityType'] == 'task' && m['operation'] == 'create',
+            )['patch']
+            as Map;
+    expect(patch.containsKey('remindAt'), isFalse);
+  });
 }

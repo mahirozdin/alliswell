@@ -51,19 +51,23 @@ class _RowDraft {
 
   bool enabled;
   String title;
-  final String? description;
+
+  /// Editable: it carries the link and details the user needs later (the
+  /// "which news was it?" report) — the card shows it instead of hiding it.
+  String? description;
   String? projectId;
   final String? projectNameRaw;
   final String? dueAtSource;
   final String priority;
   final bool urgent;
-  final DateTime? dueAt;
-  final DateTime? remindAt;
+  DateTime? dueAt;
+  DateTime? remindAt;
   final List<String> checklist;
 
   Map<String, dynamic> toBody() => {
     'title': title.trim(),
-    'description': ?description,
+    if (description?.trim().isNotEmpty ?? false)
+      'description': description!.trim(),
     'projectId': ?projectId,
     if (priority != 'none') 'priority': priority,
     'dueAt': ?dueAt?.toUtc().toIso8601String(),
@@ -201,16 +205,50 @@ class _AiConfirmCardState extends ConsumerState<AiConfirmCard> {
               ),
               onChanged: (v) => setState(() => row.projectId = v),
             ),
+            if (row.description != null) ...[
+              const SizedBox(height: AwSpace.x2),
+              TextFormField(
+                key: Key('ai-confirm-description-$index'),
+                initialValue: row.description,
+                minLines: 1,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  labelText: 'ai.confirm.description'.tr(),
+                ),
+                onChanged: (v) => row.description = v,
+              ),
+            ],
             if (row.dueAt != null) ...[
               const SizedBox(height: AwSpace.x2),
               AwSheetTile(
                 tileKey: Key('ai-confirm-due-$index'),
                 icon: Icons.event_outlined,
                 title: 'task.due'.tr(),
-                subtitle: _dueSubtitle(row),
+                subtitle: _withPastWarning(_dueSubtitle(row), row.dueAt!),
                 isSet: true,
                 clearTooltip: 'task.clearDue'.tr(),
-                onClear: () {},
+                onClear: () => setState(() => row.dueAt = null),
+                onTap: () {},
+              ),
+            ],
+            // The reminder used to be invisible here: "remind me in 2 hours"
+            // WAS armed, but the card showed only a title, so it read as lost.
+            if (row.remindAt != null) ...[
+              const SizedBox(height: AwSpace.x2),
+              AwSheetTile(
+                tileKey: Key('ai-confirm-remind-$index'),
+                icon: Icons.alarm_outlined,
+                title: 'task.remind'.tr(),
+                subtitle: _withPastWarning(
+                  awFormatShort(
+                    row.remindAt!,
+                    format: ref.read(dateFormatProvider),
+                  ),
+                  row.remindAt!,
+                ),
+                isSet: true,
+                clearTooltip: 'task.clearReminder'.tr(),
+                onClear: () => setState(() => row.remindAt = null),
                 onTap: () {},
               ),
             ],
@@ -219,6 +257,13 @@ class _AiConfirmCardState extends ConsumerState<AiConfirmCard> {
       ),
     );
   }
+
+  /// A time already behind us never rings — the server flags it
+  /// (`date_unclear`) instead of moving it, and the card says so.
+  String _withPastWarning(String text, DateTime at) =>
+      at.isBefore(DateTime.now())
+      ? '$text · ${'ai.confirm.inPast'.tr()}'
+      : text;
 
   String _dueSubtitle(_RowDraft row) {
     final resolved = awFormatShort(

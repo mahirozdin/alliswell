@@ -234,6 +234,15 @@ class AiBubbleMachine {
     clearRequestId: true,
   );
 
+  /// The gate opened the confirm card for the last user turn: record that as
+  /// the assistant's answer so the conversation reads as handled.
+  AiBubbleState proposalShown(AiBubbleState s, String text) => s.copyWith(
+    history: [
+      ...s.history,
+      AiChatEntry(role: 'assistant', text: text),
+    ],
+  );
+
   AiBubbleState fail(AiBubbleState s, String code) => s.copyWith(
     phase: AiBubblePhase.error,
     errorCode: code,

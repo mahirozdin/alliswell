@@ -46,6 +46,52 @@ class AiRouteOffline extends AiVoiceRoute {
   final String transcript;
 }
 
+/// How many earlier turns extraction sees, and each turn's cap. The server
+/// clips again (lib/ai/extract.js); this only keeps the request small.
+const kAiExtractionHistoryTurns = 12;
+const kAiExtractionTurnMaxChars = 4000;
+
+/// The conversation BEFORE the utterance, as extraction's `history`: what
+/// lets "bu haberi 2 saat sonra hatırlat" know which news (the 2026-11-18
+/// report — the link sat one message up and the task came out as the
+/// command itself). A share block counts as the first user turn: it is what
+/// "this" points at when the bubble was opened from a share.
+List<Map<String, String>> extractionHistory(
+  List<AiChatEntry> turns, {
+  SharedPayload? shared,
+}) {
+  final out = <Map<String, String>>[];
+  for (final turn in turns) {
+    final text = turn.text.trim();
+    if (text.isEmpty) continue;
+    out.add({'role': turn.role, 'content': _clipTurn(text)});
+  }
+  // The share is pinned: it is what "this" points at, so a long chat must
+  // not trim it away first.
+  final share = shared == null
+      ? ''
+      : shareTextOf(shared.text, url: shared.url).trim();
+  final keep = kAiExtractionHistoryTurns - (share.isEmpty ? 0 : 1);
+  return [
+    if (share.isNotEmpty) {'role': 'user', 'content': _clipTurn(share)},
+    ...out.length <= keep ? out : out.sublist(out.length - keep),
+  ];
+}
+
+final _urlInText = RegExp(r'https?://[^\s<>"`]+');
+
+/// Clips a long turn but keeps its links: a share puts its URL at the END,
+/// exactly where a plain cut would lose it.
+String _clipTurn(String text) {
+  if (text.length <= kAiExtractionTurnMaxChars) return text;
+  final head = text.substring(0, kAiExtractionTurnMaxChars);
+  final lost = {
+    for (final m in _urlInText.allMatches(text))
+      if (!head.contains(m.group(0)!)) m.group(0)!,
+  };
+  return lost.isEmpty ? head : '$head\n${lost.join(' ')}';
+}
+
 /// Owns the bubble's impure edges (the stream subscription, the request id)
 /// and delegates every transition to the pure [AiBubbleMachine] (OPH-221).
 final aiBubbleControllerProvider =
@@ -182,6 +228,11 @@ class AiBubbleController extends Notifier<AiBubbleState> {
     _busySending = true;
     try {
       final text = state.input.trim();
+      // The turns BEFORE this one — captured before send() commits it.
+      final earlier = extractionHistory(
+        state.history,
+        shared: state.sharedBlock,
+      );
       final prepared = await _prepare();
       if (prepared == null) {
         return null; // offline face; the input is preserved
@@ -200,14 +251,25 @@ class AiBubbleController extends Notifier<AiBubbleState> {
 
       AiVoiceRoute route;
       try {
-        route = await extractUtterance(text, source: 'bubble');
+        route = await extractUtterance(
+          text,
+          source: 'bubble',
+          history: earlier,
+        );
       } on Object catch (_) {
         route = const AiRouteNone();
       }
       if (_disposed || _cancelled) return null;
       if (route case AiRouteTasks(:final proposal)) {
-        // The confirm card takes over; the bubble returns to composing.
-        state = _machine.done(state);
+        // The confirm card takes over; the bubble returns to composing. The
+        // turn gets an answer line, so a later turn (and the chat model) sees
+        // it was handled rather than an unanswered request.
+        state = _machine.proposalShown(
+          _machine.done(state),
+          'ai.bubble.cardOpened'.tr(
+            args: {'titles': proposal.tasks.map((t) => t.title).join(', ')},
+          ),
+        );
         return proposal;
       }
       _stream(prepared, requestId, context);
@@ -401,7 +463,11 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   Future<AiVoiceRoute> submitReview({String source = 'voice'}) async {
     final userText = state.input.trim();
     if (userText.isEmpty) return const AiRouteNone();
-    final route = await extractUtterance(userText, source: source);
+    final route = await extractUtterance(
+      userText,
+      source: source,
+      history: extractionHistory(state.history, shared: state.sharedBlock),
+    );
     if (_disposed) return route;
     switch (route) {
       case AiRouteTasks():
@@ -432,6 +498,7 @@ class AiBubbleController extends Notifier<AiBubbleState> {
   Future<AiVoiceRoute> extractUtterance(
     String text, {
     required String source,
+    List<Map<String, String>> history = const [],
   }) async {
     final workspaceId = await ref.read(activeWorkspaceIdProvider.future);
     final status = ref.read(aiStatusProvider).value;
@@ -451,6 +518,7 @@ class AiBubbleController extends Notifier<AiBubbleState> {
             source: source,
             defaultTaskTime: ref.read(defaultTaskTimeProvider),
             projectNames: projectNames,
+            history: history,
           );
       return switch (proposal.intent) {
         'create_tasks' when proposal.tasks.isNotEmpty => AiRouteTasks(proposal),

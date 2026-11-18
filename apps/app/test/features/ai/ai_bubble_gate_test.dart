@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:alliswell/src/core/retry.dart';
 import 'package:alliswell/src/features/ai/data/ai_attachment_loader.dart';
 import 'package:alliswell/src/features/ai/data/ai_attachments.dart';
+import 'package:alliswell/src/features/ai/data/ai_context_builder.dart';
 import 'package:alliswell/src/features/ai/data/ai_live_context.dart';
 import 'package:alliswell/src/features/ai/providers.dart';
 import 'package:alliswell/src/features/ai/data/ai_stream_client.dart';
@@ -259,6 +260,105 @@ void main() {
     final followUp = (stream.requests.last.context!['segments'] as List)
         .cast<Map>();
     expect(followUp.where((s) => s['tier'] == 'attached'), hasLength(1));
+  });
+
+  // 2026-11-18 report: a news link, a chat answer, then "bu haberi okumam
+  // için 2 saat sonraya hatırlatıcı kur". The gate sent ONLY the last line,
+  // so the task was titled with the command and lost the link. The earlier
+  // turns now ride along as `history` — not the utterance itself.
+  test('the gate sends the earlier turns so "bu haberi" can resolve', () async {
+    const link =
+        'https://www.milligazete.com.tr/kick-ucretsiz-gta-6-kampanyasi';
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    final stream = ScriptedAiStreamClient(
+      script: const [AiTextDelta('Bağlantıyı açamıyorum ama…'), AiStreamDone()],
+    );
+    final container = await signedInContainer(api, stream);
+    final controller = container.read(aiBubbleControllerProvider.notifier);
+
+    controller.editInput(link);
+    await controller.sendGated(); // intent none → streamed chat answer
+    await pumpEventQueue();
+
+    api.nextProposal = {
+      'intent': 'create_tasks',
+      'tasks': [
+        {'title': 'GTA 6 kampanyası haberini oku', 'confidence': 0.9},
+      ],
+    };
+    const ask = 'bu haberi okumam için 2 saat sonraya hatırlatıcı kur';
+    controller.editInput(ask);
+    final proposal = await controller.sendGated();
+    expect(proposal, isNotNull);
+
+    final first = api.aiExtractBodies.first;
+    expect(first.containsKey('history'), isFalse, reason: 'nothing before it');
+    final sent = api.aiExtractBodies.last;
+    expect(sent['text'], ask);
+    final history = (sent['history'] as List).cast<Map>();
+    expect(history.first, {'role': 'user', 'content': link});
+    expect(history.any((t) => t['role'] == 'assistant'), isTrue);
+    expect(
+      history.any((t) => t['content'] == ask),
+      isFalse,
+      reason: 'the utterance is `text`, never part of its own history',
+    );
+  });
+
+  test(
+    'review fixes: the share is pinned and a clipped turn keeps its link',
+    () {
+      final turns = [
+        for (var i = 0; i < 30; i++) AiChatEntry(role: 'user', text: 'm$i'),
+      ];
+      final out = extractionHistory(
+        turns,
+        shared: const SharedPayload(text: 'Haber', url: 'https://x.com/a'),
+      );
+      expect(out, hasLength(kAiExtractionHistoryTurns));
+      expect(out.first['content'], contains('https://x.com/a'));
+      expect(out.last['content'], 'm29');
+
+      final long = '${'a' * 5000} https://news.example/slug';
+      final clipped = extractionHistory([
+        AiChatEntry(role: 'user', text: long),
+      ]).single['content']!;
+      expect(clipped.length, lessThan(long.length));
+      expect(clipped, endsWith('https://news.example/slug'));
+    },
+  );
+
+  test('a gated card leaves an answer line in the conversation', () async {
+    final api = FakeApi()..seedAiConnection(provider: 'anthropic');
+    api.nextProposal = {
+      'intent': 'create_tasks',
+      'tasks': [
+        {'title': 'Haberi oku', 'confidence': 0.9},
+      ],
+    };
+    final container = await signedInContainer(api, ScriptedAiStreamClient());
+    final controller = container.read(aiBubbleControllerProvider.notifier);
+    controller.editInput('bunu 2 saat sonra hatırlat');
+    await controller.sendGated();
+    final history = container.read(aiBubbleControllerProvider).history;
+    expect(history.last.role, 'assistant');
+    expect(history.last.text, contains('Haberi oku'));
+  });
+
+  test('extractionHistory keeps the newest turns and leads with a share', () {
+    final turns = [
+      for (var i = 0; i < 20; i++)
+        AiChatEntry(role: i.isEven ? 'user' : 'assistant', text: 'm$i'),
+    ];
+    final out = extractionHistory(turns);
+    expect(out, hasLength(kAiExtractionHistoryTurns));
+    expect(out.last['content'], 'm19');
+    final shared = extractionHistory(const [
+      AiChatEntry(role: 'user', text: ''),
+    ], shared: const SharedPayload(text: 'Haber', url: 'https://x.com/a'));
+    expect(shared, hasLength(1));
+    expect(shared.single['role'], 'user');
+    expect(shared.single['content'], contains('https://x.com/a'));
   });
 }
 

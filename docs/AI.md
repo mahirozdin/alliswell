@@ -152,8 +152,19 @@ Key fields: `intent (create_tasks|answer|none)`; `tasks[]` with `title`,
 the confirm card), `reminderAt?`, `priority`, `urgent`, `tags[]`, `checklist[]`,
 `confidence`, `ambiguities[]`. The prompt receives `now`, IANA TZ, weekday and the
 workspace **default task time** (OPH-161 — bare "yarın" resolves to tomorrow at the
-user's default, never a hardcoded hour); a past due date raises `date_unclear`, never
-silent acceptance. **Project matching is ours, not the model's:** `projectName`
+user's default, never a hardcoded hour); a past due date or reminder raises `date_unclear`, never
+silent acceptance. **The bubble sends the conversation (2026-11-18):** the typed and voice
+gates pass the earlier turns as `history` (≤12 turns from the app; the server keeps the newest
+≤8,000 characters, each turn clipped to 1,500 with its links re-attached) and the share block as
+the first turn; it is fenced as `<user_data source="conversation">` before the utterance and
+is context only — "bu haberi 2 saat sonra hatırlat" resolves *which* news, but nothing in it is
+turned into a task by itself. The prompt asks for a title that names the *what* (never the
+command words), puts links and details into `description`, reads a URL's slug (the model has
+no web access — §8.2 stands), maps "hatırlat / remind me" to `reminderAt` and deadlines to
+`dueAt`, and computes relative durations exactly. A URL typed in the utterance itself is
+appended to a single task's description server-side when the model dropped it. The confirm
+card shows and lets the user edit the description and clear the reminder and due date.
+**Project matching is ours, not the model's:** `projectName`
 resolves against real projects with the ADR-0013 Turkish fold + prefix/contains tiers;
 one match preselects, otherwise the confirm card shows the picker with "+ Proje ekle".
 Multi-task utterances are first-class. **The confirm card is mandatory wherever the

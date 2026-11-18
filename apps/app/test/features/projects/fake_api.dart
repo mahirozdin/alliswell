@@ -513,6 +513,10 @@ class FakeApi {
   /// a hope (the OPH-225 "sıfır AI" pattern).
   int aiExtractCalls = 0;
 
+  /// The body of every `/ai/extract` call, in order — what the gate SENT
+  /// (the conversation history behind "bu haberi" is asserted on this).
+  final List<Map<String, dynamic>> aiExtractBodies = [];
+
   /// Round 14: holds the `/ai/extract` answer back so a test can observe the
   /// optimistic ✨ state (instant row + enriching badge) before the proposal
   /// lands. Advance the fake clock past it with `tester.pump(delay)`.
@@ -766,6 +770,8 @@ class FakeApi {
     RequestOptions options,
     Map<String, dynamic>? body,
   ) {
+    // Captured up front: a later local in this method is also named `body`.
+    final requestBody = body;
     if (!path.contains('/ai/')) return null;
     if (!aiEnabled) {
       return Future.value(
@@ -821,6 +827,9 @@ class FakeApi {
     }
     if (path == '$wsPrefix/extract' && options.method == 'POST') {
       aiExtractCalls++;
+      if (requestBody != null) {
+        aiExtractBodies.add(Map<String, dynamic>.of(requestBody));
+      }
       if (extractStatusCode != null) {
         return Future.value(
           jsonBody(extractStatusCode!, {

@@ -1473,6 +1473,7 @@
       "cancel": "Cancel"
     },
     "bubble": {
+      "cardOpened": "Opened the task card: {titles}",
       "hint": "Ask, or say a task…",
       "send": "Send",
       "stop": "Stop",
@@ -1497,6 +1498,8 @@
       "accept": "Add {count}",
       "reject": "Discard",
       "taskTitle": "Title",
+      "description": "Description",
+      "inPast": "already past, check it",
       "projectUnresolved": "You said \"{name}\" — pick a project",
       "dueSource": "{source} → {resolved}",
       "created": "{count} added",
